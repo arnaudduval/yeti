@@ -1,0 +1,14 @@
+# Extensions
+*.save
+*.inp
+*.NB
+*.vts
+*.vtu
+*.svg
+*.pdf
+*.png
+*.dat
+*.tar.gz
+
+# Folders
+*/results/
