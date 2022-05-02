@@ -1,0 +1,44 @@
+** Copyright 2021 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms 
+** of the GNU Lesser General Public License as published by the Free Software 
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along 
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*Dimension
+2,2
+*Number of CP by element
+9,9
+*Number of patch
+2
+*Total number of element
+2
+*Number of element by patch
+1, 1
+*Patch(1)
+6
+0.0, 0.0, 0.0, 1.0, 1.0, 1.0
+6
+0.0, 0.0, 0.0, 1.0, 1.0, 1.0
+*Patch(2)
+6
+0.0, 0.0, 0.0, 1.0, 1.0, 1.0
+6
+0.0, 0.0, 0.0, 1.0, 1.0, 1.0
+*Jpqr
+2,2
+2,2
+*Nijk
+1  ,3,3
+2  ,3,3
+*Weight
+1, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.853553, 0.853553, 1.00
+2, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.853553, 0.853553

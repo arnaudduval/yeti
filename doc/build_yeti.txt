@@ -1,0 +1,31 @@
+# Construction du code yeti en quelques lignes de commande
+# Testé sur lamcosc106
+
+# On se place dans le répertoire utilisateur local
+cd /local/users/aduval1
+# Récupération des sources du code
+svn co https://lamcosplm.insa-lyon.fr/svnroot/nurbsoptim/branches/cmake-integration yeti
+# On se place dans le répertoire de construction
+cd yeti/build
+# Chargement des applis qui vont bien
+module load intel/14.0.6.214 python/3.6.4 cmake/3.12.3
+# Configuration du projet (en mentionnant qu'on utilise les compilateurs Intel)
+# On peut supprimer les FC=ifort et CC=icc si on veut utiliser les compilateurs GNU
+FC=ifort CC=icc cmake ..
+# Compilation
+make
+
+# A ce stade, les module Pythons sont compilés et situés dans /local/users/aduval1/yeti/build/lib/python
+# On les ajoute au chemin de rechreche de Python (on devra le refaure à chaque nouvelle ouverture de bash
+# ou sinon le mettre dans son .bashrc
+export PYTHONPATH=$PYTHONPATH:/local/users/aduval1/yeti/build/lib/python
+
+
+# On va dans le répertoire des cas-tests
+cd ../run
+# Un repertoire results doit être présent. On le crée
+mkdir results
+# Cas linear analysis
+python linear_analysis3.py
+
+# Enjoy ;)

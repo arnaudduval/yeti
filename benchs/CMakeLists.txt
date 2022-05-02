@@ -1,0 +1,115 @@
+# Copyright 2020-2022 Arnaud Duval
+
+# This file is part of Yeti.
+#
+# Yeti is free software: you can redistribute it and/or modify it under the terms 
+# of the GNU Lesser General Public License as published by the Free Software 
+# Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# PURPOSE. See the GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License along 
+# with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+# Add validation tests
+
+set(BENCH_PATH ${CMAKE_BINARY_DIR}/benchs)
+
+# Compute eigenvalues, 3D solid
+add_test(NAME platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+
+# Optimize with eigenvalues objective function
+# Finitie differences
+add_test(NAME OPTplatevib_FD COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_FD.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+# Semi analytic
+add_test(NAME OPTplatevib_semi_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_semi_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+# Full analytic
+add_test(NAME OPTplatevib_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+
+# Optimize compliance with volume kept constant, full analytic gradients, 2D solid structure
+add_test(NAME OPT1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT1-plateWithHole/OPT1-plateWithHole.py WORKING_DIRECTORY ${BENCH_PATH}/OPT1-plateWithHole)
+
+# Optimize compliance with volume kept constant, full analytic gradients, Kirchhoff-Love shell
+add_test(NAME OPT2-squareShellRoof COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT2-squareShellRoof/OPT2-squareShellRoof.py WORKING_DIRECTORY ${BENCH_PATH}/OPT2-squareShellRoof)
+
+# Optimize compliance with volume kept constant, full analytic gradients, 3D solid
+add_test(NAME OPT3-volumetricBeam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT3-volumetricBeam/OPT3-volumetricBeam.py WORKING_DIRECTORY ${BENCH_PATH}/OPT3-volumetricBeam)
+
+# Optimize max displacement with volume kept constant, full analytic gradients, 2D solid structure
+add_test(NAME OPT4-cantileverBeam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT4-cantileverBeam/OPT4-cantileverBeam.py WORKING_DIRECTORY ${BENCH_PATH}/OPT4-cantileverBeam)
+
+# Optimize max displacement with volume kept constant, full analytic gradients, Kirchhoff-love shell
+add_test(NAME OPT5-squareShellRoofDisp COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT5-squareShellRoofDisp/OPT5-squareShellRoofDisp.py WORKING_DIRECTORY ${BENCH_PATH}/OPT5-squareShellRoofDisp)
+
+# Optimize max Von Mises stress, full analytic gradients, 2D solid structure
+add_test(NAME OPT6-tensileSpecimen COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT6-tensileSpecimen/OPT6-tensileSpecimen.py WORKING_DIRECTORY ${BENCH_PATH}/OPT6-tensileSpecimen)
+
+# Optimize bending moment with volume kept constant, full analytic gradients, Kirchhoff-Love shell
+add_test(NAME OPT7-catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT7-catenary/OPT7-catenary.py WORKING_DIRECTORY ${BENCH_PATH}/OPT7-catenary)
+
+# optimize eigenfrequencies with volume kept constant, full analytic gradients, 3D solid
+add_test(NAME OPT8-ElephantTrunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT8-ElephantTrunk/OPT8-ElephantTrunk.py WORKING_DIRECTORY ${BENCH_PATH}/OPT8-ElephantTrunk)
+
+# Static analysis with distributed pressure
+add_test(NAME dload-triangle-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_triangular_1.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME dload-triangle-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_triangular_2.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME dload-uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME dload-uniform-field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+
+# Static analyis of a 2D palne stress plate with a round hole and least square projection postprocessing
+add_test(NAME leastsquare-projection-1patch COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/1_patch/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/1_patch)
+add_test(NAME leastsquare-projection-2patches COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches)
+add_test(NAME leastsquare-projection-2patchescplg COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches_coupling/coupling_analysis_mono.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches_coupling)
+
+# Coupling static analysis and post processing of interface patches
+add_test(NAME coupling-postprocessing COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/postproc_interfaces/coupling_analysis_pp_interfaces.py WORKING_DIRECTORY ${BENCH_PATH}/postproc_interfaces)
+
+# Embedded solid static analysis - geometrically nonlinear mapping
+add_test(NAME embeddedsolid1-NLmap COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map)
+
+# Embedded solid static analysis - geometrically nonlinear embedded solid
+add_test(NAME embeddedsolid2-NLembded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded)
+
+# Couling between solid patches with projected Gauss points
+add_test(NAME coupling_U5
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
+         WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)       
+
+# plate with hole with Abaqus parameters
+add_test(NAME ROM1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
+
+# Postprocessing of an IGA model to plot faces numbers in a VTU file
+add_test(NAME post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_face/post_faces.py WORKING_DIRECTORY ${BENCH_PATH}/post_face)
+
+set_tests_properties(
+                     platevib 
+                     OPTplatevib_FD 
+                     OPTplatevib_semi_AN 
+                     OPTplatevib_AN 
+                     OPT1-plateWithHole 
+                     OPT2-squareShellRoof 
+                     OPT3-volumetricBeam 
+                     OPT4-cantileverBeam 
+                     OPT5-squareShellRoofDisp 
+                     OPT6-tensileSpecimen 
+                     OPT7-catenary 
+                     OPT8-ElephantTrunk 
+                     dload-triangle-1 
+                     dload-triangle-2 
+                     dload-uniform 
+                     dload-uniform-field 
+                     leastsquare-projection-1patch 
+                     leastsquare-projection-2patches 
+                     leastsquare-projection-2patchescplg 
+                     coupling-postprocessing
+                     embeddedsolid1-NLmap
+                     embeddedsolid2-NLembded
+                     coupling_U5
+                     ROM1-plateWithHole
+                     post_faces
+                     PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
+
+
+

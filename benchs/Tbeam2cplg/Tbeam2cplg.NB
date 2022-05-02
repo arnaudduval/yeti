@@ -1,0 +1,80 @@
+** Copyright 2020 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms 
+** of the GNU Lesser General Public License as published by the Free Software 
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along 
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*Dimension
+2,2,1,1,1,1,1,1
+*Number of CP by element
+4,4,2,2,2,2,1,1
+*Number of patch
+8
+*Total number of element
+8
+*Number of element by patch
+1,1,1,1,1,1,1,1
+*Patch(1)
+4
+0.0, 0.0, 1.0, 1.0
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(2)
+4
+0.0, 0.0, 1.0, 1.0
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(3)
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(4)
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(5)
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(6)
+4
+0.0, 0.0, 1.0, 1.0
+*Patch(7)
+2
+0.0, 1.0
+*Patch(8)
+2
+0.0, 1.0
+*Jpqr
+1,1
+1,1
+1
+1
+1
+1
+0
+0
+*Nijk
+1  ,2,2
+2  ,2,2
+3  ,2
+4  ,2
+5  ,2
+6  ,2
+7  ,1
+8  ,1
+*Weight
+1,  1.00,  1.00,  1.00,  1.00
+2,  1.00,  1.00,  1.00,  1.00
+3,  1.00,  1.00
+4,  1.00,  1.00
+5,  1.00,  1.00
+6,  1.00,  1.00
+7,  1.00
+8,  1.00

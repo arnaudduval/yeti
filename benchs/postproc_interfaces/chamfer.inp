@@ -1,0 +1,272 @@
+** Copyright 2021 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms 
+** of the GNU Lesser General Public License as published by the Free Software 
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along 
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*Part, name=Conge
+*USER ELEMENT, NODES=27, TYPE=U1, COORDINATES=3, INTEGRATION=27, TENSOR=THREED
+1,2,3
+*USER ELEMENT, NODES=4, TYPE=U00, COORDINATES=3, INTEGRATION=4, TENSOR=NONE
+1,2,3
+*USER ELEMENT, NODES=1, TYPE=U4,  COORDINATES=3, INTEGRATION=4, TENSOR=NONE
+1,2,3
+*Node, nset=AllNode
+** Début congé
+1,  8.0,    0.0,    0.0 
+2,  8.5,    0.0,    0.0
+3,  9.0,    0.0,    0.0
+
+4,  8.0,    8.0,    0.0
+5,  8.5,    8.5,    0.0
+6,  9.0,    9.0,    0.0
+
+7,  0.0,    8.0,    0.0
+8,  0.0,    8.5,    0.0
+9,  0.0,    9.0,    0.0
+
+
+10,  8.0,    0.0,    0.5 
+11,  8.25,    0.0,    0.5
+12,  8.5,    0.0,    0.5
+
+13,  8.0,    8.0,    0.5
+14,  8.25,    8.25,    0.5
+15,  8.5,    8.5,    0.5
+
+16,  0.0,    8.0,    0.5
+17,  0.0,    8.25,    0.5
+18,  0.0,   8.5,  0.5
+
+
+19,  8.0,    0.0,    1.0 
+20,  8.0,    0.0,    1.0
+21,  8.0,    0.0,    1.0
+
+22,  8.0,    8.0,    1.0
+23,  8.0,    8.0,    1.0
+24,  8.0,    8.0,    1.0
+
+25,  0.0,    8.0,    1.0
+26,  0.0,    8.0,    1.0
+27,  0.0,    8.0,  1.0
+
+***Fin congé
+
+***Début tube
+
+28, 6.0, 0.0, 0.0
+29, 8.0, 0.0, 0.0
+30, 6.0, 6.0, 0.0
+31, 8.0, 8.0, 0.0
+32, 0.0, 6.0, 0.0
+33, 0.0, 8.0, 0.0
+
+34, 6.0, 0.0, 10.0
+35, 8.0, 0.0, 10.0
+36, 6.0, 6.0, 10.0
+37, 8.0, 8.0, 10.0
+38, 0.0, 6.0, 10.0
+39, 0.0, 8.0, 10.0
+
+****Fin tube
+
+***Début socle
+
+40, 5.0, 0.0, -2.0
+41, 11.0, 0.0, -2.0
+42, 5.0, 5.0, -2.0
+43, 11.0, 11.0, -2.0
+44, 0.0, 5.0, -2.0
+45, 0.0, 11.0, -2.0
+
+46, 5.0, 0.0, 0.0
+47, 11.0, 0.0, 0.0
+48, 5.0, 5.0, 0.0
+49, 11.0, 11.0, 0.0
+50, 0.0, 5.0, 0.0
+51, 0.0, 11.0, 0.0
+
+***Fin socle
+
+***Interface socle/congé
+
+52, 0.5,   0.0, 1.0
+53, 0.666667,        0.0, 1.0
+54, 0.5,   1.0, 1.0
+55, 0.666667,        1.0, 1.0
+
+56, 0.0, 0.0, 0.0
+57, 1.0, 0.0, 0.0
+58, 0.0, 1.0, 0.0 
+59, 1.0, 1.0, 0.0
+
+***Interface socle/tube
+
+60, 0.166667,   0.0, 1.0
+61, 0.5,        0.0, 1.0
+62, 0.166667,   1.0, 1.0
+63, 0.5,        1.0, 1.0
+
+64, 0.0, 0.0, 0.0
+65, 1.0, 0.0, 0.0
+66, 0.0, 1.0, 0.0
+67, 1.0, 1.0, 0.0
+
+
+***Interface tube/congé
+
+68, 1.0, 0.0, 0.0
+69, 1.0, 1.0, 0.0
+70, 1.0, 0.0, 0.1
+71, 1.0, 1.0, 0.1
+
+72, 0.0, 0.0, 0.0
+73, 0.0, 1.0, 0.0
+74, 0.0, 0.0, 1.0
+75, 0.0, 1.0, 1.0
+
+***Lagrange
+
+76, 0.0, 0.0, 0.0
+77, 0.0, 0.0, 0.0
+78, 0.0, 0.0, 0.0
+
+
+
+*Element,type=U1,elset=AllEls
+1,  27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+2,  39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28
+3,  51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40
+*Element,type=U00,elset=Inter
+4, 55, 54, 53, 52
+5, 59, 58, 57, 56
+6, 63, 62, 61, 60
+7, 67, 66, 65, 64
+8, 71, 70, 69, 68
+9, 75, 74, 73, 72
+*Element,type=U4,elset=Lagrange
+10, 76
+11, 77
+12, 78
+*ELSET,ELSET=EltPatch1,generate
+1,1,1
+*ELSET,ELSET=EltPatch2,generate
+2,2,1
+*ELSET,ELSET=EltPatch3,generate
+3,3,1
+*ELSET,ELSET=EltPatch4,generate
+4,4,1
+*ELSET,ELSET=EltPatch5,generate
+5,5,1
+*ELSET,ELSET=EltPatch6,generate
+6,6,1
+*ELSET,ELSET=EltPatch7,generate
+7,7,1
+*ELSET,ELSET=EltPatch8,generate
+8,8,1
+*ELSET,ELSET=EltPatch9,generate
+9,9,1
+*ELSET,ELSET=EltPatch10,generate
+10,10,1
+*ELSET,ELSET=EltPatch11,generate
+11,11,1
+*ELSET,ELSET=EltPatch12,generate
+12,12,1
+*NSET,NSET=CPatZmin
+40, 41, 42, 43, 44, 45
+*NSET,NSET=CPatX0Patch1
+7,8,9,16,17,18,25,26,27
+*NSET,NSET=CPatX0Patch2
+32,33,38,39
+*NSET,NSET=CPatX0Patch3
+44,45,50,51
+*NSET,NSET=CPatY0Patch1
+1,2,3,10,11,12,19,20,21
+*NSET,NSET=CPatY0Patch2
+28,29,34,35
+*NSET,NSET=CPatY0Patch3
+40,41,46,47
+*NSET,NSET=CPpatch4,generate
+52,55,1
+*NSET,NSET=CPpatch5,generate
+56,59,1
+*NSET,NSET=CPpatch6,generate
+60,63,1
+*NSET,NSET=CPpatch7,generate
+64,67,1
+*NSET,NSET=CPpatch8,generate
+68,71,1
+*NSET,NSET=CPpatch9,generate
+72,75,1
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=MAT
+1
+*UEL PROPERTY, ELSET=EltPatch2, MATERIAL=MAT
+2
+*UEL PROPERTY, ELSET=EltPatch3, MATERIAL=MAT
+3
+*UEL PROPERTY, ELSET=EltPatch4, MATERIAL=MATvoid
+4, 3, 10, 1
+*UEL PROPERTY, ELSET=EltPatch5, MATERIAL=MATvoid
+5, 1, 10, 0
+*UEL PROPERTY, ELSET=EltPatch6, MATERIAL=MATvoid
+6, 3, 11, 1
+*UEL PROPERTY, ELSET=EltPatch7, MATERIAL=MATvoid
+7, 2, 11, 0
+*UEL PROPERTY, ELSET=EltPatch8, MATERIAL=MATvoid
+8, 2, 12, 1
+*UEL PROPERTY, ELSET=EltPatch9, MATERIAL=MATvoid
+9, 1, 12, 0
+*UEL PROPERTY, ELSET=EltPatch10, MATERIAL=MATvoid
+10, 0
+*UEL PROPERTY, ELSET=EltPatch11, MATERIAL=MATvoid
+11, 0
+*UEL PROPERTY, ELSET=EltPatch12, MATERIAL=MATvoid
+12, 0
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly
+*Instance, name=I1, part=Conge
+*End Instance
+*End Assembly
+*MATERIAL,NAME=MAT
+*Elastic
+210000., 0.30
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.0, 0.0
+*STEP,extrapolation=NO, NLGEOM=NO
+*Static
+** BOUNDARY CONDITION
+*Boundary
+I1.CPatZmin, 1, 3, 0.
+I1.CPatX0Patch1, 1, 3, 0.
+I1.CPatX0Patch2, 1, 3, 0.
+I1.CPatX0Patch3, 1, 3, 0.
+I1.CPatY0Patch1, 1, 3, 0.
+I1.CPatY0Patch2, 1, 3, 0.
+I1.CPatY0Patch3, 1, 3, 0.
+I1.CPpatch4, 1, 3, 0.
+I1.CPpatch5, 1, 3, 0.
+I1.CPpatch6, 1, 3, 0.
+I1.CPpatch7, 1, 3, 0.
+I1.CPpatch8, 1, 3, 0.
+I1.CPpatch9, 1, 3, 0.
+** DLOAD
+*DLOAD
+I1.EltPatch2, U10, 1.
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
