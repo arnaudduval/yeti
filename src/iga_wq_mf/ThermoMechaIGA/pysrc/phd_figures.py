@@ -17,9 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # My libraries
-from lib.create_model import create_knotvector, eval_basis
+# from lib.create_model import create_knotvector, eval_basis
+# from lib.methods_wq import wq_find_positions
 from lib.methods_iga import iga_find_positions_weights
-from lib.methods_wq import wq_find_positions, wq_find_basis_weights_opt
+from methods_wq_dev import wq_find_positions, create_knotvector, eval_basis
 from lib.geomdl_geometry import geomdlModel
 
 # Choose folder
@@ -28,11 +29,15 @@ folder = os.path.dirname(full_path) + '/results/phd/'
 if not os.path.isdir(folder):
     os.mkdir(folder)
 
+CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
+                '#f781bf', '#a65628', '#984ea3',
+                '#999999', '#e41a1c', '#dede00']
+
 # Select extension
 extension = '.png'
 
 # Select case
-CASE = 0
+CASE = 1
 
 if CASE == 0: # B-spline curve
 
@@ -78,25 +83,27 @@ if CASE == 0: # B-spline curve
 elif CASE == 1: # Univariate functions
     # B-spline properties 
     degree = 2
-    nbel = 3
-    knots = np.linspace(0, 1, 192)
-    knotvector = create_knotvector(degree, nbel)
-    B0, B1 = eval_basis(degree, knotvector, knots)
+    nbel = 4
+    knots = np.linspace(0, 1, 181)
+    knotvector = create_knotvector(degree, nbel, multiplicity=2)
+    qp_wq = wq_find_positions(degree, knotvector, 2, maxrule=2)
+    B0, B1 = eval_basis(degree, knotvector, knots, multiplicity=2)
     B0 = B0.toarray()
     B1 = B1.toarray()
 
     plt.figure(1)
     for i in range(np.shape(B0)[0]): 
-        plt.plot(knots, B0[i, :], linewidth=4)
+        plt.plot(knots, B0[i, :], linewidth=1, color= CB_color_cycle[i])
+    plt.plot(qp_wq, np.zeros(len(qp_wq)), marker='s', linewidth=1, color='black')
 
     # Properties
     plt.grid()
     plt.gca().set_xlabel(r'$\xi$', fontsize=16)
-    plt.xticks([0, 0.5, 1])
+    plt.xticks(np.linspace(0, 1, nbel+1))
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
     plt.tight_layout()
-    plt.savefig(folder + 'basis_p' + str(degree) + '_nbel' + str(nbel) + extension)
+    plt.savefig(folder + 'basis22_p' + str(degree) + '_nbel' + str(nbel) + extension)
 
 elif CASE == 2: # Bivariate functions
     # B-Spline properties

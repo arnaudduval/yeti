@@ -404,14 +404,14 @@ def wq_find_basis_weights_opt(degree, knotvector, r, maxrule= 1):
 
     return xwq, B0, B1, W0, W1
 
-# ================
-# CODE 
-# ================
-degree = 2
-nbel = 4
-knotvector = create_knotvector(degree, nbel)
-_, B0p, B1p, W0p, W1p = wq_find_basis_weights_opt(degree, knotvector, 2, maxrule= 2)
-print(W0p.toarray())
+# # ================
+# # CODE 
+# # ================
+# degree = 2
+# nbel = 4
+# knotvector = create_knotvector(degree, nbel)
+# _, B0p, B1p, W0p, W1p = wq_find_basis_weights_opt(degree, knotvector, 2, maxrule= 2)
+# print(W0p.toarray())
 
 # CUTS = np.arange(2, 5)
 # NBEL = [2**_ for _ in CUTS]

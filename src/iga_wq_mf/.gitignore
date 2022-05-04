@@ -11,4 +11,4 @@
 *.tar.gz
 
 # Folders
-*/results/
+results/
