@@ -131,7 +131,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, isiga,
 
 # Constants
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
-for CUTS in range(5, 6):
+for CUTS in range(3, 5):
     for IS_IGA_GALERKIN in [False]:
         for GEOMETRY_CASE in range(2, 3):
 
@@ -139,7 +139,7 @@ for CUTS in range(5, 6):
             else: is_cg_list = [True]
         
             for IS_CG in is_cg_list:
-                for DEGREE in range(6, 7):
+                for DEGREE in range(3, 5):
                     # Print current time
                     now = datetime.now()
                     current_time = now.strftime("%H:%M:%S")
@@ -168,7 +168,8 @@ for CUTS in range(5, 6):
 
                     # Run simulation
                     blockPrint()
-                    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+                    # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+                    method_list = ["WP", "C", "TDS", "JM"]
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, IS_IGA_GALERKIN, 
                                     method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries)
                     enablePrint()

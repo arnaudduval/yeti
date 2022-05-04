@@ -106,12 +106,13 @@ for CUTS in range(2, 6):
                     try: 
                         inputs = read_text_file(txtname + '.txt')
 
-                        # # Plot results
+                        # Plot results
                         # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
-                        # plot_iterative_solver(txtname, inputs, method_list)
-                    
+                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
+                        plot_iterative_solver(txtname, inputs, method_list)
                     except: 
-                        print(txtname)
+                        # print(txtname)
+                        pass
 
 
 

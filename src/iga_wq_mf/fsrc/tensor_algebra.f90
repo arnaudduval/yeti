@@ -1643,7 +1643,8 @@ module tensor_methods
 
     subroutine jacobien_mean_3d(nb_qp_u, nb_qp_v, nb_qp_w, Jacob, &
                                 L1, L2, L3)
-
+        
+        use omp_lib
         implicit none
         ! Input /  output data
         ! -----------------------
@@ -1657,10 +1658,44 @@ module tensor_methods
         ! --------------
         double precision :: LNS
 
+        ! SDV
+        integer :: i, nb_tasks, INFO
+        character, parameter :: JOBU='A', JOBVT='A'
+        integer, parameter :: M=3, N=3
+        integer, parameter :: LDA=M, LDU=M, LDVT=N, LWORK=5*M
+        double precision, dimension(M,N) :: A, U, VT
+        double precision, dimension(M) :: S
+        double precision, dimension(:), allocatable :: WORK
+        double precision :: Jacob_U, Jacob_V
+        dimension ::    Jacob_U(3, 3, nb_qp_u*nb_qp_v*nb_qp_w), &
+                        Jacob_V(3, 3, nb_qp_u*nb_qp_v*nb_qp_w)
+
+        ! Initialize
+        allocate(WORK(LWORK))
+        Jacob_U = 0.d0
+
+        !$OMP PARALLEL PRIVATE(A, S, U, VT, WORK, INFO)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nb_qp_u*nb_qp_v*nb_qp_w/nb_tasks) 
+        do i = 1, nb_qp_u*nb_qp_v*nb_qp_w
+            A = Jacob(:, :, i)
+            call dgesvd(JOBU, JOBVT, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK, LWORK, INFO)
+            call product_AWB(3, 3, 3, U, S, U, Jacob_U(:, :, i))
+            call product_AWB(3, 3, 3, transpose(VT), S, transpose(VT), Jacob_V(:, :, i))
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+
         ! Find mean of diagonal of jacobien
-        L1 = sum(Jacob(1, 1, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        L2 = sum(Jacob(2, 2, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        L3 = sum(Jacob(3, 3, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        L1 = sum(Jacob_V(1, 1, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        L2 = sum(Jacob_V(2, 2, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        L3 = sum(Jacob_V(3, 3, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        ! print*, L1, L2, L3
+
+        ! ! Find mean of diagonal of jacobien
+        ! L1 = sum(Jacob(1, 1, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        ! L2 = sum(Jacob(2, 2, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
+        ! L3 = sum(Jacob(3, 3, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
 
         LNS = sqrt(L1**2 + L2**2 + L3**2)
         L1 = L1/LNS

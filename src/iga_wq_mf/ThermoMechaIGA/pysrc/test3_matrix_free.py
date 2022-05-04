@@ -19,7 +19,7 @@ from lib.methods_mf import MF
 # Set global variables
 DEGREE = 3
 CUTS = 3
-GEOMETRY_CASE = 0
+GEOMETRY_CASE = 2
 IS_CG = True
 
 if GEOMETRY_CASE == 0: txtname = 'C'; funpower = powden_cube
@@ -63,15 +63,15 @@ sol_d  = LU.solve(F2solve)
 # Set parameters
 epsilon  = 1e-14 
 iterations = 4
-inputs = [F2solve, dof, iterations, epsilon, "WP", sol_d, IS_CG]   
+inputs = [F2solve, dof, iterations, epsilon, "JM", sol_d, IS_CG]   
 sol_t1, residue_t1, error_t4 = Model1.mf_conj_grad(*inputs)
 
-# Compare with MF solver
-Model1 = MF(modelGeo)
-sol_t2, residue_t2 = Model1.mf_wq_conj_grad(F2solve, dof, iterations, epsilon)
-error = sol_t1 - sol_t2 
-norm = np.linalg.norm(error, np.inf)/np.linalg.norm(sol_t2, np.inf)
-print('Error calculating CG: %.05f' %(norm,))
+# # Compare with MF solver
+# Model1 = MF(modelGeo)
+# sol_t2, residue_t2 = Model1.mf_wq_conj_grad(F2solve, dof, iterations, epsilon)
+# error = sol_t1 - sol_t2 
+# norm = np.linalg.norm(error, np.inf)/np.linalg.norm(sol_t2, np.inf)
+# print('Error calculating CG: %.05f' %(norm,))
 
 
 
