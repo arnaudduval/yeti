@@ -78,7 +78,7 @@ folder = os.path.dirname(full_path) + '/results/'
 
 for CUTS in range(2, 6):
     for IS_IGA_GALERKIN in [False, True]:
-        for GEOMETRY_CASE in range(3):
+        for GEOMETRY_CASE in range(4):
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [True, False]
         
@@ -107,8 +107,8 @@ for CUTS in range(2, 6):
                         inputs = read_text_file(txtname + '.txt')
 
                         # Plot results
-                        # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
-                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
+                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
+                        # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
                         plot_iterative_solver(txtname, inputs, method_list)
                     except: 
                         # print(txtname)

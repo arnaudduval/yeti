@@ -1156,7 +1156,7 @@ module tensor_methods
     subroutine eigen_decomposition(nb_rows, nb_cols, &
                                     Mcoef, Kcoef, size_data, indi, indj, &
                                     data_B0, data_W00, data_B1, data_W11, &
-                                    kmod1, kmod2, eigenvalues, eigenvectors, Kdiag, Mdiag)
+                                    kmod1, kmod2, method, eigenvalues, eigenvectors, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
         !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -1167,8 +1167,7 @@ module tensor_methods
         ! Input / output 
         ! -------------------
         integer, intent(in) ::  nb_rows, nb_cols
-        double precision, intent(in) :: Mcoef, Kcoef
-        dimension :: Mcoef(nb_cols), Kcoef(nb_cols)
+        double precision, intent(in) :: Mcoef(*), Kcoef(*)
         integer, intent(in) ::  size_data
         integer, intent(in) ::  indi, indj
         dimension :: indi(size_data), indj(size_data)
@@ -1176,6 +1175,7 @@ module tensor_methods
         dimension ::    data_B0(size_data), data_W00(size_data), &
                         data_B1(size_data), data_W11(size_data)
         integer, intent(in) :: kmod1, kmod2
+        character(len=10), intent(in) :: Method
                 
         double precision, intent(out) :: eigenvalues, eigenvectors
         dimension :: eigenvalues(nb_rows), eigenvectors(nb_rows, nb_rows)
@@ -1208,11 +1208,13 @@ module tensor_methods
         call coo2matrix(size_data, indi, indj, data_B0, nb_rows, nb_cols, BB0)
         call coo2matrix(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
         allocate(MM(nb_rows, nb_rows))
-        do j = 1, nb_cols
-            do i = 1, nb_rows
-                BB0(i, j) = BB0(i, j) * Mcoef(j)
+        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+            do j = 1, nb_cols
+                do i = 1, nb_rows
+                    BB0(i, j) = BB0(i, j) * Mcoef(j)
+                end do
             end do
-        end do
+        end if
         MM = matmul(WW0, transpose(BB0))
         deallocate(BB0, WW0)
 
@@ -1222,11 +1224,13 @@ module tensor_methods
         call coo2matrix(size_data, indi, indj, data_B1, nb_rows, nb_cols, BB1)
         call coo2matrix(size_data, indi, indj, data_W11, nb_rows, nb_cols, WW1)
         allocate(KK(nb_rows, nb_rows))
-        do j = 1, nb_cols
-            do i = 1, nb_rows
-                BB1(i, j) = BB1(i, j) * Kcoef(j)
+        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then
+            do j = 1, nb_cols
+                do i = 1, nb_rows
+                    BB1(i, j) = BB1(i, j) * Kcoef(j)
+                end do
             end do
-        end do
+        end if
         KK = matmul(WW1, transpose(BB1))
         deallocate(BB1, WW1)
 

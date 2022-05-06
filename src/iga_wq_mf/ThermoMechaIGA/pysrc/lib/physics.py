@@ -92,6 +92,6 @@ def powden_rotring(dim, P: list):
     y = P[1]
     z = P[2]
 
-    f = x+y+z
+    f = 1
     
     return f

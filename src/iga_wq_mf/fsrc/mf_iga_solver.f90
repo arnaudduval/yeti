@@ -765,17 +765,6 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         ! --------------------------------------------
         ! INITIALIZE
         ! -------------------------------------------- 
-        allocate(Mcoef_u(nb_cols_u), Kcoef_u(nb_cols_u), &
-                    Mcoef_v(nb_cols_v), Kcoef_v(nb_cols_v), &
-                    Mcoef_w(nb_cols_w), Kcoef_w(nb_cols_w))
-
-        ! Initialize coefficients 
-        Mcoef_u = 1.d0
-        Kcoef_u = 1.d0
-        Mcoef_v = 1.d0
-        Kcoef_v = 1.d0
-        Mcoef_w = 1.d0
-        Kcoef_w = 1.d0
         Lu = 1.d0
         Lv = 1.d0
         Lw = 1.d0
@@ -784,6 +773,18 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! --------------------------------------------
             ! DIAGONAL DECOMPOSITION
             ! -------------------------------------------- 
+            allocate(Mcoef_u(nb_cols_u), Kcoef_u(nb_cols_u), &
+                    Mcoef_v(nb_cols_v), Kcoef_v(nb_cols_v), &
+                    Mcoef_w(nb_cols_w), Kcoef_w(nb_cols_w))
+
+            ! Initialize coefficients 
+            Mcoef_u = 1.d0
+            Kcoef_u = 1.d0
+            Mcoef_v = 1.d0
+            Kcoef_v = 1.d0
+            Mcoef_w = 1.d0
+            Kcoef_w = 1.d0
+
             allocate(coefs_diag(3, nb_cols_u*nb_cols_v*nb_cols_w))
             coefs_diag(1, :) = coefs(1, 1, :)
             coefs_diag(2, :) = coefs(2, 2, :)
@@ -817,7 +818,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_B_u, indj_B_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, table_block(1, 1), table_block(1, 2), D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, table_block(1, 1), table_block(1, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
         deallocate(data_W00_u, data_W11_u)
         
         allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
@@ -828,7 +829,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_B_v, indj_B_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, table_block(2, 1), table_block(2, 2), D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, table_block(2, 1), table_block(2, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
         deallocate(data_W00_v, data_W11_v)
 
         allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
@@ -839,9 +840,11 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_B_w, indj_B_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, table_block(3, 1), table_block(3, 2), D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W00_w, data_W11_w)
-        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+            deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+        end if
 
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
             ! Find diagonal of preconditioner

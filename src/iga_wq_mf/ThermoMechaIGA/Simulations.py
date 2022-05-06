@@ -16,7 +16,8 @@ from pysrc.lib.fortran_mf_iga import fortran_mf_iga
 from pysrc.lib.fortran_mf_wq import fortran_mf_wq
 from pysrc.lib.physics import (powden_cube, 
                             powden_prism,
-                            powden_thickring
+                            powden_thickring, 
+                            powden_rotring
 )
 from pysrc.lib.create_model import write_text_file
 
@@ -133,10 +134,10 @@ def run_simulation(degree, cuts, geometry_case, funpowden, isiga,
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 for CUTS in range(3, 5):
     for IS_IGA_GALERKIN in [False]:
-        for GEOMETRY_CASE in range(2, 3):
+        for GEOMETRY_CASE in range(3):
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
-            else: is_cg_list = [True]
+            else: is_cg_list = [False]
         
             for IS_CG in is_cg_list:
                 for DEGREE in range(3, 5):
@@ -155,6 +156,9 @@ for CUTS in range(3, 5):
                     elif GEOMETRY_CASE == 2: 
                         txtname = 'TR' 
                         funpow = powden_thickring 
+                    elif GEOMETRY_CASE == 3: 
+                        txtname = 'RQA' 
+                        funpow = powden_rotring 
                     else: raise Warning('Geometry does not exist')
                     txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
 
@@ -168,8 +172,8 @@ for CUTS in range(3, 5):
 
                     # Run simulation
                     blockPrint()
-                    # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-                    method_list = ["WP", "C", "TDS", "JM"]
+                    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+                    # method_list = ["WP", "C", "TDS", "JM"]
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, IS_IGA_GALERKIN, 
                                     method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries)
                     enablePrint()

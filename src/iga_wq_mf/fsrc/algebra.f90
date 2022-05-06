@@ -23,10 +23,10 @@ subroutine linspace(x0, xf, n, array)
     implicit none
     ! Input / output data
     ! -------------------
-    double precision, intent(in) :: x0 , xf 
+    double precision, intent(in) :: x0, xf 
     integer, intent(in) :: n 
 
-    double precision, intent(out):: array 
+    double precision, intent(out) :: array 
     dimension :: array(n)
 
     ! Local data
@@ -35,7 +35,7 @@ subroutine linspace(x0, xf, n, array)
     double precision :: h 
 
     ! Define spacing 
-    h = (xf - x0 )/DBLE(n - 1)
+    h = (xf - x0)/dble(n - 1)
 
     ! Assign first and last values
     array(1) = x0 
@@ -43,16 +43,16 @@ subroutine linspace(x0, xf, n, array)
     
     ! Assign values
     do i = 2, n - 1
-        array(i) = x0  + DBLE(i-1) * h
+        array(i) = x0  + dble(i-1)*h
     end do
 
 end subroutine linspace
 
 subroutine product_AWB(nb_rows_A, nb_rows_B, nb_cols, A, W, B, AWB)
-    !! Matrix multiplication type: A diag(W) transpose(B)
-    !! Matrix A = (nb_rows_A , nb_columns)
+    !! Matrix multiplication type: A.diag(W).transpose(B)
+    !! Matrix A = (nb_rows_A, nb_columns)
     !! Array W = (nb_columns)
-    !! Matrix B = (nb_rows_B , nb_columns)
+    !! Matrix B = (nb_rows_B, nb_columns)
 
     implicit none 
     ! Input / output data
@@ -85,7 +85,7 @@ subroutine product_AWB(nb_rows_A, nb_rows_B, nb_cols, A, W, B, AWB)
 end subroutine product_AWB
 
 subroutine solve_system(nb_rows, nb_cols, A, b, x)
-    !! Solves equation system A x = b
+    !! Solves equation system A.x = b
     !! Matrix A = (nb_rows, nb_columns)
     !! Vector b = (nb_rows)
     !! Vector x = (nb_cols)
@@ -95,30 +95,23 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
     ! -------------------
     integer, intent(in) :: nb_rows, nb_cols
     double precision, intent(in) :: A, b
-    dimension ::    A(nb_rows, nb_cols), b(nb_rows)
+    dimension :: A(nb_rows, nb_cols), b(nb_rows)
 
     double precision, intent(out) :: x
     dimension :: x(nb_cols)
 
     ! Local data
     ! ------------------
-    ! Loop
     integer :: i
-
-    ! Copy
     double precision :: A_copy
     dimension :: A_copy(nb_rows, nb_cols)
 
-    ! Solution
     double precision :: xcase1, xcase2
     dimension :: xcase1(nb_cols), xcase2(nb_rows)
 
-    ! For determined system
-    integer :: IPIV, INFO
+    ! Lapack
+    integer :: IPIV, INFO, LWORK
     dimension :: IPIV(nb_rows)
-
-    ! For other systems (over and under determined)
-    integer :: LWORK 
     double precision, allocatable :: WORK(:)
 
     ! Set a copy of matrix A 
@@ -129,18 +122,18 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
     xcase1 = 0.d0
     xcase2 = 0.d0
 
-    if (nb_rows .LE. nb_cols) then ! Case 1
+    if (nb_rows.le.nb_cols) then ! Case 1
         
         do i = 1, nb_rows
             xcase1(i) = b(i)
         end do
 
-        if (nb_rows .EQ. nb_cols) then
+        if (nb_rows.eq.nb_cols) then
 
             ! Determmined system: 
             call dgesv(nb_rows, 1, A_copy, nb_rows, IPIV, xcase1, nb_rows, INFO)
 
-        elseif (nb_rows .LT. nb_cols) then
+        elseif (nb_rows.lt.nb_cols) then
 
             ! Under-determined system: 
             LWORK = 2 * nb_rows
@@ -153,7 +146,7 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
             x(i) = xcase1(i)
         end do
 
-    else if (nb_rows .GT. nb_cols) then  ! Case 2
+    else if (nb_rows.gt.nb_cols) then  ! Case 2
             
         do i = 1, nb_rows
             xcase2(i) = b(i)
@@ -229,8 +222,9 @@ subroutine matrix_kron_matrix(nb_rows_A, nb_cols_A, A, nb_rows_B, nb_cols_B, B, 
 end subroutine matrix_kron_matrix
 
 subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
-    use omp_lib
+    ! Sacaling in fast diagonalization
 
+    use omp_lib
     implicit none
     ! Input / output data
     ! -------------------
@@ -384,7 +378,7 @@ subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
     implicit none 
     ! Input / output data
     ! --------------------
-    integer :: nb_rows, nb_cols, nnz
+    integer, intent(in) :: nb_rows, nb_cols, nnz
     integer, intent(in) :: A_in 
     dimension :: A_in(nb_rows, nb_cols)
 
@@ -422,7 +416,6 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
     !! Where A and B are sparse matrices in CSR format
 
     use omp_lib
-
     implicit none 
     ! Input / output data
     ! ----------------------
@@ -435,7 +428,7 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     integer, intent(out) :: nb_rows_C, nb_cols_C
     integer, intent(out) :: indi_C, indj_C
-    dimension ::    indi_C(nb_rows_A*nb_rows_B+1), indj_C(nnz_C)
+    dimension :: indi_C(nb_rows_A*nb_rows_B+1), indj_C(nnz_C)
 
     ! Loca data
     ! -----------
@@ -491,7 +484,6 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
             ! Update values
             indj_C(indi_C(k): indi_C(k+1)-1) = indj_C_temp
             deallocate(indj_C_temp)
-
         end do
     end do
     !$OMP END DO NOWAIT
