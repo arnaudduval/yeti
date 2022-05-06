@@ -1435,7 +1435,7 @@ module tensor_methods
         ! -----------------------
         integer, intent(in) :: nb_qp_u, nb_qp_v
         double precision, intent(in) :: CC
-        dimension :: CC(2, nb_qp_u*nb_qp_v)
+        dimension :: CC(2, 2, nb_qp_u*nb_qp_v)
 
         double precision, intent(inout) :: U_u, U_v, W_u, W_v
         dimension ::    U_u(nb_qp_u), U_v(nb_qp_v), &
@@ -1458,7 +1458,7 @@ module tensor_methods
                 do i1 = 1, nb_qp_u
                     genpos = i1 + (i2-1)*nb_qp_u 
                     UU = [U_u(i1), U_v(i2)]
-                    Vscript(i1, i2) = CC(k, genpos)*UU(k)/(UU(1)*UU(2))
+                    Vscript(i1, i2) = CC(k, k, genpos)*UU(k)/(UU(1)*UU(2))
                 end do
             end do
 
@@ -1490,7 +1490,7 @@ module tensor_methods
                             genpos = i1 + (i2-1)*nb_qp_u 
                             UU = [U_u(i1), U_v(i2)]
                             WW = [W_u(i1), W_v(i2)]
-                            Wscript(i1, i2) = CC(k, genpos)*UU(k)*UU(l)&
+                            Wscript(i1, i2) = CC(k, k, genpos)*UU(k)*UU(l)&
                                                         /(UU(1)*UU(2)*WW(k))
                         end do
                     end do
@@ -1526,7 +1526,7 @@ module tensor_methods
         ! -----------------------
         integer, intent(in) :: nb_qp_u, nb_qp_v, nb_qp_w
         double precision, intent(in) :: CC
-        dimension :: CC(3, nb_qp_u*nb_qp_v*nb_qp_w)
+        dimension :: CC(3, 3, nb_qp_u*nb_qp_v*nb_qp_w)
 
         double precision, intent(inout) :: U_u, U_v, U_w, W_u, W_v, W_w
         dimension ::    U_u(nb_qp_u), U_v(nb_qp_v), U_w(nb_qp_w), &
@@ -1554,7 +1554,7 @@ module tensor_methods
                     do i1 = 1, nb_qp_u
                         genpos = i1 + (i2-1)*nb_qp_u + (i3-1)*nb_qp_u*nb_qp_v
                         UU = [U_u(i1), U_v(i2), U_w(i3)]
-                        Vscript(i1, i2, i3) = CC(k, genpos)*UU(k)/(UU(1)*UU(2)*UU(3))
+                        Vscript(i1, i2, i3) = CC(k, k, genpos)*UU(k)/(UU(1)*UU(2)*UU(3))
                     end do
                 end do
             end do
@@ -1599,7 +1599,7 @@ module tensor_methods
                                 genpos = i1 + (i2-1)*nb_qp_u + (i3-1)*nb_qp_u*nb_qp_v
                                 UU = [U_u(i1), U_v(i2), U_w(i3)]
                                 WW = [W_u(i1), W_v(i2), W_w(i3)]
-                                Wscript(cont, i1, i2, i3) = CC(k, genpos)*UU(k)*UU(l)&
+                                Wscript(cont, i1, i2, i3) = CC(k, k, genpos)*UU(k)*UU(l)&
                                                             /(UU(1)*UU(2)*UU(3)*WW(k))
                             end do
                         end do
@@ -1644,8 +1644,7 @@ module tensor_methods
 
     end subroutine diagonal_decomposition_3d
 
-    subroutine jacobien_mean_3d(nb_qp_u, nb_qp_v, nb_qp_w, Jacob, &
-                                L1, L2, L3)
+    subroutine jacobien_mean_3d(nb_qp_u, nb_qp_v, nb_qp_w, Jacob, L1, L2, L3)
         
         use omp_lib
         implicit none
@@ -1659,47 +1658,55 @@ module tensor_methods
 
         ! Local data
         ! --------------
-        double precision :: LNS
-
         ! SDV
-        integer :: i, nb_tasks, INFO
+        integer :: INFO
         character, parameter :: JOBU='A', JOBVT='A'
         integer, parameter :: M=3, N=3
         integer, parameter :: LDA=M, LDU=M, LDVT=N, LWORK=5*M
         double precision, dimension(M,N) :: A, U, VT
         double precision, dimension(M) :: S
         double precision, dimension(:), allocatable :: WORK
-        double precision :: Jacob_U, Jacob_V
-        dimension ::    Jacob_U(3, 3, nb_qp_u*nb_qp_v*nb_qp_w), &
-                        Jacob_V(3, 3, nb_qp_u*nb_qp_v*nb_qp_w)
+
+        ! Compute dimensions
+        integer :: i, j, k, nb_qp, Jpos
+        double precision :: LNS
+        double precision, dimension(:,:), allocatable :: Jacob_V
+
+        ! Count number of quadrature points
+        nb_qp = 0
+        do k = 1, nb_qp_w, 2
+            do j = 1, nb_qp_v, 2
+                do i = 1, nb_qp_u, 2
+                    nb_qp = nb_qp + 1
+                end do
+            end do
+        end do
 
         ! Initialize
         allocate(WORK(LWORK))
-        Jacob_U = 0.d0
+        allocate(Jacob_V(3, 3))
+        Jacob_V = 0.d0
+        L1 = 0.d0
+        L2 = 0.d0
+        L3 = 0.d0
 
-        !$OMP PARALLEL PRIVATE(A, S, U, VT, WORK, INFO)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nb_qp_u*nb_qp_v*nb_qp_w/nb_tasks) 
-        do i = 1, nb_qp_u*nb_qp_v*nb_qp_w
-            A = Jacob(:, :, i)
-            call dgesvd(JOBU, JOBVT, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK, LWORK, INFO)
-            call product_AWB(3, 3, 3, U, S, U, Jacob_U(:, :, i))
-            call product_AWB(3, 3, 3, transpose(VT), S, transpose(VT), Jacob_V(:, :, i))
+        do k = 1, nb_qp_w, 2
+            do j = 1, nb_qp_v, 2
+                do i = 1, nb_qp_u, 2
+                    Jpos = i + (j-1)*nb_qp_u + (k-1)*nb_qp_u*nb_qp_v
+                    A = Jacob(:, :, Jpos)
+                    call dgesvd(JOBU, JOBVT, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK, LWORK, INFO)
+                    call product_AWB(3, 3, 3, VT, S, VT, Jacob_V)
+
+                    ! Find mean of diagonal of jacobien
+                    L1 = L1 + Jacob_V(1, 1)/nb_qp
+                    L2 = L2 + Jacob_V(2, 2)/nb_qp
+                    L3 = L3 + Jacob_V(3, 3)/nb_qp
+                end do
+            end do
         end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
 
-        ! Find mean of diagonal of jacobien
-        L1 = sum(Jacob_V(1, 1, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        L2 = sum(Jacob_V(2, 2, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        L3 = sum(Jacob_V(3, 3, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        ! print*, L1, L2, L3
-
-        ! ! Find mean of diagonal of jacobien
-        ! L1 = sum(Jacob(1, 1, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        ! L2 = sum(Jacob(2, 2, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-        ! L3 = sum(Jacob(3, 3, :))/(nb_qp_u*nb_qp_v*nb_qp_w)
-
+        ! Dimension normalisées
         LNS = sqrt(L1**2 + L2**2 + L3**2)
         L1 = L1/LNS
         L2 = L2/LNS

@@ -649,7 +649,6 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
     integer :: iter, i
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision :: Lu, Lv, Lw
-    double precision, dimension(:, :), allocatable :: coefs_diag
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
 
@@ -783,16 +782,10 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             Mcoef_w = 1.d0
             Kcoef_w = 1.d0
 
-            allocate(coefs_diag(3, nb_cols_u*nb_cols_v*nb_cols_w))
-            coefs_diag(1, :) = coefs(1, 1, :)
-            coefs_diag(2, :) = coefs(2, 2, :)
-            coefs_diag(3, :) = coefs(3, 3, :)
-
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, coefs_diag, &
+                call diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
-            deallocate(coefs_diag)
 
         else if ((Method.eq.'JMS').or.(Method.eq.'JM')) then 
             ! --------------------------------------------
