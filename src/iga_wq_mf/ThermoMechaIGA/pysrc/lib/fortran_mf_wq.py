@@ -127,7 +127,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
         
-        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indexes, *data]
+        inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
 
         return inputs
 
@@ -155,7 +155,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DW[dim][0][0])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_wq_total, self._capacity_coef, *shape_matrices, 
+        inputs = [self._capacity_coef, *shape_matrices, 
                 *indexes, *data, *size_I]
 
         return inputs
@@ -187,7 +187,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DW[dim][1][1])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_wq_total, self._conductivity_coef, *shape_matrices, 
+        inputs = [self._conductivity_coef, *shape_matrices, 
                     *indexes, *data, *size_I]
         
         return inputs
@@ -211,7 +211,7 @@ class fortran_mf_wq(thermoMechaModel):
             indexes.append(self._indexes[dim][:, 1])
             data.append(self._DW[dim][0][0])
 
-        inputs = [self._nb_qp_wq_total, self._source_coef, *shape_matrices, *indexes, *data]
+        inputs = [self._source_coef, *shape_matrices, *indexes, *data]
         
         return inputs
 
@@ -274,7 +274,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DW[dim][1][1])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_wq_total, self._stiff_coef, *shape_matrices,
+        inputs = [self._stiff_coef, *shape_matrices,
                 *indexes, *data, *size_I]
 
         return inputs
@@ -298,7 +298,7 @@ class fortran_mf_wq(thermoMechaModel):
             indexes.append(self._indexes[dim][:, 1])
             data.append(self._DW[dim][0][0])
 
-        inputs = [self._nb_qp_wq_total, self._bodyforce_coef, *shape_matrices, *indexes, *data]
+        inputs = [self._bodyforce_coef, *shape_matrices, *indexes, *data]
         
         return inputs
 
@@ -326,7 +326,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DW[dim][1][0])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_wq_total, self._thermalstiff_coef, *shape_matrices, 
+        inputs = [self._thermalstiff_coef, *shape_matrices, 
                     *indexes, *data, *size_I]
 
         return inputs

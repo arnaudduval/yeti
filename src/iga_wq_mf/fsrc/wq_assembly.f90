@@ -10,16 +10,11 @@ subroutine eval_thermal_coefficient(dime, nb_pts, J_pts, Kprop, Cprop, Kcoef, Cc
     use omp_lib
     implicit none 
     ! Input / output data
-    ! --------------------
-    !f2py intent(hide) :: dime, nb_pts
-    !f2py intent(in) :: J_pts, Kprop, Cprop
-    !f2py depend(dime) :: Kprop
-    !f2py depedn(dime, nb_pts) :: J_pts
-    
-    integer :: dime, nb_pts
-    double precision :: J_pts, Kprop
+    ! --------------------    
+    integer, intent(in) :: dime, nb_pts
+    double precision, intent(in) :: J_pts, Kprop
     dimension :: J_pts(dime, dime, nb_pts), Kprop(dime, dime)
-    double precision :: Cprop
+    double precision, intent(in) :: Cprop
 
     double precision, intent(out) :: Kcoef, Ccoef
     dimension :: Kcoef(dime, dime, nb_pts), Ccoef(nb_pts)
@@ -61,11 +56,8 @@ subroutine eval_mech_coefficient(dime, nb_pts, J_pts, DD, Scoef)
     implicit none 
     ! Input / output data
     ! --------------------
-    !f2py intent(hide) :: dime, nb_pts
-    !f2py intent(in) :: J_pts, DD
-
-    integer :: dime, nb_pts
-    double precision :: J_pts, DD
+    integer, intent(in):: dime, nb_pts
+    double precision, intent(in) :: J_pts, DD
     dimension ::    J_pts(dime, dime, nb_pts), &
                     DD(3*(dime-1), 3*(dime-1))
     double precision, intent(out) :: Scoef
@@ -152,11 +144,8 @@ subroutine eval_thermomech_coefficient(dime, nb_pts, J_pts, DD, alpha, Tcoef)
     implicit none 
     ! Input / output data
     ! --------------------
-    !f2py intent(hide) :: dime, nb_pts
-    !f2py intent(in) :: J_pts, DD
-
-    integer :: dime, nb_pts
-    double precision :: J_pts, DD
+    integer, intent(in) :: dime, nb_pts
+    double precision, intent(in) :: J_pts, DD
     dimension ::    J_pts(dime, dime, nb_pts), &
                     DD(3*(dime-1), 3*(dime-1))
     double precision, intent(in) :: alpha
@@ -259,16 +248,8 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    !f2py intent(in) :: nb_ctrlpts_total
-    !f2py depend(nb_ctrlpts_total) :: ctrlpts_x, ctrlpts_y, ctrlpts_z
-    !f2py intent(in) :: nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, nb_qp_u, nb_qp_v, nb_qp_w
-    !f2py intent(hide) ::  size_data_u, size_data_v, size_data_w
-    !f2py depend(size_data_u) :: indi_u, indj_u, data_B_u
-    !f2py depend(size_data_v) :: indi_v, indj_v, data_B_v
-    !f2py depend(size_data_w) :: indi_w, indj_w, data_B_w
-
-    integer :: nb_ctrlpts_total
-    integer ::  nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, &
+    integer, intent(in) :: nb_ctrlpts_total
+    integer, intent(in) ::  nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, &
                 nb_qp_u, nb_qp_v, nb_qp_w, &
                 size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -510,17 +491,9 @@ subroutine interpolation_3d(nb_ctrlpts_total, &
     use tensor_methods
     implicit none 
     ! Input/ output
-    ! --------------------
-    !f2py intent(in) :: nb_ctrlpts_total
-    !f2py depend(nb_ctrlpts_total) :: ctrlpts
-    !f2py intent(in) :: nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, nb_qp_u, nb_qp_v, nb_qp_w
-    !f2py intent(hide) ::  size_data_u, size_data_v, size_data_w
-    !f2py depend(size_data_u) :: indi_u, indj_u, data_B_u
-    !f2py depend(size_data_v) :: indi_v, indj_v, data_B_v
-    !f2py depend(size_data_w) :: indi_w, indj_w, data_B_w
-    
-    integer :: nb_ctrlpts_total
-    integer ::  nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, &
+    ! --------------------   
+    integer, intent(in)  :: nb_ctrlpts_total
+    integer, intent(in)  ::  nb_ctrlpts_u, nb_ctrlpts_v, nb_ctrlpts_w, &
                 nb_qp_u, nb_qp_v, nb_qp_w, &
                 size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -595,15 +568,8 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    !f2py intent(in) :: nb_ctrlpts_total
-    !f2py depend(nb_ctrlpts_total) :: ctrlpts_x, ctrlpts_y
-    !f2py intent(in) :: nb_ctrlpts_u, nb_ctrlpts_v, nb_qp_u, nb_qp_v
-    !f2py intent(hide) ::  size_data_u, size_data_v
-    !f2py depend(size_data_u) :: indi_u, indj_u, data_B_u
-    !f2py depend(size_data_v) :: indi_v, indj_v, data_B_v
-
-    integer :: nb_ctrlpts_total
-    integer ::  nb_ctrlpts_u, nb_ctrlpts_v, &
+    integer, intent(in) :: nb_ctrlpts_total
+    integer, intent(in) ::  nb_ctrlpts_u, nb_ctrlpts_v, &
                 nb_qp_u, nb_qp_v, &
                 size_data_u, size_data_v
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
@@ -759,16 +725,9 @@ subroutine interpolation_2d(nb_ctrlpts_total, &
     use tensor_methods
     implicit none 
     ! Input/ output
-    ! --------------------
-    !f2py intent(in) :: nb_ctrlpts_total
-    !f2py depend(nb_ctrlpts_total) :: ctrlpts
-    !f2py intent(in) :: nb_ctrlpts_u, nb_ctrlpts_v, nb_qp_u, nb_qp_v
-    !f2py intent(hide) ::  size_data_u, size_data_v
-    !f2py depend(size_data_u) :: indi_u, indj_u, data_B_u
-    !f2py depend(size_data_v) :: indi_v, indj_v, data_B_v
-    
-    integer :: nb_ctrlpts_total
-    integer ::  nb_ctrlpts_u, nb_ctrlpts_v, &
+    ! --------------------    
+    integer, intent(in) :: nb_ctrlpts_total
+    integer, intent(in) ::  nb_ctrlpts_u, nb_ctrlpts_v, &
                 nb_qp_u, nb_qp_v, &
                 size_data_u, size_data_v
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
@@ -837,12 +796,9 @@ subroutine wq_get_capacity_3d(nb_qp_total, capacity_coefs, &
     implicit none 
     ! Input / output 
     ! ------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: capacity_coefs
-    !f2py depend(nb_qp_total) :: capacity_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: capacity_coefs
+    double precision, intent(in) :: capacity_coefs
     dimension :: capacity_coefs(nb_qp_total)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -955,12 +911,9 @@ subroutine wq_get_conductivity_3d(nb_qp_total, cond_coefs, &
     implicit none 
     ! Input / output data
     ! -------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: cond_coefs
-    !f2py depend(nb_qp_total) :: cond_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: cond_coefs
+    double precision, intent(in) :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_qp_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -1176,12 +1129,9 @@ subroutine wq_get_advention_3d(nb_qp_total, adv_coefs, &
     implicit none 
     ! Input / output data
     ! -------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: adv_coefs
-    !f2py depend(nb_qp_total) :: adv_coefs
-    integer :: nb_qp_total
+    integer, intent(in)  :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: adv_coefs
+    double precision, intent(in) :: adv_coefs
     dimension :: adv_coefs(3, nb_qp_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -1327,12 +1277,9 @@ subroutine wq_get_stiffness_3d(nb_qp_total, stiff_coefs, &
     implicit none 
     ! Input / output data
     ! -------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: stiff_coefs
-    !f2py depend(nb_qp_total) :: stiff_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: stiff_coefs
+    double precision, intent(in) :: stiff_coefs
     dimension :: stiff_coefs(9, 9, nb_qp_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -1435,12 +1382,9 @@ subroutine wq_get_thermalstiffness_3d(nb_qp_total, therstiff_coefs, &
     implicit none 
     ! Input / output data
     ! -------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: therstiff_coefs
-    !f2py depend(nb_qp_total) :: therstiff_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: therstiff_coefs
+    double precision, intent(in) :: therstiff_coefs
     dimension :: therstiff_coefs(9, nb_qp_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, &
@@ -1534,12 +1478,9 @@ subroutine wq_get_source_3d(nb_qp_total, source_coefs, &
     implicit none 
     ! Input / output data
     ! --------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: source_coefs
-    !f2py depend(nb_qp_total) :: source_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
-    double precision :: source_coefs
+    double precision, intent(in) :: source_coefs
     dimension :: source_coefs(nb_qp_total)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, &
@@ -1614,10 +1555,7 @@ subroutine wq_get_force_3d(nb_qp_total, force_coefs, &
     implicit none 
     ! Input / output 
     ! --------------------
-    !f2py intent(in) :: nb_qp_total
-    !f2py intent(in) :: force_coefs
-    !f2py depend(nb_qp_total) :: force_coefs
-    integer :: nb_qp_total
+    integer, intent(in) :: nb_qp_total
     integer, intent(in) ::  nb_ctrlpts_u, nb_qp_u, nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w
     double precision, intent(in) :: force_coefs
     dimension :: force_coefs(nb_qp_total, 3)

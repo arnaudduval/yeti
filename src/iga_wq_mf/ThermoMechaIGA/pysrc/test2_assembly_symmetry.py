@@ -14,9 +14,11 @@ import matplotlib.pyplot as plt
 from lib.geomdl_geometry import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.methods_wq import WQ
-from pysrc.lib.physics import (powden_cube, 
-                            powden_prism,
-                            powden_thickring
+from lib.fortran_mf_iga import fortran_mf_iga
+from lib.methods_iga import IGA
+from lib.physics import (powden_cube, 
+                        powden_prism,
+                        powden_thickring
 )
 
 # Enable and disable print
@@ -31,7 +33,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
 CONSTRUCTION = True
-SYMMETRY = True
+SYMMETRY = False
 
 # ====================================================================
 # TEST ERROR CONSTRUCTION
@@ -39,10 +41,10 @@ SYMMETRY = True
 if CONSTRUCTION: 
     # Set degree and number of divisions
     for varName in ['K', 'C', 'F']:
-        for GEOMETRY_CASE in range(3):
-            for DEGREE in range(3, 6):
+        for GEOMETRY_CASE in range(1, 3):
+            for DEGREE in range(3, 5):
                 norm = []; ddl =[]
-                for CUTS in range(1, 5): 
+                for CUTS in range(1, 4): 
                     print(DEGREE, CUTS)
 
                     blockPrint()
@@ -61,8 +63,11 @@ if CONSTRUCTION:
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
                 
                     # Creation of thermal model object
-                    Model1 = fortran_mf_wq(modelGeo)
-                    Model2 = WQ(modelGeo)
+                    # Model1 = fortran_mf_wq(modelGeo)
+                    # Model2 = WQ(modelGeo)
+
+                    Model1 = fortran_mf_iga(modelGeo)
+                    Model2 = IGA(modelGeo)
 
                     if varName == "K": 
                         var1 = Model1.eval_conductivity_matrix()
@@ -115,7 +120,7 @@ if CONSTRUCTION:
             plt.xlim(1, 100)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(folder + 'Error_construction_' + txtname + '_' + varName + '.png')
+            plt.savefig(folder + 'Error_constructionI_' + txtname + '_' + varName + '.png')
             plt.figure(1).clear()
 
 # ====================================================================

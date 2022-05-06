@@ -82,7 +82,7 @@ class fortran_mf_iga(thermoMechaModel):
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
         
-        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indexes, *data]
+        inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
 
         return inputs
 
@@ -108,7 +108,7 @@ class fortran_mf_iga(thermoMechaModel):
             data.append(self._DW[dim])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_cgg_total, self._capacity_coef, *shape_matrices, *indexes, *data, *size_I]
+        inputs = [self._capacity_coef, *shape_matrices, *indexes, *data, *size_I]
         
         return inputs
 
@@ -135,7 +135,7 @@ class fortran_mf_iga(thermoMechaModel):
             data.append(self._DW[dim])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._nb_qp_cgg_total, self._conductivity_coef, *shape_matrices, *indexes, *data, *size_I]
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, *size_I]
         
         return inputs
 
@@ -158,7 +158,7 @@ class fortran_mf_iga(thermoMechaModel):
             data.append(self._DB[dim][0])
             data.append(self._DW[dim])
 
-        inputs = [self._nb_qp_cgg_total, self._source_coef, *shape_matrices, *indexes, *data]
+        inputs = [self._source_coef, *shape_matrices, *indexes, *data]
         
         return inputs
 
