@@ -162,7 +162,7 @@ subroutine iga_get_B_shape(degree, nb_el, B_shape)
     end do
     
     ! Get table of functions on span 
-    call set_table_functions_spans(degree, nb_el, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
 
     ! Get table of spans for each function
     do i = 1, nb_ctrlpts
@@ -237,7 +237,7 @@ subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, B0_shape, B1
     end do
     
     ! Get table of functions on span 
-    call set_table_functions_spans(degree, nb_el, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
 
     ! Get table of spans for each function
     do i = 1, nb_ctrlpts
@@ -515,7 +515,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
 
     ! Find table of functions over span
-    call set_table_functions_spans(degree, nb_el, table_functions_span_p0)
+    call set_table_functions_spans(degree, nb_el, 1, table_functions_span_p0)
 
     ! Find positions and weights in IGA approach
     call iga_get_qp_positions_weights(degree, nb_el, nodes, nb_qp_cgg, qp_cgg_pos, qp_cgg_weights)
@@ -539,7 +539,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1, 1)
 
     ! Find table of functions on span
-    call set_table_functions_spans(degree_p1, nb_el_p1, table_functions_span_p1)
+    call set_table_functions_spans(degree_p1, nb_el_p1, 1, table_functions_span_p1)
 
     ! Find basis function values at Gauss points
     call get_basis(degree_p1, nb_el_p1, nodes, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
@@ -761,7 +761,7 @@ module iga_basis_weights
         call get_knotvector(degree, nb_el, nodes, object%size_kv, knotvector, 1)
 
         ! Find table of functions over span
-        call set_table_functions_spans(degree, nb_el, table_functions_span)
+        call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
 
         ! Allocate variables
         allocate(B0(object%nb_ctrlpts, object%nb_qp))

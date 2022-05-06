@@ -51,7 +51,7 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, data_B0, data_B
     call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
 
     ! Get table
-    call set_table_functions_spans(degree, nb_el, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
 
     ! Set table of spans for every knot
     call set_table_spans(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, & 

@@ -161,14 +161,14 @@ subroutine get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicit
         
 end subroutine get_knotvector
 
-subroutine set_table_functions_spans(degree, nb_el, table)
+subroutine set_table_functions_spans(degree, nb_el, multiplicity, table)
     !! Sets the table of functions on every span
     !! Case of maximum continuity (p-1) in knot-vector
 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, nb_el 
+    integer, intent(in) :: degree, nb_el, multiplicity
 
     integer, intent(out) :: table
     dimension :: table(nb_el, degree+1)
@@ -177,10 +177,19 @@ subroutine set_table_functions_spans(degree, nb_el, table)
     ! -------------
     integer :: i, j
 
+    ! Initialize 
+    table = 0
+
+    ! Fist line of the table
+    do j = 1, degree+1
+        table(1, j) = j 
+    end do
+
     ! Set table of functions on span 
-    do i  = 1, nb_el
-        do j = 1, degree + 1
-                table(i, j) = i + j - 1
+    do i  = 2, nb_el
+        table(i, 1) = table(i-1, 1) + multiplicity
+        do j = 2, degree+1
+            table(i, j) = table(i, 1) + j - 1
         end do
     end do
 
@@ -199,7 +208,7 @@ subroutine get_basis(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, nb_k
     double precision, intent(in) :: nodes, knotvector, knots
     dimension :: nodes(nb_el+1), knotvector(size_kv), knots(nb_knots)
     
-    double precision, intent(out) ::  B0, B1
+    double precision, intent(out) :: B0, B1
     dimension :: B0(nb_ctrlpts, nb_knots), B1(nb_ctrlpts, nb_knots)
 
     ! Local data
