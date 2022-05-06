@@ -9,49 +9,48 @@
 !            GaussLegendre.f90 
 ! ==========================
 
-subroutine wq_set_properties(degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg)
+subroutine wq_set_properties(degree, nb_el, multiplicity, maxrule, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg)
     !! Sets constants used in WQ approach
     
     use constants_iga_wq_mf
     implicit none 
     ! Input / out data 
     ! -----------------
-    integer, intent(in) :: degree, nb_el
+    integer, intent(in) :: degree, nb_el, multiplicity, maxrule
     integer, intent(out) :: nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg
 
     ! Find constants values : 
     ! Number of control points
-    nb_ctrlpts = degree + nb_el 
+    nb_ctrlpts = degree + multiplicity*(nb_el - 1) + 1 
 
     ! Number of knots of knot-vector
     size_kv = degree + nb_ctrlpts + 1 
 
     ! Number of quadrature points in WQ approach
-    nb_qp_wq = 2*(degree + nb_el + r) - 5 
+    nb_qp_wq = 2*(degree + r) + nb_el*(maxrule + 1) - 2*maxrule - 3  
 
     ! Number of Gauss quadrature points 
     nb_qp_cgg = (degree + 1)*nb_el 
 
 end subroutine wq_set_properties
 
-subroutine wq_get_qp_positions(degree, nb_el, nodes, nb_qp_wq, qp_pos)
+subroutine wq_get_qp_positions(degree, nb_el, maxrule, nodes, nb_qp_wq, qp_pos)
     !! Gets quadrature points' positions (QP) in WQ approach 
 
     use constants_iga_wq_mf
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: degree, nb_el, nb_qp_wq 
+    integer, intent(in) :: degree, nb_el, maxrule, nb_qp_wq 
     double precision, intent(in) :: nodes
 
     double precision, intent(out) :: qp_pos 
-    dimension ::    qp_pos(nb_qp_wq), &
-                    nodes(nb_el+1)
+    dimension :: qp_pos(nb_qp_wq), nodes(nb_el+1)
 
     ! Local data
     ! ---------------
     double precision :: QPB, QPI ! Q.P. at boundaries, Q.P. at internal spans
-    dimension :: QPB(degree+r), QPI(3)
+    dimension :: QPB(degree+r), QPI(2+maxrule)
     integer :: nb_qp_B ! nof knots at boundaries, nof Q.P. 
     integer :: i, j, k
 
@@ -77,11 +76,11 @@ subroutine wq_get_qp_positions(degree, nb_el, nodes, nb_qp_wq, qp_pos)
     if (nb_el .ge. 3) then
         do i = 2, nb_el-1
             ! Find quadrature points for inner spans
-            call linspace(nodes(i), nodes(i+1), 3, QPI)
+            call linspace(nodes(i), nodes(i+1), 2+maxrule, QPI)
 
             ! Assign values
-            do j = 1, 3    
-                k = nb_qp_B + 2*(i - 2) + j - 1    
+            do j = 1, 2 + maxrule  
+                k = nb_qp_B + (1 + maxrule)*(i - 2) + j - 1    
                 qp_pos(k) = QPI(j)
             end do
         end do
@@ -107,18 +106,18 @@ subroutine iga_get_qp_positions_weights(degree, nb_el, nodes, nb_qp_cgg, qp_pos,
     double precision :: GaussPdsCoord
     dimension :: GaussPdsCoord(2, degree+1)
     double precision :: xg(degree+1), wg(degree+1)
-    integer ::  i, j, k
+    integer :: i, j, k
 
     ! Find position and weight in isoparametric space
     call Gauss(degree+1, 1, GaussPdsCoord, 0)
 
-    do i = 1, degree + 1
+    do i = 1, degree+1
         wg(i) = GaussPdsCoord(1, i)
         xg(i) = GaussPdsCoord(2, i)
     end do 
 
     do i = 1, nb_el
-        do j = 1, degree + 1
+        do j = 1, degree+1
             k = (i - 1)*(degree + 1) + j
             qp_pos(k) = 0.5d0*(xg(j)/dble(nb_el) + nodes(i+1) + nodes(i))
             qp_weights(k) = 0.5d0/dble(nb_el)*wg(j)
@@ -127,30 +126,26 @@ subroutine iga_get_qp_positions_weights(degree, nb_el, nodes, nb_qp_cgg, qp_pos,
 
 end subroutine iga_get_qp_positions_weights 
 
-subroutine iga_get_B_shape(degree, nb_el, B_shape)
+subroutine iga_get_B_shape(degree, nb_el, nb_ctrlpts, multiplicity, B_shape)
     !! Gets non zeros positions of B0 and B1 in IGA approach 
     !! (uniform knot-vector)
     
     implicit none 
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: degree, nb_el
+    integer, intent(in) :: degree, nb_el, nb_ctrlpts, multiplicity
 
     integer, intent(out) :: B_shape
-    dimension :: B_shape(nb_el+degree, 2)
+    dimension :: B_shape(nb_ctrlpts, 2)
 
     ! Local data 
     ! --------------
-    integer :: nb_ctrlpts
     integer :: min_span, max_span, min_knot, max_knot
     integer :: table_points_span, table_functions_span, table_spans_function
     dimension ::    table_points_span(nb_el, 2), &
                     table_functions_span(nb_el, degree+1), &
-                    table_spans_function(nb_el+degree, 2)
-    integer ::  i, j
-
-    ! Define number of control points
-    nb_ctrlpts = nb_el + degree
+                    table_spans_function(nb_ctrlpts, 2)
+    integer :: i, j
 
     ! Get table of points over the span
     table_points_span = 1
@@ -162,7 +157,7 @@ subroutine iga_get_B_shape(degree, nb_el, B_shape)
     end do
     
     ! Get table of functions on span 
-    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, multiplicity, table_functions_span)
 
     ! Get table of spans for each function
     do i = 1, nb_ctrlpts
@@ -186,7 +181,6 @@ subroutine iga_get_B_shape(degree, nb_el, B_shape)
 
         ! Assigning values
         table_spans_function(i, :) = [min_span, max_span]
-
     end do 
             
     ! Set shape of B0 and B1
@@ -203,7 +197,7 @@ subroutine iga_get_B_shape(degree, nb_el, B_shape)
 
 end subroutine iga_get_B_shape
 
-subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, B0_shape, B1_shape)
+subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, multiplicity, maxrule, B0_shape, B1_shape)
     !! Gets non-zero positions of B0 and B1 in WQ approach
     !! uniform knot-vector
 
@@ -211,7 +205,7 @@ subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, B0_shape, B1
     implicit none 
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: degree, nb_el, nb_ctrlpts, nb_qp
+    integer, intent(in) :: degree, nb_el, nb_ctrlpts, nb_qp, multiplicity, maxrule
 
     integer, intent(out) :: B0_shape, B1_shape
     dimension :: B0_shape(nb_ctrlpts, 2), B1_shape(nb_ctrlpts, 2)
@@ -233,11 +227,11 @@ subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, B0_shape, B1
     
     do i = 2, nb_el - 1
         table_points_span(i, 1) = table_points_span(i-1, 2)
-        table_points_span(i, 2) = table_points_span(i, 1) + 2
+        table_points_span(i, 2) = table_points_span(i, 1) + 1 + maxrule
     end do
-    
+
     ! Get table of functions on span 
-    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, multiplicity, table_functions_span)
 
     ! Get table of spans for each function
     do i = 1, nb_ctrlpts
@@ -261,7 +255,6 @@ subroutine wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp, B0_shape, B1
 
         ! Assigning values
         table_spans_function(i, :) = [min_span, max_span]
-
     end do 
             
     ! Set shape of B0 and B1
@@ -403,11 +396,11 @@ subroutine wq_get_quadrature_rules(nb_rows, nb_ctrlpts, nb_qp, MB, MI, Bshape, M
     ! --------------------
     integer, intent(in) :: nb_rows, nb_ctrlpts, nb_qp
     integer, intent(in) :: Bshape, MIint
-    dimension ::    Bshape(nb_ctrlpts, 2), MIint(nb_rows, nb_ctrlpts)
-    double precision, intent(in) ::  MB, MI
-    dimension ::    MB(nb_rows, nb_qp), MI(nb_rows, nb_ctrlpts)
+    dimension :: Bshape(nb_ctrlpts, 2), MIint(nb_rows, nb_ctrlpts)
+    double precision, intent(in) :: MB, MI
+    dimension :: MB(nb_rows, nb_qp), MI(nb_rows, nb_ctrlpts)
 
-    double precision, intent(out) ::  rules
+    double precision, intent(out) :: rules
     dimension :: rules(nb_ctrlpts, nb_qp)
 
     ! Local data
@@ -425,7 +418,7 @@ subroutine wq_get_quadrature_rules(nb_rows, nb_ctrlpts, nb_qp, MB, MI, Bshape, M
 
 end subroutine wq_get_quadrature_rules
 
-subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg, &
+subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg, maxrule, &
                                             B0wq_p0, B1wq_p0, W00, W01, W10, W11)
     !! Returns the basis and weights data at the quadrature points in WQ approach 
 
@@ -433,10 +426,11 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg
+    integer, parameter :: multiplicity=1 
+    integer, intent(in) :: degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg, maxrule
     
     double precision, intent(out) :: B0wq_p0, B1wq_p0 
-    dimension ::    B0wq_p0(nb_ctrlpts, nb_qp_wq), B1wq_p0(nb_ctrlpts, nb_qp_wq)
+    dimension :: B0wq_p0(nb_ctrlpts, nb_qp_wq), B1wq_p0(nb_ctrlpts, nb_qp_wq)
     double precision, intent(out) :: W00, W01, W10, W11 
     dimension ::    W00(nb_ctrlpts, nb_qp_wq), W01(nb_ctrlpts, nb_qp_wq), &
                     W10(nb_ctrlpts, nb_qp_wq), W11(nb_ctrlpts, nb_qp_wq)
@@ -456,35 +450,25 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
                     B1cgg_p0(nb_ctrlpts, nb_qp_cgg)
 
     integer :: Bint_p0
-    dimension ::  Bint_p0(nb_ctrlpts, nb_qp_cgg)
+    dimension :: Bint_p0(nb_ctrlpts, nb_qp_cgg)
 
     double precision :: nodes
     dimension :: nodes(nb_el+1)
 
     ! For p - 1
-    integer :: degree_p1, nb_el_p1
+    integer :: degree_p1, nb_el_p1, multiplicity_p1
     integer :: nb_ctrlpts_p1, nb_knots_p1, nb_qp_wq_p1, nb_qp_cgg_p1
 
     integer :: table_functions_span_p1
     dimension :: table_functions_span_p1(nb_el, degree) 
-    double precision :: knotvector_p1 
-    dimension :: knotvector_p1(size_kv-2)
+    double precision, dimension(:), allocatable :: knotvector_p1 
 
-    double precision :: B0cgg_p1, B1cgg_p1
-    dimension ::    B0cgg_p1(nb_ctrlpts-1, nb_qp_cgg), & 
-                    B1cgg_p1(nb_ctrlpts-1, nb_qp_cgg)
-
-    integer :: Bint_p1
-    dimension :: Bint_p1(nb_ctrlpts-1, nb_qp_cgg)
-
-    double precision :: B0wq_p1
-    dimension :: B0wq_p1(nb_ctrlpts-1, nb_qp_wq)
-    double precision, allocatable, dimension(:,:) :: B1wq_p1
+    double precision, dimension(:,:), allocatable :: B0cgg_p1, B1cgg_p1
+    integer, dimension(:,:), allocatable :: Bint_p1
+    double precision, dimension(:,:), allocatable :: B0wq_p1, B1wq_p1
 
     ! Integrals
-    double precision :: I00, I01, I10, I11
-    dimension ::    I00(nb_ctrlpts, nb_ctrlpts), I01(nb_ctrlpts-1, nb_ctrlpts), &
-                    I10(nb_ctrlpts, nb_ctrlpts), I11(nb_ctrlpts-1, nb_ctrlpts)
+    double precision, dimension(:,:), allocatable :: I00, I01, I10, I11
 
     ! Weights
     integer :: B0shape
@@ -497,14 +481,15 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! Define degree of test functions
     degree_p1 = degree - 1
     nb_el_p1 = nb_el
+    multiplicity_p1 = 1
 
     ! Initialize some properties of test functions
-    call wq_set_properties(degree_p1, nb_el_p1, nb_ctrlpts_p1, nb_knots_p1, &
+    call wq_set_properties(degree_p1, nb_el_p1, multiplicity_p1, maxrule, nb_ctrlpts_p1, nb_knots_p1, &
                                     nb_qp_wq_p1, nb_qp_cgg_p1)
 
     ! Get non-zero values shape
     allocate(B1shape(nb_ctrlpts, 2))
-    call wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp_wq, B0shape, B1shape)
+    call wq_get_nnz_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp_wq, multiplicity, maxrule, B0shape, B1shape)
     deallocate(B1shape)
 
     ! --------------------------
@@ -512,7 +497,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! --------------------------
 
     ! Find knot-vector in WQ approach
-    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
+    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicity)
 
     ! Find table of functions over span
     call set_table_functions_spans(degree, nb_el, 1, table_functions_span_p0)
@@ -525,7 +510,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
                     table_functions_span_p0, B0cgg_p0, B1cgg_p0)
 
     ! Find quadrature points in WQ approach
-    call wq_get_qp_positions(degree, nb_el, nodes, nb_qp_wq, qp_wq_pos) 
+    call wq_get_qp_positions(degree, nb_el, maxrule, nodes, nb_qp_wq, qp_wq_pos) 
 
     ! Find basis at WQ quadrature points
     call get_basis(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, nb_qp_wq, qp_wq_pos, & 
@@ -534,19 +519,20 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! --------------------------
     ! Degree p - 1 
     ! -------------------------- 
-
     ! Find knot-vector in WQ approach
-    call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1, 1)
+    allocate(knotvector_p1(nb_knots_p1))
+    call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1, multiplicity_p1)
 
     ! Find table of functions on span
-    call set_table_functions_spans(degree_p1, nb_el_p1, 1, table_functions_span_p1)
+    call set_table_functions_spans(degree_p1, nb_el_p1, multiplicity_p1, table_functions_span_p1)
 
     ! Find basis function values at Gauss points
+    allocate(B0cgg_p1(nb_ctrlpts_p1, nb_qp_cgg), B1cgg_p1(nb_ctrlpts_p1, nb_qp_cgg))
     call get_basis(degree_p1, nb_el_p1, nodes, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
                     nb_qp_cgg, qp_cgg_pos, table_functions_span_p1, B0cgg_p1, B1cgg_p1) 
 
     ! Find basis function values at WQ points
-    allocate(B1wq_p1(nb_ctrlpts-1, nb_qp_wq))
+    allocate(B0wq_p1(nb_ctrlpts_p1, nb_qp_wq), B1wq_p1(nb_ctrlpts_p1, nb_qp_wq))
     call get_basis(degree_p1, nb_el_p1, nodes, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
                     nb_qp_wq, qp_wq_pos, table_functions_span_p1, B0wq_p1, B1wq_p1) 
     deallocate(B1wq_p1)
@@ -555,6 +541,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! Integrals and Weights
     ! ------------------------------------
     ! Initialiaze
+    allocate(Bint_p1(nb_ctrlpts_p1, nb_qp_cgg))
     Bint_p0 = 0
     Bint_p1 = 0
 
@@ -567,57 +554,54 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     end where
 
     ! ----------------------
-    ! I00 = B0cgg_p0 * Wcgg * B0cgg_p0.transpose
-    call product_AWB(nb_ctrlpts, nb_ctrlpts, nb_qp_cgg, &
-                            B0cgg_p0, qp_cgg_weights, B0cgg_p0, I00)
-    
     allocate(MIint(nb_ctrlpts, nb_ctrlpts))
     MIint = matmul(Bint_p0, transpose(Bint_p0))
 
+    ! I00 = B0cgg_p0 * Wcgg * B0cgg_p0.transpose
+    allocate(I00(nb_ctrlpts, nb_ctrlpts))
+    call product_AWB(nb_ctrlpts, nb_ctrlpts, nb_qp_cgg, &
+                            B0cgg_p0, qp_cgg_weights, B0cgg_p0, I00)
     ! For W00
     call wq_get_quadrature_rules(nb_ctrlpts, nb_ctrlpts, nb_qp_wq, B0wq_p0, I00, B0shape, MIint, W00)
-    deallocate(MIint)
-
-    ! ----------------------
-    ! I01 = B0cgg_p1 * Wcgg * B0cgg_p0.transpose
-    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
-                            B0cgg_p1, qp_cgg_weights, B0cgg_p0, I01)
-
-    allocate(MIint(nb_ctrlpts_p1, nb_ctrlpts))
-    MIint = matmul(Bint_p1, transpose(Bint_p0))
-            
-    ! For W01
-    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, I01, B0shape, MIint, W01)
-    deallocate(MIint)
+    deallocate(I00)
 
     ! ----------------------
     ! I10 = B0cgg_p0 * Wcgg * B1cgg_p0.transpose
+    allocate(I10(nb_ctrlpts, nb_ctrlpts))
     call product_AWB(nb_ctrlpts, nb_ctrlpts, nb_qp_cgg, &  
                             B0cgg_p0, qp_cgg_weights, B1cgg_p0, I10)
 
-    allocate(MIint(nb_ctrlpts, nb_ctrlpts))
-    MIint = matmul(Bint_p0, transpose(Bint_p0))
-
     ! For W10
     call wq_get_quadrature_rules(nb_ctrlpts, nb_ctrlpts, nb_qp_wq, B0wq_p0, I10, B0shape, MIint, W10)
-    deallocate(MIint)
+    deallocate(MIint, I10)
 
     ! ----------------------
-    ! I11 = B0cgg_p1 * Wcgg * B1cgg_p0.transpose
-    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
-                            B0cgg_p1, qp_cgg_weights, B1cgg_p0, I11)
-    
     allocate(MIint(nb_ctrlpts_p1, nb_ctrlpts))
     MIint = matmul(Bint_p1, transpose(Bint_p0))
+
+    ! I01 = B0cgg_p1 * Wcgg * B0cgg_p0.transpose
+    allocate(I01(nb_ctrlpts_p1, nb_ctrlpts))
+    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
+                            B0cgg_p1, qp_cgg_weights, B0cgg_p0, I01)
+
+    ! For W01
+    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, I01, B0shape, MIint, W01)
+    deallocate(I01)
+    
+    ! ----------------------
+    ! I11 = B0cgg_p1 * Wcgg * B1cgg_p0.transpose
+    allocate(I11(nb_ctrlpts_p1, nb_ctrlpts))
+    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
+                            B0cgg_p1, qp_cgg_weights, B1cgg_p0, I11)
                     
     ! For W11
     call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, I11, B0shape, MIint, W11)               
-    deallocate(MIint)
+    deallocate(MIint, I11)
 
 end subroutine wq_get_basis_weights_generalized
 
 ! Fonctions for case number of elements > degree + 3
-subroutine wq_get_basis_weights_model(degree_model, nb_el, B0_model, B1_model, &
+subroutine wq_get_basis_weights_model(degree_model, nb_el, maxrule, nb_qp_wp_model, B0_model, B1_model, &
                                 W00_model, W01_model, W10_model, W11_model)
     !! Gets model where nb_el = degree + 3, nb_qp_wq = 4*degree + 2*r + 1
     
@@ -625,16 +609,17 @@ subroutine wq_get_basis_weights_model(degree_model, nb_el, B0_model, B1_model, &
     implicit none
     ! Input / output data 
     ! --------------------
-    integer, intent(in) :: degree_model, nb_el
+    integer, parameter :: multiplicity=1
+    integer, intent(in) :: degree_model, nb_el, maxrule, nb_qp_wp_model
 
     double precision, intent(out) :: B0_model, B1_model 
-    dimension ::    B0_model(degree_model+2, 4*degree_model+2*r+1), & 
-                    B1_model(degree_model+2, 4*degree_model+2*r+1)
+    dimension ::    B0_model(degree_model+2, nb_qp_wp_model), & 
+                    B1_model(degree_model+2, nb_qp_wp_model)
     double precision, intent(out) :: W00_model, W01_model, W10_model, W11_model
-    dimension ::    W00_model(degree_model+2, 4*degree_model+2*r+1), &
-                    W01_model(degree_model+2, 4*degree_model+2*r+1), &
-                    W10_model(degree_model+2, 4*degree_model+2*r+1), &
-                    W11_model(degree_model+2, 4*degree_model+2*r+1)
+    dimension ::    W00_model(degree_model+2, nb_qp_wp_model), &
+                    W01_model(degree_model+2, nb_qp_wp_model), &
+                    W10_model(degree_model+2, nb_qp_wp_model), &
+                    W11_model(degree_model+2, nb_qp_wp_model)
     
     ! Local data 
     ! ---------------
@@ -644,14 +629,14 @@ subroutine wq_get_basis_weights_model(degree_model, nb_el, B0_model, B1_model, &
     
     ! Set properties
     nb_el_m = degree_model + 3
-    call wq_set_properties(degree_model, nb_el_m, nb_ctrlpts_m, size_kv_m, nb_qp_wq_m, nb_qp_cgg_m)
+    call wq_set_properties(degree_model, nb_el_m, multiplicity, maxrule, nb_ctrlpts_m, size_kv_m, nb_qp_wq_m, nb_qp_cgg_m)
 
     allocate(B0_mt(nb_ctrlpts_m, nb_qp_wq_m), B1_mt(nb_ctrlpts_m, nb_qp_wq_m), &
             W00_mt(nb_ctrlpts_m, nb_qp_wq_m), W01_mt(nb_ctrlpts_m, nb_qp_wq_m), &
             W10_mt(nb_ctrlpts_m, nb_qp_wq_m), W11_mt(nb_ctrlpts_m, nb_qp_wq_m))
 
     call wq_get_basis_weights_generalized(degree_model, nb_el_m, nb_ctrlpts_m, size_kv_m, &
-    nb_qp_wq_m, nb_qp_cgg_m, B0_mt, B1_mt, W00_mt, W01_mt, W10_mt, W11_mt)
+    nb_qp_wq_m, nb_qp_cgg_m, maxrule, B0_mt, B1_mt, W00_mt, W01_mt, W10_mt, W11_mt)
 
     do i = 1, degree_model+2
         B0_model(i, :) = B0_mt(i, :)
@@ -670,6 +655,8 @@ end subroutine wq_get_basis_weights_model
 ! ===========================================================
 module iga_basis_weights
     implicit none
+
+    integer, parameter :: multiplicity=1
     type :: iga
         ! Inputs :
         ! ------------
@@ -721,7 +708,7 @@ module iga_basis_weights
 
         ! Set non zeros values of B0 and B1
         allocate(object%Bshape(object%nb_ctrlpts, 2))
-        call iga_get_B_shape(degree, nb_el, object%Bshape)  
+        call iga_get_B_shape(object%degree, object%nb_el, object%nb_ctrlpts, multiplicity, object%Bshape)  
 
         ! Get necessary size of data arrays
         object%nnz_B = object%nb_qp*(object%degree + 1) 
@@ -758,10 +745,10 @@ module iga_basis_weights
 
         ! Find knot-vector in WQ approach
         allocate(knotvector(object%size_kv))
-        call get_knotvector(degree, nb_el, nodes, object%size_kv, knotvector, 1)
+        call get_knotvector(degree, nb_el, nodes, object%size_kv, knotvector, multiplicity)
 
         ! Find table of functions over span
-        call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
+        call set_table_functions_spans(degree, nb_el, multiplicity, table_functions_span)
 
         ! Allocate variables
         allocate(B0(object%nb_ctrlpts, object%nb_qp))
@@ -794,6 +781,8 @@ end module iga_basis_weights
 module wq_basis_weights
    
     implicit none
+    
+    integer, parameter :: multiplicity=1, maxrule=1
     type :: wq
         ! Inputs :
         ! ------------
@@ -833,7 +822,7 @@ module wq_basis_weights
         allocate(object)      
         object%degree = degree
         object%nb_el = nb_el
-        call wq_set_properties(object%degree, object%nb_el, object%nb_ctrlpts, object%size_kv, &
+        call wq_set_properties(object%degree, object%nb_el, multiplicity, maxrule, object%nb_ctrlpts, object%size_kv, &
                             object%nb_qp_wq, object%nb_qp_cgg)
         
         ! Get non-repeated knots
@@ -841,12 +830,13 @@ module wq_basis_weights
         
         ! Get quadrature points position
         allocate(object%qp_pos(object%nb_qp_wq))
-        call wq_get_qp_positions(degree, nb_el, nodes, object%nb_qp_wq, object%qp_pos)
+        call wq_get_qp_positions(degree, nb_el, maxrule, nodes, object%nb_qp_wq, object%qp_pos)
 
         ! Set B0_shape and B1_shape
         allocate(object%Bshape(object%nb_ctrlpts, 2))
         allocate(Bshape_temp(object%nb_ctrlpts, 2))
-        call wq_get_nnz_B0_B1_shape(degree, nb_el, object%nb_ctrlpts, object%nb_qp_wq, Bshape_temp, object%Bshape)  
+        call wq_get_nnz_B0_B1_shape(degree, nb_el, object%nb_ctrlpts, object%nb_qp_wq, multiplicity, &
+                    maxrule, Bshape_temp, object%Bshape)  
         deallocate(Bshape_temp)
 
         ! Get necessary size of data arrays
@@ -889,7 +879,7 @@ module wq_basis_weights
         ! Create object
         call wq_initialize(object, degree, nb_el)
 
-        if (nb_el.LE.degree + 3) then 
+        if (nb_el.le.degree + 3) then 
 
             ! Allocate variables
             allocate(B0(object%nb_ctrlpts, object%nb_qp_wq))
@@ -901,7 +891,7 @@ module wq_basis_weights
 
             ! Get basis and weights 
             call wq_get_basis_weights_generalized(degree, nb_el, object%nb_ctrlpts, object%size_kv, &
-            object%nb_qp_wq, object%nb_qp_cgg, B0, B1, W00, W01, W10, W11)
+            object%nb_qp_wq, object%nb_qp_cgg, maxrule, B0, B1, W00, W01, W10, W11)
 
             ! Set size of properties
             allocate(object%data_B0(object%nnz_B))
@@ -936,7 +926,7 @@ module wq_basis_weights
             nb_el_model = degree + 3
 
             ! Initialize
-            call wq_set_properties(degree, nb_el_model, nb_ctrlpts_model, & 
+            call wq_set_properties(degree, nb_el_model, multiplicity, maxrule, nb_ctrlpts_model, & 
                                     nb_knots_model, nb_qp_wq_model, nb_qp_cgg_model)
 
             ! Allocate
@@ -949,10 +939,10 @@ module wq_basis_weights
             allocate(B_shape_model(nb_ctrlpts_model, 2))
             allocate(B_shape_model_temp(nb_ctrlpts_model, 2))
 
-            call wq_get_basis_weights_model(degree, nb_el, B0_model, B1_model, & 
+            call wq_get_basis_weights_model(degree, nb_el, maxrule, nb_qp_wq_model, B0_model, B1_model, & 
                                             W00_model, W01_model, W10_model, W11_model)
             call wq_get_nnz_B0_B1_shape(degree, nb_el_model, nb_ctrlpts_model, nb_qp_wq_model, &
-                                    B_shape_model_temp, B_shape_model)
+                                        multiplicity, maxrule, B_shape_model_temp, B_shape_model)
             deallocate(B_shape_model_temp)
                             
             ! Transfer data 
@@ -999,7 +989,6 @@ module wq_basis_weights
                     
                     object%data_ind(count, :) = [i, object%Bshape(i, 1) + j - 1]
                 end do
-
             end do
 
             ! Set p + 1 last functions

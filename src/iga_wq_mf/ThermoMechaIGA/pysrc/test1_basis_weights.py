@@ -29,6 +29,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
         color = next(ax._get_lines.prop_cycler)['color']
 
         for nb_el in NBEL: 
+
             # FORTRAN 
             _, _, dB0, dB1, dW00, dW01, \
             dW10, dW11, indexes = wq_get_basis_weights(degree, nb_el)
