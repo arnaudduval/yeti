@@ -512,7 +512,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! --------------------------
 
     ! Find knot-vector in WQ approach
-    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector)
+    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
 
     ! Find table of functions over span
     call set_table_functions_spans(degree, nb_el, table_functions_span_p0)
@@ -536,7 +536,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! -------------------------- 
 
     ! Find knot-vector in WQ approach
-    call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1)
+    call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1, 1)
 
     ! Find table of functions on span
     call set_table_functions_spans(degree_p1, nb_el_p1, table_functions_span_p1)
@@ -758,7 +758,7 @@ module iga_basis_weights
 
         ! Find knot-vector in WQ approach
         allocate(knotvector(object%size_kv))
-        call get_knotvector(degree, nb_el, nodes, object%size_kv, knotvector)
+        call get_knotvector(degree, nb_el, nodes, object%size_kv, knotvector, 1)
 
         ! Find table of functions over span
         call set_table_functions_spans(degree, nb_el, table_functions_span)

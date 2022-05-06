@@ -18,7 +18,7 @@ subroutine get_parametric_nodes(nb_el, nodes)
 
     ! Local data
     ! -------------
-    integer ::  i
+    integer :: i
 
     ! Assign first and last values
     nodes(1) = 0.d0
@@ -121,14 +121,14 @@ subroutine set_table_spans(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector
 
 end subroutine set_table_spans
 
-subroutine get_knotvector(degree, nb_el, nodes, size_kv, knotvector)
+subroutine get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicity)
     !! Gets the knot-vector in IGA-WQ-Galerkin approach 
     !! Case of maximum continuity (p-1)
 
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in):: degree, nb_el, size_kv 
+    integer, intent(in):: degree, nb_el, size_kv, multiplicity
     double precision, intent(in) :: nodes
     dimension :: nodes(nb_el+1)
 
@@ -137,20 +137,26 @@ subroutine get_knotvector(degree, nb_el, nodes, size_kv, knotvector)
 
     ! Local data
     ! -------------
-    integer ::  i
+    integer ::  i, j, c
 
     ! Set p+1 first values of knot vector 
+    c = 1
     do i = 1, degree+1
-        knotvector(i) = 0.d0
+        knotvector(c) = 0.d0
+        c = c + 1
     end do
 
-    do i = degree+2, size_kv-degree-1 
-        knotvector(i) = nodes(i-degree)
+    do i = 2, nb_el
+        do j = 1, multiplicity
+            knotvector(c) = nodes(i)
+            c = c + 1
+        end do
     end do
 
     ! Set p+1 last values of knot vector 
-    do i = size_kv-degree, size_kv
-        knotvector(i) = 1.d0
+    do i = 1, degree+1
+        knotvector(c) = 1.d0
+        c = c + 1
     end do
         
 end subroutine get_knotvector

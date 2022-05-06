@@ -48,7 +48,7 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, data_B0, data_B
     call get_parametric_nodes(nb_el, nodes)
 
     ! Get knot-vector
-    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector)
+    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
 
     ! Get table
     call set_table_functions_spans(degree, nb_el, table_functions_span)
