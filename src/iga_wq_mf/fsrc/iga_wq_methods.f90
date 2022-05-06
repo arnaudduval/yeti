@@ -408,7 +408,7 @@ subroutine wq_get_quadrature_rules(nb_rows, nb_ctrlpts, nb_qp, MB, MI, Bshape, M
     integer :: i
 
     ! Set values of MW
-    rules = 0.0d0
+    rules = 0.d0
 
     ! Compute quadrature rules
     do i = 1, nb_ctrlpts

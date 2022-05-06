@@ -49,7 +49,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     double precision, allocatable, dimension(:) :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
 
     ! Initialize
-    Kdiag = 0.0d0
+    Kdiag = 0.d0
 
     allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
     do i = 1, size_data_u
@@ -716,9 +716,9 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
     ! ====================================================
 
     ! Initiate variables
-    x = 0.0d0
-    RelRes = 0.0d0
-    RelError = 0.0d0
+    x = 0.d0
+    RelRes = 0.d0
+    RelError = 0.d0
 
     if (Method.eq.'WP') then 
         ! ----------------------------
@@ -732,7 +732,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
         do k = 1, nbIterations
             ! Calculate Ann xn 
-            v1exp = 0.0d0
+            v1exp = 0.d0
             v1exp(dof) = p
             call mf_iga_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
@@ -762,9 +762,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
 
     else 
-        ! --------------------------------------------
-        ! INITIALIZE
-        ! -------------------------------------------- 
+        ! Dimensions
         Lu = 1.d0
         Lv = 1.d0
         Lw = 1.d0
@@ -842,11 +840,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
                                 indi_B_w, indj_B_w, data_B0_w, data_W00_w, data_B1_w, &
                                 data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W00_w, data_W11_w)
+
         if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
 
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+            ! --------------------------------------------
+            ! SCALING
+            ! --------------------------------------------
             ! Find diagonal of preconditioner
             allocate(preconddiag(nb_rows_u*nb_rows_v*nb_rows_w))
             call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
@@ -868,8 +870,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         ! Preconditioned Conjugate Gradient algorithm
         ! -------------------------------------------
         r = b
-        ! Calculate z
-        v1exp = 0.0d0
+        v1exp = 0.d0
         v1exp(dof) = r
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
             call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
@@ -882,12 +883,12 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         z = v2exp(dof)
         p = z
         rsold = dot_product(r, z)
-        RelRes(1) = 1.0d0
-        RelError(1) = 1.0d0
+        RelRes(1) = 1.d0
+        RelError(1) = 1.d0
 
         do k = 1, nbIterations
             ! Calculate Ann xn 
-            v1exp = 0.0d0
+            v1exp = 0.d0
             v1exp(dof) = p
             call mf_iga_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
@@ -911,7 +912,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
                 exit
             end if
             
-            v1exp = 0.0d0
+            v1exp = 0.d0
             v1exp(dof) = r
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
@@ -927,7 +928,6 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             p = z + rsnew/rsold * p
             rsold = rsnew
         end do
-
     end if
 
 end subroutine iga_mf_cg_3d

@@ -32,7 +32,7 @@ module tensor_methods
             do ii3 = 1, I3
                 do ii2 = 1, I2
                     do ii = 1, I
-                        sum = 0.0d0
+                        sum = 0.d0
                         do ii1 = 1, I1
                             genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
                             genPosU = ii + (ii1-1)*I
@@ -47,7 +47,7 @@ module tensor_methods
             do ii3 = 1, I3
                 do ii = 1, I
                     do ii1 = 1, I1
-                        sum = 0.0d0
+                        sum = 0.d0
                         do ii2 = 1, I2
                             genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
                             genPosU = ii + (ii2-1) * I
@@ -62,7 +62,7 @@ module tensor_methods
             do ii = 1, I
                 do ii2 = 1, I2
                     do ii1 = 1, I1
-                        sum = 0.0d0
+                        sum = 0.d0
                         do ii3 = 1, I3
                             genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
                             genPosU = ii + (ii3-1) * I
@@ -102,9 +102,9 @@ module tensor_methods
         double precision :: sum
 
         ! Initialize
-        result = 0.0d0 
+        result = 0.d0 
         do ju = 1, size_u
-            sum = 0.0d0
+            sum = 0.d0
             do jv = 1, size_v
                 posGen = ju + (jv-1)*size_u
                 sum = sum + X0(posGen) * Vv(jv)
@@ -141,11 +141,11 @@ module tensor_methods
         double precision :: sum1, sum2
 
         ! Initialize
-        result = 0.0d0 
+        result = 0.d0 
         do ju = 1, size_u
-            sum2 = 0.0d0
+            sum2 = 0.d0
             do jv = 1, size_v
-                sum1 = 0.0d0
+                sum1 = 0.d0
                 do jw = 1, size_w
                     posGen = ju + (jv-1)*size_u + (jw-1)*size_u*size_v
                     sum1 = sum1 + X0(posGen) * Vw(jw)
@@ -325,7 +325,7 @@ module tensor_methods
                 ! Set values of row in Mu
                 allocate(indj_nnz_u(nnz_u), data_nnz_u(nnz_u))
                 indj_nnz_u = 0
-                data_nnz_u = 0.0d0
+                data_nnz_u = 0.d0
                 offset = indi_u(iu)
                 do ju = 1, nnz_u
                     indj_nnz_u(ju) = indj_u(ju+offset-1)
@@ -335,7 +335,7 @@ module tensor_methods
                 ! Set values of row in Mv
                 allocate(indj_nnz_v(nnz_v), data_nnz_v(nnz_v))
                 indj_nnz_v = 0
-                data_nnz_v = 0.0d0
+                data_nnz_v = 0.d0
                 offset = indi_v(iv)
                 do jv = 1, nnz_v
                     indj_nnz_v(jv) = indj_v(jv+offset-1)
@@ -343,7 +343,7 @@ module tensor_methods
                 end do
 
                 allocate(tensor(nnz_u*nnz_v))
-                tensor = 0.0d0
+                tensor = 0.d0
                 do jv = 1, nnz_v
                     do ju = 1, nnz_u
                         genPos_tensor = ju + (jv-1)*nnz_u 
@@ -459,7 +459,7 @@ module tensor_methods
                     end do
 
                     allocate(tensor(nnz_u*nnz_v*nnz_w))
-                    tensor = 0.0d0
+                    tensor = 0.d0
                     do jw = 1, nnz_w
                         do jv = 1, nnz_v
                             do ju = 1, nnz_u
@@ -1010,7 +1010,7 @@ module tensor_methods
         double precision, dimension(:), allocatable :: diag_temp1, diag_temp2
 
         ! Initialize
-        diag = 0.0d0
+        diag = 0.d0
 
         ! Find K3 M2 M1
         allocate(diag_temp1(nb_rows_u*nb_rows_v))
@@ -1078,7 +1078,7 @@ module tensor_methods
                                                         data_nnz_W_u, data_nnz_W_v, data_nnz_W_w        
         
         ! Initialize
-        jacobi_diag = 0.0d0
+        jacobi_diag = 0.d0
 
         !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
         !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
@@ -1118,11 +1118,11 @@ module tensor_methods
                         data_nnz_W_w(jw) = data_W_w(jw+offset-1)
                     end do
 
-                    sum3 = 0.0d0
+                    sum3 = 0.d0
                     do jw = 1, nnz_w
-                        sum2 = 0.0d0
+                        sum2 = 0.d0
                         do jv = 1, nnz_v
-                            sum1 = 0.0d0
+                            sum1 = 0.d0
                             do ju = 1, nnz_u
                                 Cpos = indj_nnz_u(ju) + (indj_nnz_v(jv)-1)*nb_cols_u + (indj_nnz_w(jw)-1)*nb_cols_u*nb_cols_v
                                 sum1 = sum1 + data_nnz_W_u(ju)*data_nnz_B_u(ju)*coefs(Cpos)
@@ -1166,10 +1166,10 @@ module tensor_methods
         implicit none 
         ! Input / output 
         ! -------------------
-        integer, intent(in) ::  nb_rows, nb_cols
-        double precision, intent(in) :: Mcoef(*), Kcoef(*)
-        integer, intent(in) ::  size_data
-        integer, intent(in) ::  indi, indj
+        integer, intent(in) :: nb_rows, nb_cols
+        double precision, dimension(*), intent(in) :: Mcoef, Kcoef
+        integer, intent(in) :: size_data
+        integer, intent(in) :: indi, indj
         dimension :: indi(size_data), indj(size_data)
         double precision, intent(in) :: data_B0, data_W00, data_B1, data_W11
         dimension ::    data_B0(size_data), data_W00(size_data), &
@@ -1188,8 +1188,7 @@ module tensor_methods
         integer :: i, j
 
         ! Use Lapack
-        external :: dlamch, dsygvx
-        integer, parameter  :: ITYPE = 1 ! Type A x = B x D where in this proble A =  KK and B = MM
+        integer, parameter :: ITYPE = 1 ! Type A x = B x D where in this proble A =  KK and B = MM
         character, parameter :: JOBZ = 'V' ! Computes eigen values and vectors
         character, parameter :: UPLO = 'U' ! Consider upper triangle of A and B
         integer :: N, LDA, LDB ! Size of A and B
@@ -1307,7 +1306,7 @@ module tensor_methods
         ! First part 
         ! ---------------------------------
         allocate(array_temp_1(nb_ctrlpts_1*nb_ctrlpts_2))
-        array_temp_1 = 0.0d0
+        array_temp_1 = 0.d0
 
         call tensor2d_dot_vector(nb_ctrlpts_1, nb_ctrlpts_1, nb_ctrlpts_2, nb_ctrlpts_2, &
                                     transpose(U_1), transpose(U_2), array_input, array_temp_1)
@@ -1317,12 +1316,12 @@ module tensor_methods
         ! ---------------------------------
         ! Define identities
         allocate(Ident1(nb_ctrlpts_1), Ident2(nb_ctrlpts_2))
-        Ident1 = 1.0d0
-        Ident2 = 1.0d0
+        Ident1 = 1.d0
+        Ident2 = 1.d0
 
         allocate(diagonal(nb_ctrlpts_1*nb_ctrlpts_2))
         allocate(diagonal_temp(nb_ctrlpts_1*nb_ctrlpts_2))
-        diagonal = 0.0d0
+        diagonal = 0.d0
 
         call vector_kron_vector(nb_ctrlpts_2, Ident2, nb_ctrlpts_1, D_1, diagonal_temp)
         diagonal = diagonal + diagonal_temp
@@ -1339,7 +1338,7 @@ module tensor_methods
         ! ----------------------------------
         ! Third part
         ! ---------------------------------
-        array_output = 0.0d0
+        array_output = 0.d0
         call tensor2d_dot_vector(nb_ctrlpts_1, nb_ctrlpts_1, nb_ctrlpts_2, nb_ctrlpts_2, &
                                     U_1, U_2, array_temp_1, array_output)
         deallocate(array_temp_1)
@@ -1357,9 +1356,9 @@ module tensor_methods
         !---------------------
         integer, intent(in) :: nb_ctrlpts_1, nb_ctrlpts_2, nb_ctrlpts_3
         double precision, intent(in) :: U_1, D_1, U_2, D_2, U_3, D_3
-        dimension :: U_1(nb_ctrlpts_1, nb_ctrlpts_1), D_1(nb_ctrlpts_1), &
-                    U_2(nb_ctrlpts_2, nb_ctrlpts_2), D_2(nb_ctrlpts_2), &
-                    U_3(nb_ctrlpts_3, nb_ctrlpts_3), D_3(nb_ctrlpts_3)
+        dimension ::    U_1(nb_ctrlpts_1, nb_ctrlpts_1), D_1(nb_ctrlpts_1), &
+                        U_2(nb_ctrlpts_2, nb_ctrlpts_2), D_2(nb_ctrlpts_2), &
+                        U_3(nb_ctrlpts_3, nb_ctrlpts_3), D_3(nb_ctrlpts_3)
         double precision, intent(in) :: L1, L2, L3
 
         double precision, intent(in) :: array_input
@@ -1387,14 +1386,14 @@ module tensor_methods
         ! ---------------------------------
         ! Define identities
         allocate(Ident1(nb_ctrlpts_1), Ident2(nb_ctrlpts_2), Ident3(nb_ctrlpts_3))
-        Ident1 = 1.0d0
-        Ident2 = 1.0d0
-        Ident3 = 1.0d0
+        Ident1 = 1.d0
+        Ident2 = 1.d0
+        Ident3 = 1.d0
 
         allocate(diagonal(nb_ctrlpts_1*nb_ctrlpts_2*nb_ctrlpts_3))
         allocate(diagonal_temp1(nb_ctrlpts_1*nb_ctrlpts_2))
         allocate(diagonal_temp2(nb_ctrlpts_1*nb_ctrlpts_2*nb_ctrlpts_3))
-        diagonal = 0.0d0
+        diagonal = 0.d0
 
         call vector_kron_vector(nb_ctrlpts_2, Ident2, nb_ctrlpts_1, D_1, diagonal_temp1)
         call vector_kron_vector(nb_ctrlpts_3, Ident3, size(diagonal_temp1), diagonal_temp1, diagonal_temp2)
@@ -1417,7 +1416,7 @@ module tensor_methods
         ! ----------------------------------
         ! Third part
         ! ---------------------------------
-        array_output = 0.0d0
+        array_output = 0.d0
         call tensor3d_dot_vector(nb_ctrlpts_1, nb_ctrlpts_1, nb_ctrlpts_2, nb_ctrlpts_2, nb_ctrlpts_3, nb_ctrlpts_3, &
                                 U_1, U_2, U_3, array_temp_1, array_output)
 
@@ -1454,7 +1453,7 @@ module tensor_methods
 
         do k = 1, 2
             ! Set Vscript
-            Vscript = 0.0d0
+            Vscript = 0.d0
             do i2 = 1, nb_qp_v
                 do i1 = 1, nb_qp_u
                     genpos = i1 + (i2-1)*nb_qp_u 
@@ -1482,7 +1481,7 @@ module tensor_methods
 
         do k = 1, 2
             ! Initialize
-            Wscript = 0.0d0
+            Wscript = 0.d0
             do l = 1, 2
                 if (k.ne.l) then 
                     ! Set Wscript
@@ -1549,7 +1548,7 @@ module tensor_methods
 
         do k = 1, 3
             ! Set Vscript
-            Vscript = 0.0d0
+            Vscript = 0.d0
             do i3 = 1, nb_qp_w
                 do i2 = 1, nb_qp_v
                     do i1 = 1, nb_qp_u
@@ -1586,9 +1585,9 @@ module tensor_methods
 
         do k = 1, 3
             ! Initialize
-            Wscript = 0.0d0
-            Nscript = 0.0d0
-            Mscript = 0.0d0
+            Wscript = 0.d0
+            Nscript = 0.d0
+            Mscript = 0.d0
             cont = 0
             do l = 1, 3
                 if (k.ne.l) then 

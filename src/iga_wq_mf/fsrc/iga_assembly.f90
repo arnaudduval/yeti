@@ -83,22 +83,22 @@ subroutine iga_get_capacity_3d(nb_qp_total, capacity_coefs, &
 
     ! Get Indexes of B and W in each dimension
     allocate(data_dump_csr(size_data_u))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_u, size_data_u, data_B_u, indi_u, indj_u, data_dump_csr, indj_u_csr, indi_u_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_v))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_v, size_data_v, data_B_v, indi_v, indj_v, data_dump_csr, indj_v_csr, indi_v_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_w))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_w, size_data_w, data_B_w, indi_w, indj_w, data_dump_csr, indj_w_csr, indi_w_csr)
     deallocate(data_dump_csr)
 
     ! Initialize 
-    data_result = 0.0d0
+    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
 
     allocate(data_W00_u(size_data_u))
@@ -215,22 +215,22 @@ subroutine iga_get_conductivity_3d(nb_qp_total, cond_coefs, &
 
     ! Get Indexes of B and W in each dimension
     allocate(data_dump_csr(size_data_u))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_u, size_data_u, data_B0_u, indi_u, indj_u, data_dump_csr, indj_u_csr, indi_u_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_v))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_v, size_data_v, data_B0_v, indi_v, indj_v, data_dump_csr, indj_v_csr, indi_v_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_w))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_w, size_data_w, data_B0_w, indi_w, indj_w, data_dump_csr, indj_w_csr, indi_w_csr)
     deallocate(data_dump_csr)
 
     ! Initialize 
-    data_result = 0.0d0
+    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
 
     allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
@@ -444,7 +444,7 @@ subroutine iga_get_source_3D(nb_qp_total, source_coefs, &
     ! ====================================================
 
     ! Find vector 
-    source_vector = 0.0d0
+    source_vector = 0.d0
     call tensor3d_sparsedot_vector(nb_ctrlpts_u, nb_qp_u, &
                                 nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w, &
                                 size_data_u, indi_u_csr, indj_u, data_W00_u, &

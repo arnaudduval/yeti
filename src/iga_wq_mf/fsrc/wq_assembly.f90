@@ -83,25 +83,25 @@ subroutine eval_mech_coefficient(dime, nb_pts, J_pts, DD, Scoef)
     if (dime.eq.2) then 
         allocate(MM(3, 4))
         allocate(MDM_temp(4, 3))
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0
-        MM(2, 4) = 1.0d0
-        MM(3, 2) = 1.0d0
-        MM(3, 3) = 1.0d0
+        MM = 0.d0
+        MM(1, 1) = 1.d0
+        MM(2, 4) = 1.d0
+        MM(3, 2) = 1.d0
+        MM(3, 3) = 1.d0
 
     else if (dime.eq.3) then 
         allocate(MM(6, 9))
         allocate(MDM_temp(9, 6))
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0
-        MM(2, 5) = 1.0d0
-        MM(3, 9) = 1.0d0
-        MM(4, 2) = 1.0d0
-        MM(4, 4) = 1.0d0
-        MM(5, 6) = 1.0d0
-        MM(5, 8) = 1.0d0
-        MM(6, 3) = 1.0d0
-        MM(6, 7) = 1.0d0
+        MM = 0.d0
+        MM(1, 1) = 1.d0
+        MM(2, 5) = 1.d0
+        MM(3, 9) = 1.d0
+        MM(4, 2) = 1.d0
+        MM(4, 4) = 1.d0
+        MM(5, 6) = 1.d0
+        MM(5, 8) = 1.d0
+        MM(6, 3) = 1.d0
+        MM(6, 7) = 1.d0
     end if
 
     ! Evaluate MM.transpose * DD * MM
@@ -115,7 +115,7 @@ subroutine eval_mech_coefficient(dime, nb_pts, J_pts, DD, Scoef)
     do i = 1, nb_pts
 
         ! Initialize
-        invJextend = 0.0d0
+        invJextend = 0.d0
 
         ! Get individual jacobien
         J = J_pts(:, :, i)
@@ -170,33 +170,33 @@ subroutine eval_thermomech_coefficient(dime, nb_pts, J_pts, DD, alpha, Tcoef)
     ! Define MM transformation matrix 
     if (dime.eq.2) then 
         allocate(MM(3, 4))
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0
-        MM(2, 4) = 1.0d0
-        MM(3, 2) = 1.0d0
-        MM(3, 3) = 1.0d0
+        MM = 0.d0
+        MM(1, 1) = 1.d0
+        MM(2, 4) = 1.d0
+        MM(3, 2) = 1.d0
+        MM(3, 3) = 1.d0
 
-        VV = 0.0d0
-        VV(1) = 1.0d0
-        VV(2) = 1.0d0
+        VV = 0.d0
+        VV(1) = 1.d0
+        VV(2) = 1.d0
 
     else if (dime.eq.3) then 
         allocate(MM(6, 9))
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0
-        MM(2, 5) = 1.0d0
-        MM(3, 9) = 1.0d0
-        MM(4, 2) = 1.0d0
-        MM(4, 4) = 1.0d0
-        MM(5, 6) = 1.0d0
-        MM(5, 8) = 1.0d0
-        MM(6, 3) = 1.0d0
-        MM(6, 7) = 1.0d0
+        MM = 0.d0
+        MM(1, 1) = 1.d0
+        MM(2, 5) = 1.d0
+        MM(3, 9) = 1.d0
+        MM(4, 2) = 1.d0
+        MM(4, 4) = 1.d0
+        MM(5, 6) = 1.d0
+        MM(5, 8) = 1.d0
+        MM(6, 3) = 1.d0
+        MM(6, 7) = 1.d0
 
-        VV = 0.0d0
-        VV(1) = 1.0d0
-        VV(2) = 1.0d0
-        VV(3) = 1.0d0
+        VV = 0.d0
+        VV(1) = 1.d0
+        VV(2) = 1.d0
+        VV(3) = 1.d0
     end if
 
     ! Evaluate MM.transpose * DD * MM
@@ -210,7 +210,7 @@ subroutine eval_thermomech_coefficient(dime, nb_pts, J_pts, DD, alpha, Tcoef)
     do i = 1, nb_pts
 
         ! Initialize
-        invJextend = 0.0d0
+        invJextend = 0.d0
 
         ! Get individual jacobien
         J = J_pts(:, :, i)
@@ -321,7 +321,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B1T_u_csr, &
@@ -332,7 +332,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B1T_u_csr, &
@@ -342,7 +342,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(2, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_z
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B1T_u_csr, &
@@ -357,7 +357,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
 
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -367,7 +367,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(1, 2, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -377,7 +377,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(2, 2, :) = result_temp
 
     ! Compute B.Transpose . CP_z
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -392,7 +392,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -402,7 +402,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(1, 3, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -412,7 +412,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     jacob(2, 3, :) = result_temp
 
     ! Compute B.Transpose . CP_z
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -427,7 +427,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     ! Get B = B0_w x B0_v x B0_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -437,7 +437,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     physical_pos(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -447,7 +447,7 @@ subroutine jacobien_physicalposition_3d(nb_ctrlpts_total, &
     physical_pos(1, 2, :) = result_temp
 
     ! Compute B.Transpose . CP_z
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, nb_qp_w, nb_ctrlpts_w, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -540,7 +540,7 @@ subroutine interpolation_3d(nb_ctrlpts_total, &
     ! For position 
     ! ---------------------------------------------------
     ! Get B = B_w x B_v x B_u (Kronecker product)
-    interpolation = 0.0d0
+    interpolation = 0.d0
     
     ! Compute B.Transpose . CP
     call tensor3d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
@@ -629,7 +629,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     ! Get B = B0_v x B1_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B1T_u_csr, &
@@ -639,7 +639,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     jacob(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B1T_u_csr, &
@@ -653,7 +653,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     ! Get B = B1_v x B0_u (Kronecker product)
 
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -662,7 +662,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     jacob(1, 2, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -676,7 +676,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     ! Get B = B0_v x B0_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v, &
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -685,7 +685,7 @@ subroutine jacobien_physicalposition_2d(nb_ctrlpts_total, &
     physical_pos(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.0d0
+    result_temp = 0.d0
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
                                 nb_qp_v, nb_ctrlpts_v,&
                                 size_data_u, indi_T_u_csr, indj_T_u_csr, data_B0T_u_csr, &
@@ -767,7 +767,7 @@ subroutine interpolation_2d(nb_ctrlpts_total, &
     ! For position 
     ! ---------------------------------------------------
     ! Get B = B_v x B_u (Kronecker product)
-    interpolation = 0.0d0
+    interpolation = 0.d0
     
     ! Compute B.Transpose . CP
     call tensor2d_sparsedot_vector(nb_qp_u, nb_ctrlpts_u, &
@@ -857,22 +857,22 @@ subroutine wq_get_capacity_3d(nb_qp_total, capacity_coefs, &
 
     ! Get Indexes of B and W in each dimension
     allocate(data_dump_csr(size_data_u))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_u, size_data_u, data_B0_u, indi_u, indj_u, data_dump_csr, indj_u_csr, indi_u_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_v))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_v, size_data_v, data_B0_v, indi_v, indj_v, data_dump_csr, indj_v_csr, indi_v_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_w))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_w, size_data_w, data_B0_w, indi_w, indj_w, data_dump_csr, indj_w_csr, indi_w_csr)
     deallocate(data_dump_csr)
 
     ! Initialize 
-    data_result = 0.0d0
+    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
     call csr_get_matrix_3d(capacity_coefs, nb_ctrlpts_u, nb_qp_u, &
                             nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w, &
@@ -983,22 +983,22 @@ subroutine wq_get_conductivity_3d(nb_qp_total, cond_coefs, &
 
     ! Get Indexes of B and W in each dimension
     allocate(data_dump_csr(size_data_u))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_u, size_data_u, data_B0_u, indi_u, indj_u, data_dump_csr, indj_u_csr, indi_u_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_v))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_v, size_data_v, data_B0_v, indi_v, indj_v, data_dump_csr, indj_v_csr, indi_v_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_w))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_w, size_data_w, data_B0_w, indi_w, indj_w, data_dump_csr, indj_w_csr, indi_w_csr)
     deallocate(data_dump_csr)
 
     ! Initialize 
-    data_result = 0.0d0
+    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
     
     ! Get values
@@ -1193,22 +1193,22 @@ subroutine wq_get_advention_3d(nb_qp_total, adv_coefs, &
 
     ! Get Indexes of B and W in each dimension
     allocate(data_dump_csr(size_data_u))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_u, size_data_u, data_B0_u, indi_u, indj_u, data_dump_csr, indj_u_csr, indi_u_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_v))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_v, size_data_v, data_B0_v, indi_v, indj_v, data_dump_csr, indj_v_csr, indi_v_csr)
     deallocate(data_dump_csr)
 
     allocate(data_dump_csr(size_data_w))
-    data_dump_csr = 0.0d0
+    data_dump_csr = 0.d0
     call coo2csr(nb_ctrlpts_w, size_data_w, data_B0_w, indi_w, indj_w, data_dump_csr, indj_w_csr, indi_w_csr)
     deallocate(data_dump_csr)
 
     ! Initialize 
-    data_result = 0.0d0
+    data_result = 0.d0
     size_data_result =  size_data_I_u*size_data_I_v*size_data_I_w
 
     ! Get values
@@ -1529,7 +1529,7 @@ subroutine wq_get_source_3d(nb_qp_total, source_coefs, &
     ! ====================================================
 
     ! Find vector
-    source_vector = 0.0d0
+    source_vector = 0.d0
     call tensor3d_sparsedot_vector(nb_ctrlpts_u, nb_qp_u, &
                         nb_ctrlpts_v, nb_qp_v, nb_ctrlpts_w, nb_qp_w, &
                         size_data_u, indi_u_csr, indj_u, data_W00_u, &
