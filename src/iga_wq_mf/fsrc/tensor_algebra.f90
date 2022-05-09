@@ -1644,34 +1644,33 @@ module tensor_methods
 
     end subroutine diagonal_decomposition_3d
 
-    subroutine jacobien_mean_3d(nb_qp_u, nb_qp_v, nb_qp_w, Jacob, L1, L2, L3)
+    subroutine jacobien_mean_3d(nb_qp_u, nb_qp_v, nb_qp_w, JJ, L1, L2, L3)
         
-        use omp_lib
         implicit none
         ! Input /  output data
         ! -----------------------
         integer, intent(in) :: nb_qp_u, nb_qp_v, nb_qp_w
-        double precision, intent(in) :: Jacob
-        dimension :: Jacob(3, 3, nb_qp_u*nb_qp_v*nb_qp_w)
-
+        double precision, intent(in) :: JJ
+        dimension :: JJ(3, 3, nb_qp_u*nb_qp_v*nb_qp_w)
+    
         double precision, intent(inout) :: L1, L2, L3
-
+    
         ! Local data
         ! --------------
         ! SDV
         integer :: INFO
-        character, parameter :: JOBU='A', JOBVT='A'
+        character, parameter :: JOBU='N', JOBVT='A'
         integer, parameter :: M=3, N=3
         integer, parameter :: LDA=M, LDU=M, LDVT=N, LWORK=5*M
         double precision, dimension(M,N) :: A, U, VT
         double precision, dimension(M) :: S
-        double precision, dimension(:), allocatable :: WORK
-
+        double precision, dimension(LWORK) :: WORK
+    
         ! Compute dimensions
         integer :: i, j, k, nb_qp, Jpos
         double precision :: LNS
-        double precision, dimension(:,:), allocatable :: Jacob_V
-
+        double precision, dimension(3,3) :: Q1
+    
         ! Count number of quadrature points
         nb_qp = 0
         do k = 1, nb_qp_w, 2
@@ -1681,37 +1680,34 @@ module tensor_methods
                 end do
             end do
         end do
-
+    
         ! Initialize
-        allocate(WORK(LWORK))
-        allocate(Jacob_V(3, 3))
-        Jacob_V = 0.d0
         L1 = 0.d0
         L2 = 0.d0
         L3 = 0.d0
-
+    
         do k = 1, nb_qp_w, 2
             do j = 1, nb_qp_v, 2
                 do i = 1, nb_qp_u, 2
                     Jpos = i + (j-1)*nb_qp_u + (k-1)*nb_qp_u*nb_qp_v
-                    A = Jacob(:, :, Jpos)
+                    A = JJ(:, :, Jpos)
                     call dgesvd(JOBU, JOBVT, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK, LWORK, INFO)
-                    call product_AWB(3, 3, 3, VT, S, VT, Jacob_V)
-
+                    call product_AWB(3, 3, 3, transpose(VT), S, transpose(VT), Q1)
+    
                     ! Find mean of diagonal of jacobien
-                    L1 = L1 + Jacob_V(1, 1)/nb_qp
-                    L2 = L2 + Jacob_V(2, 2)/nb_qp
-                    L3 = L3 + Jacob_V(3, 3)/nb_qp
+                    L1 = L1 + Q1(1, 1)/nb_qp
+                    L2 = L2 + Q1(2, 2)/nb_qp
+                    L3 = L3 + Q1(3, 3)/nb_qp
                 end do
             end do
         end do
-
-        ! Dimension normalisées
+        
+        ! Dimension normalized
         LNS = sqrt(L1**2 + L2**2 + L3**2)
         L1 = L1/LNS
         L2 = L2/LNS
         L3 = L3/LNS
-
+    
     end subroutine jacobien_mean_3d
 
 end module tensor_methods
