@@ -40,10 +40,6 @@ def wq_get_basis_weights_csr(degree, nb_el):
 
 class fortran_mf_wq(thermoMechaModel):
 
-    # ===========================
-    # INITIALIZE 
-    # ===========================
-
     def __init__(self, modelIGA: None, isThermal= True, isMechanical= False, 
                 thermalblockedboundaries= None, 
                 mechablockedboundaries= None):

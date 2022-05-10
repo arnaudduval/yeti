@@ -33,6 +33,7 @@ def iga_get_basis_weights(degree, nb_el):
     return nnz_I, qp_pos, qp_weights, B0, B1, ind
     
 class fortran_mf_iga(thermoMechaModel):
+    
     def __init__(self, modelIGA: None, thermalblockedboundaries= None):
         super().__init__(modelIGA, thermalblockedboundaries= thermalblockedboundaries)
         if self._dim != 3:

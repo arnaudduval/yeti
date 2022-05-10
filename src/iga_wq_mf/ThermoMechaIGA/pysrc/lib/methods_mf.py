@@ -120,6 +120,7 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
     return u1, u2, u3, w1, w2, w3
 
 class MF(WQ): 
+    
     def __init__(self, obj: None):
         super().__init__(obj)
 

@@ -16,7 +16,7 @@ from preprocessing.igaparametrization import IGAparametrization
 
 # My libraries
 from .base_functions import eval_basis_fortran
-from .geomdl_geometry import geomdlModel
+from .create_geomdl import geomdlModel
 from iga_wq_mf import assembly
 
 def write_text_file(filename, method_list, inputs): 
