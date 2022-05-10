@@ -87,6 +87,8 @@ class fortran_mf_iga(thermoMechaModel):
 
         return inputs
 
+    # Assemble matrices
+
     def get_input4Assembly_capacity(self):
 
         # Set shape of matrices B0 and B1
@@ -140,6 +142,8 @@ class fortran_mf_iga(thermoMechaModel):
         
         return inputs
 
+    # Assemble vectors
+
     def get_input4Assembly_source(self):
         " Returns necessary inputs to compute source vector "
 
@@ -162,6 +166,8 @@ class fortran_mf_iga(thermoMechaModel):
         inputs = [self._source_coef, *shape_matrices, *indexes, *data]
         
         return inputs
+
+    # Matrix-Free
 
     def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
         " Returns necessary inputs to compute K u "
@@ -260,8 +266,15 @@ class fortran_mf_iga(thermoMechaModel):
         source_coef = super().eval_F_coefficient(fun, self._dim, self._qp_PS, self._detJ)
         return source_coef
 
-    def eval_capacity_matrix(self): 
+    # Assemble matrices
+
+    def eval_capacity_matrix(self, indi=None, indj=None): 
         " Computes capacity matrix "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+        if indj is None:
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
         
         # Get inputs
         inputs = self.get_input4Assembly_capacity()
@@ -278,15 +291,20 @@ class fortran_mf_iga(thermoMechaModel):
                 
         # Convert results in coo sparse matrix
         C_coo = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_C, indi_C, indj_C)
+                                            val_C, indi_C, indj_C).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
         
         return  C_coo
 
-    def eval_conductivity_matrix(self): 
+    def eval_conductivity_matrix(self, indi=None, indj=None): 
         " Computes conductivity matrix "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+        if indj is None:
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get inputs
         inputs = self.get_input4Assembly_conductivity()
@@ -303,15 +321,18 @@ class fortran_mf_iga(thermoMechaModel):
                 
         # Convert results in coo sparse matrix
         K_coo = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_K, indi_K, indj_K)
+                                            val_K, indi_K, indj_K).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Conductivity matrix assembled in : %5f s' %(stop-start))
         
         return K_coo
 
-    def eval_source_vector(self, fun): 
+    def eval_source_vector(self, fun, indi= None): 
         " Computes source vector "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get source coefficients
         self._source_coef = self.eval_source_coefficient(fun)
@@ -330,7 +351,7 @@ class fortran_mf_iga(thermoMechaModel):
         stop = time.time()
         print('Source vector assembled in : %.5f s' %(stop-start))
 
-        return F
+        return F[indi]
 
     # =============================
     # MATRIX FREE SOLUTION
@@ -355,7 +376,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
-    def MSE_CP_interpolation(self, fun):
+    def MSE_ControlPoints(self, fun):
         
         # Get temperature coeficients 
         coef_F = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] 

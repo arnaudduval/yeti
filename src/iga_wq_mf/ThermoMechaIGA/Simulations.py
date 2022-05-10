@@ -11,7 +11,7 @@ import os, sys, tracemalloc
 import time
 
 # My libraries
-from pysrc.lib.geomdl_geometry import create_geometry
+from pysrc.lib.create_geomdl import create_geometry
 from pysrc.lib.fortran_mf_iga import fortran_mf_iga
 from pysrc.lib.fortran_mf_wq import fortran_mf_wq
 from pysrc.lib.physics import (powden_cube, 

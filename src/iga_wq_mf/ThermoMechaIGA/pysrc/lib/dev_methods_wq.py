@@ -8,7 +8,6 @@
 import os
 import numpy as np
 from scipy import sparse as sp
-import matplotlib.pyplot as plt
 
 # My libraries
 from .base_functions import (eval_basis_python, 

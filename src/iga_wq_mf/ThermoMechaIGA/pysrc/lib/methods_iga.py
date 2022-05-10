@@ -14,6 +14,7 @@ import time
 from .base_functions import eval_basis_python, iga_find_positions_weights
 from .create_model import thermoMechaModel
 
+
 class IGA(thermoMechaModel):
 
     def __init__(self, modelIGA: None, ElbyEl=False):

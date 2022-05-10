@@ -31,7 +31,7 @@ modelGeo = create_geometry(DEGREE, CUTS, 3)
 
 # Creation of thermal model object
 Model1 = fortran_mf_iga(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
-Temp_CP, Td = Model1.MSE_CP_interpolation(temperature)
+Temp_CP, Td = Model1.MSE_ControlPoints(temperature)
 _, qp_PS_1, _, Temp_qp_PS_1 = Model1.interpolate_results(u_ctrlpts=Temp_CP)
 Treal_sample = np.asarray([temperature(3, qp_PS_1[:, :, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
 error_Temp = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)

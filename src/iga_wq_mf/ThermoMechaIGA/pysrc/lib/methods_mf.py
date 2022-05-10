@@ -100,7 +100,7 @@ class MF(WQ):
     def mf_wq_conj_grad(self, bi, dof, nbIterations, epsilon): 
 
         fun = self.mf_wq_evaluate_Au
-        x, residue = super().matrixfree_conjugate_gradient(fun, bi, dof, nbIterations, epsilon)
+        x, residue = super().conjugate_gradient_python(fun, bi, dof, nbIterations, epsilon)
 
         return x, residue
         

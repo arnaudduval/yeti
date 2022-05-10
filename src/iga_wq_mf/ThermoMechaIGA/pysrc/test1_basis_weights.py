@@ -17,7 +17,7 @@ from lib.base_functions import (create_knotvector,
                                 iga_find_positions_weights,
                                 wq_find_basis_weights_opt
 )
-from lib.fortran_mf_wq import wq_get_basis_weights
+from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 
 # Chosee folder
 full_path = os.path.realpath(__file__)
@@ -41,7 +41,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             # FORTRAN
             # ======================================== 
             _, _, dB0, dB1, dW00, dW01, \
-            dW10, dW11, indexes = wq_get_basis_weights(degree, nb_el)
+            dW10, dW11, indexes = wq_find_basis_weights_fortran(degree, nb_el)
             nb_ctrlpts = np.max(indexes[:, 0])
             nb_qp_wq = np.max(indexes[:, 1])
             indexes -= 1

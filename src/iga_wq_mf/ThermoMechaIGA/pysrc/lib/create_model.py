@@ -95,22 +95,17 @@ def read_text_file(filename):
 
 class thermoMechaModel(): 
 
-    # ===========================
-    # INITIALIZE 
-    # ===========================
-
     def __init__(self, modelIGA= None, isThermal= True, isMechanical=False, 
                 thermalblockedboundaries= None, mechablockedboundaries= None):
-        print('\nInitializing thermal model')
+
+        print('\nInitializing thermo-mechanical model')
         if isinstance(modelIGA, IGAparametrization):
             self._geometry_type = 'yeti'
             self._name = 'IGAparametrization'
         elif isinstance(modelIGA, geomdlModel):
             self._geometry_type = 'geomdl'
             self._name = modelIGA._name
-            self._geometry = modelIGA._geometry
-        else: 
-            self._geometry_type = None
+        else: raise Warning("Type unknown")
 
         # Set number of samples
         self._sample_size = 61
@@ -126,7 +121,7 @@ class thermoMechaModel():
         if self._isThermal:
             # Initialize thermal properties
             print('Settig thermal properties')
-            self.__set_thermal_properties()
+            self.__set_thermal_properties(conductivity=np.eye(self._dim), capacity= 1.)
 
             # Set free and bloqued nodes
             print('Settig free and blocked control points')
@@ -138,7 +133,7 @@ class thermoMechaModel():
         if self._isMechanical:
             # Initialize elastic properties
             print('Settig mechanical properties')
-            self.__set_elastic_properties(modelIGA)
+            self.__set_elastic_properties(modelIGA, E=210e3, nu=0.3)
 
             # Set free and bloqued nodes
             print('Settig free and blocked control points')
@@ -151,13 +146,6 @@ class thermoMechaModel():
             # Initialize thermal exapansion
             print('Setting thermo-mechanical properties')
             self._thermalexpansion = 9.0e-6
-        
-            # Set free and bloqued nodes
-            print('Settig free and blocked control points')
-            if thermalblockedboundaries == None or mechablockedboundaries == None:
-                thermalblockedboundaries = [[1, 1], [1, 1], [1, 1]]
-                mechablockedboundaries = [[1, 1], [1, 1], [1, 1]]
-                print('Dirichlet not defined. Default: all blocked')
             self._thermalblockedboundaries = np.asarray(thermalblockedboundaries)
             self._mechablockedboundaries = np.asarray(mechablockedboundaries)
 
@@ -166,17 +154,16 @@ class thermoMechaModel():
 
         return
 
-    def __set_thermal_properties(self):
+    def __set_thermal_properties(self, conductivity=None, capacity=None):
         " Set thermal properties " 
 
         # (Later must be set in .inp file)
         # Assuming isotropic behavior :
         # To be changed or modified: the way we get material properties
-        self._conductivity = np.eye(self._dim)
-        self._capacity = 1.
+        self._conductivity = conductivity
+        self._capacity = capacity
         
-        print(
-                'Thermal properties (isotropic behavior) :\n\
+        print('Thermal properties (isotropic behavior) :\n\
                 -Conductivity: %s\n\
                 -Capacity: %s' 
                 %(
@@ -187,15 +174,12 @@ class thermoMechaModel():
 
         return
 
-    def __set_elastic_properties(self, modelIGA: IGAparametrization):
+    def __set_elastic_properties(self, E=None, nu=None, isPlaneStress= True):
         " Set elasto-mechanical properties " 
 
         # Assuming isotropic behavior :
-        try: self._youngModule = modelIGA._MATERIAL_PROPERTIES[0][0]
-        except: self._youngModule = 1e3 # MPa
-        
-        try: self._poissonCoef = modelIGA._MATERIAL_PROPERTIES[1][0]
-        except: self._poissonCoef = 0.3
+        self._youngModule = E # MPa
+        self._poissonCoef = nu
 
         print(
                 'Mechanical properties (isotropic behavior) :\n\
@@ -207,20 +191,17 @@ class thermoMechaModel():
                 )
             )
 
-        # Set properties
-        nu = self._poissonCoef
-
         if self._dim == 2:
-            # # Plane strain
-            # ElasticMatrix = [[1-nu, nu, 0],
-            #                 [nu, 1-nu, 0], 
-            #                 [0, 0, 0.5-nu]]
-
-            # Plane stress
-            ElasticMatrix = [[1, nu, 0],
-                            [nu, 1, 0], 
-                            [0, 0, 1-nu]]
-
+            if not isPlaneStress: 
+                # Plane strain
+                ElasticMatrix = [[1-nu, nu, 0],
+                                [nu, 1-nu, 0], 
+                                [0, 0, 0.5-nu]]
+            elif isPlaneStress:
+                # Plane stress
+                ElasticMatrix = [[1, nu, 0],
+                                [nu, 1, 0], 
+                                [0, 0, 1-nu]]
 
         if self._dim == 3:
             ElasticMatrix = [[1-nu, nu, nu, 0, 0, 0],
@@ -234,49 +215,54 @@ class thermoMechaModel():
 
         return
 
-    def __set_bspline_properties(self, modelIGA: IGAparametrization): 
+    def __set_bspline_properties(self, modelIGA): 
         " Sets some B-spline properties "
 
         # Set some variables we will use :
         # --------------------------------- 
+        # Degree in each dimension
+        if isinstance(modelIGA, IGAparametrization): self._degree = modelIGA._Jpqr
+        elif isinstance(modelIGA, geomdlModel): self._degree = modelIGA._degree
+
         # Dimensions
         self._dim = modelIGA._dim[0]
-
-        # Degree in each dimension
-        try: self._degree = modelIGA._Jpqr
-        except : self._degree = modelIGA._degree
         if any(p == 1 for p in self._degree[:self._dim]): 
             raise Warning('Model must have at least degree p = 2')
 
         # knot-vector in each dimension
-        try: self._knotvector = modelIGA._Ukv
-        except: self._knotvector = modelIGA._knotvector
+        if isinstance(modelIGA, IGAparametrization): self._knotvector = modelIGA._Ukv
+        elif isinstance(modelIGA, geomdlModel): self._knotvector = modelIGA._knotvector
 
         # Size knot-vector in each dimension
-        try: self._size_kv = modelIGA._Nkv
-        except: self._size_kv = modelIGA._size_kv
+        if isinstance(modelIGA, IGAparametrization): self._size_kv = modelIGA._Nkv
+        elif isinstance(modelIGA, geomdlModel): self._size_kv = modelIGA._size_kv
 
         # Number of elements in each dimension
         self._nb_el = np.zeros((3, 1), dtype= int)  
-        try: self._nb_el[:self._dim, 0] = self._size_kv[:self._dim, 0]\
+        if isinstance(modelIGA, IGAparametrization): 
+            self._nb_el[:self._dim, 0] = self._size_kv[:self._dim, 0]\
                                     - (2*self._degree[:self._dim, 0] + 1)
-        except: self._nb_el[:self._dim, 0] = modelIGA._nb_el[:self._dim, 0]
+        elif isinstance(modelIGA, geomdlModel):
+             self._nb_el[:self._dim, 0] = modelIGA._nb_el[:self._dim, 0]
 
         # Total number of elements
         self._nb_el_total = np.product(self._nb_el[:self._dim][:])
 
         # Control points
-        try: self._ctrlpts = modelIGA._COORDS[:self._dim, :].T
-        except: self._ctrlpts = np.asarray(modelIGA._ctrlpts)
+        if isinstance(modelIGA, IGAparametrization): 
+            self._ctrlpts = modelIGA._COORDS[:self._dim, :].T
+        elif isinstance(modelIGA, geomdlModel): 
+            self._ctrlpts = np.asarray(modelIGA._ctrlpts)
 
-        try: self._nb_ctrlpts_total = modelIGA._nb_cp
-        except: self._nb_ctrlpts_total = modelIGA._nb_ctrlpts_total
+        if isinstance(modelIGA, IGAparametrization): 
+            self._nb_ctrlpts_total = modelIGA._nb_cp
+        elif isinstance(modelIGA, geomdlModel):
+            self._nb_ctrlpts_total = modelIGA._nb_ctrlpts_total
 
         # Set number of quadrature points/functions in each dimension
         self._nb_ctrlpts = self._degree + self._nb_el
 
-        print(
-                'B-spline properties :\n\
+        print('B-spline properties :\n\
                 -Dimensions: %d\n\
                 -Degree: %s\n\
                 -Number of elements: %s\n\
@@ -318,8 +304,7 @@ class thermoMechaModel():
         self._nb_qp_cgg_total = np.prod(self._nb_qp_cgg[:self._dim, 0])
         self._nb_qp_wq_total = np.prod(self._nb_qp_wq[:self._dim, 0])
 
-        print('\
-                -Number of WQ quadrature points: %s\n\
+        print(' -Number of WQ quadrature points: %s\n\
                 -Number of Gauss quadrature points: %s'
                 %(
                     self._nb_qp_wq.reshape(1, -1), 
@@ -337,8 +322,7 @@ class thermoMechaModel():
         # ----------------------------
         if self._isThermal:
             # Dirichlet 
-            dof, dod = self.block_boundaries(blockedboundaries= self._thermalblockedboundaries, 
-                                            typeEl='T')
+            dof, dod = self.block_boundaries(blockedboundaries= self._thermalblockedboundaries, typeEl='T')
 
             # Set 
             self._thermal_dof = dof
@@ -349,8 +333,7 @@ class thermoMechaModel():
         # ----------------------------
         if self._isMechanical:
             # Dirichlet 
-            dof, dod = self.block_boundaries(blockedboundaries= self._mechablockedboundaries, 
-                                            typeEl='D')
+            dof, dod = self.block_boundaries(blockedboundaries= self._mechablockedboundaries, typeEl='D')
 
             # Set 
             self._mechanical_dof = dof
@@ -582,7 +565,7 @@ class thermoMechaModel():
 
         return np.asarray(bodyforce_coef)
 
-    def matrixfree_conjugate_gradient(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
+    def conjugate_gradient_python(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
         " Evaluate K u at choosen equations "
 
         # ------------------
@@ -617,13 +600,11 @@ class thermoMechaModel():
             B = sp.linalg.spilu(A)
             Mx = lambda x: B.solve(x)
             M = sp.linalg.LinearOperator(A.shape, Mx)
-
         # ADD NEW METHODS ...
 
-        if isCG: 
-            x, info = sp.linalg.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
-        else: 
-            x, info = sp.linalg.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+        # Solve with iterative method
+        if isCG: x, info = sp.linalg.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+        else: x, info = sp.linalg.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
 
         return x
 
@@ -707,10 +688,8 @@ class thermoMechaModel():
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
-
             return jacobien_PS, qp_PS, detJ, u_interp
-        else: 
-            return jacobien_PS, qp_PS, detJ
+        else: return jacobien_PS, qp_PS, detJ
     
     def export_results(self, u_ctrlpts= None, filename= None): 
         " Returns solution using geometry basis "
@@ -855,7 +834,7 @@ class thermoMechaModel():
             X1 = np.zeros((self._sample_size, self._sample_size))
             X2 = np.zeros((self._sample_size, self._sample_size))
             U = np.zeros((self._sample_size, self._sample_size))
-            indpos =  round((self._sample_size+1)/2)
+            indpos = round((self._sample_size+1)/2)
 
             if normalvector == 0:
                 # Normal following x 

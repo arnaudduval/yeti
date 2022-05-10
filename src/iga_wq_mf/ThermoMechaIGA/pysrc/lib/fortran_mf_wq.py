@@ -12,7 +12,7 @@ import time
 from .create_model import thermoMechaModel
 from iga_wq_mf import basis_weights, assembly, solver
 
-def wq_get_basis_weights(degree, nbel): 
+def wq_find_basis_weights_fortran(degree, nbel): 
     " Computes basis and weights "
 
     # Set size guessed of data arrays
@@ -25,24 +25,11 @@ def wq_get_basis_weights(degree, nbel):
 
     return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, ind
 
-def wq_get_basis_weights_csr(degree, nbel): 
-    " Computes basis and weights "
-
-    # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
-
-    # Get basis and weights from fortran
-    qp_pos, B0, B1, \
-    W00, W01, W10, W11, \
-    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
-
-    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
-
 class fortran_mf_wq(thermoMechaModel):
 
     def __init__(self, modelIGA: None, isThermal= True, isMechanical= False, 
-                thermalblockedboundaries= None, 
-                mechablockedboundaries= None):
+                thermalblockedboundaries= None, mechablockedboundaries= None):
+
         super().__init__(modelIGA= modelIGA, isThermal= isThermal, isMechanical= isMechanical,
                         thermalblockedboundaries= thermalblockedboundaries,
                         mechablockedboundaries= mechablockedboundaries)
@@ -93,26 +80,16 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = []
 
         for dim in range(self._dim):
-            inputs_t = [self._degree[dim][0], 
-                        self._nb_el[dim][0]]
+            inputs_t = [self._degree[dim][0], self._nb_el[dim][0]]
             inputs.append(inputs_t)
 
         return inputs
 
     def get_input4jacobien(self): 
-        " Returns necessary inputs to compute jacobien "
+        " Returns necessary inputs to compute jacobien matrix "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set control points
-        ctrlpts = []
+        # Initialize
+        shape_matrices, indexes, data, ctrlpts = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -127,20 +104,13 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
+    # Assemble matrices
+
     def get_input4Assembly_capacity(self): 
         " Returns necessary inputs to compute capacity matrix "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -157,18 +127,10 @@ class fortran_mf_wq(thermoMechaModel):
         return inputs
 
     def get_input4Assembly_conductivity(self):
-
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        " Returns necessary inputs to compute conductivity matrix "
+        
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -188,102 +150,11 @@ class fortran_mf_wq(thermoMechaModel):
         
         return inputs
 
-    def get_input4Assembly_source(self):
-        " Returns necessary inputs to compute source vector "
-
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
-            data.append(self._DW[dim][0][0])
-
-        inputs = [self._source_coef, *shape_matrices, *indexes, *data]
-        
-        return inputs
-
-    def get_input4MatrixFree_Ku(self, u):
-        " Returns necessary inputs to compute K u "
-
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
-            data.append(self._DB[dim][0])
-            data.append(self._DB[dim][1])
-            data.append(self._DW[dim][0][0])
-            data.append(self._DW[dim][0][1])
-            data.append(self._DW[dim][1][0])
-            data.append(self._DW[dim][1][1])
-
-        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
-
-        return inputs
-
-    def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
-        " Returns necessary inputs to compute K u "
-
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # !!! Remember: Indexes in fortran starts at 1
-        dof = np.asarray(dof) + 1
-
-        for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
-            data.append(self._DB[dim][0])
-            data.append(self._DB[dim][1])
-            data.append(self._DW[dim][0][0])
-            data.append(self._DW[dim][0][1])
-            data.append(self._DW[dim][1][0])
-            data.append(self._DW[dim][1][1])
-
-        inputs = [self._conductivity_coef, self._thermalblockedboundaries, *shape_matrices, *indexes, 
-                *data, bi, dof, nbIterations, epsilon]
-
-        return inputs
-
     def get_input4Assembly_stiffness(self):
+        " Returns necessary inputs to compute stiffness matrix "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -303,42 +174,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def get_input4Assembly_force(self):
-        " Returns necessary inputs to compute source vector "
-
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
-            data.append(self._DW[dim][0][0])
-
-        inputs = [self._bodyforce_coef, *shape_matrices, *indexes, *data]
-        
-        return inputs
-
     def get_input4Assembly_thermalstiffness(self):
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
+        " Returns necessary inputs to compute thermal stiffness matrix "
 
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -355,18 +196,54 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def get_input4Find_conductivity_diagonal(self, indi_csr):
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
+    # Assemble vectors
 
-        # Set indexes 
-        indexes = []
+    def get_input4Assembly_source(self):
+        " Returns necessary inputs to compute source vector "
 
-        # Set data 
-        data = []
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
 
         for dim in range(self._dim):
-            indexes.append(indi_csr[dim])
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DW[dim][0][0])
+
+        inputs = [self._source_coef, *shape_matrices, *indexes, *data]
+        
+        return inputs
+
+    def get_input4Assembly_force(self):
+        " Returns necessary inputs to compute force vector "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DW[dim][0][0])
+
+        inputs = [self._bodyforce_coef, *shape_matrices, *indexes, *data]
+        
+        return inputs
+    
+    # Matrix-Free
+
+    def get_input4MatrixFree_Ku(self, u):
+        " Returns necessary inputs to compute K u "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
             indexes.append(self._indexes[dim][:, 1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
@@ -374,9 +251,34 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DW[dim][0][1])
             data.append(self._DW[dim][1][0])
             data.append(self._DW[dim][1][1])
-            shape_matrices.append(self._nb_qp_wq[dim][0])
 
-        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data]
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+
+        return inputs
+
+    def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
+        " Returns necessary inputs to solve matrix system with matrix free approach "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+
+        # Remember: Indexes in fortran starts at 1
+        dof = np.asarray(dof) + 1
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DB[dim][0])
+            data.append(self._DB[dim][1])
+            data.append(self._DW[dim][0][0])
+            data.append(self._DW[dim][0][1])
+            data.append(self._DW[dim][1][0])
+            data.append(self._DW[dim][1][1])
+
+        inputs = [self._conductivity_coef, self._thermalblockedboundaries, *shape_matrices, *indexes, 
+                *data, bi, dof, nbIterations, epsilon]
 
         return inputs
 
@@ -410,7 +312,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, B0, B1, W00, W01, \
-            W10, W11, indexes = wq_get_basis_weights(*inputs[dim])
+            W10, W11, indexes = wq_find_basis_weights_fortran(*inputs[dim])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)
@@ -455,6 +357,8 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes source coefficients "
         bodyforce = super().eval_BodyForce_coefficient(fun, self._dim, self._qp_PS, self._detJ)
         return bodyforce
+
+    # Assemble matrices
 
     def eval_capacity_matrix(self, indi=None, indj=None): 
         " Computes capacity matrix "
@@ -559,7 +463,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Evaluate K T*, where T* = [0, Td]
         if (indj is not None) and (Td is not None):
             if len(Td) != len(indj):
-                raise Warning("Different dimensions")
+                raise Warning('Different dimensions')
 
             # Initialize Ttilde
             Ttilde = np.zeros(self._nb_ctrlpts_total)
@@ -567,15 +471,19 @@ class fortran_mf_wq(thermoMechaModel):
             
             # Eval K@Ttilde
             if self._dim == 2:
-                raise Warning("Try another method")
+                raise Warning('Try another method')
                 
             if self._dim == 3:
                 KTtilde = self.eval_Ku(Ttilde)
 
             # Recalculate F
             F -= KTtilde 
+        else: 
+            raise Warning('indj and Td must be defined')
 
         return F[indi]
+
+    # Thermo-mechanical matrices ! Until not used or well-defined
 
     def eval_stiffness_matrix(self):
         " Computes stiffness matrix "
@@ -594,7 +502,7 @@ class fortran_mf_wq(thermoMechaModel):
             val_K, indi_K, indj_K = assembly.wq_get_stiffness_3d(*inputs)
 
         # Convert results in coo sparse matrix
-        S_coo = super().array2coo_matrix( self._dim*self._nb_ctrlpts_total, 
+        S_coo = super().array2coo_matrix(self._dim*self._nb_ctrlpts_total, 
                                          self._dim*self._nb_ctrlpts_total,  
                                          val_K, indi_K, indj_K)
 
@@ -653,34 +561,8 @@ class fortran_mf_wq(thermoMechaModel):
 
     # =============================
     # MATRIX FREE SOLUTION
-    # =============================
-    def mf_find_K_diagonal(self): 
+    # =============================    
 
-        def get_basis_weigths_csr(): 
-            indi_csr = []
-
-            for dim in range(self._dim):  
-                _, _, _, _, _, _, _, _, indi, _ = wq_get_basis_weights_csr(self._degree[dim][0], 
-                                                self._nb_el[dim][0])
-                indi_csr.append(indi)
-
-            return indi_csr
-
-        # Get inputs
-        indi_csr = get_basis_weigths_csr()
-        inputs = self.get_input4Find_conductivity_diagonal(indi_csr)
-        
-        if self._dim < 2 and self._dim > 3:
-            raise Warning('Until now not done')
-
-        if self._dim == 2:
-            raise Warning('Until now not done')
-
-        if self._dim == 3:
-            Kdiag = solver.wq_find_conductivity_diagonal_3d(*inputs)
-
-        return Kdiag
-    
     def mf_conj_grad(self, bi, dof, nbIterations, epsilon, method, directsol, isCG): 
 
         # Get inputs
@@ -700,10 +582,10 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MSE_CP_interpolation(self, fun):
+    def MSE_ControlPoints(self, fun):
         
         # Get temperature coeficients 
-        coef = [fun(self._dim, self._qp_PS[:, :, _][0]) * self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+        coef = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
         # Define inputs for C and F
         shape_matrices, indexes, data_C, data_F, size_I = [], [], [], [], []
