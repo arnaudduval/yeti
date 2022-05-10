@@ -692,20 +692,8 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def interpolate_temperature_cp(self, fun, dirichlet0= None):
+    def MSE_CP_interpolation(self, fun):
         
-        if dirichlet0 == None:
-            dirichlet0 = self._thermalblockedboundaries
-            print('Dirichlet not defined. Default: all blocked')
-
-        # Test dirichlet0 <= thermal blocked boundaries
-        dirichlet1 = self._thermalblockedboundaries - dirichlet0
-        if any(bound<0 for bound in dirichlet1.flatten()): 
-            raise Warning("It is not possible. Try again.")
-
-        # Block Dirichlet boundaries equal to 0
-        dof_dir0, dod_dir0 = self.block_boundaries(blockedboundaries= dirichlet0, typeEl='T')
-
         # Get temperature coeficients 
         coef = [fun(self._dim, self._qp_PS[:, :, _][0]) * self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
@@ -737,19 +725,9 @@ class fortran_mf_wq(thermoMechaModel):
         C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
                                             val_C, indi_C, indj_C)
 
-        # Assemble capacity matrix reduced
-        C2solve = C.tocsc()[dof_dir0, :][:, dof_dir0]
-
-        # Assemble source vector F reduced
-        F2solve = F[dof_dir0]
-
-        # Solve system
-        Tdir0 = scipy.linalg.solve(C2solve.todense(), F2solve)
-
-        T = np.zeros(self._nb_ctrlpts_total)
-        T[dof_dir0] = Tdir0
-
+        # Solve linear system
+        T = self.conjugate_gradient_scipy(C, F, isCG=False)
         Tdir = T[self._thermal_dod]
 
-        return Tdir, T
+        return T, Tdir
         

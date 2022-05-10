@@ -355,22 +355,11 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
-    def interpolate_MSE_CP(self, fun, dirichlet0= None):
+    def MSE_CP_interpolation(self, fun):
         
-        # if dirichlet0 == None:
-        #     dirichlet0 = self._thermalblockedboundaries
-        #     print('Dirichlet not defined. Default: all blocked')
-
-        # # Test dirichlet0 <= thermal blocked boundaries
-        # dirichlet1 = self._thermalblockedboundaries - dirichlet0
-        # if any(bound<0 for bound in dirichlet1.flatten()): 
-        #     raise Warning("It is not possible. Try again.")
-
-        # # Block Dirichlet boundaries equal to 0
-        # dof_dir0, _ = self.block_boundaries(blockedboundaries= dirichlet0, typeEl='T')
-
         # Get temperature coeficients 
-        coef_F = [fun(self._dim, self._qp_PS[:, :, _][0]) * self._detJ[_] for _ in range(self._nb_qp_cgg_total)]
+        coef_F = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] 
+                    for _ in range(self._nb_qp_cgg_total)]
 
         # Define inputs for C and F
         shape_matrices, indexes, data, size_I = [], [], [], []
@@ -397,22 +386,8 @@ class fortran_mf_iga(thermoMechaModel):
         C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
                                             val_C, indi_C, indj_C).tocsc()
 
-        # # Assemble capacity matrix reduced
-        # C2solve = C[dof_dir0, :][:, dof_dir0]
-
-        # # Assemble source vector F reduced
-        # F2solve = F[dof_dir0]
-
-        # # Solve system
-        # Tdir0 = scipy.linalg.solve(C2solve.todense(), F2solve)
-
-        # T = np.zeros(self._nb_ctrlpts_total)
-        # T[dof_dir0] = Tdir0
-
-        # Tdir = T[self._thermal_dod]
-
-        # =============================
-        T = scipy.linalg.solve(C.todense(), F)
+        # Solve linear system
+        T = self.conjugate_gradient_scipy(C, F)
         Tdir = T[self._thermal_dod]
 
         return T, Tdir

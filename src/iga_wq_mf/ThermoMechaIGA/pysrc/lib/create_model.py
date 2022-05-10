@@ -6,7 +6,7 @@
 # Python libraries
 import statistics
 import numpy as np
-from scipy import sparse
+from scipy import sparse as sp
 from geomdl import helpers
 import time
 import matplotlib.pyplot as plt
@@ -61,8 +61,8 @@ def eval_basis(degree, knotvector, knots):
         table_functions_element[_, 2:] = table_functions_element[_, 1] + np.arange(1, degree + 1) 
 
     # Evaluate B0 and B1
-    B0 = sparse.lil_matrix((nbfunct, nbx))
-    B1 = sparse.lil_matrix((nbfunct, nbx))
+    B0 = sp.lil_matrix((nbfunct, nbx))
+    B1 = sp.lil_matrix((nbfunct, nbx))
 
     for _ in range(len(knots)):
         # Get knot
@@ -178,7 +178,6 @@ def read_text_file(filename):
                 "TimeIter": time_iter, "Res": residue_list, "Error": error_list, "MemIter": memory_iter}
 
     return output
-
 class thermoMechaModel(): 
 
     # ===========================
@@ -452,7 +451,7 @@ class thermoMechaModel():
         " Computes coo sparse matrix "
 
         # Set sparse coo matrix
-        sparse_matrix = sparse.coo_matrix((data, (indi, indj)), 
+        sparse_matrix = sp.coo_matrix((data, (indi, indj)), 
                                         shape=(nb_rows, nb_cols))
         return sparse_matrix
 
@@ -460,7 +459,7 @@ class thermoMechaModel():
         " Computes csr sparse matrix "
 
         # Set sparse coo matrix
-        sparse_matrix = sparse.csr_matrix((data, indj, indi), 
+        sparse_matrix = sp.csr_matrix((data, indj, indi), 
                                         shape=(nb_rows, nb_cols))
                                         
         return sparse_matrix
@@ -583,18 +582,18 @@ class thermoMechaModel():
             B = 1
             for dim in range(dimensions):
                 at = alpha[dim] 
-                B = sparse.kron(data_DB[dim][at], B)
+                B = sp.kron(data_DB[dim][at], B)
 
             for i in range(dimensions):
-                J[i, j, :] = sparse.coo_matrix.dot(B.transpose(), CP[:, i])
+                J[i, j, :] = sp.coo_matrix.dot(B.transpose(), CP[:, i])
             
         # Evaluate position in physical space
         for i in range(dimensions):
             B = 1
             for dim in range(dimensions):
-                B = sparse.kron(data_DB[dim][0], B)
+                B = sp.kron(data_DB[dim][0], B)
 
-            PPS[0, i, :] = sparse.coo_matrix.dot(B.transpose(), CP[:, i])
+            PPS[0, i, :] = sp.coo_matrix.dot(B.transpose(), CP[:, i])
         
         stop = time.time()
         print('\tJacobian in : %.5f s' %(stop-start))
@@ -668,7 +667,7 @@ class thermoMechaModel():
 
         return np.asarray(bodyforce_coef)
 
-    def conjugate_gradient(self, fun_Au, bi, dof, nbIterations, epsilon):   
+    def matrixfree_conjugate_gradient(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
         " Evaluate K u at choosen equations "
 
         # ------------------
@@ -695,6 +694,23 @@ class thermoMechaModel():
             rsold = rsnew
 
         return x, RelRes
+
+    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+
+        # Find preconditionner
+        if PreCond == 'ilu': 
+            B = sp.linalg.spilu(A)
+            Mx = lambda x: B.solve(x)
+            M = sp.linalg.LinearOperator(A.shape, Mx)
+
+        # ADD NEW METHODS ...
+
+        if isCG: 
+            x, info = sp.linalg.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+        else: 
+            x, info = sp.linalg.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+
+        return x
 
     # ===========================
     # POST-PROCESSING 
