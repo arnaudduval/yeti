@@ -199,7 +199,7 @@ class thermoMechaModel():
             self._geometry_type = None
 
         # Set number of samples
-        self._sample_size = 10
+        self._sample_size = 61
 
         # Set type of model
         self._isThermal = isThermal
@@ -722,25 +722,8 @@ class thermoMechaModel():
                                 SOL_vector[_+2*nb_ctrlpts_total]]
 
         return SOL_matrix
-    
-    def export_results(self, u_ctrlpts= None, filename= None): 
-        " Returns solution using geometry basis "
 
-        if self._geometry_type == None:
-            raise Warning('Try another method to export results')
-        
-        if self._isMechanical == True:
-            raise Warning('Not coded, try another method')
-
-        # For now, only consider scalar field as input !!!!!!!!!!!!!!!!!!!
-        if  u_ctrlpts == None:
-            UctrlptsExist = False
-        elif isinstance(u_ctrlpts, np.ndarray): 
-            UctrlptsExist = True
-            u_ctrlpts_new = u_ctrlpts[:, 0] 
-        else: 
-            raise Warning('Solution must be ndarray type')
-
+    def interpolate_results(self, u_ctrlpts= None):
         # =====================
         # Get Basis
         # =====================
@@ -756,7 +739,8 @@ class thermoMechaModel():
         # Set basis and indexes
         DB, ind = [], []
         for _ in range(self._dim):  
-            B0, B1, indi, indj = eval_basis_fortran(self._degree[_][0], self._nb_el[_][0], knots)
+            B0, B1, indi, indj = eval_basis_fortran(self._degree[_][0], 
+                                                self._nb_el[_][0], knots)
             DB.append([B0, B1])
             ind.append([indi, indj])
 
@@ -772,24 +756,15 @@ class thermoMechaModel():
             data.append(DB[dim][0])
             data.append(DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
-        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indexes, *data]
+        inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
 
         if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)       
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
 
-        # Find statistics
-        mean_detJ = statistics.mean(detJ)
-        detJ /= mean_detJ
-        variance_detJ = statistics.variance(detJ)
-        print("The variance of jacobien normalized is: %.5f" %(variance_detJ))
-
-        # Find eigen values
-        
-
         # ==============================
         # Get interpolation
         # ==============================
-        if UctrlptsExist:
+        if u_ctrlpts is not None:
             shape_matrices, indexes, data = [], [], []
             for dim in range(self._dim):
                 shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -797,10 +772,53 @@ class thermoMechaModel():
                 indexes.append(ind[dim][0])
                 indexes.append(ind[dim][1])
                 data.append(DB[dim][0])
-            inputs = [self._nb_ctrlpts_total, *shape_matrices, u_ctrlpts_new, *indexes, *data]
+            inputs = [*shape_matrices, u_ctrlpts, *indexes, *data]
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
+
+            return jacobien_PS, qp_PS, detJ, u_interp
+        else: 
+            return jacobien_PS, qp_PS, detJ
+    
+    def export_results(self, u_ctrlpts= None, filename= None): 
+        " Returns solution using geometry basis "
+
+        if self._geometry_type == None:
+            raise Warning('Try another method to export results')
+        
+        if self._isMechanical == True:
+            raise Warning('Not coded, try another method')
+
+        # For now, only consider scalar field as input !!!!!!!!!!!!!!!!!!!
+        if  u_ctrlpts is None:
+            UctrlptsExist = False
+        elif isinstance(u_ctrlpts, np.ndarray): 
+            UctrlptsExist = True
+            try: u_ctrlpts_new = u_ctrlpts[:, 0] 
+            except: u_ctrlpts_new = u_ctrlpts
+        else: 
+            raise Warning('Solution must be ndarray type')
+
+        # Set shape
+        shape = [1, 1, 1]
+        for _ in range(self._dim):
+            shape[_] = self._sample_size
+        shape = tuple(shape)
+
+        # ==============================
+        # Get interpolation
+        # ==============================
+        if UctrlptsExist:
+            jacobien_PS, qp_PS, detJ, u_interp = self.interpolate_results(u_ctrlpts_new)
+        else :
+            jacobien_PS, qp_PS, detJ = self.interpolate_results(u_ctrlpts_new)
+
+        # Find statistics
+        mean_detJ = statistics.mean(detJ)
+        detJ /= mean_detJ
+        variance_detJ = statistics.variance(detJ)
+        print("The variance of jacobien normalized is: %.5f" %(variance_detJ))
 
         # ==============================
         # Export results
@@ -810,9 +828,6 @@ class thermoMechaModel():
         X3 = np.zeros(shape)
         U = np.zeros(shape)
         DET = np.zeros(shape)
-        D1 = np.zeros(shape)
-        D2 = np.zeros(shape)
-        D3 = np.zeros(shape)
 
         for k in range(shape[2]):
             for j in range(shape[1]):
@@ -824,9 +839,6 @@ class thermoMechaModel():
 
                     if UctrlptsExist: U[i,j,k] = u_interp[pos]
                     DET[i,j,k] = detJ[pos]
-                    D1[i,j,k] = jacobien_PS[0, 0, pos]
-                    D2[i,j,k] = jacobien_PS[1, 1, pos]
-                    if self._dim == 3: D3[i,j,k] = jacobien_PS[2, pos, pos]
 
         # Export geometry
         if filename == None: 
@@ -834,12 +846,8 @@ class thermoMechaModel():
             except: name = "Results_VTK"
         else: name = filename 
         gridToVTK(name, X1, X2, X3, pointData= {"Temp" : U, 
-                                                "detJ" : DET, 
-                                                "D1": D1, 
-                                                "D2": D2, 
-                                                "D3": D3})
-
-        return 
+                                                "detJ" : DET,})
+        return
 
     def plot_pojection_jacobien(self, normalvector=0):
 

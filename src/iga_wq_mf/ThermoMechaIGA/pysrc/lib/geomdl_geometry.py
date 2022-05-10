@@ -538,7 +538,7 @@ class geomdlModel():
                 for x_arc_1, y_arc_1 in ctrlpts_arc_1:
                     # ctrlpts_x[i] = radius_1
                     x = ctrlpts_x[i] * x_arc_1
-                    y = (ctrlpts_x[i] * y_arc_1 + exc)*y_arc_2
+                    y = (ctrlpts_x[i] * y_arc_1 + exc)*y_arc_2 - exc
                     z = (ctrlpts_x[i] * y_arc_1 + exc)*z_arc_2
                     ctrlpts.append([x, y, z])
 

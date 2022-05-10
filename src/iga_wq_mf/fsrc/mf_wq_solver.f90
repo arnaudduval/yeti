@@ -549,6 +549,120 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
 end subroutine mf_wq_get_ku_3d
 
+subroutine mf_wq_get_ku_3d_coo( nb_rows_total, nb_cols_total, cond_coefs, &
+                                nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                                size_data_u, size_data_v, size_data_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B0_u, data_B1_u, data_W00_u, data_W01_u, data_W10_u, data_W11_u, &
+                                data_B0_v, data_B1_v, data_W00_v, data_W01_v, data_W10_v, data_W11_v, &
+                                data_B0_w, data_B1_w, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
+                                array_input, array_output)
+    
+    !! Computes K.u in 3D case
+    !! Indexes must be in COO format
+    implicit none 
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nb_rows_total, nb_cols_total
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    double precision, intent(in) :: cond_coefs
+    dimension :: cond_coefs(3, 3, nb_cols_total)
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(size_data_u), indj_u(size_data_u), &
+                    indi_v(size_data_v), indj_v(size_data_v), &
+                    indi_w(size_data_w), indj_w(size_data_w)
+    double precision, intent(in) :: data_B0_u, data_B1_u, &
+                                    data_W00_u, data_W01_u, data_W10_u, data_W11_u, &
+                                    data_B0_v, data_B1_v, &
+                                    data_W00_v, data_W01_v, data_W10_v, data_W11_v, &
+                                    data_B0_w, data_B1_w, &
+                                    data_W00_w, data_W01_w, data_W10_w, data_W11_w
+    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
+                    data_W00_u(size_data_u), data_W01_u(size_data_u), &
+                    data_W10_u(size_data_u), data_W11_u(size_data_u), &
+                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
+                    data_W00_v(size_data_v), data_W01_v(size_data_v), &
+                    data_W10_v(size_data_v), data_W11_v(size_data_v), &
+                    data_B0_w(size_data_w), data_B1_w(size_data_w), &
+                    data_W00_w(size_data_w), data_W01_w(size_data_w), &
+                    data_W10_w(size_data_w), data_W11_w(size_data_w)
+    double precision, intent(in) :: array_input
+    dimension :: array_input(nb_rows_total)
+
+    double precision, intent(out) :: array_output
+    dimension :: array_output(nb_rows_total)
+
+    ! Local data
+    ! ------------------
+    ! Csr format
+    integer :: indi_BT_u_csr, indi_BT_v_csr, indi_BT_w_csr
+    dimension ::    indi_BT_u_csr(nb_cols_u+1), &
+                    indi_BT_v_csr(nb_cols_v+1), &
+                    indi_BT_w_csr(nb_cols_w+1)
+    integer :: indj_BT_u_csr, indj_BT_v_csr, indj_BT_w_csr
+    dimension ::    indj_BT_u_csr(size_data_u), &
+                    indj_BT_v_csr(size_data_v), &
+                    indj_BT_w_csr(size_data_w)
+    double precision :: data_B0T_u_csr, data_B0T_v_csr, data_B0T_w_csr
+    dimension ::    data_B0T_u_csr(size_data_u), &
+                    data_B0T_v_csr(size_data_v), &
+                    data_B0T_w_csr(size_data_w)
+    double precision :: data_B1T_u_csr, data_B1T_v_csr, data_B1T_w_csr
+    dimension ::    data_B1T_u_csr(size_data_u), &
+                    data_B1T_v_csr(size_data_v), &
+                    data_B1T_w_csr(size_data_w)
+
+    integer :: indi_W_u_csr, indi_W_v_csr, indi_W_w_csr
+    dimension ::    indi_W_u_csr(nb_rows_u+1), &
+                    indi_W_v_csr(nb_rows_v+1), &
+                    indi_W_w_csr(nb_rows_w+1)
+    integer, allocatable, dimension(:) :: indj_W_u_csr, indj_W_v_csr, indj_W_w_csr
+    double precision, allocatable, dimension(:) :: data_W_u_csr, data_W_v_csr, data_W_w_csr
+
+    ! ====================================================
+    ! Initialize
+    call coo2csr(nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u_csr, &
+                    indj_BT_u_csr, indi_BT_u_csr)
+    call coo2csr(nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v_csr, &
+                    indj_BT_v_csr, indi_BT_v_csr)
+    call coo2csr(nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w_csr, &
+                    indj_BT_w_csr, indi_BT_w_csr)
+    call coo2csr(nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u_csr, &
+                    indj_BT_u_csr, indi_BT_u_csr)
+    call coo2csr(nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v_csr, &
+                    indj_BT_v_csr, indi_BT_v_csr)
+    call coo2csr(nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w_csr, &
+                    indj_BT_w_csr, indi_BT_w_csr)
+
+    allocate(data_W_u_csr(size_data_u), &
+            data_W_v_csr(size_data_v), &
+            data_W_w_csr(size_data_w))
+    allocate(indj_W_u_csr(size_data_u), &
+            indj_W_v_csr(size_data_v), &
+            indj_W_w_csr(size_data_w))
+    call coo2csr(nb_rows_u, size_data_u, data_W00_u, indi_u, indj_u, data_W_u_csr, &
+                    indj_W_u_csr, indi_W_u_csr)
+    call coo2csr(nb_rows_v, size_data_v, data_W00_v, indi_v, indj_v, data_W_v_csr, &
+                    indj_W_v_csr, indi_W_v_csr)
+    call coo2csr(nb_rows_w, size_data_w, data_W00_w, indi_w, indj_w, data_W_w_csr, &
+                    indj_W_w_csr, indi_W_w_csr)
+    deallocate(data_W_u_csr, data_W_v_csr, data_W_w_csr)
+    deallocate(indj_W_u_csr, indj_W_v_csr, indj_W_w_csr)
+    ! =======================================================
+    call mf_wq_get_ku_3d(nb_cols_total, cond_coefs, &
+                        nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                        size_data_u, size_data_v, size_data_w, &
+                        indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
+                        data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
+                        indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w,&
+                        data_W00_u, data_W01_u, data_W10_u, data_W11_u, &
+                        data_W00_v, data_W01_v, data_W10_v, data_W11_v, &
+                        data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
+                        array_input, array_output)
+    
+end subroutine mf_wq_get_ku_3d_coo
+
 ! ----------------------------------------
 ! Conjugate gradient
 ! ----------------------------------------

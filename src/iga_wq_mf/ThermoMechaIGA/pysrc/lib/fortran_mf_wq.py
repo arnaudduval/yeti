@@ -5,6 +5,7 @@
 """
 
 # Python libraries
+import scipy 
 import numpy as np
 import time
 
@@ -213,6 +214,34 @@ class fortran_mf_wq(thermoMechaModel):
 
         inputs = [self._source_coef, *shape_matrices, *indexes, *data]
         
+        return inputs
+
+    def get_input4MatrixFree_Ku(self, u):
+        " Returns necessary inputs to compute K u "
+
+        # Set shape of matrices B0 and B1
+        shape_matrices = []
+
+        # Set indexes 
+        indexes = []
+
+        # Set data 
+        data = []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DB[dim][0])
+            data.append(self._DB[dim][1])
+            data.append(self._DW[dim][0][0])
+            data.append(self._DW[dim][0][1])
+            data.append(self._DW[dim][1][0])
+            data.append(self._DW[dim][1][1])
+
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+
         return inputs
 
     def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
@@ -482,7 +511,24 @@ class fortran_mf_wq(thermoMechaModel):
         
         return K_coo
 
-    def eval_source_vector(self, fun): 
+    def eval_Ku(self, u): 
+        " Computes K u "
+
+        # Get inputs
+        inputs = self.get_input4MatrixFree_Ku(u)
+
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+
+        if self._dim == 2:
+            raise Warning('Until now not done')
+
+        if self._dim == 3:
+            result = solver.mf_wq_get_ku_3d_coo(*inputs)
+
+        return result
+
+    def eval_source_vector(self, fun, dod=None, Td=None): 
         " Computes source vector "
 
         # Get source coefficients
@@ -501,6 +547,25 @@ class fortran_mf_wq(thermoMechaModel):
             
         stop = time.time()
         print('Source vector assembled in : %.5f s' %(stop-start))
+
+        # Evaluate K T*, where T* = [0, Td]
+        if (dod is not None) and (Td is not None):
+            if len(Td) != len(dod):
+                raise Warning("Different dimensions")
+
+            # Initialize Ttilde
+            Ttilde = np.zeros(self._nb_ctrlpts_total)
+            Ttilde[dod] = Td
+            
+            # Eval K@Ttilde
+            if self._dim == 2:
+                raise Warning("Try another method")
+                
+            if self._dim == 3:
+                KTtilde = self.eval_Ku(Ttilde)
+
+            # Recalculate F
+            F -= KTtilde 
 
         return F
 
@@ -626,4 +691,65 @@ class fortran_mf_wq(thermoMechaModel):
                 sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs, method, self._Jqp, directsol)
 
         return sol, residue, error
+
+    def interpolate_temperature_cp(self, fun, dirichlet0= None):
+        
+        if dirichlet0 == None:
+            dirichlet0 = self._thermalblockedboundaries
+            print('Dirichlet not defined. Default: all blocked')
+
+        # Test dirichlet0 <= thermal blocked boundaries
+        dirichlet1 = self._thermalblockedboundaries - dirichlet0
+        if any(bound<0 for bound in dirichlet1.flatten()): 
+            raise Warning("It is not possible. Try again.")
+
+        # Block Dirichlet boundaries equal to 0
+        dof_dir0, dod_dir0 = self.block_boundaries(blockedboundaries= dirichlet0, typeEl='T')
+
+        # Get temperature coeficients 
+        coef = [fun(self._dim, self._qp_PS[:, :, _][0]) * self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+
+        # Define inputs for C and F
+        shape_matrices, indexes, data_C, data_F, size_I = [], [], [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data_C.append(self._DB[dim][0])
+            data_C.append(self._DW[dim][0][0])
+            data_F.append(self._DW[dim][0][0])
+            size_I.append(self._nnz_I_dim[dim])
+
+        inputs_C = [np.ones(self._nb_qp_wq_total), *shape_matrices, *indexes, *data_C, *size_I]
+        inputs_F = [coef, *shape_matrices, *indexes, *data_F]
+
+        # Calculate capacity matrix and temperature vector
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+        if self._dim == 2:
+            val_C, indi_C, indj_C = assembly.wq_get_capacity_2d(*inputs_C)
+            F = assembly.wq_get_source_2d(*inputs_F)
+        if self._dim == 3:
+            val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs_C)
+            F = assembly.wq_get_source_3d(*inputs_F)
+        C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
+                                            val_C, indi_C, indj_C)
+
+        # Assemble capacity matrix reduced
+        C2solve = C.tocsc()[dof_dir0, :][:, dof_dir0]
+
+        # Assemble source vector F reduced
+        F2solve = F[dof_dir0]
+
+        # Solve system
+        Tdir0 = scipy.linalg.solve(C2solve.todense(), F2solve)
+
+        T = np.zeros(self._nb_ctrlpts_total)
+        T[dof_dir0] = Tdir0
+
+        Tdir = T[self._thermal_dod]
+
+        return Tdir, T
         

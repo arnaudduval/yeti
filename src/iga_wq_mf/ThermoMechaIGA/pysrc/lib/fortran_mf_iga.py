@@ -6,6 +6,7 @@
 
 # Python libraries
 import numpy as np
+import scipy
 import time
 
 # My libraries
@@ -354,3 +355,64 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
+    def interpolate_MSE_CP(self, fun, dirichlet0= None):
+        
+        # if dirichlet0 == None:
+        #     dirichlet0 = self._thermalblockedboundaries
+        #     print('Dirichlet not defined. Default: all blocked')
+
+        # # Test dirichlet0 <= thermal blocked boundaries
+        # dirichlet1 = self._thermalblockedboundaries - dirichlet0
+        # if any(bound<0 for bound in dirichlet1.flatten()): 
+        #     raise Warning("It is not possible. Try again.")
+
+        # # Block Dirichlet boundaries equal to 0
+        # dof_dir0, _ = self.block_boundaries(blockedboundaries= dirichlet0, typeEl='T')
+
+        # Get temperature coeficients 
+        coef_F = [fun(self._dim, self._qp_PS[:, :, _][0]) * self._detJ[_] for _ in range(self._nb_qp_cgg_total)]
+
+        # Define inputs for C and F
+        shape_matrices, indexes, data, size_I = [], [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DB[dim][0])
+            data.append(self._DW[dim])
+            size_I.append(self._nnz_I_dim[dim])
+
+        inputs_C = [self._detJ, *shape_matrices, *indexes, *data, *size_I]
+        inputs_F = [coef_F, *shape_matrices, *indexes, *data]
+
+        # Calculate capacity matrix and temperature vector
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+        if self._dim == 2:
+            raise Warning('Until now not done')
+        if self._dim == 3:
+            val_C, indi_C, indj_C = assembly.iga_get_capacity_3d(*inputs_C)
+            F = assembly.iga_get_source_3d(*inputs_F)
+        C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
+                                            val_C, indi_C, indj_C).tocsc()
+
+        # # Assemble capacity matrix reduced
+        # C2solve = C[dof_dir0, :][:, dof_dir0]
+
+        # # Assemble source vector F reduced
+        # F2solve = F[dof_dir0]
+
+        # # Solve system
+        # Tdir0 = scipy.linalg.solve(C2solve.todense(), F2solve)
+
+        # T = np.zeros(self._nb_ctrlpts_total)
+        # T[dof_dir0] = Tdir0
+
+        # Tdir = T[self._thermal_dod]
+
+        # =============================
+        T = scipy.linalg.solve(C.todense(), F)
+        Tdir = T[self._thermal_dod]
+
+        return T, Tdir
