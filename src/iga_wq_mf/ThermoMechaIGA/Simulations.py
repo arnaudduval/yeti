@@ -3,12 +3,10 @@
 # Author : Joaquin CORNEJO
 
 # Python libraries
-from datetime import datetime
-import scipy
-from scipy import sparse as sp
-import numpy as np
 import os, sys, tracemalloc
+import scipy
 import time
+from datetime import datetime
 
 # My libraries
 from pysrc.lib.create_geomdl import create_geometry
@@ -162,8 +160,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 # Constants
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 for CUTS in range(3, 5):
-    for IS_IGA_GALERKIN in [False]:
-        for GEOMETRY_CASE in range(3):
+    for IS_IGA_GALERKIN in [True]:
+        for GEOMETRY_CASE in range(3, 4):
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [False]

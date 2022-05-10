@@ -365,8 +365,6 @@ class fortran_mf_iga(thermoMechaModel):
 
             # Recalculate F
             F -= KTtilde 
-        else: 
-            raise Warning('indj and Td must be defined')
 
         return F[indi]
 

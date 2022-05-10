@@ -463,8 +463,6 @@ class fortran_mf_wq(thermoMechaModel):
 
             # Recalculate F
             F -= KTtilde 
-        else: 
-            raise Warning('indj and Td must be defined')
 
         return F[indi]
 
@@ -570,7 +568,7 @@ class fortran_mf_wq(thermoMechaModel):
     def MSE_ControlPoints(self, fun):
         
         # Get temperature coeficients 
-        coef = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+        coef_F = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
         # Define inputs for C and F
         shape_matrices, indexes, data_C, data_F, size_I = [], [], [], [], []
@@ -585,8 +583,8 @@ class fortran_mf_wq(thermoMechaModel):
             data_F.append(self._DW[dim][0][0])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs_C = [np.ones(self._nb_qp_wq_total), *shape_matrices, *indexes, *data_C, *size_I]
-        inputs_F = [coef, *shape_matrices, *indexes, *data_F]
+        inputs_C = [self._detJ, *shape_matrices, *indexes, *data_C, *size_I]
+        inputs_F = [coef_F, *shape_matrices, *indexes, *data_F]
 
         # Calculate capacity matrix and temperature vector
         if self._dim < 2 and self._dim > 3:
@@ -598,7 +596,7 @@ class fortran_mf_wq(thermoMechaModel):
             val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs_C)
             F = assembly.wq_get_source_3d(*inputs_F)
         C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_C, indi_C, indj_C)
+                                            val_C, indi_C, indj_C).tocsc()
         # Solve linear system
         T = self.conjugate_gradient_scipy(C, F, isCG=False)
         Tdir = T[self._thermal_dod]
