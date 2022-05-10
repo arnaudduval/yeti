@@ -461,8 +461,13 @@ class fortran_mf_wq(thermoMechaModel):
         bodyforce = super().eval_BodyForce_coefficient(fun, self._dim, self._qp_PS, self._detJ)
         return bodyforce
 
-    def eval_capacity_matrix(self): 
+    def eval_capacity_matrix(self, indi=None, indj=None): 
         " Computes capacity matrix "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+        if indj is None:
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
         
         # Get inputs
         inputs = self.get_input4Assembly_capacity()
@@ -479,15 +484,20 @@ class fortran_mf_wq(thermoMechaModel):
                 
         # Convert results in coo sparse matrix
         C_coo = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_C, indi_C, indj_C)
+                                            val_C, indi_C, indj_C).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
         
         return  C_coo
 
-    def eval_conductivity_matrix(self): 
+    def eval_conductivity_matrix(self, indi=None, indj=None): 
         " Computes conductivity matrix "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+        if indj is None:
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get inputs
         inputs = self.get_input4Assembly_conductivity()
@@ -504,7 +514,7 @@ class fortran_mf_wq(thermoMechaModel):
                 
         # Convert results in coo sparse matrix
         K_coo = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_K, indi_K, indj_K)
+                                            val_K, indi_K, indj_K).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Conductivity matrix assembled in : %5f s' %(stop-start))
@@ -528,8 +538,11 @@ class fortran_mf_wq(thermoMechaModel):
 
         return result
 
-    def eval_source_vector(self, fun, dod=None, Td=None): 
-        " Computes source vector "
+    def eval_source_vector(self, fun, indi= None, indj=None, Td=None): 
+        " Computes source vector Fn - Knd Td "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get source coefficients
         self._source_coef = self.eval_source_coefficient(fun)
@@ -549,13 +562,13 @@ class fortran_mf_wq(thermoMechaModel):
         print('Source vector assembled in : %.5f s' %(stop-start))
 
         # Evaluate K T*, where T* = [0, Td]
-        if (dod is not None) and (Td is not None):
-            if len(Td) != len(dod):
+        if (indj is not None) and (Td is not None):
+            if len(Td) != len(indj):
                 raise Warning("Different dimensions")
 
             # Initialize Ttilde
             Ttilde = np.zeros(self._nb_ctrlpts_total)
-            Ttilde[dod] = Td
+            Ttilde[indj] = Td
             
             # Eval K@Ttilde
             if self._dim == 2:
@@ -567,7 +580,7 @@ class fortran_mf_wq(thermoMechaModel):
             # Recalculate F
             F -= KTtilde 
 
-        return F
+        return F[indi]
 
     def eval_stiffness_matrix(self):
         " Computes stiffness matrix "
@@ -724,7 +737,6 @@ class fortran_mf_wq(thermoMechaModel):
             F = assembly.wq_get_source_3d(*inputs_F)
         C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
                                             val_C, indi_C, indj_C)
-
         # Solve linear system
         T = self.conjugate_gradient_scipy(C, F, isCG=False)
         Tdir = T[self._thermal_dod]

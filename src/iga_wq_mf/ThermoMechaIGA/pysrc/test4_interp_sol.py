@@ -56,13 +56,10 @@ dof = Model1._thermal_dof
 dod = Model1._thermal_dod
 
 # Assemble conductivity matrix K
-K2nn = Model1.eval_conductivity_matrix().tocsc()[dof, :][:, dof]
-K2nd = Model1.eval_conductivity_matrix().tocsc()[dof, :][:, dod]
+K2nn = Model1.eval_conductivity_matrix(dof, dof)
 
 # Assemble source vector F
-F2n_v1 = np.asarray(Model1.eval_source_vector(powerdensity))[dof] - K2nd @ Td
-F2n = F2n_v2 = np.asarray(Model1.eval_source_vector(powerdensity, dod=dod, Td=Td))[dof]
-error_F = np.linalg.norm(F2n_v1-F2n_v2, np.inf)/np.linalg.norm(F2n_v2, np.inf)
+F2n = F2n_v2 = np.asarray(Model1.eval_source_vector(powerdensity, dof, indj=dod, Td=Td))
 
 # Solve system
 Tn = scipy.linalg.solve(K2nn.todense(), F2n)
