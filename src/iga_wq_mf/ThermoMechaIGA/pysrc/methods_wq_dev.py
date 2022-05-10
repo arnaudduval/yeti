@@ -11,214 +11,19 @@ from geomdl import helpers
 import matplotlib.pyplot as plt
 
 # My libraries
-from lib.methods_iga import iga_find_positions_weights
+from lib.base_functions import (eval_basis_python, 
+                                create_knotvector,
+                                wq_find_positions,
+                                wq_get_shape_B,
+                                wq_solve_equation_system,
+                                iga_find_positions_weights
+)
 
 # Choose folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder):
     os.mkdir(folder)
-
-def create_knotvector(p, nbel, multiplicity= 1):
-    " Creates an uniform and open knot-vector "
-
-    # Set knot-vector to be inserted
-    knotvector_Unique = np.linspace(0., 1., nbel + 1)[1 : -1]
-
-    # Create knot-vector 
-    knotvector = []
-    for _ in range(p+1): 
-        knotvector.append(0.0)
-
-    for knot in knotvector_Unique: 
-        for _ in range(multiplicity): 
-            knotvector.append(knot)
-
-    for _ in range(p+1): 
-        knotvector.append(1.0)
-    
-    return knotvector
-
-def eval_basis(degree, knotvector, knots, multiplicity= 1): 
-    " Evaluates B-spline functions at given knots "
-
-    # Find number of points x
-    nbx = len(knots)
-
-    # Find number of elements 
-    nbel = len(np.unique(knotvector)) - 1
-
-    # Find number of functions 
-    nbfunct = degree + multiplicity*(nbel - 1) + 1
-
-    # Set table of functions per element 
-    table_functions_element = np.zeros((nbel, degree + 2), dtype= int); 
-    table_functions_element[0, 0] = degree; table_functions_element[0, 1:] = np.arange(degree + 1) 
-
-    for _ in range(1, nbel): 
-        # Set values of the table
-        table_functions_element[_, :2] = table_functions_element[_-1, :2] + multiplicity
-        table_functions_element[_, 2:] = table_functions_element[_, 1] + np.arange(1, degree + 1) 
-
-    # Evaluate B0 and B1
-    B0 = sp.lil_matrix((nbfunct, nbx))
-    B1 = sp.lil_matrix((nbfunct, nbx))
-
-    for _ in range(len(knots)):
-        # Get knot
-        knot = knots[_]    
-    
-        # Find knot-span
-        knot_span = helpers.find_span_linear(degree, knotvector, nbfunct, knot)
-        
-        # Find element
-        element = np.where(table_functions_element[:, 0] == knot_span)[0].tolist()
-        
-        # Find functions at the element
-        functions_element = table_functions_element[element, 1:][0]
-
-        # Evaluate B0 and B1 at the knot
-        B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
-
-        # Set procedure if knot is in the knot-vector
-        if knot in np.unique(knotvector)[1:-1]:             
-            # Erase zeros
-            B0t = B0t[:-multiplicity] 
-            B1t = B1t[:-multiplicity] 
-
-            # Erase zeros functions
-            functions_element = functions_element[:-multiplicity]
-
-        # Replace values
-        B0[np.ix_(functions_element, [_])] = np.asarray(B0t).reshape((-1,1))
-        B1[np.ix_(functions_element, [_])] = np.asarray(B1t).reshape((-1,1))
-
-    return B0, B1
-
-def wq_get_shape_B(degree, nbel, r, multiplicity= 1, maxrule= 1): 
-    " Return the shape of basis in WQ approach "
-
-    # Set number of functions 
-    nbfunct = degree + multiplicity*(nbel - 1) + 1
-
-    # Set number of quadrature points WQ:
-    nbx = 2*(degree + r) + nbel*(maxrule + 1) - 2*maxrule - 3
-
-    # Set table of positions of quadrature points 
-    tableOfPointsOnSpan = np.zeros((nbel, 2), dtype= int)
-    tableOfPointsOnSpan[0, 0] = 0; tableOfPointsOnSpan[0, 1] = degree + r -1 
-    tableOfPointsOnSpan[-1, 0] = nbx - (degree + r) ; tableOfPointsOnSpan[-1,1] = nbx - 1
-     
-    for i in range(1, nbel - 1):
-        tableOfPointsOnSpan[i, 0] = tableOfPointsOnSpan[i - 1, 1]
-        tableOfPointsOnSpan[i, 1] = tableOfPointsOnSpan[i, 0] + 1 + maxrule
-    
-    # Set table of functions on every element 
-    tableOfFunctionsOnElement = np.zeros((nbel, degree + 1), dtype= int); 
-    tableOfFunctionsOnElement[0, :] = np.arange(degree + 1) 
-
-    for _ in range(1, nbel): 
-        # Set values of the table
-        tableOfFunctionsOnElement[_, 0] = tableOfFunctionsOnElement[_-1, 0] + multiplicity
-        tableOfFunctionsOnElement[_, 1:] = tableOfFunctionsOnElement[_, 0] + np.arange(1, degree + 1) 
-
-    # Set table of knot-span for every function
-    tableOfSpansForFunction = []
-    for i in range(nbfunct):
-        indi, _ = np.asarray(tableOfFunctionsOnElement == i).nonzero()
-        indi = np.sort(indi)
-        tableOfSpansForFunction.append(indi)
-
-    # Find B
-    indi_B0, indj_B0 = [], []
-    indi_B1, indj_B1 = [], []
-    for i in range(nbfunct) : 
-        spanOfFunction = tableOfSpansForFunction[i]
-        spanLeft = np.min(spanOfFunction)
-        spanRight = np.max(spanOfFunction)
-
-        support = np.arange(tableOfPointsOnSpan[spanLeft,0], \
-                            tableOfPointsOnSpan[spanRight,1] + 1, dtype=int)
-        
-        support_B0 = support
-        if i == 0: 
-            support_B0 = np.delete(support, [-1])
-        elif i == nbfunct - 1:
-            support_B0 = np.delete(support, [0])
-        else : 
-            support_B0 = np.delete(support, [0 , -1])
-        
-        indi_B0.extend(i*np.ones(len(support_B0), dtype= int))
-        indj_B0.extend(support_B0)
-
-        support_B1 = support
-        if i == 0 or i == 1: 
-            support_B1 = np.delete(support, [-1])
-        elif i == nbfunct - 1 or i == nbfunct - 2:
-            support_B1 = np.delete(support, [0])
-        else : 
-            support_B1 = np.delete(support, [0 , -1])
-        
-        indi_B1.extend(i*np.ones(len(support_B1), dtype= int))
-        indj_B1.extend(support_B1)
-    
-    # Set shape of B0 and B1
-    data_B0 = np.ones(len(indi_B0))
-    B0shape = sp.csr_matrix((data_B0, (indi_B0, indj_B0)), shape=(nbfunct, nbx))
-    
-    data_B1 = np.ones(len(indi_B1))
-    B1shape = sp.csr_matrix((data_B1, (indi_B1, indj_B1)), shape=(nbfunct, nbx))
-    
-    return B0shape, B1shape
-
-def wq_solve_equation_system(B, I):
-    " Return solution of matrix system B w = I "
-
-    # Convert type of B to array
-    B = B.toarray()
-    I = I.toarray()
-
-    # Solve system 
-    # It does not matter if B is under, well or over determined
-    sol1, _, _, _ = np.linalg.lstsq(B, I, rcond=None)
-
-    # Set solution
-    w = sol1.reshape((1, -1)).tolist()
-    
-    return w[0]
-
-def wq_find_positions(degree, knotvector, r, maxrule= 1):
-    " Return position of quadrature points in WQ approach "
-    
-    # Set knots
-    kvUnique = np.unique(knotvector)
-
-    # Set number of elements
-    nbel = len(kvUnique) - 1
-
-    # Initialize quadrature points positions
-    xwq = []
-    
-    # Find position of quadrature points
-    for i in range(nbel):
-        # Select quadrature points
-        if i == 0 or i == nbel - 1:
-            # Case: boundary knot-spans
-            xt = np.linspace(kvUnique[i], kvUnique[i+1], degree+r)[1:-1]
-        else:
-            # case: interior knot-spans
-            xt = np.linspace(kvUnique[i], kvUnique[i+1], 2 + maxrule)[1:-1]
-        
-        # Assemble vector
-        xwq = np.append(xwq, xt)
-    
-    #  Include knots of knot-vector
-    xwq = np.append(xwq, kvUnique)
-
-    # Sort vector
-    xwq = np.sort(xwq).tolist()
-
-    return xwq
 
 def wq_find_weights(degree, knotvector, r, maxrule= 1): 
 
@@ -231,7 +36,7 @@ def wq_find_weights(degree, knotvector, r, maxrule= 1):
     xcgg, wcgg = iga_find_positions_weights(degree, knotvector)
 
     # Find basis function values at Gauss points 
-    B0cgg_p0, B1cgg_p0 = eval_basis(degree, knotvector, xcgg)
+    B0cgg_p0, B1cgg_p0 = eval_basis_python(degree, knotvector, xcgg)
 
     # Find positions in WQ approach
     xwq = wq_find_positions(degree, knotvector, r, maxrule= maxrule)
@@ -243,10 +48,10 @@ def wq_find_weights(degree, knotvector, r, maxrule= 1):
     knotvector_p1 = create_knotvector(degree, nbel, multiplicity= 2)
 
     # Find basis function values at Gauss points
-    B0cgg_p1 = eval_basis(degree, knotvector_p1, xcgg, multiplicity= 2)[0]
+    B0cgg_p1 = eval_basis_python(degree, knotvector_p1, xcgg, multiplicity= 2)[0]
 
     # Find basis function values at WQ points
-    B0wq_p1 = eval_basis(degree, knotvector_p1, xwq, multiplicity= 2)[0]  
+    B0wq_p1 = eval_basis_python(degree, knotvector_p1, xwq, multiplicity= 2)[0]  
 
     # ------------------------------------
     # Integrals
@@ -316,14 +121,14 @@ def wq_find_basis_weights_opt(degree, knotvector, r, maxrule= 1):
     xwq = wq_find_positions(degree, knotvector, r, maxrule= maxrule)
 
     if nbel <= degree + 3 : 
-        B0, B1 = eval_basis(degree, knotvector, xwq)
+        B0, B1 = eval_basis_python(degree, knotvector, xwq)
         W0, W1 = wq_find_weights(degree, knotvector, r, maxrule= maxrule)
     else : 
         # Create model
         nbel_model = degree + 3
         knotvector_model = create_knotvector(degree, nbel_model)
         xwq_model = wq_find_positions(degree, knotvector_model, r, maxrule= maxrule)
-        B0_model, B1_model = eval_basis(degree, knotvector_model, xwq_model)
+        B0_model, B1_model = eval_basis_python(degree, knotvector_model, xwq_model)
         W0_model, W1_model = wq_find_weights(degree, knotvector_model, r, maxrule= maxrule)
         shape_B0_model, shape_B1_model = wq_get_shape_B(degree, nbel, r, maxrule= maxrule)
 

@@ -17,11 +17,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # My libraries
-# from lib.create_model import create_knotvector, eval_basis
-# from lib.methods_wq import wq_find_positions
-from lib.methods_iga import iga_find_positions_weights
-from methods_wq_dev import wq_find_positions, create_knotvector, eval_basis
-from lib.geomdl_geometry import geomdlModel
+from lib.base_functions import (create_knotvector, 
+                                wq_find_positions, 
+                                eval_basis_python, 
+                                iga_find_positions_weights
+)
+from lib.create_geomdl import geomdlModel
 
 # Choose folder
 full_path = os.path.realpath(__file__)
@@ -87,7 +88,7 @@ elif CASE == 1: # Univariate functions
     knots = np.linspace(0, 1, 181)
     knotvector = create_knotvector(degree, nbel, multiplicity=2)
     qp_wq = wq_find_positions(degree, knotvector, 2, maxrule=2)
-    B0, B1 = eval_basis(degree, knotvector, knots, multiplicity=2)
+    B0, B1 = eval_basis_python(degree, knotvector, knots, multiplicity=2)
     B0 = B0.toarray()
     B1 = B1.toarray()
 
@@ -111,7 +112,7 @@ elif CASE == 2: # Bivariate functions
     nbel = 1
     knots = np.linspace(0, 1, 92)
     knotvector = create_knotvector(degree, nbel)
-    B0, _ = eval_basis(degree, knotvector, knots)
+    B0, _ = eval_basis_python(degree, knotvector, knots)
     B0 = B0.toarray()
     B0_plot = B0[0, :]
 

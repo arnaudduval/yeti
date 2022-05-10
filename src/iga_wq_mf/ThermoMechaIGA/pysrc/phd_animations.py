@@ -10,8 +10,7 @@ from scipy import sparse
 import cv2
 
 # My libraries
-from lib.create_model import create_knotvector, eval_basis
-from lib.methods_wq import wq_find_positions
+from lib.base_functions import create_knotvector, eval_basis_python, wq_find_positions
 
 class BSplineCurve(Scene):
     def construct(self):
@@ -57,7 +56,7 @@ class BSplineCurve(Scene):
         nbel = 4
         knots = np.linspace(0, 1, N)
         knotvector = create_knotvector(degree, nbel)
-        B0, ifunt = eval_basis(degree, knotvector, knots)
+        B0, ifunt = eval_basis_python(degree, knotvector, knots)
         B0 = B0.toarray()
 
         # Define B-spline curve
@@ -134,12 +133,12 @@ class WQExplication(Scene):
         nbel = 4
         knots = np.linspace(0, 1, N)
         knotvector = create_knotvector(degree, nbel)
-        B0, _ = eval_basis(degree, knotvector, knots)
+        B0, _ = eval_basis_python(degree, knotvector, knots)
         B0 = B0.toarray()
 
         # Define quadrature points
         qp_wq = wq_find_positions(degree, knotvector, 2)
-        B0_wq, _ = eval_basis(degree, knotvector, qp_wq)
+        B0_wq, _ = eval_basis_python(degree, knotvector, qp_wq)
         B0_wq = B0_wq.toarray()
 
         # Scene 1
@@ -272,7 +271,7 @@ class BSplineSurface(Scene):
         nbel = 1
         knots = np.linspace(0, 1, N)
         knotvector = create_knotvector(degree, nbel)
-        B0, _ = eval_basis(degree, knotvector, knots)
+        B0, _ = eval_basis_python(degree, knotvector, knots)
         B0 = B0.toarray()
         B = sparse.kron(B0, B0)
 
