@@ -577,7 +577,7 @@ end subroutine mf_iga_get_ku_3d
 subroutine mf_iga_get_ku_3d_coo( nb_rows_total, nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                indi_B_u, indj_B_u, indi_B_v, indj_B_v, indi_B_w, indj_B_w, &
                                 data_B0_u, data_B1_u, W_u, &
                                 data_B0_v, data_B1_v, W_v, &
                                 data_B0_w, data_B1_w, W_w, &
@@ -593,10 +593,10 @@ subroutine mf_iga_get_ku_3d_coo( nb_rows_total, nb_cols_total, cond_coefs, &
     double precision, intent(in) :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_cols_total)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(size_data_u), indj_u(size_data_u), &
-                    indi_v(size_data_v), indj_v(size_data_v), &
-                    indi_w(size_data_w), indj_w(size_data_w)
+    integer, intent(in) :: indi_B_u, indj_B_u, indi_B_v, indj_B_v, indi_B_w, indj_B_w
+    dimension ::    indi_B_u(size_data_u), indj_B_u(size_data_u), &
+                    indi_B_v(size_data_v), indj_B_v(size_data_v), &
+                    indi_B_w(size_data_w), indj_B_w(size_data_w)
     double precision, intent(in) :: data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w
     dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
                     data_B0_v(size_data_v), data_B1_v(size_data_v), &
@@ -629,27 +629,51 @@ subroutine mf_iga_get_ku_3d_coo( nb_rows_total, nb_cols_total, cond_coefs, &
                     data_B1T_v_csr(size_data_v), &
                     data_B1T_w_csr(size_data_w)
 
+    integer :: indi_B_u_csr, indi_B_v_csr, indi_B_w_csr
+    dimension ::    indi_B_u_csr(nb_rows_u+1), &
+                    indi_B_v_csr(nb_rows_v+1), &
+                    indi_B_w_csr(nb_rows_w+1)
+    integer, allocatable, dimension(:) :: indj_B_u_csr, indj_B_v_csr, indj_B_w_csr
+    double precision, allocatable, dimension(:) :: data_B_u_csr, data_B_v_csr, data_B_w_csr
+
     ! ====================================================
-    ! Initialize
-    call coo2csr(nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u_csr, &
+    ! Initialize B transpose in CSR format
+    call coo2csr(nb_cols_u, size_data_u, data_B0_u, indj_B_u, indi_B_u, data_B0T_u_csr, &
                     indj_BT_u_csr, indi_BT_u_csr)
-    call coo2csr(nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v_csr, &
+    call coo2csr(nb_cols_v, size_data_v, data_B0_v, indj_B_v, indi_B_v, data_B0T_v_csr, &
                     indj_BT_v_csr, indi_BT_v_csr)
-    call coo2csr(nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w_csr, &
+    call coo2csr(nb_cols_w, size_data_w, data_B0_w, indj_B_w, indi_B_w, data_B0T_w_csr, &
                     indj_BT_w_csr, indi_BT_w_csr)
-    call coo2csr(nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u_csr, &
+    
+    call coo2csr(nb_cols_u, size_data_u, data_B1_u, indj_B_u, indi_B_u, data_B1T_u_csr, &
                     indj_BT_u_csr, indi_BT_u_csr)
-    call coo2csr(nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v_csr, &
+    call coo2csr(nb_cols_v, size_data_v, data_B1_v, indj_B_v, indi_B_v, data_B1T_v_csr, &
                     indj_BT_v_csr, indi_BT_v_csr)
-    call coo2csr(nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w_csr, &
+    call coo2csr(nb_cols_w, size_data_w, data_B1_w, indj_B_w, indi_B_w, data_B1T_w_csr, &
                     indj_BT_w_csr, indi_BT_w_csr)
-    ! =======================================================
+
+    allocate(data_B_u_csr(size_data_u), &
+            data_B_v_csr(size_data_v), &
+            data_B_w_csr(size_data_w))
+    allocate(indj_B_u_csr(size_data_u), &
+            indj_B_v_csr(size_data_v), &
+            indj_B_w_csr(size_data_w))
+    call coo2csr(nb_rows_u, size_data_u, data_B0_u, indi_B_u, indj_B_u, data_B_u_csr, &
+                    indj_B_u_csr, indi_B_u_csr)
+    call coo2csr(nb_rows_v, size_data_v, data_B0_v, indi_B_v, indj_B_v, data_B_v_csr, &
+                    indj_B_v_csr, indi_B_v_csr)
+    call coo2csr(nb_rows_w, size_data_w, data_B0_w, indi_B_w, indj_B_w, data_B_w_csr, &
+                    indj_B_w_csr, indi_B_w_csr)
+    deallocate(data_B_u_csr, data_B_v_csr, data_B_w_csr)
+    deallocate(indj_B_u_csr, indj_B_v_csr, indj_B_w_csr)
+    ! ====================================================
+
     call mf_iga_get_ku_3d(nb_cols_total, cond_coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                         indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
                         data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        indi_B_u_csr, indj_B_u, indi_B_v_csr, indj_B_v, indi_B_w_csr, indj_B_w, &
                         data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
                         array_input, array_output)
     

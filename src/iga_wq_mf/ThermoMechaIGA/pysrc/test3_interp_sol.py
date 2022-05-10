@@ -16,7 +16,7 @@ from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
 DEGREE = 4
-CUTS = 4
+CUTS = 3
 
 # Create geometry using geomdl
 modelGeo = create_geometry(DEGREE, CUTS, 3)
@@ -28,11 +28,12 @@ _, qp_PS_1, _, Temp_qp_PS_1 = Model1.interpolate_results(u_ctrlpts=Temp_CP)
 Treal_sample = np.asarray([temperature(3, qp_PS_1[:, :, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
 error_Temp = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)
 print(error_Temp)
+del Model1
 
 # ===========================================
 # WQ MF APPROACH
 # ===========================================
-Model1 = fortran_mf_wq(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
+Model1 = fortran_mf_iga(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
 
 # Block boundaries
 dof = Model1._thermal_dof
@@ -42,7 +43,7 @@ dod = Model1._thermal_dod
 K2nn = Model1.eval_conductivity_matrix(dof, dof)
 
 # Assemble source vector F
-F2n = np.asarray(Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td))
+F2n = Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td)
 
 # Solve system
 Tn = scipy.linalg.solve(K2nn.todense(), F2n)
