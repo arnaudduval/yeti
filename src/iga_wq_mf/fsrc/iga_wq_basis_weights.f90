@@ -4,7 +4,7 @@
 ! modules :: iga_wq_basis_weights(iga_get_basis_weights, wq_get_basis_weights, wq_initialize)
 ! ==========================
 
-subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, data_B0, data_B1, indi, indj)
+subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, data_B0, data_B1, indi, indj)
     !! Gets in COO format the basis at given knots 
 
     implicit none
@@ -13,7 +13,7 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, data_B0, data_B
     ! ---------------------
     !f2py intent(in) :: degree, nb_el, nb_knots
     !f2py depend(nb_knots) :: knots
-    integer :: degree, nb_el, nb_knots
+    integer :: degree, nb_el, nb_knots, multiplicity
     double precision :: knots
     dimension :: knots(nb_knots)
 
@@ -38,20 +38,20 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, data_B0, data_B
     dimension ::    functions_span(degree+1), &
                     B0temp(degree+1), B1temp(degree+1)
 
-    ! External data
-    ! -------------
-    ! Assign values
-    nb_ctrlpts = degree + nb_el
-    size_kv = 2*degree + nb_el + 1
+    ! Number of control points
+    nb_ctrlpts = degree + multiplicity*(nb_el - 1) + 1 
+
+    ! Number of knots of knot-vector
+    size_kv = degree + nb_ctrlpts + 1 
                 
     ! Get non-repeated knots
     call get_parametric_nodes(nb_el, nodes)
 
     ! Get knot-vector
-    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, 1)
+    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicity)
 
     ! Get table
-    call set_table_functions_spans(degree, nb_el, 1, table_functions_span)
+    call set_table_functions_spans(degree, nb_el, multiplicity, table_functions_span)
 
     ! Set table of spans for every knot
     call set_table_spans(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, & 

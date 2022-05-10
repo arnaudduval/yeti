@@ -7,13 +7,17 @@
 from geomdl import (
     fitting, 
     BSpline, 
-    operations 
+    operations,
 )
 import matplotlib.pyplot as plt
 import math, numpy as np
 import copy
 
+# My libraries
+from base_functions import create_knotvector
+
 class geomdlModel(): 
+
     def __init__(self, filename= None, **geometry: None): 
 
         if filename is None:
@@ -23,7 +27,7 @@ class geomdlModel():
             self._name = filename
 
         # Set number of samples
-        self._sample_size = 20
+        self._sample_size = 61
 
         if filename == 'quarter_annulus':
             # Set number of dimension 
@@ -82,7 +86,6 @@ class geomdlModel():
             self._dim = [3]
             
             # Create parallelepiped
-            # XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
             XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
             Height = geometry.get('Height', 2)
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
@@ -95,25 +98,6 @@ class geomdlModel():
         self.update_geometry()
 
         return
-
-    def create_knotvector(self, p, nbel):
-        " Creates an uniform and open knot-vector "
-
-        # Set knot-vector to be inserted
-        knotvector_Unique = np.linspace(0., 1., nbel + 1)[1 : -1]
-
-        # Create knot-vector 
-        knotvector = []
-        for _ in range(p+1): 
-            knotvector.append(0.0)
-
-        for knot in knotvector_Unique: 
-            knotvector.append(knot)
-
-        for _ in range(p+1): 
-            knotvector.append(1.0)
-        
-        return knotvector
 
     def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
         
@@ -147,9 +131,7 @@ class geomdlModel():
 
         # Set geometry object
         obj = self._geometry
-
-        if obj is None: 
-            raise Warning('Geometry unknown')
+        if obj is None: raise Warning('Geometry unknown')
 
         # Set degree
         self._degree = np.zeros((3, 1), dtype= int)
@@ -213,7 +195,7 @@ class geomdlModel():
         # -------------------------------------
         # Set knot-vector characteristics
         nb_ctrlpts_nu = degree_nu + 1 
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
 
         # Construct points to be interpolated
         theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
@@ -238,7 +220,7 @@ class geomdlModel():
         # Define degree in this direction
         nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
 
         # -------------------------------------------
         # Third part : construction of annulus sector
@@ -314,8 +296,8 @@ class geomdlModel():
                 ctrlpts.append([x, y, 0])
 
         # Get knot-vector
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
 
         # Creation of Quadralateral surface
         srf = BSpline.Surface() 
@@ -354,9 +336,9 @@ class geomdlModel():
         ctrlpts_w = np.linspace(0.0, Lz, nb_ctrlpts_eta)
 
         # Get knot-vector
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
-        knot_vector_eta = self.create_knotvector(degree_eta, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
+        knot_vector_eta = create_knotvector(degree_eta, 1)
 
         # Create control points of the volume
         control_points = []
@@ -396,7 +378,7 @@ class geomdlModel():
         # -------------------------------------
         # Set knot-vector characteristics
         nb_ctrlpts_nu = degree_nu + 1 
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
 
         # Construct points to be interpolated
         theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
@@ -421,12 +403,12 @@ class geomdlModel():
         # Define degree in xi direction
         nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
 
         # Define degree in eta direction
         nb_ctrlpts_eta = degree_eta + 1 
         ctrlpts_z = np.linspace(0, Height, nb_ctrlpts_eta)
-        knot_vector_eta = self.create_knotvector(degree_eta, 1)
+        knot_vector_eta = create_knotvector(degree_eta, 1)
 
         # -------------------------------------------
         # Third part : construction of annulus sector
@@ -475,7 +457,7 @@ class geomdlModel():
         # -------------------------------------
         # Set knot-vector characteristics
         nb_ctrlpts_nu = degree_nu + 1 
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
 
         # Construct points to be interpolated
         theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
@@ -500,14 +482,14 @@ class geomdlModel():
         # Define degree in xi direction
         nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
 
         # -------------------------------------
         # Third part : construction of the arc 2
         # -------------------------------------
         # Set knot-vector characteristics
         nb_ctrlpts_eta = degree_eta + 1 
-        knot_vector_eta = self.create_knotvector(degree_eta, 1)
+        knot_vector_eta = create_knotvector(degree_eta, 1)
 
         # Construct points to be interpolated
         theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_eta)
@@ -611,9 +593,9 @@ class geomdlModel():
                     ctrlpts.append([x, y, z])
 
         # Get knot-vector
-        knot_vector_xi = self.create_knotvector(degree_xi, 1)
-        knot_vector_nu = self.create_knotvector(degree_nu, 1)
-        knot_vector_eta = self.create_knotvector(degree_eta, 1)
+        knot_vector_xi = create_knotvector(degree_xi, 1)
+        knot_vector_nu = create_knotvector(degree_nu, 1)
+        knot_vector_eta = create_knotvector(degree_eta, 1)
 
         # Creation of Quadralateral surface
         vol = BSpline.Volume() 

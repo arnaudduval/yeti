@@ -12,7 +12,8 @@ from scipy import sparse as sp
 import time
 
 # My libraries
-from .create_model import thermoMechaModel, eval_basis, create_knotvector
+from .base_functions import create_knotvector, eval_basis_python
+from .create_model import thermoMechaModel
 from .methods_iga import iga_find_positions_weights
 
 # Yeti libraries
@@ -153,13 +154,13 @@ def wq_find_weights(degree, knotvector, r):
     xcgg, wcgg = iga_find_positions_weights(degree, knotvector)
 
     # Find basis function values at Gauss points 
-    B0cgg_p0, B1cgg_p0 = eval_basis(degree, knotvector, xcgg)
+    B0cgg_p0, B1cgg_p0 = eval_basis_python(degree, knotvector, xcgg)
 
     # Find positions in WQ approach
     xwq = wq_find_positions(degree, knotvector, r)
 
     # Find basis function values at WQ points
-    B0wq_p0 = eval_basis(degree, knotvector, xwq)[0]
+    B0wq_p0 = eval_basis_python(degree, knotvector, xwq)[0]
 
     # ------------------------------------
     # Degree p - 1
@@ -168,10 +169,10 @@ def wq_find_weights(degree, knotvector, r):
     knotvector_p1 = knotvector[1:-1]
 
     # Find basis function values at Gauss points
-    B0cgg_p1 = eval_basis(degree-1, knotvector_p1, xcgg)[0]
+    B0cgg_p1 = eval_basis_python(degree-1, knotvector_p1, xcgg)[0]
 
     # Find basis function values at WQ points
-    B0wq_p1 = eval_basis(degree-1, knotvector_p1, xwq)[0]  
+    B0wq_p1 = eval_basis_python(degree-1, knotvector_p1, xwq)[0]  
 
     # ------------------------------------
     # Integrals
@@ -282,14 +283,14 @@ def wq_find_basis_weights_opt(degree, knotvector, r):
     xwq = wq_find_positions(degree, knotvector, r)
 
     if nbel <= degree + 3 : 
-        B0, B1 = eval_basis(degree, knotvector, xwq)
+        B0, B1 = eval_basis_python(degree, knotvector, xwq)
         W00, W01, W10,  W11 = wq_find_weights(degree, knotvector, r)
     else : 
         # Create model
         nbel_model = degree + 3
         knotvector_model = create_knotvector(degree, nbel_model)
         xwq_model = wq_find_positions(degree, knotvector_model, r)
-        B0_model, B1_model = eval_basis(degree, knotvector_model, xwq_model)
+        B0_model, B1_model = eval_basis_python(degree, knotvector_model, xwq_model)
         W00_model, W01_model, W10_model,  W11_model = wq_find_weights(degree, knotvector_model, r)
         shape_B0_model, shape_B1_model = wq_get_shape_B(degree, nbel, r)
 

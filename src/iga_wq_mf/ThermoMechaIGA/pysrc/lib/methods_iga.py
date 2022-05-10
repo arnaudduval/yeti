@@ -11,7 +11,8 @@ from scipy import sparse as sp
 import time
 
 # My libraries
-from .create_model import thermoMechaModel, eval_basis
+from .base_functions import eval_basis_python
+from .create_model import thermoMechaModel
 
 def gaussTable(pgaus):
     " Computes Gauss weights and positions in isogeometric space for a known degree "
@@ -418,7 +419,8 @@ class IGA(thermoMechaModel):
         start = time.time()
         self._DB = []
         for dim in range(self._dim): 
-            B0, B1 = eval_basis(self._degree[dim][0], self._knotvector[0][dim], self._qp_cgg_dim[dim])
+            B0, B1 = eval_basis_python(self._degree[dim][0], self._knotvector[0][dim], 
+                                    self._qp_cgg_dim[dim])
             self._DB.append([B0, B1]) 
         stop = time.time()
         print('\tBasis in : %.5f s' %(stop-start))

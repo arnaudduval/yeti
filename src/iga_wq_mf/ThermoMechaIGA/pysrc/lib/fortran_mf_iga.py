@@ -6,7 +6,6 @@
 
 # Python libraries
 import numpy as np
-import scipy
 import time
 
 # My libraries

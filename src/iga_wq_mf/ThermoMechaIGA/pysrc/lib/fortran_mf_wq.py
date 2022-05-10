@@ -5,7 +5,6 @@
 """
 
 # Python libraries
-import scipy 
 import numpy as np
 import time
 
