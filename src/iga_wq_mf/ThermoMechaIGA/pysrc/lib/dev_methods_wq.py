@@ -1,5 +1,6 @@
 """
-.. New WQ methods 
+.. New WQ methods
+.. All functions were tested but not implemented in principal code
 .. by Joaquin Cornejo
 """
 
@@ -7,11 +8,10 @@
 import os
 import numpy as np
 from scipy import sparse as sp
-from geomdl import helpers
 import matplotlib.pyplot as plt
 
 # My libraries
-from lib.base_functions import (eval_basis_python, 
+from .base_functions import (eval_basis_python, 
                                 create_knotvector,
                                 wq_find_positions,
                                 wq_get_shape_B,
@@ -208,82 +208,3 @@ def wq_find_basis_weights_opt(degree, knotvector, r, maxrule= 1):
         W1 = sp.csr_matrix((data_W1, (function_B1, support_B1)), shape=(nbfunct, nbx))  
 
     return xwq, B0, B1, W0, W1
-
-# # ================
-# # CODE 
-# # ================
-# degree = 2
-# nbel = 4
-# knotvector = create_knotvector(degree, nbel)
-# _, B0p, B1p, W0p, W1p = wq_find_basis_weights_opt(degree, knotvector, 2, maxrule= 2)
-# print(W0p.toarray())
-
-# CUTS = np.arange(2, 5)
-# NBEL = [2**_ for _ in CUTS]
-
-# for varName in ['I00', 'I01', 'I10', 'I11']:
-#     plt.figure(1)
-#     ax = plt.gca()
-#     for degree in range(2, 6):
-#         norm_python = []; ddl =[]
-#         color = next(ax._get_lines.prop_cycler)['color']
-#         for nbel in NBEL: 
-#             # ========================================
-#             # PYTHON
-#             # ========================================
-#             knotvector = create_knotvector(degree, nbel)
-#             _, B0p, B1p, W0p, W1p = wq_find_basis_weights_opt(degree, knotvector, 2, maxrule= 2)
-
-#             print(B0p.toarray())
-
-#             # Calculate I
-#             I00p = W0p @ B0p.transpose()
-#             I01p = W0p @ B1p.transpose()
-#             I10p = W1p @ B0p.transpose()
-#             I11p = W1p @ B1p.transpose()
-
-#             # ========================================
-#             # REFERENCE
-#             # ========================================
-#             qp_cgg, Wcgg = iga_find_positions_weights(degree, knotvector)
-#             B0, B1 = eval_basis(degree, knotvector, qp_cgg)
-
-#             # Calculate I
-#             I00 = B0 @ np.diag(Wcgg) @ B0.transpose()
-#             I01 = B0 @ np.diag(Wcgg) @ B1.transpose()
-#             I10 = B1 @ np.diag(Wcgg) @ B0.transpose()
-#             I11 = B1 @ np.diag(Wcgg) @ B1.transpose()
-
-#             # To choose variables
-#             if varName == 'I00': var1 = I00; var2 = I00p
-#             elif varName == 'I01': var1 = I01; var2 = I01p
-#             elif varName == 'I10': var1 = I10; var2 = I10p
-#             elif varName == 'I11': var1 = I11; var2 = I11p
-
-#             # Compare results 
-#             error_python = var1 - var2
-#             norm_temp = np.linalg.norm(error_python, np.inf)/np.linalg.norm(var1, np.inf)
-#             norm_python.append(norm_temp)
-
-#         # Change type 
-#         norm_python = np.asarray(norm_python)
-#         ddl = np.asarray(NBEL)
-
-#         # Figure 
-#         plt.figure(1)
-#         plt.plot(ddl, norm_python*100, '--P', color=color)
-
-#     # Plot configurations
-#     plt.grid()
-#     plt.xscale("log")
-#     plt.xlabel("Number of elements $nb_{el}$", fontsize= 16)
-#     plt.yscale("log")
-#     plt.ylabel("Relative error (%)", fontsize= 16)
-#     plt.xlim([1, 100])
-#     plt.xticks(fontsize=16)
-#     plt.yticks(fontsize=16)
-#     plt.tight_layout()
-
-#     # Maybe we can save images in svg format (vectorized)
-#     plt.savefig(folder + 'Error_basisweights2_' + varName +'.png')
-#     plt.figure(1).clear()

@@ -8,7 +8,7 @@ import numpy as np
 from scipy import sparse as sp
 
 # My libraries
-from lib.geomdl_geometry import create_geometry
+from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.physics import (powden_cube, 
                         powden_prism,
