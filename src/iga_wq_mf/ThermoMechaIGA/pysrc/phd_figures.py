@@ -38,7 +38,7 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 extension = '.png'
 
 # Select case
-CASE = 2
+CASE = 4
 
 if CASE == 0: # B-spline curve
 
@@ -160,64 +160,78 @@ elif CASE == 2: # Bivariate functions
     plt.savefig(filename) 
 
 elif CASE == 3: # Quadrature points in IGA
-    
+
+    fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(12,4))
+
     # B-spline properties
     degree = 4
-    nbel = 32
-    knotvector = create_knotvector(degree, nbel)
-    xi_cgg, _ = iga_find_positions_weights(degree, knotvector)
-    nu_cgg, _ = iga_find_positions_weights(degree, knotvector)
-    Xg, Yg = np.meshgrid(xi_cgg, nu_cgg)
+    for ax, nbel in zip([ax1, ax2, ax3], [8, 16, 32]):
+        knotvector = create_knotvector(degree, nbel)
+        wq, _ = iga_find_positions_weights(degree, knotvector)
+        Xwq, Ywq = np.meshgrid(wq, wq)
+        ax.plot(Xwq, Ywq, 'ko', markersize=1)
 
-    plt.figure(1)
-    plt.plot(Xg, Yg, 'ko', markersize=1)
+        # Properties
+        ax.grid()
+        ax.set_xticks([0, 0.5, 1])
+        ax.set_yticks([0, 0.5, 1])
+        ax.axis('equal')
+        ax.set_ylabel(r'$\eta$', fontsize=14)
+        ax.set_xlabel(r'$\xi$', fontsize=14)
+        ax.tick_params(axis='x', labelsize=14)
+        ax.tick_params(axis='y', labelsize=14)
 
-    # Properties
-    plt.grid()
-    plt.xlim(0, 1); plt.ylim(0, 1)
-    plt.xticks([0, 0.5, 1]); plt.yticks([0, 0.5, 1])
-    plt.gca().set_aspect('equal', adjustable='box')
-    plt.gca().set_ylabel(r'$\eta$', fontsize=16)
-    plt.gca().set_xlabel(r'$\xi$', fontsize=16)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
+    # Set filename
+    filename = folder + 'QuadPtsIGA'+ str(nbel) + extension
+
     plt.tight_layout()
-    plt.savefig(folder + 'QuadPtsIGA'+ str(nbel) + extension) 
+    plt.savefig(filename) 
 
 elif CASE == 4: # Quadrature points in WQ
     # B-spline properties
     r = 2 
     degree = 4
-    nbel = 8
-    knotvector = create_knotvector(degree, nbel)
-    xi_wq = wq_find_positions(degree, knotvector, r)
-    nu_wq = wq_find_positions(degree, knotvector, r)
-    Xwq, Ywq = np.meshgrid(xi_wq, nu_wq)
 
-    plt.figure(1)
-    plt.plot(Xwq, Ywq, 'ko', markersize=1)
+    fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(12,4))
 
-    # Properties
-    plt.grid()
-    plt.xlim(0, 1); plt.ylim(0, 1)
-    plt.xticks([0, 0.5, 1]); plt.yticks([0, 0.5, 1])
-    plt.gca().set_aspect('equal', adjustable='box')
-    plt.gca().set_ylabel(r'$\eta$', fontsize=16)
-    plt.gca().set_xlabel(r'$\xi$', fontsize=16)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
+    # B-spline properties
+    degree = 4
+    for ax, nbel in zip([ax1, ax2, ax3], [8, 16, 32]):
+        knotvector = create_knotvector(degree, nbel)
+        wq = wq_find_positions(degree, knotvector, r)
+        Xwq, Ywq = np.meshgrid(wq, wq)
+        ax.plot(Xwq, Ywq, 'ko', markersize=1)
+
+        # Properties
+        ax.grid()
+        ax.set_xticks([0, 0.5, 1])
+        ax.set_yticks([0, 0.5, 1])
+        ax.axis('equal')
+        ax.set_ylabel(r'$\eta$', fontsize=14)
+        ax.set_xlabel(r'$\xi$', fontsize=14)
+        ax.tick_params(axis='x', labelsize=14)
+        ax.tick_params(axis='y', labelsize=14)
+
+    # Set filename
+    filename = folder + 'QuadPtsWQ'+str(nbel) + extension
+
     plt.tight_layout()
-    plt.savefig(folder + 'QuadPtsWQ'+str(nbel) + extension) 
+    plt.savefig(filename) 
 
 elif CASE == 5: # B-spline surface
+
     # Surface properties
     name = 'quarter_annulus'
     geometry = {'degree': [3, 3]}
     geometry = geomdlModel(filename= name, **geometry)
     fig = geometry.plot_2D_geometry()
-    fig.savefig(folder + 'BsplineSurface' + extension) 
+
+    # Set filename
+    filename = folder + 'BsplineSurface' + extension
+    fig.savefig(filename) 
 
 elif CASE == 6: # FEM functions $
+
     # Functions in isoparametric space 
     x = np.linspace(-1, 1, 90)
     f1 = x*(x-1)/2
@@ -238,9 +252,9 @@ elif CASE == 6: # FEM functions $
         x1 = knots[_+1]
         xtemp = x0*(1-x)/2 + x1*(1+x)/2
         plt.figure(1)
-        plt.plot(xtemp, f1, color=color[(_)%3], linewidth=4)
-        plt.plot(xtemp, f2, color=color[(_)%3], linewidth=4)
-        plt.plot(xtemp, f3, color=color[(_)%3], linewidth=4)
+        plt.plot(xtemp, f1, color=color[(_)%3])
+        plt.plot(xtemp, f2, color=color[(_)%3])
+        plt.plot(xtemp, f3, color=color[(_)%3])
     
     # Properties
     plt.grid()
@@ -248,8 +262,12 @@ elif CASE == 6: # FEM functions $
     plt.xticks([0, 0.5, 1])
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
+    
+    # Set filename
+    filename = folder + 'FEM' + '_nbel' + str(nbel) + extension
+
     plt.tight_layout()
-    plt.savefig(folder + 'FEM' + '_nbel' + str(nbel) + extension)
+    plt.savefig(filename)
 
 else: 
     raise Warning('Case unkwnon')
