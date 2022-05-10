@@ -62,17 +62,8 @@ class fortran_mf_iga(thermoMechaModel):
     def get_input4jacobien(self): 
         " Returns necessary inputs to compute jacobien "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set control points
-        ctrlpts = []
+        # Initialize
+        shape_matrices, indexes, data, ctrlpts = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -90,18 +81,10 @@ class fortran_mf_iga(thermoMechaModel):
     # Assemble matrices
 
     def get_input4Assembly_capacity(self):
+        " Returns necessary inputs to compute capacity matrix "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -116,18 +99,10 @@ class fortran_mf_iga(thermoMechaModel):
         return inputs
 
     def get_input4Assembly_conductivity(self):
+        " Returns necessary inputs to compute conducivity matrix "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
-
-        # Set size of I
-        size_I = []
+        # Initialize
+        shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -147,14 +122,8 @@ class fortran_mf_iga(thermoMechaModel):
     def get_input4Assembly_source(self):
         " Returns necessary inputs to compute source vector "
 
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data = []
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
@@ -171,29 +140,23 @@ class fortran_mf_iga(thermoMechaModel):
 
     def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
         " Returns necessary inputs to compute K u "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
         
-        # Set shape of matrices B0 and B1
-        shape_matrices = []
-
-        # Set indexes 
-        indexes = []
-
-        # Set data 
-        data_B = []
-
-        # !!! Remember: Indexes in fortran starts at 1
+        # Remember: Indexes in fortran starts at 1
         dof = np.asarray(dof) + 1
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_ctrlpts[dim][0])
             indexes.append(self._indexes[dim][:, 0])
             indexes.append(self._indexes[dim][:, 1])
-            data_B.append(self._DB[dim][0])
-            data_B.append(self._DB[dim][1])
-            data_B.append(self._DW[dim])
+            data.append(self._DB[dim][0])
+            data.append(self._DB[dim][1])
+            data.append(self._DW[dim])
 
         inputs = [self._conductivity_coef, self._thermalblockedboundaries, *shape_matrices, *indexes, 
-                    *data_B, bi, dof, nbIterations, epsilon]
+                    *data, bi, dof, nbIterations, epsilon]
         return inputs
 
     # ===========================
@@ -201,8 +164,6 @@ class fortran_mf_iga(thermoMechaModel):
     # ===========================
 
     def eval_positions_basis_weights(self):
-        " Computes weights and position of quadrature points "
-
         " Computes basis and weights "
 
         print('Evaluating basis and weights')
