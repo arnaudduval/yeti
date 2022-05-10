@@ -14,7 +14,7 @@ import math, numpy as np
 import copy
 
 # My libraries
-from base_functions import create_knotvector
+from .base_functions import create_knotvector
 
 class geomdlModel(): 
 

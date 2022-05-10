@@ -743,7 +743,7 @@ class thermoMechaModel():
         if UctrlptsExist:
             jacobien_PS, qp_PS, detJ, u_interp = self.interpolate_results(u_ctrlpts_new)
         else :
-            jacobien_PS, qp_PS, detJ = self.interpolate_results(u_ctrlpts_new)
+            jacobien_PS, qp_PS, detJ = self.interpolate_results()
 
         # Find statistics
         mean_detJ = statistics.mean(detJ)
