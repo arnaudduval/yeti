@@ -26,9 +26,11 @@ def write_text_file(filename, method_list, inputs):
     time_direct = inputs["TimeDirect"]
     memory_direct = inputs["MemDirect"]
     time_iter = inputs["TimeIter"]
+    time_noiter = inputs["TimeNoIter"]
     residue = inputs["Res"]
     error = inputs["Error"]
     memory_iter = inputs["MemIter"]
+    memory_noiter = inputs["MemNoIter"]
 
     with open(filename, 'w') as outputfile:
         outputfile.write('** RESULTS **\n')
@@ -40,7 +42,9 @@ def write_text_file(filename, method_list, inputs):
 
         for i, pcgmethod in enumerate(method_list):
             outputfile.write('* ITERATIVE SOLVER : ' + pcgmethod + '\n')
-            outputfile.write("{:E}".format(time_iter[i]) + '\t' 
+            outputfile.write("{:E}".format(time_noiter[i]) + '\t' 
+                            +"{:E}".format(memory_noiter[i])+ '\t' 
+                            +"{:E}".format(time_iter[i]) + '\t' 
                             +"{:E}".format(memory_iter[i]) +'\n'
             )
             outputfile.writelines(["{:E}".format(res) + "\t"+ "{:E}".format(err)+"\n"
@@ -52,7 +56,9 @@ def read_text_file(filename):
     residue_list = []
     error_list = []
     time_iter = []
+    time_noiter = []
     memory_iter = []
+    memory_noiter = []
 
     with open(filename, 'r') as inputfile:
         lines = inputfile.readlines()
@@ -75,8 +81,10 @@ def read_text_file(filename):
             ind = [text_position[_]+1, text_position[_+1]-1]
             lines_data = lines[ind[0]:ind[1]]
             lines_data_split = lines_data[0].split('\t')
-            time_iter.append(float(lines_data_split[0]))
-            memory_iter.append(float(lines_data_split[1]))
+            time_noiter.append(float(lines_data_split[0]))
+            memory_noiter.append(float(lines_data_split[1]))
+            time_iter.append(float(lines_data_split[2]))
+            memory_iter.append(float(lines_data_split[3]))
 
             residue_tmp = []
             error_tmp = []
@@ -89,7 +97,8 @@ def read_text_file(filename):
             error_list.append(error_tmp)
 
         output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
-                "TimeIter": time_iter, "Res": residue_list, "Error": error_list, "MemIter": memory_iter}
+                "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue_list, 
+                "Error": error_list, "MemNoIter": memory_noiter, "MemIter": memory_iter}
 
     return output
 

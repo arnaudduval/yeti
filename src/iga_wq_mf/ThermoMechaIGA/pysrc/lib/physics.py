@@ -101,3 +101,11 @@ def powden_rotring(dim, P: list):
     )
     
     return f
+
+def temperature(dim, P):
+    "T = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)"
+    x = P[0]
+    y = P[1]
+    z = P[2]
+    u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
+    return u

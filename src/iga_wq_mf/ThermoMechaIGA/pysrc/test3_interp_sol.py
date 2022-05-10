@@ -50,7 +50,7 @@ dod = Model1._thermal_dod
 K2nn = Model1.eval_conductivity_matrix(dof, dof)
 
 # Assemble source vector F
-F2n = F2n_v2 = np.asarray(Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td))
+F2n = np.asarray(Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td))
 
 # Solve system
 Tn = scipy.linalg.solve(K2nn.todense(), F2n)

@@ -137,6 +137,24 @@ class fortran_mf_iga(thermoMechaModel):
         return inputs
 
     # Matrix-Free
+    def get_input4MatrixFree_Ku(self, u):
+        " Returns necessary inputs to compute K u "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_ctrlpts[dim][0])
+            indexes.append(self._indexes[dim][:, 0])
+            indexes.append(self._indexes[dim][:, 1])
+            data.append(self._DB[dim][0])
+            data.append(self._DB[dim][1])
+            data.append(self._DW[dim])
+
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+
+        return inputs
+
 
     def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
         " Returns necessary inputs to compute K u "
@@ -289,7 +307,24 @@ class fortran_mf_iga(thermoMechaModel):
         
         return K_coo
 
-    def eval_source_vector(self, fun, indi= None): 
+    def eval_Ku(self, u): 
+        " Computes K u "
+
+        # Get inputs
+        inputs = self.get_input4MatrixFree_Ku(u)
+
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+
+        if self._dim == 2:
+            raise Warning('Until now not done')
+
+        if self._dim == 3:
+            result = solver.mf_iga_get_ku_3d_coo(*inputs)
+
+        return result
+    
+    def eval_source_vector(self, fun, indi= None, indj=None, Td=None): 
         " Computes source vector "
 
         if indi is None: 
@@ -311,6 +346,27 @@ class fortran_mf_iga(thermoMechaModel):
             
         stop = time.time()
         print('Source vector assembled in : %.5f s' %(stop-start))
+
+        # Evaluate K T*, where T* = [0, Td]
+        if (indj is not None) and (Td is not None):
+            if len(Td) != len(indj):
+                raise Warning('Different dimensions')
+
+            # Initialize Ttilde
+            Ttilde = np.zeros(self._nb_ctrlpts_total)
+            Ttilde[indj] = Td
+            
+            # Eval K@Ttilde
+            if self._dim == 2:
+                raise Warning('Try another method')
+                
+            if self._dim == 3:
+                KTtilde = self.eval_Ku(Ttilde)
+
+            # Recalculate F
+            F -= KTtilde 
+        else: 
+            raise Warning('indj and Td must be defined')
 
         return F[indi]
 

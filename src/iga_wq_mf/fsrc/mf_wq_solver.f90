@@ -820,20 +820,21 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
     RelError = 0.d0
 
     if (Method.eq.'WP') then 
-        ! ----------------------------
-        ! Conjugate Gradient algorithm
-        ! ----------------------------
-        r = b
-        p = r
-        rsold = dot_product(r, r)
-        RelRes(1) = 1.d0
-        RelError(1) = 1.d0
+        if (nbIterations.gt.0) then
+            ! ----------------------------
+            ! Conjugate Gradient algorithm
+            ! ----------------------------
+            r = b
+            p = r
+            rsold = dot_product(r, r)
+            RelRes(1) = 1.d0
+            RelError(1) = 1.d0
 
-        do k = 1, nbIterations
-            ! Calculate Ann xn 
-            v1exp = 0.d0
-            v1exp(dof) = p
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+            do k = 1, nbIterations
+                ! Calculate Ann xn 
+                v1exp = 0.d0
+                v1exp(dof) = p
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
@@ -842,24 +843,24 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
                         v1exp, v2exp)
-            Ap = v2exp(dof)
-            alpha = rsold/dot_product(p, Ap)
-            x = x + alpha * p
-            r = r - alpha * Ap
+                Ap = v2exp(dof)
+                alpha = rsold/dot_product(p, Ap)
+                x = x + alpha * p
+                r = r - alpha * Ap
 
-            ! Set relative value of residual 
-            RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
-            RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
+                ! Set relative value of residual 
+                RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
+                RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
 
-            if (RelRes(k+1).le.epsilon) then 
-                exit
-            end if
-                            
-            rsnew = dot_product(r, r)
-            p = r + rsnew/rsold * p
-            rsold = rsnew
-        end do
-
+                if (RelRes(k+1).le.epsilon) then 
+                    exit
+                end if
+                                
+                rsnew = dot_product(r, r)
+                p = r + rsnew/rsold * p
+                rsold = rsnew
+            end do
+        end if
     else  
         ! Dimensions
         Lu = 1.d0
@@ -940,58 +941,16 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
             data_W10_w, data_W11_w, matrixdiag)
         end if
 
-        ! -------------------------------------------
-        ! Preconditioned Conjugate Gradient algorithm
-        ! -------------------------------------------
-        r = b
-        ! Calculate z
-        v1exp = 0.d0
-        v1exp(dof) = r
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-            call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
-        end if
-        call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                    U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-            call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
-        end if
-        z = v2exp(dof)
-        p = z
-        rsold = dot_product(r, z)
-        RelRes(1) = 1.d0
-        RelError(1) = 1.d0
-
-        do k = 1, nbIterations
-            ! Calculate Ann xn 
-            v1exp = 0.d0
-            v1exp(dof) = p
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
-                        nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-                        size_data_u, size_data_v, size_data_w, &
-                        indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
-                        data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
-                        indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
-                        data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
-                        data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-
-            Ap = v2exp(dof)
-            alpha = rsold/dot_product(p, Ap)
-            x = x + alpha * p
-            r = r - alpha * Ap
-
-            ! Set relative value of residual 
-            RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
-            RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-
-            if (RelRes(k+1).le.epsilon) then 
-                exit
-            end if
-            
+        if (nbIterations.gt.0) then
+            ! -------------------------------------------
+            ! Preconditioned Conjugate Gradient algorithm
+            ! -------------------------------------------
+            r = b
+            ! Calculate z
             v1exp = 0.d0
             v1exp(dof) = r
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)   
+                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
             end if
             call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                         U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
@@ -999,11 +958,55 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                 call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
             end if
             z = v2exp(dof)
-            rsnew = dot_product(r, z)
-                            
-            p = z + rsnew/rsold * p
-            rsold = rsnew
-        end do
+            p = z
+            rsold = dot_product(r, z)
+            RelRes(1) = 1.d0
+            RelError(1) = 1.d0
+
+            do k = 1, nbIterations
+                ! Calculate Ann xn 
+                v1exp = 0.d0
+                v1exp(dof) = p
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, &
+                            indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
+                            data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
+                            indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
+                            data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
+                            data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
+                            v1exp, v2exp)
+
+                Ap = v2exp(dof)
+                alpha = rsold/dot_product(p, Ap)
+                x = x + alpha * p
+                r = r - alpha * Ap
+
+                ! Set relative value of residual 
+                RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
+                RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
+
+                if (RelRes(k+1).le.epsilon) then 
+                    exit
+                end if
+                
+                v1exp = 0.d0
+                v1exp(dof) = r
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)   
+                end if
+                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                end if
+                z = v2exp(dof)
+                rsnew = dot_product(r, z)
+                                
+                p = z + rsnew/rsold * p
+                rsold = rsnew
+            end do
+        end if
     end if
 
 end subroutine wq_mf_cg_3d
@@ -1162,21 +1165,22 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
     RelError = 0.d0
 
     if (Method.eq.'WP') then 
-        ! ----------------------------
-        ! Conjugate Gradient algorithm
-        ! ----------------------------
-        r = b
-        rhat = r
-        p = r
-        rsold = dot_product(r, rhat)
+        if (nbIterations.gt.0) then
+            ! ----------------------------
+            ! Conjugate Gradient algorithm
+            ! ----------------------------
+            r = b
+            rhat = r
+            p = r
+            rsold = dot_product(r, rhat)
 
-        RelRes(1) = 1.d0
-        RelError(1) = 1.d0
+            RelRes(1) = 1.d0
+            RelError(1) = 1.d0
 
-        do k = 1, nbIterations
-            v1exp = 0.d0
-            v1exp(dof) = p
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+            do k = 1, nbIterations
+                v1exp = 0.d0
+                v1exp(dof) = p
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
@@ -1185,13 +1189,13 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
                         v1exp, v2exp)
-            Ap = v2exp(dof)
-            alpha = rsold/dot_product(Ap, rhat)
-            s = r - alpha*Ap
+                Ap = v2exp(dof)
+                alpha = rsold/dot_product(Ap, rhat)
+                s = r - alpha*Ap
 
-            v1exp = 0.d0
-            v1exp(dof) = s
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                v1exp = 0.d0
+                v1exp(dof) = s
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
@@ -1200,23 +1204,24 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
                         v1exp, v2exp)
-            As = v2exp(dof)
-            omega = dot_product(As, s)/dot_product(As, As)
-            x = x + alpha*p + omega*s
-            r = s - omega*As
+                As = v2exp(dof)
+                omega = dot_product(As, s)/dot_product(As, As)
+                x = x + alpha*p + omega*s
+                r = s - omega*As
 
-            RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
-            RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-            
-            if (RelRes(k+1).le.epsilon) then 
-                exit
-            end if
+                RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
+                RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
+                
+                if (RelRes(k+1).le.epsilon) then 
+                    exit
+                end if
 
-            rsnew = dot_product(r, rhat)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Ap)
-            rsold = rsnew
-        end do
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Ap)
+                rsold = rsnew
+            end do
+        end if
 
     else  
         ! Dimensions
@@ -1298,99 +1303,101 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             data_W10_w, data_W11_w, matrixdiag)
         end if
 
-        ! -------------------------------------------
-        ! Preconditioned Conjugate Gradient algorithm
-        ! -------------------------------------------
-        r = b
-        rhat = r
-        p = r
+        if (nbIterations.gt.0) then
+            ! -------------------------------------------
+            ! Preconditioned Conjugate Gradient algorithm
+            ! -------------------------------------------
+            r = b
+            rhat = r
+            p = r
 
-        v1exp = 0.d0
-        v1exp(dof) = p
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-            call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
-        end if 
-        call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                    U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-            call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp)  
-        end if
-        ptilde = v2exp(dof)
-        rsold = dot_product(r, rhat)
-        RelRes(1) = 1.d0
-        RelError(1) = 1.d0
-
-        do k = 1, nbIterations
-            v1exp = 0.d0
-            v1exp(dof) = ptilde
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
-                        nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-                        size_data_u, size_data_v, size_data_w, &
-                        indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
-                        data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
-                        indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
-                        data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
-                        data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-
-            Aptilde = v2exp(dof)
-            alpha = rsold/dot_product(Aptilde, rhat)
-            s = r - alpha*Aptilde
-
-            v1exp = 0.d0
-            v1exp(dof) = s
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)  
-            end if
-            call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
-            end if
-            stilde = v2exp(dof)
-
-            v1exp = 0.d0
-            v1exp(dof) = stilde
-            call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
-                        nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-                        size_data_u, size_data_v, size_data_w, &
-                        indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
-                        data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
-                        indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
-                        data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
-                        data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-            Astilde = v2exp(dof)
-
-            omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-            x = x + alpha*ptilde + omega*stilde
-            r = s - omega*Astilde    
-            
-            RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
-            RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-            
-            if (RelRes(k+1).le.epsilon) then 
-                exit
-            end if
-
-            rsnew = dot_product(r, rhat)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Aptilde)
-            
             v1exp = 0.d0
             v1exp(dof) = p
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
-            end if
+            end if 
             call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                         U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp)  
             end if
             ptilde = v2exp(dof)
+            rsold = dot_product(r, rhat)
+            RelRes(1) = 1.d0
+            RelError(1) = 1.d0
 
-            rsold = rsnew
-        end do
+            do k = 1, nbIterations
+                v1exp = 0.d0
+                v1exp(dof) = ptilde
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, &
+                            indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
+                            data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
+                            indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
+                            data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
+                            data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
+                            v1exp, v2exp)
+
+                Aptilde = v2exp(dof)
+                alpha = rsold/dot_product(Aptilde, rhat)
+                s = r - alpha*Aptilde
+
+                v1exp = 0.d0
+                v1exp(dof) = s
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)  
+                end if
+                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                end if
+                stilde = v2exp(dof)
+
+                v1exp = 0.d0
+                v1exp(dof) = stilde
+                call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, &
+                            indi_BT_u_csr, indj_BT_u_csr, indi_BT_v_csr, indj_BT_v_csr, indi_BT_w_csr, indj_BT_w_csr, &
+                            data_B0T_u_csr, data_B1T_u_csr, data_B0T_v_csr, data_B1T_v_csr, data_B0T_w_csr, data_B1T_w_csr, &
+                            indi_W_u_csr, indj_u, indi_W_v_csr, indj_v, indi_W_w_csr, indj_w, &
+                            data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
+                            data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
+                            v1exp, v2exp)
+                Astilde = v2exp(dof)
+
+                omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+                x = x + alpha*ptilde + omega*stilde
+                r = s - omega*Astilde    
+                
+                RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
+                RelError(k+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
+                
+                if (RelRes(k+1).le.epsilon) then 
+                    exit
+                end if
+
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Aptilde)
+                
+                v1exp = 0.d0
+                v1exp(dof) = p
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                end if
+                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                end if
+                ptilde = v2exp(dof)
+
+                rsold = rsnew
+            end do
+        end if
     end if
 
 end subroutine wq_mf_bicgstab_3d
