@@ -38,7 +38,7 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 extension = '.png'
 
 # Select case
-CASE = 1
+CASE = 2
 
 if CASE == 0: # B-spline curve
 
@@ -70,6 +70,9 @@ if CASE == 0: # B-spline curve
     plt.plot(x, y, label='B-spline curve')
     plt.plot(ctrlpts[:, 0], ctrlpts[:, 1], '--')
 
+    # Set filename
+    filename = folder + 'BsplineCurve'+ extension
+
     # Properties
     plt.grid()
     plt.xlabel('X', fontsize=16)
@@ -79,70 +82,85 @@ if CASE == 0: # B-spline curve
     plt.axis('equal')
     plt.legend(prop={'size': 14})
     plt.tight_layout()
-    plt.savefig(folder + 'BsplineCurve'+ extension)
+    plt.savefig(filename)
 
 elif CASE == 1: # Univariate functions
+
     # B-spline properties 
     degree = 2
     nbel = 4
     knots = np.linspace(0, 1, 181)
-    knotvector = create_knotvector(degree, nbel, multiplicity=2)
-    qp_wq = wq_find_positions(degree, knotvector, 2, maxrule=2)
-    B0, B1 = eval_basis_python(degree, knotvector, knots, multiplicity=2)
+    knotvector = create_knotvector(degree, nbel)
+    qp_wq = wq_find_positions(degree, knotvector, 2)
+    B0, B1 = eval_basis_python(degree, knotvector, knots)
     B0 = B0.toarray()
     B1 = B1.toarray()
 
-    plt.figure(1)
-    for i in range(np.shape(B0)[0]): 
-        plt.plot(knots, B0[i, :], linewidth=1, color= CB_color_cycle[i])
-    plt.plot(qp_wq, np.zeros(len(qp_wq)), marker='s', linewidth=1, color='black')
+    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10,4))
+    for i in range(degree+nbel): 
+        ax1.plot(knots, B0[i, :], linewidth=1, color= CB_color_cycle[i])
+        ax2.plot(knots, B1[i, :], linewidth=1, color= CB_color_cycle[i])
+
+    # Set filename
+    filename = folder + 'basis_p' + str(degree) + '_nbel' + str(nbel) + extension
 
     # Properties
-    plt.grid()
-    plt.gca().set_xlabel(r'$\xi$', fontsize=16)
-    plt.xticks(np.linspace(0, 1, nbel+1))
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
+    for ax in [ax1, ax2]:
+        ax.grid()
+        ax.set_xlabel(r'$\xi$', fontsize=16)
+        ax.set_xticks(np.linspace(0, 1, nbel+1))
+        ax.tick_params(axis='x', labelsize=16)
+        ax.tick_params(axis='y', labelsize=16)
+
     plt.tight_layout()
-    plt.savefig(folder + 'basis22_p' + str(degree) + '_nbel' + str(nbel) + extension)
+    plt.savefig(filename)
 
 elif CASE == 2: # Bivariate functions
+
     # B-Spline properties
     degree = 2
     nbel = 1
-    knots = np.linspace(0, 1, 92)
+    knots = np.linspace(0, 1, 181)
     knotvector = create_knotvector(degree, nbel)
     B0, _ = eval_basis_python(degree, knotvector, knots)
     B0 = B0.toarray()
-    B0_plot = B0[0, :]
+    B0_plot = B0[1, :]
 
     # B-Spline 2D
     X, Y = np.meshgrid(knots, knots)
-    Z = np.kron(B0_plot, B0_plot)
+    Z = np.kron(B0_plot, B0_plot).reshape((len(knots), len(knots)))
 
     # Plot
     fig, axs = plt.subplots(2, 2, sharex="col", sharey="row",
-                             gridspec_kw=dict(height_ratios=[1, 3],
-                                              width_ratios=[3, 1]))
-    axs[0, 1].set_visible(False)
-    axs[0, 0].set_box_aspect(1/3)
-    axs[1, 0].set_box_aspect(1)
-    axs[1, 1].set_box_aspect(3/1)
-    axs[1, 0].pcolormesh(X, Y, Z, cmap='inferno', shading = 'gouraud')
-    for i in range(np.shape(B0)[0]): 
+                             gridspec_kw=dict(height_ratios=[1,3],
+                                              width_ratios=[3,1]))
+    axs[0,1].set_visible(False)
+    axs[0,0].set_box_aspect(1/3)
+    axs[1,0].set_box_aspect(1)
+    axs[1,1].set_box_aspect(3/1)
+    axs[1,0].pcolormesh(X, Y, Z, cmap='inferno', shading = 'gouraud')
+    axs[1,0].tick_params(axis='x', labelsize=14)
+    axs[1,0].tick_params(axis='y', labelsize=14)
+
+    for i in range(degree+nbel): 
         axs[0, 0].plot(knots, B0[i, :], color="0.8")
-    for i in range(np.shape(B0)[0]): 
         axs[1, 1].plot(B0[i, :], knots, color="0.8")
 
-    axs[0, 0].plot(knots, B0_plot); axs[0, 0].axis(ymin=0,ymax=1)
-    axs[0,0].set_xlabel(r'$\xi$', fontsize=12)
-    axs[1, 1].plot(B0_plot, knots); axs[1, 1].axis(xmin=0,xmax=1)
-    axs[1,1].set_ylabel(r'$\eta$', fontsize=12)
+    axs[0,0].plot(knots, B0_plot); axs[0, 0].axis(ymin=0,ymax=1)
+    axs[0,0].set_xlabel(r'$\xi$', fontsize=14)
+    axs[0,0].tick_params(axis='y', labelsize=14)
+    axs[1,1].plot(B0_plot, knots); axs[1, 1].axis(xmin=0,xmax=1)
+    axs[1,1].set_ylabel(r'$\eta$', fontsize=14)
+    axs[1,1].tick_params(axis='x', labelsize=14)
+
+    # Set filename
+    filename = folder + 'Basis_2D' + extension
 
     plt.tight_layout()
-    plt.savefig(folder + 'Basis_2D' + extension) 
+    plt.savefig(filename) 
 
 elif CASE == 3: # Quadrature points in IGA
+    
     # B-spline properties
     degree = 4
     nbel = 32
