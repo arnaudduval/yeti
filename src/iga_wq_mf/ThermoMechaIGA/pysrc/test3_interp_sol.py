@@ -1,9 +1,15 @@
+"""
+.. Test of matrix free / interpolation
+.. We test is Matrix-Free fortran subroutines work correctly
+.. Joaquin Cornejo 
+"""
+
 # Python libraries
-import re
 import numpy as np
 import scipy 
 
 # My libraries
+from lib.physics import powden_rotring
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.fortran_mf_iga import fortran_mf_iga
@@ -15,21 +21,6 @@ def temperature(dim, P):
     z = P[2]
     u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
     return u
-
-def powerdensity(dim, P):
-    """
-    u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)
-    f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
-    """
-    x = P[0]
-    y = P[1]
-    z = P[2]
-    f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
-        + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
-        + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
-    )
-    return f
 
 # Set global variables
 DEGREE = 4
@@ -59,7 +50,7 @@ dod = Model1._thermal_dod
 K2nn = Model1.eval_conductivity_matrix(dof, dof)
 
 # Assemble source vector F
-F2n = F2n_v2 = np.asarray(Model1.eval_source_vector(powerdensity, dof, indj=dod, Td=Td))
+F2n = F2n_v2 = np.asarray(Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td))
 
 # Solve system
 Tn = scipy.linalg.solve(K2nn.todense(), F2n)

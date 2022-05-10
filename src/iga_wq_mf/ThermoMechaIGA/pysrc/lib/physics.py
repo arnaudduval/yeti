@@ -87,11 +87,17 @@ def powden_thickring(dim, P: list):
     return f
 
 def powden_rotring(dim, P: list):
-    " TO BE DEFINED !"
+    """
+    u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)
+    f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
+    """
     x = P[0]
     y = P[1]
     z = P[2]
-
-    f = 1
+    f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
+        + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+        + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+        - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+    )
     
     return f

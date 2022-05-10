@@ -12,29 +12,29 @@ import time
 from .create_model import thermoMechaModel
 from iga_wq_mf import basis_weights, assembly, solver
 
-def wq_get_basis_weights(degree, nb_el): 
+def wq_get_basis_weights(degree, nbel): 
     " Computes basis and weights "
 
     # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nb_el)
+    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
 
     # Get basis and weights from fortran
     qp_pos, B0, B1, \
     W00, W01, W10, W11, \
-    ind, nnz_I = basis_weights.wq_get_data(degree, nb_el, nnz_B, size_qp)
+    ind, nnz_I = basis_weights.wq_get_data(degree, nbel, nnz_B, size_qp)
 
     return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, ind
 
-def wq_get_basis_weights_csr(degree, nb_el): 
+def wq_get_basis_weights_csr(degree, nbel): 
     " Computes basis and weights "
 
     # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nb_el)
+    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
 
     # Get basis and weights from fortran
     qp_pos, B0, B1, \
     W00, W01, W10, W11, \
-    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nb_el, nnz_B, size_qp)
+    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
 
     return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
 

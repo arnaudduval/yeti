@@ -1,4 +1,9 @@
-# Testing a new and efficient way to calculate WQ
+"""
+.. Test of basis and weights 
+.. We test if functions done in python and fortran for WQ approach 
+.. gives the expected results.
+.. Joaquin Cornejo 
+"""
 
 # Python libraries
 import os
