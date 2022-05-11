@@ -102,6 +102,56 @@ def read_text_file(filename):
 
     return output
 
+def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
+    # Define color
+    CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
+                    '#f781bf', '#a65628', '#984ea3',
+                    '#999999', '#e41a1c', '#dede00']
+
+    # Define inputs
+    residue = inputs["Res"]
+    error = inputs["Error"]
+
+    # Select important values
+    tol = 1.e-17
+    
+    # Set figure parameters
+    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
+
+    for i, pcgmethod in enumerate(method_list):
+        error_method = np.asarray(error[i])
+        residue_method = np.asarray(residue[i])
+
+        error_method = error_method[residue_method>tol]
+        residue_method = residue_method[residue_method>tol]
+        
+        ax1.plot(np.arange(len(error_method)), error_method*100, label=pcgmethod, color=CB_color_cycle[i])
+        ax2.plot(np.arange(len(residue_method)), residue_method*100, label=pcgmethod, color=CB_color_cycle[i])
+
+    # Set properties
+    ax1.set_yscale("log")
+    ax1.set_xlabel('Number of iterations', fontsize=16)
+    ax1.set_ylabel('Relative error (%)', fontsize=16)
+    ax1.tick_params(axis='x', labelsize=16)
+    ax1.tick_params(axis='y', labelsize=16)
+    ax1.legend()
+    ax1.grid()
+
+    ax2.set_yscale("log")
+    ax2.set_xlabel('Number of iterations', fontsize=16)
+    ax2.set_ylabel('Relative residue (%)', fontsize=16)
+    ax2.tick_params(axis='x', labelsize=16)
+    ax2.tick_params(axis='y', labelsize=16)
+    ax2.legend()
+    ax2.grid()
+
+    # Save figure
+    plt.tight_layout()
+    plt.savefig(filename + extension)
+    plt.close(fig)
+
+    return
+
 class thermoMechaModel(): 
 
     def __init__(self, modelIGA= None, isThermal= True, isMechanical=False, 

@@ -58,25 +58,22 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     time_assembly = stop - start
 
     # Assemble source vector F
-    try: 
+    if funtemp is not None: 
         dod = Model1._thermal_dod
         T_cp, Td = Model1.MSE_ControlPoints(funtemp)
         F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
         del dod, Td, T_cp
-    except: 
+    else: 
         F2solve = Model1.eval_source_vector(funpowden, indi=dof)
     
     # Solve system
     start = time.time()
-    # LU = sp.linalg.splu(K2solve)
-    # sol_direct = LU.solve(F2solve)
     sol_direct = scipy.linalg.solve(K2solve.todense(), F2solve)
     stop = time.time()
     time_direct = stop - start
     time.sleep(1)
     _, memory_direct = tracemalloc.get_traced_memory()
     memory_direct /= 1024*1024
-    # del K2solve, F2solve, LU, Model1, dof
     del K2solve, F2solve, Model1, dof
 
     # Recursive solver 
@@ -95,12 +92,12 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     dof = Model1._thermal_dof
 
     # Assemble source vector F
-    try: 
+    if funtemp is not None:  
         dod = Model1._thermal_dod
         T_cp, Td = Model1.MSE_ControlPoints(funtemp)
         F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
         del dod, Td, T_cp
-    except: 
+    else:
         F2solve = Model1.eval_source_vector(funpowden, indi=dof)
 
     time.sleep(1)
@@ -160,7 +157,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 # Constants
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 for CUTS in range(3, 5):
-    for IS_IGA_GALERKIN in [True]:
+    for IS_IGA_GALERKIN in [False]:
         for GEOMETRY_CASE in range(3, 4):
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
