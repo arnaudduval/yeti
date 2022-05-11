@@ -12,7 +12,7 @@ from scipy import sparse as sp
 import time
 
 # My libraries
-from .base_functions import wq_find_basis_weights_opt
+from .base_functions import wq_find_basis_weights_opt, get_matrix_3D, get_indexes_3D
 from .create_model import thermoMechaModel
 
 # Yeti libraries
@@ -154,3 +154,33 @@ class WQ(thermoMechaModel):
         print('Source vector assembled in : %.5f s' %(stop-start))
 
         return F
+
+    def eval_C_TenProd(self): 
+        " Computes capacity matrix with tensor product algorithm "
+        " !!!!!!!!!!!!!!!!!!!!!!!!!!! TO BE TESTED BEFORE "
+
+        # These algorithms only have been tested with 3D geometries
+        if self._dim != 3:
+            raise Warning("Use other method. Only 3D geometries")
+        
+        start = time.time()
+        # For C matrix we only need B0 and W0, we will define 
+        DB = []
+        DW = []
+        DI = []
+        for _ in range(self._dim):
+            DB.append(self._DB[_][0])
+            DW.append(self._DW[_][0][0])
+            DI.append(self._DB[_][0]@self._DB[_][0].T)
+
+        # Compute capacity matrix
+        indi_C, indj_C = get_indexes_3D(DI)
+        val_C = get_matrix_3D(self._capacity_coef, DB, DW, DI)
+
+        C = self.array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
+                                            val_C, indi_C, indj_C).tocsc()
+        
+        stop = time.time()
+        print('Capacity matrix assembled in : %.5f s' %(stop-start))
+
+        return 
