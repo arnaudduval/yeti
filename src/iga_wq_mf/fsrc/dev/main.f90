@@ -1,12 +1,23 @@
 program main 
 
-    implicit none 
-    ! --------------
-    integer, parameter :: degree = 2, nb_el = 8
-    integer :: nnz_B, size_qp, nnz_I
-    double precision, allocatable, dimension(:) :: qp_pos, data_B0, data_B1, &
-                                                data_W00, data_W11
-    integer, allocatable, dimension(:, :) :: data_ind 
+    integer, allocatable :: a(:), b(:)
+
+    allocate(a(3))
+    a = [ 1, 2, 3 ]
+    allocate(b(4))
+    b = [ 1, 5, 10, 4 ]
+
+    call move_alloc(a, b)
+    print *, allocated(a), allocated(b)
+    print *, b
+
+    ! implicit none 
+    ! ! --------------
+    ! integer, parameter :: degree = 2, nb_el = 8
+    ! integer :: nnz_B, size_qp, nnz_I
+    ! double precision, allocatable, dimension(:) :: qp_pos, data_B0, data_B1, &
+    !                                             data_W00, data_W11
+    ! integer, allocatable, dimension(:, :) :: data_ind 
 
     ! integer :: nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg
     ! double precision, dimension(:), allocatable :: nodes, qp_wq, knotvector
@@ -118,11 +129,11 @@ program main
     ! call wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, nb_qp_wq, nb_qp_cgg, maxrule, &
     ! B0, B1, W00, W11)
 
-    call wq_get_size_data(degree, nb_el, nnz_B, size_qp)
+    ! call wq_get_size_data(degree, nb_el, nnz_B, size_qp)
 
-    allocate(qp_pos(size_qp), data_B0(nnz_B), data_B1(nnz_B), &
-            data_W00(nnz_B), data_W11(nnz_B), data_ind(nnz_B, 2))
-    call wq_get_data( degree, nb_el, nnz_B, size_qp, qp_pos, &
-        data_B0, data_B1, data_W00, data_W11, data_ind, nnz_I)
+    ! allocate(qp_pos(size_qp), data_B0(nnz_B), data_B1(nnz_B), &
+    !         data_W00(nnz_B), data_W11(nnz_B), data_ind(nnz_B, 2))
+    ! call wq_get_data( degree, nb_el, nnz_B, size_qp, qp_pos, &
+    !     data_B0, data_B1, data_W00, data_W11, data_ind, nnz_I)
 
 end program

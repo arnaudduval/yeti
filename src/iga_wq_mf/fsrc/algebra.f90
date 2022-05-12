@@ -445,22 +445,22 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
 
 end subroutine csr2csc
 
-subroutine erase_row_csr(nb_rows, nnz_in, a_in, indi_in, indj_in, &
+subroutine erase_row_csr(nb_data, nb_rows, nnz_in, a_in, indi_in, indj_in, &
                         row2er, nnz_out, a_out, indi_out, indj_out)
 
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: nb_rows, nnz_in
+    integer, intent(in) :: nb_rows, nnz_in, nb_data
     integer, intent(in) :: indi_in, indj_in
     dimension :: indi_in(nb_rows+1), indj_in(nnz_in)
-    double precision, intent(in) ::  a_in
-    dimension :: a_in(nnz_in)
+    double precision, intent(in) :: a_in
+    dimension :: a_in(nnz_in, nb_data)
     integer, intent(in) :: row2er, nnz_out
 
     integer, intent(out) :: indi_out, indj_out
     dimension :: indi_out(nb_rows), indj_out(nnz_out)
-    double precision, intent(out) :: a_out(nnz_out)
+    double precision, intent(out) :: a_out(nnz_out, nb_data)
 
     ! Local data
     ! --------------
@@ -479,7 +479,7 @@ subroutine erase_row_csr(nb_rows, nnz_in, a_in, indi_in, indj_in, &
         do j = indi_in(i), indi_in(i+1)-1
             c = c + 1
             indj_out(c) = indj_in(j)
-            a_out(c) = a_in(j)
+            a_out(c, :) = a_in(j, :)
         end do
     end do
 
@@ -492,7 +492,7 @@ subroutine erase_row_csr(nb_rows, nnz_in, a_in, indi_in, indj_in, &
         do j = indi_in(i), indi_in(i+1)-1
             c = c + 1
             indj_out(c) = indj_in(j)
-            a_out(c) = a_in(j)
+            a_out(c, :) = a_in(j, :)
         end do
     end do
 
