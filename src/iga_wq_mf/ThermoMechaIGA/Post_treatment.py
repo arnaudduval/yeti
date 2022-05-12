@@ -50,8 +50,8 @@ for CUTS in range(2, 6):
                     try: 
                         inputs = read_text_file(txtname + '.txt')
                         # Plot results
-                        # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
-                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
+                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
+                        # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
                         plot_iterative_solver(txtname, inputs, method_list)
                     except: pass
 

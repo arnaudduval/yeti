@@ -179,7 +179,11 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     elif isDirect is True: 
         output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct}
     elif isDirect is False: 
-        output = {"TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
+        time_assembly = 1e3
+        time_direct = 1e3
+        memory_direct = 1e3
+        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
+                    "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                     "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
     
     return output
@@ -188,12 +192,12 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 FileExist = False
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 DEGREE = 3
-CUTS = 5
+CUTS = 3
 IS_IGA_GALERKIN = False
 GEOMETRY_CASE = 2
 if IS_IGA_GALERKIN: is_cg_list = [True]
 else: is_cg_list = [False]
-isDirect = True
+isDirect = False
 
 for IS_CG in is_cg_list:   
     # Get file name
@@ -226,13 +230,13 @@ for IS_CG in is_cg_list:
         # Run simulation
         blockPrint()
         # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-        method_list = ["TDS"]
+        method_list = ["TDS", "JM"]
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries, isDirect=isDirect)
         enablePrint()
 
-        # # Export results
-        # write_text_file(txtname+'.txt', method_list, inputs_export)
+        # Export results
+        write_text_file(txtname+'.txt', method_list, inputs_export)
 
     else :
         try: 
