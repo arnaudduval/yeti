@@ -189,7 +189,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Some constants
-FileExist = False
+FileExist = True
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 DEGREE = 3
 CUTS = 3

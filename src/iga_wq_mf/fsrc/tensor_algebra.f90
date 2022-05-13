@@ -988,7 +988,7 @@ module tensor_methods
     ! ----------------------------------------------------
     ! Jacobi diagonal
     ! ----------------------------------------------------
-    subroutine find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, L1, L2, L3, &
+    subroutine find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
                                 Mdiag_u, Mdiag_v, Mdiag_w, &
                                 Kdiag_u, Kdiag_v, Kdiag_w, diag)
         !! Find the diagonal of the preconditioner "fast diagonalization"
@@ -997,7 +997,7 @@ module tensor_methods
         ! Input / output data
         ! -------------------------
         integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
-        double precision, intent(in) :: L1, L2, L3
+        double precision, intent(in) :: Lu, Lv, Lw
         double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, &
                                         Kdiag_u, Kdiag_v, Kdiag_w
         dimension :: Mdiag_u(nb_rows_u), Mdiag_v(nb_rows_v), Mdiag_w(nb_rows_w), &
@@ -1010,13 +1010,13 @@ module tensor_methods
         diag = 0.d0
 
         ! Find K3 M2 M1
-        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, L1*L2/L3)
+        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, Lu*Lv/Lw)
 
         ! Find M3 K2 M1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, L3*L1/L2)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, Lw*Lu/Lv)
 
         ! Find M3 M2 K1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, L3*L1/L2)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, Lv*Lw/Lu)
 
     end subroutine find_diagonal_fd_3d
 
@@ -1140,7 +1140,7 @@ module tensor_methods
     subroutine eigen_decomposition(nb_rows, nb_cols, &
                                     Mcoef, Kcoef, size_data, indi, indj, &
                                     data_B0, data_W00, data_B1, data_W11, &
-                                    kmod1, kmod2, method, eigenvalues, eigenvectors, Kdiag, Mdiag)
+                                    kmod1, kmod2, method, D, U, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
         !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -1162,8 +1162,8 @@ module tensor_methods
         integer, intent(in) :: kmod1, kmod2
         character(len=10), intent(in) :: Method
                 
-        double precision, intent(out) :: eigenvalues, eigenvectors
-        dimension :: eigenvalues(nb_rows), eigenvectors(nb_rows, nb_rows)
+        double precision, intent(out) :: D, U
+        dimension :: D(nb_rows), U(nb_rows, nb_rows)
         double precision, intent(out) :: Kdiag, Mdiag
         dimension :: Kdiag(nb_rows), Mdiag(nb_rows)
 
@@ -1256,14 +1256,14 @@ module tensor_methods
         call dsygvd(ITYPE, JOBZ, UPLO, N, KK, LDA, MM, LDB, W, WORK, LWORk, IWORK, LIWORK, INFO)
 
         ! Get values
-        eigenvectors = KK
-        eigenvalues = W
+        U = KK
+        D = W
 
         deallocate(KK, MM, W, WORK, IWORK)
     end subroutine eigen_decomposition
 
-    subroutine fast_diagonalization_3d(nb_rows_1, nb_rows_2, nb_rows_3, &
-                                        U_1, D_1, U_2, D_2, U_3, D_3, L1, L2, L3, array_in, array_out)
+    subroutine fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+                                        U_u, U_v, U_w, diagonal, array_in, array_out)
         
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! by G. Sanaglli and M. Tani
@@ -1272,61 +1272,34 @@ module tensor_methods
         implicit none
         ! Input / output  data 
         !---------------------
-        integer, intent(in) :: nb_rows_1, nb_rows_2, nb_rows_3
-        double precision, intent(in) :: U_1, D_1, U_2, D_2, U_3, D_3
-        dimension ::    U_1(nb_rows_1, nb_rows_1), D_1(nb_rows_1), &
-                        U_2(nb_rows_2, nb_rows_2), D_2(nb_rows_2), &
-                        U_3(nb_rows_3, nb_rows_3), D_3(nb_rows_3)
-        double precision, intent(in) :: L1, L2, L3
+        integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
+        double precision, intent(in) :: U_u, U_v, U_w, diagonal
+        dimension ::    U_u(nb_rows_u, nb_rows_u), &
+                        U_v(nb_rows_v, nb_rows_v), &
+                        U_w(nb_rows_w, nb_rows_w), &
+                        diagonal(nb_rows_u*nb_rows_v*nb_rows_w)
 
         double precision, intent(in) :: array_in
-        dimension :: array_in(nb_rows_1*nb_rows_2*nb_rows_3)
+        dimension :: array_in(nb_rows_u*nb_rows_v*nb_rows_w)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(nb_rows_1*nb_rows_2*nb_rows_3)
+        dimension :: array_out(nb_rows_u*nb_rows_v*nb_rows_w)
 
         ! Local data
         ! -------------
         integer :: i, nb_tasks
         double precision :: array_temp_1
-        dimension :: array_temp_1(nb_rows_1*nb_rows_2*nb_rows_3)
-        double precision, allocatable, dimension(:) :: diagonal_temp1, diagonal_temp2, diagonal
-        double precision, allocatable, dimension(:) :: Ident1, Ident2, Ident3
+        dimension :: array_temp_1(nb_rows_u*nb_rows_v*nb_rows_w)
 
         ! ---------------------------------
         ! First part 
         ! ---------------------------------
-        call tensor3d_dot_vector(nb_rows_1, nb_rows_1, nb_rows_2, nb_rows_2, nb_rows_3, nb_rows_3, &
-                            transpose(U_1), transpose(U_2), transpose(U_3), array_in, array_temp_1)
+        call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp_1)
 
         ! ---------------------------------
         ! Second part 
         ! ---------------------------------
-        ! Define identities
-        allocate(Ident1(nb_rows_1), Ident2(nb_rows_2), Ident3(nb_rows_3))
-        Ident1 = 1.d0
-        Ident2 = 1.d0
-        Ident3 = 1.d0
-
-        allocate(diagonal(nb_rows_1*nb_rows_2*nb_rows_3))
-        allocate(diagonal_temp1(nb_rows_1*nb_rows_2))
-        allocate(diagonal_temp2(nb_rows_1*nb_rows_2*nb_rows_3))
-        diagonal = 0.d0
-
-        call vector_kron_vector(nb_rows_2, Ident2, nb_rows_1, D_1, diagonal_temp1)
-        call vector_kron_vector(nb_rows_3, Ident3, size(diagonal_temp1), diagonal_temp1, diagonal_temp2)
-        diagonal = diagonal + L2*L3/L1*diagonal_temp2
-
-        call vector_kron_vector(nb_rows_2, D_2, nb_rows_1, Ident1, diagonal_temp1)
-        call vector_kron_vector(nb_rows_3, Ident3, size(diagonal_temp1), diagonal_temp1, diagonal_temp2)
-        diagonal = diagonal + L1*L3/L2*diagonal_temp2
-
-        call vector_kron_vector(nb_rows_2, Ident2, nb_rows_1, Ident1, diagonal_temp1)
-        call vector_kron_vector(nb_rows_3, D_3, size(diagonal_temp1), diagonal_temp1, diagonal_temp2)
-        diagonal = diagonal + L1*L2/L3*diagonal_temp2
-
-        deallocate(Ident1, Ident2, diagonal_temp1, diagonal_temp2)
-
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, size(array_temp_1)/nb_tasks)
@@ -1340,8 +1313,8 @@ module tensor_methods
         ! Third part
         ! ---------------------------------
         array_out = 0.d0
-        call tensor3d_dot_vector(nb_rows_1, nb_rows_1, nb_rows_2, nb_rows_2, nb_rows_3, nb_rows_3, &
-                                U_1, U_2, U_3, array_temp_1, array_out)
+        call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                                U_u, U_v, U_w, array_temp_1, array_out)
 
     end subroutine fast_diagonalization_3d
 
@@ -1349,7 +1322,7 @@ module tensor_methods
     ! Tensor decomposition
     ! ----------------------------------------------------
     subroutine diagonal_decomposition_2d(nb_cols_u, nb_cols_v, CC, &
-                                        U_u, U_v, W_u, W_v)
+                                        M_u, M_v, K_u, K_v)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
         
@@ -1360,9 +1333,9 @@ module tensor_methods
         double precision, intent(in) :: CC
         dimension :: CC(2, 2, nb_cols_u*nb_cols_v)
 
-        double precision, intent(inout) :: U_u, U_v, W_u, W_v
-        dimension ::    U_u(nb_cols_u), U_v(nb_cols_v), &
-                        W_u(nb_cols_u), W_v(nb_cols_v)
+        double precision, intent(inout) :: M_u, M_v, K_u, K_v
+        dimension ::    M_u(nb_cols_u), M_v(nb_cols_v), &
+                        K_u(nb_cols_u), K_v(nb_cols_v)
 
         ! Local data
         ! ---------------
@@ -1380,7 +1353,7 @@ module tensor_methods
             do i2 = 1, nb_cols_v
                 do i1 = 1, nb_cols_u
                     genpos = i1 + (i2-1)*nb_cols_u 
-                    UU = [U_u(i1), U_v(i2)]
+                    UU = [M_u(i1), M_v(i2)]
                     Vscript(i1, i2) = CC(k, k, genpos)*UU(k)/(UU(1)*UU(2))
                 end do
             end do
@@ -1390,14 +1363,14 @@ module tensor_methods
                 do i1 = 1, nb_cols_u
                     vmin = minval(Vscript(i1, :))
                     vmax = maxval(Vscript(i1, :))
-                    W_u(i1) = sqrt(vmin*vmax)
+                    K_u(i1) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.2) then
                 do i2 = 1, nb_cols_v
                     vmin = minval(Vscript(:, i2))
                     vmax = maxval(Vscript(:, i2))
-                    W_v(i2) = sqrt(vmin*vmax)
+                    K_v(i2) = sqrt(vmin*vmax)
                 end do
             end if
         end do
@@ -1411,8 +1384,8 @@ module tensor_methods
                     do i2 = 1, nb_cols_v
                         do i1 = 1, nb_cols_u
                             genpos = i1 + (i2-1)*nb_cols_u 
-                            UU = [U_u(i1), U_v(i2)]
-                            WW = [W_u(i1), W_v(i2)]
+                            UU = [M_u(i1), M_v(i2)]
+                            WW = [K_u(i1), K_v(i2)]
                             Wscript(i1, i2) = CC(k, k, genpos)*UU(k)*UU(l)&
                                                         /(UU(1)*UU(2)*WW(k))
                         end do
@@ -1425,14 +1398,14 @@ module tensor_methods
                 do i1 = 1, nb_cols_u
                     vmin = minval(Wscript(i1, :))
                     vmax = maxval(Wscript(i1, :))
-                    U_u(i1) = sqrt(vmin*vmax)
+                    M_u(i1) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.2) then
                 do i2 = 1, nb_cols_v
                     vmin = minval(Wscript(:, i2))
                     vmax = maxval(Wscript(:, i2))
-                    U_v(i2) = sqrt(vmin*vmax)
+                    M_v(i2) = sqrt(vmin*vmax)
                 end do
             end if
         end do
@@ -1440,7 +1413,7 @@ module tensor_methods
     end subroutine diagonal_decomposition_2d
 
     subroutine diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, CC, &
-                                        U_u, U_v, U_w, W_u, W_v, W_w)
+                                        M_u, M_v, M_w, K_u, K_v, K_w)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
 
@@ -1451,9 +1424,9 @@ module tensor_methods
         double precision, intent(in) :: CC
         dimension :: CC(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
 
-        double precision, intent(inout) :: U_u, U_v, U_w, W_u, W_v, W_w
-        dimension ::    U_u(nb_cols_u), U_v(nb_cols_v), U_w(nb_cols_w), &
-                        W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
+        double precision, intent(inout) :: M_u, M_v, M_w, K_u, K_v, K_w
+        dimension ::    M_u(nb_cols_u), M_v(nb_cols_v), M_w(nb_cols_w), &
+                        K_u(nb_cols_u), K_v(nb_cols_v), K_w(nb_cols_w)
 
         ! Local data
         ! ---------------
@@ -1476,7 +1449,7 @@ module tensor_methods
                 do i2 = 1, nb_cols_v
                     do i1 = 1, nb_cols_u
                         genpos = i1 + (i2-1)*nb_cols_u + (i3-1)*nb_cols_u*nb_cols_v
-                        UU = [U_u(i1), U_v(i2), U_w(i3)]
+                        UU = [M_u(i1), M_v(i2), M_w(i3)]
                         Vscript(i1, i2, i3) = CC(k, k, genpos)*UU(k)/(UU(1)*UU(2)*UU(3))
                     end do
                 end do
@@ -1487,21 +1460,21 @@ module tensor_methods
                 do i1 = 1, nb_cols_u
                     vmin = minval(Vscript(i1, :, :))
                     vmax = maxval(Vscript(i1, :, :))
-                    W_u(i1) = sqrt(vmin*vmax)
+                    K_u(i1) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.2) then
                 do i2 = 1, nb_cols_v
                     vmin = minval(Vscript(:, i2, :))
                     vmax = maxval(Vscript(:, i2, :))
-                    W_v(i2) = sqrt(vmin*vmax)
+                    K_v(i2) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.3) then 
                 do i3 = 1, nb_cols_v
                     vmin = minval(Vscript(:, :, i3))
                     vmax = maxval(Vscript(:, :, i3))
-                    W_w(i3) = sqrt(vmin*vmax)
+                    K_w(i3) = sqrt(vmin*vmax)
                 end do
             end if
         end do
@@ -1520,8 +1493,8 @@ module tensor_methods
                         do i2 = 1, nb_cols_v
                             do i1 = 1, nb_cols_u
                                 genpos = i1 + (i2-1)*nb_cols_u + (i3-1)*nb_cols_u*nb_cols_v
-                                UU = [U_u(i1), U_v(i2), U_w(i3)]
-                                WW = [W_u(i1), W_v(i2), W_w(i3)]
+                                UU = [M_u(i1), M_v(i2), M_w(i3)]
+                                WW = [K_u(i1), K_v(i2), K_w(i3)]
                                 Wscript(cont, i1, i2, i3) = CC(k, k, genpos)*UU(k)*UU(l)&
                                                             /(UU(1)*UU(2)*UU(3)*WW(k))
                             end do
@@ -1546,21 +1519,21 @@ module tensor_methods
                 do i1 = 1, nb_cols_u
                     vmin = minval(Nscript(i1, :, :))
                     vmax = maxval(Mscript(i1, :, :))
-                    U_u(i1) = sqrt(vmin*vmax)
+                    M_u(i1) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.2) then
                 do i2 = 1, nb_cols_v
                     vmin = minval(Nscript(:, i2, :))
                     vmax = maxval(Mscript(:, i2, :))
-                    U_v(i2) = sqrt(vmin*vmax)
+                    M_v(i2) = sqrt(vmin*vmax)
                 end do
 
             else if (k.eq.3) then 
                 do i3 = 1, nb_cols_v
                     vmin = minval(Nscript(:, :, i3))
                     vmax = maxval(Mscript(:, :, i3))
-                    U_w(i3) = sqrt(vmin*vmax)
+                    M_w(i3) = sqrt(vmin*vmax)
                 end do
             end if
         end do

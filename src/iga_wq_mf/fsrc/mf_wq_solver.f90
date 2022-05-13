@@ -727,11 +727,13 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
     double precision, dimension(:), allocatable :: preconddiag, matrixdiag
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Deigen
     double precision :: Lu, Lv, Lw
     integer :: iter
 
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
 
     ! Preconditioned conjugate gradient
     double precision :: z
@@ -874,6 +876,16 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
                                 data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
+        ! Find diagonal of eigen values
+        allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
+        allocate(Deigen(nb_rows_u*nb_rows_v*nb_rows_w))
+        I_u = 1.d0
+        I_v = 1.d0
+        I_w = 1.d0
+        call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+                                I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        deallocate(I_u, I_v, I_w)
+
         if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
@@ -911,7 +923,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                 call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
             end if
             call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                        U_u, U_v, U_w, Deigen, v1exp, v2exp)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
             end if
@@ -954,7 +966,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                     call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)   
                 end if
                 call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
                 end if
@@ -1050,12 +1062,14 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
     double precision, dimension(:), allocatable :: preconddiag, matrixdiag
-    integer :: iter
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Deigen
+    integer :: iter
     double precision :: Lu, Lv, Lw
 
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
 
     ! Preconditioned conjugate gradient
     double precision :: ptilde, Aptilde, stilde, Astilde
@@ -1215,6 +1229,16 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
                                 data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
+        ! Find diagonal of eigen values
+        allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
+        allocate(Deigen(nb_rows_u*nb_rows_v*nb_rows_w))
+        I_u = 1.d0
+        I_v = 1.d0
+        I_w = 1.d0
+        call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+                                I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        deallocate(I_u, I_v, I_w)
+
         if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
@@ -1254,7 +1278,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                 call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
             end if 
             call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                        U_u, U_v, U_w, Deigen, v1exp, v2exp)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp)  
             end if
@@ -1286,7 +1310,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                     call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)  
                 end if
                 call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
                 end if
@@ -1326,7 +1350,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                     call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
                 end if
                 call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, D_u, U_v, D_v, U_w, D_w, Lu, Lv, Lw, v1exp, v2exp)
+                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
                 end if
