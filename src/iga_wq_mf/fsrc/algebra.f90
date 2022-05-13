@@ -167,7 +167,7 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
 end subroutine solve_system
 
 subroutine vector_kron_vector(size_A, A, size_B, B, C)
-        !! Evaluate kron product of vectors vC = vA x vB (x : tensor product)
+    !! Evaluate kron product of vectors vC = vA x vB (x : tensor product)
 
     use omp_lib
     implicit none
@@ -226,6 +226,33 @@ subroutine matrix_kron_matrix(nb_rows_A, nb_cols_A, A, nb_rows_B, nb_cols_B, B, 
     end do
 
 end subroutine matrix_kron_matrix
+
+subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D)
+    !! Returns the result of A x B x C, where x is kronecker product
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: size_A,size_B, size_C
+    double precision, intent(in) :: A, B, C
+    dimension :: A(size_A), B(size_B), C(size_C)
+
+    double precision, intent(out) :: D
+    dimension :: D(size_A*size_B*size_C)
+
+    ! Local data
+    ! -------------
+    double precision, allocatable, dimension(:) :: AB
+
+    ! Compute A x B
+    allocate(AB(size_A*size_B))
+    call vector_kron_vector(size_A, A, size_B, B, AB)
+
+    ! Compute (A x B) x C
+    call vector_kron_vector(size(AB), AB, size_C, C, D)
+    deallocate(AB)
+
+end subroutine kron_product_3vec
 
 subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
     ! Sacaling in fast diagonalization

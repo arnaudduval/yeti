@@ -80,8 +80,43 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, d
 
 end subroutine get_basis_generalized
 
-subroutine iga_get_data( degree, nb_el, &
-                        nnz_B, qp_pos, qp_weights, &
+subroutine get_basis_generalized_csr(degree, nb_el, nb_knots, knots, multiplicity, data_B0, data_B1, indi, indj)
+    !! Gets in COO format the basis at given knots 
+
+    ! Input / output data
+    ! ---------------------
+    !f2py intent(in) :: degree, nb_el, nb_knots
+    !f2py depend(nb_knots) :: knots
+    integer :: degree, nb_el, nb_knots, multiplicity
+    double precision :: knots
+    dimension :: knots(nb_knots)
+
+    double precision, intent(out) :: data_B0, data_B1
+    dimension :: data_B0(nb_knots*(degree+1)), data_B1(nb_knots*(degree+1))
+    integer, intent(out) ::  indi, indj
+    dimension :: indi(degree+nb_el+1), indj(nb_knots*(degree+1))
+
+    ! Local data
+    ! ---------------
+    integer :: size_data
+    integer, dimension(:), allocatable :: indi_coo, indj_coo
+    double precision, dimension(:), allocatable :: data_dummy
+
+    ! Get results in coo format
+    size_data = nb_knots*(degree+1)
+    allocate(indi_coo(size_data), indj_coo(size_data))
+    call get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, data_B0, data_B1, indi_coo, indj_coo)
+
+    ! CSR format
+    allocate(data_dummy(size_data))
+    call coo2csr(degree+nb_el, size_data, data_B0, indi_coo, indj_coo, data_dummy, indj, indi)
+    deallocate(data_dummy, indi_coo, indj_coo)
+
+end subroutine 
+
+! ==============================
+
+subroutine iga_get_data( degree, nb_el, size_data, qp_pos, data_W, &
                         data_B0, data_B1, data_ind, nnz_I)
     !! Gets in COO format basis and weights in IGA approach
 
@@ -89,14 +124,14 @@ subroutine iga_get_data( degree, nb_el, &
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: degree, nb_el, nnz_B
+    integer, intent(in) :: degree, nb_el, size_data
 
-    double precision, intent(out) :: qp_pos, qp_weights
-    dimension :: qp_pos(nb_el*(degree+1)), qp_weights(nb_el*(degree+1))
+    double precision, intent(out) :: qp_pos, data_W
+    dimension :: qp_pos(nb_el*(degree+1)), data_W(nb_el*(degree+1))
     double precision, intent(out) :: data_B0, data_B1
-    dimension :: data_B0(nnz_B), data_B1(nnz_B)
+    dimension :: data_B0(size_data), data_B1(size_data)
     integer, intent(out) :: data_ind
-    dimension :: data_ind(nnz_B, 2)
+    dimension :: data_ind(size_data, 2)
     integer, intent(out) :: nnz_I
 
     ! Local data
@@ -108,7 +143,7 @@ subroutine iga_get_data( degree, nb_el, &
 
     ! Set quadrature points
     qp_pos = object%qp_pos
-    qp_weights = object%qp_weights
+    data_W = object%qp_weights
 
     ! Set data 
     data_B0 = object%data_B0
@@ -122,7 +157,41 @@ subroutine iga_get_data( degree, nb_el, &
 
 end subroutine iga_get_data
 
-subroutine wq_get_size_data(degree, nb_el, nnz_B, size_qp)
+subroutine iga_get_data_csr(degree, nb_el, size_data, qp_pos, data_W, &
+                            data_B0, data_B1, indi, indj, nnz_I)
+    !! Gets in CSR format basis and weights in IGA approach
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer, intent(in) :: degree, nb_el, size_data
+
+    double precision, intent(out) :: qp_pos, data_W
+    dimension :: qp_pos(nb_el*(degree+1)), data_W(nb_el*(degree+1))
+    double precision, intent(out) :: data_B0, data_B1
+    dimension :: data_B0(size_data), data_B1(size_data)
+    integer, intent(out) :: indi, indj
+    dimension :: indi(degree+nb_el+1), indj(size_data)
+    integer, intent(out) :: nnz_I
+
+    ! Local data
+    ! -------------
+    integer :: data_ind
+    dimension :: data_ind(size_data, 2)
+    double precision, dimension(:), allocatable :: data_dummy
+    
+    call iga_get_data( degree, nb_el, size_data, qp_pos, data_W, &
+                    data_B0, data_B1, data_ind, nnz_I)
+
+    allocate(data_dummy(size_data))
+    call coo2csr(degree+nb_el, size_data, data_B0, data_ind(:,1), data_ind(:,2), data_dummy, indj, indi)
+    deallocate(data_dummy)
+
+end subroutine 
+
+! ==============================
+
+subroutine wq_get_size_data(degree, nb_el, size_data, nb_qp)
     !! Gets the size of non-zeros in Basis matrix to use in wq_get_data
     
     use wq_basis_weights
@@ -130,19 +199,19 @@ subroutine wq_get_size_data(degree, nb_el, nnz_B, size_qp)
     ! Input / output data
     ! --------------------
     integer, intent(in) :: degree, nb_el
-    integer, intent(out) :: nnz_B, size_qp
+    integer, intent(out) :: size_data, nb_qp
 
     ! Local data
     ! -----------------
     type(wq), pointer :: object
 
     call wq_initialize(object, degree, nb_el)
-    nnz_B = object%nnz_B
-    size_qp = object%nb_qp_wq
+    size_data = object%nnz_B
+    nb_qp = object%nb_qp_wq
 
 end subroutine wq_get_size_data
 
-subroutine wq_get_data( degree, nb_el, nnz_B, size_qp, qp_pos, &
+subroutine wq_get_data( degree, nb_el, size_data, nb_qp, qp_pos, &
                         data_B0, data_B1, data_W00, &
                         data_W01, data_W10, data_W11, &
                         data_ind, nnz_I)
@@ -152,18 +221,18 @@ subroutine wq_get_data( degree, nb_el, nnz_B, size_qp, qp_pos, &
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: degree, nb_el, nnz_B, size_qp
+    integer, intent(in) :: degree, nb_el, size_data, nb_qp
 
     double precision, intent(out) :: qp_pos
-    dimension :: qp_pos(size_qp)
+    dimension :: qp_pos(nb_qp)
     double precision, intent(out) :: data_B0, data_B1, data_W00, &
                                     data_W01, data_W10, data_W11
-    dimension ::    data_B0(nnz_B), data_B1(nnz_B), &
-                    data_W00(nnz_B), data_W01(nnz_B), &
-                    data_W10(nnz_B), data_W11(nnz_B)
+    dimension ::    data_B0(size_data), data_B1(size_data), &
+                    data_W00(size_data), data_W01(size_data), &
+                    data_W10(size_data), data_W11(size_data)
     
     integer, intent(out) :: data_ind
-    dimension :: data_ind(nnz_B, 2)
+    dimension :: data_ind(size_data, 2)
     integer, intent(out) :: nnz_I
 
     ! Local data
@@ -193,7 +262,7 @@ subroutine wq_get_data( degree, nb_el, nnz_B, size_qp, qp_pos, &
 
 end subroutine wq_get_data
 
-subroutine wq_get_data_csr( degree, nb_el, nnz_B, size_qp, qp_pos, &
+subroutine wq_get_data_csr( degree, nb_el, size_data, nb_qp, qp_pos, &
                             data_B0, data_B1, data_W00, &
                             data_W01, data_W10, data_W11, &
                             indi, indj, nnz_I)
@@ -203,31 +272,31 @@ subroutine wq_get_data_csr( degree, nb_el, nnz_B, size_qp, qp_pos, &
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: degree, nb_el, nnz_B, size_qp
+    integer, intent(in) :: degree, nb_el, size_data, nb_qp
 
     double precision, intent(out) :: qp_pos
-    dimension :: qp_pos(size_qp)
+    dimension :: qp_pos(nb_qp)
     double precision, intent(out) :: data_B0, data_B1, data_W00, &
                     data_W01, data_W10, data_W11
-    dimension ::    data_B0(nnz_B), data_B1(nnz_B), &
-                    data_W00(nnz_B), data_W01(nnz_B), &
-                    data_W10(nnz_B), data_W11(nnz_B)
+    dimension ::    data_B0(size_data), data_B1(size_data), &
+                    data_W00(size_data), data_W01(size_data), &
+                    data_W10(size_data), data_W11(size_data)
 
     integer, intent(out) :: indi, indj
-    dimension :: indi(degree+nb_el+1), indj(nnz_B)
+    dimension :: indi(degree+nb_el+1), indj(size_data)
     integer, intent(out) :: nnz_I
 
     ! Local data
     ! -------------
     integer :: data_ind
-    dimension :: data_ind(nnz_B, 2)
-    double precision, dimension(:), allocatable :: data_B0_csr
+    dimension :: data_ind(size_data, 2)
+    double precision, dimension(:), allocatable :: data_dummy
     
-    call wq_get_data(degree, nb_el, nnz_B, size_qp, qp_pos, data_B0, data_B1, data_W00, &
+    call wq_get_data(degree, nb_el, size_data, nb_qp, qp_pos, data_B0, data_B1, data_W00, &
                     data_W01, data_W10, data_W11, data_ind, nnz_I)
 
-    allocate(data_B0_csr(nnz_B))
-    call coo2csr(degree+nb_el, nnz_B, data_B0, data_ind(:,1), data_ind(:,2), data_B0_csr, indj, indi)
-    deallocate(data_B0_csr)
+    allocate(data_dummy(size_data))
+    call coo2csr(degree+nb_el, size_data, data_B0, data_ind(:,1), data_ind(:,2), data_dummy, indj, indi)
+    deallocate(data_dummy)
 
 end subroutine wq_get_data_csr
