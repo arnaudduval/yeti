@@ -169,28 +169,34 @@ end subroutine solve_system
 subroutine vector_kron_vector(size_A, A, size_B, B, C)
         !! Evaluate kron product of vectors vC = vA x vB (x : tensor product)
 
-        implicit none
-        ! Input / output
-        ! ---------------- 
-        integer :: size_A, size_B
-        double precision :: A(size_A), B(size_B)
+    use omp_lib
+    implicit none
+    ! Input / output
+    ! ---------------- 
+    integer :: size_A, size_B
+    double precision :: A(size_A), B(size_B)
 
-        double precision :: C(size_A*size_B)
+    double precision :: C(size_A*size_B)
 
-        ! Local data
-        ! ------------
-        integer :: i1, i2, indj
+    ! Local data
+    ! ------------
+    integer :: i1, i2, indj, nb_tasks
 
-        ! Initialize vector
-        C = 0.d0
+    ! Initialize vector
+    C = 0.d0
 
-        ! Complete result
-        do i1 = 1, size_A
-            do i2 = 1, size_B
-                indj = (i1-1)*size_B + i2
-                C(indj) = A(i1) * B(i2)
-            end do 
-        end do
+    ! Complete result
+    !$OMP PARALLEL PRIVATE(i1, i2, indj)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, size_A*size_B/nb_tasks)
+    do i1 = 1, size_A
+        do i2 = 1, size_B
+            indj = (i1-1)*size_B + i2
+            C(indj) = A(i1) * B(i2)
+        end do 
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
 
 end subroutine vector_kron_vector 
 
