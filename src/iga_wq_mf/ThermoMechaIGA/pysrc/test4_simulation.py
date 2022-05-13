@@ -229,8 +229,7 @@ for IS_CG in is_cg_list:
     if not FileExist:
         # Run simulation
         blockPrint()
-        # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-        method_list = ["TDS", "JM"]
+        method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries, isDirect=isDirect)
         enablePrint()

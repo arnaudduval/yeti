@@ -720,7 +720,6 @@ class thermoMechaModel():
         # ==============================
         shape_matrices, indexes, data, ctrlpts = [], [], [], []
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._sample_size)
             indexes.append(ind[dim][0])
             indexes.append(ind[dim][1])
@@ -729,7 +728,7 @@ class thermoMechaModel():
             ctrlpts.append(self._ctrlpts[:, dim])
         inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
 
-        if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)       
+        if self._dim == 2: raise Warning('Until now not done')      
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
 
         # ==============================
@@ -738,17 +737,17 @@ class thermoMechaModel():
         if u_ctrlpts is not None:
             shape_matrices, indexes, data = [], [], []
             for dim in range(self._dim):
-                shape_matrices.append(self._nb_ctrlpts[dim][0])
                 shape_matrices.append(self._sample_size)
                 indexes.append(ind[dim][0])
                 indexes.append(ind[dim][1])
                 data.append(DB[dim][0])
             inputs = [*shape_matrices, u_ctrlpts, *indexes, *data]
 
-            if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)
+            if self._dim == 2: raise Warning('Until now not done')    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
             return jacobien_PS, qp_PS, detJ, u_interp
-        else: return jacobien_PS, qp_PS, detJ
+        else: 
+            return jacobien_PS, qp_PS, detJ
     
     def export_results(self, u_ctrlpts= None, filename= None): 
         " Returns solution using geometry basis "
@@ -846,7 +845,6 @@ class thermoMechaModel():
         ctrlpts = []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._sample_size)
             indexes.append(ind[dim][0])
             indexes.append(ind[dim][1])
@@ -859,8 +857,7 @@ class thermoMechaModel():
         # =========================
         # Get position and jacobien
         # =========================
-        if self._dim == 2:
-            _, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)
+        if self._dim == 2: raise Warning('Until now not done')    
                 
         if self._dim == 3:
             _, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)

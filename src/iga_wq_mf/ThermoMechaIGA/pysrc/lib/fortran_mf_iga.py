@@ -22,15 +22,10 @@ def iga_get_basis_weights(degree, nb_el):
     nnz_B = (degree + 1) * nb_qp
 
     # Get basis and weights from fortran
-    qp_pos, qp_weights, data_b0, data_b1, \
-    data_ind, nnz_I = basis_weights.iga_get_data(degree, nb_el, nnz_B)
+    qp_pos, qp_weights, B0, B1, \
+    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, nb_el, nnz_B)
  
-    # Resize outputs
-    B0 = data_b0
-    B1 = data_b1
-    ind = data_ind
-
-    return nnz_I, qp_pos, qp_weights, B0, B1, ind
+    return nnz_I, qp_pos, qp_weights, B0, B1, indi, indj
     
 class fortran_mf_iga(thermoMechaModel):
     
@@ -66,10 +61,9 @@ class fortran_mf_iga(thermoMechaModel):
         shape_matrices, indexes, data, ctrlpts = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_cgg[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
@@ -84,17 +78,16 @@ class fortran_mf_iga(thermoMechaModel):
         " Returns necessary inputs to compute capacity matrix "
 
         # Initialize
-        shape_matrices, indexes, data, size_I = [], [], [], []
+        indexes, data, size_I = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DW[dim])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._capacity_coef, *shape_matrices, *indexes, *data, *size_I]
+        inputs = [self._capacity_coef, *indexes, *data, *size_I]
         
         return inputs
 
@@ -102,18 +95,17 @@ class fortran_mf_iga(thermoMechaModel):
         " Returns necessary inputs to compute conducivity matrix "
 
         # Initialize
-        shape_matrices, indexes, data, size_I = [], [], [], []
+        indexes, data, size_I = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, *size_I]
+        inputs = [self._conductivity_coef, *indexes, *data, *size_I]
         
         return inputs
 
@@ -123,16 +115,15 @@ class fortran_mf_iga(thermoMechaModel):
         " Returns necessary inputs to compute source vector "
 
         # Initialize
-        shape_matrices, indexes, data = [], [], []
+        indexes, data = [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DW[dim])
 
-        inputs = [self._source_coef, *shape_matrices, *indexes, *data]
+        inputs = [self._source_coef, *indexes, *data]
         
         return inputs
 
@@ -141,39 +132,36 @@ class fortran_mf_iga(thermoMechaModel):
         " Returns necessary inputs to compute K u "
 
         # Initialize
-        shape_matrices, indexes, data = [], [], []
+        indexes, data = [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim])
 
-        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+        inputs = [self._conductivity_coef, *indexes, *data, u]
 
         return inputs
-
 
     def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
         " Returns necessary inputs to compute K u "
 
         # Initialize
-        shape_matrices, indexes, data = [], [], []
+        indexes, data = [], []
         
         # Remember: Indexes in fortran starts at 1
         dof = np.asarray(dof) + 1
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim])
 
-        inputs = [self._conductivity_coef, self._thermalblockedboundaries, *shape_matrices, *indexes, 
+        inputs = [self._conductivity_coef, self._thermalblockedboundaries, *indexes, 
                     *data, bi, dof, nbIterations, epsilon]
         return inputs
 
@@ -204,13 +192,13 @@ class fortran_mf_iga(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, qp_weights, \
-            B0, B1, ind  = iga_get_basis_weights(self._degree[dim][0], self._nb_el[dim][0])
+            B0, B1, indi, indj  = iga_get_basis_weights(self._degree[dim][0], self._nb_el[dim][0])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)
             self._DB.append([B0, B1])
             self._DW.append(qp_weights)
-            self._indexes.append(ind)
+            self._indexes.append([indi, indj])
 
         stop = time.time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
@@ -230,7 +218,7 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
+            raise Warning('Until now not done')
                 
         if self._dim == 3:
             self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_3d(*inputs)
@@ -320,7 +308,7 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 3:
-            result = solver.mf_iga_get_ku_3d_coo(*inputs)
+            result = solver.mf_iga_get_ku_3d_csr(*inputs)
 
         return result
     
@@ -398,18 +386,17 @@ class fortran_mf_iga(thermoMechaModel):
                     for _ in range(self._nb_qp_cgg_total)]
 
         # Define inputs for C and F
-        shape_matrices, indexes, data, size_I = [], [], [], []
+        indexes, data, size_I = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DW[dim])
             size_I.append(self._nnz_I_dim[dim])
 
-        inputs_C = [self._detJ, *shape_matrices, *indexes, *data, *size_I]
-        inputs_F = [coef_F, *shape_matrices, *indexes, *data]
+        inputs_C = [self._detJ, *indexes, *data, *size_I]
+        inputs_F = [coef_F, *indexes, *data]
 
         # Calculate capacity matrix and temperature vector
         if self._dim < 2 and self._dim > 3:

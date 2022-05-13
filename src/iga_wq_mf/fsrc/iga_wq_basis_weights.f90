@@ -8,7 +8,6 @@ subroutine get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, d
     !! Gets in COO format the basis at given knots 
 
     implicit none
-
     ! Input / output data
     ! ---------------------
     !f2py intent(in) :: degree, nb_el, nb_knots
@@ -83,6 +82,7 @@ end subroutine get_basis_generalized
 subroutine get_basis_generalized_csr(degree, nb_el, nb_knots, knots, multiplicity, data_B0, data_B1, indi, indj)
     !! Gets in COO format the basis at given knots 
 
+    implicit none
     ! Input / output data
     ! ---------------------
     !f2py intent(in) :: degree, nb_el, nb_knots
@@ -93,24 +93,26 @@ subroutine get_basis_generalized_csr(degree, nb_el, nb_knots, knots, multiplicit
 
     double precision, intent(out) :: data_B0, data_B1
     dimension :: data_B0(nb_knots*(degree+1)), data_B1(nb_knots*(degree+1))
-    integer, intent(out) ::  indi, indj
+    integer, intent(out) :: indi, indj
     dimension :: indi(degree+nb_el+1), indj(nb_knots*(degree+1))
 
     ! Local data
     ! ---------------
     integer :: size_data
     integer, dimension(:), allocatable :: indi_coo, indj_coo
-    double precision, dimension(:), allocatable :: data_dummy
+    double precision, dimension(:), allocatable :: data_B0_coo, data_B1_coo
 
     ! Get results in coo format
     size_data = nb_knots*(degree+1)
-    allocate(indi_coo(size_data), indj_coo(size_data))
-    call get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, data_B0, data_B1, indi_coo, indj_coo)
+    allocate(data_B0_coo(size_data), data_B1_coo(size_data), indi_coo(size_data), indj_coo(size_data))
+    call get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, data_B0_coo, data_B1_coo, indi_coo, indj_coo)
 
     ! CSR format
-    allocate(data_dummy(size_data))
-    call coo2csr(degree+nb_el, size_data, data_B0, indi_coo, indj_coo, data_dummy, indj, indi)
-    deallocate(data_dummy, indi_coo, indj_coo)
+    call coo2csr(degree+nb_el, size_data, data_B0_coo, indi_coo, indj_coo, data_B0, indj, indi)
+    deallocate(data_B0_coo)
+
+    call coo2csr(degree+nb_el, size_data, data_B1_coo, indi_coo, indj_coo, data_B1, indj, indi)
+    deallocate(data_B1_coo, indi_coo, indj_coo)
 
 end subroutine 
 

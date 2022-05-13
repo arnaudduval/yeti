@@ -227,30 +227,43 @@ subroutine matrix_kron_matrix(nb_rows_A, nb_cols_A, A, nb_rows_B, nb_cols_B, B, 
 
 end subroutine matrix_kron_matrix
 
-subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D)
+subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
     !! Returns the result of A x B x C, where x is kronecker product
 
+    use omp_lib
     implicit none
     ! Input / output data
     ! -------------------
     integer, intent(in) :: size_A,size_B, size_C
     double precision, intent(in) :: A, B, C
     dimension :: A(size_A), B(size_B), C(size_C)
+    double precision, intent(in) :: alpha
 
-    double precision, intent(out) :: D
+    double precision, intent(inout) :: D
     dimension :: D(size_A*size_B*size_C)
 
     ! Local data
     ! -------------
-    double precision, allocatable, dimension(:) :: AB
+    integer :: i, nb_tasks
+    double precision, allocatable, dimension(:) :: AB, Dtemp
 
     ! Compute A x B
     allocate(AB(size_A*size_B))
     call vector_kron_vector(size_A, A, size_B, B, AB)
 
     ! Compute (A x B) x C
-    call vector_kron_vector(size(AB), AB, size_C, C, D)
+    allocate(Dtemp(size_A*size_B*size_C))
+    call vector_kron_vector(size(AB), AB, size_C, C, Dtemp)
     deallocate(AB)
+
+    !$OMP PARALLEL 
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, size(Dtemp)/nb_tasks)
+    do i = 1, size(Dtemp)
+        D(i) = D(i) + alpha*Dtemp(i)
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
 
 end subroutine kron_product_3vec
 

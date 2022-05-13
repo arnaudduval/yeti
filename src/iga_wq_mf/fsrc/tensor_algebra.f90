@@ -1006,31 +1006,17 @@ module tensor_methods
         double precision, intent(out) :: diag
         dimension :: diag(nb_rows_u*nb_rows_v*nb_rows_w)
 
-        ! Local data
-        ! -----------------------
-        double precision, dimension(:), allocatable :: diag_temp1, diag_temp2
-
         ! Initialize
         diag = 0.d0
 
         ! Find K3 M2 M1
-        allocate(diag_temp1(nb_rows_u*nb_rows_v))
-        allocate(diag_temp2(nb_rows_u*nb_rows_v*nb_rows_w))
-        call vector_kron_vector(nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag_temp1)
-        call vector_kron_vector(nb_rows_w, Kdiag_w, size(diag_temp1), diag_temp1, diag_temp2)
-        diag = diag + L1*L2/L3*diag_temp2
+        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, L1*L2/L3)
 
         ! Find M3 K2 M1
-        call vector_kron_vector(nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag_temp1)
-        call vector_kron_vector(nb_rows_w, Mdiag_w, size(diag_temp1), diag_temp1, diag_temp2)
-        diag = diag + L3*L1/L2*diag_temp2
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, L3*L1/L2)
 
         ! Find M3 M2 K1
-        call vector_kron_vector(nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag_temp1)
-        call vector_kron_vector(nb_rows_w, Mdiag_w, size(diag_temp1), diag_temp1, diag_temp2)
-        diag = diag + L3*L1/L2*diag_temp2
-
-        deallocate(diag_temp1, diag_temp2)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, L3*L1/L2)
 
     end subroutine find_diagonal_fd_3d
 
@@ -1275,74 +1261,6 @@ module tensor_methods
 
         deallocate(KK, MM, W, WORK, IWORK)
     end subroutine eigen_decomposition
-
-    subroutine fast_diagonalization_2d(nb_rows_1, nb_rows_2, &
-                                        U_1, D_1, U_2, D_2, array_in, array_out)
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! by G. Sanaglli and M. Tani
-
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        integer, intent(in) :: nb_rows_1, nb_rows_2
-        double precision, intent(in) :: U_1, D_1, U_2, D_2
-        dimension :: U_1(nb_rows_1, nb_rows_1), D_1(nb_rows_1), &
-                    U_2(nb_rows_2, nb_rows_2), D_2(nb_rows_2)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nb_rows_1*nb_rows_2)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nb_rows_1*nb_rows_2)
-
-        ! Local data
-        ! -------------
-        integer :: i
-        double precision, allocatable, dimension(:) :: array_temp_1, diagonal_temp, diagonal
-        double precision, allocatable, dimension(:) :: Ident1, Ident2
-
-        ! ---------------------------------
-        ! First part 
-        ! ---------------------------------
-        allocate(array_temp_1(nb_rows_1*nb_rows_2))
-        array_temp_1 = 0.d0
-
-        call tensor2d_dot_vector(nb_rows_1, nb_rows_1, nb_rows_2, nb_rows_2, &
-                                    transpose(U_1), transpose(U_2), array_in, array_temp_1)
-
-        ! ---------------------------------
-        ! Second part 
-        ! ---------------------------------
-        ! Define identities
-        allocate(Ident1(nb_rows_1), Ident2(nb_rows_2))
-        Ident1 = 1.d0
-        Ident2 = 1.d0
-
-        allocate(diagonal(nb_rows_1*nb_rows_2))
-        allocate(diagonal_temp(nb_rows_1*nb_rows_2))
-        diagonal = 0.d0
-
-        call vector_kron_vector(nb_rows_2, Ident2, nb_rows_1, D_1, diagonal_temp)
-        diagonal = diagonal + diagonal_temp
-
-        call vector_kron_vector(nb_rows_2, D_2, nb_rows_1, Ident1, diagonal_temp)
-        diagonal = diagonal + diagonal_temp
-
-        deallocate(Ident1, Ident2, diagonal_temp)
-
-        do i = 1, size(array_temp_1)
-            array_temp_1(i) = array_temp_1(i) / diagonal(i)
-        end do
-
-        ! ----------------------------------
-        ! Third part
-        ! ---------------------------------
-        array_out = 0.d0
-        call tensor2d_dot_vector(nb_rows_1, nb_rows_1, nb_rows_2, nb_rows_2, &
-                                    U_1, U_2, array_temp_1, array_out)
-        deallocate(array_temp_1)
-
-    end subroutine fast_diagonalization_2d
 
     subroutine fast_diagonalization_3d(nb_rows_1, nb_rows_2, nb_rows_3, &
                                         U_1, D_1, U_2, D_2, U_3, D_3, L1, L2, L3, array_in, array_out)

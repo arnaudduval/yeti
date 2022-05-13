@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.methods_wq import WQ
+from lib.fortran_mf_iga import fortran_mf_iga
+from lib.methods_iga import IGA
 from lib.physics import power_density
 
 # Enable and disable print
@@ -28,8 +30,16 @@ def enablePrint():
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
+isIGA = False
 CONSTRUCTION = True
-SYMMETRY = True
+SYMMETRY = False
+
+if isIGA: 
+    classfortran = fortran_mf_iga
+    classpython = IGA
+else: 
+    classfortran = fortran_mf_wq
+    classpython = WQ
 
 # ====================================================================
 # TEST ERROR CONSTRUCTION
@@ -62,8 +72,8 @@ if CONSTRUCTION:
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
                 
                     # Creation of thermal model object
-                    Model1 = fortran_mf_wq(modelGeo)
-                    Model2 = WQ(modelGeo)
+                    Model1 = classfortran(modelGeo)
+                    Model2 = classpython(modelGeo)
 
                     if varName == "K": 
                         var1 = Model1.eval_conductivity_matrix()
@@ -136,7 +146,7 @@ if SYMMETRY:
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
 
                     # Creation of thermal model object
-                    Model1 = fortran_mf_wq(modelGeo)
+                    Model1 = classfortran(modelGeo)
                     del modelGeo
 
                     if varName == "K": var1 = Model1.eval_conductivity_matrix()

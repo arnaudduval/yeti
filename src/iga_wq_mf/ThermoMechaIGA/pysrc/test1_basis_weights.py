@@ -41,18 +41,19 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             # FORTRAN
             # ======================================== 
             _, _, dB0, dB1, dW00, dW01, \
-            dW10, dW11, indexes = wq_find_basis_weights_fortran(degree, nb_el)
-            nb_ctrlpts = np.max(indexes[:, 0])
-            nb_qp_wq = np.max(indexes[:, 1])
-            indexes -= 1
+            dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, nb_el)
+            nb_ctrlpts = np.size(indi)-1
+            nb_qp_wq = np.max(indj)
+            indi -= 1
+            indj -= 1
 
             # Create basis and weights from fortran
-            B0f = sp.coo_matrix((dB0, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
-            B1f = sp.coo_matrix((dB1, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
-            W00f = sp.coo_matrix((dW00, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
-            W01f = sp.coo_matrix((dW01, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
-            W10f = sp.coo_matrix((dW10, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
-            W11f = sp.coo_matrix((dW11, (indexes[:,0], indexes[:,1])), shape=(nb_ctrlpts, nb_qp_wq))
+            B0f = sp.csr_matrix((dB0, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            B1f = sp.csr_matrix((dB1, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W00f = sp.csr_matrix((dW00, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W01f = sp.csr_matrix((dW01, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W10f = sp.csr_matrix((dW10, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W11f = sp.csr_matrix((dW11, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
 
             # Calculate I
             I00f = W00f @ B0f.T

@@ -67,7 +67,7 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
     enablePrint()
 
     print("Error using interpolation : %.5f" %(error_Temp_1,))
-    print("Error interpilation/direct solution : %.5f" %(error_Temp_2,))
+    print("Error interpolation/direct solution : %.5f" %(error_Temp_2,))
 
     # Solution using conjugate gradient
     iterations = 80

@@ -21,9 +21,9 @@ def wq_find_basis_weights_fortran(degree, nbel):
     # Get basis and weights from fortran
     qp_pos, B0, B1, \
     W00, W01, W10, W11, \
-    ind, nnz_I = basis_weights.wq_get_data(degree, nbel, nnz_B, size_qp)
+    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
 
-    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, ind
+    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
 
 class fortran_mf_wq(thermoMechaModel):
 
@@ -80,10 +80,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data, ctrlpts = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
@@ -101,10 +100,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DW[dim][0][0])
             size_I.append(self._nnz_I_dim[dim])
@@ -121,10 +119,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim][0][0])
@@ -145,10 +142,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim][0][0])
@@ -170,10 +166,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data, size_I = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DW[dim][0][0])
             data.append(self._DW[dim][1][0])
@@ -193,10 +188,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DW[dim][0][0])
 
         inputs = [self._source_coef, *shape_matrices, *indexes, *data]
@@ -210,10 +204,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DW[dim][0][0])
 
         inputs = [self._bodyforce_coef, *shape_matrices, *indexes, *data]
@@ -229,10 +222,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data = [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim][0][0])
@@ -254,10 +246,9 @@ class fortran_mf_wq(thermoMechaModel):
         dof = np.asarray(dof) + 1
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data.append(self._DB[dim][0])
             data.append(self._DB[dim][1])
             data.append(self._DW[dim][0][0])
@@ -297,13 +288,13 @@ class fortran_mf_wq(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, B0, B1, W00, W01, \
-            W10, W11, indexes = wq_find_basis_weights_fortran(self._degree[dim][0], self._nb_el[dim][0])
+            W10, W11, indi, indj = wq_find_basis_weights_fortran(self._degree[dim][0], self._nb_el[dim][0])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)
             self._DB.append([B0, B1])
             self._DW.append([[W00, W01], [W10, W11]])
-            self._indexes.append(indexes)
+            self._indexes.append([indi, indj])
 
         stop = time.time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
@@ -323,7 +314,7 @@ class fortran_mf_wq(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
+            raise Warning('Until now not done')
                 
         if self._dim == 3:
             self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_3d(*inputs)
@@ -418,7 +409,7 @@ class fortran_mf_wq(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 3:
-            result = solver.mf_wq_get_ku_3d_coo(*inputs)
+            result = solver.mf_wq_get_ku_3d_csr(*inputs)
 
         return result
 
@@ -574,10 +565,9 @@ class fortran_mf_wq(thermoMechaModel):
         shape_matrices, indexes, data_C, data_F, size_I = [], [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_ctrlpts[dim][0])
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][:, 0])
-            indexes.append(self._indexes[dim][:, 1])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
             data_C.append(self._DB[dim][0])
             data_C.append(self._DW[dim][0][0])
             data_F.append(self._DW[dim][0][0])

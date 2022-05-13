@@ -94,7 +94,7 @@ def eval_basis_python(degree, knotvector, knots, multiplicity= 1):
 def eval_basis_fortran(degree, nbel, knots, multiplicity=1):
     " Evaluates B-spline functions at given knots using fortran libraries "
 
-    B0, B1, indi, indj = basis_weights.get_basis_generalized(
+    B0, B1, indi, indj = basis_weights.get_basis_generalized_csr(
                             degree, nbel, len(knots), knots, multiplicity)
 
     return B0, B1, indi, indj

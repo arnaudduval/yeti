@@ -303,7 +303,7 @@ end subroutine wq_get_nnz_B0_B1_shape
 subroutine get_I_csr(nb_ctrlpts, nb_qp, nnz_B, data_B, indi_B, indj_B, &
                     nnz_I, indi_I, indj_I)
     !! Gets non-zero positions for I = B1 * B1.T in WQ and IGA approach
-    !! B in COO format and I in CSR format
+    !! B and I in CSR format
 
     use constants_iga_wq_mf
     implicit none
@@ -313,7 +313,7 @@ subroutine get_I_csr(nb_ctrlpts, nb_qp, nnz_B, data_B, indi_B, indj_B, &
     double precision, intent(in) :: data_B
     dimension :: data_B(nnz_B)
     integer, intent(in) :: indi_B, indj_B
-    dimension :: indi_B(nnz_B), indj_B(nnz_B)
+    dimension :: indi_B(nb_ctrlpts+1), indj_B(nnz_B)
     
     integer, intent(out) :: indi_I, indj_I
     dimension :: indi_I(nb_ctrlpts+1), indj_I(nnz_I)
@@ -326,7 +326,7 @@ subroutine get_I_csr(nb_ctrlpts, nb_qp, nnz_B, data_B, indi_B, indj_B, &
     dimension :: MIint(nb_ctrlpts, nb_ctrlpts), MBint(nb_ctrlpts, nb_qp)
 
     ! Initialize matrix B
-    call coo2matrix(nnz_B, indi_B, indj_B, data_B, nb_ctrlpts, nb_qp, MB)
+    call csr2matrix(nnz_B, indi_B, indj_B, data_B, nb_ctrlpts, nb_qp, MB)
     MBint = 0
     where (abs(MB).gt.tol)
         MBint = 1
