@@ -2,7 +2,7 @@
 ! module :: IGA - Matrix free methods 
 ! author :: Joaquin Cornejo
 ! ====================================================
-subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
+subroutine iga_find_conductivity_diagonal_3d(nb_rows_total, nb_cols_total, cond_coefs, &
                                         nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         nb_rows_w, nb_cols_w, &
@@ -19,7 +19,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     implicit none 
     ! Input / output 
     ! -------------------
-    integer, intent(in):: nb_cols_total
+    integer, intent(in):: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_cols_total)
@@ -38,14 +38,14 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
                     data_B0_w(size_data_w), data_B1_w(size_data_w)
     
     double precision, intent(out) :: Kdiag
-    dimension :: Kdiag(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: Kdiag(nb_rows_total)
 
     ! Local data
     ! ----------------------
     ! Find diagonal
     integer :: i
     double precision :: Kdiagtemp
-    dimension :: Kdiagtemp(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: Kdiagtemp(nb_rows_total)
     double precision, allocatable, dimension(:) :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
 
     ! Initialize
@@ -170,22 +170,22 @@ end subroutine iga_find_conductivity_diagonal_3d
 ! ----------------------------------------
 ! Assembly in 3D
 ! ----------------------------------------
-subroutine iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, coefs, array_in, array_out)
+subroutine iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, coefs, array_in, array_out)
 
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) ::  nb_cols_u, nb_cols_v, nb_cols_w
+    integer, intent(in) ::  nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
     double precision, intent(in) :: coefs
-    dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: coefs(nb_cols_total)
     double precision, intent(in) :: array_in
-    dimension :: array_in(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: array_in(nb_cols_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: array_out(nb_cols_total)
 
     ! Local data
     ! ---------------
@@ -211,7 +211,7 @@ subroutine iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_
 
 end subroutine iga_diagonal_dot_vector
 
-subroutine mf_iga_get_cu_3d( nb_cols_total, capacity_coefs, &
+subroutine mf_iga_get_cu_3d( nb_rows_total, nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -229,8 +229,8 @@ subroutine mf_iga_get_cu_3d( nb_cols_total, capacity_coefs, &
     implicit none 
     ! Input / output 
     ! -------------------
-    integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_rows_total, nb_cols_total
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: capacity_coefs
     dimension :: capacity_coefs(nb_cols_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
@@ -260,17 +260,17 @@ subroutine mf_iga_get_cu_3d( nb_cols_total, capacity_coefs, &
     dimension :: data_B0_u(size_data_u), data_B0_v(size_data_v), data_B0_w(size_data_w)
 
     double precision, intent(in) :: array_input
-    dimension :: array_input(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_input(nb_rows_total)
 
     double precision, intent(out) :: array_output
-    dimension :: array_output(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_output(nb_rows_total)
 
     ! Local data 
     ! ------------------
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
 
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -280,8 +280,8 @@ subroutine mf_iga_get_cu_3d( nb_cols_total, capacity_coefs, &
     data_B0T_w, array_input, array_temp_1)
 
     ! Evaluate diag(coefs) * array_temp1
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    allocate(array_temp_1tt(nb_cols_total))
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             capacity_coefs, array_temp_1, array_temp_1tt)
     deallocate(array_temp_1)
 
@@ -295,7 +295,7 @@ subroutine mf_iga_get_cu_3d( nb_cols_total, capacity_coefs, &
 
 end subroutine mf_iga_get_cu_3d
 
-subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
+subroutine mf_iga_get_ku_3d( nb_rows_total, nb_cols_total, cond_coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -313,7 +313,7 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     implicit none 
     ! Input / output 
     ! -------------------
-    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_cols_total)
@@ -349,10 +349,10 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
                     data_B1_u(size_data_u), data_B1_v(size_data_v), data_B1_w(size_data_w)
     
     double precision, intent(in) :: array_input
-    dimension :: array_input(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_input(nb_rows_total)
 
     double precision, intent(out) :: array_output
-    dimension :: array_output(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_output(nb_rows_total)
 
     ! Local data 
     ! ------------------
@@ -367,7 +367,7 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
 
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -378,11 +378,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(1, 1, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -395,11 +395,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(2, 1, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -412,11 +412,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = B1_w x B0_v x B0_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(3, 1, :), array_temp_1, array_temp_1tt)
 
     ! Eval W * array_temp1
@@ -433,7 +433,7 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     ! ----------------------------------------
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -444,11 +444,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(1, 2, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -461,11 +461,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(2, 2, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -478,11 +478,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = B1_w x B0_v x B0_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(3, 2, :), array_temp_1, array_temp_1tt) 
 
     ! Eval W * array_temp1
@@ -499,7 +499,7 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     ! ----------------------------------------
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -510,11 +510,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(1, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -527,11 +527,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(2, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -544,11 +544,11 @@ subroutine mf_iga_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
                             cond_coefs(3, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
@@ -634,7 +634,7 @@ subroutine mf_iga_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
                     indj_T_w, indi_T_w)
     ! ====================================================
 
-    call mf_iga_get_ku_3d(nb_cols_total, cond_coefs, &
+    call mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -648,7 +648,7 @@ end subroutine mf_iga_get_ku_3d_csr
 ! ----------------------------------------
 ! Conjugate gradient
 ! ----------------------------------------
-subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
+subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, &
                         nb_rows_w, nb_cols_w, &
@@ -659,11 +659,8 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
                         data_B0_u, data_B1_u, W_u, &
                         data_B0_v, data_B1_v, W_v, &
                         data_B0_w, data_B1_w, W_w, &
-                        b, dof, size_dof, &
-                        nbIterations, epsilon, & 
-                        Method, Jacob, &
-                        directsol, &
-                        x, RelRes, RelError)
+                        b, directsol, nbIterations, epsilon, & 
+                        Method, Jacob, x, RelRes, RelError)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         
@@ -671,12 +668,10 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
     implicit none 
     ! Input / output data
     ! ---------------------
-    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: coefs
     dimension :: coefs(3, 3, nb_cols_total)
-    integer, intent(in) :: table_block
-    dimension :: table_block(3, 2)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
@@ -690,17 +685,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
 
     character(len = 10) :: Method
-    integer, intent(in) :: size_dof, nbIterations
+    integer, intent(in) :: nbIterations
     double precision, intent(in) :: epsilon
-    integer, intent(in) :: dof
-    dimension :: dof(size_dof)
     double precision, intent(in) :: b, Jacob, directsol
-    dimension :: b(size_dof), &
+    dimension :: b(nb_rows_total), &
                 Jacob(3, 3, nb_cols_u*nb_cols_v*nb_cols_w), &
-                directsol(size_dof)
+                directsol(nb_rows_total)
     
     double precision, intent(out) :: x, RelRes, RelError
-    dimension :: x(size_dof), &
+    dimension :: x(nb_rows_total), &
                 RelRes(nbIterations+1), &
                 RelError(nbIterations+1)
 
@@ -709,10 +702,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
     ! Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap
-    dimension :: r(size_dof), p(size_dof), Ap(size_dof)
-    double precision :: v1exp, v2exp
-    dimension :: v1exp(nb_rows_u*nb_rows_v*nb_rows_w), &
-                    v2exp(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: r(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total)
     integer :: k
 
     ! Fast diagonalization
@@ -730,7 +720,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
     ! Preconditioned conjugate gradient
     double precision :: z
-    dimension :: z(size_dof)
+    dimension :: z(nb_rows_total)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
@@ -785,18 +775,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
             do k = 1, nbIterations
                 ! Calculate Ann xn 
-                v1exp = 0.d0
-                v1exp(dof) = p
-                call mf_iga_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                call mf_iga_get_Ku_3D(nb_rows_total, nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
-                            v1exp, v2exp)
+                            p, Ap)
 
-                Ap = v2exp(dof)
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -837,7 +824,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             Kcoef_w = 1.d0
 
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
+                call diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
@@ -845,7 +832,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! --------------------------------------------
             ! NEW METHOD
             ! -------------------------------------------- 
-            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
+            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
         end if
 
         ! --------------------------------------------
@@ -863,7 +850,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, table_block(1, 1), table_block(1, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, 0, 0, Method, D_u, U_u, Kdiag_u, Mdiag_u)
         deallocate(data_W00_u, data_W11_u)
         
         allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
@@ -874,7 +861,7 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, table_block(2, 1), table_block(2, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, 0, 0, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
         deallocate(data_W00_v, data_W11_v)
 
         allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
@@ -885,12 +872,12 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
         end do
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, 0, 0, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W00_w, data_W11_w)
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
-        allocate(Deigen(nb_rows_u*nb_rows_v*nb_rows_w))
+        allocate(Deigen(nb_rows_total))
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
@@ -907,15 +894,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! SCALING
             ! --------------------------------------------
             ! Find diagonal of preconditioner
-            allocate(preconddiag(nb_rows_u*nb_rows_v*nb_rows_w))
+            allocate(preconddiag(nb_rows_total))
             call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
-            allocate(matrixdiag(nb_rows_u*nb_rows_v*nb_rows_w))
-            call iga_find_conductivity_diagonal_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+            allocate(matrixdiag(nb_rows_total))
+            call iga_find_conductivity_diagonal_3D(nb_rows_total, nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                                 nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -928,17 +915,14 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! Preconditioned Conjugate Gradient algorithm
             ! -------------------------------------------
             r = b
-            v1exp = 0.d0
-            v1exp(dof) = r
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                call scaling_FastDiag(size(r), preconddiag, matrixdiag, r) 
             end if
-            call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, U_v, U_w, Deigen, v1exp, v2exp)
+            call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                        U_u, U_v, U_w, Deigen, r, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
             end if
-            z = v2exp(dof)
             p = z
             rsold = dot_product(r, z)
             RelRes(1) = 1.d0
@@ -946,18 +930,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
             do k = 1, nbIterations
                 ! Calculate Ann xn 
-                v1exp = 0.d0
-                v1exp(dof) = p
-                call mf_iga_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                call mf_iga_get_Ku_3D(nb_rows_total, nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
-                            v1exp, v2exp)
+                            p, Ap)
 
-                Ap = v2exp(dof)
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -970,17 +951,15 @@ subroutine iga_mf_cg_3d(nb_cols_total, coefs, table_block, &
                     exit
                 end if
                 
-                v1exp = 0.d0
-                v1exp(dof) = r
+
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                    call scaling_FastDiag(size(r), preconddiag, matrixdiag, r) 
                 end if
-                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
+                call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, U_v, U_w, Deigen, r, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                    call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
                 end if
-                z = v2exp(dof)
                 rsnew = dot_product(r, z)
                                 
                 p = z + rsnew/rsold * p

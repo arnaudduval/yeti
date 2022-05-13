@@ -1262,7 +1262,7 @@ module tensor_methods
         deallocate(KK, MM, W, WORK, IWORK)
     end subroutine eigen_decomposition
 
-    subroutine fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+    subroutine fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
                                         U_u, U_v, U_w, diagonal, array_in, array_out)
         
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -1272,24 +1272,24 @@ module tensor_methods
         implicit none
         ! Input / output  data 
         !---------------------
-        integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
+        integer, intent(in) :: nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w
         double precision, intent(in) :: U_u, U_v, U_w, diagonal
         dimension ::    U_u(nb_rows_u, nb_rows_u), &
                         U_v(nb_rows_v, nb_rows_v), &
                         U_w(nb_rows_w, nb_rows_w), &
-                        diagonal(nb_rows_u*nb_rows_v*nb_rows_w)
+                        diagonal(nb_rows_total)
 
         double precision, intent(in) :: array_in
-        dimension :: array_in(nb_rows_u*nb_rows_v*nb_rows_w)
+        dimension :: array_in(nb_rows_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(nb_rows_u*nb_rows_v*nb_rows_w)
+        dimension :: array_out(nb_rows_total)
 
         ! Local data
         ! -------------
         integer :: i, nb_tasks
         double precision :: array_temp_1
-        dimension :: array_temp_1(nb_rows_u*nb_rows_v*nb_rows_w)
+        dimension :: array_temp_1(nb_rows_total)
 
         ! ---------------------------------
         ! First part 
@@ -1321,7 +1321,7 @@ module tensor_methods
     ! ----------------------------------------------------
     ! Tensor decomposition
     ! ----------------------------------------------------
-    subroutine diagonal_decomposition_2d(nb_cols_u, nb_cols_v, CC, &
+    subroutine diagonal_decomposition_2d(nb_cols_total, nb_cols_u, nb_cols_v, CC, &
                                         M_u, M_v, K_u, K_v)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
@@ -1329,9 +1329,9 @@ module tensor_methods
         implicit none
         ! Input /  output data
         ! -----------------------
-        integer, intent(in) :: nb_cols_u, nb_cols_v
+        integer, intent(in) :: nb_cols_total, nb_cols_u, nb_cols_v
         double precision, intent(in) :: CC
-        dimension :: CC(2, 2, nb_cols_u*nb_cols_v)
+        dimension :: CC(2, 2, nb_cols_total)
 
         double precision, intent(inout) :: M_u, M_v, K_u, K_v
         dimension ::    M_u(nb_cols_u), M_v(nb_cols_v), &
@@ -1412,7 +1412,7 @@ module tensor_methods
                                     
     end subroutine diagonal_decomposition_2d
 
-    subroutine diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, CC, &
+    subroutine diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, CC, &
                                         M_u, M_v, M_w, K_u, K_v, K_w)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
@@ -1420,9 +1420,9 @@ module tensor_methods
         implicit none
         ! Input /  output data
         ! -----------------------
-        integer, intent(in) :: nb_cols_u, nb_cols_v, nb_cols_w
+        integer, intent(in) :: nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
         double precision, intent(in) :: CC
-        dimension :: CC(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
+        dimension :: CC(3, 3, nb_cols_total)
 
         double precision, intent(inout) :: M_u, M_v, M_w, K_u, K_v, K_w
         dimension ::    M_u(nb_cols_u), M_v(nb_cols_v), M_w(nb_cols_w), &
@@ -1540,14 +1540,14 @@ module tensor_methods
 
     end subroutine diagonal_decomposition_3d
 
-    subroutine jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, JJ, L1, L2, L3)
+    subroutine jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, JJ, L1, L2, L3)
         
         implicit none
         ! Input /  output data
         ! -----------------------
-        integer, intent(in) :: nb_cols_u, nb_cols_v, nb_cols_w
+        integer, intent(in) :: nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
         double precision, intent(in) :: JJ
-        dimension :: JJ(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
+        dimension :: JJ(3, 3, nb_cols_total)
     
         double precision, intent(inout) :: L1, L2, L3
     

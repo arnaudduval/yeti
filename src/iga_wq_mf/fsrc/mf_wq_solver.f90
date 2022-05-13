@@ -260,7 +260,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
 
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -270,7 +270,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     data_B0T_w, array_input, array_temp_1)
 
     ! Evaluate diag(coefs) * array_temp1
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     call wq_diagonal_dot_vector(size(array_temp_1), capacity_coefs, array_temp_1, array_temp_1tt)
     deallocate(array_temp_1)
 
@@ -363,7 +363,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
 
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -374,7 +374,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W00_w x W00_v x W11_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -390,7 +390,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W00_w x W10_v x W01_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -406,7 +406,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W10_w x W00_v x W01_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -426,7 +426,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     ! ----------------------------------------
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
@@ -437,7 +437,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W00_w x W01_v x W10_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -453,7 +453,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -469,7 +469,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W10_w x W01_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -489,7 +489,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     ! ----------------------------------------
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
     ! Initialize
-    allocate(array_temp_1(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
     
     ! Eval B.transpose * array_in
@@ -500,7 +500,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W01_w x W00_v x W10_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -516,7 +516,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W01_w x W10_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -532,7 +532,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_u*nb_cols_v*nb_cols_w))
+    allocate(array_temp_1tt(nb_cols_total))
     array_temp_1tt = 0.d0
 
     ! Evaluate diag(coefs) * array_temp1
@@ -645,7 +645,7 @@ end subroutine mf_wq_get_ku_3d_csr
 ! ----------------------------------------
 ! Conjugate gradient
 ! ----------------------------------------
-subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
+subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, &
                         nb_rows_w, nb_cols_w, &
@@ -660,22 +660,17 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                         data_B0_w, data_B1_w, &
                         data_W00_w, data_W01_w, &
                         data_W10_w, data_W11_w, &
-                        b, dof, size_dof, &
-                        nbIterations, epsilon, & 
-                        Method, Jacob, &
-                        directsol, &
-                        x, RelRes, RelError)
+                        b, directsol, nbIterations, epsilon, & 
+                        Method, Jacob, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
-    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: coefs
     dimension :: coefs(3, 3, nb_cols_total)
-    integer, intent(in) :: table_block
-    dimension :: table_block(3, 2)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
@@ -698,17 +693,15 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                     data_W10_w(size_data_w), data_W11_w(size_data_w)
 
     character(len=10) :: Method
-    integer, intent(in) :: size_dof, nbIterations
+    integer, intent(in) :: nbIterations
     double precision, intent(in) :: epsilon
-    integer, intent(in) :: dof
-    dimension :: dof(size_dof)
     double precision, intent(in) :: b, Jacob, directsol
-    dimension :: b(size_dof), &
+    dimension :: b(nb_rows_total), &
                  Jacob(3, 3, nb_cols_total), &
-                 directsol(size_dof)
+                 directsol(nb_rows_total)
 
     double precision, intent(out) :: x, RelRes, RelError
-    dimension ::    x(size_dof), &
+    dimension ::    x(nb_rows_total), &
                     RelRes(nbIterations+1), &
                     RelError(nbIterations+1)
 
@@ -717,10 +710,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
     ! Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap
-    dimension :: r(size_dof), p(size_dof), Ap(size_dof)
-    double precision :: v1exp, v2exp
-    dimension ::    v1exp(nb_rows_u*nb_rows_v*nb_rows_w), &
-                    v2exp(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: r(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total)
     integer :: k
 
     ! Fast diagonalization
@@ -737,7 +727,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
     ! Preconditioned conjugate gradient
     double precision :: z
-    dimension :: z(size_dof)
+    dimension :: z(nb_rows_total)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
@@ -792,8 +782,6 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
             do k = 1, nbIterations
                 ! Calculate Ann xn 
-                v1exp = 0.d0
-                v1exp(dof) = p
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
@@ -802,8 +790,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-                Ap = v2exp(dof)
+                        p, Ap)
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -843,7 +830,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
             Kcoef_w = 1.d0
 
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
+                call diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
@@ -851,7 +838,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! --------------------------------------------
             ! NEW METHOD
             ! -------------------------------------------- 
-            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
+            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
         end if
 
         ! --------------------------------------------
@@ -864,21 +851,21 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
         allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, table_block(1, 1), table_block(1, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, 0, 0, Method, D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, table_block(2, 1), table_block(2, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, 0, 0, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, 0, 0, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
-        allocate(Deigen(nb_rows_u*nb_rows_v*nb_rows_w))
+        allocate(Deigen(nb_rows_total))
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
@@ -895,14 +882,14 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! SCALING
             ! --------------------------------------------
             ! Find diagonal of preconditioner
-            allocate(preconddiag(nb_rows_u*nb_rows_v*nb_rows_w))
+            allocate(preconddiag(nb_rows_total))
             call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
-            allocate(matrixdiag(nb_rows_u*nb_rows_v*nb_rows_w))
+            allocate(matrixdiag(nb_rows_total))
             call wq_find_conductivity_diagonal_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, nb_rows_v, &
             nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, size_data_v, size_data_w, &
             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -917,17 +904,14 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
             ! -------------------------------------------
             r = b
             ! Calculate z
-            v1exp = 0.d0
-            v1exp(dof) = r
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                call scaling_FastDiag(size(r), preconddiag, matrixdiag, r) 
             end if
-            call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, U_v, U_w, Deigen, v1exp, v2exp)
+            call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                        U_u, U_v, U_w, Deigen, r, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
             end if
-            z = v2exp(dof)
             p = z
             rsold = dot_product(r, z)
             RelRes(1) = 1.d0
@@ -935,8 +919,6 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
             do k = 1, nbIterations
                 ! Calculate Ann xn 
-                v1exp = 0.d0
-                v1exp(dof) = p
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
@@ -945,9 +927,8 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                             data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                            v1exp, v2exp)
+                            p, Ap)
 
-                Ap = v2exp(dof)
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -960,17 +941,14 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
                     exit
                 end if
                 
-                v1exp = 0.d0
-                v1exp(dof) = r
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)   
+                    call scaling_FastDiag(size(r), preconddiag, matrixdiag, r)   
                 end if
-                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
+                call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, U_v, U_w, Deigen, r, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                    call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
                 end if
-                z = v2exp(dof)
                 rsnew = dot_product(r, z)
                                 
                 p = z + rsnew/rsold * p
@@ -981,7 +959,7 @@ subroutine wq_mf_cg_3d(nb_cols_total, coefs, table_block, &
 
 end subroutine wq_mf_cg_3d
 
-subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
+subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -996,22 +974,17 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                             data_B0_w, data_B1_w, &
                             data_W00_w, data_W01_w, &
                             data_W10_w, data_W11_w, &
-                            b, dof, size_dof, &
-                            nbIterations, epsilon, & 
-                            Method, Jacob, &
-                            directsol, &
-                            x, RelRes, RelError)
+                            b, directsol, nbIterations, epsilon, & 
+                            Method, Jacob, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
-    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: coefs
     dimension :: coefs(3, 3, nb_cols_total)
-    integer, intent(in) :: table_block
-    dimension :: table_block(3, 2)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
@@ -1034,17 +1007,15 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                     data_W10_w(size_data_w), data_W11_w(size_data_w)
 
     character(len=10), intent(in) :: Method
-    integer, intent(in) :: size_dof, nbIterations
+    integer, intent(in) :: nbIterations
     double precision, intent(in) :: epsilon
-    integer, intent(in) :: dof
-    dimension :: dof(size_dof)
     double precision, intent(in) :: b, Jacob, directsol
-    dimension ::    b(size_dof), &
+    dimension ::    b(nb_rows_total), &
                     Jacob(3, 3, nb_cols_total), &
-                    directsol(size_dof)
+                    directsol(nb_rows_total)
     
     double precision, intent(out) :: x, RelRes, RelError
-    dimension ::    x(size_dof), &
+    dimension ::    x(nb_rows_total), &
                     RelRes(nbIterations+1), &
                     RelError(nbIterations+1)
 
@@ -1053,10 +1024,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
     ! Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha, omega, beta
     double precision :: r, rhat, p, Ap, s, As
-    dimension :: r(size_dof), rhat(size_dof), p(size_dof), Ap(size_dof), As(size_dof), s(size_dof)
-    double precision :: v1exp, v2exp
-    dimension :: v1exp(nb_rows_u*nb_rows_v*nb_rows_w), &
-                    v2exp(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: r(nb_rows_total), rhat(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total), As(nb_rows_total), s(nb_rows_total)
     integer :: k
 
     ! Fast diagonalization
@@ -1073,7 +1041,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
 
     ! Preconditioned conjugate gradient
     double precision :: ptilde, Aptilde, stilde, Astilde
-    dimension :: ptilde(size_dof), Aptilde(size_dof), Astilde(size_dof), stilde(size_dof)
+    dimension :: ptilde(nb_rows_total), Aptilde(nb_rows_total), Astilde(nb_rows_total), stilde(nb_rows_total)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
@@ -1129,8 +1097,6 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             RelError(1) = 1.d0
 
             do k = 1, nbIterations
-                v1exp = 0.d0
-                v1exp(dof) = p
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
@@ -1139,13 +1105,10 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-                Ap = v2exp(dof)
+                        p, Ap)
                 alpha = rsold/dot_product(Ap, rhat)
                 s = r - alpha*Ap
 
-                v1exp = 0.d0
-                v1exp(dof) = s
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
@@ -1154,8 +1117,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                         data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                        v1exp, v2exp)
-                As = v2exp(dof)
+                        s, As)
                 omega = dot_product(As, s)/dot_product(As, As)
                 x = x + alpha*p + omega*s
                 r = s - omega*As
@@ -1196,7 +1158,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             Kcoef_w = 1.d0
 
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
+                call diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
@@ -1204,7 +1166,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             ! --------------------------------------------
             ! NEW METHOD
             ! --------------------------------------------
-            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
+            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
         end if
 
         ! --------------------------------------------
@@ -1217,21 +1179,21 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
         allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, table_block(1, 1), table_block(1, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, 0, 0, Method, D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, table_block(2, 1), table_block(2, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, 0, 0, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, table_block(3, 1), table_block(3, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, 0, 0, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
-        allocate(Deigen(nb_rows_u*nb_rows_v*nb_rows_w))
+        allocate(Deigen(nb_rows_total))
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
@@ -1248,14 +1210,14 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             ! SCALING
             ! --------------------------------------------
             ! Find diagonal of preconditioner
-            allocate(preconddiag(nb_rows_u*nb_rows_v*nb_rows_w))
+            allocate(preconddiag(nb_rows_total))
             call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
-            allocate(matrixdiag(nb_rows_u*nb_rows_v*nb_rows_w))
+            allocate(matrixdiag(nb_rows_total))
             call wq_find_conductivity_diagonal_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, nb_rows_v, &
             nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, size_data_v, size_data_w, &
             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -1272,24 +1234,19 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
             rhat = r
             p = r
 
-            v1exp = 0.d0
-            v1exp(dof) = p
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                call scaling_FastDiag(size(p), preconddiag, matrixdiag, p) 
             end if 
-            call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, U_v, U_w, Deigen, v1exp, v2exp)
+            call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                        U_u, U_v, U_w, Deigen, p, ptilde)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp)  
+                call scaling_FastDiag(size(ptilde), preconddiag, matrixdiag, ptilde)  
             end if
-            ptilde = v2exp(dof)
             rsold = dot_product(r, rhat)
             RelRes(1) = 1.d0
             RelError(1) = 1.d0
 
             do k = 1, nbIterations
-                v1exp = 0.d0
-                v1exp(dof) = ptilde
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
@@ -1298,26 +1255,20 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                             data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                            v1exp, v2exp)
+                            ptilde, Aptilde)
 
-                Aptilde = v2exp(dof)
                 alpha = rsold/dot_product(Aptilde, rhat)
                 s = r - alpha*Aptilde
 
-                v1exp = 0.d0
-                v1exp(dof) = s
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp)  
+                    call scaling_FastDiag(size(s), preconddiag, matrixdiag, s)  
                 end if
-                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
+                call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, U_v, U_w, Deigen, s, stilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                    call scaling_FastDiag(size(stilde), preconddiag, matrixdiag, stilde) 
                 end if
-                stilde = v2exp(dof)
 
-                v1exp = 0.d0
-                v1exp(dof) = stilde
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
@@ -1326,8 +1277,7 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_W00_v, data_W01_v, &
                             data_W10_v, data_W11_v, data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
-                            v1exp, v2exp)
-                Astilde = v2exp(dof)
+                            stilde, Astilde)
 
                 omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
                 x = x + alpha*ptilde + omega*stilde
@@ -1344,17 +1294,14 @@ subroutine wq_mf_bicgstab_3d(nb_cols_total, coefs, table_block, &
                 beta = (alpha/omega)*(rsnew/rsold)
                 p = r + beta*(p - omega*Aptilde)
                 
-                v1exp = 0.d0
-                v1exp(dof) = p
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v1exp), preconddiag, matrixdiag, v1exp) 
+                    call scaling_FastDiag(size(p), preconddiag, matrixdiag, p) 
                 end if
-                call fast_diagonalization_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, v1exp, v2exp)
+                call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                            U_u, U_v, U_w, Deigen, p, ptilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(v2exp), preconddiag, matrixdiag, v2exp) 
+                    call scaling_FastDiag(size(ptilde), preconddiag, matrixdiag, ptilde) 
                 end if
-                ptilde = v2exp(dof)
 
                 rsold = rsnew
             end do
