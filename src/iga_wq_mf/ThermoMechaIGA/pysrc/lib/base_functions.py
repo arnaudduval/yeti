@@ -12,6 +12,49 @@ from scipy import sparse as sp
 from iga_wq_mf import basis_weights
 
 # ==========================
+# GENERAL FUNCTIONS
+# ==========================
+def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
+
+    "Returns new data after erasing some rows in CSR format"
+    
+    # Initialize outputs
+    indi_int, indj_int = np.copy(indi_in), np.copy(indj_in) 
+    if isfortran: 
+        indi_int -= 1
+        indj_int -= 1 
+
+    indi_outt = np.copy(indi_int)
+    indj_out = []
+    data_out = []
+
+    # Delete indices
+    indi_outt = np.delete(indi_outt, rows2er)
+    
+    # Copy some indexes
+    for _ in range(len(indi_outt)-1): 
+        indj_out.extend(indj_int[indi_outt[_]:indi_outt[_+1]])
+    indj_out = np.array(indj_out, dtype=int)
+
+    # Copy some values
+    for a_in in data_in: 
+        a_out = []
+        for _ in range(len(indi_outt)-1): 
+            a_out.extend(a_in[indi_outt[_]:indi_outt[_+1]])
+        a_out = np.array(a_out)
+        data_out.append(a_out)
+
+    # Update indi output
+    indi_out = [0]
+    for _ in range(len(indi_outt)-1): 
+        nnz = indi_outt[_+1] - indi_outt[_]
+        newvalue = indi_out[-1] + nnz
+        indi_out.append(newvalue)
+    indi_out = np.array(indi_out, dtype=int)
+
+    return indi_out, indj_out, data_out
+
+# ==========================
 # B-SPLINE FUNCTIONS
 # ==========================
 
