@@ -75,8 +75,8 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
 
     # With preconditioner
     method_list = ["C", "TDS", "JM"]
-    for name in method_list:
-        inputs = [F2n, dof, iterations, epsilon, name, Tn, True]   
+    for name in method_list: 
+        inputs = [F2n, iterations, epsilon, name, Tn, True]   
         Tn_t, residue_t, error_t = Model1.mf_conj_grad(*inputs)
         Tsolution_t = np.zeros(Model1._nb_ctrlpts_total)
         Tsolution_t[dof] = Tn_t

@@ -6,6 +6,7 @@
 
 # Python libraries
 import os, sys, tracemalloc
+from tkinter.messagebox import NO
 import scipy, numpy as np
 import time
 
@@ -69,6 +70,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         K2solve = Model1.eval_conductivity_matrix(indi=dof, indj=dof)
         stop = time.time()
         time_assembly = stop - start
+        # enablePrint()
+        # print(K2solve.diagonal())
+        # blockPrint()
 
         # Assemble source vector F
         if funtemp is not None: 
@@ -133,7 +137,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
-            Model1.mf_conj_grad(F2solve, dof, iterations, epsilon, name, sol_direct, iscg)
+            Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, iscg)
             stop = time.time()
             time_noiter_t = stop - start 
             time.sleep(1)
@@ -153,7 +157,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
-            _, residue_t, error_t = Model1.mf_conj_grad(F2solve, dof, iterations, epsilon, name, sol_direct, iscg)
+            _, residue_t, error_t = Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, iscg)
             stop = time.time()
             time_iter_t = stop - start 
             time.sleep(1)
@@ -192,12 +196,12 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 FileExist = True
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 DEGREE = 3
-CUTS = 3
+CUTS = 4
 IS_IGA_GALERKIN = False
-GEOMETRY_CASE = 2
+GEOMETRY_CASE = 1
 if IS_IGA_GALERKIN: is_cg_list = [True]
-else: is_cg_list = [False]
-isDirect = False
+else: is_cg_list = [True]
+isDirect = None
 
 for IS_CG in is_cg_list:   
     # Get file name
@@ -230,6 +234,7 @@ for IS_CG in is_cg_list:
         # Run simulation
         blockPrint()
         method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+        # method_list = ["TDS"]
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries, isDirect=isDirect)
         enablePrint()

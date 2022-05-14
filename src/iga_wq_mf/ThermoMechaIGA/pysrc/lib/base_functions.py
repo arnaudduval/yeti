@@ -52,6 +52,10 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
         indi_out.append(newvalue)
     indi_out = np.array(indi_out, dtype=int)
 
+    if isfortran: 
+        indi_out += 1
+        indj_out += 1 
+
     return indi_out, indj_out, data_out
 
 # ==========================

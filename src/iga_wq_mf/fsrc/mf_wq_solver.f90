@@ -660,8 +660,8 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         data_B0_w, data_B1_w, &
                         data_W00_w, data_W01_w, &
                         data_W10_w, data_W11_w, &
-                        b, directsol, nbIterations, epsilon, & 
-                        Method, Jacob, x, RelRes, RelError)
+                        b, nbIterations, epsilon, & 
+                        Method, Jacob, directsol, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 
@@ -763,7 +763,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
     call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w, &
                     indj_T_w, indi_T_w)
     ! ====================================================
-
+    
     ! Initiate variables
     x = 0.d0
     RelRes = 0.d0
@@ -887,6 +887,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+            print*, preconddiag
 
             ! Find diagonal of real matrix (K in this case)
             allocate(matrixdiag(nb_rows_total))
@@ -974,8 +975,8 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                             data_B0_w, data_B1_w, &
                             data_W00_w, data_W01_w, &
                             data_W10_w, data_W11_w, &
-                            b, directsol, nbIterations, epsilon, & 
-                            Method, Jacob, x, RelRes, RelError)
+                            b, nbIterations, epsilon, & 
+                            Method, Jacob, directsol, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 

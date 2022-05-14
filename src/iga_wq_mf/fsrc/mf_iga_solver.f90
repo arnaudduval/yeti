@@ -659,8 +659,8 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         data_B0_u, data_B1_u, W_u, &
                         data_B0_v, data_B1_v, W_v, &
                         data_B0_w, data_B1_w, W_w, &
-                        b, directsol, nbIterations, epsilon, & 
-                        Method, Jacob, x, RelRes, RelError)
+                        b, nbIterations, epsilon, & 
+                        Method, Jacob, directsol, x, RelRes, RelError)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         

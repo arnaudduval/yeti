@@ -9,6 +9,7 @@ import numpy as np
 import time
 
 # My libraries
+from .base_functions import erase_rows_csr
 from .create_model import thermoMechaModel
 from iga_wq_mf import basis_weights, assembly, solver
 
@@ -236,28 +237,32 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def get_input4ConjugateGradient(self, bi, dof, nbIterations, epsilon):
+    def get_input4ConjugateGradient(self, bi, nbIterations, epsilon, method):
         " Returns necessary inputs to solve matrix system with matrix free approach "
 
         # Initialize
         shape_matrices, indexes, data = [], [], []
-
-        # Remember: Indexes in fortran starts at 1
-        dof = np.asarray(dof) + 1
+        table = self._thermalblockedboundaries
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_qp_wq[dim][0])
-            indexes.append(self._indexes[dim][0])
-            indexes.append(self._indexes[dim][1])
-            data.append(self._DB[dim][0])
-            data.append(self._DB[dim][1])
-            data.append(self._DW[dim][0][0])
-            data.append(self._DW[dim][0][1])
-            data.append(self._DW[dim][1][0])
-            data.append(self._DW[dim][1][1])
 
-        inputs = [self._conductivity_coef, self._thermalblockedboundaries, *shape_matrices, *indexes, 
-                *data, bi, dof, nbIterations, epsilon]
+            # Select data
+            if np.array_equal(table[dim, :], [0, 0]): rows2erase = [0]
+            if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
+            if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
+            if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]
+            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, *self._indexes[dim], 
+                                    [*self._DB[dim], *self._DW[dim][0], *self._DW[dim][1]])
+            
+            # Extract data and append to list
+            [dB0, dB1, dW00, dW01, dW10, dW11] = data_t
+            indexes.append(indi_t); indexes.append(indj_t) 
+            data.append(dB0); data.append(dB1)
+            data.append(dW00); data.append(dW01); data.append(dW10); data.append(dW11)
+
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, 
+                *data, bi, nbIterations, epsilon, method]
 
         return inputs
 
@@ -537,10 +542,10 @@ class fortran_mf_wq(thermoMechaModel):
     # MATRIX FREE SOLUTION
     # =============================    
 
-    def mf_conj_grad(self, bi, dof, nbIterations, epsilon, method, directsol, isCG): 
+    def mf_conj_grad(self, bi, nbIterations, epsilon, method, directsol, isCG): 
 
-        # Get inputs
-        inputs = self.get_input4ConjugateGradient(bi, dof, nbIterations, epsilon)
+        # Get inputs 
+        inputs = self.get_input4ConjugateGradient(bi, nbIterations, epsilon, method)
         
         if self._dim < 2 and self._dim > 3:
             raise Warning('Until now not done')
@@ -550,9 +555,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         if self._dim == 3:
             if isCG:
-                sol, residue, error = solver.wq_mf_cg_3d(*inputs, method, self._Jqp, directsol)
+                sol, residue, error = solver.wq_mf_cg_3d(*inputs, self._Jqp, directsol)
             else:
-                sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs, method, self._Jqp, directsol)
+                sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs, self._Jqp, directsol)
 
         return sol, residue, error
 
