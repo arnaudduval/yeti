@@ -70,9 +70,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         K2solve = Model1.eval_conductivity_matrix(indi=dof, indj=dof)
         stop = time.time()
         time_assembly = stop - start
-        # enablePrint()
-        # print(K2solve.diagonal())
-        # blockPrint()
+        enablePrint()
+        print(K2solve.diagonal()[:20])
+        blockPrint()
 
         # Assemble source vector F
         if funtemp is not None: 
@@ -193,10 +193,10 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Some constants
-FileExist = True
+FileExist = False
 BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
 DEGREE = 3
-CUTS = 4
+CUTS = 3
 IS_IGA_GALERKIN = False
 GEOMETRY_CASE = 1
 if IS_IGA_GALERKIN: is_cg_list = [True]
@@ -233,8 +233,8 @@ for IS_CG in is_cg_list:
     if not FileExist:
         # Run simulation
         blockPrint()
-        method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-        # method_list = ["TDS"]
+        # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+        method_list = ["JMS","JM"]
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries, isDirect=isDirect)
         enablePrint()

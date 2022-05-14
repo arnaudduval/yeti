@@ -877,7 +877,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
 
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then !!!!!!!!!!!!!!
             ! --------------------------------------------
             ! SCALING
             ! --------------------------------------------
@@ -887,7 +887,6 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-            print*, preconddiag
 
             ! Find diagonal of real matrix (K in this case)
             allocate(matrixdiag(nb_rows_total))
@@ -897,6 +896,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             data_B0_u, data_B1_u, data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_B0_v, data_B1_v, &
             data_W00_v, data_W01_v, data_W10_v, data_W11_v, data_B0_w, data_B1_w, data_W00_w, data_W01_w, &
             data_W10_w, data_W11_w, matrixdiag)
+
         end if
 
         if (nbIterations.gt.0) then
@@ -905,7 +905,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! -------------------------------------------
             r = b
             ! Calculate z
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then !!!!!!!!!!!!!!!!!!!!!
                 call scaling_FastDiag(size(r), preconddiag, matrixdiag, r) 
             end if
             call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
