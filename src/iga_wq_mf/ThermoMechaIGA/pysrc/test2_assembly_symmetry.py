@@ -12,6 +12,7 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 
 # My libraries
+from lib import enablePrint, blockPrint
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.methods_wq import WQ
@@ -19,16 +20,10 @@ from lib.fortran_mf_iga import fortran_mf_iga
 from lib.methods_iga import IGA
 from lib.physics import power_density
 
-# Enable and disable print
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
-
-def enablePrint():
-    sys.stdout = sys.__stdout__
-
 # Choose folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 isIGA = False
 CONSTRUCTION = True

@@ -5,22 +5,15 @@
 """
 
 # Python libraries
-import os, sys
 import numpy as np
 import scipy 
 
 # My libraries
-from lib.physics import powden_rotring, temperature
+from lib import blockPrint, enablePrint
+from lib.physics import powden_rotring, temperature_rotring
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.fortran_mf_iga import fortran_mf_iga
-
-# Enable and disable print
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
-
-def enablePrint():
-    sys.stdout = sys.__stdout__
 
 # Set global variables
 DEGREE = 4
@@ -38,9 +31,9 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
     blockPrint()
     # Creation of thermal model object
     Model1 = fortran_model(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
-    Temp_CP, Td = Model1.MSE_ControlPoints(temperature)
+    Temp_CP, Td = Model1.MSE_ControlPoints(temperature_rotring)
     _, qp_PS_1, _, Temp_qp_PS_1 = Model1.interpolate_results(u_ctrlpts=Temp_CP)
-    Treal_sample = np.asarray([temperature(3, qp_PS_1[:, :, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
+    Treal_sample = np.asarray([temperature_rotring(3, qp_PS_1[:, :, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
     error_Temp_1 = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)*100
 
     # Block boundaries

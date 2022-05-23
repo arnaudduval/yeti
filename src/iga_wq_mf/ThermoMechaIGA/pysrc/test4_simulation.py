@@ -5,35 +5,28 @@
 """
 
 # Python libraries
-import os, sys, tracemalloc
+import os, tracemalloc
 import scipy, numpy as np
 import time
 
 # My libraries
+from lib import enablePrint, blockPrint
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_iga import fortran_mf_iga
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.physics import (powden_cube, powden_prism,
                         powden_thickring, powden_rotring, 
-                        temperature
+                        temperature_rotring
 )
 from lib.create_model import write_text_file, read_text_file, plot_iterative_solver
 
 # Choose folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
-if not os.path.isdir(folder):
-    os.mkdir(folder)
-
-# Enable and disable print
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
-
-def enablePrint():
-    sys.stdout = sys.__stdout__
+if not os.path.isdir(folder): os.mkdir(folder)
 
 def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga, 
-                    method_list, iscg, thermalblockedboundaries= None, isDirect=None):
+                    method_list, iscg, isDirect=None):
     
     if isDirect is None: 
         doDirect = True
@@ -57,8 +50,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         modelGeo = create_geometry(degree, cuts, geometry_case)
 
         # Create thermal model object
-        if isiga: Model1 = fortran_mf_iga(modelGeo, thermalblockedboundaries= thermalblockedboundaries)
-        else: Model1 = fortran_mf_wq(modelGeo, thermalblockedboundaries= thermalblockedboundaries)
+        if isiga: Model1 = fortran_mf_iga(modelGeo)
+        else: Model1 = fortran_mf_wq(modelGeo)
         del modelGeo
 
         # Block boundaries
@@ -100,8 +93,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         modelGeo = create_geometry(degree, cuts, geometry_case)
 
         # Create thermal model object
-        if isiga: Model1 = fortran_mf_iga(modelGeo, thermalblockedboundaries= thermalblockedboundaries)
-        else: Model1 = fortran_mf_wq(modelGeo, thermalblockedboundaries= thermalblockedboundaries)
+        if isiga: Model1 = fortran_mf_iga(modelGeo)
+        else: Model1 = fortran_mf_wq(modelGeo)
         del modelGeo
 
         # Block boundaries
@@ -216,7 +209,7 @@ for IS_CG in is_cg_list:
     elif GEOMETRY_CASE == 3: 
         txtname = 'RQA' 
         funpow = powden_rotring 
-        funtemp = temperature
+        funtemp = temperature_rotring
     
     # Get text file name
     txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
@@ -239,8 +232,7 @@ for IS_CG in is_cg_list:
 
     else :
         try: 
-            # Plot results
-            inputs = read_text_file(txtname +'.txt')
+            inputs = read_text_file(txtname + '.txt')
             method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
             plot_iterative_solver(txtname, inputs, method_list)
         except: 

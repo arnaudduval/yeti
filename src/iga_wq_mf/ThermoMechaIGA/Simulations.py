@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 
 # My libraries
+from pysrc.lib import enablePrint, blockPrint
 from pysrc.lib.create_geomdl import create_geometry
 from pysrc.lib.fortran_mf_iga import fortran_mf_iga
 from pysrc.lib.fortran_mf_wq import fortran_mf_wq
@@ -16,7 +17,7 @@ from pysrc.lib.physics import (powden_cube,
                             powden_prism,
                             powden_thickring, 
                             powden_rotring, 
-                            temperature
+                            temperature_rotring
 )
 from pysrc.lib.create_model import write_text_file
 
@@ -25,13 +26,6 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder):
     os.mkdir(folder)
-
-# Enable and disable print
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
-
-def enablePrint():
-    sys.stdout = sys.__stdout__
 
 def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga, 
                     method_list, iscg, thermalblockedboundaries= None):
@@ -186,7 +180,7 @@ for CUTS in range(3, 5):
                     elif GEOMETRY_CASE == 3: 
                         txtname = 'RQA' 
                         funpow = powden_rotring 
-                        funtemp = temperature
+                        funtemp = temperature_rotring
                     else: raise Warning('Geometry does not exist')
                     txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
 
