@@ -156,7 +156,7 @@ class fortran_mf_iga(thermoMechaModel):
         for dim in range(self._dim):
 
             # Select data
-            if np.array_equal(table[dim, :], [0, 0]): rows2erase = [0]
+            if np.array_equal(table[dim, :], [0, 0]): rows2erase = []
             if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
             if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
             if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]

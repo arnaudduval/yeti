@@ -988,6 +988,35 @@ module tensor_methods
     ! ----------------------------------------------------
     ! Jacobi diagonal
     ! ----------------------------------------------------
+    subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
+        !! Scaling in fast diagonalization
+    
+        use omp_lib
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, intent(in) :: nb_rows
+        double precision, intent(in) :: diag_parametric, diag_physical
+        dimension :: diag_parametric(nb_rows), diag_physical(nb_rows)
+    
+        double precision, intent(inout) :: vector
+        dimension :: vector(nb_rows)
+    
+        ! Local data
+        ! -------------
+        integer :: i, nb_tasks
+    
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nb_rows/nb_tasks)
+        do i = 1, nb_rows
+            vector(i) = sqrt(diag_parametric(i)/diag_physical(i)) * vector(i) 
+        end do  
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+    
+    end subroutine scaling_FastDiag
+    
     subroutine find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
                                 Mdiag_u, Mdiag_v, Mdiag_w, &
                                 Kdiag_u, Kdiag_v, Kdiag_w, diag)

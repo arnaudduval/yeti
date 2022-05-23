@@ -6,7 +6,7 @@
 ! ==========================
 
 subroutine get_parametric_nodes(nb_el, nodes)
-    !! Gets the knots non-repetited of the knot-vector
+    !! Gets the knots non-repeated of the knot-vector
     
     implicit none
     ! Input / output data
@@ -32,7 +32,7 @@ subroutine get_parametric_nodes(nb_el, nodes)
 end subroutine get_parametric_nodes
 
 subroutine find_knotvector_span(degree, nb_ctrlpts, size_kv, knotvector, x, span)
-    !! Finds the span of the knot x in the knot-vector
+    !! Finds the span of a given knot within the knot-vector
 
     use constants_iga_wq_mf
     implicit none 
@@ -61,7 +61,7 @@ subroutine find_knotvector_span(degree, nb_ctrlpts, size_kv, knotvector, x, span
 end subroutine find_knotvector_span
 
 subroutine find_parametric_span(nb_el, nodes, x, span)
-    !! Finds the span of the knot x in parametric space
+    !! Finds the span of the knot within the parametric space
 
     use constants_iga_wq_mf
     implicit none 
@@ -123,7 +123,6 @@ end subroutine set_table_spans
 
 subroutine get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicity)
     !! Gets the knot-vector in IGA-WQ-Galerkin approach 
-    !! Case of maximum continuity (p-1)
 
     implicit none
     ! Input / output data
@@ -163,7 +162,6 @@ end subroutine get_knotvector
 
 subroutine set_table_functions_spans(degree, nb_el, multiplicity, table)
     !! Sets the table of functions on every span
-    !! Case of maximum continuity (p-1) in knot-vector
 
     implicit none 
     ! Input / output data

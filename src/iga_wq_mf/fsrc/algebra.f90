@@ -43,7 +43,7 @@ subroutine linspace(x0, xf, n, array)
     
     ! Assign values
     do i = 2, n - 1
-        array(i) = x0  + dble(i-1)*h
+        array(i) = x0 + dble(i-1)*h
     end do
 
 end subroutine linspace
@@ -146,7 +146,7 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
             x(i) = xcase1(i)
         end do
 
-    else if (nb_rows.gt.nb_cols) then  ! Case 2
+    else if (nb_rows.gt.nb_cols) then ! Case 2
             
         do i = 1, nb_rows
             xcase2(i) = b(i)
@@ -167,16 +167,16 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
 end subroutine solve_system
 
 subroutine vector_kron_vector(size_A, A, size_B, B, C)
-    !! Evaluate kron product of vectors vC = vA x vB (x : tensor product)
+    !! Evaluates kron product A x B (x : tensor product)
 
     use omp_lib
     implicit none
     ! Input / output
     ! ---------------- 
-    integer :: size_A, size_B
-    double precision :: A(size_A), B(size_B)
+    integer, intent(in) :: size_A, size_B
+    double precision, intent(in) :: A(size_A), B(size_B)
 
-    double precision :: C(size_A*size_B)
+    double precision, intent(out) :: C(size_A*size_B)
 
     ! Local data
     ! ------------
@@ -199,33 +199,6 @@ subroutine vector_kron_vector(size_A, A, size_B, B, C)
     !$OMP END PARALLEL 
 
 end subroutine vector_kron_vector 
-
-subroutine matrix_kron_matrix(nb_rows_A, nb_cols_A, A, nb_rows_B, nb_cols_B, B, C)
-    !! Evaluates C = A x B (x kronecker product)
-
-    implicit none 
-    ! Input / output data
-    ! --------------------
-    integer :: nb_rows_A, nb_rows_B, nb_cols_A, nb_cols_B
-    double precision :: A, B, C
-    dimension :: A(nb_rows_A, nb_cols_A), &
-                 B(nb_rows_B, nb_cols_B), &
-                 C(nb_rows_A*nb_rows_B, nb_cols_A*nb_cols_B)
-
-    ! Local data 
-    ! -----------
-    integer :: iA, iB, iC
-    double precision :: rowC(nb_cols_A*nb_cols_B)
-
-    do iA = 1, nb_rows_A
-        do iB = 1, nb_rows_B
-            iC = (iA-1)*nb_rows_B + iB
-            call vector_kron_vector(nb_cols_A, A(iA, :), nb_cols_B, B(iB, :), rowC)
-            C(iC, :) = rowC
-        end do
-    end do
-
-end subroutine matrix_kron_matrix
 
 subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
     !! Returns the result of A x B x C, where x is kronecker product
@@ -267,40 +240,12 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
-    ! Sacaling in fast diagonalization
-
-    use omp_lib
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nb_rows
-    double precision, intent(in) :: diag_parametric, diag_physical
-    dimension :: diag_parametric(nb_rows), diag_physical(nb_rows)
-
-    double precision, intent(inout) :: vector
-    dimension :: vector(nb_rows)
-
-    ! Local data
-    ! -------------
-    integer :: i, nb_tasks
-
-    !$OMP PARALLEL 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_rows/nb_tasks)
-    do i = 1, nb_rows
-        vector(i) = sqrt(diag_parametric(i)/diag_physical(i)) * vector(i) 
-    end do  
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
-end subroutine scaling_FastDiag
-
 ! -------------
 ! Indexes
 ! -------------
 subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     !! Change COO format to CSR format
+    !! Algorithm adapted from f70 to f90 (sparskit library)
 
     implicit none 
     ! Input / output data
@@ -357,6 +302,7 @@ end subroutine coo2csr
 
 subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nb_rows, nb_cols, A_out)
     !! Gives a dense matrix from a COO format
+    !! Repeated positions are added
 
     implicit none 
     ! Input / output data 
@@ -377,6 +323,7 @@ subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nb_rows, nb_cols, A_out)
     ! Initialize matrix values
     A_out = 0.d0
 
+    ! Update values
     do k = 1, nnz 
         i = indi_coo(k)
         j = indj_coo(k)
@@ -387,6 +334,7 @@ end subroutine coo2matrix
 
 subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
     !! Gives a dense matrix from a CSR format
+    !! Repeated positions are added
 
     implicit none 
     ! Input / output data 
@@ -408,6 +356,7 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
     ! Initialize matrix values
     A_out = 0.d0
     
+    ! Update values
     do i = 1, nb_rows
         nnz_col = indi_csr(i+1) - indi_csr(i)
         offset = indi_csr(i)
@@ -438,9 +387,12 @@ subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
     ! Initialize
     k = 1
     indi_csr(1) = 1
+
+    ! Update CSR format
     do i = 1, nb_rows
         l = 0
         do j = 1, nb_cols
+            ! Save only values greater than zero
             if (abs(A_in(i, j)).gt.0) then
                 indj_csr(k) = j
                 k = k + 1
@@ -453,7 +405,8 @@ subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
 end subroutine matrix2csr
 
 subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
-    !! CSC format can be interpreted as the transpose 
+    !! Gets CSC format from CSR format. 
+    !! (CSC format can be interpreted as the transpose)
 
     implicit none
     ! Input / output data 
@@ -471,10 +424,8 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
 
     ! Local data
     ! --------------
-    ! CSR2COO
     integer :: indi_coo 
     dimension :: indi_coo(nnz)
-
     integer :: i, j, c
 
     ! We assume that csr is close to coo format. The only thing that change is indi
