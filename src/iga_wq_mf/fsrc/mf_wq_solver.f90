@@ -4,9 +4,7 @@
 ! ====================================================
 
 subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B0_u, data_B1_u, &
@@ -200,9 +198,7 @@ subroutine wq_diagonal_dot_vector(size_array, coefs, array_in, array_out)
 end subroutine wq_diagonal_dot_vector
 
 subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_BT_u, indj_BT_u, indi_BT_v, indj_BT_v, indi_BT_w, indj_BT_w, &
                             data_B0T_u, data_B0T_v, data_B0T_w, &
@@ -286,9 +282,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
 end subroutine mf_wq_get_cu_3d
 
 subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_BT_u, indj_BT_u, indi_BT_v, indj_BT_v, indi_BT_w, indj_BT_w, &
                             data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
@@ -646,9 +640,7 @@ end subroutine mf_wq_get_ku_3d_csr
 ! Conjugate gradient
 ! ----------------------------------------
 subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
-                        nb_rows_u, nb_cols_u, &
-                        nb_rows_v, nb_cols_v, &
-                        nb_rows_w, nb_cols_w, &
+                        nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B0_u, data_B1_u, &
@@ -877,7 +869,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
 
-        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then !!!!!!!!!!!!!!
+        if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then 
             ! --------------------------------------------
             ! SCALING
             ! --------------------------------------------
@@ -964,9 +956,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 end subroutine wq_mf_cg_3d
 
 subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B0_u, data_B1_u, &

@@ -3,11 +3,8 @@
 ! author :: Joaquin Cornejo
 ! ====================================================
 subroutine iga_find_conductivity_diagonal_3d(nb_rows_total, nb_cols_total, cond_coefs, &
-                                        nb_rows_u, nb_cols_u, &
-                                        nb_rows_v, nb_cols_v, &
-                                        nb_rows_w, nb_cols_w, &
-                                        size_data_u, size_data_v, size_data_w, &
-                                        W_u, W_v, W_w, &
+                                        nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                                        size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                         data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
                                         Kdiag)
@@ -211,12 +208,9 @@ subroutine iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_
 
 end subroutine iga_diagonal_dot_vector
 
-subroutine mf_iga_get_cu_3d( nb_rows_total, nb_cols_total, capacity_coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
-                            size_data_u, size_data_v, size_data_w, &
-                            W_u, W_v, W_w, &
+subroutine mf_iga_get_cu_3d(nb_rows_total, nb_cols_total, capacity_coefs, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_BT_u, indj_BT_u, indi_BT_v, indj_BT_v, indi_BT_w, indj_BT_w, &
                             data_B0T_u, data_B0T_v, data_B0T_w, &
                             indi_B_u, indj_B_u, indi_B_v, indj_B_v, indi_B_w, indj_B_w, &
@@ -295,12 +289,9 @@ subroutine mf_iga_get_cu_3d( nb_rows_total, nb_cols_total, capacity_coefs, &
 
 end subroutine mf_iga_get_cu_3d
 
-subroutine mf_iga_get_ku_3d( nb_rows_total, nb_cols_total, cond_coefs, &
-                            nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
-                            size_data_u, size_data_v, size_data_w, &
-                            W_u, W_v, W_w, &
+subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
+                            nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_BT_u, indj_BT_u, indi_BT_v, indj_BT_v, indi_BT_w, indj_BT_w, &
                             data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
                             indi_B_u, indj_B_u, indi_B_v, indj_B_v, indi_B_w, indj_B_w, &
@@ -562,7 +553,7 @@ subroutine mf_iga_get_ku_3d( nb_rows_total, nb_cols_total, cond_coefs, &
     
 end subroutine mf_iga_get_ku_3d
 
-subroutine mf_iga_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
+subroutine mf_iga_get_ku_3d_csr(nb_rows_total, nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -649,13 +640,9 @@ end subroutine mf_iga_get_ku_3d_csr
 ! Conjugate gradient
 ! ----------------------------------------
 subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
-                        nb_rows_u, nb_cols_u, &
-                        nb_rows_v, nb_cols_v, &
-                        nb_rows_w, nb_cols_w, &
+                        nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
-                        indi_u, indj_u, &
-                        indi_v, indj_v, &
-                        indi_w, indj_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B0_u, data_B1_u, W_u, &
                         data_B0_v, data_B1_v, W_v, &
                         data_B0_w, data_B1_w, W_w, &
