@@ -709,8 +709,8 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
     ! ------------------
     ! Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha
-    double precision :: r, p, Ap
-    dimension :: r(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total)
+    double precision :: r, p, Ap, dummy
+    dimension :: r(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total), dummy(nb_rows_total)
     integer :: k
 
     ! Fast diagonalization
@@ -905,13 +905,14 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! -------------------------------------------
             r = b
             ! Calculate z
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then !!!!!!!!!!!!!!!!!!!!!
-                call scaling_FastDiag(size(r), preconddiag, matrixdiag, r) 
+            dummy = r
+            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then 
+                call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy) 
             end if
             call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, U_v, U_w, Deigen, r, z)
+                        U_u, U_v, U_w, Deigen, dummy, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
+                call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, z) 
             end if
             p = z
             rsold = dot_product(r, z)
@@ -942,13 +943,15 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                     exit
                 end if
                 
+                ! Calculate z
+                dummy = r
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(r), preconddiag, matrixdiag, r)   
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy)   
                 end if
                 call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, r, z)
+                            U_u, U_v, U_w, Deigen, dummy, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(z), preconddiag, matrixdiag, z) 
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, z) 
                 end if
                 rsnew = dot_product(r, z)
                                 
@@ -1024,8 +1027,9 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
     ! ------------------
     ! Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, Ap, s, As
-    dimension :: r(nb_rows_total), rhat(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total), As(nb_rows_total), s(nb_rows_total)
+    double precision :: r, rhat, p, Ap, s, As, dummy
+    dimension ::    r(nb_rows_total), rhat(nb_rows_total), p(nb_rows_total), & 
+                    Ap(nb_rows_total), As(nb_rows_total), s(nb_rows_total), dummy(nb_rows_total)
     integer :: k
 
     ! Fast diagonalization
@@ -1234,14 +1238,14 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             r = b
             rhat = r
             p = r
-
+            dummy = p
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(p), preconddiag, matrixdiag, p) 
+                call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy) 
             end if 
             call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                        U_u, U_v, U_w, Deigen, p, ptilde)
+                        U_u, U_v, U_w, Deigen, dummy, ptilde)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scaling_FastDiag(size(ptilde), preconddiag, matrixdiag, ptilde)  
+                call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, ptilde)  
             end if
             rsold = dot_product(r, rhat)
             RelRes(1) = 1.d0
@@ -1261,13 +1265,14 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                 alpha = rsold/dot_product(Aptilde, rhat)
                 s = r - alpha*Aptilde
 
+                dummy = s
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(s), preconddiag, matrixdiag, s)  
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy)  
                 end if
                 call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, s, stilde)
+                            U_u, U_v, U_w, Deigen, dummy, stilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(stilde), preconddiag, matrixdiag, stilde) 
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, stilde) 
                 end if
 
                 call mf_wq_get_Ku_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
@@ -1295,13 +1300,14 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                 beta = (alpha/omega)*(rsnew/rsold)
                 p = r + beta*(p - omega*Aptilde)
                 
+                dummy = p
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(p), preconddiag, matrixdiag, p) 
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy) 
                 end if
                 call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                            U_u, U_v, U_w, Deigen, p, ptilde)
+                            U_u, U_v, U_w, Deigen, dummy, ptilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scaling_FastDiag(size(ptilde), preconddiag, matrixdiag, ptilde) 
+                    call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, ptilde) 
                 end if
 
                 rsold = rsnew

@@ -491,59 +491,6 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
 
 end subroutine csr2csc
 
-subroutine erase_row_csr(nb_data, nb_rows, nnz_in, a_in, indi_in, indj_in, &
-                        row2er, nnz_out, a_out, indi_out, indj_out)
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: nb_rows, nnz_in, nb_data
-    integer, intent(in) :: indi_in, indj_in
-    dimension :: indi_in(nb_rows+1), indj_in(nnz_in)
-    double precision, intent(in) :: a_in
-    dimension :: a_in(nnz_in, nb_data)
-    integer, intent(in) :: row2er, nnz_out
-
-    integer, intent(out) :: indi_out, indj_out
-    dimension :: indi_out(nb_rows), indj_out(nnz_out)
-    double precision, intent(out) :: a_out(nnz_out, nb_data)
-
-    ! Local data
-    ! --------------
-    integer :: i, j, c, nnz_row
-
-    ! Initialize
-    a_out = 0.d0
-    indi_out = 0
-    indj_out = 0
-
-    ! Copy information before row to be erased
-    indi_out(1) = 1
-    c = 0
-    do i = 1, row2er-1
-        indi_out(i+1) = indi_in(i+1)
-        do j = indi_in(i), indi_in(i+1)-1
-            c = c + 1
-            indj_out(c) = indj_in(j)
-            a_out(c, :) = a_in(j, :)
-        end do
-    end do
-
-    ! Find number of nnz of the row erased
-    nnz_row = indi_in(row2er+1) - indi_in(row2er)
-
-    ! Copy and modify information after row to be erased
-    do i = row2er+1, nb_rows
-        indi_out(i) = indi_in(i+1) - nnz_row
-        do j = indi_in(i), indi_in(i+1)-1
-            c = c + 1
-            indj_out(c) = indj_in(j)
-            a_out(c, :) = a_in(j, :)
-        end do
-    end do
-
-end subroutine erase_row_csr
-
 subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, & 
                                 indi_A, indj_A, &
                                 nb_rows_B, nb_cols_B, nnz_B, &

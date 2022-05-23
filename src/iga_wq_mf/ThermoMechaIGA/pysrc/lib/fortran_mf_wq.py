@@ -248,7 +248,7 @@ class fortran_mf_wq(thermoMechaModel):
             shape_matrices.append(self._nb_qp_wq[dim][0])
 
             # Select data
-            if np.array_equal(table[dim, :], [0, 0]): rows2erase = [0]
+            if np.array_equal(table[dim, :], [0, 0]): rows2erase = []
             if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
             if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
             if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]
