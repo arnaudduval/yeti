@@ -112,13 +112,23 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     residue = inputs["Res"]
     error = inputs["Error"]
 
+    # Get new names
+    new_method_list = []
+    for i, pcgmethod in enumerate(method_list):
+        if pcgmethod == "WP": new_method_list.append('Without preconditioner')
+        elif pcgmethod == "C": new_method_list.append('Fast diag. (FD)')
+        elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
+        elif pcgmethod == "JM": new_method_list.append('FD + jacobien mean')  
+        elif pcgmethod == "TD": new_method_list.append('FD + jacobien mean') 
+        elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
+
     # Select important values
     tol = 1.e-17
     
     # Set figure parameters
     fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
 
-    for i, pcgmethod in enumerate(method_list):
+    for i, pcgmethod in enumerate(new_method_list):
         error_method = np.asarray(error[i])
         residue_method = np.asarray(residue[i])
 

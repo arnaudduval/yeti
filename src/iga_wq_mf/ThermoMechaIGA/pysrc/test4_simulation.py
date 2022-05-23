@@ -26,21 +26,15 @@ folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga, 
-                    method_list, iscg, isDirect=None):
+                    method_list, iscg, isOnlyDirect=False):
     
-    if isDirect is None: 
-        doDirect = True
-        doIterative = True
-    elif isDirect is True: 
-        doDirect = True
-        doIterative = False
-    elif isDirect is False: 
-        doDirect = False
-        doIterative = True
+    # Define actions 
+    doDirect, doIterative = True, True
+    if isOnlyDirect is True: doIterative = False
 
     # Define solution 
     sol_direct = None
-    
+
     # Direct solver
     # -------------
     if doDirect :
@@ -142,7 +136,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         # Initialize
         time_iter, residue, error, memory_iter = [], [], [], []
         epsilon  = 1e-14 
-        iterations = 100
+        iterations = 20
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
@@ -162,20 +156,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         del Model1, F2solve, dof
         tracemalloc.stop()
-
-    # Results 
-    # ----------------
-    if isDirect is None: 
-        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
-                    "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
-                    "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
-    elif isDirect is True: 
-        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct}
-    elif isDirect is False: 
-        time_assembly = 1e3
-        time_direct = 1e3
-        memory_direct = 1e3
-        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
+        
+    output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
                     "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                     "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
     
@@ -183,33 +165,20 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
 # Some constants
 FileExist = True
-BlockedBoundaries = [[1, 1], [1, 1], [1, 1]]
-DEGREE = 3
-CUTS = 3
-IS_IGA_GALERKIN = False
 GEOMETRY_CASE = 2
-if IS_IGA_GALERKIN: is_cg_list = [True]
-else: is_cg_list = [False]
-isDirect = None
+DEGREE, CUTS = 3, 3
+IS_IGA_GALERKIN = False
 
-for IS_CG in is_cg_list:   
+if IS_IGA_GALERKIN: is_cg_list = [True]
+else: is_cg_list = [True, False]
+
+for IS_CG in is_cg_list:
+
     # Get file name
-    if GEOMETRY_CASE == 0: 
-        txtname = 'CB' 
-        funpow = powden_cube 
-        funtemp = None
-    elif GEOMETRY_CASE == 1: 
-        txtname = 'VB' 
-        funpow = powden_prism 
-        funtemp = None
-    elif GEOMETRY_CASE == 2: 
-        txtname = 'TR' 
-        funpow = powden_thickring 
-        funtemp = None
-    elif GEOMETRY_CASE == 3: 
-        txtname = 'RQA' 
-        funpow = powden_rotring 
-        funtemp = temperature_rotring
+    if GEOMETRY_CASE == 0: txtname, funpow, funtemp = 'CB', powden_cube, None 
+    elif GEOMETRY_CASE == 1: txtname, funpow, funtemp = 'VB', powden_prism, None 
+    elif GEOMETRY_CASE == 2: txtname, funpow, funtemp = 'TR', powden_thickring, None 
+    elif GEOMETRY_CASE == 3: txtname, funpow, funtemp = 'RQA', powden_rotring, temperature_rotring 
     
     # Get text file name
     txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
@@ -218,22 +187,22 @@ for IS_CG in is_cg_list:
     if IS_CG: txtname += '_CG'
     else: txtname += '_BiCG'
     txtname = folder + txtname 
+    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
 
     if not FileExist:
         # Run simulation
         blockPrint()
-        method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                        method_list, IS_CG, thermalblockedboundaries= BlockedBoundaries, isDirect=isDirect)
+                        method_list, IS_CG)
         enablePrint()
 
         # Export results
-        write_text_file(txtname+'.txt', method_list, inputs_export)
+        try: write_text_file(txtname+'.txt', method_list, inputs_export)
+        except: print('It could not be possible to write file')
 
     else :
         try: 
             inputs = read_text_file(txtname + '.txt')
-            method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
             plot_iterative_solver(txtname, inputs, method_list)
         except: 
-            print("File does not exist")
+            print("It seems that the file does not exist or is corrupted")
