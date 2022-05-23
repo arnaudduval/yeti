@@ -6,6 +6,10 @@ module tensor_methods
 
     contains
 
+    ! ----------------------------------------------------
+    ! Tensor algebra 
+    ! ----------------------------------------------------
+
     subroutine tensor_n_mode_product(I1, I2, I3, X, I, J, U, n, Ir1, Ir2, Ir3, R)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
@@ -107,9 +111,9 @@ module tensor_methods
             sum = 0.d0
             do jv = 1, size_v
                 posGen = ju + (jv-1)*size_u
-                sum = sum + X0(posGen) * Vv(jv)
+                sum = sum + X0(posGen)*Vv(jv)
             end do
-            result = result + sum * Vu(ju)
+            result = result + sum*Vu(ju)
         end do
 
     end subroutine rankone2d_dot_vector
@@ -148,11 +152,11 @@ module tensor_methods
                 sum1 = 0.d0
                 do jw = 1, size_w
                     posGen = ju + (jv-1)*size_u + (jw-1)*size_u*size_v
-                    sum1 = sum1 + X0(posGen) * Vw(jw)
+                    sum1 = sum1 + X0(posGen)*Vw(jw)
                 end do
-                sum2 = sum2 + sum1 * Vv(jv)
+                sum2 = sum2 + sum1*Vv(jv)
             end do
-            result = result + sum2 * Vu(ju)
+            result = result + sum2*Vu(ju)
         end do
 
     end subroutine rankone3d_dot_vector
@@ -175,17 +179,15 @@ module tensor_methods
         double precision, intent(in) :: vector_in
         dimension :: vector_in(nb_cols_u*nb_cols_v)
         double precision, intent(in) :: Mu, Mv
-        dimension ::    Mu(nb_rows_u, nb_cols_u), &
-                        Mv(nb_rows_v, nb_cols_v)
+        dimension :: Mu(nb_rows_u, nb_cols_u), Mv(nb_rows_v, nb_cols_v)
 
         double precision, intent(inout) :: vector_out
         dimension :: vector_out(nb_rows_u*nb_rows_v)
 
         ! Local data 
         ! -------------
-        integer :: genPos_out
         double precision :: sum
-        integer :: iu, iv, nb_tasks
+        integer :: iu, iv, nb_tasks, genPos_out
 
         !$OMP PARALLEL PRIVATE(genPos_out, sum)
         nb_tasks = omp_get_num_threads()
@@ -226,18 +228,15 @@ module tensor_methods
         double precision, intent(in) :: vector_in
         dimension :: vector_in(nb_cols_u*nb_cols_v*nb_cols_w)
         double precision, intent(in) :: Mu, Mv, Mw
-        dimension ::    Mu(nb_rows_u, nb_cols_u), &
-                        Mv(nb_rows_v, nb_cols_v), &
-                        Mw(nb_rows_w, nb_cols_w)
+        dimension ::    Mu(nb_rows_u, nb_cols_u), Mv(nb_rows_v, nb_cols_v), Mw(nb_rows_w, nb_cols_w)
 
         double precision, intent(out) :: vector_out
         dimension :: vector_out(nb_rows_u*nb_rows_v*nb_rows_w)
 
         ! Local data 
         ! -------------
-        integer :: genPos_out
         double precision :: sum
-        integer :: iu, iv, iw, nb_tasks
+        integer :: iu, iv, iw, nb_tasks, genPos_out
 
         !$OMP PARALLEL PRIVATE(genPos_out, sum) 
         nb_tasks = omp_get_num_threads()
@@ -487,7 +486,7 @@ module tensor_methods
     end subroutine tensor3d_sparsedot_vector
 
     ! ----------------------------------------------------
-    ! Sum product to evaluate matrices 
+    ! Sum product to compute matrices 
     ! ----------------------------------------------------
     subroutine csr_get_row_2d(coefficients, &
                             nb_rows_u, nb_cols_u, &
@@ -986,190 +985,14 @@ module tensor_methods
     end subroutine csr_get_matrix_3d 
 
     ! ----------------------------------------------------
-    ! Jacobi diagonal
+    ! Functions for Fast Diagonalization method
     ! ----------------------------------------------------
-    subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
-        !! Scaling in fast diagonalization
-    
-        use omp_lib
-        implicit none
-        ! Input / output data
-        ! -------------------
-        integer, intent(in) :: nb_rows
-        double precision, intent(in) :: diag_parametric, diag_physical
-        dimension :: diag_parametric(nb_rows), diag_physical(nb_rows)
-    
-        double precision, intent(inout) :: vector
-        dimension :: vector(nb_rows)
-    
-        ! Local data
-        ! -------------
-        integer :: i, nb_tasks
-    
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nb_rows/nb_tasks)
-        do i = 1, nb_rows
-            vector(i) = sqrt(diag_parametric(i)/diag_physical(i)) * vector(i) 
-        end do  
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-    
-    end subroutine scaling_FastDiag
-    
-    subroutine find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
-                                Mdiag_u, Mdiag_v, Mdiag_w, &
-                                Kdiag_u, Kdiag_v, Kdiag_w, diag)
-        !! Find the diagonal of the preconditioner "fast diagonalization"
-                            
-        implicit none
-        ! Input / output data
-        ! -------------------------
-        integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
-        double precision, intent(in) :: Lu, Lv, Lw
-        double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w
-        dimension :: Mdiag_u(nb_rows_u), Mdiag_v(nb_rows_v), Mdiag_w(nb_rows_w), &
-                    Kdiag_u(nb_rows_u), Kdiag_v(nb_rows_v), Kdiag_w(nb_rows_w)
+    ! "Fast Diagonalization" 
 
-        double precision, intent(out) :: diag
-        dimension :: diag(nb_rows_u*nb_rows_v*nb_rows_w)
-
-        ! Initialize
-        diag = 0.d0
-
-        ! Find K3 M2 M1
-        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, Lu*Lv/Lw)
-
-        ! Find M3 K2 M1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, Lw*Lu/Lv)
-
-        ! Find M3 M2 K1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, Lv*Lw/Lu)
-
-    end subroutine find_diagonal_fd_3d
-
-    subroutine find_jacobi_diagonal_3d(coefs, nb_rows_u, nb_cols_u, &
-                                        nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-                                        size_data_u, size_data_v, size_data_w, &
-                                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B_u, data_B_v, data_B_w, &
-                                        data_W_u, data_W_v, data_W_w, jacobi_diag)
-        !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
-        !! Algotihm based on sum factorization adapted to diagonal case 
-        !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
-        !! Indexes must be in CSR format
-
-        use omp_lib
-        implicit none 
-        ! Input / output 
-        ! -------------------
-        integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
-        double precision, intent(in) :: coefs
-        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
-        integer, intent(in) ::  size_data_u, size_data_v, size_data_w
-        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-        dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
-                        indi_v(nb_rows_v+1), indj_v(size_data_v), &
-                        indi_w(nb_rows_w+1), indj_w(size_data_w)
-        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w
-        dimension ::    data_B_u(size_data_u), data_B_v(size_data_v), data_B_w(size_data_w), &
-                        data_W_u(size_data_u), data_W_v(size_data_v), data_W_w(size_data_w)
-
-        double precision, intent(out) :: jacobi_diag
-        dimension :: jacobi_diag(nb_rows_u*nb_rows_v*nb_rows_w)
-
-        ! Local data
-        ! ------------------
-        integer :: offset, nb_tasks
-        integer :: iu, iv, iw, ju, jv, jw, Cpos, Ipos
-        double precision :: sum1, sum2, sum3
-
-        integer :: nnz_u, nnz_v, nnz_w
-        integer, allocatable, dimension(:) :: indj_nnz_u, indj_nnz_v, indj_nnz_w
-        double precision, allocatable, dimension(:) :: data_nnz_B_u, data_nnz_B_v, data_nnz_B_w, &
-                                                        data_nnz_W_u, data_nnz_W_v, data_nnz_W_w        
-        
-        ! Initialize
-        jacobi_diag = 0.d0
-
-        !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
-        !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks) 
-        do iw = 1, nb_rows_w
-            do iv = 1, nb_rows_v
-                do iu = 1, nb_rows_u
-
-                    ! Number of nonzeros
-                    nnz_u = indi_u(iu+1) - indi_u(iu)
-                    nnz_v = indi_v(iv+1) - indi_v(iv)
-                    nnz_w = indi_w(iw+1) - indi_w(iw)
-
-                    ! Set values
-                    allocate(indj_nnz_u(nnz_u), data_nnz_B_u(nnz_u), data_nnz_W_u(nnz_u))
-                    offset = indi_u(iu)
-                    do ju = 1, nnz_u
-                        indj_nnz_u(ju) = indj_u(ju+offset-1)
-                        data_nnz_B_u(ju) = data_B_u(ju+offset-1)
-                        data_nnz_W_u(ju) = data_W_u(ju+offset-1)
-                    end do
-
-                    allocate(indj_nnz_v(nnz_v), data_nnz_B_v(nnz_v), data_nnz_W_v(nnz_v))
-                    offset = indi_v(iv)
-                    do jv = 1, nnz_v
-                        indj_nnz_v(jv) = indj_v(jv+offset-1)
-                        data_nnz_B_v(jv) = data_B_v(jv+offset-1)
-                        data_nnz_W_v(jv) = data_W_v(jv+offset-1)
-                    end do
-
-                    allocate(indj_nnz_w(nnz_w), data_nnz_B_w(nnz_w), data_nnz_W_w(nnz_w))
-                    offset = indi_w(iw)
-                    do jw = 1, nnz_w
-                        indj_nnz_w(jw) = indj_w(jw+offset-1)
-                        data_nnz_B_w(jw) = data_B_w(jw+offset-1)
-                        data_nnz_W_w(jw) = data_W_w(jw+offset-1)
-                    end do
-
-                    sum3 = 0.d0
-                    do jw = 1, nnz_w
-                        sum2 = 0.d0
-                        do jv = 1, nnz_v
-                            sum1 = 0.d0
-                            do ju = 1, nnz_u
-                                Cpos = indj_nnz_u(ju) + (indj_nnz_v(jv)-1)*nb_cols_u + (indj_nnz_w(jw)-1)*nb_cols_u*nb_cols_v
-                                sum1 = sum1 + data_nnz_W_u(ju)*data_nnz_B_u(ju)*coefs(Cpos)
-                            end do
-                            sum2 = sum2 + data_nnz_W_v(jv)*data_nnz_B_v(jv)*sum1
-                        end do
-                        sum3 = sum3 + data_nnz_W_w(jw)*data_nnz_B_w(jw)*sum2
-                    end do
-
-                    ! General position
-                    Ipos = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_w
-                    
-                    ! Update diagonal
-                    jacobi_diag(Ipos) = sum3
-
-                    deallocate(indj_nnz_u, data_nnz_B_u, data_nnz_W_u)
-                    deallocate(indj_nnz_v, data_nnz_B_v, data_nnz_W_v)
-                    deallocate(indj_nnz_w, data_nnz_B_w, data_nnz_W_w)
-
-                end do
-            end do
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-    end subroutine find_jacobi_diagonal_3d
-
-    ! ----------------------------------------------------
-    ! Sum product for fast diagonalization
-    ! ----------------------------------------------------
     subroutine eigen_decomposition(nb_rows, nb_cols, &
                                     Mcoef, Kcoef, size_data, indi, indj, &
                                     data_B0, data_W00, data_B1, data_W11, &
-                                    kmod1, kmod2, method, D, U, Kdiag, Mdiag)
+                                    Method, D, U, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
         !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -1188,7 +1011,6 @@ module tensor_methods
         double precision, intent(in) :: data_B0, data_W00, data_B1, data_W11
         dimension ::    data_B0(size_data), data_W00(size_data), &
                         data_B1(size_data), data_W11(size_data)
-        integer, intent(in) :: kmod1, kmod2
         character(len=10), intent(in) :: Method
                 
         double precision, intent(out) :: D, U
@@ -1214,7 +1036,6 @@ module tensor_methods
         integer :: idum(1)
         integer :: INFO
         
-        ! ====================================================
         ! Initialize Masse matrix
         allocate(BB0(nb_rows, nb_cols), &   
                 WW0(nb_rows, nb_cols))
@@ -1247,15 +1068,6 @@ module tensor_methods
         KK = matmul(WW1, transpose(BB1))
         deallocate(BB1, WW1)
 
-        ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
-        if (kmod1.eq.1) then 
-            KK(1, 1) = 100 * KK(1, 1)
-        end if
-
-        if (kmod2.eq.1) then 
-            KK(nb_rows, nb_rows) = 100 * KK(nb_rows, nb_rows)
-        end if
-
         ! Select diagonal of M and K
         do j = 1, nb_rows
             Kdiag(j) = KK(j, j)
@@ -1287,8 +1099,8 @@ module tensor_methods
         ! Get values
         U = KK
         D = W
-
         deallocate(KK, MM, W, WORK, IWORK)
+
     end subroutine eigen_decomposition
 
     subroutine fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
@@ -1347,10 +1159,9 @@ module tensor_methods
 
     end subroutine fast_diagonalization_3d
 
-    ! ----------------------------------------------------
-    ! Tensor decomposition
-    ! ----------------------------------------------------
-    subroutine diagonal_decomposition_2d(nb_cols_total, nb_cols_u, nb_cols_v, CC, &
+    ! For improving fast diagonalisation (TD, TDS, JM and JMS)
+
+    subroutine tensor_decomposition_2d(nb_cols_total, nb_cols_u, nb_cols_v, CC, &
                                         M_u, M_v, K_u, K_v)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
@@ -1439,9 +1250,9 @@ module tensor_methods
             end if
         end do
                                     
-    end subroutine diagonal_decomposition_2d
+    end subroutine tensor_decomposition_2d
 
-    subroutine diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, CC, &
+    subroutine tensor_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, CC, &
                                         M_u, M_v, M_w, K_u, K_v, K_w)
         !! Tensor decomposition to improve Fast diagonalization precontionner
         !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
@@ -1567,7 +1378,7 @@ module tensor_methods
             end if
         end do
 
-    end subroutine diagonal_decomposition_3d
+    end subroutine tensor_decomposition_3d
 
     subroutine jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, JJ, L1, L2, L3)
         
@@ -1634,5 +1445,182 @@ module tensor_methods
         L3 = L3/LNS
     
     end subroutine jacobien_mean_3d
+
+    ! For scaling (TDS and JMS)
+    
+    subroutine find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+                                Mdiag_u, Mdiag_v, Mdiag_w, &
+                                Kdiag_u, Kdiag_v, Kdiag_w, diag)
+        !! Find the diagonal of the preconditioner "fast diagonalization"
+                            
+        implicit none
+        ! Input / output data
+        ! -------------------------
+        integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
+        double precision, intent(in) :: Lu, Lv, Lw
+        double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w
+        dimension :: Mdiag_u(nb_rows_u), Mdiag_v(nb_rows_v), Mdiag_w(nb_rows_w), &
+                    Kdiag_u(nb_rows_u), Kdiag_v(nb_rows_v), Kdiag_w(nb_rows_w)
+
+        double precision, intent(out) :: diag
+        dimension :: diag(nb_rows_u*nb_rows_v*nb_rows_w)
+
+        ! Initialize
+        diag = 0.d0
+
+        ! Find K3 M2 M1
+        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, Lu*Lv/Lw)
+
+        ! Find M3 K2 M1
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, Lw*Lu/Lv)
+
+        ! Find M3 M2 K1
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, Lv*Lw/Lu)
+
+    end subroutine find_parametric_diag_3d
+
+    subroutine find_physical_diag_3d(coefs, nb_rows_u, nb_cols_u, &
+                                        nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                                        size_data_u, size_data_v, size_data_w, &
+                                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                        data_B_u, data_B_v, data_B_w, &
+                                        data_W_u, data_W_v, data_W_w, diag)
+        !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
+        !! Algotihm based on sum factorization adapted to diagonal case 
+        !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
+        !! Indexes must be in CSR format
+
+        use omp_lib
+        implicit none 
+        ! Input / output 
+        ! -------------------
+        integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+        integer, intent(in) :: size_data_u, size_data_v, size_data_w
+        integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+        dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                        indi_v(nb_rows_v+1), indj_v(size_data_v), &
+                        indi_w(nb_rows_w+1), indj_w(size_data_w)
+        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w
+        dimension ::    data_B_u(size_data_u), data_B_v(size_data_v), data_B_w(size_data_w), &
+                        data_W_u(size_data_u), data_W_v(size_data_v), data_W_w(size_data_w)
+
+        double precision, intent(out) :: diag
+        dimension :: diag(nb_rows_u*nb_rows_v*nb_rows_w)
+
+        ! Local data
+        ! ------------------
+        integer :: offset, nb_tasks
+        integer :: iu, iv, iw, ju, jv, jw, Cpos, Ipos
+        double precision :: sum1, sum2, sum3
+
+        integer :: nnz_u, nnz_v, nnz_w
+        integer, allocatable, dimension(:) :: indj_nnz_u, indj_nnz_v, indj_nnz_w
+        double precision, allocatable, dimension(:) :: data_nnz_B_u, data_nnz_B_v, data_nnz_B_w, &
+                                                        data_nnz_W_u, data_nnz_W_v, data_nnz_W_w        
+        
+        ! Initialize
+        diag = 0.d0
+
+        !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
+        !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks) 
+        do iw = 1, nb_rows_w
+            do iv = 1, nb_rows_v
+                do iu = 1, nb_rows_u
+
+                    ! Number of nonzeros
+                    nnz_u = indi_u(iu+1) - indi_u(iu)
+                    nnz_v = indi_v(iv+1) - indi_v(iv)
+                    nnz_w = indi_w(iw+1) - indi_w(iw)
+
+                    ! Set values
+                    allocate(indj_nnz_u(nnz_u), data_nnz_B_u(nnz_u), data_nnz_W_u(nnz_u))
+                    offset = indi_u(iu)
+                    do ju = 1, nnz_u
+                        indj_nnz_u(ju) = indj_u(ju+offset-1)
+                        data_nnz_B_u(ju) = data_B_u(ju+offset-1)
+                        data_nnz_W_u(ju) = data_W_u(ju+offset-1)
+                    end do
+
+                    allocate(indj_nnz_v(nnz_v), data_nnz_B_v(nnz_v), data_nnz_W_v(nnz_v))
+                    offset = indi_v(iv)
+                    do jv = 1, nnz_v
+                        indj_nnz_v(jv) = indj_v(jv+offset-1)
+                        data_nnz_B_v(jv) = data_B_v(jv+offset-1)
+                        data_nnz_W_v(jv) = data_W_v(jv+offset-1)
+                    end do
+
+                    allocate(indj_nnz_w(nnz_w), data_nnz_B_w(nnz_w), data_nnz_W_w(nnz_w))
+                    offset = indi_w(iw)
+                    do jw = 1, nnz_w
+                        indj_nnz_w(jw) = indj_w(jw+offset-1)
+                        data_nnz_B_w(jw) = data_B_w(jw+offset-1)
+                        data_nnz_W_w(jw) = data_W_w(jw+offset-1)
+                    end do
+
+                    sum3 = 0.d0
+                    do jw = 1, nnz_w
+                        sum2 = 0.d0
+                        do jv = 1, nnz_v
+                            sum1 = 0.d0
+                            do ju = 1, nnz_u
+                                Cpos = indj_nnz_u(ju) + (indj_nnz_v(jv)-1)*nb_cols_u + (indj_nnz_w(jw)-1)*nb_cols_u*nb_cols_v
+                                sum1 = sum1 + data_nnz_W_u(ju)*data_nnz_B_u(ju)*coefs(Cpos)
+                            end do
+                            sum2 = sum2 + data_nnz_W_v(jv)*data_nnz_B_v(jv)*sum1
+                        end do
+                        sum3 = sum3 + data_nnz_W_w(jw)*data_nnz_B_w(jw)*sum2
+                    end do
+
+                    ! General position
+                    Ipos = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_w
+                    
+                    ! Update diagonal
+                    diag(Ipos) = sum3
+
+                    deallocate(indj_nnz_u, data_nnz_B_u, data_nnz_W_u)
+                    deallocate(indj_nnz_v, data_nnz_B_v, data_nnz_W_v)
+                    deallocate(indj_nnz_w, data_nnz_B_w, data_nnz_W_w)
+
+                end do
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+
+    end subroutine find_physical_diag_3d
+
+    subroutine scaling_FastDiag(nb_rows, diag_parametric, diag_physical, vector)
+        !! Scaling in fast diagonalization
+    
+        use omp_lib
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, intent(in) :: nb_rows
+        double precision, intent(in) :: diag_parametric, diag_physical
+        dimension :: diag_parametric(nb_rows), diag_physical(nb_rows)
+    
+        double precision, intent(inout) :: vector
+        dimension :: vector(nb_rows)
+    
+        ! Local data
+        ! -------------
+        integer :: i, nb_tasks
+    
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nb_rows/nb_tasks)
+        do i = 1, nb_rows
+            vector(i) = sqrt(diag_parametric(i)/diag_physical(i)) * vector(i) 
+        end do  
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+    
+    end subroutine scaling_FastDiag
 
 end module tensor_methods

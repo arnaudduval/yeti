@@ -73,7 +73,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
     ! ---------------------
     ! Get W = W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(1, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(1, 1,:), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -82,7 +82,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W00_w x W10_v x W01_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(2, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(2, 1,:), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -91,7 +91,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W10_w x W00_v x W01_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(3, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(3, 1,:), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -105,7 +105,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
     ! ---------------------
     ! Get W = W00_w x W01_v x W10_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(1, 2, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(1, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -114,7 +114,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -123,7 +123,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W10_w x W01_v x W00_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -137,7 +137,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
     ! ---------------------
     ! Get W = W01_w x W00_v x W10_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(1, 3, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(1, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -146,7 +146,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W01_w x W10_v x W00_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -155,7 +155,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     Kdiag = Kdiag + Kdiagtemp
 
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_jacobi_diagonal_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -830,7 +830,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             Kcoef_w = 1.d0
 
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
+                call tensor_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
@@ -851,17 +851,17 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, 0, 0, Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, 0, 0, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, 0, 0, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
@@ -869,7 +869,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
-        call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+        call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
@@ -883,7 +883,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! Find diagonal of preconditioner
             allocate(preconddiag(nb_rows_total))
-            call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+            call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
@@ -1163,7 +1163,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             Kcoef_w = 1.d0
 
             do iter = 1, 2
-                call diagonal_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
+                call tensor_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
@@ -1184,17 +1184,17 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
         allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, 0, 0, Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
                                 indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, 0, 0, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W11_v, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
                                 indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, 0, 0, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W11_w, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
@@ -1202,7 +1202,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
-        call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+        call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
@@ -1216,7 +1216,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! Find diagonal of preconditioner
             allocate(preconddiag(nb_rows_total))
-            call find_diagonal_fd_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
+            call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
                                     Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
