@@ -26,11 +26,14 @@ folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga, 
-                    method_list, iscg, isOnlyDirect=False):
+                    method_list, iscg, isOnlyDirect=False, isOnlyIter=False):
     
     # Define actions 
     doDirect, doIterative = True, True
     if isOnlyDirect is True: doIterative = False
+    if isOnlyIter is True: 
+        doDirect = False
+        time_assembly = time_direct = memory_direct = -1e5
 
     # Define solution 
     sol_direct = None
@@ -136,7 +139,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         # Initialize
         time_iter, residue, error, memory_iter = [], [], [], []
         epsilon  = 1e-14 
-        iterations = 20
+        iterations = 100
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
@@ -165,8 +168,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
 # Some constants
 FileExist = True
-GEOMETRY_CASE = 2
-DEGREE, CUTS = 3, 3
+GEOMETRY_CASE = 3
+DEGREE, CUTS = 3, 5
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
@@ -193,7 +196,7 @@ for IS_CG in is_cg_list:
         # Run simulation
         blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                        method_list, IS_CG)
+                        method_list, IS_CG, isOnlyIter=True)
         enablePrint()
 
         # Export results
