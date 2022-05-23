@@ -6,7 +6,6 @@
 
 # Python libraries
 import os, sys, tracemalloc
-from tkinter.messagebox import NO
 import scipy, numpy as np
 import time
 

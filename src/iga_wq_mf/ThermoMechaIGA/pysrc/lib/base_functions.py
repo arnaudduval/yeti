@@ -14,8 +14,8 @@ from iga_wq_mf import basis_weights
 # ==========================
 # GENERAL FUNCTIONS
 # ==========================
-def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
 
+def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
     "Returns new data after erasing some rows in CSR format"
     
     # Initialize outputs
@@ -138,7 +138,7 @@ def eval_basis_python(degree, knotvector, knots, multiplicity= 1):
 
     return B0, B1
 
-def eval_basis_fortran(degree, nbel, knots, multiplicity=1):
+def eval_basis_fortran(degree, nbel, knots, multiplicity= 1):
     " Evaluates B-spline functions at given knots using fortran libraries "
 
     B0, B1, indi, indj = basis_weights.get_basis_generalized_csr(
@@ -783,6 +783,7 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
 # =========================
 # USING TENSOR ALGEBRA
 # =========================
+
 def get_indexes_3D(DI):
     "Returns the indexes of I1 x I2 x I3, where x is kronecker product"
 

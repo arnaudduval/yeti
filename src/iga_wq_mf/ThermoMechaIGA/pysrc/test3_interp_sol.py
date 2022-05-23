@@ -41,7 +41,7 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
     Temp_CP, Td = Model1.MSE_ControlPoints(temperature)
     _, qp_PS_1, _, Temp_qp_PS_1 = Model1.interpolate_results(u_ctrlpts=Temp_CP)
     Treal_sample = np.asarray([temperature(3, qp_PS_1[:, :, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
-    error_Temp_1 = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)
+    error_Temp_1 = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)*100
 
     # Block boundaries
     dof = Model1._thermal_dof
@@ -63,11 +63,11 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
 
     # Compare solutions 
     _, qp_PS_2, _, Temp_qp_PS_2 = Model1.interpolate_results(u_ctrlpts=Tsolution)
-    error_Temp_2 = np.linalg.norm(Temp_qp_PS_1 - Temp_qp_PS_2, np.inf)/np.linalg.norm(Temp_qp_PS_1, np.inf)
+    error_Temp_2 = np.linalg.norm(Temp_qp_PS_1 - Temp_qp_PS_2, np.inf)/np.linalg.norm(Temp_qp_PS_1, np.inf)*100
     enablePrint()
 
-    print("Error using interpolation : %.5f" %(error_Temp_1,))
-    print("Error interpolation/direct solution : %.5f" %(error_Temp_2,))
+    print("Error using interpolation : %.3e %%" %(error_Temp_1,))
+    print("Error interpolation/direct solution : %.3e %%" %(error_Temp_2,))
 
     # Solution using conjugate gradient
     iterations = 80
@@ -81,7 +81,7 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
         Tsolution_t = np.zeros(Model1._nb_ctrlpts_total)
         Tsolution_t[dof] = Tn_t
         Tsolution_t[dod] = Td
-        error_precond = np.linalg.norm(Tsolution-Tsolution_t, np.inf)/np.linalg.norm(Tsolution, np.inf)
-        print("Error direct/iterative solution : %.5f" %(error_precond,))
+        error_precond = np.linalg.norm(Tsolution-Tsolution_t, np.inf)/np.linalg.norm(Tsolution, np.inf)*100
+        print("Error direct/iterative solution : %.3e %%" %(error_precond,))
     
     print("------------------")

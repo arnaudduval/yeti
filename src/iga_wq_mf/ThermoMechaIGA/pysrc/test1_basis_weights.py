@@ -42,10 +42,9 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             # ======================================== 
             _, _, dB0, dB1, dW00, dW01, \
             dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, nb_el)
-            nb_ctrlpts = np.size(indi)-1
+            nb_ctrlpts = degree + nb_el
             nb_qp_wq = np.max(indj)
-            indi -= 1
-            indj -= 1
+            indi -= 1; indj -= 1
 
             # Create basis and weights from fortran
             B0f = sp.csr_matrix((dB0, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
