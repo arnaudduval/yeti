@@ -588,22 +588,18 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
 
     double precision, intent(out) :: data_result(size_data_I_u*size_data_I_v*size_data_I_w)
     integer, intent(out) :: indi_result, indj_result
-    dimension :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
-                indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
+    dimension ::    indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
+                    indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
 
     ! Local data
     ! ---------------
-    integer ::  size_data_result
+    integer :: size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
-    dimension ::    indi_I_u(nb_rows_u+1), &
-                    indi_I_v(nb_rows_v+1), &
-                    indi_I_w(nb_rows_w+1)
+    dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
 
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp
-    integer :: dummy1, dummy2, dummy3
-    integer :: indi_I_temp(nb_rows_u*nb_rows_v+1)
-    integer, allocatable, dimension(:) :: indj_I_temp
+    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
+    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -611,7 +607,7 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indj_I_temp(size_data_I_u*size_data_I_v))
+    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
     call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
                                 nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
@@ -620,7 +616,7 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
                                 nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
 
-    deallocate(indj_I_temp)
+    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -664,11 +660,11 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_cols_total)
-    integer, intent(in) ::  size_data_u, size_data_v, size_data_w
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
@@ -687,28 +683,23 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
                     data_B0_w(size_data_w), data_B1_w(size_data_w), &
                     data_W00_w(size_data_w), data_W01_w(size_data_w), &
                     data_W10_w(size_data_w), data_W11_w(size_data_w)
-
     integer, intent(in) :: size_data_I_u, size_data_I_v, size_data_I_w 
 
     double precision, intent(out) :: data_result
     dimension :: data_result(size_data_I_u*size_data_I_v*size_data_I_w)
     integer, intent(out) :: indi_result, indj_result
-    dimension :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
-                indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
+    dimension ::    indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
+                    indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
 
     ! Local data
     ! ---------------
     integer :: size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
-    dimension ::    indi_I_u(nb_rows_u+1), &
-                    indi_I_v(nb_rows_v+1), &
-                    indi_I_w(nb_rows_w+1)
+    dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
 
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp 
-    integer :: dummy1, dummy2, dummy3
-    integer :: indi_I_temp(nb_rows_u*nb_rows_v+1)
-    integer, allocatable, dimension(:) :: indj_I_temp
+    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
+    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -716,7 +707,7 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indj_I_temp(size_data_I_u*size_data_I_v))
+    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
     call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
                                 nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
@@ -725,7 +716,7 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
                                 nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
 
-    deallocate(indj_I_temp)
+    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -860,12 +851,12 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in)  :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: adv_coefs
     dimension :: adv_coefs(3, nb_cols_total)
-    integer, intent(in) ::  size_data_u, size_data_v, size_data_w
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
@@ -880,21 +871,17 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     double precision, intent(out) :: data_result(size_data_I_u*size_data_I_v*size_data_I_w)
     integer, intent(out) :: indi_result, indj_result
     dimension :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
-                    indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
+                indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
 
     ! Local data
     ! ---------------
     integer :: size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
-    dimension ::    indi_I_u(nb_rows_u+1), &
-                    indi_I_v(nb_rows_v+1), &
-                    indi_I_w(nb_rows_w+1)
+    dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
 
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp 
-    integer :: dummy1, dummy2, dummy3
-    integer :: indi_I_temp(nb_rows_u*nb_rows_v+1)
-    integer, allocatable, dimension(:) :: indj_I_temp
+    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
+    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -902,7 +889,7 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indj_I_temp(size_data_I_u*size_data_I_v))
+    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
     call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
         nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
         nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
@@ -911,7 +898,7 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
         nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
         dummy1, dummy2, dummy3, indi_result, indj_result)
 
-    deallocate(indj_I_temp)
+    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -1008,7 +995,6 @@ subroutine wq_get_stiffness_3d(nb_cols_total, stiff_coefs, &
                     data_B0_w(size_data_w), data_B1_w(size_data_w), &
                     data_W00_w(size_data_w), data_W01_w(size_data_w), &
                     data_W10_w(size_data_w), data_W11_w(size_data_w)
-
     integer, intent(in) ::  size_data_I_u, size_data_I_v, size_data_I_w 
 
     integer, parameter :: dimen = 3
@@ -1019,15 +1005,17 @@ subroutine wq_get_stiffness_3d(nb_cols_total, stiff_coefs, &
 
     ! Local data 
     !-------------
-    integer :: size_data_result
+    integer :: nb_rows_total, size_data_result
     double precision, allocatable, dimension(:) :: data_result_temp
     integer, allocatable, dimension(:) :: indi_result_temp_csr, indj_result_temp, indi_result_temp_coo
     integer :: i, j, k, l, nnz, count
     integer :: init, fin
 
+    ! Initialize
+    nb_rows_total = nb_rows_u*nb_rows_v*nb_rows_w
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
     allocate(data_result_temp(size_data_result))
-    allocate(indi_result_temp_csr(nb_rows_u*nb_rows_v*nb_rows_w+1), &
+    allocate(indi_result_temp_csr(nb_rows_total+1), &
             indj_result_temp(size_data_result), indi_result_temp_coo(size_data_result))
     
     do i = 1, dimen
@@ -1047,7 +1035,7 @@ subroutine wq_get_stiffness_3d(nb_cols_total, stiff_coefs, &
             if ((i.eq.1).and.(j.eq.1)) then
                 count = 1
                 indi_result_temp_coo = 0
-                do k = 1, nb_rows_u*nb_rows_v*nb_rows_w
+                do k = 1, nb_rows_total
                     nnz = indi_result_temp_csr(k+1) - indi_result_temp_csr(k)
                     do l = 1, nnz
                         indi_result_temp_coo(count) = k-1
@@ -1060,8 +1048,8 @@ subroutine wq_get_stiffness_3d(nb_cols_total, stiff_coefs, &
             fin = (j + (i-1)*dimen)*size_data_result
 
             data_result(init : fin) = data_result_temp    
-            indi_result(init : fin) = indi_result_temp_coo + (i-1)*nb_rows_u*nb_rows_v*nb_rows_w
-            indj_result(init : fin) = indj_result_temp + (j-1)*nb_rows_u*nb_rows_v*nb_rows_w
+            indi_result(init : fin) = indi_result_temp_coo + (i-1)*nb_rows_total
+            indj_result(init : fin) = indj_result_temp + (j-1)*nb_rows_total
 
         end do 
     end do
@@ -1091,11 +1079,11 @@ subroutine wq_get_thermalstiffness_3d(nb_cols_total, therstiff_coefs, &
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: therstiff_coefs
     dimension :: therstiff_coefs(9, nb_cols_total)
-    integer, intent(in) ::  size_data_u, size_data_v, size_data_w
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
@@ -1105,7 +1093,6 @@ subroutine wq_get_thermalstiffness_3d(nb_cols_total, therstiff_coefs, &
     dimension ::    data_B0_u(size_data_u), data_W00_u(size_data_u), data_W10_u(size_data_u), &
                     data_B0_v(size_data_v), data_W00_v(size_data_v), data_W10_v(size_data_v), &
                     data_B0_w(size_data_w), data_W00_w(size_data_w), data_W10_w(size_data_w)
-
     integer, intent(in) :: size_data_I_u, size_data_I_v, size_data_I_w
 
     integer, parameter :: dimen = 3
@@ -1116,15 +1103,17 @@ subroutine wq_get_thermalstiffness_3d(nb_cols_total, therstiff_coefs, &
 
     ! Local data 
     !-------------
-    integer :: size_data_result
+    integer :: nb_rows_total, size_data_result
     double precision, allocatable, dimension(:) :: data_result_temp
     integer, allocatable, dimension(:) :: indi_result_temp_csr, indj_result_temp, indi_result_temp_coo
     integer :: i, k, l, nnz, count
     integer :: init, fin
 
+    ! Initialize
+    nb_rows_total = nb_rows_u*nb_rows_v*nb_rows_w
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
     allocate(data_result_temp(size_data_result))
-    allocate(indi_result_temp_csr(nb_rows_u*nb_rows_v*nb_rows_w+1), &
+    allocate(indi_result_temp_csr(nb_rows_total+1), &
             indj_result_temp(size_data_result), indi_result_temp_coo(size_data_result))
 
     do i = 1, dimen
@@ -1140,7 +1129,7 @@ subroutine wq_get_thermalstiffness_3d(nb_cols_total, therstiff_coefs, &
 
         count = 1
         indi_result_temp_coo = 0
-        do k = 1, nb_rows_u*nb_rows_v*nb_rows_w
+        do k = 1, nb_rows_total
             nnz = indi_result_temp_csr(k+1) - indi_result_temp_csr(k)
             do l = 1, nnz
                 indi_result_temp_coo(count) = k-1
@@ -1152,7 +1141,7 @@ subroutine wq_get_thermalstiffness_3d(nb_cols_total, therstiff_coefs, &
         fin = i*size(data_result_temp)
 
         data_result(init : fin) = data_result_temp    
-        indi_result(init : fin) = indi_result_temp_coo + (i-1)*nb_rows_u*nb_rows_v*nb_rows_w
+        indi_result(init : fin) = indi_result_temp_coo + (i-1)*nb_rows_total
         indj_result(init : fin) = indj_result_temp 
 
     end do
@@ -1186,9 +1175,7 @@ subroutine wq_get_source_3d(nb_cols_total, source_coefs, &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
     double precision, intent(in) :: data_W00_u, data_W00_v, data_W00_w
-    dimension ::    data_W00_u(size_data_u), &
-                    data_W00_v(size_data_v), &
-                    data_W00_w(size_data_w)
+    dimension :: data_W00_u(size_data_u), data_W00_v(size_data_v), data_W00_w(size_data_w)
 
     double precision, intent(out) :: source_vector
     dimension :: source_vector(nb_rows_u*nb_rows_v*nb_rows_w)
@@ -1222,18 +1209,16 @@ subroutine wq_get_force_3d(nb_cols_total, force_coefs, &
     ! Input / output 
     ! --------------------
     integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: force_coefs
     dimension :: force_coefs(nb_cols_total, 3)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
     double precision, intent(in) :: data_W00_u, data_W00_v, data_W00_w
-    dimension ::    data_W00_u(size_data_u), &
-                    data_W00_v(size_data_v), &
-                    data_W00_w(size_data_w)
+    dimension :: data_W00_u(size_data_u), data_W00_v(size_data_v), data_W00_w(size_data_w)
 
     integer, parameter :: dimen = 3
     double precision, intent(out) :: force_vector
@@ -1241,11 +1226,14 @@ subroutine wq_get_force_3d(nb_cols_total, force_coefs, &
 
     ! Local data
     ! -------------
+    integer :: nb_rows_total
     double precision, allocatable, dimension(:) :: force_vector_temp
     integer :: i, init, fin
 
     ! Initialize
-    allocate(force_vector_temp(nb_rows_u*nb_rows_v*nb_rows_w))
+    nb_rows_total = nb_rows_u*nb_rows_v*nb_rows_w*dimen
+    allocate(force_vector_temp(nb_rows_total))
+
     do i = 1, dimen
             
         call wq_get_source_3D(nb_cols_total, force_coefs(:, i), nb_rows_u, nb_cols_u, &
@@ -1255,11 +1243,11 @@ subroutine wq_get_force_3d(nb_cols_total, force_coefs, &
                         indi_w, indj_w, data_W00_u, data_W00_v, data_W00_w, &
                         force_vector_temp)
 
-        init = (i-1)*size(force_vector_temp) + 1
-        fin = init + size(force_vector_temp) - 1
+        init = (i-1)*nb_rows_total + 1
+        fin = init + nb_rows_total - 1
         force_vector(init : fin) = force_vector_temp   
     end do
-
     deallocate(force_vector_temp)
+
 end subroutine wq_get_force_3d
 

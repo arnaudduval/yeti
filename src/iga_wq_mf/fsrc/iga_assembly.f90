@@ -46,19 +46,14 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
 
     ! Local data
     ! ---------------
-    integer :: i
-    integer :: size_data_result
+    integer :: i, size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
-    dimension ::    indi_I_u(nb_rows_u+1), &
-                    indi_I_v(nb_rows_v+1), &
-                    indi_I_w(nb_rows_w+1)
+    dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     double precision, dimension(:), allocatable :: data_W00_u, data_W00_v, data_W00_w
 
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp
-    integer :: dummy1, dummy2, dummy3
-    integer :: indi_I_temp(nb_rows_u*nb_rows_v+1)
-    integer, allocatable, dimension(:) :: indj_I_temp
+    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
+    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -66,7 +61,7 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indj_I_temp(size_data_I_u*size_data_I_v))
+    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
     call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
             nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
             nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
@@ -74,7 +69,7 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
     call get_indexes_kron_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
             nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
-    deallocate(indj_I_temp)
+    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -132,7 +127,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision :: cond_coefs
     dimension :: cond_coefs(3, 3, nb_cols_total)
     integer, intent(in) ::  size_data_u, size_data_v, size_data_w
@@ -156,20 +151,15 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
 
     ! Local data
     ! ---------------
-    integer :: i
-    integer :: size_data_result
+    integer :: i, size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
-    dimension ::    indi_I_u(nb_rows_u+1), &
-                    indi_I_v(nb_rows_v+1), &
-                    indi_I_w(nb_rows_w+1)
+    dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     double precision, dimension(:), allocatable :: data_W00_u, data_W00_v, data_W00_w
     double precision, dimension(:), allocatable :: data_W11_u, data_W11_v, data_W11_w
 
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp 
-    integer :: dummy1, dummy2, dummy3
-    integer :: indi_I_temp(nb_rows_u*nb_rows_v+1)
-    integer, allocatable, dimension(:) :: indj_I_temp
+    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
+    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -177,7 +167,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indj_I_temp(size_data_I_u*size_data_I_v))
+    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
     call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
             nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
             nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
@@ -185,7 +175,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
     call get_indexes_kron_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
             nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
-    deallocate(indj_I_temp)
+    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -321,7 +311,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
 
 end subroutine iga_get_conductivity_3d
 
-subroutine iga_get_source_3D(nb_qp_total, source_coefs, &
+subroutine iga_get_source_3D(nb_cols_total, source_coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -336,19 +326,17 @@ subroutine iga_get_source_3D(nb_qp_total, source_coefs, &
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in):: nb_qp_total
+    integer, intent(in):: nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: source_coefs
-    dimension :: source_coefs(nb_qp_total)
+    dimension :: source_coefs(nb_cols_total)
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension ::    data_B_u(size_data_u), &
-                    data_B_v(size_data_v), &
-                    data_B_w(size_data_w)
+    dimension :: data_B_u(size_data_u), data_B_v(size_data_v), data_B_w(size_data_w)
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
 
