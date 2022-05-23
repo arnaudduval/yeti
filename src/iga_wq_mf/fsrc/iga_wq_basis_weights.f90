@@ -107,7 +107,7 @@ subroutine get_basis_generalized_csr(degree, nb_el, nb_knots, knots, multiplicit
     allocate(data_B0_coo(size_data), data_B1_coo(size_data), indi_coo(size_data), indj_coo(size_data))
     call get_basis_generalized(degree, nb_el, nb_knots, knots, multiplicity, data_B0_coo, data_B1_coo, indi_coo, indj_coo)
 
-    ! CSR format
+    ! Get CSR format
     call coo2csr(degree+nb_el, size_data, data_B0_coo, indi_coo, indj_coo, data_B0, indj, indi)
     deallocate(data_B0_coo)
 
@@ -182,9 +182,11 @@ subroutine iga_get_data_csr(degree, nb_el, size_data, qp_pos, data_W, &
     dimension :: data_ind(size_data, 2)
     double precision, dimension(:), allocatable :: data_dummy
     
+    ! Get data in COO format
     call iga_get_data( degree, nb_el, size_data, qp_pos, data_W, &
                     data_B0, data_B1, data_ind, nnz_I)
 
+    ! Get CSR format
     allocate(data_dummy(size_data))
     call coo2csr(degree+nb_el, size_data, data_B0, data_ind(:,1), data_ind(:,2), data_dummy, indj, indi)
     deallocate(data_dummy)
@@ -294,9 +296,11 @@ subroutine wq_get_data_csr( degree, nb_el, size_data, nb_qp, qp_pos, &
     dimension :: data_ind(size_data, 2)
     double precision, dimension(:), allocatable :: data_dummy
     
+    ! Get data in COO format
     call wq_get_data(degree, nb_el, size_data, nb_qp, qp_pos, data_B0, data_B1, data_W00, &
                     data_W01, data_W10, data_W11, data_ind, nnz_I)
 
+    ! Get CSR format
     allocate(data_dummy(size_data))
     call coo2csr(degree+nb_el, size_data, data_B0, data_ind(:,1), data_ind(:,2), data_dummy, indj, indi)
     deallocate(data_dummy)
