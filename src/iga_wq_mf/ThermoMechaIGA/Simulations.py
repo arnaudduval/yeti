@@ -203,7 +203,7 @@ for CUTS in range(3, 5):
                     method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
                     blockPrint()
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                                    method_list, IS_CG, isOnlyIter=True)
+                                    method_list, IS_CG)
                     enablePrint()
 
                     # Export results

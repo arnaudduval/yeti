@@ -178,7 +178,7 @@ else: is_cg_list = [True, False]
 for IS_CG in is_cg_list:
 
     # Get file name
-    if GEOMETRY_CASE == 'CB': funpow, funtemp = powden_cube, None 
+    if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
     elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
     elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
     elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, temperature_rotring 

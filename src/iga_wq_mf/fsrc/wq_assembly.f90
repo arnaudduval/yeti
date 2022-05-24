@@ -483,7 +483,6 @@ subroutine interpolation_3d(nb_rows_total, &
                             indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, &
                             interpolation)
-
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 

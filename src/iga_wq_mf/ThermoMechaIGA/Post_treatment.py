@@ -22,26 +22,18 @@ folder = os.path.dirname(full_path) + '/results/'
 
 for CUTS in range(2, 6):
     for IS_IGA_GALERKIN in [False, True]:
-        for GEOMETRY_CASE in range(4):
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+            
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [True, False]
         
             for IS_CG in is_cg_list:
                 for DEGREE in range(3, 7):
 
-                    # Choose name
-                    if GEOMETRY_CASE == 0:   txtname = 'CB' 
-                    elif GEOMETRY_CASE == 1: txtname = 'VB' 
-                    elif GEOMETRY_CASE == 2: txtname = 'TR' 
-                    elif GEOMETRY_CASE == 3: txtname = 'RQA'
-                    else: raise Warning('Geometry does not exist')
-
                     # Recreate file name
-                    txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
-
+                    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
                     if IS_IGA_GALERKIN: txtname += '_IGAG'
                     else: txtname += '_IGAWQ'
-                
                     if IS_CG: txtname += '_CG'
                     else: txtname += '_BiCG'
 
@@ -49,9 +41,7 @@ for CUTS in range(2, 6):
                     txtname = folder + txtname
                     try: 
                         inputs = read_text_file(txtname + '.txt')
-                        # Plot results
-                        method_list = ["WP", "FD-C", "FD-TDS", "FD-JM", "FD-TD", "FD-JMS"]
-                        # method_list = ["WP", "FD-C", "FD-TDS", "FD-JM"]
+                        method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
                         plot_iterative_solver(txtname, inputs, method_list)
                     except: pass
 
