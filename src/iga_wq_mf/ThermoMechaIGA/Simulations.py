@@ -115,7 +115,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         enablePrint()
         if sol_direct is None: 
             sol_direct = np.ones(len(F2solve))
-            print("Direct solution not known. Defalult: ones chosen. Be aware of residue results")
+            print("Direct solution not known. Default: ones chosen. Be aware of residue results")
         blockPrint()
 
         # Only compute time to prepare method before iterations
@@ -171,7 +171,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 # Constants
 for CUTS in range(3, 5):
     for IS_IGA_GALERKIN in [False]:
-        for GEOMETRY_CASE in range(3, 4):
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [False]
@@ -184,14 +184,14 @@ for CUTS in range(3, 5):
                     print("Current Time =", current_time)
                     
                     # Get file name
-                    if GEOMETRY_CASE == 0: txtname, funpow, funtemp = 'CB', powden_cube, None 
-                    elif GEOMETRY_CASE == 1: txtname, funpow, funtemp = 'VB', powden_prism, None 
-                    elif GEOMETRY_CASE == 2: txtname, funpow, funtemp = 'TR', powden_thickring, None 
-                    elif GEOMETRY_CASE == 3: txtname, funpow, funtemp = 'RQA', powden_rotring, temperature_rotring 
+                    if GEOMETRY_CASE == 'CB': funpow, funtemp = powden_cube, None 
+                    elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
+                    elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
+                    elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, temperature_rotring 
                     else: raise Warning('Geometry does not exist')
-                    
+                                    
                     # Get text file name
-                    txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
+                    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
                     if IS_IGA_GALERKIN: txtname += '_IGAG'
                     else: txtname += '_IGAWQ'
                     if IS_CG: txtname += '_CG'

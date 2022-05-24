@@ -113,7 +113,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         enablePrint()
         if sol_direct is None: 
             sol_direct = np.ones(len(F2solve))
-            print("Direct solution not known. Defalult: ones chosen. Be aware of residue results")
+            print("Direct solution not known. Default: ones chosen. Be aware of residue results")
         blockPrint()
 
         # Only compute time to prepare method before iterations
@@ -168,8 +168,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
 # Some constants
 FileExist = False
-GEOMETRY_CASE = 3
-DEGREE, CUTS = 3, 3
+GEOMETRY_CASE = 'TR'
+DEGREE, CUTS = 3, 4
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
@@ -178,13 +178,13 @@ else: is_cg_list = [True, False]
 for IS_CG in is_cg_list:
 
     # Get file name
-    if GEOMETRY_CASE == 0: txtname, funpow, funtemp = 'CB', powden_cube, None 
-    elif GEOMETRY_CASE == 1: txtname, funpow, funtemp = 'VB', powden_prism, None 
-    elif GEOMETRY_CASE == 2: txtname, funpow, funtemp = 'TR', powden_thickring, None 
-    elif GEOMETRY_CASE == 3: txtname, funpow, funtemp = 'RQA', powden_rotring, temperature_rotring 
+    if GEOMETRY_CASE == 'CB': funpow, funtemp = powden_cube, None 
+    elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
+    elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
+    elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, temperature_rotring 
     
     # Get text file name
-    txtname += '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
+    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
     if IS_IGA_GALERKIN: txtname += '_IGAG'
     else: txtname += '_IGAWQ'
     if IS_CG: txtname += '_CG'

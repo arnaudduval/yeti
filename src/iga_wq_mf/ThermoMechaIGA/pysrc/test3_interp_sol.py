@@ -20,7 +20,7 @@ DEGREE = 4
 CUTS = 3
 
 # Create geometry using geomdl
-modelGeo = create_geometry(DEGREE, CUTS, 3)
+modelGeo = create_geometry(DEGREE, CUTS, 'TR')
 
 # ===========================================
 # IGA WQ MF APPROACH

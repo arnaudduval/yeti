@@ -42,7 +42,7 @@ else:
 if CONSTRUCTION: 
     # Set degree and number of divisions
     for varName in ['K', 'C', 'F']:
-        for GEOMETRY_CASE in range(1, 4):
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
                 for CUTS in range(1, 4): 
@@ -50,18 +50,10 @@ if CONSTRUCTION:
 
                     blockPrint()
                     # Get file name
-                    if GEOMETRY_CASE == 0: 
-                        txtname = 'CB' 
-                        funpow = power_density 
-                    elif GEOMETRY_CASE == 1: 
-                        txtname = 'VB' 
-                        funpow = power_density 
-                    elif GEOMETRY_CASE == 2: 
-                        txtname = 'TR' 
-                        funpow = power_density 
-                    elif GEOMETRY_CASE == 3: 
-                        txtname = 'RQA'
-                        funpow = power_density
+                    if GEOMETRY_CASE == 'CB': funpow = power_density 
+                    elif GEOMETRY_CASE == 'VB': funpow = power_density 
+                    elif GEOMETRY_CASE == 'TR': funpow = power_density 
+                    elif GEOMETRY_CASE == 'RQA': funpow = power_density
 
                     # Define geometry 
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
@@ -115,7 +107,7 @@ if CONSTRUCTION:
             plt.xlim(1, 100)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(folder + 'Error_constructionI_' + txtname + '_' + varName + '.png')
+            plt.savefig(folder + 'Error_constructionI_' + GEOMETRY_CASE + '_' + varName + '.png')
             plt.figure(1).clear()
 
 # ====================================================================
@@ -124,18 +116,13 @@ if CONSTRUCTION:
 if SYMMETRY:
     # Set degree and number of divisions
     for varName in ['K', 'C']:
-        for GEOMETRY_CASE in range(4):
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
                 for CUTS in range(1, 5): 
                     print(DEGREE, CUTS)
                     
                     blockPrint()
-                    # Get file name
-                    if GEOMETRY_CASE == 0: txtname = 'CB' 
-                    elif GEOMETRY_CASE == 1: txtname = 'VB' 
-                    elif GEOMETRY_CASE == 2: txtname = 'TR' 
-                    elif GEOMETRY_CASE == 3: txtname = 'RQA'
 
                     # Define geometry 
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
@@ -177,5 +164,5 @@ if SYMMETRY:
             plt.xlim(0.1, 100)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(folder + 'Error_symmetry_' + txtname + '_' + varName + '.png')
+            plt.savefig(folder + 'Error_symmetry_' + GEOMETRY_CASE + '_' + varName + '.png')
             plt.figure(1).clear()

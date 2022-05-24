@@ -11,7 +11,7 @@ from geomdl import (
 )
 import matplotlib.pyplot as plt
 import math, numpy as np
-import copy
+import copy, time
 
 # My libraries
 from .base_functions import create_knotvector
@@ -29,6 +29,8 @@ class geomdlModel():
         # Set number of samples
         self._sample_size = 61
 
+        print('\nCreating geometry: ' + filename + '...')
+        start = time.time()
         if filename == 'quarter_annulus':
             # Set number of dimension 
             self._dim = [2]
@@ -94,6 +96,9 @@ class geomdlModel():
         else: 
             raise Warning("Not a shape in this library")
         
+        stop = time.time()
+        print('\tBasic geometry created in: %.3e s' %(stop-start))
+
         # Update data
         self.update_geometry()
 
@@ -101,6 +106,7 @@ class geomdlModel():
 
     def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
         
+        start = time.time()
         # Copy geometry
         geometry = copy.deepcopy(self._geometry)
 
@@ -119,8 +125,9 @@ class geomdlModel():
                 knot_insert = np.zeros(self._dim[0])
                 knot_insert[dim] = knot
                 operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
-        
         self._geometry = geometry
+        stop = time.time()
+        print('Knot refinement in: %.3e s' %(stop-start))
 
         # Update values
         self.update_geometry()
@@ -128,7 +135,7 @@ class geomdlModel():
         return
 
     def update_geometry(self): 
-
+        start = time.time()
         # Set geometry object
         obj = self._geometry
         if obj is None: raise Warning('Geometry unknown')
@@ -180,6 +187,8 @@ class geomdlModel():
 
         # Update control points
         self._ctrlpts = ctrlpts_new
+        stop = time.time()
+        print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
 
         return
 
@@ -711,31 +720,15 @@ class geomdlModel():
 
 def create_geometry(degree, cuts, geometry_case):
 
-    if geometry_case == 0:
-        filename = 'parallelepiped'
-        geometry = {'degree': [degree, degree, degree]}
-        modelGeo = geomdlModel(filename=filename, **geometry)
-        modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
+    if geometry_case == 'CB': filename = 'parallelepiped'
+    elif geometry_case == 'VB': filename = 'prism'
+    elif geometry_case == 'TR': filename = 'thick_ring'
+    elif geometry_case == 'RQA': filename = 'rotated_quarter_annulus'
+    else: raise Warning('Geometry does not exist')
 
-    elif geometry_case == 1:
-        filename = 'prism'
-        geometry = {'degree': [degree, degree, degree]}
-        modelGeo = geomdlModel(filename=filename, **geometry)
-        modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
-
-    elif geometry_case == 2:
-        filename = 'thick_ring'
-        geometry = {'degree': [degree, degree, degree]}
-        modelGeo = geomdlModel(filename=filename, **geometry)
-        modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
-
-    elif geometry_case == 3:
-        filename = 'rotated_quarter_annulus'
-        geometry = {'degree': [degree, degree, degree]}
-        modelGeo = geomdlModel(filename=filename, **geometry)
-        modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
-
-    else: 
-        raise Warning('Geometry does not exist')
+    # Create and refine model
+    geometry = {'degree': [degree, degree, degree]}
+    modelGeo = geomdlModel(filename=filename, **geometry)
+    modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
 
     return modelGeo
