@@ -306,3 +306,27 @@ subroutine wq_get_data_csr( degree, nb_el, size_data, nb_qp, qp_pos, &
     deallocate(data_dummy)
 
 end subroutine wq_get_data_csr
+
+! ==============================
+
+subroutine test_memory(isAllocation)
+
+    implicit none
+    character(len=10) :: isAllocation
+    double precision, dimension(:, :), allocatable :: matrix
+    integer :: i, j, M, N
+
+    M = 20000
+    N = 20000
+    if (isAllocation.eq.'Y') then
+        print*, 'Allocating vector'
+        allocate(matrix(M, N))
+        do i = 1, M
+            do j = 1, N
+                matrix(i, j) = i + 0.5*j
+            end do
+        end do
+        deallocate(matrix)
+    end if
+
+end subroutine test_memory

@@ -1143,8 +1143,8 @@ module tensor_methods
         ! ---------------------------------
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, size(array_temp_1)/nb_tasks)
-        do i = 1, size(array_temp_1)
+        !$OMP DO SCHEDULE(STATIC, nb_rows_total/nb_tasks)
+        do i = 1, nb_rows_total
             array_temp_1(i) = array_temp_1(i) / diagonal(i)
         end do
         !$OMP END DO NOWAIT

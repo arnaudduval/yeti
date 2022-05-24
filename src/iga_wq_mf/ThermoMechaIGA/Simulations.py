@@ -81,6 +81,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         _, memory_direct = tracemalloc.get_traced_memory()
         memory_direct /= 1024*1024
         del K2solve, F2solve, Model1, dof
+        tracemalloc.clear_traces()
 
     # Recursive solver 
     # ----------------
@@ -161,8 +162,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
             memory_iter.append(memory_iter_base+memory_iter_sup)
 
         del Model1, F2solve, dof
-        tracemalloc.stop()
-        
+        tracemalloc.clear_traces()
+
+    tracemalloc.stop()    
     output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
                     "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                     "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
