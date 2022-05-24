@@ -39,11 +39,12 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
     # Define solution 
     sol_direct = None
+    tracemalloc.start()
 
     # Direct solver
     # -------------
     if doDirect :
-        tracemalloc.start()
+        tracemalloc.clear_traces()
 
         # Define geometry 
         modelGeo = create_geometry(degree, cuts, geometry_case)
@@ -169,9 +170,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Constants
-for CUTS in range(3, 6):
+for CUTS in range(6, 7):
     for IS_IGA_GALERKIN in [False]:
-        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+        for GEOMETRY_CASE in ['VB', 'TR']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [True]

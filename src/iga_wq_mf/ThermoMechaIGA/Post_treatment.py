@@ -22,7 +22,7 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 
 marker_cycle = ['o', 'v', 'X', 's', '+']
 
-def compute_acceleration(inputs, method_list, ax, marker, color, label=None, PosMethod=0): 
+def compute_acceleration(inputs, method_list, ax, marker, color, alpha=1, label=None, PosMethod=0): 
     "We assume that the comparison is between the first method with the others"
 
     # Define inputs
@@ -65,11 +65,11 @@ def compute_acceleration(inputs, method_list, ax, marker, color, label=None, Pos
     positions = tuple([i for i in range(len(method_list)-PosMethod-1)])
     labels = tuple(method_list[PosMethod+1:])
 
-    ax.plot(np.arange(len(positions)), acceleration, 
+    ax.plot(np.arange(len(positions)), acceleration, alpha=alpha,
             color=color, marker=marker, linestyle="None", label=label)
     ax.plot(np.arange(len(positions)), np.ones(len(positions)), "k--")
     ax.set_xlabel('Methods', fontsize=16)
-    ax.set_ylabel('Acceleration', fontsize=16)
+    ax.set_ylabel('Acceleration relative to '+method_list[PosMethod], fontsize=16)
     ax.set_xticks(positions, labels)
     ax.tick_params(axis='x', labelsize=13)
     ax.tick_params(axis='y', labelsize=13)
@@ -105,12 +105,17 @@ def compute_acceleration(inputs, method_list, ax, marker, color, label=None, Pos
 #                         plot_iterative_solver(txtname, inputs, method_list)
 #                     except: pass
 
+# =======================================================
+cutsList = range(4, 6) 
+degreeList = range(3, 7)
+
 for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
     fig, ax = plt.subplots()
-    for i, CUTS in enumerate(range(4, 6)):
+    for i, CUTS in enumerate(cutsList):
         color = CB_color_cycle[i]
-        for j, DEGREE in enumerate(range(3, 7)):
+        for j, DEGREE in enumerate(degreeList):
             marker = marker_cycle[j]
+            alpha = (j+1)*1/(degreeList[-1]-degreeList[0]+1)
             for IS_IGA_GALERKIN in [False]:
             
                 if IS_IGA_GALERKIN: is_cg_list = [True]
@@ -130,8 +135,8 @@ for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
                     method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"] # !!!!!!! This must be equal to simulations
                     label = 'nbel = ' + str(2**CUTS) + ", p = " + str(DEGREE)
                     compute_acceleration(inputs, method_list, 
-                                        ax, marker, color, label=label, 
-                                        PosMethod= 0)
+                                        ax, marker, color, alpha=alpha, label=label, 
+                                        PosMethod= 1)
                     
     plt.tight_layout()
     plt.savefig(folder + GEOMETRY_CASE + '_Acc' +'.png')

@@ -606,7 +606,8 @@ class thermoMechaModel():
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
-        source_coef = [fun(dim, qp_PS[:, :, _][0]) * detJ[_] for _ in range(len(detJ))]
+        # source_coef = [fun(dim, qp_PS[:, :, _][0]) * detJ[_] for _ in range(len(detJ))]
+        source_coef = detJ
         stop = time.time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 

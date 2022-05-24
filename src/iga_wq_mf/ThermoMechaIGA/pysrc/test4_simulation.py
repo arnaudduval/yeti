@@ -8,6 +8,7 @@
 import os, tracemalloc
 import scipy, numpy as np
 import time
+from datetime import datetime
 
 # My libraries
 from lib import enablePrint, blockPrint
@@ -37,11 +38,12 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
     # Define solution 
     sol_direct = None
+    tracemalloc.start()
 
     # Direct solver
     # -------------
     if doDirect :
-        tracemalloc.start()
+        tracemalloc.clear_traces()
 
         # Define geometry 
         modelGeo = create_geometry(degree, cuts, geometry_case)
@@ -110,11 +112,11 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         _, memory_iter_base = tracemalloc.get_traced_memory()
         memory_iter_base /= 1024*1024
 
-        enablePrint()
+        # enablePrint()
         if sol_direct is None: 
             sol_direct = np.ones(len(F2solve))
             print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
-        blockPrint()
+        # blockPrint()
 
         # Only compute time to prepare method before iterations
         time_noiter, memory_noiter = [], []
@@ -136,9 +138,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
             memory_noiter.append(memory_noiter_t)
 
         # With and without preconditioner
-        # Initialize
         time_iter, residue, error, memory_iter = [], [], [], []
-        epsilon  = 1e-14 
+        epsilon  = 1e-10
         iterations = 100
         tracemalloc.clear_traces()
         for name in method_list:
@@ -169,11 +170,11 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 # Some constants
 FileExist = False
 GEOMETRY_CASE = 'TR'
-DEGREE, CUTS = 3, 4
+DEGREE, CUTS = 3, 6
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
-else: is_cg_list = [True, False]
+else: is_cg_list = [True]
 
 for IS_CG in is_cg_list:
 
@@ -194,10 +195,10 @@ for IS_CG in is_cg_list:
 
     if not FileExist:
         # Run simulation
-        blockPrint()
+        # blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, isOnlyIter=True)
-        enablePrint()
+        # enablePrint()
 
         # Export results
         try: write_text_file(txtname+'.txt', method_list, inputs_export)
