@@ -662,7 +662,7 @@ class thermoMechaModel():
 
         return x, RelRes
 
-    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-14, PreCond='ilu', isCG=True):
 
         # Find preconditionner
         if PreCond == 'ilu': 

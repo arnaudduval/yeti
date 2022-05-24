@@ -167,9 +167,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Some constants
-FileExist = True
+FileExist = False
 GEOMETRY_CASE = 3
-DEGREE, CUTS = 3, 5
+DEGREE, CUTS = 3, 3
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
