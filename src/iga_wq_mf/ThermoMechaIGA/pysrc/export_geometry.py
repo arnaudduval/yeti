@@ -15,7 +15,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
-DEGREE = 4
+DEGREE = 6
 CUTS = 5
 
 for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:

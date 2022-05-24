@@ -115,7 +115,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         enablePrint()
         if sol_direct is None: 
             sol_direct = np.ones(len(F2solve))
-            print("Direct solution not known. Default: ones chosen. Be aware of residue results")
+            print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
         blockPrint()
 
         # Only compute time to prepare method before iterations
@@ -169,15 +169,15 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Constants
-for CUTS in range(3, 5):
+for CUTS in range(3, 6):
     for IS_IGA_GALERKIN in [False]:
         for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
-            else: is_cg_list = [False]
+            else: is_cg_list = [True]
         
             for IS_CG in is_cg_list:
-                for DEGREE in range(3, 5):
+                for DEGREE in range(3, 7):
                     # Print current time
                     now = datetime.now()
                     current_time = now.strftime("%H:%M:%S")
@@ -203,7 +203,7 @@ for CUTS in range(3, 5):
                     method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
                     blockPrint()
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                                    method_list, IS_CG)
+                                    method_list, IS_CG, isOnlyIter= True)
                     enablePrint()
 
                     # Export results

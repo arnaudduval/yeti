@@ -113,7 +113,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         enablePrint()
         if sol_direct is None: 
             sol_direct = np.ones(len(F2solve))
-            print("Direct solution not known. Default: ones chosen. Be aware of residue results")
+            print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
         blockPrint()
 
         # Only compute time to prepare method before iterations

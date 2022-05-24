@@ -78,7 +78,7 @@ def read_text_file(filename):
 
         # For the different type of solvers
         for _ in range(len(text_position)-1):
-            ind = [text_position[_]+1, text_position[_+1]-1]
+            ind = [text_position[_]+1, text_position[_+1]]
             lines_data = lines[ind[0]:ind[1]]
             lines_data_split = lines_data[0].split('\t')
             time_noiter.append(float(lines_data_split[0]))
@@ -662,7 +662,7 @@ class thermoMechaModel():
 
         return x, RelRes
 
-    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-14, PreCond='ilu', isCG=True):
+    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
 
         # Find preconditionner
         if PreCond == 'ilu': 
