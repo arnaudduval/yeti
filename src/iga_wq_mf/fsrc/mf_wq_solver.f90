@@ -639,6 +639,101 @@ end subroutine mf_wq_get_ku_3d_csr
 ! ----------------------------------------
 ! Conjugate gradient
 ! ----------------------------------------
+subroutine preconditioner_fd(nb_rows_total, &
+                    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                    size_data_u, size_data_v, size_data_w, &
+                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                    data_B0_u, data_B1_u, data_W00_u, data_W11_u, &
+                    data_B0_v, data_B1_v, data_W00_v, data_W11_v, &
+                    data_B0_w, data_B1_w, data_W00_w, data_W11_w, &
+                    s, r)
+    !! Solve Sylvester equation P s = r
+    
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nb_rows_total
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v), &
+                    indi_w(nb_rows_w+1), indj_w(size_data_w)
+    double precision, intent(in) :: data_B0_u, data_B1_u, data_W00_u, data_W11_u, &
+                                    data_B0_v, data_B1_v, data_W00_v, data_W11_v, &
+                                    data_B0_w, data_B1_w, data_W00_w, data_W11_w
+    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
+                    data_W00_u(size_data_u), data_W11_u(size_data_u), &
+                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
+                    data_W00_v(size_data_v), data_W11_v(size_data_v), &
+                    data_B0_w(size_data_w), data_B1_w(size_data_w), &
+                    data_W00_w(size_data_w), data_W11_w(size_data_w)
+
+    character(len=10) :: Method = 'C'
+    double precision, intent(in) :: s
+    dimension :: s(nb_rows_total)
+
+    double precision, intent(out) :: r
+    dimension :: r(nb_rows_total)
+
+    ! Local data
+    ! ------------------
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable :: Kdiag_dummy, Mdiag_dummy
+    double precision, dimension(:), allocatable :: Mcoef_dummy, Kcoef_dummy
+    double precision, dimension(:), allocatable :: Deigen
+
+    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
+
+    double precision :: start, finish
+
+    call cpu_time(start)
+    ! --------------------------------------------
+    ! EIGEN DECOMPOSITION
+    ! -------------------------------------------- 
+    allocate(U_u(nb_rows_u, nb_rows_u), D_u(nb_rows_u))
+    allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
+    allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
+    
+    allocate(Kdiag_dummy(nb_rows_u), Mdiag_dummy(nb_rows_u))
+    call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_dummy, Kcoef_dummy, size_data_u, &
+                            indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
+                            data_W11_u, Method, D_u, U_u, Kdiag_dummy, Mdiag_dummy)
+    deallocate(Kdiag_dummy, Mdiag_dummy)
+
+    allocate(Kdiag_dummy(nb_rows_v), Mdiag_dummy(nb_rows_v))
+    call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_dummy, Kcoef_dummy, size_data_v, &
+                            indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
+                            data_W11_v, Method, D_v, U_v, Kdiag_dummy, Mdiag_dummy)    
+    deallocate(Kdiag_dummy, Mdiag_dummy)
+
+    allocate(Kdiag_dummy(nb_rows_w), Mdiag_dummy(nb_rows_w))
+    call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_dummy, Kcoef_dummy, size_data_w, &
+                            indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
+                            data_W11_w, Method, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
+    deallocate(Kdiag_dummy, Mdiag_dummy)
+
+    ! Find diagonal of eigen values
+    allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
+    allocate(Deigen(nb_rows_total))
+    I_u = 1.d0
+    I_v = 1.d0
+    I_w = 1.d0
+    call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
+                            I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+    deallocate(I_u, I_v, I_w)
+
+    ! Do fast diagonalization direct method
+    call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                U_u, U_v, U_w, Deigen, s, r)
+    call cpu_time(finish)
+    print*, finish - start
+
+end subroutine preconditioner_fd
+
 subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
@@ -950,6 +1045,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                 p = z + rsnew/rsold * p
                 rsold = rsnew
             end do
+
         end if
     end if
 

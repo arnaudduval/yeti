@@ -39,7 +39,8 @@ class fortran_mf_wq(thermoMechaModel):
         self.eval_basis_weigths()
         
         # Get jacobian and physical position 
-        self.eval_jacobien_physicalPosition()
+        if self._isThermal or self._isMechanical:
+            self.eval_jacobien_physicalPosition()
 
         if self._isThermal:
             # Get conductivity and capacity coefficients
@@ -215,6 +216,34 @@ class fortran_mf_wq(thermoMechaModel):
         return inputs
     
     # Matrix-Free
+
+    def get_input4FastDiagonalization(self, b): 
+        " Returns necessary inputs to solve P r = s, where P is preconditioner of Fast diagoalization "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+        table = self._thermalblockedboundaries
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+
+            # Select data
+            if np.array_equal(table[dim, :], [0, 0]): rows2erase = []
+            if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
+            if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
+            if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]
+            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, *self._indexes[dim], 
+                                    [*self._DB[dim], *self._DW[dim][0], *self._DW[dim][1]])
+            
+            # Extract data and append to list
+            [dB0, dB1, dW00, _, _, dW11] = data_t
+            indexes.append(indi_t); indexes.append(indj_t) 
+            data.append(dB0); data.append(dB1)
+            data.append(dW00); data.append(dW11)
+
+        inputs = [*shape_matrices, *indexes, *data, b]
+
+        return inputs
 
     def get_input4MatrixFree_Ku(self, u):
         " Returns necessary inputs to compute K u "
