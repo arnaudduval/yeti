@@ -260,7 +260,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
-    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
@@ -272,7 +272,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
 
     ! Eval W * array_temp1
     array_output = 0.d0
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
@@ -441,7 +441,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
-    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B1T_u, & 
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
@@ -455,7 +455,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 1, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W11_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
@@ -471,7 +471,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 1, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W01_u, &
     size_data_v, indi_v, indj_v, data_W10_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
@@ -487,7 +487,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 1, :), array_temp_1, array_temp_1tt)
 
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W01_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W10_w, array_temp_1tt, array_output)
@@ -504,7 +504,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
-    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
     size_data_v, indi_T_v, indj_T_v, data_B1T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
@@ -518,7 +518,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 2, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W10_u, &
     size_data_v, indi_v, indj_v, data_W01_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
@@ -534,7 +534,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 2, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W11_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
@@ -550,7 +550,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 2, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W01_v, size_data_w, indi_w, indj_w, & 
     data_W10_w, array_temp_1tt, array_output)
@@ -567,7 +567,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     array_temp_1 = 0.d0
     
     ! Eval B.transpose * array_in
-    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B1T_w, array_input, array_temp_1)
@@ -581,7 +581,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W10_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W01_w, array_temp_1tt, array_output)
@@ -597,7 +597,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W10_v, size_data_w, indi_w, indj_w, & 
     data_W01_w, array_temp_1tt, array_output)
@@ -613,7 +613,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 3, :), array_temp_1, array_temp_1tt)
     
     ! Eval W * array_temp1
-    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W11_w, array_temp_1tt, array_output)

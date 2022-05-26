@@ -10,6 +10,7 @@ import numpy as np
 import time
 
 # My libraries
+from lib import blockPrint, enablePrint
 from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
@@ -59,10 +60,11 @@ from lib.methods_mf import MF
 # print(stop-start)
 
 # =============================
+blockPrint()
 # Create geometry
-filename = 'parallelepiped'
+filename = 'thick_ring'
 
-DEGREE = 4
+DEGREE = 3
 CUTS = 3
 NBEL = 2**CUTS
 NB_CTRLPTS = DEGREE + NBEL
@@ -77,11 +79,13 @@ modelGeo.knot_refinement(nb_refinementByDirection= CUTS*np.array([1, 1, 1]))
 
 # Creation of thermal model object
 Model1 = fortran_mf_wq(modelGeo)
-Ku1 = Model1.eval_Cu(r)
+Ku1 = Model1.eval_Ku(r)
 
 Model2 = MF(modelGeo)
-Ku2 = Model2.eval_capacity_matrix() @ r
-Ku3 = Model2.eval_Cu(r)
+Ku2 = Model2.eval_conductivity_matrix() @ r
+Ku3 = Model2.eval_Ku(r)
+
+enablePrint()
 error = np.abs(Ku3-Ku2)
 print(np.min(error), np.max(error))
 

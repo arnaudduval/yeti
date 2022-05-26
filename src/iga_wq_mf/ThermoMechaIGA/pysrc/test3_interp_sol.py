@@ -67,7 +67,8 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
     epsilon = 1e-15
 
     # With preconditioner
-    method_list = ["C", "TDS", "JM", "TD", "JMS"]
+    # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+    method_list = ["WP", "C", "TDS", "JM"]
     for name in method_list: 
         inputs = [F2n, iterations, epsilon, name, Tn, True]   
         Tn_t, residue_t, error_t = Model1.mf_conj_grad(*inputs)
