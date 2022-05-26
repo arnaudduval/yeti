@@ -170,8 +170,8 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
 # Some constants
 FileExist = True
-GEOMETRY_CASE = 'TR'
-DEGREE, CUTS = 3, 4
+GEOMETRY_CASE = 'RQA'
+DEGREE, CUTS = 3, 5
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
@@ -183,7 +183,7 @@ for IS_CG in is_cg_list:
     if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
     elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
     elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
-    elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, temperature_rotring 
+    elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, None 
     
     # Get text file name
     txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)

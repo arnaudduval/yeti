@@ -41,7 +41,7 @@ else:
 # ====================================================================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for varName in ['K', 'C', 'F']:
+    for varName in ['K', 'C', 'F', 'J', 'QP']:
         for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
@@ -73,6 +73,14 @@ if CONSTRUCTION:
                     elif varName == 'F':
                         var1 = Model1.eval_source_vector(funpow)
                         var2 = Model2.eval_source_vector(funpow)
+
+                    elif varName == 'J':
+                        var1 = Model1._detJ
+                        var2 = Model2._detJ
+                    
+                    elif varName == 'QP':
+                        var1 = Model1._qp_PS[0,:,:]
+                        var2 = Model2._qp_PS[0,:,:]
                 
                     enablePrint()
 

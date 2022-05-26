@@ -245,12 +245,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def get_input4MatrixFree_Ku(self, u):
+    def get_input4MatrixFree_Ku(self, u, table=None):
         " Returns necessary inputs to compute K u "
 
         # Initialize
         shape_matrices, indexes, data = [], [], []
-        table = self._thermalblockedboundaries
+        if table is None: table = np.asarray([[0, 0], [0, 0], [0, 0]])
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_qp_wq[dim][0])
@@ -273,12 +273,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def get_input4MatrixFree_Cu(self, u):
+    def get_input4MatrixFree_Cu(self, u, table=None):
         " Returns necessary inputs to compute C u "
 
         # Initialize
         shape_matrices, indexes, data = [], [], []
-        table = self._thermalblockedboundaries
+        if table is None: table = np.asarray([[0, 0], [0, 0], [0, 0]])
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_qp_wq[dim][0])
@@ -464,11 +464,11 @@ class fortran_mf_wq(thermoMechaModel):
         
         return K_coo
 
-    def eval_Ku(self, u): 
+    def eval_Ku(self, u, table=None): 
         " Computes K u "
 
         # Get inputs
-        inputs = self.get_input4MatrixFree_Ku(u)
+        inputs = self.get_input4MatrixFree_Ku(u, table)
 
         if self._dim < 2 and self._dim > 3:
             raise Warning('Until now not done')
@@ -481,11 +481,11 @@ class fortran_mf_wq(thermoMechaModel):
 
         return result
 
-    def eval_Cu(self, u): 
+    def eval_Cu(self, u, table=None): 
         " Computes K u "
 
         # Get inputs
-        inputs = self.get_input4MatrixFree_Cu(u)
+        inputs = self.get_input4MatrixFree_Cu(u, table)
 
         if self._dim < 2 and self._dim > 3:
             raise Warning('Until now not done')

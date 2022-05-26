@@ -82,8 +82,8 @@ Model1 = fortran_mf_wq(modelGeo)
 dof = Model1._thermal_dof
 rext[dof] = r
 
-Ku1 = Model1.eval_Ku(r)
-Cu1 = Model1.eval_Cu(r)
+Ku1 = Model1.eval_Ku(r, table=Model1._thermalblockedboundaries)
+Cu1 = Model1.eval_Cu(r, table=Model1._thermalblockedboundaries)
 
 Model2 = MF(modelGeo)
 Ku2 = Model2.eval_conductivity_matrix() @ rext
