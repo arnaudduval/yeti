@@ -279,7 +279,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DB[dim][0])
             data.append(self._DW[dim][0][0])
 
-        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+        inputs = [self._capacity_coef, *shape_matrices, *indexes, *data, u]
 
         return inputs
 

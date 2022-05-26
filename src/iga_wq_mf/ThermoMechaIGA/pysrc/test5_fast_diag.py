@@ -15,7 +15,7 @@ from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
-from lib.methods_wq import WQ
+from lib.methods_mf import MF
 
 # # Set global variables
 # DEGREE = 5
@@ -79,8 +79,11 @@ modelGeo.knot_refinement(nb_refinementByDirection= CUTS*np.array([1, 1, 1]))
 Model1 = fortran_mf_wq(modelGeo)
 Ku1 = Model1.eval_Cu(r)
 
-Model2 = WQ(modelGeo)
+Model2 = MF(modelGeo)
 Ku2 = Model2.eval_capacity_matrix() @ r
-error = np.abs(Ku1-Ku2)
+Ku3 = Model2.eval_Cu(r)
+error = np.abs(Ku3-Ku2)
+print(np.min(error), np.max(error))
 
+error = np.abs(Ku1-Ku2)
 print(np.min(error), np.max(error))
