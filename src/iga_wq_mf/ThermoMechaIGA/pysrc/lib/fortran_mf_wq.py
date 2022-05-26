@@ -214,6 +214,27 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [self._bodyforce_coef, *shape_matrices, *indexes, *data]
         
         return inputs
+
+    def get_input4diagonal_K(self): 
+        " Returns necessary inputs to compute the diagonal of conductivity matrix "
+        
+        # Initialize
+        shape_matrices, indexes, data = [], [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
+            data.append(self._DB[dim][0])
+            data.append(self._DB[dim][1])
+            data.append(self._DW[dim][0][0])
+            data.append(self._DW[dim][0][1])
+            data.append(self._DW[dim][1][0])
+            data.append(self._DW[dim][1][1])
+
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data]
+        
+        return inputs
     
     # Matrix-Free
 
@@ -617,6 +638,27 @@ class fortran_mf_wq(thermoMechaModel):
         print('Thermal stiffness matrix assembled in : %.5f s' %(stop-start))
         
         return S_coo
+
+    def eval_diag_K(self): 
+        " Computes conductivity matrix "
+
+        # Get inputs
+        inputs = self.get_input4diagonal_K()
+
+        start = time.time()
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+
+        if self._dim == 2:
+            raise Warning('Until now not done')
+                
+        if self._dim == 3:
+            kdiag = assembly.wq_find_conductivity_diagonal_3d(*inputs)
+
+        stop = time.time()
+        print('Conductivity matrix assembled in : %5f s' %(stop-start))
+        
+        return kdiag
 
     # =============================
     # MATRIX FREE SOLUTION

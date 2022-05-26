@@ -26,7 +26,8 @@ module tensor_methods
         double precision, intent(in) :: X, U
         dimension :: X(nc_u*nc_v*nc_w), U(nr*nc)
 
-        double precision, intent(out) ::  R(nu*nv*nw)
+        double precision, intent(out) ::  R
+        dimension :: R(nu*nv*nw)
 
         ! Local data
         ! ---------------
@@ -108,6 +109,7 @@ module tensor_methods
         !! Matrix U = (nr, nc)
         !! Tensor R = (nu, nv, nw) (It depends on 'n')
         !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
+        !! U is in CSR format
 
         use omp_lib
         implicit none
@@ -119,7 +121,8 @@ module tensor_methods
         integer, intent(in) :: indi, indj
         dimension :: indi(nr+1), indj(nnz)
 
-        double precision, intent(out) ::  R(nu*nv*nw)
+        double precision, intent(out) ::  R
+        dimension :: R(nu*nv*nw)
 
         ! Local data
         ! ---------------
@@ -621,7 +624,7 @@ module tensor_methods
                                     nb_rows_w, nb_cols_w, &
                                     Mu, Mv, Mw, vector_in, vector_out)
         !! Evaluates a dot product between a tensor 3D and a vector 
-        !! Based on "Matrix-free weighted quadrature for a computationally efficient" by Sangalli and Tani
+        !! Based on "Preconditioners for IGA" by Montardini
         !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
         !! Matrix Mu = (nb_rows_u, nb_cols_u)
         !! Matrix Mv = (nb_rows_v, nb_cols_v)
@@ -689,7 +692,7 @@ module tensor_methods
                                     size_data_w, indi_w, indj_w, data_w, &
                                     vector_in, vector_out)
         !! Evaluates a dot product between a tensor 3D and a vector 
-        !! Based on "Matrix-free weighted quadrature for a computationally efficient" by Sangalli and Tani
+        !! Based on "Preconditioners for IGA" by Montardini
         !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
         !! Matrix Mu = (nb_rows_u, nb_cols_u)
         !! Matrix Mv = (nb_rows_v, nb_cols_v)
@@ -752,7 +755,7 @@ module tensor_methods
     ! ----------------------------------------------------
     ! Sum product to compute matrices 
     ! ----------------------------------------------------
-    subroutine csr_get_row_2d(coefficients, &
+    subroutine csr_get_row_2d(coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             row_u, row_v, &
@@ -768,8 +771,8 @@ module tensor_methods
         ! Input / output 
         ! ------------------
         integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v
-        double precision, intent(in) :: coefficients
-        dimension :: coefficients(nb_cols_u*nb_cols_v)
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v)
         integer, intent(in) :: row_u, row_v
         integer, intent(in) :: nnz_row_u, nnz_row_v
         integer, intent(in) :: nnz_col_u, nnz_col_v
@@ -781,7 +784,8 @@ module tensor_methods
                         W_u(nb_rows_u, nb_cols_u), &
                         W_v(nb_rows_v, nb_cols_v)
 
-        double precision, intent(out) :: data_row(nnz_row_u*nnz_row_v)
+        double precision, intent(out) :: data_row
+        dimension :: data_row(nnz_row_u*nnz_row_v)
 
         ! Local data 
         ! ----------------- 
@@ -804,7 +808,7 @@ module tensor_methods
                 posv = j_nnz_v(jv)
                 pos_coef = posu + (posv-1)*nb_cols_u 
                 genPosC = ju + (jv-1)*nnz_col_u 
-                Ci0(genPosC) = coefficients(pos_coef)                    
+                Ci0(genPosC) = coefs(pos_coef)                    
             end do
         end do
 
@@ -843,7 +847,7 @@ module tensor_methods
 
     end subroutine csr_get_row_2d 
 
-    subroutine csr_get_matrix_2d(coefficients, &
+    subroutine csr_get_matrix_2d(coefs, &
                                 nb_rows_u, nb_cols_u, &
                                 nb_rows_v, nb_cols_v, &
                                 size_data_u, size_data_v, &
@@ -863,8 +867,8 @@ module tensor_methods
         ! Input / output 
         ! ------------------
         integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v
-        double precision, intent(in) :: coefficients
-        dimension :: coefficients(nb_cols_u*nb_cols_v)
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v)
         integer, intent(in) :: size_data_u, size_data_v
         integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
         dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
@@ -878,9 +882,11 @@ module tensor_methods
         dimension ::    indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), &
                         indj_I_u(size_data_I_u), indj_I_v(size_data_I_v)
 
-        integer, intent(in) :: indi_result(nb_rows_u*nb_rows_v+1) 
+        integer, intent(in) :: indi_result
+        dimension :: indi_result(nb_rows_u*nb_rows_v+1) 
         integer, intent(in) :: size_data_result
-        double precision, intent(inout) :: data_result(size_data_result)
+        double precision, intent(inout) :: data_result
+        dimension :: data_result(size_data_result)
 
         ! Local data 
         ! -----------------  
@@ -952,7 +958,7 @@ module tensor_methods
                 size_data_row = nnz_row_u * nnz_row_v 
                 allocate(data_row(size_data_row))
 
-                call csr_get_row_2d(coefficients, nb_rows_u, nb_cols_u, &
+                call csr_get_row_2d(coefs, nb_rows_u, nb_cols_u, &
                                 nb_rows_v, nb_cols_v, iu, iv, &
                                 nnz_row_u, nnz_row_v, i_nnz_u, i_nnz_v, &
                                 nnz_col_u, nnz_col_v, j_nnz_u, j_nnz_v, &
@@ -978,7 +984,109 @@ module tensor_methods
 
     end subroutine csr_get_matrix_2d 
 
-    subroutine csr_get_row_3d(coefficients, &
+    subroutine csr_get_element_3d(coefs, &
+                            nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, &
+                            nb_rows_w, nb_cols_w, &
+                            row_u, row_v, row_w, &
+                            nnz_col_u, nnz_col_v, nnz_col_w, &
+                            j_nnz_u, j_nnz_v, j_nnz_w, &
+                            B_u, B_v, B_w, W_u, W_v, W_w, &
+                            data_element)
+        !! Computes a element of a matrix constructed 
+
+        implicit none 
+        ! Input / output 
+        ! ------------------
+        integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+        integer, intent(in) :: row_u, row_v, row_w
+        integer, intent(in) :: nnz_col_u, nnz_col_v, nnz_col_w
+        integer, intent(in) :: j_nnz_u, j_nnz_v, j_nnz_w
+        dimension :: j_nnz_u(nnz_col_u), j_nnz_v(nnz_col_v), j_nnz_w(nnz_col_w)
+        double precision, intent(in) :: B_u, B_v, B_w, W_u, W_v, W_w
+        dimension ::    B_u(nb_rows_u, nb_cols_u), &   
+                        B_v(nb_rows_v, nb_cols_v), &
+                        B_w(nb_rows_w, nb_cols_w), &
+                        W_u(nb_rows_u, nb_cols_u), &
+                        W_v(nb_rows_v, nb_cols_v), &
+                        W_w(nb_rows_w, nb_cols_w)
+
+        double precision, intent(out) :: data_element
+
+        ! Local data 
+        ! ----------------- 
+        ! Create Ci
+        integer :: pos_coef
+        double precision, allocatable :: Ci0(:), Ci1(:), Ci2(:)
+        double precision :: Ci3(1)
+
+        ! Create Bl and Wl
+        double precision, allocatable :: BW_u(:), BW_v(:), BW_w(:)
+
+        ! Loops
+        integer :: genPosC
+        integer :: ju, jv, jw, posu, posv, posw
+
+        ! Initiliaze
+        allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
+
+        ! Set values of C
+        do jw = 1, nnz_col_w
+            do jv = 1, nnz_col_v
+                do ju = 1, nnz_col_u
+                    posu = j_nnz_u(ju)
+                    posv = j_nnz_v(jv)
+                    posw = j_nnz_w(jw)
+                    pos_coef = posu + (posv-1)*nb_cols_u + (posw-1)*nb_cols_u*nb_cols_v
+                    genPosC = ju + (jv-1)*nnz_col_u + (jw-1)*nnz_col_u*nnz_col_v
+                    Ci0(genPosC) = coefs(pos_coef)                    
+                end do
+            end do
+        end do
+
+        ! Set values of BW
+        allocate(BW_u(nnz_col_u))
+        allocate(BW_v(nnz_col_v))
+        allocate(BW_w(nnz_col_w))
+
+        do ju = 1, nnz_col_u
+            BW_u(ju) = B_u(row_u, j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
+        end do
+
+        do jv = 1, nnz_col_v
+            BW_v(jv) = B_v(row_v, j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
+        end do
+
+        do jw = 1, nnz_col_w
+            BW_w(jw) = B_w(row_w, j_nnz_w(jw)) * W_w(row_w, j_nnz_w(jw))
+        end do
+
+        ! Evaluate tensor product
+        allocate(Ci1(nnz_col_u*nnz_col_v))
+        call tensor_n_mode_product(nnz_col_u, nnz_col_v, nnz_col_w, Ci0, & 
+                                1, nnz_col_w, BW_w, 3, &
+                                nnz_col_u, nnz_col_v, 1, Ci1)
+
+        allocate(Ci2(nnz_col_u))
+        call tensor_n_mode_product(nnz_col_u, nnz_col_v, 1, Ci1, & 
+                                1, nnz_col_v, BW_v, 2, &
+                                nnz_col_u, 1, 1, Ci2)
+
+        call tensor_n_mode_product(nnz_col_u, 1, 1, Ci2, & 
+                                1, nnz_col_u, BW_u, 1, &
+                                1, 1, 1, Ci3)
+
+        deallocate(Ci0, Ci1, Ci2)
+        deallocate(BW_u, BW_v, BW_w)
+
+        ! Get result
+        data_element = Ci3(1)
+
+    end subroutine csr_get_element_3d 
+
+    subroutine csr_get_row_3d(coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -995,8 +1103,8 @@ module tensor_methods
         ! Input / output 
         ! ------------------
         integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
-        double precision, intent(in) :: coefficients
-        dimension :: coefficients(nb_cols_u*nb_cols_v*nb_cols_w)
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
         integer, intent(in) :: row_u, row_v, row_w
         integer, intent(in) :: nnz_row_u, nnz_row_v, nnz_row_w
         integer, intent(in) :: nnz_col_u, nnz_col_v, nnz_col_w
@@ -1011,7 +1119,8 @@ module tensor_methods
                         W_v(nb_rows_v, nb_cols_v), &
                         W_w(nb_rows_w, nb_cols_w)
 
-        double precision, intent(out) :: data_row(nnz_row_u*nnz_row_v*nnz_row_w)
+        double precision, intent(out) :: data_row
+        dimension :: data_row(nnz_row_u*nnz_row_v*nnz_row_w)
 
         ! Local data 
         ! ----------------- 
@@ -1038,7 +1147,7 @@ module tensor_methods
                     posw = j_nnz_w(jw)
                     pos_coef = posu + (posv-1)*nb_cols_u + (posw-1)*nb_cols_u*nb_cols_v
                     genPosC = ju + (jv-1)*nnz_col_u + (jw-1)*nnz_col_u*nnz_col_v
-                    Ci0(genPosC) = coefficients(pos_coef)                    
+                    Ci0(genPosC) = coefs(pos_coef)                    
                 end do
             end do
         end do
@@ -1089,15 +1198,13 @@ module tensor_methods
 
     end subroutine csr_get_row_3d 
 
-    subroutine csr_get_matrix_3d(coefficients, &
+    subroutine csr_get_matrix_3d(coefs, &
                                 nb_rows_u, nb_cols_u, &
                                 nb_rows_v, nb_cols_v, &
                                 nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_W_u, &
-                                data_B_v, data_W_v, &
-                                data_B_w, data_W_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 size_data_I_u, size_data_I_v, size_data_I_w, &
                                 indi_I_u, indi_I_v, indi_I_w, & 
                                 indj_I_u, indj_I_v, indj_I_w, &
@@ -1111,8 +1218,8 @@ module tensor_methods
         ! Input / output 
         ! ------------------
         integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
-        double precision, intent(in) :: coefficients
-        dimension :: coefficients(nb_cols_u*nb_cols_v*nb_cols_w)
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
         integer, intent(in) :: size_data_u, size_data_v, size_data_w
         integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
         dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
@@ -1127,10 +1234,12 @@ module tensor_methods
                                 indj_I_u, indj_I_v, indj_I_w 
         dimension ::    indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1), &
                         indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w)
-        integer, intent(in) :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1) 
+        integer, intent(in) :: indi_result
+        dimension :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1) 
         integer, intent(in) :: size_data_result
 
-        double precision, intent(inout) :: data_result(size_data_result)
+        double precision, intent(inout) :: data_result
+        dimension :: data_result(size_data_result)
 
         ! Local data 
         ! -----------------  
@@ -1221,7 +1330,7 @@ module tensor_methods
                     size_data_row = nnz_row_u * nnz_row_v * nnz_row_w
                     allocate(data_row(size_data_row))
 
-                    call csr_get_row_3d(coefficients, nb_rows_u, nb_cols_u, &
+                    call csr_get_row_3d(coefs, nb_rows_u, nb_cols_u, &
                                     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, iu, iv, iw, &
                                     nnz_row_u, nnz_row_v, nnz_row_w, i_nnz_u, i_nnz_v, i_nnz_w, &
                                     nnz_col_u, nnz_col_v, nnz_col_w, j_nnz_u, j_nnz_v, j_nnz_w, &
@@ -1247,6 +1356,117 @@ module tensor_methods
         deallocate(B_u, B_v, B_w, W_u, W_v, W_w)
 
     end subroutine csr_get_matrix_3d 
+
+    subroutine csr_get_diagonal_3d(coefs, &
+                                nb_rows_u, nb_cols_u, &
+                                nb_rows_v, nb_cols_v, &
+                                nb_rows_w, nb_cols_w, &
+                                size_data_u, size_data_v, size_data_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, & 
+                                data_W_u, data_W_v, data_W_w, &
+                                data_result)
+        !! Computes a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
+        !! x: kronecker product and .: inner product
+        !! Indexes must be in CSR format
+
+        use omp_lib
+        implicit none 
+        ! Input / output 
+        ! ------------------
+        integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+        double precision, intent(in) :: coefs
+        dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+        integer, intent(in) :: size_data_u, size_data_v, size_data_w
+        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+        dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                        indi_v(nb_rows_v+1), indj_v(size_data_v), &
+                        indi_w(nb_rows_w+1), indj_w(size_data_w)
+        double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+        dimension ::    data_B_u(size_data_u), data_W_u(size_data_u), &
+                        data_B_v(size_data_v), data_W_v(size_data_v), &
+                        data_B_w(size_data_w), data_W_w(size_data_w)
+
+        double precision, intent(inout) :: data_result
+        dimension :: data_result(nb_rows_u*nb_rows_v*nb_rows_w)
+
+        ! Local data 
+        ! -----------------  
+        double precision :: data_element
+        integer :: genPosResult, offset, nb_tasks
+        double precision, allocatable, dimension(:,:) :: B_u, B_v, B_w, W_u, W_v, W_w
+        integer :: iu, iv, iw, ju, jv, jw
+        integer :: nnz_col_u, nnz_col_v, nnz_col_w
+        integer, allocatable, dimension(:) :: j_nnz_u, j_nnz_v, j_nnz_w
+
+        ! ====================================================
+        ! Initialize
+        allocate(B_u(nb_rows_u, nb_cols_u), &   
+                B_v(nb_rows_v, nb_cols_v), &
+                B_w(nb_rows_w, nb_cols_w), &
+                W_u(nb_rows_u, nb_cols_u), &
+                W_v(nb_rows_v, nb_cols_v), &
+                W_w(nb_rows_w, nb_cols_w))
+        call csr2matrix(size_data_u, indi_u, indj_u, data_B_u, nb_rows_u, nb_cols_u, B_u)
+        call csr2matrix(size_data_v, indi_v, indj_v, data_B_v, nb_rows_v, nb_cols_v, B_v)
+        call csr2matrix(size_data_w, indi_w, indj_w, data_B_w, nb_rows_w, nb_cols_w, B_w)
+        call csr2matrix(size_data_u, indi_u, indj_u, data_W_u, nb_rows_u, nb_cols_u, W_u)
+        call csr2matrix(size_data_v, indi_v, indj_v, data_W_v, nb_rows_v, nb_cols_v, W_v)
+        call csr2matrix(size_data_w, indi_w, indj_w, data_W_w, nb_rows_w, nb_cols_w, W_w)
+        ! ====================================================
+
+        !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw,genPosResult,data_element)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks)
+        do iw = 1, nb_rows_w
+            do iv = 1, nb_rows_v
+                do iu = 1, nb_rows_u
+                    
+                    ! FOR COLUMNS
+                    ! Number of nonzeros  
+                    nnz_col_u = indi_u(iu+1) - indi_u(iu)
+                    nnz_col_v = indi_v(iv+1) - indi_v(iv)
+                    nnz_col_w = indi_w(iw+1) - indi_w(iw)
+
+                    ! Set values
+                    allocate(j_nnz_u(nnz_col_u))
+                    offset = indi_u(iu)
+                    do ju = 1, nnz_col_u
+                        j_nnz_u(ju) = indj_u(ju+offset-1)
+                    end do
+
+                    allocate(j_nnz_v(nnz_col_v))
+                    offset = indi_v(iv)
+                    do jv = 1, nnz_col_v
+                        j_nnz_v(jv) = indj_v(jv+offset-1)
+                    end do
+
+                    allocate(j_nnz_w(nnz_col_w))
+                    offset = indi_w(iw)
+                    do jw = 1, nnz_col_w
+                        j_nnz_w(jw) = indj_w(jw+offset-1)
+                    end do
+
+                    call csr_get_element_3d(coefs, nb_rows_u, nb_cols_u, &
+                                    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                                    iu, iv, iw, nnz_col_u, nnz_col_v, nnz_col_w, &
+                                    j_nnz_u, j_nnz_v, j_nnz_w, &
+                                    B_u, B_v, B_w, W_u, W_v, W_w, data_element)
+                    deallocate(j_nnz_u, j_nnz_v, j_nnz_w)
+
+                    ! Get offset in result 
+                    genPosResult = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_v
+                    data_result(genPosResult) = data_result(genPosResult) + data_element
+
+                end do
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+
+        deallocate(B_u, B_v, B_w, W_u, W_v, W_w)
+
+    end subroutine csr_get_diagonal_3d 
 
     ! ----------------------------------------------------
     ! Functions for Fast Diagonalization method
@@ -1822,7 +2042,7 @@ module tensor_methods
         dimension ::    data_B_u(size_data_u), data_B_v(size_data_v), data_B_w(size_data_w), &
                         data_W_u(size_data_u), data_W_v(size_data_v), data_W_w(size_data_w)
 
-        double precision, intent(out) :: diag
+        double precision, intent(inout) :: diag
         dimension :: diag(nb_rows_u*nb_rows_v*nb_rows_w)
 
         ! Local data
@@ -1830,15 +2050,14 @@ module tensor_methods
         integer :: offset, nb_tasks
         integer :: iu, iv, iw, ju, jv, jw, Cpos, Ipos
         double precision :: sum1, sum2, sum3
+        double precision :: diag2, diag3
+        dimension :: diag2(nb_rows_u*nb_rows_v*nb_rows_w), diag3(nb_rows_u*nb_rows_v*nb_rows_w)
 
         integer :: nnz_u, nnz_v, nnz_w
         integer, allocatable, dimension(:) :: indj_nnz_u, indj_nnz_v, indj_nnz_w
         double precision, allocatable, dimension(:) :: data_nnz_B_u, data_nnz_B_v, data_nnz_B_w, &
                                                         data_nnz_W_u, data_nnz_W_v, data_nnz_W_w        
-        
-        ! Initialize
-        diag = 0.d0
-
+                                                    
         !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
         !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
         nb_tasks = omp_get_num_threads()
@@ -1895,7 +2114,8 @@ module tensor_methods
                     Ipos = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_w
                     
                     ! Update diagonal
-                    diag(Ipos) = sum3
+                    diag2(Ipos) = diag2(Ipos) + sum3
+                    diag3(Ipos) = abs(diag(Ipos) - sum3)
 
                     deallocate(indj_nnz_u, data_nnz_B_u, data_nnz_W_u)
                     deallocate(indj_nnz_v, data_nnz_B_v, data_nnz_W_v)

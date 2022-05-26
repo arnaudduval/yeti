@@ -95,7 +95,7 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_W00_u, data_B_v, data_W00_v, data_B_w, data_W00_w, &
+                        data_B_u, data_B_v, data_B_w, data_W00_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -209,7 +209,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B1_u, data_W11_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
+                        data_B1_u, data_B0_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -219,7 +219,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B1_u, data_W00_u, data_B0_v, data_W11_v, data_B0_w, data_W00_w, &
+                        data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -229,7 +229,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B1_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W11_w, &
+                        data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -243,7 +243,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W11_u, data_B1_v, data_W00_v, data_B0_w, data_W00_w, &
+                        data_B0_u, data_B1_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -253,7 +253,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W00_u, data_B1_v, data_W11_v, data_B0_w, data_W00_w, &
+                        data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -263,7 +263,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W00_u, data_B1_v, data_W00_v, data_B0_w, data_W11_w, &
+                        data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -277,7 +277,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W11_u, data_B0_v, data_W00_v, data_B1_w, data_W00_w, &
+                        data_B0_u, data_B0_v, data_B1_w, data_W11_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -287,7 +287,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W00_u, data_B0_v, data_W11_v, data_B1_w, data_W00_w, &
+                        data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)
@@ -297,7 +297,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B1_w, data_W11_w, &
+                        data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
                         indi_result, size_data_result, data_result)

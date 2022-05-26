@@ -114,8 +114,8 @@ from lib.physics import powden_thickring
 # Create geometry
 filename = 'thick_ring'
 
-DEGREE = 6
-CUTS = 4
+DEGREE = 4
+CUTS = 3
 NBEL = 2**CUTS
 NB_CTRLPTS = DEGREE + NBEL
 
@@ -149,7 +149,7 @@ if sol_direct is None:
 epsilon  = 1e-10
 iterations = 5
 
-for name in ["WP"]:
+for name in ['TDS']:
     # With fortran
     _, residue_f, error_f = Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, True)
     print(residue_f)

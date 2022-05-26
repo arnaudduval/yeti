@@ -57,11 +57,6 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     double precision, intent(out) :: Kdiag
     dimension :: Kdiag(nb_rows_u*nb_rows_v*nb_rows_w)
 
-    ! Local data 
-    ! ------------------
-    double precision :: Kdiagtemp
-    dimension :: Kdiagtemp(nb_rows_u*nb_rows_v*nb_rows_w)
-
     ! Initialize
     Kdiag = 0.d0
 
@@ -71,31 +66,25 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
     ! ---------------------
     ! Get W = W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 1,:), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(1, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B1_u, data_B0_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, Kdiag)
 
     ! Get W = W00_w x W10_v x W01_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 1,:), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(2, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W01_u, data_W10_v, data_W00_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B1_u, data_B0_v, data_B0_w, data_W01_u, data_W10_v, data_W00_w, Kdiag)
 
     ! Get W = W10_w x W00_v x W01_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 1,:), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(3, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W01_u, data_W00_v, data_W10_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B1_u, data_B0_v, data_B0_w, data_W01_u, data_W00_v, data_W10_w, Kdiag)
 
     ! ----------------------------------------
     ! For c01, c11 and c21
@@ -103,31 +92,25 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
     ! ---------------------
     ! Get W = W00_w x W01_v x W10_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 2, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(1, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W10_u, data_W01_v, data_W00_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B1_v, data_B0_w, data_W10_u, data_W01_v, data_W00_w, Kdiag)
 
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, Kdiag)
 
     ! Get W = W10_w x W01_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W01_v, data_W10_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W01_v, data_W10_w, Kdiag)
 
     ! ----------------------------------------
     ! For c02, c12 and c22
@@ -135,31 +118,25 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
     ! ---------------------
     ! Get W = W01_w x W00_v x W10_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 3, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(1, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W10_u, data_W00_v, data_W01_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B0_v, data_B1_w, data_W10_u, data_W00_v, data_W01_w, Kdiag)
 
     ! Get W = W01_w x W10_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W10_v, data_W01_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W10_v, data_W01_w, Kdiag)
 
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
+    call csr_get_diagonal_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W00_v, data_W11_w, Kdiagtemp)
-
-    Kdiag = Kdiag + Kdiagtemp
+    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W00_v, data_W11_w, Kdiag)
 
 end subroutine wq_find_conductivity_diagonal_3d
 
