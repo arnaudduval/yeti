@@ -281,7 +281,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
 
 end subroutine mf_wq_get_cu_3d
 
-subroutine mf_wq_get_cu_3d_csr( nb_cols_total, capacity_coefs, &
+subroutine mf_wq_get_cu_3d_csr( nb_rows_total, nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -294,7 +294,7 @@ subroutine mf_wq_get_cu_3d_csr( nb_cols_total, capacity_coefs, &
     implicit none 
     ! Input / output 
     ! ------------------
-    integer, intent(in) :: nb_cols_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     double precision, intent(in) :: capacity_coefs
     dimension :: capacity_coefs(nb_cols_total)
@@ -317,10 +317,10 @@ subroutine mf_wq_get_cu_3d_csr( nb_cols_total, capacity_coefs, &
                     data_B0_w(size_data_w), data_W00_w(size_data_w)
 
     double precision, intent(in) :: array_input
-    dimension :: array_input(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_input(nb_rows_total)
 
     double precision, intent(out) :: array_output
-    dimension :: array_output(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: array_output(nb_rows_total)
 
     ! Local data 
     ! ----------------- 
@@ -1066,7 +1066,6 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! Preconditioned Conjugate Gradient algorithm
             ! -------------------------------------------
             r = b
-            ! Calculate z
             dummy = r
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then 
                 call scaling_FastDiag(nb_rows_total, preconddiag, matrixdiag, dummy) 

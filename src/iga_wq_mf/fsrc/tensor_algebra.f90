@@ -678,25 +678,42 @@ module tensor_methods
         dimension ::    indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1), &
                         indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
 
-        double precision, intent(out) :: vector_out
+        double precision, intent(inout) :: vector_out
         dimension :: vector_out(nb_rows_u*nb_rows_v*nb_rows_w)
 
         ! Local data 
         ! -------------
-        double precision :: R1, R2
-        dimension :: R1(nb_rows_u*nb_cols_v*nb_cols_w), R2(nb_rows_u*nb_rows_v*nb_cols_w)
+        integer :: i, nb_tasks
+        double precision, allocatable, dimension(:) :: R1, R2, R3
 
         ! First product
+        allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
         call tensor_n_mode_product_sp(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
         nb_rows_u, nb_cols_u, size_data_u, data_u, indi_u, indj_u, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
 
         ! Second product
+        allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
         call tensor_n_mode_product_sp(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
         nb_rows_v, nb_cols_v, size_data_v, data_v, indi_v, indj_v, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+        deallocate(R1)
 
         ! Third product
+        allocate(R3(nb_rows_u*nb_rows_v*nb_rows_w))
         call tensor_n_mode_product_sp(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
-        nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+        nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, R3)
+        deallocate(R2)
+
+        ! Sum
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks)
+        do i = 1, nb_rows_u*nb_rows_v*nb_rows_w
+            vector_out(i) = vector_out(i) + R3(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+
+        deallocate(R3)
 
     end subroutine tensor3d_dot_vector_sp
 

@@ -70,8 +70,9 @@ NBEL = 2**CUTS
 NB_CTRLPTS = DEGREE + NBEL
 
 # Create vector
-len_dof = NB_CTRLPTS**3
+len_dof = (NB_CTRLPTS-2)**3
 r = np.ones(len_dof)
+rext = np.zeros(NB_CTRLPTS**3)
 
 geometry = {'degree': [DEGREE, DEGREE, DEGREE]}
 modelGeo = geomdlModel(filename=filename, **geometry)
@@ -79,13 +80,30 @@ modelGeo.knot_refinement(nb_refinementByDirection= CUTS*np.array([1, 1, 1]))
 
 # Creation of thermal model object
 Model1 = fortran_mf_wq(modelGeo)
+dof = Model1._thermal_dof
+rext[dof] = r
+
 Ku1 = Model1.eval_Ku(r)
+Cu1 = Model1.eval_Cu(r)
 
 Model2 = MF(modelGeo)
-Ku2 = Model2.eval_conductivity_matrix() @ r
-Ku3 = Model2.eval_Ku(r)
+Ku2 = Model2.eval_conductivity_matrix() @ rext
+Ku2 = Ku2[dof]
+Ku3 = Model2.eval_Ku(rext)[dof]
 
+Cu2 = Model2.eval_capacity_matrix() @ rext
+Cu2 = Cu2[dof]
+Cu3 = Model2.eval_Cu(rext)[dof]
+
+# -------------
 enablePrint()
+error = np.abs(Cu3-Cu2)
+print(np.min(error), np.max(error))
+
+error = np.abs(Cu1-Cu2)
+print(np.min(error), np.max(error))
+
+print('-------------------')
 error = np.abs(Ku3-Ku2)
 print(np.min(error), np.max(error))
 

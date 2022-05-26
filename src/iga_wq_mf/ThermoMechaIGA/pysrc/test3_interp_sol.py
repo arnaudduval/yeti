@@ -17,7 +17,7 @@ from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
 DEGREE = 4
-CUTS = 3
+CUTS = 4
 
 # Create geometry using geomdl
 modelGeo = create_geometry(DEGREE, CUTS, 'TR')
@@ -26,7 +26,8 @@ modelGeo = create_geometry(DEGREE, CUTS, 'TR')
 # IGA WQ MF APPROACH
 # ===========================================
 
-for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
+# for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
+for fortran_model in [fortran_mf_wq]:
 
     blockPrint()
     # Creation of thermal model object
@@ -68,10 +69,11 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
 
     # With preconditioner
     # method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-    method_list = ["WP", "C", "TDS", "JM"]
+    method_list = ["WP", "C"]
     for name in method_list: 
         inputs = [F2n, iterations, epsilon, name, Tn, True]   
         Tn_t, residue_t, error_t = Model1.mf_conj_grad(*inputs)
+        print(Tn_t)
         Tsolution_t = np.zeros(Model1._nb_ctrlpts_total)
         Tsolution_t[dof] = Tn_t
         Tsolution_t[dod] = Td
