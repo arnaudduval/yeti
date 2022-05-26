@@ -1432,6 +1432,48 @@ module tensor_methods
 
     end subroutine fast_diagonalization_3d
 
+    subroutine precond_interp_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                                        U_u, U_v, U_w, array_in, array_out)
+        
+        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+        !! by G. Sanaglli and M. Tani
+        
+        use omp_lib
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        integer, intent(in) :: nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w
+        double precision, intent(in) :: U_u, U_v, U_w
+        dimension ::    U_u(nb_rows_u, nb_rows_u), &
+                        U_v(nb_rows_v, nb_rows_v), &
+                        U_w(nb_rows_w, nb_rows_w)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nb_rows_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nb_rows_total)
+
+        ! Local data
+        ! -------------
+        double precision :: array_temp_1
+        dimension :: array_temp_1(nb_rows_total)
+
+        ! ---------------------------------
+        ! First part 
+        ! ---------------------------------
+        call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp_1)
+
+        ! ----------------------------------
+        ! Second part
+        ! ---------------------------------
+        array_out = 0.d0
+        call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                                U_u, U_v, U_w, array_temp_1, array_out)
+
+    end subroutine precond_interp_3d
+
     ! For improving fast diagonalisation (TD, TDS, JM and JMS)
 
     subroutine tensor_decomposition_2d(nb_cols_total, nb_cols_u, nb_cols_v, CC, &

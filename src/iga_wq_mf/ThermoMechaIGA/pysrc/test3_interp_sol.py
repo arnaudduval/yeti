@@ -28,7 +28,7 @@ modelGeo = create_geometry(DEGREE, CUTS, 'TR')
 
 for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
 
-    blockPrint()
+    # blockPrint()
     # Creation of thermal model object
     Model1 = fortran_model(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
     Temp_CP, Td = Model1.MSE_ControlPoints(temperature_rotring)

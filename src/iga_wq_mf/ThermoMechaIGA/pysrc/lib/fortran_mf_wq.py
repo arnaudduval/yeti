@@ -641,13 +641,13 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MSE_ControlPoints(self, fun):
+    def MSE_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
         coef_F = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
         # Define inputs for C and F
-        shape_matrices, indexes, data_C, data_F, size_I = [], [], [], [], []
+        shape_matrices, indexes, data_C, data_interp, data_F, size_I = [], [], [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_qp_wq[dim][0])
@@ -655,6 +655,10 @@ class fortran_mf_wq(thermoMechaModel):
             indexes.append(self._indexes[dim][1])
             data_C.append(self._DB[dim][0])
             data_C.append(self._DW[dim][0][0])
+            data_interp.append(self._DB[dim][0])
+            data_interp.append(self._DB[dim][1])
+            data_interp.append(self._DW[dim][0][0])
+            data_interp.append(self._DW[dim][1][1])
             data_F.append(self._DW[dim][0][0])
             size_I.append(self._nnz_I_dim[dim])
 
@@ -665,16 +669,24 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim < 2 and self._dim > 3:
             raise Warning('Until now not done')
         if self._dim == 2:
-            val_C, indi_C, indj_C = assembly.wq_get_capacity_2d(*inputs_C)
-            F = assembly.wq_get_source_2d(*inputs_F)
+            raise Warning('Until now not done')
         if self._dim == 3:
-            val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs_C)
+            # val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs_C)
             F = assembly.wq_get_source_3d(*inputs_F)
-        C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-                                            val_C, indi_C, indj_C).tocsc()
-        # Solve linear system
-        T = self.conjugate_gradient_scipy(C, F, isCG=False)
-        Tdir = T[self._thermal_dod]
+        # C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
+        #                                     val_C, indi_C, indj_C).tocsc()
 
-        return T, Tdir
+        # Solve linear system with fortran
+        start = time.time()
+        inputs_interp = [self._detJ, *shape_matrices, *indexes, *data_interp, F, nbIter, eps]
+        Tf, relres = solver.wq_mf_interp_3d(*inputs_interp)
+        lastres = relres[np.nonzero(relres)][-1]
+        Tdir = Tf[self._thermal_dod]
+        stop = time.time()
+        print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, lastres))
+
+        # # Solve linear system with python
+        # Tp = self.conjugate_gradient_scipy(C, F, isCG=False)
+
+        return Tf, Tdir
         

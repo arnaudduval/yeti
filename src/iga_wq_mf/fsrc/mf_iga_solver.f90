@@ -957,3 +957,188 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
     end if
 
 end subroutine iga_mf_cg_3d
+
+subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
+                        nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                        size_data_u, size_data_v, size_data_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B0_u, data_B1_u, W_u, &
+                        data_B0_v, data_B1_v, W_v, &
+                        data_B0_w, data_B1_w, W_w, &
+                        b, nbIterations, epsilon, & 
+                        x, RelRes)
+    !! Conjugate gradient with ot without preconditioner 
+    !! CSR FORMAT
+                        
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nb_rows_total, nb_cols_total
+    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nb_cols_total)
+    integer, intent(in) ::  size_data_u, size_data_v, size_data_w
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v), &
+                    indi_w(nb_rows_w+1), indj_w(size_data_w)
+    double precision, intent(in) :: data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w
+    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
+                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
+                    data_B0_w(size_data_w), data_B1_w(size_data_w)
+    double precision, intent(in) :: W_u, W_v, W_w
+    dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
+
+    character(len=10) :: Method = 'C'
+    integer, intent(in) :: nbIterations
+    double precision, intent(in) :: epsilon
+    double precision, intent(in) :: b
+    dimension :: b(nb_rows_total)
+    
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(nb_rows_total), RelRes(nbIterations+1)
+
+    ! Local data
+    ! ------------------
+    ! Conjugate gradient algoritm
+    double precision :: rsold, rsnew, alpha
+    double precision :: r, p, Ap, dummy
+    dimension :: r(nb_rows_total), p(nb_rows_total), Ap(nb_rows_total), dummy(nb_rows_total)
+    integer :: k
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
+    double precision, dimension(:), allocatable :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
+    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    integer :: i
+
+    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w
+
+    ! Preconditioned conjugate gradient
+    double precision :: z
+    dimension :: z(nb_rows_total)
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w
+    dimension ::    indi_T_u(nb_cols_u+1), &
+                    indi_T_v(nb_cols_v+1), &
+                    indi_T_w(nb_cols_w+1)
+    integer :: indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indj_T_u(size_data_u), &
+                    indj_T_v(size_data_v), &
+                    indj_T_w(size_data_w)
+    double precision :: data_B0T_u, data_B0T_v, data_B0T_w
+    dimension ::    data_B0T_u(size_data_u), &
+                    data_B0T_v(size_data_v), &
+                    data_B0T_w(size_data_w)
+    double precision :: data_B1T_u, data_B1T_v, data_B1T_w
+    dimension ::    data_B1T_u(size_data_u), &
+                    data_B1T_v(size_data_v), &
+                    data_B1T_w(size_data_w)
+
+    ! ====================================================
+    ! Initialize B transpose in CSR format
+    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u, &
+                    indj_T_u, indi_T_u)
+    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v, &
+                    indj_T_v, indi_T_v)
+    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w, &
+                    indj_T_w, indi_T_w)
+    
+    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u, &
+                    indj_T_u, indi_T_u)
+    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v, &
+                    indj_T_v, indi_T_v)
+    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w, &
+                    indj_T_w, indi_T_w)
+    ! ====================================================
+
+    ! Initiate variables
+    x = 0.d0
+    RelRes = 0.d0
+
+    ! --------------------------------------------
+    ! EIGEN DECOMPOSITION
+    ! -------------------------------------------- 
+    allocate(U_u(nb_rows_u, nb_rows_u), D_u(nb_rows_u))
+    allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
+    allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
+    
+    allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
+    allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
+    do i = 1, size_data_u
+        data_W00_u(i) = data_B0_u(i) * W_u(indj_u(i))
+        data_W11_u(i) = data_B1_u(i) * W_u(indj_u(i))
+    end do
+    call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
+                            indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
+                            data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
+    deallocate(data_W00_u, data_W11_u)
+    
+    allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
+    allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
+    do i = 1, size_data_v
+        data_W00_v(i) = data_B0_v(i) * W_v(indj_v(i))
+        data_W11_v(i) = data_B1_v(i) * W_v(indj_v(i))
+    end do
+    call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
+                            indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
+                            data_W11_v, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+    deallocate(data_W00_v, data_W11_v)
+
+    allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
+    allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
+    do i = 1, size_data_w
+        data_W00_w(i) = data_B0_w(i) * W_w(indj_w(i))
+        data_W11_w(i) = data_B1_w(i) * W_w(indj_w(i))
+    end do
+    call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
+                            indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
+                            data_W11_w, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+    deallocate(data_W00_w, data_W11_w)
+
+    ! -------------------------------------------
+    ! Preconditioned Conjugate Gradient algorithm
+    ! -------------------------------------------
+    r = b
+    dummy = r 
+    call precond_interp_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                U_u, U_v, U_w, dummy, z)
+    p = z
+    rsold = dot_product(r, z)
+    RelRes(1) = 1.d0
+
+    do k = 1, nbIterations
+        ! Calculate Ann xn 
+        call mf_iga_get_Cu_3D(nb_rows_total, nb_cols_total, coefs, nb_rows_u, nb_cols_u, &
+                    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                    size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                    data_B0T_u, data_B0T_v, data_B0T_w, &
+                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                    data_B0_u, data_B0_v, data_B0_w, &
+                    p, Ap)
+
+        alpha = rsold/dot_product(p, Ap)
+        x = x + alpha * p
+        r = r - alpha * Ap
+
+        ! Set relative value of residual 
+        RelRes(k+1) = maxval(abs(r))/maxval(abs(b))
+
+        if (RelRes(k+1).le.epsilon) then 
+            exit
+        end if
+        
+        dummy = r
+        call precond_interp_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                    U_u, U_v, U_w, dummy, z)
+        rsnew = dot_product(r, z)
+                        
+        p = z + rsnew/rsold * p
+        rsold = rsnew
+    end do
+
+end subroutine iga_mf_interp_3d

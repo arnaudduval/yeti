@@ -84,8 +84,6 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     # Recursive solver 
     # ----------------
     if doIterative:
-        # Recursive solver 
-        # ----------------
         tracemalloc.clear_traces()
 
         # Define geometry 
@@ -171,7 +169,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 # Some constants
 FileExist = True
 GEOMETRY_CASE = 'RQA'
-DEGREE, CUTS = 3, 5
+DEGREE, CUTS = 6, 5
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
