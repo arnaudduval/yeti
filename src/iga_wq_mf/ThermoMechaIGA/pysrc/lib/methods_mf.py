@@ -17,8 +17,14 @@ class MF(WQ):
     def __init__(self, obj: None):
         super().__init__(obj)
 
-    def eval_Ku(self, u, indi, indj):
+    def eval_Ku(self, u, indi=None, indj=None):
         " Computes K u "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+
+        if indj is None: 
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Initialize conductivity matrix 
         Ku = np.zeros(len(indi))
@@ -47,8 +53,14 @@ class MF(WQ):
 
         return Ku
 
-    def eval_Cu(self, u, indi, indj):
+    def eval_Cu(self, u, indi=None, indj=None):
         " Computes C u "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
+
+        if indj is None: 
+            indj = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Initialize basis and weights
         B = 1; W = 1
@@ -69,8 +81,11 @@ class MF(WQ):
 
         return Cu
 
-    def eval_F(self, fun, indi):
+    def eval_F(self, fun, indi=None):
         " Computes F "
+
+        if indi is None: 
+            indi = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get source coefficients
         self._source_coef = super().eval_source_coefficient(fun)

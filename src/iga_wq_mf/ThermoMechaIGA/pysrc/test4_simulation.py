@@ -8,7 +8,6 @@
 import os, tracemalloc
 import scipy, numpy as np
 import time
-from datetime import datetime
 
 # My libraries
 from lib import enablePrint, blockPrint

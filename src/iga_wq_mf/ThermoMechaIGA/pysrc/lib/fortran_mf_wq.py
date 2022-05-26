@@ -266,6 +266,23 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
+    def get_input4MatrixFree_Cu(self, u):
+        " Returns necessary inputs to compute K u "
+
+        # Initialize
+        shape_matrices, indexes, data = [], [], []
+
+        for dim in range(self._dim):
+            shape_matrices.append(self._nb_qp_wq[dim][0])
+            indexes.append(self._indexes[dim][0])
+            indexes.append(self._indexes[dim][1])
+            data.append(self._DB[dim][0])
+            data.append(self._DW[dim][0][0])
+
+        inputs = [self._conductivity_coef, *shape_matrices, *indexes, *data, u]
+
+        return inputs
+
     def get_input4ConjugateGradient(self, bi, nbIterations, epsilon, method):
         " Returns necessary inputs to solve matrix system with matrix free approach "
 
@@ -444,6 +461,23 @@ class fortran_mf_wq(thermoMechaModel):
 
         if self._dim == 3:
             result = solver.mf_wq_get_ku_3d_csr(*inputs)
+
+        return result
+
+    def eval_Cu(self, u): 
+        " Computes K u "
+
+        # Get inputs
+        inputs = self.get_input4MatrixFree_Cu(u)
+
+        if self._dim < 2 and self._dim > 3:
+            raise Warning('Until now not done')
+
+        if self._dim == 2:
+            raise Warning('Until now not done')
+
+        if self._dim == 3:
+            result = solver.mf_wq_get_cu_3d_csr(*inputs)
 
         return result
 

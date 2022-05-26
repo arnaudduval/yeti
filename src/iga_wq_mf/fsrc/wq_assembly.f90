@@ -320,7 +320,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     
     ! Compute B.Transpose . CP_x
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -331,7 +331,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_y
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -341,7 +341,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_z
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -356,7 +356,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_x
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B1T_v, &
@@ -366,7 +366,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_y
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B1T_v, &
@@ -376,7 +376,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_z
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B1T_v, &
@@ -391,7 +391,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     
     ! Compute B.Transpose . CP_x
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -401,7 +401,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_y
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -411,7 +411,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_z
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -426,7 +426,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     
     ! Compute B.Transpose . CP_x
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -436,7 +436,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_y
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -446,7 +446,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
 
     ! Compute B.Transpose . CP_z
     result_temp = 0.d0
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
@@ -541,7 +541,7 @@ subroutine interpolation_3d(nb_rows_total, &
     interpolation = 0.d0
     
     ! Compute B.Transpose . CP
-    call tensor3d_sparsedot_vector(nb_cols_u, nb_rows_u, &
+    call sumfact3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
                                 size_data_u, indi_T_u, indj_T_u, data_BT_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_BT_v, &
@@ -1181,7 +1181,7 @@ subroutine wq_get_source_3d(nb_cols_total, source_coefs, &
 
     ! Find vector
     source_vector = 0.d0
-    call tensor3d_sparsedot_vector(nb_rows_u, nb_cols_u, &
+    call sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, indi_u, indj_u, data_W00_u, &
                         size_data_v, indi_v, indj_v, data_W00_v, &

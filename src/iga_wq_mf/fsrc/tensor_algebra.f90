@@ -10,69 +10,73 @@ module tensor_methods
     ! Tensor algebra 
     ! ----------------------------------------------------
 
-    subroutine tensor_n_mode_product(I1, I2, I3, X, I, J, U, n, Ir1, Ir2, Ir3, R)
+    subroutine tensor_n_mode_product(nc_u, nc_v, nc_w, X, nr, nc, U, n, nu, nv, nw, R)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-        !! Tensor X = (I1, I2, I3)
-        !! Matrix U = (I, J)
-        !! Tensor R = (Ir1, Ir2, Ir3) (It depends on 'n')
+        !! Tensor X = (nc_u, nc_v, nc_w)
+        !! Matrix U = (nr, nc)
+        !! Tensor R = (nu, nv, nw) (It depends on 'n')
+        !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
 
         implicit none
         ! Input / output data 
         ! -------------------- 
-        integer, intent(in) :: I1, I2, I3, I, J, n, Ir1, Ir2, Ir3
+        integer, intent(in) :: nc_u, nc_v, nc_w, nr, nc, n, nu, nv, nw
         double precision, intent(in) :: X, U
-        dimension :: X(I1*I2*I3), U(I*J)
+        dimension :: X(nc_u*nc_v*nc_w), U(nr*nc)
 
-        double precision, intent(out) ::  R(Ir1*Ir2*Ir3)
+        double precision, intent(out) ::  R(nu*nv*nw)
 
         ! Local data
         ! ---------------
         integer :: genPosX, genPosU, genPosR
-        integer :: ii1, ii2, ii3, ii
+        integer :: ju, jv, jw, i
         double precision :: sum
 
+        ! Initialize
+        R = 0.d0
+
         if (n.eq.1) then 
-            do ii3 = 1, I3
-                do ii2 = 1, I2
-                    do ii = 1, I
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do i = 1, nr
                         sum = 0.d0
-                        do ii1 = 1, I1
-                            genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
-                            genPosU = ii + (ii1-1)*I
-                            sum = sum + X(genPosX) * U(genPosU)
+                        do ju = 1, nc_u
+                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                            genPosU = i + (ju-1)*nr
+                            sum = sum + X(genPosX)*U(genPosU)
                         end do
-                        genPosR = ii + (ii2-1)*I + (ii3-1)*I*I2
+                        genPosR = i + (jv-1)*nr + (jw-1)*nr*nc_v
                         R(genPosR) = sum
                     end do
                 end do
             end do
         else if (n.eq.2) then 
-            do ii3 = 1, I3
-                do ii = 1, I
-                    do ii1 = 1, I1
+            do jw = 1, nc_w
+                do i = 1, nr
+                    do ju = 1, nc_u
                         sum = 0.d0
-                        do ii2 = 1, I2
-                            genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
-                            genPosU = ii + (ii2-1) * I
-                            sum = sum + X(genPosX) * U(genPosU)
+                        do jv = 1, nc_v
+                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                            genPosU = i + (jv-1)*nr
+                            sum = sum + X(genPosX)*U(genPosU)
                         end do
-                        genPosR = ii1 + (ii-1)*I1 + (ii3-1)*I1*I
+                        genPosR = ju + (i-1)*nc_u + (jw-1)*nc_u*nr
                         R(genPosR) = sum
                     end do
                 end do
             end do
         else if (n.eq.3) then 
-            do ii = 1, I
-                do ii2 = 1, I2
-                    do ii1 = 1, I1
+            do i = 1, nr
+                do jv = 1, nc_v
+                    do ju = 1, nc_u
                         sum = 0.d0
-                        do ii3 = 1, I3
-                            genPosX = ii1 + (ii2-1)*I1 + (ii3-1)*I1*I2
-                            genPosU = ii + (ii3-1) * I
-                            sum = sum + X(genPosX) * U(genPosU)
+                        do jw = 1, nc_w
+                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                            genPosU = i + (jw-1)*nr
+                            sum = sum + X(genPosX)*U(genPosU)
                         end do
-                        genPosR = ii1 + (ii2-1)*I1 + (ii-1)*I1*I2
+                        genPosR = ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v
                         R(genPosR) = sum
                     end do
                 end do
@@ -80,6 +84,101 @@ module tensor_methods
         end if
 
     end subroutine tensor_n_mode_product
+
+    subroutine tensor_n_mode_product_sp(nc_u, nc_v, nc_w, X, nr, nc, nnz, data_u, indi, indj, n, nu, nv, nw, R)
+        !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+        !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+        !! Tensor X = (nc_u, nc_v, nc_w)
+        !! Matrix U = (nr, nc)
+        !! Tensor R = (nu, nv, nw) (It depends on 'n')
+        !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
+
+        implicit none
+        ! Input / output data 
+        ! -------------------- 
+        integer, intent(in) :: nc_u, nc_v, nc_w, nr, nc, n, nu, nv, nw, nnz
+        double precision, intent(in) :: X, data_u
+        dimension :: X(nc_u*nc_v*nc_w), data_u(nnz)
+        integer, intent(in) :: indi, indj
+        dimension :: indi(nr+1), indj(nnz)
+
+        double precision, intent(out) ::  R(nu*nv*nw)
+
+        ! Local data
+        ! ---------------
+        integer :: genPosX, genPosR
+        integer :: ju, jv, jw, i, dummy
+        double precision, allocatable, dimension(:) :: data_nnz
+        integer, allocatable, dimension(:) :: j_nnz
+        double precision :: sum
+
+        ! Initialize
+        R = 0.d0
+        dummy = nc
+
+        if (n.eq.1) then 
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do i = 1, nr
+                        ! Define non zeros values of U
+                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
+                        j_nnz = indj(indi(i):indi(i+1)-1)
+                        data_nnz = data_u(indi(i):indi(i+1)-1)
+                        ! Get sum
+                        sum = 0.d0
+                        do ju = 1, size(j_nnz)
+                            genPosX = j_nnz(ju) + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                            sum = sum + X(genPosX)*data_nnz(ju)
+                        end do
+                        genPosR = i + (jv-1)*nr + (jw-1)*nr*nc_v
+                        R(genPosR) = sum
+                        deallocate(j_nnz, data_nnz)
+                    end do
+                end do
+            end do
+        else if (n.eq.2) then 
+            do jw = 1, nc_w
+                do i = 1, nr
+                    ! Define non zeros values of U
+                    allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
+                    j_nnz = indj(indi(i):indi(i+1)-1)
+                    data_nnz = data_u(indi(i):indi(i+1)-1)
+                    ! Get sum
+                    do ju = 1, nc_u
+                        sum = 0.d0
+                        do jv = 1, size(j_nnz)
+                            genPosX = ju + (j_nnz(jv)-1)*nc_u + (jw-1)*nc_u*nc_v
+                            sum = sum + X(genPosX)*data_nnz(jv)
+                        end do
+                        genPosR = ju + (i-1)*nc_u + (jw-1)*nc_u*nr
+                        R(genPosR) = sum
+                    end do
+                    deallocate(j_nnz, data_nnz)
+                end do
+            end do
+        else if (n.eq.3) then 
+            do i = 1, nr
+                ! Define non zeros values of U
+                allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
+                j_nnz = indj(indi(i):indi(i+1)-1)
+                data_nnz = data_u(indi(i):indi(i+1)-1)
+                ! Get sum
+                do jv = 1, nc_v
+                    do ju = 1, nc_u
+                        sum = 0.d0
+                        do jw = 1, size(j_nnz)
+                            genPosX = ju + (jv-1)*nc_u + (j_nnz(jw)-1)*nc_u*nc_v
+                            sum = sum + X(genPosX)*data_nnz(jw)
+                        end do
+                        genPosR = ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v
+                        R(genPosR) = sum
+                    end do
+                end do
+                deallocate(j_nnz, data_nnz)
+            end do
+        end if
+
+    end subroutine tensor_n_mode_product_sp
 
     subroutine rankone2d_dot_vector(size_u, size_v, Vu, Vv, X0, result)
         !! Evaluates a dot product between a 2D rank-one tensor and a vector 
@@ -161,7 +260,7 @@ module tensor_methods
 
     end subroutine rankone3d_dot_vector
 
-    subroutine tensor2d_dot_vector(nb_rows_u, nb_cols_u, &
+    subroutine sumfact2d_dot_vector(nb_rows_u, nb_cols_u, &
                                     nb_rows_v, nb_cols_v, &
                                     Mu, Mv, vector_in, vector_out)
         !! Evaluates a dot product between a tensor 2D and a vector
@@ -206,9 +305,9 @@ module tensor_methods
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
 
-    end subroutine tensor2d_dot_vector
+    end subroutine sumfact2d_dot_vector
 
-    subroutine tensor3d_dot_vector(nb_rows_u, nb_cols_u, &
+    subroutine sumfact3d_dot_vector(nb_rows_u, nb_cols_u, &
                                     nb_rows_v, nb_cols_v, &
                                     nb_rows_w, nb_cols_w, &
                                     Mu, Mv, Mw, vector_in, vector_out)
@@ -228,7 +327,7 @@ module tensor_methods
         double precision, intent(in) :: vector_in
         dimension :: vector_in(nb_cols_u*nb_cols_v*nb_cols_w)
         double precision, intent(in) :: Mu, Mv, Mw
-        dimension ::    Mu(nb_rows_u, nb_cols_u), Mv(nb_rows_v, nb_cols_v), Mw(nb_rows_w, nb_cols_w)
+        dimension :: Mu(nb_rows_u, nb_cols_u), Mv(nb_rows_v, nb_cols_v), Mw(nb_rows_w, nb_cols_w)
 
         double precision, intent(out) :: vector_out
         dimension :: vector_out(nb_rows_u*nb_rows_v*nb_rows_w)
@@ -246,7 +345,7 @@ module tensor_methods
                 do iu = 1, nb_rows_u
                     ! General position
                     genPos_out = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_v
-
+                    
                     call rankone3d_dot_vector(nb_cols_u, nb_cols_v, nb_cols_w, &
                                         Mu(iu, :), Mv(iv, :), Mw(iw, :), vector_in, sum)
 
@@ -258,9 +357,9 @@ module tensor_methods
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
 
-    end subroutine tensor3d_dot_vector
+    end subroutine sumfact3d_dot_vector
 
-    subroutine tensor2d_sparsedot_vector(nb_rows_u, nb_cols_u, &
+    subroutine sumfact2d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         size_data_u, indi_u, indj_u, data_u, &
                                         size_data_v, indi_v, indj_v, data_v, &
@@ -364,9 +463,9 @@ module tensor_methods
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
 
-    end subroutine tensor2d_sparsedot_vector
+    end subroutine sumfact2d_dot_vector_sp
 
-    subroutine tensor3d_sparsedot_vector(nb_rows_u, nb_cols_u, &
+    subroutine sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         nb_rows_w, nb_cols_w, &
                                         size_data_u, indi_u, indj_u, data_u, &
@@ -483,7 +582,123 @@ module tensor_methods
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
 
-    end subroutine tensor3d_sparsedot_vector
+    end subroutine sumfact3d_dot_vector_sp
+
+    subroutine tensor3d_dot_vector(nb_rows_u, nb_cols_u, &
+                                    nb_rows_v, nb_cols_v, &
+                                    nb_rows_w, nb_cols_w, &
+                                    Mu, Mv, Mw, vector_in, vector_out)
+        !! Evaluates a dot product between a tensor 3D and a vector 
+        !! Based on "Matrix-free weighted quadrature for a computationally efficient" by Sangalli and Tani
+        !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+        !! Matrix Mu = (nb_rows_u, nb_cols_u)
+        !! Matrix Mv = (nb_rows_v, nb_cols_v)
+        !! Matrix Mw = (nb_rows_w, nb_cols_w)
+        !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+
+        use omp_lib
+        implicit none 
+        ! Input / output 
+        ! ------------------
+        integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v,nb_rows_w, nb_cols_w
+        double precision, intent(in) :: vector_in
+        dimension :: vector_in(nb_cols_u*nb_cols_v*nb_cols_w)
+        double precision, intent(in) :: Mu, Mv, Mw
+        dimension :: Mu(nb_rows_u, nb_cols_u), Mv(nb_rows_v, nb_cols_v), Mw(nb_rows_w, nb_cols_w)
+
+        double precision, intent(out) :: vector_out
+        dimension :: vector_out(nb_rows_u*nb_rows_v*nb_rows_w)
+
+        ! Local data 
+        ! -------------
+        double precision :: R1, R2
+        dimension :: R1(nb_rows_u*nb_cols_v*nb_cols_w), &
+                    R2(nb_rows_u*nb_rows_v*nb_cols_w)
+        double precision :: MuVec, MvVec, MwVec
+        dimension :: MuVec(nb_rows_u*nb_cols_u), MvVec(nb_rows_v*nb_cols_v), MwVec(nb_rows_w*nb_cols_w)
+        integer :: i, j
+        
+        ! Vectorize
+        do j = 1, nb_cols_u
+            do i = 1, nb_rows_u
+                MuVec(i+(j-1)*nb_rows_u) = Mu(i, j)
+            end do
+        end do
+
+        do j = 1, nb_cols_v
+            do i = 1, nb_rows_v
+                MvVec(i+(j-1)*nb_rows_v) = Mv(i, j)
+            end do
+        end do
+
+        do j = 1, nb_cols_w
+            do i = 1, nb_rows_w
+                MwVec(i+(j-1)*nb_rows_w) = Mw(i, j)
+            end do
+        end do
+
+        ! First product
+        call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
+        nb_rows_u, nb_cols_u, MuVec, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+
+        ! Second product
+        call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
+        nb_rows_v, nb_cols_v, MvVec, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+
+        ! Third product
+        call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
+        nb_rows_w, nb_cols_w, MwVec, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+
+    end subroutine tensor3d_dot_vector
+
+    subroutine tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+                                    size_data_u, indi_u, indj_u, data_u, &
+                                    size_data_v, indi_v, indj_v, data_v, &
+                                    size_data_w, indi_w, indj_w, data_w, &
+                                    vector_in, vector_out)
+        !! Evaluates a dot product between a tensor 3D and a vector 
+        !! Based on "Matrix-free weighted quadrature for a computationally efficient" by Sangalli and Tani
+        !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+        !! Matrix Mu = (nb_rows_u, nb_cols_u)
+        !! Matrix Mv = (nb_rows_v, nb_cols_v)
+        !! Matrix Mw = (nb_rows_w, nb_cols_w)
+        !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+
+        use omp_lib
+        implicit none 
+        ! Input / output 
+        ! ------------------
+        integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, &
+                                nb_cols_v,nb_rows_w, nb_cols_w, size_data_u, size_data_v, size_data_w
+        double precision, intent(in) :: vector_in
+        dimension :: vector_in(nb_cols_u*nb_cols_v*nb_cols_w)
+        double precision, intent(in) :: data_u, data_v, data_w
+        dimension :: data_u(size_data_u), data_v(size_data_v), data_w(size_data_w)
+        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+        dimension ::    indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1), &
+                        indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
+
+        double precision, intent(out) :: vector_out
+        dimension :: vector_out(nb_rows_u*nb_rows_v*nb_rows_w)
+
+        ! Local data 
+        ! -------------
+        double precision :: R1, R2
+        dimension :: R1(nb_rows_u*nb_cols_v*nb_cols_w), R2(nb_rows_u*nb_rows_v*nb_cols_w)
+
+        ! First product
+        call tensor_n_mode_product_sp(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
+        nb_rows_u, nb_cols_u, size_data_u, data_u, indi_u, indj_u, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+
+        ! Second product
+        call tensor_n_mode_product_sp(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
+        nb_rows_v, nb_cols_v, size_data_v, data_v, indi_v, indj_v, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+
+        ! Third product
+        call tensor_n_mode_product_sp(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
+        nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+
+    end subroutine tensor3d_dot_vector_sp
 
     ! ----------------------------------------------------
     ! Sum product to compute matrices 
@@ -1042,7 +1257,7 @@ module tensor_methods
         call csr2matrix(size_data, indi, indj, data_B0, nb_rows, nb_cols, BB0)
         call csr2matrix(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
         allocate(MM(nb_rows, nb_rows))
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then !!!!!!!!!!!!!!!!!!!!!! On peut améliorer cela
             do j = 1, nb_cols
                 do i = 1, nb_rows
                     BB0(i, j) = BB0(i, j) * Mcoef(j)
