@@ -18,6 +18,7 @@ module tensor_methods
         !! Tensor R = (nu, nv, nw) (It depends on 'n')
         !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
 
+        use omp_lib
         implicit none
         ! Input / output data 
         ! -------------------- 
@@ -29,7 +30,7 @@ module tensor_methods
 
         ! Local data
         ! ---------------
-        integer :: genPosX, genPosU, genPosR
+        integer :: genPosX, genPosU, genPosR, nb_tasks
         integer :: ju, jv, jw, i
         double precision :: sum
 
@@ -37,6 +38,9 @@ module tensor_methods
         R = 0.d0
 
         if (n.eq.1) then 
+            !$OMP PARALLEL PRIVATE(sum, ju, genPosX, genPosU, genPosR)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do i = 1, nr
@@ -51,10 +55,15 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL 
         else if (n.eq.2) then 
+            !$OMP PARALLEL PRIVATE(sum, jv, genPosX, genPosU, genPosR)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
             do jw = 1, nc_w
-                do i = 1, nr
-                    do ju = 1, nc_u
+                do ju = 1, nc_u
+                    do i = 1, nr
                         sum = 0.d0
                         do jv = 1, nc_v
                             genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
@@ -66,10 +75,15 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL 
         else if (n.eq.3) then 
-            do i = 1, nr
-                do jv = 1, nc_v
-                    do ju = 1, nc_u
+            !$OMP PARALLEL PRIVATE(sum, jw, genPosX, genPosU, genPosR)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks)
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do i = 1, nr
                         sum = 0.d0
                         do jw = 1, nc_w
                             genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
@@ -81,6 +95,8 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
         end if
 
     end subroutine tensor_n_mode_product
@@ -93,6 +109,7 @@ module tensor_methods
         !! Tensor R = (nu, nv, nw) (It depends on 'n')
         !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
 
+        use omp_lib
         implicit none
         ! Input / output data 
         ! -------------------- 
@@ -107,7 +124,7 @@ module tensor_methods
         ! Local data
         ! ---------------
         integer :: genPosX, genPosR
-        integer :: ju, jv, jw, i, dummy
+        integer :: ju, jv, jw, i, dummy, nb_tasks
         double precision, allocatable, dimension(:) :: data_nnz
         integer, allocatable, dimension(:) :: j_nnz
         double precision :: sum
@@ -117,6 +134,9 @@ module tensor_methods
         dummy = nc
 
         if (n.eq.1) then 
+            !$OMP PARALLEL PRIVATE(sum, ju, genPosX, genPosR, j_nnz, data_nnz)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do i = 1, nr
@@ -136,15 +156,20 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
         else if (n.eq.2) then 
+            !$OMP PARALLEL PRIVATE(sum, jv, genPosX, genPosR, j_nnz, data_nnz)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
             do jw = 1, nc_w
-                do i = 1, nr
-                    ! Define non zeros values of U
-                    allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
-                    j_nnz = indj(indi(i):indi(i+1)-1)
-                    data_nnz = data_u(indi(i):indi(i+1)-1)
-                    ! Get sum
-                    do ju = 1, nc_u
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        ! Define non zeros values of U
+                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
+                        j_nnz = indj(indi(i):indi(i+1)-1)
+                        data_nnz = data_u(indi(i):indi(i+1)-1)
+                        ! Get sum
                         sum = 0.d0
                         do jv = 1, size(j_nnz)
                             genPosX = ju + (j_nnz(jv)-1)*nc_u + (jw-1)*nc_u*nc_v
@@ -152,19 +177,24 @@ module tensor_methods
                         end do
                         genPosR = ju + (i-1)*nc_u + (jw-1)*nc_u*nr
                         R(genPosR) = sum
+                        deallocate(j_nnz, data_nnz)
                     end do
-                    deallocate(j_nnz, data_nnz)
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
         else if (n.eq.3) then 
-            do i = 1, nr
-                ! Define non zeros values of U
-                allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
-                j_nnz = indj(indi(i):indi(i+1)-1)
-                data_nnz = data_u(indi(i):indi(i+1)-1)
-                ! Get sum
-                do jv = 1, nc_v
-                    do ju = 1, nc_u
+            !$OMP PARALLEL PRIVATE(sum, jw, genPosX, genPosR, j_nnz, data_nnz)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks)
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        ! Define non zeros values of U
+                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
+                        j_nnz = indj(indi(i):indi(i+1)-1)
+                        data_nnz = data_u(indi(i):indi(i+1)-1)
+                        ! Get sum
                         sum = 0.d0
                         do jw = 1, size(j_nnz)
                             genPosX = ju + (jv-1)*nc_u + (j_nnz(jw)-1)*nc_u*nc_v
@@ -172,10 +202,12 @@ module tensor_methods
                         end do
                         genPosR = ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v
                         R(genPosR) = sum
+                        deallocate(j_nnz, data_nnz)
                     end do
                 end do
-                deallocate(j_nnz, data_nnz)
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
         end if
 
     end subroutine tensor_n_mode_product_sp
@@ -1252,6 +1284,7 @@ module tensor_methods
 
         ! Local data
         ! ----------------
+        double precision, allocatable, dimension(:) :: data_B0_new, data_B1_new
         double precision, allocatable, dimension(:,:) :: BB0, WW0, MM, BB1, WW1, KK
         integer :: i, j
 
@@ -1269,34 +1302,42 @@ module tensor_methods
         integer :: INFO
         
         ! Initialize Masse matrix
-        allocate(BB0(nb_rows, nb_cols), &   
-                WW0(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_B0, nb_rows, nb_cols, BB0)
-        call csr2matrix(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
-        allocate(MM(nb_rows, nb_rows))
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then !!!!!!!!!!!!!!!!!!!!!! On peut améliorer cela
-            do j = 1, nb_cols
-                do i = 1, nb_rows
-                    BB0(i, j) = BB0(i, j) * Mcoef(j)
+        allocate(data_B0_new(size_data))
+        data_B0_new = data_B0
+        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+            do i = 1, nb_rows
+                do j = indi(i), indi(i+1)-1
+                    data_B0_new(j) = data_B0_new(j)*Mcoef(indj(j))
                 end do
             end do
         end if
+
+        allocate(BB0(nb_rows, nb_cols))
+        call csr2matrix(size_data, indi, indj, data_B0_new, nb_rows, nb_cols, BB0)
+        deallocate(data_B0_new)
+        allocate(WW0(nb_rows, nb_cols))
+        call csr2matrix(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
+        allocate(MM(nb_rows, nb_rows))
         MM = matmul(WW0, transpose(BB0))
         deallocate(BB0, WW0)
 
         ! Initialize Stiffness matrix
-        allocate(BB1(nb_rows, nb_cols), &   
-                WW1(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_B1, nb_rows, nb_cols, BB1)
-        call csr2matrix(size_data, indi, indj, data_W11, nb_rows, nb_cols, WW1)
-        allocate(KK(nb_rows, nb_rows))
+        allocate(data_B1_new(size_data))
+        data_B1_new = data_B1
         if ((Method.eq.'TDS').or.(Method.eq.'TD')) then
-            do j = 1, nb_cols
-                do i = 1, nb_rows
-                    BB1(i, j) = BB1(i, j) * Kcoef(j)
+            do i = 1, nb_rows
+                do j = indi(i), indi(i+1)-1
+                    data_B1_new(j) = data_B1_new(j)*Kcoef(indj(j))
                 end do
             end do
         end if
+
+        allocate(BB1(nb_rows, nb_cols))
+        call csr2matrix(size_data, indi, indj, data_B1_new, nb_rows, nb_cols, BB1)
+        deallocate(data_B1_new)
+        allocate(WW1(nb_rows, nb_cols))
+        call csr2matrix(size_data, indi, indj, data_W11, nb_rows, nb_cols, WW1)
+        allocate(KK(nb_rows, nb_rows))
         KK = matmul(WW1, transpose(BB1))
         deallocate(BB1, WW1)
 

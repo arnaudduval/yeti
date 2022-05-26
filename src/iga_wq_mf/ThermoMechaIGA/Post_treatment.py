@@ -77,33 +77,33 @@ def compute_acceleration(inputs, method_list, ax, marker, color, alpha=1, label=
 
     return 
 
-# # ====================
-# # POST TREATEMENT
-# # ====================
-# for CUTS in range(4, 6):
-#     for IS_IGA_GALERKIN in [False]:
-#         for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+# ====================
+# POST TREATEMENT
+# ====================
+for CUTS in range(4, 6):
+    for IS_IGA_GALERKIN in [False]:
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 
-#             if IS_IGA_GALERKIN: is_cg_list = [True]
-#             else: is_cg_list = [True, False]
+            if IS_IGA_GALERKIN: is_cg_list = [True]
+            else: is_cg_list = [True, False]
         
-#             for IS_CG in is_cg_list:
-#                 for DEGREE in range(3, 7):
+            for IS_CG in is_cg_list:
+                for DEGREE in range(3, 7):
 
-#                     # Recreate file name
-#                     txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
-#                     if IS_IGA_GALERKIN: txtname += '_IGAG'
-#                     else: txtname += '_IGAWQ'
-#                     if IS_CG: txtname += '_CG'
-#                     else: txtname += '_BiCG'
+                    # Recreate file name
+                    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
+                    if IS_IGA_GALERKIN: txtname += '_IGAG'
+                    else: txtname += '_IGAWQ'
+                    if IS_CG: txtname += '_CG'
+                    else: txtname += '_BiCG'
 
-#                     # Extract results
-#                     txtname = folder + txtname
-#                     try: 
-#                         inputs = read_text_file(txtname + '.txt')
-#                         method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
-#                         plot_iterative_solver(txtname, inputs, method_list)
-#                     except: pass
+                    # Extract results
+                    txtname = folder + txtname
+                    try: 
+                        inputs = read_text_file(txtname + '.txt')
+                        method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+                        plot_iterative_solver(txtname, inputs, method_list)
+                    except: pass
 
 # =======================================================
 cutsList = range(4, 6) 

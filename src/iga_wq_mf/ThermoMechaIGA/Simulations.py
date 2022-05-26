@@ -172,9 +172,9 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Constants
-for CUTS in range(6, 7):
+for CUTS in range(4, 6):
     for IS_IGA_GALERKIN in [False]:
-        for GEOMETRY_CASE in ['VB', 'TR']:
+        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
             else: is_cg_list = [True]

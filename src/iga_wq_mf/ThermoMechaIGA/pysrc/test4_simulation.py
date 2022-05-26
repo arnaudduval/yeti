@@ -196,10 +196,10 @@ for IS_CG in is_cg_list:
 
     if not FileExist:
         # Run simulation
-        # blockPrint()
+        blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, isOnlyIter=True)
-        # enablePrint()
+        enablePrint()
 
         # Export results
         try: write_text_file(txtname+'.txt', method_list, inputs_export)
