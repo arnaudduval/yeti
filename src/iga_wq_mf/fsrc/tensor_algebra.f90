@@ -1366,9 +1366,10 @@ module tensor_methods
                                 data_B_u, data_B_v, data_B_w, & 
                                 data_W_u, data_W_v, data_W_w, &
                                 data_result)
-        !! Computes a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
+        !! Computes a diagonal of a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
         !! x: kronecker product and .: inner product
         !! Indexes must be in CSR format
+        !! IT IS SLOWER THAN find_physical_diag_3d IN THIS FILE (3 times)
 
         use omp_lib
         implicit none 
@@ -2050,8 +2051,6 @@ module tensor_methods
         integer :: offset, nb_tasks
         integer :: iu, iv, iw, ju, jv, jw, Cpos, Ipos
         double precision :: sum1, sum2, sum3
-        double precision :: diag2, diag3
-        dimension :: diag2(nb_rows_u*nb_rows_v*nb_rows_w), diag3(nb_rows_u*nb_rows_v*nb_rows_w)
 
         integer :: nnz_u, nnz_v, nnz_w
         integer, allocatable, dimension(:) :: indj_nnz_u, indj_nnz_v, indj_nnz_w
@@ -2114,8 +2113,7 @@ module tensor_methods
                     Ipos = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_w
                     
                     ! Update diagonal
-                    diag2(Ipos) = diag2(Ipos) + sum3
-                    diag3(Ipos) = abs(diag(Ipos) - sum3)
+                    diag(Ipos) = diag(Ipos) + sum3
 
                     deallocate(indj_nnz_u, data_nnz_B_u, data_nnz_W_u)
                     deallocate(indj_nnz_v, data_nnz_B_v, data_nnz_W_v)
