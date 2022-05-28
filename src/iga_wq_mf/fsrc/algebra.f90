@@ -166,6 +166,22 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
 
 end subroutine solve_system
 
+subroutine crossproduct(v1, v2, v3)
+    !! Computes cross product in a 3D Euclidean space
+
+    double precision, intent(in) :: v1, v2
+    dimension :: v1(3), v2(3)
+
+    double precision, intent(out) ::  v3
+    dimension :: v3(3)
+
+    ! Definition of cross product
+    v3(1) = v1(2)*v2(3) - v1(3)*v2(2)
+    v3(2) = v1(3)*v2(1) - v1(1)*v2(3)
+    v3(3) = v1(1)*v2(2) - v1(2)*v2(1)
+
+end subroutine crossproduct
+
 subroutine vector_kron_vector(size_A, A, size_B, B, C)
     !! Evaluates kron product A x B (x : tensor product)
 

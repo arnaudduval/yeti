@@ -21,7 +21,7 @@ from lib.physics import powden_thickring
 
 # Set global variables
 DEGREE = 5
-for NBEL in range(10, 180, 10): 
+for NBEL in range(10, 150, 10): 
     NB_CTRLPTS = DEGREE + NBEL
 
     start = time.time()

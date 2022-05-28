@@ -6,7 +6,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
                                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                         size_data_u, size_data_v, size_data_w, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, data_B0_w, W_v, data_B1_w, W_w, &
+                                        data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
                                         Kdiag)
     !! Find the diagonal of conductivity matrix
     !! Indexes in CSR format
@@ -26,7 +26,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Csr format
     integer, intent(in) :: indi_u, indi_v, indi_w
     dimension :: indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1)
-    integer, intent(in) ::  indj_u, indj_v, indj_w
+    integer, intent(in) :: indj_u, indj_v, indj_w
     dimension :: indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
     double precision, intent(in) :: data_B0_u, data_B0_v, data_B0_w, &
                                     data_B1_u, data_B1_v, data_B1_w
@@ -43,15 +43,12 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     integer :: i
     double precision, allocatable, dimension(:) :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
 
-    ! Initialize
-    Kdiag = 0.d0
-
     allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
     do i = 1, size_data_u
         data_W00_u(i) = data_B0_u(i) * W_u(indj_u(i))
         data_W11_u(i) = data_B1_u(i) * W_u(indj_u(i))
     end do
-
+    
     allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
     do i = 1, size_data_v
         data_W00_v(i) = data_B0_v(i) * W_v(indj_v(i))
@@ -63,28 +60,31 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
         data_W00_w(i) = data_B0_w(i) * W_w(indj_w(i))
         data_W11_w(i) = data_B1_w(i) * W_w(indj_w(i))
     end do
+
+    ! Initialize
+    Kdiag = 0.d0
     
-    !! ----------------------------------------
+    ! ----------------------------------------
     ! For c00, c10 and c20
     ! ----------------------------------------
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
     ! ---------------------
     ! Get W = W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(1, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
     data_B1_u, data_B0_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, Kdiag)
 
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(2, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
     data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, Kdiag)
 
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 1,:), nb_rows_u, nb_cols_u, &
+    call find_physical_diag_3d(cond_coefs(3, 1, :), nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
     size_data_u, size_data_v, size_data_w, &
     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -780,8 +780,6 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             allocate(Mcoef_u(nb_cols_u), Kcoef_u(nb_cols_u), &
                     Mcoef_v(nb_cols_v), Kcoef_v(nb_cols_v), &
                     Mcoef_w(nb_cols_w), Kcoef_w(nb_cols_w))
-
-            ! Initialize coefficients 
             Mcoef_u = 1.d0
             Kcoef_u = 1.d0
             Mcoef_v = 1.d0
@@ -874,6 +872,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
                                 matrixdiag)
+                    
         end if
         
         if (nbIterations.gt.0) then

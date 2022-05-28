@@ -415,12 +415,12 @@ class fortran_mf_wq(thermoMechaModel):
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
-        source_coef = super().eval_F_coefficient(fun, self._dim, self._qp_PS, self._detJ)
+        source_coef = super().eval_F_coefficient(fun, self._qp_PS, self._detJ)
         return source_coef
 
     def eval_bodyforce_coefficient(self, fun): 
         " Computes source coefficients "
-        bodyforce = super().eval_BodyForce_coefficient(fun, self._dim, self._qp_PS, self._detJ)
+        bodyforce = super().eval_BodyForce_coefficient(fun, self._qp_PS, self._detJ)
         return bodyforce
 
     # Assemble matrices
@@ -686,7 +686,7 @@ class fortran_mf_wq(thermoMechaModel):
     def MSE_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
-        coef_F = [fun(self._dim, self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+        coef_F = [fun(self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
         # Define inputs for C and F
         shape_matrices, indexes, data_C, data_interp, data_F, size_I = [], [], [], [], [], []

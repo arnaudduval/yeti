@@ -31,13 +31,9 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
 
     ! Csr format
     integer, intent(in) :: indi_u, indi_v, indi_w
-    dimension ::    indi_u(nb_rows_u+1), &
-                    indi_v(nb_rows_v+1), &
-                    indi_w(nb_rows_w+1)
+    dimension ::    indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1)
     integer, intent(in) :: indj_u, indj_v, indj_w
-    dimension ::    indj_u(size_data_u), &
-                    indj_v(size_data_v), &
-                    indj_w(size_data_w)
+    dimension ::    indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
     double precision, intent(in) :: data_B0_u, data_B1_u, &
                                     data_W00_u, data_W01_u, data_W10_u, data_W11_u, &
                                     data_B0_v, data_B1_v, &

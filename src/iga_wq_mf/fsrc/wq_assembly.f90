@@ -1250,3 +1250,54 @@ subroutine wq_get_force_3d(nb_cols_total, force_coefs, &
 
 end subroutine wq_get_force_3d
 
+subroutine wq_get_flux_3d(nb_cols_total, u, v, coefs, jacob, &
+                        nb_rows_u, nb_cols_u, &
+                        nb_rows_v, nb_cols_v, &
+                        size_data_u, size_data_v, &
+                        indi_u, indj_u, indi_v, indj_v, &
+                        data_W00_u, data_W00_v, &
+                        flux_vector)
+    !! Computes flux vector in 3D case
+    !! IN CSR FORMAT
+
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! --------------------
+    integer, intent(in) :: nb_cols_total, u, v
+    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v
+    double precision, intent(in) :: coefs, jacob
+    dimension :: coefs(nb_cols_total), jacob(3, 3, nb_cols_total)
+    integer, intent(in) :: size_data_u, size_data_v
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v)
+    double precision, intent(in) :: data_W00_u, data_W00_v
+    dimension :: data_W00_u(size_data_u), data_W00_v(size_data_v)
+
+    double precision, intent(out) :: flux_vector
+    dimension :: flux_vector(nb_rows_u*nb_rows_v)
+
+    ! Local data
+    ! ----------------------
+    integer :: i
+    double precision :: cross_vector(3), coefs_final(nb_cols_total)
+
+    ! Evaluate determinant of surface transformation
+    do i = 1, nb_cols_total
+        ! Eval cross product 
+        call crossproduct(jacob(:, u, i), jacob(:, v, i), cross_vector)
+
+        ! Eval final coefficient
+        coefs_final(i) = norm2(cross_vector)*coefs(i)
+
+    end do
+
+    ! Find vector
+    flux_vector = 0.d0
+    call tensor2d_dot_vector_sp(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, &
+                        size_data_u, indi_u, indj_u, data_W00_u, &
+                        size_data_v, indi_v, indj_v, data_W00_v, &
+                        coefs_final, flux_vector)
+
+end subroutine wq_get_flux_3d

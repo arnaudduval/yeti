@@ -67,7 +67,7 @@ class WQ(thermoMechaModel):
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
-        source_coef = super().eval_F_coefficient(fun, self._dim, self._qp_PS, self._detJ)
+        source_coef = super().eval_F_coefficient(fun, self._qp_PS, self._detJ)
         return source_coef
     
     # ===========================

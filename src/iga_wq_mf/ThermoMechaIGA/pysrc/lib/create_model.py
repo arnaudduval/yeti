@@ -600,35 +600,35 @@ class thermoMechaModel():
 
         return Kcoef, Ccoef, detJ
 
-    def eval_F_coefficient(self, fun, dim, qp_PS, detJ): 
+    def eval_F_coefficient(self, fun, qp_PS, detJ): 
         " Computes coefficients at points P in parametric space "
 
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
-        source_coef = [fun(dim, qp_PS[:, :, _][0]) * detJ[_] for _ in range(len(detJ))]
+        source_coef = [fun(qp_PS[:, :, _][0]) * detJ[_] for _ in range(len(detJ))]
         stop = time.time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 
         return source_coef
 
-    def eval_BodyForce_coefficient(self, fun, dim, qp_PS, detJ): 
+    def eval_BodyForce_coefficient(self, fun, qp_PS, detJ): 
         " Computes coefficients at points P in parametric space "
 
         # Set material properties
         E = self._youngModule
         nu = self._poissonCoef
 
-        if dim == 2: 
+        if self._dim == 2: 
             # coef = (1 + nu)*(1 - 2*nu)/E #!!!!!!!!!!!!!!!!!!!!!! To modify in plane stress 
             coef = (1 - nu*nu)/E
-        elif dim == 3: 
+        elif self._dim == 3: 
             coef = (1 + nu)*(1 - 2*nu)/E
 
         print('Getting body force coefficients')   
         start = time.time()
         # Get source coefficient
-        bodyforce_coef = [fun(dim, qp_PS[:, :, _][0]) * detJ[_] * coef for _ in range(len(detJ))]
+        bodyforce_coef = [fun(qp_PS[:, :, _][0]) * detJ[_] * coef for _ in range(len(detJ))]
         stop = time.time()
         print('\tBody force coefficients in : %.5f s' %(stop-start))
 
