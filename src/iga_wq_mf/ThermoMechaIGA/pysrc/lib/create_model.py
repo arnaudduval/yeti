@@ -10,6 +10,7 @@ from scipy import sparse as sp
 import time
 import matplotlib.pyplot as plt
 from pyevtk.hl import gridToVTK 
+import multiprocessing as mp 
 
 # Yeti libraries
 from preprocessing.igaparametrization import IGAparametrization
@@ -600,13 +601,15 @@ class thermoMechaModel():
 
         return Kcoef, Ccoef, detJ
 
-    def eval_F_coefficient(self, fun, qp_PS, detJ): 
+    def eval_F_coefficient(self, fun, qp, det): 
         " Computes coefficients at points P in parametric space "
 
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
-        source_coef = [fun(qp_PS[:, :, _][0]) * detJ[_] for _ in range(len(detJ))]
+        source_coef = [fun(qp[:, :, i][0]) * det[i] 
+                    for i in range(len(det))]
+        source_coef = np.array(source_coef)
         stop = time.time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 

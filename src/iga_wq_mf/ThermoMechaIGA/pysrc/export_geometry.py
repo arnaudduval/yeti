@@ -16,7 +16,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
 DEGREE = 6
-CUTS = 5
+CUTS = 4
 
 for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 

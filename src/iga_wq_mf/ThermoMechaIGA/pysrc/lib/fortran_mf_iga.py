@@ -37,17 +37,19 @@ class fortran_mf_iga(thermoMechaModel):
 
         # Set basis and weights
         self.eval_positions_basis_weights()
-        
-        # Get jacobian and physical position 
-        self.eval_jacobien_physicalPosition()
 
-        # Get conductivity and capacity coefficients
-        print('Getting conductivity and capacity coefficients')
-        start = time.time()
-        self._conductivity_coef, self._capacity_coef = \
-            assembly.eval_thermal_coefficient(self._Jqp, self._conductivity, self._capacity)
-        stop = time.time()
-        print('\tConductivity and capacity coefficients in : %.5f s' %(stop-start))
+        # Get jacobian and physical position 
+        if self._isThermal or self._isMechanical:
+            self.eval_jacobien_physicalPosition()
+
+        if self._isThermal:
+            # Get conductivity and capacity coefficients
+            print('Getting conductivity and capacity coefficients')
+            start = time.time()
+            self._conductivity_coef, self._capacity_coef = \
+                assembly.eval_thermal_coefficient(self._Jqp, self._conductivity, self._capacity)
+            stop = time.time()
+            print('\tConductivity and capacity coefficients in : %.5f s' %(stop-start))
 
         return
 
