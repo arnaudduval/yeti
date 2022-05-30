@@ -15,6 +15,7 @@
 
 
 !! Routine for Python binding defining number of integration points explicitely
+!! Parameters:
 subroutine GaussPts(norder,dim,GaussWtCoord,iFace,n_gps)
     implicit none
 
