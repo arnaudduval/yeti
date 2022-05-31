@@ -23,6 +23,7 @@ from lib.base_functions import (create_knotvector,
                                 iga_find_positions_weights
 )
 from lib.create_geomdl import geomdlModel
+from lib.fortran_mf_iga import fortran_mf_iga
 
 # Choose folder
 full_path = os.path.realpath(__file__)
@@ -278,6 +279,43 @@ elif CASE == 6: # FEM functions $
 
     plt.tight_layout()
     plt.savefig(filename)
+
+elif CASE == 7: # Convergence curve
+
+    def power_density(P: list):
+        x = P[0]
+        y = P[1]
+        f = np.sin(np.pi*x)*np.sin(np.pi*y)
+        return f
+
+    def solution(P: list): 
+        x = P[0]
+        y = P[1]
+        t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
+        return t
+
+    # Geometry
+    name = 'quadrilateral'
+    geometry = {'degree': [3, 3]}
+    geometry = geomdlModel(filename= name, **geometry)
+
+    # Model
+    model = fortran_mf_iga(geometry)
+    dof = model._thermal_dof
+
+    # Thermal equation
+    Kdd = model.eval_conductivity_matrix(indi=dof, indj=dof)
+    Fd = model.eval_source_vector(power_density, indi=dof)
+    Td = np.linalg.solve(Kdd.todense(), Fd) 
+    T = np.zeros(model._nb_ctrlpts_total)
+    T[dof] = Td
+
+    # Interpolation
+    _, qp_PS, _, u_interp = model.interpolate_results(T)
+    u_exact = [solution(qp_PS[:, :, i]) for i in range(len(qp_PS))]
+
+    # Error
+    error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)
 
 else: 
     raise Warning('Case unkwnon')
