@@ -117,8 +117,8 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     new_method_list = []
     for i, pcgmethod in enumerate(method_list):
         if pcgmethod == "WP": new_method_list.append('Without preconditioner')
-        elif pcgmethod == "C": new_method_list.append('Fast diag. (FD)')
-        elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
+        elif pcgmethod == "C": new_method_list.append('Fast diagonalisation (FD)')
+        elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomposition') 
         elif pcgmethod == "JM": new_method_list.append('FD + jacobien mean')  
         elif pcgmethod == "TD": new_method_list.append('FD + tensor decomp.') 
         elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')

@@ -73,7 +73,7 @@ subroutine wq_get_qp_positions(degree, nb_el, maxrule, nodes, nb_qp_wq, qp_pos)
         qp_pos(nb_qp_wq-nb_qp_B+j) = QPB(j)
     end do
 
-    if (nb_el .ge. 3) then
+    if (nb_el.ge.3) then
         do i = 2, nb_el-1
             ! Find quadrature points for inner spans
             call linspace(nodes(i), nodes(i+1), 2+maxrule, QPI)
@@ -543,11 +543,11 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     Bint_p0 = 0
     Bint_p1 = 0
 
-    where (abs(B0cgg_p0).GT.tol)
+    where (abs(B0cgg_p0).gt.tol)
         Bint_p0 = 1
     end where
 
-    where (abs(B0cgg_p1).GT.tol)
+    where (abs(B0cgg_p1).gt.tol)
         Bint_p1 = 1
     end where
 

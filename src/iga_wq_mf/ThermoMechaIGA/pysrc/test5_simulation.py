@@ -72,7 +72,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         
         # Solve system
         start = time.time()
-        sol_direct = scipy.linalg.solve(K2solve.todense(), F2solve)
+        sol_direct = scipy.sparse.linalg.spsolve(K2solve, F2solve)
         stop = time.time()
         time_direct = stop - start
         time.sleep(1)
@@ -118,7 +118,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         # Only compute time to prepare method before iterations
         time_noiter, memory_noiter = [], []
-        epsilon  = 1e-14 
+        epsilon  = 1e-10
         iterations = 0
         tracemalloc.clear_traces()
         for name in method_list:
@@ -137,7 +137,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         # With and without preconditioner
         time_iter, residue, error, memory_iter = [], [], [], []
-        epsilon  = 1e-10
+        epsilon  = 1e-15
         iterations = 100
         tracemalloc.clear_traces()
         for name in method_list:
@@ -160,20 +160,21 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         tracemalloc.clear_traces()
 
     tracemalloc.stop()
-    output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
+    try: output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
                     "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                     "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
-    
+    except: print('Somethng happened'); output=None
+
     return output
 
 # Some constants
-FileExist = True
-GEOMETRY_CASE = 'RQA'
-DEGREE, CUTS = 6, 5
+FileExist = False
+GEOMETRY_CASE = 'TR'
+DEGREE, CUTS = 3, 5
 IS_IGA_GALERKIN = False
 
 if IS_IGA_GALERKIN: is_cg_list = [True]
-else: is_cg_list = [True]
+else: is_cg_list = [False]
 
 for IS_CG in is_cg_list:
 
@@ -190,11 +191,11 @@ for IS_CG in is_cg_list:
     if IS_CG: txtname += '_CG'
     else: txtname += '_BiCG'
     txtname = folder + txtname 
-    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+    method_list = ["JMS"]
 
+    # Run simulation
     if not FileExist:
-        # Run simulation
-        blockPrint()
+        # blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, isOnlyIter=True)
         enablePrint()

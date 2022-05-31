@@ -85,7 +85,7 @@ for CUTS in range(4, 6):
         for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
-            else: is_cg_list = [True, False]
+            else: is_cg_list = [False]
         
             for IS_CG in is_cg_list:
                 for DEGREE in range(3, 7):
@@ -105,39 +105,39 @@ for CUTS in range(4, 6):
                         plot_iterative_solver(txtname, inputs, method_list)
                     except: pass
 
-# =======================================================
-cutsList = range(4, 6) 
-degreeList = range(3, 7)
+# # =======================================================
+# cutsList = range(4, 6) 
+# degreeList = range(3, 7)
 
-for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
-    fig, ax = plt.subplots()
-    for i, CUTS in enumerate(cutsList):
-        color = CB_color_cycle[i]
-        for j, DEGREE in enumerate(degreeList):
-            marker = marker_cycle[j]
-            alpha = (j+1)*1/(degreeList[-1]-degreeList[0]+1)
-            for IS_IGA_GALERKIN in [False]:
+# for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+#     fig, ax = plt.subplots()
+#     for i, CUTS in enumerate(cutsList):
+#         color = CB_color_cycle[i]
+#         for j, DEGREE in enumerate(degreeList):
+#             marker = marker_cycle[j]
+#             alpha = (j+1)*1/(degreeList[-1]-degreeList[0]+1)
+#             for IS_IGA_GALERKIN in [False]:
             
-                if IS_IGA_GALERKIN: is_cg_list = [True]
-                else: is_cg_list = [True]
+#                 if IS_IGA_GALERKIN: is_cg_list = [True]
+#                 else: is_cg_list = [False]
             
-                for IS_CG in is_cg_list:
-                    # Recreate file name
-                    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
-                    if IS_IGA_GALERKIN: txtname += '_IGAG'
-                    else: txtname += '_IGAWQ'
-                    if IS_CG: txtname += '_CG'
-                    else: txtname += '_BiCG'
+#                 for IS_CG in is_cg_list:
+#                     # Recreate file name
+#                     txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
+#                     if IS_IGA_GALERKIN: txtname += '_IGAG'
+#                     else: txtname += '_IGAWQ'
+#                     if IS_CG: txtname += '_CG'
+#                     else: txtname += '_BiCG'
 
-                    # Extract results
-                    txtname = folder + txtname
-                    inputs = read_text_file(txtname + '.txt')
-                    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"] # !!!!!!! This must be equal to simulations
-                    label = 'nbel = ' + str(2**CUTS) + ", p = " + str(DEGREE)
-                    compute_acceleration(inputs, method_list, 
-                                        ax, marker, color, alpha=alpha, label=label, 
-                                        PosMethod= 1)
+#                     # Extract results
+#                     txtname = folder + txtname
+#                     inputs = read_text_file(txtname + '.txt')
+#                     method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"] # !!!!!!! This must be equal to simulations
+#                     label = 'nbel = ' + str(2**CUTS) + ", p = " + str(DEGREE)
+#                     compute_acceleration(inputs, method_list, 
+#                                         ax, marker, color, alpha=alpha, label=label, 
+#                                         PosMethod= 1)
                     
-    plt.tight_layout()
-    plt.savefig(folder + GEOMETRY_CASE + '_Acc' +'.png')
+#     plt.tight_layout()
+#     plt.savefig(folder + GEOMETRY_CASE + '_Acc' +'.png')
 

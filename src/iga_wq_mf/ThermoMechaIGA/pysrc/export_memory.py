@@ -14,8 +14,8 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
 # Select files
-fileList = ['mprofile_I.dat']
-# labels = ['Direct Method', 'Iterative method']
+fileList = ['mprofile_D16.dat', 'mprofile_I16.dat']
+labels = ['Direct Method', 'Iterative method']
 
 plt.figure(1)
 ax = plt.gca()
@@ -29,10 +29,10 @@ for i, file in enumerate(fileList):
 
     if i == 1:
         time_zoomed = time[time<80]
-        memory_zoommed = memory[time<80]
+        memory_zoommed2 = memory[time<80]
 
-    plt.plot(time, memory, color=color)
-    # plt.plot(time, memory, label=labels[i], color=color)
+    # plt.plot(time, memory, color=color)
+    plt.plot(time, memory, label=labels[i], color=color)
 
 # Set properties
 plt.grid()
@@ -45,8 +45,8 @@ plt.tight_layout()
 
 # # Plot the zoomed portion
 # # Location for the zoomed portion 
-# sub_axes = plt.axes([.38, .3, .25, .25]) 
-# sub_axes.plot(time_zoomed, memory_zoommed, color=color) 
+# sub_axes = plt.axes([.28, .577, .25, .25]) 
+# sub_axes.plot(time_zoomed, memory_zoommed2, color=color) 
 # plt.xticks(fontsize=16)
 # plt.yticks(fontsize=16)
 # plt.grid()

@@ -702,8 +702,8 @@ class geomdlModel():
         # Plot
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o', label= 'Control points')
-        ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading = 'gouraud')
+        ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o', markersize=10, label= 'Control points')
+        ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading = 'gouraud', label='B-spline surface')
         plot_mesh(ctrlpts, shape_ctrlpts, ax)
         ax.set_xticks(np.arange(0, max(evalpts_new[:,0])+1, 1.0))
         ax.set_yticks(np.arange(0, max(evalpts_new[:,1])+1, 1.0))

@@ -38,7 +38,7 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 extension = '.png'
 
 # Select case
-CASE = 4
+CASE = 2
 
 if CASE == 0: # B-spline curve
 
@@ -65,10 +65,10 @@ if CASE == 0: # B-spline curve
 
     # Plot control points
     plt.figure()
-    for _ in range(6):
-        plt.plot(ctrlpts[_, 0], ctrlpts[_, 1], 'o', markersize=15)
+    # for _ in range(6):
+    #     plt.plot(ctrlpts[_, 0], ctrlpts[_, 1], 'o', markersize=15)
     plt.plot(x, y, label='B-spline curve')
-    plt.plot(ctrlpts[:, 0], ctrlpts[:, 1], '--')
+    plt.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points')
 
     # Set filename
     filename = folder + 'BsplineCurve'+ extension
@@ -118,7 +118,7 @@ elif CASE == 1: # Univariate functions
 elif CASE == 2: # Bivariate functions
 
     # B-Spline properties
-    degree = 2
+    degree = 3
     nbel = 1
     knots = np.linspace(0, 1, 181)
     knotvector = create_knotvector(degree, nbel)
@@ -161,18 +161,23 @@ elif CASE == 2: # Bivariate functions
 
 elif CASE == 3: # Quadrature points in IGA
 
-    fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(12,4))
+    fig, [ax1, ax3] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
 
     # B-spline properties
     degree = 4
-    for ax, nbel in zip([ax1, ax2, ax3], [8, 16, 32]):
+    for ax, nbel in zip([ax1, ax3], [8, 32]):
         knotvector = create_knotvector(degree, nbel)
         wq, _ = iga_find_positions_weights(degree, knotvector)
         Xwq, Ywq = np.meshgrid(wq, wq)
-        ax.plot(Xwq, Ywq, 'ko', markersize=1)
+        ax.plot(Xwq, Ywq, 'ko', markersize=1.25)
+
+        xy = np.linspace(0.,1,nbel+1)
+        for i in xy:
+            ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
+            ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
 
         # Properties
-        ax.grid()
+        # ax.grid()
         ax.set_xticks([0, 0.5, 1])
         ax.set_yticks([0, 0.5, 1])
         ax.axis('equal')
@@ -192,18 +197,23 @@ elif CASE == 4: # Quadrature points in WQ
     r = 2 
     degree = 4
 
-    fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(12,4))
+    fig, [ax1, ax3] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
 
     # B-spline properties
     degree = 4
-    for ax, nbel in zip([ax1, ax2, ax3], [8, 16, 32]):
+    for ax, nbel in zip([ax1, ax3], [8, 32]):
         knotvector = create_knotvector(degree, nbel)
         wq = wq_find_positions(degree, knotvector, r)
         Xwq, Ywq = np.meshgrid(wq, wq)
-        ax.plot(Xwq, Ywq, 'ko', markersize=1)
+        ax.plot(Xwq, Ywq, 'ko', markersize=1.25)
+
+        xy = np.linspace(0.,1,nbel+1)
+        for i in xy:
+            ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
+            ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
 
         # Properties
-        ax.grid()
+        # ax.grid()
         ax.set_xticks([0, 0.5, 1])
         ax.set_yticks([0, 0.5, 1])
         ax.axis('equal')
