@@ -19,12 +19,16 @@
 
 !! Project a point at the surface of a solid
 !! Parameters
-!!  point : 
-!!  iface : 
-!!  coords3D : 
-!!  nb_cp : 
-!!  is_hull : 
-!!  xi : 
+!!  point : coordinates of point to be projected
+!!  iface : index of solid face (yeti convention) on which projection is performed
+!!  coords3D : coordinates of control points (1st index : direction, 2nd index : pt index)
+!!  nb_cp : number of control points
+!!  is_hull : logical indicating if solid is a hulle of not
+!!  maxstep : max step allowed for parametric coordinates at each Newton iteration
+!!  maxiter : max number of iterations for Newton methode
+!!  u0 : initial value for 1st parametric coordinate
+!!  v0 : initial value for 2nd parametric coordinate
+!!  xi : return value : parametric coordinates of the projected point
 !!  info : return code :    0 = standard exit (point coincidence or zero cosine)
 !!                          1 = maximum number of iterations reached
 !!                          2 = exit because parameters do not change significantly
@@ -55,7 +59,9 @@ subroutine projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, m
 
 
     !! Local variables
+    !! tolerance for zero consine condition
     double precision, parameter :: tol2 = 1.D-8  !! tol2 modif 21/03/2022
+    !! tolerance for point coincidence condition
     double precision, parameter :: tol1 = 1.D-12
     double precision :: u, v, uprev, vprev, du, dv
     double precision :: S, Su, Sv, Suu, Svv, Suv
@@ -245,6 +251,18 @@ subroutine point_on_solid_face_map(u,v,iface,xi)
 end subroutine point_on_solid_face_map
 
 !! Compute derivative surface of a solid
+!! Parameters
+!!  u : 1st parametric coordinate at which derivatives are computed
+!!  v : 2nd parametric coordinate at which derivatives are computed
+!!  iface : index of solid face (yeti convention) on which projection is performed
+!!  coords3D : coordinates of control points (1st index : direction, 2nd index : pt index)
+!!  nb_cp : number of control points
+!!  S : return value : surface
+!!  Su : return value : derivative of surface w.r.t u
+!!  Sv : return value : derivative of surface w.r.t v
+!!  Suu : return value : 2nd derivative of surface w.r.t u
+!!  Suv : return value : 2nd derivative of surface w.r.t u and v
+!!  Svv : return value : 2nd derivative of surface w.r.t v
 subroutine derivative_surface(u, v, iface, coords3D, nb_cp, S, Su, Sv, Suu, Suv, Svv)
     use parameters
     use nurbspatch
