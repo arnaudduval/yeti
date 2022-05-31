@@ -733,9 +733,9 @@ subroutine interpolation_2d(nb_rows_total, &
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v)
     double precision, intent(in) :: data_B_u, data_B_v
-    dimension ::    data_B_u(size_data_u), data_B_v(size_data_v)
+    dimension :: data_B_u(size_data_u), data_B_v(size_data_v)
     double precision, intent(in) :: ctrlpts
-    dimension ::    ctrlpts(nb_rows_total)
+    dimension :: ctrlpts(nb_rows_total)
 
     double precision, intent(out) :: interpolation
     dimension :: interpolation(nb_cols_u*nb_cols_v)
@@ -743,12 +743,12 @@ subroutine interpolation_2d(nb_rows_total, &
     ! Local data
     !-----------------
     ! Csr format (Transpose)
-    integer ::  indi_T_u, indi_T_v
-    dimension ::    indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1)
-    integer ::  indj_T_u, indj_T_v
-    dimension ::    indj_T_u(size_data_u), indj_T_v(size_data_v)
+    integer :: indi_T_u, indi_T_v
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1)
+    integer :: indj_T_u, indj_T_v
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v)
     double precision :: data_BT_u, data_BT_v
-    dimension ::    data_BT_u(size_data_u), data_BT_v(size_data_v)
+    dimension :: data_BT_u(size_data_u), data_BT_v(size_data_v)
 
     ! ====================================================
     ! Initialize
@@ -1544,11 +1544,11 @@ subroutine wq_get_capacity_2d(nb_cols_total, capacity_coefs, &
     ! Input / output 
     ! ------------------
     integer, intent(in) :: nb_cols_total
-    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v
+    integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v
     double precision, intent(in) :: capacity_coefs
     dimension :: capacity_coefs(nb_cols_total)
     integer, intent(in) :: size_data_u, size_data_v
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v)
     double precision, intent(in) :: data_B0_u, data_W00_u, &

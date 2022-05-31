@@ -445,7 +445,7 @@ class fortran_mf_wq(thermoMechaModel):
                 
         if self._dim == 3:
             val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs)
-                
+
         # Convert results in coo sparse matrix
         C_coo = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
                                             val_C, indi_C, indj_C).tocsc()[indi, :][:, indj]

@@ -741,7 +741,7 @@ class thermoMechaModel():
             ctrlpts.append(self._ctrlpts[:, dim])
         inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
 
-        if self._dim == 2: raise Warning('Until now not done')      
+        if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)    
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
 
         # ==============================
@@ -756,7 +756,7 @@ class thermoMechaModel():
                 data.append(DB[dim][0])
             inputs = [*shape_matrices, u_ctrlpts, *indexes, *data]
 
-            if self._dim == 2: raise Warning('Until now not done')    
+            if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
             return jacobien_PS, qp_PS, detJ, u_interp
         else: 

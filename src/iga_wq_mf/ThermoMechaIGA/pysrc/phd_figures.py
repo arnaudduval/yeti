@@ -296,7 +296,7 @@ elif CASE == 7: # Convergence curve
 
     # Geometry
     name = 'quadrilateral'
-    geometry = {'degree': [3, 3]}
+    geometry = {'degree': [3, 3, 3]}
     geometry = geomdlModel(filename= name, **geometry)
     geometry.knot_refinement(np.array([4, 4, 4]))
 
@@ -313,7 +313,8 @@ elif CASE == 7: # Convergence curve
 
     # Interpolation
     _, qp_PS, _, u_interp = model.interpolate_results(T)
-    u_exact = [solution(qp_PS[:, :, i]) for i in range(len(qp_PS))]
+    u_exact = [solution(qp_PS[:, :, i][0]) for i in range(len(u_interp))]
+    u_exact = np.array(u_exact)
 
     # Error
     error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)

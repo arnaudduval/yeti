@@ -877,7 +877,7 @@ module tensor_methods
                             j_nnz_u, j_nnz_v, &
                             B_u, B_v, W_u, W_v, &
                             data_row)
-        !! Computes a row of a matrix constructed with row_u, row_v 
+        !! Computes a row of a matrix constructed with row_u and row_v
 
         implicit none 
         ! Input / output 
@@ -889,7 +889,8 @@ module tensor_methods
         integer, intent(in) :: nnz_row_u, nnz_row_v
         integer, intent(in) :: nnz_col_u, nnz_col_v
         integer, intent(in) :: i_nnz_u, i_nnz_v, j_nnz_u, j_nnz_v
-        dimension :: i_nnz_u(nnz_row_u), i_nnz_v(nnz_row_v), j_nnz_u(nnz_col_u), j_nnz_v(nnz_col_v)
+        dimension :: i_nnz_u(nnz_row_u), i_nnz_v(nnz_row_v), &
+                    j_nnz_u(nnz_col_u), j_nnz_v(nnz_col_v)
         double precision, intent(in) :: B_u, B_v, W_u, W_v
         dimension ::    B_u(nb_rows_u, nb_cols_u), &   
                         B_v(nb_rows_v, nb_cols_v), &
@@ -904,6 +905,8 @@ module tensor_methods
         ! Create Ci
         integer :: pos_coef
         double precision, allocatable :: Ci0(:), Ci1(:)
+
+        ! Create Bl and Wl
         double precision, allocatable :: BW_u(:), BW_v(:)
 
         ! Loops
@@ -945,14 +948,15 @@ module tensor_methods
         ! Evaluate tensor product
         allocate(Ci1(nnz_col_u*nnz_row_v))
         call tensor_n_mode_product(nnz_col_u, nnz_col_v, 1, Ci0, & 
-                    nnz_row_v, nnz_col_v, BW_v, 2, &
-                    nnz_col_u, nnz_row_v, 1, Ci1)
-        deallocate(Ci0, BW_v)
+                                nnz_row_v, nnz_col_v, BW_v, 2, &
+                                nnz_col_u, nnz_row_v, 1, Ci1)
 
         call tensor_n_mode_product(nnz_col_u, nnz_row_v, 1, Ci1, & 
-                    nnz_row_u, nnz_col_u, BW_u, 1, &
-                    nnz_row_u, nnz_row_v, 1, data_row)
-        deallocate(Ci1, BW_u)
+                                nnz_row_u, nnz_col_u, BW_u, 1, &
+                                nnz_row_u, nnz_row_v, 1, data_row)
+
+        deallocate(Ci0, Ci1)
+        deallocate(BW_u, BW_v)
 
     end subroutine csr_get_row_2d 
 
@@ -961,8 +965,7 @@ module tensor_methods
                                 nb_rows_v, nb_cols_v, &
                                 size_data_u, size_data_v, &
                                 indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_W_u, &
-                                data_B_v, data_W_v, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, &
                                 size_data_I_u, size_data_I_v, &
                                 indi_I_u, indi_I_v, & 
                                 indj_I_u, indj_I_v, &
@@ -990,10 +993,10 @@ module tensor_methods
                                 indj_I_u, indj_I_v 
         dimension ::    indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), &
                         indj_I_u(size_data_I_u), indj_I_v(size_data_I_v)
-
         integer, intent(in) :: indi_result
         dimension :: indi_result(nb_rows_u*nb_rows_v+1) 
         integer, intent(in) :: size_data_result
+
         double precision, intent(inout) :: data_result
         dimension :: data_result(size_data_result)
 
