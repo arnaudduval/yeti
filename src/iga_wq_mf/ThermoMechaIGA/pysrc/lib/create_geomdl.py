@@ -38,7 +38,7 @@ class geomdlModel():
             # Create quarter annulus
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
-            degree_xi, degree_nu = geometry.get('degree', [2, 3])
+            degree_xi, degree_nu, _ = geometry.get('degree', [2, 3, 2])
             self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
 
         elif filename == 'quadrilateral':
@@ -47,7 +47,7 @@ class geomdlModel():
             
             # Create parallelepiped
             XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
-            degree_xi, degree_nu = geometry.get('degree', [2, 2])
+            degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
 
         elif filename == 'parallelepiped': 
@@ -724,6 +724,7 @@ def create_geometry(degree, cuts, geometry_case):
     elif geometry_case == 'VB': filename = 'prism'
     elif geometry_case == 'TR': filename = 'thick_ring'
     elif geometry_case == 'RQA': filename = 'rotated_quarter_annulus'
+    elif geometry_case == 'SQ': filename = 'quadrilateral'
     else: raise Warning('Geometry does not exist')
 
     # Create and refine model

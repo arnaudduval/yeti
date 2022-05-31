@@ -25,7 +25,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-isIGA = False
+isIGA = True
 CONSTRUCTION = True
 SYMMETRY = False
 
@@ -41,12 +41,14 @@ else:
 # ====================================================================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for varName in ['K', 'C', 'F', 'J', 'QP']:
-        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+    # for varName in ['K', 'C', 'F', 'J', 'QP']:
+    for varName in ['QP', 'J', 'F', 'C', 'K']:
+        # for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+        for GEOMETRY_CASE in ['SQ']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
                 for CUTS in range(1, 4): 
-                    print(DEGREE, CUTS)
+                    print(DEGREE, CUTS, varName)
 
                     blockPrint()
                     # Get file name
@@ -54,6 +56,7 @@ if CONSTRUCTION:
                     elif GEOMETRY_CASE == 'VB': funpow = power_density 
                     elif GEOMETRY_CASE == 'TR': funpow = power_density 
                     elif GEOMETRY_CASE == 'RQA': funpow = power_density
+                    elif GEOMETRY_CASE == 'SQ': funpow = power_density 
 
                     # Define geometry 
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)

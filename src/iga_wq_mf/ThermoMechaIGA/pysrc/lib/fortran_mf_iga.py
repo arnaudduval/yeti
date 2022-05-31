@@ -32,8 +32,6 @@ class fortran_mf_iga(thermoMechaModel):
     
     def __init__(self, modelIGA: None, thermalblockedboundaries= None):
         super().__init__(modelIGA, thermalblockedboundaries= thermalblockedboundaries)
-        if self._dim != 3:
-            raise Warning('This class is only avaliable for 3D geometries')
 
         # Set basis and weights
         self.eval_positions_basis_weights()
@@ -226,7 +224,8 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            raise Warning('Until now not done')
+            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
+
                 
         if self._dim == 3:
             self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_3d(*inputs)
@@ -259,7 +258,7 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            raise Warning('Until now not done')
+            val_C, indi_C, indj_C = assembly.iga_get_capacity_2d(*inputs)
                 
         if self._dim == 3:
             val_C, indi_C, indj_C = assembly.iga_get_capacity_3d(*inputs)
@@ -289,7 +288,7 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            raise Warning('Until now not done')
+            val_K, indi_K, indj_K = assembly.iga_get_conductivity_2d(*inputs)
                 
         if self._dim == 3:
             val_K, indi_K, indj_K = assembly.iga_get_conductivity_3d(*inputs)
@@ -335,7 +334,7 @@ class fortran_mf_iga(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            raise Warning('Until now not done')   
+            F = assembly.iga_get_source_2d(*inputs)
 
         if self._dim == 3:
             F = assembly.iga_get_source_3d(*inputs)

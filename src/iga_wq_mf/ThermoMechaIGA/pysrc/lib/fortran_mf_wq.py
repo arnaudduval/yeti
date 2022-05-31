@@ -403,7 +403,7 @@ class fortran_mf_wq(thermoMechaModel):
             raise Warning('Until now not done')
 
         if self._dim == 2:
-            raise Warning('Until now not done')
+            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
                 
         if self._dim == 3:
             self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_3d(*inputs)

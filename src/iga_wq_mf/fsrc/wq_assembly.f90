@@ -550,6 +550,229 @@ subroutine interpolation_3d(nb_rows_total, &
 
 end subroutine interpolation_3d
 
+subroutine jacobien_physicalposition_2d(nb_rows_total, &
+                                        nb_rows_u, nb_cols_u, &
+                                        nb_rows_v, nb_cols_v, &
+                                        size_data_u, size_data_v, &
+                                        ctrlpts_x, ctrlpts_y, &
+                                        indi_u, indj_u, indi_v, indj_v, &
+                                        data_B0_u, data_B1_u, &
+                                        data_B0_v, data_B1_v, &
+                                        jacob, physical_pos, detJ)
+    !! Computes jacobien in 2D case
+    !! IN CSR FORMAT
+    
+    use omp_lib
+    use tensor_methods
+    implicit none 
+    ! Input/ output
+    ! --------------------  
+    integer, intent(in) :: nb_rows_total
+    integer, intent(in) ::  nb_rows_u, nb_rows_v, &
+                            nb_cols_u, nb_cols_v, &
+                            size_data_u, size_data_v
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v)
+    double precision, intent(in) :: data_B0_u, data_B1_u, &
+                                    data_B0_v, data_B1_v
+    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
+                    data_B0_v(size_data_v), data_B1_v(size_data_v)
+    double precision, intent(in) :: ctrlpts_x, ctrlpts_y
+    dimension ::    ctrlpts_x(nb_rows_total), &
+                    ctrlpts_y(nb_rows_total)
+
+    double precision, intent(out) :: jacob
+    dimension ::  jacob(2, 2, nb_cols_u*nb_cols_v)
+
+    double precision, intent(out) :: physical_pos
+    dimension :: physical_pos(1, 2, nb_cols_u*nb_cols_v)
+
+    double precision, intent(out) :: detJ
+    dimension :: detJ(nb_cols_u*nb_cols_v)
+
+    ! Local data
+    !-----------------
+    double precision :: result_temp
+    dimension ::  result_temp(nb_cols_u*nb_cols_v)
+    integer :: nb_tasks, i
+    double precision :: detJ_temp
+
+    ! Csr format (Transpose)
+    integer ::  indi_T_u, indi_T_v
+    dimension ::    indi_T_u(nb_cols_u+1), &
+                    indi_T_v(nb_cols_v+1)
+    integer ::  indj_T_u, indj_T_v
+    dimension ::    indj_T_u(size_data_u), &
+                    indj_T_v(size_data_v)
+    double precision :: data_B0T_u, data_B0T_v, &
+                        data_B1T_u, data_B1T_v
+    dimension ::    data_B0T_u(size_data_u), data_B0T_v(size_data_v), &
+                    data_B1T_u(size_data_u), data_B1T_v(size_data_v)
+
+    ! ====================================================
+    ! Initialize
+    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, &
+                data_B0T_u, indj_T_u, indi_T_u)
+    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, &
+                data_B0T_v, indj_T_v, indi_T_v)
+    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, &
+                data_B1T_u, indj_T_u, indi_T_u)
+    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, &
+                data_B1T_v, indj_T_v, indi_T_v)
+    ! ====================================================
+    ! ---------------------------------------------------
+    ! For J00, J10 and J20
+    ! ---------------------------------------------------
+    ! Get B = B0_w x B0_v x B1_u (Kronecker product)
+    
+    ! Compute B.Transpose . CP_x
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
+                                ctrlpts_x, result_temp)
+
+    jacob(1, 1, :) = result_temp
+
+    ! Compute B.Transpose . CP_y
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
+                                ctrlpts_y, result_temp)
+    jacob(2, 1, :) = result_temp
+
+    ! ---------------------------------------------------
+    ! For J01, J11, and J21
+    ! ---------------------------------------------------
+    ! Get B = B0_w x B1_v x B0_u (Kronecker product)
+
+    ! Compute B.Transpose . CP_x
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B1T_v, &
+                                ctrlpts_x, result_temp)
+    jacob(1, 2, :) = result_temp
+
+    ! Compute B.Transpose . CP_y
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B1T_v, &
+                                ctrlpts_y, result_temp)
+    jacob(2, 2, :) = result_temp
+
+    ! ---------------------------------------------------
+    ! For position 
+    ! ---------------------------------------------------
+    ! Get B = B0_w x B0_v x B0_u (Kronecker product)
+    
+    ! Compute B.Transpose . CP_x
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
+                                ctrlpts_x, result_temp)
+    physical_pos(1, 1, :) = result_temp
+
+    ! Compute B.Transpose . CP_y
+    result_temp = 0.d0
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
+                                ctrlpts_y, result_temp)
+    physical_pos(1, 2, :) = result_temp
+
+    ! ---------------------------------------------------
+    ! For det J 
+    ! ---------------------------------------------------
+    !$OMP PARALLEL PRIVATE(detJ_temp)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, nb_cols_u*nb_cols_v/nb_tasks) 
+    do i = 1, nb_cols_u*nb_cols_v
+        ! Evaluate determinant
+        call MatrixDet(jacob(:, :, i), detJ_temp, 2)
+
+        ! Assign values
+        detJ(i) = detJ_temp
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+
+end subroutine jacobien_physicalposition_2d
+
+subroutine interpolation_2d(nb_rows_total, &
+                            nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, &
+                            size_data_u, size_data_v, &
+                            ctrlpts, &
+                            indi_u, indj_u, &
+                            indi_v, indj_v, &
+                            data_B_u, data_B_v, &
+                            interpolation)
+    !! Computes interpolation in 2D case (from parametric space to physical space)
+    !! IN CSR FORMAT
+
+    use tensor_methods
+    implicit none 
+    ! Input/ output
+    ! --------------------   
+    integer, intent(in) :: nb_rows_total
+    integer, intent(in) ::  nb_rows_u, nb_rows_v, &
+                            nb_cols_u, nb_cols_v, &
+                            size_data_u, size_data_v
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v)
+    double precision, intent(in) :: data_B_u, data_B_v
+    dimension ::    data_B_u(size_data_u), data_B_v(size_data_v)
+    double precision, intent(in) :: ctrlpts
+    dimension ::    ctrlpts(nb_rows_total)
+
+    double precision, intent(out) :: interpolation
+    dimension :: interpolation(nb_cols_u*nb_cols_v)
+
+    ! Local data
+    !-----------------
+    ! Csr format (Transpose)
+    integer ::  indi_T_u, indi_T_v
+    dimension ::    indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1)
+    integer ::  indj_T_u, indj_T_v
+    dimension ::    indj_T_u(size_data_u), indj_T_v(size_data_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension ::    data_BT_u(size_data_u), data_BT_v(size_data_v)
+
+    ! ====================================================
+    ! Initialize
+    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
+                data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
+                data_BT_v, indj_T_v, indi_T_v)
+    ! ====================================================
+
+    ! ---------------------------------------------------
+    ! For position 
+    ! ---------------------------------------------------
+    ! Get B = B_w x B_v x B_u (Kronecker product)
+    interpolation = 0.d0
+    
+    ! Compute B.Transpose . CP
+    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+                                nb_cols_v, nb_rows_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_BT_u, &
+                                size_data_v, indi_T_v, indj_T_v, data_BT_v, &
+                                ctrlpts, interpolation)
+
+end subroutine interpolation_2d
+
 ! ----------------------------------------
 ! Assembly in 3D
 ! ----------------------------------------

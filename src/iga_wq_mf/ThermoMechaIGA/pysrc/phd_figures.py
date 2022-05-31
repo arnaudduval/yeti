@@ -39,7 +39,7 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 extension = '.png'
 
 # Select case
-CASE = 2
+CASE = 7
 
 if CASE == 0: # B-spline curve
 
@@ -298,6 +298,7 @@ elif CASE == 7: # Convergence curve
     name = 'quadrilateral'
     geometry = {'degree': [3, 3]}
     geometry = geomdlModel(filename= name, **geometry)
+    geometry.knot_refinement(np.array([4, 4, 4]))
 
     # Model
     model = fortran_mf_iga(geometry)

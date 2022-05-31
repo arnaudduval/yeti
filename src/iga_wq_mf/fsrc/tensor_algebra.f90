@@ -954,9 +954,6 @@ module tensor_methods
                     nnz_row_u, nnz_row_v, 1, data_row)
         deallocate(Ci1, BW_u)
 
-        deallocate(Ci0, Ci1)
-        deallocate(BW_u, BW_v)
-
     end subroutine csr_get_row_2d 
 
     subroutine csr_get_matrix_2d(coefs, &
