@@ -178,7 +178,8 @@ class thermoMechaModel():
         else: raise Warning("Type unknown")
 
         # Set number of samples
-        self._sample_size = 61
+        try: self._sample_size = modelIGA._sample_size
+        except: self._sample_size = 51
 
         # Set type of model
         self._isThermal = isThermal

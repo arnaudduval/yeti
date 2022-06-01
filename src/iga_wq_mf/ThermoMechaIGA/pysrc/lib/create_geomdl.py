@@ -27,7 +27,7 @@ class geomdlModel():
             self._name = filename
 
         # Set number of samples
-        self._sample_size = 61
+        self._sample_size = 101
 
         print('\nCreating geometry: ' + filename + '...')
         start = time.time()

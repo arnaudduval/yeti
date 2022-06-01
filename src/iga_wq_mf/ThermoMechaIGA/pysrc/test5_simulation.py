@@ -195,7 +195,7 @@ for IS_CG in is_cg_list:
 
     # Run simulation
     if not FileExist:
-        # blockPrint()
+        blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, isOnlyIter=True)
         enablePrint()

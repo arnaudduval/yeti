@@ -15,6 +15,8 @@ import os
 from geomdl import BSpline
 import numpy as np
 import matplotlib.pyplot as plt
+from mpltools import annotation
+import scipy
 
 # My libraries
 from lib.base_functions import (create_knotvector, 
@@ -24,6 +26,8 @@ from lib.base_functions import (create_knotvector,
 )
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_iga import fortran_mf_iga
+from lib.fortran_mf_wq import fortran_mf_wq
+from lib import enablePrint, blockPrint
 
 # Choose folder
 full_path = os.path.realpath(__file__)
@@ -285,39 +289,92 @@ elif CASE == 7: # Convergence curve
     def power_density(P: list):
         x = P[0]
         y = P[1]
-        f = np.sin(np.pi*x)*np.sin(np.pi*y)
+        # f = np.sin(np.pi*x)*np.sin(np.pi*y)
+        f = (2*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+        - 8*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
+        - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+        - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+        - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+        - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+        - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+        - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4) 
+        - 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
+        )
+
         return f
 
     def solution(P: list): 
         x = P[0]
         y = P[1]
-        t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
+        # t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
+        t = np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
         return t
 
-    # Geometry
-    name = 'quadrilateral'
-    geometry = {'degree': [3, 3, 3]}
-    geometry = geomdlModel(filename= name, **geometry)
-    geometry.knot_refinement(np.array([4, 4, 4]))
+    fig, ax = plt.subplots(1, 1)
+    for degree in range(3, 8):
+        norm = []; ddl =[]
+        for cuts in range(1, 7):
+            print([degree, 2**cuts])
 
-    # Model
-    model = fortran_mf_iga(geometry)
-    dof = model._thermal_dof
+            blockPrint()
+            # Number of elements
+            nbel = 2**cuts
 
-    # Thermal equation
-    Kdd = model.eval_conductivity_matrix(indi=dof, indj=dof)
-    Fd = model.eval_source_vector(power_density, indi=dof)
-    Td = np.linalg.solve(Kdd.todense(), Fd) 
-    T = np.zeros(model._nb_ctrlpts_total)
-    T[dof] = Td
+            # Geometry
+            # name = 'quadrilateral' 
+            name = 'quarter_annulus'
+            geometry = {'degree': [degree, degree, degree]}
+            geometry = geomdlModel(filename= name, **geometry)
+            geometry.knot_refinement(np.array([cuts, cuts, cuts]))
 
-    # Interpolation
-    _, qp_PS, _, u_interp = model.interpolate_results(T)
-    u_exact = [solution(qp_PS[:, :, i][0]) for i in range(len(u_interp))]
-    u_exact = np.array(u_exact)
+            # Model
+            model = fortran_mf_wq(geometry)
+            dof = model._thermal_dof
 
-    # Error
-    error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)
+            # Thermal equation
+            Kdd = model.eval_conductivity_matrix(indi=dof, indj=dof)
+            Fd = model.eval_source_vector(power_density, indi=dof)
+            Td = scipy.sparse.linalg.spsolve(Kdd, Fd)  
+            T = np.zeros(model._nb_ctrlpts_total)
+            T[dof] = Td
+
+            # Interpolation
+            _, qp_PS, _, u_interp = model.interpolate_results(T)
+            u_exact = [solution(qp_PS[:, :, i][0]) for i in range(len(u_interp))]
+            u_exact = np.array(u_exact)
+
+            # Error
+            error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)
+
+            norm.append(error*100)
+            ddl.append(nbel)
+            enablePrint()
+
+        norm = np.asarray(norm)
+        ddl = np.asarray(ddl)
+
+        # Figure 
+        ax.loglog(ddl, norm, label='p = ' + str(degree))
+        
+        # # Get slope
+        # slope, _ = np.polyfit(np.log10(ddl[1:5]),np.log10(norm[1:5]), 1)
+        # slope = round(slope)
+        # annotation.slope_marker((ddl[3], norm[3]), slope, 
+        #                         text_kwargs={'fontsize': 14},
+        #                         poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+
+    # Set filename
+    filename = folder + 'ConvergenceIGA_Annulus2'+ extension
+
+    # Properties
+    plt.grid()
+    plt.xlabel("Number of elements $nb_{el}$", fontsize= 16)
+    plt.ylabel("Relative error (%)", fontsize= 16)   
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.legend(prop={'size': 14})
+    plt.tight_layout()
+    plt.savefig(filename)
 
 else: 
     raise Warning('Case unkwnon')
