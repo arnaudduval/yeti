@@ -721,7 +721,7 @@ class thermoMechaModel():
         # Define knots
         knots = np.linspace(0, 1, self._sample_size)
 
-        # Set basis and indexes
+        # Set basis and indices
         DB, ind = [], []
         for _ in range(self._dim):  
             B0, B1, indi, indj = eval_basis_fortran(self._degree[_][0], 
@@ -732,15 +732,15 @@ class thermoMechaModel():
         # ==============================
         # Get position and determinant
         # ==============================
-        shape_matrices, indexes, data, ctrlpts = [], [], [], []
+        shape_matrices, indices, data, ctrlpts = [], [], [], []
         for dim in range(self._dim):
             shape_matrices.append(self._sample_size)
-            indexes.append(ind[dim][0])
-            indexes.append(ind[dim][1])
+            indices.append(ind[dim][0])
+            indices.append(ind[dim][1])
             data.append(DB[dim][0])
             data.append(DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
-        inputs = [*shape_matrices, *ctrlpts, *indexes, *data]
+        inputs = [*shape_matrices, *ctrlpts, *indices, *data]
 
         if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)    
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
@@ -749,13 +749,13 @@ class thermoMechaModel():
         # Get interpolation
         # ==============================
         if u_ctrlpts is not None:
-            shape_matrices, indexes, data = [], [], []
+            shape_matrices, indices, data = [], [], []
             for dim in range(self._dim):
                 shape_matrices.append(self._sample_size)
-                indexes.append(ind[dim][0])
-                indexes.append(ind[dim][1])
+                indices.append(ind[dim][0])
+                indices.append(ind[dim][1])
                 data.append(DB[dim][0])
-            inputs = [*shape_matrices, u_ctrlpts, *indexes, *data]
+            inputs = [*shape_matrices, u_ctrlpts, *indices, *data]
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
@@ -842,7 +842,7 @@ class thermoMechaModel():
         # Set basis 
         DB = []
 
-        # Set indexes 
+        # Set indices 
         ind = []
 
         for dim in range(self._dim):  
@@ -854,19 +854,19 @@ class thermoMechaModel():
         # Get inputs
         # =====================
         shape_matrices = []
-        indexes = []
+        indices = []
         data = []
         ctrlpts = []
 
         for dim in range(self._dim):
             shape_matrices.append(self._sample_size)
-            indexes.append(ind[dim][0])
-            indexes.append(ind[dim][1])
+            indices.append(ind[dim][0])
+            indices.append(ind[dim][1])
             data.append(DB[dim][0])
             data.append(DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
         
-        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indexes, *data]
+        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indices, *data]
 
         # =========================
         # Get position and jacobien

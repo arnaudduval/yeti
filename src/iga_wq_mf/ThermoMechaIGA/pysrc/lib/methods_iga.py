@@ -396,10 +396,10 @@ class IGA(thermoMechaModel):
                 # Find NURBS element position in each dimension 
                 el_dim = INE_el[dim]
 
-                # Set indexes (positions) of quadrature points in each dimension  
+                # Set indices (positions) of quadrature points in each dimension  
                 ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
 
-                # Find indexes of functions in NURBS element in each dimension
+                # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]
 
                 # Select weights and basis in the element 
@@ -474,10 +474,10 @@ class IGA(thermoMechaModel):
                 # Find NURBS element position in each dimension 
                 el_dim = INE_el[dim]
 
-                # Set indexes (positions) of quadrature points in each dimension  
+                # Set indices (positions) of quadrature points in each dimension  
                 ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
 
-                # Find indexes of functions in NURBS element in each dimension
+                # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]
 
                 # Select weights and basis in the element 
@@ -538,10 +538,10 @@ class IGA(thermoMechaModel):
                 # Find NURBS element position in each dimension 
                 el_dim = INE_el[dim]
 
-                # Set indexes (positions) of quadrature points in each dimension  
+                # Set indices (positions) of quadrature points in each dimension  
                 ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
 
-                # Find indexes of functions in NURBS element in each dimension
+                # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]
 
                 # Select 

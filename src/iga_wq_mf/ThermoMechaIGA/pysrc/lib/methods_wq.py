@@ -12,7 +12,7 @@ from scipy import sparse as sp
 import time
 
 # My libraries
-from .base_functions import wq_find_basis_weights_opt, get_matrix_3D, get_indexes_3D
+from .base_functions import wq_find_basis_weights_opt, get_matrix_3D, get_indices_3D
 from .create_model import thermoMechaModel
 
 # Yeti libraries
@@ -174,7 +174,7 @@ class WQ(thermoMechaModel):
             DI.append(self._DB[_][0]@self._DB[_][0].T)
 
         # Compute capacity matrix
-        indi_C, indj_C = get_indexes_3D(DI)
+        indi_C, indj_C = get_indices_3D(DI)
         val_C = get_matrix_3D(self._capacity_coef, DB, DW, DI)
 
         C = self.array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  

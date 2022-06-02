@@ -31,7 +31,7 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
     # Delete indices
     indi_outt = np.delete(indi_outt, rows2er)
     
-    # Copy some indexes
+    # Copy some indices
     for _ in range(len(indi_outt)-1): 
         indj_out.extend(indj_int[indi_outt[_]:indi_outt[_+1]])
     indj_out = np.array(indj_out, dtype=int)
@@ -784,10 +784,10 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
 # USING TENSOR ALGEBRA
 # =========================
 
-def get_indexes_3D(DI):
-    "Returns the indexes of I1 x I2 x I3, where x is kronecker product"
+def get_indices_3D(DI):
+    "Returns the indices of I1 x I2 x I3, where x is kronecker product"
 
-    def get_indexes_kron_product(indi_A, indj_A, indi_B, indj_B):
+    def get_indices_kron_product(indi_A, indj_A, indi_B, indj_B):
 
         # Defines some values
         nb_rows_A = len(indi_A) - 1
@@ -799,7 +799,7 @@ def get_indexes_3D(DI):
         indi_C = np.zeros(nb_rows_C+1, dtype=int)
         indi_C[0] = 1
         
-        # Set indexes i in CSR
+        # Set indices i in CSR
         for i in range(nb_rows_A):
             for j in range(nb_rows_B):
                 k = i*nb_rows_B + j
@@ -808,7 +808,7 @@ def get_indexes_3D(DI):
                 nnz_C = nnz_A*nnz_B
                 indi_C[k+1] = indi_C[k] + nnz_C
 
-        # Set indexes j in CSR
+        # Set indices j in CSR
         indj_C = []
         for i in range(nb_rows_A):
             for j in range(nb_rows_B):
@@ -831,11 +831,11 @@ def get_indexes_3D(DI):
     indi_I1, indi_I2, indi_I3 = I1.indptr, I2.indptr,I3.indptr
     indj_I1, indj_I2, indj_I3 = I1.indices, I2.indices, I3.indices
     
-    # Find indexes of I1 x I2
-    indi_temp, indj_temp = get_indexes_kron_product(indi_I1, indj_I1, indi_I2, indj_I2)
+    # Find indices of I1 x I2
+    indi_temp, indj_temp = get_indices_kron_product(indi_I1, indj_I1, indi_I2, indj_I2)
 
-    # Find indexes of I1 x I2 x I3
-    indi, indj = get_indexes_kron_product(indi_temp, indj_temp, indi_I3, indj_I3)
+    # Find indices of I1 x I2 x I3
+    indi, indj = get_indices_kron_product(indi_temp, indj_temp, indi_I3, indj_I3)
 
     return indi, indj
 

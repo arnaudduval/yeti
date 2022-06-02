@@ -38,10 +38,10 @@ for NBEL in range(10, 300, 10):
     [dB0_t, dB1_t, dW00_t, _, _, dW11_t] = data_t
 
     # Initialize
-    shape_matrices, indexes, data = [], [], []
+    shape_matrices, indices, data = [], [], []
     for dim in range(3):
         shape_matrices.append(len(qp_wq))
-        indexes.append(indi_t); indexes.append(indj_t) 
+        indices.append(indi_t); indices.append(indj_t) 
         data.append(dB0_t); data.append(dB1_t)
         data.append(dW00_t); data.append(dW11_t)
 
@@ -54,7 +54,7 @@ for NBEL in range(10, 300, 10):
 
     # Solve sylvester equation P s = r
     start = time.time()
-    inputs = [*shape_matrices, *indexes, *data, r]
+    inputs = [*shape_matrices, *indices, *data, r]
     s = solver.preconditioner_fd(*inputs)
     stop = time.time()
     # print('Time computing Fast Diag: %.3e s' %(stop-start,))
