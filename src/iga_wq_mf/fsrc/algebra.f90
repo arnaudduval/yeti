@@ -385,6 +385,8 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
 end subroutine csr2matrix
 
 subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
+    !! Returns CSR format from matrix but not the values
+    !! Only for integers
 
     implicit none 
     ! Input / output data
@@ -458,7 +460,7 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
 
 end subroutine csr2csc
 
-subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, & 
+subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, & 
                                 indi_A, indj_A, &
                                 nb_rows_B, nb_cols_B, nnz_B, &
                                 indi_B, indj_B, &  
@@ -484,7 +486,7 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     ! Loca data
     ! -----------
-    integer :: i, j, k, m, n, nb_tasks
+    integer :: i1, i2, k, j1, j2, nb_tasks
     integer :: nnz_row_A, nnz_row_B, nnz_row_C
     integer :: count
     integer, allocatable, dimension(:) :: indj_C_temp
@@ -495,16 +497,16 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     ! Set indexes i in CSR format
     indi_C(1) = 1
-    do i = 1, nb_rows_A
-        do j = 1, nb_rows_B
+    do i1 = 1, nb_rows_A
+        do i2 = 1, nb_rows_B
             ! Find C's row position
-            k = (i - 1)*nb_rows_B + j
+            k = i2 + (i1 - 1)*nb_rows_B
 
             ! Set number of non-zero elements of A's i-row  
-            nnz_row_A = indi_A(i+1) - indi_A(i) 
+            nnz_row_A = indi_A(i1+1) - indi_A(i1) 
 
             ! Set number of non-zero elements of B's j-row  
-            nnz_row_B = indi_B(j+1) - indi_B(j)
+            nnz_row_B = indi_B(i2+1) - indi_B(i2)
 
             ! Set number of non-zero elements of C's k-row 
             nnz_row_C = nnz_row_A * nnz_row_B
@@ -514,22 +516,22 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
         end do
     end do
 
-    !$OMP PARALLEL PRIVATE(count,k,m,n,indj_C_temp) 
+    !$OMP PARALLEL PRIVATE(count,k,j1,j2,indj_C_temp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_A*nb_rows_B/nb_tasks)
     ! Set indexes j in csr format
-    do i = 1, nb_rows_A
-        do j = 1, nb_rows_B
+    do i1 = 1, nb_rows_A
+        do i2 = 1, nb_rows_B
             ! Select row
-            k = (i - 1)*nb_rows_B + j
+            k = (i1 - 1)*nb_rows_B + i2
             allocate(indj_C_temp(indi_C(k+1) - indi_C(k)))
             
             ! Get values of C's k-row
             count = 0
-            do m = indi_A(i), indi_A(i+1) - 1        
-                do n = indi_B(j), indi_B(j+1) - 1
+            do j1 = indi_A(i1), indi_A(i1+1) - 1        
+                do j2 = indi_B(i2), indi_B(i2+1) - 1
                     count = count + 1
-                    indj_C_temp(count) = (indj_A(m) - 1)*nb_cols_B + indj_B(n)
+                    indj_C_temp(count) = (indj_A(j1) - 1)*nb_cols_B + indj_B(j2)
                 end do
             end do
 
@@ -541,4 +543,101 @@ subroutine get_indexes_kron_product(nb_rows_A, nb_cols_A, nnz_A, &
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
     
-end subroutine get_indexes_kron_product
+end subroutine get_indexes_kron2_product
+
+subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, & 
+                            indi_A, indj_A, &
+                            nb_rows_B, nb_cols_B, nnz_B, &
+                            indi_B, indj_B, &  
+                            nb_rows_C, nb_cols_C, nnz_C, &
+                            indi_C, indj_C, &
+                            nb_rows_D, nb_cols_D, nnz_D, &
+                            indi_D, indj_D)
+    !! Returns indexes of A x B x C = D (x : kronecker product)
+    !! Where A, B and C are sparse matrices in CSR format
+
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! ----------------------
+    integer, intent(in) ::  nb_rows_A, nb_cols_A, nnz_A, &
+                            nb_rows_B, nb_cols_B, nnz_B, &
+                            nb_rows_C, nb_cols_C, nnz_C, nnz_D
+    integer, intent(in) :: indi_A, indj_A, indi_B, indj_B, indi_C, indj_C
+    dimension ::    indi_A(nb_rows_A+1), indj_A(nnz_A), &
+                    indi_B(nb_rows_B+1), indj_B(nnz_B), &
+                    indi_C(nb_rows_C+1), indj_C(nnz_C)
+
+    integer, intent(out) :: nb_rows_D, nb_cols_D
+    integer, intent(out) :: indi_D, indj_D
+    dimension :: indi_D(nb_rows_A*nb_rows_B*nb_rows_C+1), indj_D(nnz_D)
+
+    ! Loca data
+    ! -----------
+    integer :: i1, i2, i3, k, j1, j2, j3, nb_tasks
+    integer :: nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
+    integer :: count
+    integer, allocatable, dimension(:) :: indj_D_temp
+
+    ! Set new number of rows
+    nb_rows_D = nb_rows_A * nb_rows_B * nb_rows_C
+    nb_cols_D = nb_cols_A * nb_cols_B * nb_cols_D
+
+    ! Set indexes i in CSR format
+    indi_D(1) = 1
+    do i1 = 1, nb_rows_A
+        do i2 = 1, nb_rows_B
+            do i3 = 1, nb_rows_C
+                ! Find D's row position
+                k = i3 + (i2-1)*nb_rows_C + (i1 - 1)*nb_rows_C*nb_rows_B
+
+                ! Set number of non-zero elements of A's i1-row  
+                nnz_row_A = indi_A(i1+1) - indi_A(i1) 
+
+                ! Set number of non-zero elements of B's i2-row  
+                nnz_row_B = indi_B(i2+1) - indi_B(i2)
+
+                ! Set number of non-zero elements of C's i3-row  
+                nnz_row_C = indi_C(i3+1) - indi_C(i3)
+
+                ! Set number of non-zero elements of D's k-row 
+                nnz_row_D = nnz_row_A * nnz_row_B * nnz_row_C
+
+                ! Update value 
+                indi_D(k+1) = indi_D(k) + nnz_row_D
+            end do
+        end do
+    end do
+
+    !$OMP PARALLEL PRIVATE(count,k,j1,j2,j3,indj_D_temp) 
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_A*nb_rows_B*nb_rows_C/nb_tasks)
+    ! Set indexes j in csr format
+    do i1 = 1, nb_rows_A
+        do i2 = 1, nb_rows_B
+            do i3 = 1, nb_rows_C
+                ! Select row
+                k = i3 + (i2-1)*nb_rows_C + (i1 - 1)*nb_rows_C*nb_rows_B
+                allocate(indj_D_temp(indi_D(k+1) - indi_D(k)))
+                
+                ! Get values of D's k-row
+                count = 0
+                do j1 = indi_A(i1), indi_A(i1+1) - 1        
+                    do j2 = indi_B(i2), indi_B(i2+1) - 1
+                        do j3 = indi_C(i3), indi_C(i3+1) - 1
+                            count = count + 1
+                            indj_D_temp(count) = (indj_A(j1)-1)*nb_cols_B*nb_cols_C + (indj_B(j2)-1)*nb_cols_C + indj_C(j3)
+                        end do
+                    end do
+                end do
+
+                ! Update values
+                indj_D(indi_D(k): indi_D(k+1)-1) = indj_D_temp
+                deallocate(indj_D_temp)
+            end do
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+    
+end subroutine get_indexes_kron3_product

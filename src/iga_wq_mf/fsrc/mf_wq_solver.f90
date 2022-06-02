@@ -775,11 +775,11 @@ subroutine preconditioner_fd(nb_rows_total, &
     call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
                             I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
     deallocate(I_u, I_v, I_w)
-
+    
     ! Do fast diagonalization direct method
     call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
                 U_u, U_v, U_w, Deigen, s, r)
-
+    
 end subroutine preconditioner_fd
 
 subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &

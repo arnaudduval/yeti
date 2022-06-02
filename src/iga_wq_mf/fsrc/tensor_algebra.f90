@@ -700,9 +700,7 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        double precision :: R1, R2
-        dimension :: R1(nb_rows_u*nb_cols_v*nb_cols_w), &
-                    R2(nb_rows_u*nb_rows_v*nb_cols_w)
+        double precision, allocatable, dimension(:) :: R1, R2                    
         double precision :: MuVec, MvVec, MwVec
         dimension :: MuVec(nb_rows_u*nb_cols_u), MvVec(nb_rows_v*nb_cols_v), MwVec(nb_rows_w*nb_cols_w)
         integer :: i, j
@@ -727,16 +725,20 @@ module tensor_methods
         end do
 
         ! First product
+        allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
         call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
         nb_rows_u, nb_cols_u, MuVec, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
 
         ! Second product
+        allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
         call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
         nb_rows_v, nb_cols_v, MvVec, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+        deallocate(R1)
 
         ! Third product
         call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
         nb_rows_w, nb_cols_w, MwVec, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+        deallocate(R2)
 
     end subroutine tensor3d_dot_vector
 
@@ -850,7 +852,7 @@ module tensor_methods
         nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, R3)
         deallocate(R2)
 
-        ! Sum
+        ! Sum and update
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks)

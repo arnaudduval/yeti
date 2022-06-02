@@ -25,7 +25,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-isIGA = False
+isIGA = True
 CONSTRUCTION = True
 SYMMETRY = False
 
@@ -41,8 +41,8 @@ else:
 # ====================================================================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for varName in ['K', 'C', 'F', 'J', 'QP']:
-        for GEOMETRY_CASE in ['SQ', 'CB', 'VB', 'TR', 'RQA']:
+    for GEOMETRY_CASE in ['SQ', 'CB', 'VB', 'TR', 'RQA']:
+        for varName in ['K', 'C', 'F', 'J', 'QP']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
                 for CUTS in range(1, 4): 
@@ -118,14 +118,15 @@ if CONSTRUCTION:
             plt.tight_layout()
             plt.savefig(folder + 'Error_constructionI_' + GEOMETRY_CASE + '_' + varName + '.png')
             plt.figure(1).clear()
+        print('----')
 
 # ====================================================================
 # TEST ERROR SYMMETRY
 # ====================================================================
 if SYMMETRY:
     # Set degree and number of divisions
-    for varName in ['K', 'C']:
-        for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+    for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+        for varName in ['K', 'C']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]
                 for CUTS in range(1, 5): 
@@ -175,3 +176,4 @@ if SYMMETRY:
             plt.tight_layout()
             plt.savefig(folder + 'Error_symmetry_' + GEOMETRY_CASE + '_' + varName + '.png')
             plt.figure(1).clear()
+        print('----')

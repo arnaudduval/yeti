@@ -21,7 +21,7 @@ from lib.physics import powden_thickring
 
 # Set global variables
 DEGREE = 5
-for NBEL in range(10, 150, 10): 
+for NBEL in range(10, 300, 10): 
     NB_CTRLPTS = DEGREE + NBEL
 
     start = time.time()
@@ -29,7 +29,7 @@ for NBEL in range(10, 150, 10):
     _, qp_wq, dB0, dB1, dW00, dW01, \
     dW10, dW11, indi, indj = wq_find_basis_weights_fortran(DEGREE, NBEL)
     stop = time.time()
-    print('Time computing basis: %.3e s' %(stop-start,))
+    # print('Time computing basis: %.3e s' %(stop-start,))
 
     # Erase data
     rows2erase = [0, -1]
@@ -50,14 +50,15 @@ for NBEL in range(10, 150, 10):
     len_dof = (NB_CTRLPTS-2)**3
     r = np.random.uniform(low=0, high=0.1, size=(len_dof,))
     stop = time.time()
-    print('Time computing random vector: %.3e s' %(stop-start,))
+    # print('Time computing random vector: %.3e s' %(stop-start,))
 
     # Solve sylvester equation P s = r
     start = time.time()
     inputs = [*shape_matrices, *indexes, *data, r]
     s = solver.preconditioner_fd(*inputs)
     stop = time.time()
-    print('Time computing Fast Diag: %.3e s' %(stop-start,))
+    # print('Time computing Fast Diag: %.3e s' %(stop-start,))
+    time.sleep(1)
 
 # # =============================
 # blockPrint()

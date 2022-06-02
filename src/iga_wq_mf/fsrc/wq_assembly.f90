@@ -819,9 +819,7 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
     integer :: indi_I_u, indi_I_v, indi_I_w
     dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
-
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
-    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
+    integer :: dummy1, dummy2, dummy3
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -829,16 +827,10 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
-    call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
+    call get_indexes_kron3_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
+                                nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
-                                nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
-
-    call get_indexes_kron_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
-                                nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
-
-    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -919,9 +911,7 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
     integer :: indi_I_u, indi_I_v, indi_I_w
     dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
-
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
-    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
+    integer :: dummy1, dummy2, dummy3
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -929,16 +919,10 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
-    call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
+    call get_indexes_kron3_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
+                                nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
-                                nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
-
-    call get_indexes_kron_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
-                                nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
-
-    deallocate(indi_I_temp, indj_I_temp)
 
     ! Initialize 
     data_result = 0.d0
@@ -1101,9 +1085,7 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     integer :: indi_I_u, indi_I_v, indi_I_w
     dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
-
-    integer :: nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, dummy1, dummy2, dummy3
-    integer, allocatable, dimension(:) :: indi_I_temp, indj_I_temp
+    integer :: dummy1, dummy2, dummy3
 
     ! Get indexes of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
@@ -1111,16 +1093,10 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
     call get_I_csr(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indi_w, indj_w, size_data_I_w, indi_I_w, indj_I_w)
 
-    allocate(indi_I_temp(nb_rows_u*nb_rows_v+1), indj_I_temp(size_data_I_u*size_data_I_v))
-    call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
-        nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
-        nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp)
-
-    call get_indexes_kron_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
-        nb_ctrlpts_temp1, nb_ctrlpts_temp2, size_data_I_temp, indi_I_temp, indj_I_temp, &
-        dummy1, dummy2, dummy3, indi_result, indj_result)
-
-    deallocate(indi_I_temp, indj_I_temp)
+    call get_indexes_kron3_product(nb_rows_w, nb_rows_w, size_data_I_w, indi_I_w, indj_I_w, &
+                                nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
+                                nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
+                                dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
     data_result = 0.d0
@@ -1575,7 +1551,7 @@ subroutine wq_get_capacity_2d(nb_cols_total, capacity_coefs, &
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
 
-    call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
+    call get_indexes_kron2_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
 
@@ -1656,7 +1632,7 @@ subroutine wq_get_conductivity_2d(nb_cols_total, cond_coefs, &
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
 
-    call get_indexes_kron_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
+    call get_indexes_kron2_product(nb_rows_v, nb_rows_v, size_data_I_v, indi_I_v, indj_I_v, &
                                 nb_rows_u, nb_rows_u, size_data_I_u, indi_I_u, indj_I_u, &
                                 dummy1, dummy2, dummy3, indi_result, indj_result)
 
