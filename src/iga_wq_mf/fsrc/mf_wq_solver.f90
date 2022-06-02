@@ -139,18 +139,18 @@ end subroutine wq_find_conductivity_diagonal_3d
 ! ----------------------------------------
 ! Assembly in 3D
 ! ----------------------------------------
-subroutine wq_diagonal_dot_vector(size_array, coefs, array_in, array_out)
+subroutine wq_diagonal_dot_vector(nb_cols_total, coefs, array_in, array_out)
     
     use omp_lib
     implicit  none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: size_array
+    integer, intent(in) :: nb_cols_total
     double precision, intent(in) :: coefs, array_in
-    dimension :: coefs(size_array), array_in(size_array)
+    dimension :: coefs(nb_cols_total), array_in(nb_cols_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(size_array)
+    dimension :: array_out(nb_cols_total)
 
     ! Local data
     !--------------
@@ -161,9 +161,9 @@ subroutine wq_diagonal_dot_vector(size_array, coefs, array_in, array_out)
 
     !$OMP PARALLEL
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, size_array/nb_tasks) 
-    do i = 1, size_array 
-        array_out(i) = coefs(i) * array_in(i)
+    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
+    do i = 1, nb_cols_total 
+        array_out(i) = coefs(i)*array_in(i)
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL
@@ -692,21 +692,18 @@ end subroutine mf_wq_get_ku_3d_csr
 ! ----------------------------------------
 ! Conjugate gradient
 ! ----------------------------------------
-subroutine preconditioner_fd(nb_rows_total, &
-                    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                     size_data_u, size_data_v, size_data_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_B0_u, data_B1_u, data_W00_u, data_W11_u, &
                     data_B0_v, data_B1_v, data_W00_v, data_W11_v, &
-                    data_B0_w, data_B1_w, data_W00_w, data_W11_w, &
-                    s, r)
+                    data_B0_w, data_B1_w, data_W00_w, data_W11_w)
     !! Solve Sylvester equation P s = r
     
     use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
-    integer, intent(in) :: nb_rows_total
     integer, intent(in) :: nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
     integer, intent(in) :: size_data_u, size_data_v, size_data_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -724,22 +721,23 @@ subroutine preconditioner_fd(nb_rows_total, &
                     data_W00_w(size_data_w), data_W11_w(size_data_w)
 
     character(len=10) :: Method = 'C'
-    double precision, intent(in) :: s
-    dimension :: s(nb_rows_total)
-
-    double precision, intent(out) :: r
-    dimension :: r(nb_rows_total)
 
     ! Local data
     ! ------------------
+    double precision :: s, r1
+    dimension :: s(nb_rows_u*nb_rows_v*nb_rows_w), r1(nb_rows_u*nb_rows_v*nb_rows_w)
+    
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Kdiag_dummy, Mdiag_dummy
     double precision, dimension(:), allocatable :: Mcoef_dummy, Kcoef_dummy
-    double precision, dimension(:), allocatable :: Deigen
-
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w
+
+    ! double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
+    double precision :: start, finish
+
+    ! Initialize
+    s = 1.d0
 
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
@@ -766,21 +764,29 @@ subroutine preconditioner_fd(nb_rows_total, &
                             data_W11_w, Method, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
     deallocate(Kdiag_dummy, Mdiag_dummy)
 
-    ! Find diagonal of eigen values
-    allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
-    allocate(Deigen(nb_rows_total))
-    I_u = 1.d0
-    I_v = 1.d0
-    I_w = 1.d0
-    call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
-                            I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
-    deallocate(I_u, I_v, I_w)
+    ! ! Find diagonal of eigen values
+    ! allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
+    ! allocate(Deigen(nb_rows_total))
+    ! I_u = 1.d0
+    ! I_v = 1.d0
+    ! I_w = 1.d0
+    ! call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
+    !                         I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+    ! deallocate(I_u, I_v, I_w)
     
-    ! Do fast diagonalization direct method
-    call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                U_u, U_v, U_w, Deigen, s, r)
-    
-end subroutine preconditioner_fd
+    ! ! Do fast diagonalization direct method
+    ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+    !             U_u, U_v, U_w, Deigen, s, r)
+
+    ! -----------------------
+    ! sumfact3d_dot_vector
+    call cpu_time(start)
+    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                U_u, U_v, U_w, s, r1)
+    call cpu_time(finish)
+    print*, finish-start
+
+end subroutine test_precondfd
 
 subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &

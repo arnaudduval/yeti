@@ -6,7 +6,10 @@
 """
 
 # Python libraries
-import numpy as np
+import os
+import numpy as np, pandas as pd
+import matplotlib.pyplot as plt
+from mpltools import annotation
 import time
 
 # My libraries
@@ -14,147 +17,83 @@ from lib import blockPrint, enablePrint
 from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
-from lib.create_geomdl import geomdlModel
-from lib.fortran_mf_wq import fortran_mf_wq
-from lib.methods_mf import MF
-from lib.physics import powden_thickring
 
-# Set global variables
-DEGREE = 5
-for NBEL in range(10, 300, 10): 
-    NB_CTRLPTS = DEGREE + NBEL
+dataExist = False
 
-    start = time.time()
-    # Define basis (the same for all directions)
-    _, qp_wq, dB0, dB1, dW00, dW01, \
-    dW10, dW11, indi, indj = wq_find_basis_weights_fortran(DEGREE, NBEL)
-    stop = time.time()
-    # print('Time computing basis: %.3e s' %(stop-start,))
+if not dataExist:
+    # Set global variables
+    DEGREE = 5
+    for NBEL in range(10, 300, 10): 
+        NB_CTRLPTS = DEGREE + NBEL
 
-    # Erase data
-    rows2erase = [0, -1]
-    indi_t, indj_t, data_t = erase_rows_csr(rows2erase, indi, indj, 
-                            [dB0, dB1, dW00, dW01, dW10, dW11])
-    [dB0_t, dB1_t, dW00_t, _, _, dW11_t] = data_t
+        start = time.time()
+        # Define basis (the same for all directions)
+        _, qp_wq, dB0, dB1, dW00, dW01, \
+        dW10, dW11, indi, indj = wq_find_basis_weights_fortran(DEGREE, NBEL)
+        stop = time.time()
+        # print('Time computing basis: %.3e s' %(stop-start,))
 
-    # Initialize
-    shape_matrices, indices, data = [], [], []
-    for dim in range(3):
-        shape_matrices.append(len(qp_wq))
-        indices.append(indi_t); indices.append(indj_t) 
-        data.append(dB0_t); data.append(dB1_t)
-        data.append(dW00_t); data.append(dW11_t)
+        # Erase data
+        rows2erase = [0, -1]
+        indi_t, indj_t, data_t = erase_rows_csr(rows2erase, indi, indj, 
+                                [dB0, dB1, dW00, dW01, dW10, dW11])
+        [dB0_t, dB1_t, dW00_t, _, _, dW11_t] = data_t
 
-    # Assemble r vector
-    start = time.time()
-    len_dof = (NB_CTRLPTS-2)**3
-    r = np.random.uniform(low=0, high=0.1, size=(len_dof,))
-    stop = time.time()
-    # print('Time computing random vector: %.3e s' %(stop-start,))
+        # Initialize
+        shape_matrices, indices, data = [], [], []
+        for dim in range(3):
+            shape_matrices.append(len(qp_wq))
+            indices.append(indi_t); indices.append(indj_t) 
+            data.append(dB0_t); data.append(dB1_t)
+            data.append(dW00_t); data.append(dW11_t)
 
-    # Solve sylvester equation P s = r
-    start = time.time()
-    inputs = [*shape_matrices, *indices, *data, r]
-    s = solver.preconditioner_fd(*inputs)
-    stop = time.time()
-    # print('Time computing Fast Diag: %.3e s' %(stop-start,))
-    time.sleep(1)
+        # Solve sylvester equation P s = r
+        start = time.time()
+        inputs = [*shape_matrices, *indices, *data]
+        solver.test_precondfd(*inputs)
+        stop = time.time()
+        # print('Time computing Fast Diag: %.3e s' %(stop-start,))
+        # time.sleep(1)
 
-# # =============================
-# blockPrint()
-# # Create geometry
-# filename = 'thick_ring'
+else:
+    # PLOT 
+    # Chosee folder
+    full_path = os.path.realpath(__file__)
+    folder_file = os.path.dirname(full_path) + '/data/'
+    folder_figure = os.path.dirname(full_path) + '/results/'
 
-# DEGREE = 3
-# CUTS = 4
-# NBEL = 2**CUTS
-# NB_CTRLPTS = DEGREE + NBEL
+    # Import data
+    file1 = pd.read_table(folder_file + 'Algo1.dat', sep='\t', names=['nbel', 'time'])
+    file2 = pd.read_table(folder_file + 'Algo2.dat', sep='\t', names=['nbel', 'time'])
+    file3 = pd.read_table(folder_file + 'Algo3.dat', sep='\t', names=['nbel', 'time'])
 
-# # Create vector
-# len_dof = (NB_CTRLPTS-2)**3
-# r = np.ones(len_dof)
-# rext = np.zeros(NB_CTRLPTS**3)
+    # Post treatment
+    files = [file1, file2, file3]
+    labels = ['New algorithm', 'Former algorithm', 'Litterature']
+    for file, label in zip(files, labels):
 
-# geometry = {'degree': [DEGREE, DEGREE, DEGREE]}
-# modelGeo = geomdlModel(filename=filename, **geometry)
-# modelGeo.knot_refinement(nb_refinementByDirection= CUTS*np.array([1, 1, 1]))
+        # Extract data
+        nbel = file.nbel**3
+        times = file.time
+        nbdata = len(nbel)
 
-# # Creation of thermal model object
-# Model1 = fortran_mf_wq(modelGeo)
-# dof = Model1._thermal_dof
-# rext[dof] = r
+        # Plot data
+        plt.loglog(nbel, times, 'o--', label=label)
 
-# Ku1 = Model1.eval_Ku(r, table=Model1._thermalblockedboundaries)
-# Cu1 = Model1.eval_Cu(r, table=Model1._thermalblockedboundaries)
+        # Get slope
+        slope, _ = np.polyfit(np.log10(nbel),np.log10(times), 1)
+        slope = round(slope, 3)
+        annotation.slope_marker((nbel[round((nbdata-1)/2)], times[round((nbdata-1)/2)]), slope, 
+                                text_kwargs={'fontsize': 14},
+                                poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
-# Model2 = MF(modelGeo)
-# Ku2 = Model2.eval_conductivity_matrix() @ rext
-# Ku2 = Ku2[dof]
-# Ku3 = Model2.eval_Ku(rext)[dof]
+    # Set properties
+    plt.grid()
+    plt.xlabel("Total DOF", fontsize= 16)
+    plt.ylabel("CPU time (s)", fontsize= 16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.legend(loc='best')
 
-# Cu2 = Model2.eval_capacity_matrix() @ rext
-# Cu2 = Cu2[dof]
-# Cu3 = Model2.eval_Cu(rext)[dof]
-
-# # -------------
-# enablePrint()
-# error = np.abs(Cu3-Cu2)
-# print(np.min(error), np.max(error))
-
-# error = np.abs(Cu1-Cu2)
-# print(np.min(error), np.max(error))
-
-# print('-------------------')
-# error = np.abs(Ku3-Ku2)
-# print(np.min(error), np.max(error))
-
-# error = np.abs(Ku1-Ku2)
-# print(np.min(error), np.max(error))
-
-# # ==========================================
-# # Create geometry
-# filename = 'thick_ring'
-
-# DEGREE = 4
-# CUTS = 3
-# NBEL = 2**CUTS
-# NB_CTRLPTS = DEGREE + NBEL
-
-# # Create vector
-# len_dof = (NB_CTRLPTS-2)**3
-# r = np.ones(len_dof)
-# rext = np.zeros(NB_CTRLPTS**3)
-
-# geometry = {'degree': [DEGREE, DEGREE, DEGREE]}
-# modelGeo = geomdlModel(filename=filename, **geometry)
-# modelGeo.knot_refinement(nb_refinementByDirection= CUTS*np.array([1, 1, 1]))
-
-# # Creation of thermal model object
-# Model1 = fortran_mf_wq(modelGeo)
-# Model2 = MF(modelGeo)
-
-# # Block boundaries
-# dof = Model1._thermal_dof
-# sol_direct = None
-
-# # Recursive solver 
-# # ----------------
-# # Assemble source vector F
-# F2solve = Model1.eval_source_vector(powden_thickring, indi=dof)
-
-# if sol_direct is None: 
-#     sol_direct = np.ones(len(F2solve))
-#     print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
-
-# # With and without preconditioner
-# epsilon  = 1e-10
-# iterations = 5
-
-# for name in ['TDS']:
-#     # With fortran
-#     _, residue_f, error_f = Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, True)
-#     print(residue_f)
-
-#     # With python
-#     _, residue_p = Model2.mf_wq_conj_grad(F2solve, dof, iterations, epsilon)
-#     print(residue_p)
+    plt.tight_layout()
+    plt.savefig(folder_figure + 'ComplexityAlgo' + '.png')

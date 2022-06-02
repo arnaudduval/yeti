@@ -11,7 +11,8 @@ import os
 
 # Chosee folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder_file = os.path.dirname(full_path) + '/data/'
+folder_figure = os.path.dirname(full_path) + '/results/'
 
 # Select files
 fileList = ['mprofile_D16.dat', 'mprofile_I16.dat']
@@ -23,7 +24,7 @@ for i, file in enumerate(fileList):
     color = next(ax._get_lines.prop_cycler)['color']
 
     # Import data
-    data = pd.read_table(folder + file, sep=' ', names=['MEM', 'memory', 'time'])
+    data = pd.read_table(folder_file + file, sep=' ', names=['MEM', 'memory', 'time'])
     memory =  data.memory
     time = data.time - data.time[0]
 
@@ -52,4 +53,4 @@ plt.tight_layout()
 # plt.grid()
 
 # Maybe we can save images in svg format (vectorized)
-plt.savefig(folder + 'memoryusage' + '.png')
+plt.savefig(folder_figure + 'memoryusage' + '.png')

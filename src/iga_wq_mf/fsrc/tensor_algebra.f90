@@ -18,91 +18,133 @@ module tensor_methods
         !! Tensor R = (nu, nv, nw) (It depends on 'n')
         !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
 
+
         use omp_lib
         implicit none
         ! Input / output data 
         ! -------------------- 
         integer, intent(in) :: nc_u, nc_v, nc_w, nr, nc, n, nu, nv, nw
         double precision, intent(in) :: X, U
-        dimension :: X(nc_u*nc_v*nc_w), U(nr*nc)
+        dimension :: X(nc_u*nc_v*nc_w), U(nr, nc)
 
         double precision, intent(out) ::  R
         dimension :: R(nu*nv*nw)
 
         ! Local data
         ! ---------------
-        integer :: genPosX, genPosU, genPosR, nb_tasks
-        integer :: ju, jv, jw, i
-        double precision :: sum
+        double precision, allocatable, dimension(:, :) :: Xt, Rt
+        integer :: ju, jv, jw, i, nb_tasks
 
         ! Initialize
         R = 0.d0
 
         if (n.eq.1) then 
-            !$OMP PARALLEL PRIVATE(sum, ju, genPosX, genPosU, genPosR)
+
+            allocate(Xt(nc_u, nc_v*nc_w))
+            !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
-                    do i = 1, nr
-                        sum = 0.d0
-                        do ju = 1, nc_u
-                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            genPosU = i + (ju-1)*nr
-                            sum = sum + X(genPosX)*U(genPosU)
-                        end do
-                        genPosR = i + (jv-1)*nr + (jw-1)*nr*nc_v
-                        R(genPosR) = sum
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        else if (n.eq.2) then 
-            !$OMP PARALLEL PRIVATE(sum, jv, genPosX, genPosU, genPosR)
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
-            do jw = 1, nc_w
-                do ju = 1, nc_u
-                    do i = 1, nr
-                        sum = 0.d0
-                        do jv = 1, nc_v
-                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            genPosU = i + (jv-1)*nr
-                            sum = sum + X(genPosX)*U(genPosU)
-                        end do
-                        genPosR = ju + (i-1)*nc_u + (jw-1)*nc_u*nr
-                        R(genPosR) = sum
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        else if (n.eq.3) then 
-            !$OMP PARALLEL PRIVATE(sum, jw, genPosX, genPosU, genPosR)
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks)
-            do jv = 1, nc_v
-                do ju = 1, nc_u
-                    do i = 1, nr
-                        sum = 0.d0
-                        do jw = 1, nc_w
-                            genPosX = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            genPosU = i + (jw-1)*nr
-                            sum = sum + X(genPosX)*U(genPosU)
-                        end do
-                        genPosR = ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v
-                        R(genPosR) = sum
+                    do ju = 1, nc_u
+                        Xt(ju, jv + (jw-1)*nc_v) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
                     end do
                 end do
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_v*nc_w))
+            Rt = matmul(U, Xt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do i = 1, nr
+                        R(i + (jv-1)*nr + (jw-1)*nr*nc_v) = Rt(i, jv + (jw-1)*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+            deallocate(Rt)
+
+        else if (n.eq.2) then 
+
+            allocate(Xt(nc_v, nc_u*nc_w))
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do jv = 1, nc_v
+                        Xt(jv, ju + (jw-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_u*nc_w))
+            Rt = matmul(U, Xt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        R(ju + (i-1)*nc_u + (jw-1)*nc_u*nr) = Rt(i, ju + (jw-1)*nc_u)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+            deallocate(Rt)
+            
+        else if (n.eq.3) then 
+
+            allocate(Xt(nc_w, nc_u*nc_v))
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jw = 1, nc_w
+                        Xt(jw, ju + (jv-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_u*nc_v))
+            Rt = matmul(U, Xt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks) 
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        R(ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v) = Rt(i, ju + (jv-1)*nc_u)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+            deallocate(Rt)
+            
         end if
 
     end subroutine tensor_n_mode_product
 
-    subroutine tensor_n_mode_product_sp(nc_u, nc_v, nc_w, X, nr, nc, nnz, data_u, indi, indj, n, nu, nv, nw, R)
+    subroutine tensor_n_mode_product_sp(nc_u, nc_v, nc_w, X, nr, nc, nnz, U, indi, indj, n, nu, nv, nw, R)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
         !! Tensor X = (nc_u, nc_v, nc_w)
@@ -116,8 +158,8 @@ module tensor_methods
         ! Input / output data 
         ! -------------------- 
         integer, intent(in) :: nc_u, nc_v, nc_w, nr, nc, n, nu, nv, nw, nnz
-        double precision, intent(in) :: X, data_u
-        dimension :: X(nc_u*nc_v*nc_w), data_u(nnz)
+        double precision, intent(in) :: X, U
+        dimension :: X(nc_u*nc_v*nc_w), U(nnz)
         integer, intent(in) :: indi, indj
         dimension :: indi(nr+1), indj(nnz)
 
@@ -126,91 +168,116 @@ module tensor_methods
 
         ! Local data
         ! ---------------
-        integer :: genPosX, genPosR
-        integer :: ju, jv, jw, i, dummy, nb_tasks
-        double precision, allocatable, dimension(:) :: data_nnz
-        integer, allocatable, dimension(:) :: j_nnz
-        double precision :: sum
+        double precision, allocatable, dimension(:, :) :: Xt, Rt
+        integer :: ju, jv, jw, i, nb_tasks
+        integer :: dummy
 
         ! Initialize
         R = 0.d0
         dummy = nc
 
         if (n.eq.1) then 
-            !$OMP PARALLEL PRIVATE(sum, ju, genPosX, genPosR, j_nnz, data_nnz)
+
+            allocate(Xt(nc_u, nc_v*nc_w))
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do ju = 1, nc_u
+                        Xt(ju, jv + (jw-1)*nc_v) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_v*nc_w))
+            call MatMulsp(nr, nnz, nc_u, nc_v*nc_w, indi, indj, U, Xt, Rt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
             !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do i = 1, nr
-                        ! Define non zeros values of U
-                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
-                        j_nnz = indj(indi(i):indi(i+1)-1)
-                        data_nnz = data_u(indi(i):indi(i+1)-1)
-                        ! Get sum
-                        sum = 0.d0
-                        do ju = 1, size(j_nnz)
-                            genPosX = j_nnz(ju) + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            sum = sum + X(genPosX)*data_nnz(ju)
-                        end do
-                        genPosR = i + (jv-1)*nr + (jw-1)*nr*nc_v
-                        R(genPosR) = sum
-                        deallocate(j_nnz, data_nnz)
+                        R(i + (jv-1)*nr + (jw-1)*nr*nc_v) = Rt(i, jv + (jw-1)*nc_v)
                     end do
                 end do
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
+            deallocate(Rt)
+
         else if (n.eq.2) then 
-            !$OMP PARALLEL PRIVATE(sum, jv, genPosX, genPosR, j_nnz, data_nnz)
+
+            allocate(Xt(nc_v, nc_u*nc_w))
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do jv = 1, nc_v
+                        Xt(jv, ju + (jw-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_u*nc_w))
+            call MatMulsp(nr, nnz, nc_v, nc_u*nc_w, indi, indj, U, Xt, Rt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
             !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     do i = 1, nr
-                        ! Define non zeros values of U
-                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
-                        j_nnz = indj(indi(i):indi(i+1)-1)
-                        data_nnz = data_u(indi(i):indi(i+1)-1)
-                        ! Get sum
-                        sum = 0.d0
-                        do jv = 1, size(j_nnz)
-                            genPosX = ju + (j_nnz(jv)-1)*nc_u + (jw-1)*nc_u*nc_v
-                            sum = sum + X(genPosX)*data_nnz(jv)
-                        end do
-                        genPosR = ju + (i-1)*nc_u + (jw-1)*nc_u*nr
-                        R(genPosR) = sum
-                        deallocate(j_nnz, data_nnz)
+                        R(ju + (i-1)*nc_u + (jw-1)*nc_u*nr) = Rt(i, ju + (jw-1)*nc_u)
                     end do
                 end do
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
+            deallocate(Rt)
+            
         else if (n.eq.3) then 
-            !$OMP PARALLEL PRIVATE(sum, jw, genPosX, genPosR, j_nnz, data_nnz)
+
+            allocate(Xt(nc_w, nc_u*nc_v))
+            !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks)
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jw = 1, nc_w
+                        Xt(jw, ju + (jv-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+
+            allocate(Rt(nr, nc_u*nc_v))
+            call MatMulsp(nr, nnz, nc_w, nc_u*nc_v, indi, indj, U, Xt, Rt)
+            deallocate(Xt)
+
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks) 
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do i = 1, nr
-                        ! Define non zeros values of U
-                        allocate(j_nnz(indi(i+1)-indi(i)), data_nnz(indi(i+1)-indi(i)))
-                        j_nnz = indj(indi(i):indi(i+1)-1)
-                        data_nnz = data_u(indi(i):indi(i+1)-1)
-                        ! Get sum
-                        sum = 0.d0
-                        do jw = 1, size(j_nnz)
-                            genPosX = ju + (jv-1)*nc_u + (j_nnz(jw)-1)*nc_u*nc_v
-                            sum = sum + X(genPosX)*data_nnz(jw)
-                        end do
-                        genPosR = ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v
-                        R(genPosR) = sum
-                        deallocate(j_nnz, data_nnz)
+                        R(ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v) = Rt(i, ju + (jv-1)*nc_u)
                     end do
                 end do
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
+            deallocate(Rt)
+            
         end if
 
     end subroutine tensor_n_mode_product_sp
@@ -374,7 +441,7 @@ module tensor_methods
 
         !$OMP PARALLEL PRIVATE(genPos_out, sum) 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks) 
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u
@@ -445,7 +512,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_u,nnz_v,offset,ju,jv,indj_nnz_u,data_nnz_u,indj_nnz_v,data_nnz_v) &
         !$OMP PRIVATE(tensor,genPos_tensor,genPos_in,genPos_out,sum)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_u * nb_rows_v /nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_u*nb_rows_v/nb_tasks) 
         do iv = 1, nb_rows_v
             do iu = 1, nb_rows_u
                 ! General position
@@ -556,7 +623,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_u,nnz_v,nnz_w,offset,ju,jv,jw,indj_nnz_u,data_nnz_u,indj_nnz_v) &
         !$OMP PRIVATE(data_nnz_v,indj_nnz_w,data_nnz_w,tensor,genPos_tensor,genPos_in,genPos_out,sum)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks) 
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u
@@ -1029,7 +1096,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,offset,j_nnz_u,ju,j_nnz_v,jv,nnz_row_u) &
         !$OMP PRIVATE(nnz_row_v,i_nnz_u,i_nnz_v,data_row,size_data_row,genPosResult,result_offset,j)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_u * nb_rows_v /nb_tasks)
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_u*nb_rows_v/nb_tasks)
         do iv = 1, nb_rows_v
             do iu = 1, nb_rows_u
                 
@@ -1356,7 +1423,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw,nnz_row_u) &
         !$OMP PRIVATE(nnz_row_v,nnz_row_w,i_nnz_u,i_nnz_v,i_nnz_w,data_row,size_data_row,genPosResult,result_offset,j)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks)
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks)
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u
@@ -1502,7 +1569,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw) &
         !$OMP PRIVATE(BW_u,BW_v,BW_w,genPosResult,data_element)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks)
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w /nb_tasks)
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u
@@ -2147,7 +2214,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
         !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u * nb_rows_v * nb_rows_w /nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w /nb_tasks) 
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u

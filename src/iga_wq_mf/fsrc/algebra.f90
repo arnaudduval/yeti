@@ -182,8 +182,8 @@ subroutine crossproduct(v1, v2, v3)
 
 end subroutine crossproduct
 
-subroutine vector_kron_vector(size_A, A, size_B, B, C)
-    !! Evaluates kron product A x B (x : tensor product)
+subroutine kron_product_2vec(size_A, A, size_B, B, C, alpha)
+    !! Evaluates kron product A x B = C (x : tensor product)
 
     use omp_lib
     implicit none
@@ -191,33 +191,30 @@ subroutine vector_kron_vector(size_A, A, size_B, B, C)
     ! ---------------- 
     integer, intent(in) :: size_A, size_B
     double precision, intent(in) :: A(size_A), B(size_B)
+    double precision, intent(in) :: alpha
 
-    double precision, intent(out) :: C(size_A*size_B)
+    double precision, intent(inout) :: C(size_A*size_B)
 
     ! Local data
     ! ------------
-    integer :: i1, i2, indj, nb_tasks
+    integer :: i1, i2, j, nb_tasks
 
-    ! Initialize vector
-    C = 0.d0
-
-    ! Complete result
-    !$OMP PARALLEL PRIVATE(i1, i2, indj)
+    !$OMP PARALLEL PRIVATE(j)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, size_A*size_B/nb_tasks)
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size_A*size_B/nb_tasks)
     do i1 = 1, size_A
         do i2 = 1, size_B
-            indj = (i1-1)*size_B + i2
-            C(indj) = A(i1) * B(i2)
+            j = i2 + (i1-1)*size_B
+            C(j) = C(j) + alpha * A(i1) * B(i2)
         end do 
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
-end subroutine vector_kron_vector 
+end subroutine kron_product_2vec 
 
 subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
-    !! Returns the result of A x B x C, where x is kronecker product
+    !! Returns the result of A x B x C = D, where x is kronecker product
 
     use omp_lib
     implicit none
@@ -233,28 +230,107 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
     ! Local data
     ! -------------
-    integer :: i, nb_tasks
-    double precision, allocatable, dimension(:) :: AB, Dtemp
+    integer :: i1, i2, i3, j, nb_tasks
 
-    ! Compute A x B
-    allocate(AB(size_A*size_B))
-    call vector_kron_vector(size_A, A, size_B, B, AB)
-
-    ! Compute (A x B) x C
-    allocate(Dtemp(size_A*size_B*size_C))
-    call vector_kron_vector(size(AB), AB, size_C, C, Dtemp)
-    deallocate(AB)
-
-    !$OMP PARALLEL 
+    !$OMP PARALLEL PRIVATE(j)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, size(Dtemp)/nb_tasks)
-    do i = 1, size(Dtemp)
-        D(i) = D(i) + alpha*Dtemp(i)
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_A*size_B*size_C/nb_tasks)
+    do i1 = 1, size_A
+        do i2 = 1, size_B
+            do i3 = 1, size_C
+                j = i3 + (i2-1)*size_C + (i1-1)*size_C*size_B
+                D(j) = D(j) + alpha * A(i1) * B(i2) * C(i3)
+            end do
+        end do 
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine kron_product_3vec
+
+subroutine MatMulsp(nr_u, nnz_u, nr_x, nc_x, indi_u, indj_u, U, X, UX)
+    !! Matrix multiplication between sparse matrix and dense matrix U . X
+    !! It returns a dense matrix
+    !! Here nr_x is equal to nc_u
+
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nr_x, nc_x, nnz_u
+    integer, intent(in) :: indi_u, indj_u
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    double precision, intent(in) :: U, X
+    dimension ::  U(nnz_u), X(nr_x, nc_x)
+
+    double precision, intent(out) :: UX
+    dimension :: UX(nr_u, nc_x)
+
+    ! Local data
+    ! -------------
+    integer :: i, j, k, nb_tasks
+    double precision :: s
+
+    ! Initialize
+    UX = 0.d0
+
+    !$OMP PARALLEL PRIVATE(s, j)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nr_u*nc_x/nb_tasks)
+    do i = 1, nr_u
+        do k = 1, nc_x
+            s = 0.d0
+            do j = indi_u(i), indi_u(i+1)-1
+                s = s + U(j) * X(indj_u(j), k)
+            end do
+            UX(i, k) = s
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
+
+end subroutine MatMulsp
+
+subroutine MatMulPll(nr_u, nc_u, nc_x, U, X, UX)
+    !! Matrix multiplication type: U.V but parallelized
+    !! Matrix U = (nr_u, nc_u)
+    !! Matrix V = (nc_u, nc_x)
+
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nc_x
+    double precision, intent(in) :: U, X
+    dimension :: U(nr_u, nc_u), X(nc_u, nc_x)
+
+    double precision, intent(out) :: UX
+    dimension :: UX(nr_u, nc_x)
+
+    ! Local data
+    ! -------------
+    integer :: i, j, k, nb_tasks
+    double precision :: s
+
+    ! Initialize
+    UX = 0.d0
+
+    !$OMP PARALLEL PRIVATE(s, j)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nr_u*nc_x/nb_tasks)
+    do i = 1, nr_u
+        do k = 1, nc_x
+            s = 0.d0
+            do j = 1, nc_u
+                s = s + U(i, j) * X(j, k)
+            end do
+            UX(i, k) = s
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
+
+end subroutine MatMulPll
 
 ! -------------
 ! Indices

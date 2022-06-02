@@ -173,13 +173,13 @@ subroutine iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_
 
     !$OMP PARALLEL PRIVATE(genPos)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(array_in)/nb_tasks) 
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
     ! Initialize coefficients
     do j3 = 1, nb_cols_w
         do j2 = 1, nb_cols_v
             do j1 = 1, nb_cols_u
                 genPos = j1 + (j2-1)*nb_cols_u + (j3-1)*nb_cols_u*nb_cols_v
-                array_out(genPos) = coefs(genPos)*array_in(genPos)*W_u(j1)*W_v(j2)*W_w(j3)
+                array_out(genPos) = array_in(genPos)*coefs(genPos)*W_u(j1)*W_v(j2)*W_w(j3)
             end do
         end do
     end do
