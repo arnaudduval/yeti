@@ -179,7 +179,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
                             data_W00_u, data_W00_v, data_W00_w, &
                             array_input, array_output)
     !! Computes capacity matrix in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
 
     use tensor_methods
     implicit none 
@@ -261,7 +261,7 @@ subroutine mf_wq_get_cu_3d_csr( nb_rows_total, nb_cols_total, capacity_coefs, &
                             data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
                             array_input, array_output)
     !! Computes capacity matrix in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
 
     use tensor_methods
     implicit none 
@@ -345,7 +345,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
                             data_W00_w, data_W01_w, data_W10_w, data_W11_w, &
                             array_input, array_output)
     !! Computes K.u in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
 
     use tensor_methods
     implicit none 
@@ -606,7 +606,7 @@ subroutine mf_wq_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
                                 array_input, array_output)
     
     !! Computes K.u in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
     implicit none 
     ! Input / output data
     ! ---------------------

@@ -405,7 +405,7 @@ module tensor_methods
         !! Matrix Mu = (nb_rows_u, nb_cols_u)
         !! Matrix Mv = (nb_rows_v, nb_cols_v)
         !! Vector_in = (nb_cols_u * nb_cols_v)
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
 
         use omp_lib
         implicit none 
@@ -514,7 +514,7 @@ module tensor_methods
         !! Matrix Mv = (nb_rows_v, nb_cols_v)
         !! Matrix Mw = (nb_rows_w, nb_cols_w)
         !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
 
         use omp_lib
         implicit none 
@@ -974,7 +974,7 @@ module tensor_methods
                                 indi_result, size_data_result, data_result)
         !! Computes a matrix in 2D case (Wv . Bv) x (Wu . Bu)
         !! x: kronecker product and .: inner product
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
 
         use omp_lib
         implicit none 
@@ -1295,7 +1295,7 @@ module tensor_methods
                                 indi_result, size_data_result, data_result)
         !! Computes a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
         !! x: kronecker product and .: inner product
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
 
         use omp_lib
         implicit none 
@@ -1452,7 +1452,7 @@ module tensor_methods
                                 data_result)
         !! Computes a diagonal of a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
         !! x: kronecker product and .: inner product
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
         !! IT IS SLOWER THAN find_physical_diag_3d IN THIS FILE (3 times)
 
         use omp_lib
@@ -2112,7 +2112,7 @@ module tensor_methods
         !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
         !! Algotihm based on sum factorization adapted to diagonal case 
         !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
-        !! Indexes must be in CSR format
+        !! Indices must be in CSR format
 
         use omp_lib
         implicit none 

@@ -151,7 +151,7 @@ subroutine iga_get_data( degree, nb_el, size_data, qp_pos, data_W, &
     data_B0 = object%data_B0
     data_B1 = object%data_B1
 
-    ! Set indexes
+    ! Set indices
     data_ind = object%data_ind
 
     ! Set number of non zeros of integral matrix
@@ -258,7 +258,7 @@ subroutine wq_get_data( degree, nb_el, size_data, nb_qp, qp_pos, &
     data_W10 = object%data_W10
     data_W11 = object%data_W11
 
-    ! Set indexes
+    ! Set indices
     data_ind = object%data_ind
 
     ! Set number of non zeros of integral matrix

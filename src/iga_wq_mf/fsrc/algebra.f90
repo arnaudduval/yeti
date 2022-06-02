@@ -257,11 +257,10 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 end subroutine kron_product_3vec
 
 ! -------------
-! Indexes
+! Indices
 ! -------------
 subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     !! Change COO format to CSR format
-    !! Algorithm adapted from f70 to f90 (sparskit library)
 
     implicit none 
     ! Input / output data
@@ -280,17 +279,17 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
     ! Local data
     ! -------------
     double precision :: x
-    integer :: i, j, k
-    integer :: k0, iad
+    integer :: i, j, k, k0, iad
 
-    do k = 1, nb_rows+1
-        indi_csr(k) = 0
-    end do
+    ! Initialize
+    indi_csr = 0
 
+    ! Get number of non-zero terms for each row
     do  k = 1, nnz
         indi_csr(indi_coo(k)) = indi_csr(indi_coo(k)) + 1
     end do
 
+    ! Get CSR format for i-indices 
     k = 1
     do j = 1, nb_rows+1
         k0 = indi_csr(j)
@@ -298,6 +297,7 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
         k = k + k0
     end do
 
+    ! Sort COO non-zero values and update values of CSR j-indices
     do k = 1, nnz
         i = indi_coo(k)
         j = indj_coo(k)
@@ -308,10 +308,10 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
         indi_csr(i) = iad + 1
     end do
 
+    ! Update i-indices
     do  j = nb_rows, 1, -1
         indi_csr(j+1) = indi_csr(j)
     end do
-
     indi_csr(1) = 1
 
 end subroutine coo2csr
@@ -466,7 +466,7 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
                                 indi_B, indj_B, &  
                                 nb_rows_C, nb_cols_C, nnz_C, &
                                 indi_C, indj_C)
-    !! Returns indexes of A x B = C (x : kronecker product)
+    !! Returns indices of A x B = C (x : kronecker product)
     !! Where A and B are sparse matrices in CSR format
 
     use omp_lib
@@ -495,7 +495,7 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
     nb_rows_C = nb_rows_A * nb_rows_B
     nb_cols_C = nb_cols_A * nb_cols_B
 
-    ! Set indexes i in CSR format
+    ! Set indices i in CSR format
     indi_C(1) = 1
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
@@ -519,7 +519,7 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,indj_C_temp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_A*nb_rows_B/nb_tasks)
-    ! Set indexes j in csr format
+    ! Set indices j in csr format
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
             ! Select row
@@ -553,7 +553,7 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
                             indi_C, indj_C, &
                             nb_rows_D, nb_cols_D, nnz_D, &
                             indi_D, indj_D)
-    !! Returns indexes of A x B x C = D (x : kronecker product)
+    !! Returns indices of A x B x C = D (x : kronecker product)
     !! Where A, B and C are sparse matrices in CSR format
 
     use omp_lib
@@ -583,7 +583,7 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
     nb_rows_D = nb_rows_A * nb_rows_B * nb_rows_C
     nb_cols_D = nb_cols_A * nb_cols_B * nb_cols_D
 
-    ! Set indexes i in CSR format
+    ! Set indices i in CSR format
     indi_D(1) = 1
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
@@ -612,7 +612,7 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,j3,indj_D_temp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_A*nb_rows_B*nb_rows_C/nb_tasks)
-    ! Set indexes j in csr format
+    ! Set indices j in csr format
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
             do i3 = 1, nb_rows_C

@@ -821,7 +821,7 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     integer :: dummy1, dummy2, dummy3
 
-    ! Get indexes of I in each dimension
+    ! Get indices of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
@@ -913,7 +913,7 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     integer :: dummy1, dummy2, dummy3
 
-    ! Get indexes of I in each dimension
+    ! Get indices of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
@@ -1087,7 +1087,7 @@ subroutine wq_get_advention_3d(nb_cols_total, adv_coefs, &
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     integer :: dummy1, dummy2, dummy3
 
-    ! Get indexes of I in each dimension
+    ! Get indices of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v), indj_I_w(size_data_I_w))
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
@@ -1546,7 +1546,7 @@ subroutine wq_get_capacity_2d(nb_cols_total, capacity_coefs, &
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v
     integer :: dummy1, dummy2, dummy3
 
-    ! Get indexes of I in each dimension
+    ! Get indices of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v))
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)
@@ -1627,7 +1627,7 @@ subroutine wq_get_conductivity_2d(nb_cols_total, cond_coefs, &
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v
     integer :: dummy1, dummy2, dummy3
 
-    ! Get indexes of I in each dimension
+    ! Get indices of I in each dimension
     allocate(indj_I_u(size_data_I_u), indj_I_v(size_data_I_v))
     call get_I_csr(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indi_u, indj_u, size_data_I_u, indi_I_u, indj_I_u)
     call get_I_csr(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indi_v, indj_v, size_data_I_v, indi_I_v, indj_I_v)

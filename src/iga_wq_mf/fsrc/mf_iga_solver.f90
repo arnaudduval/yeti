@@ -9,7 +9,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
                                         data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
                                         Kdiag)
     !! Find the diagonal of conductivity matrix
-    !! Indexes in CSR format
+    !! Indices in CSR format
     
     use omp_lib
     use tensor_methods
@@ -197,7 +197,7 @@ subroutine mf_iga_get_cu_3d(nb_rows_total, nb_cols_total, capacity_coefs, &
                             data_B0_u, data_B0_v, data_B0_w, &
                             array_input, array_output)
     !! Computes capacity matrix in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
     
     use tensor_methods
     implicit none 
@@ -278,7 +278,7 @@ subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
                             data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
                             array_input, array_output)
     !! Computes K.u in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
 
     use tensor_methods
     implicit none 
@@ -543,7 +543,7 @@ subroutine mf_iga_get_ku_3d_csr(nb_rows_total, nb_cols_total, cond_coefs, &
                                 array_input, array_output)
     
     !! Computes K.u in 3D case
-    !! Indexes must be in CSR format
+    !! Indices must be in CSR format
     implicit none 
     ! Input / output data
     ! ---------------------
