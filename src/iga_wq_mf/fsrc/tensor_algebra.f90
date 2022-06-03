@@ -168,9 +168,9 @@ module tensor_methods
 
         ! Local data
         ! ---------------
-        double precision, allocatable, dimension(:, :) :: Xt, Rt
-        integer :: ju, jv, jw, i, nb_tasks
+        integer :: ju, jv, jw, i, jX, jR, k, nb_tasks
         integer :: dummy
+        double precision :: s
 
         ! Initialize
         R = 0.d0
@@ -178,105 +178,51 @@ module tensor_methods
 
         if (n.eq.1) then 
 
-            allocate(Xt(nc_u, nc_v*nc_w))
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
-                    do ju = 1, nc_u
-                        Xt(ju, jv + (jw-1)*nc_v) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-
-            allocate(Rt(nr, nc_v*nc_w))
-            call MatMulsp(nr, nnz, nc_u, nc_v*nc_w, indi, indj, U, Xt, Rt)
-            deallocate(Xt)
-
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
-            do jw = 1, nc_w
-                do jv = 1, nc_v
+                    jX = (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                    jR = (jv-1)*nr + (jw-1)*nr*nc_v
                     do i = 1, nr
-                        R(i + (jv-1)*nr + (jw-1)*nr*nc_v) = Rt(i, jv + (jw-1)*nc_v)
+                        s = 0.d0
+                        do k = indi(i), indi(i+1)-1
+                            s = s + U(k) * X(indj(k) + jX)
+                        end do
+                        R(i + jR) = s
                     end do
                 end do
             end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-            deallocate(Rt)
 
         else if (n.eq.2) then 
-
-            allocate(Xt(nc_v, nc_u*nc_w))
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
-            do jw = 1, nc_w
-                do ju = 1, nc_u
-                    do jv = 1, nc_v
-                        Xt(jv, ju + (jw-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-
-            allocate(Rt(nr, nc_u*nc_w))
-            call MatMulsp(nr, nnz, nc_v, nc_u*nc_w, indi, indj, U, Xt, Rt)
-            deallocate(Xt)
-
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
-            do jw = 1, nc_w
-                do ju = 1, nc_u
-                    do i = 1, nr
-                        R(ju + (i-1)*nc_u + (jw-1)*nc_u*nr) = Rt(i, ju + (jw-1)*nc_u)
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-            deallocate(Rt)
             
-        else if (n.eq.3) then 
-
-            allocate(Xt(nc_w, nc_u*nc_v))
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
-            do jv = 1, nc_v
+            do jw = 1, nc_w
                 do ju = 1, nc_u
-                    do jw = 1, nc_w
-                        Xt(jw, ju + (jv-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
-                    end do
-                end do
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-
-            allocate(Rt(nr, nc_u*nc_v))
-            call MatMulsp(nr, nnz, nc_w, nc_u*nc_v, indi, indj, U, Xt, Rt)
-            deallocate(Xt)
-
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks) 
-            do jv = 1, nc_v
-                do ju = 1, nc_u
+                    jX = ju + (jw-1)*nc_u*nc_v
+                    jR = ju + (jw-1)*nc_u*nr
                     do i = 1, nr
-                        R(ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v) = Rt(i, ju + (jv-1)*nc_u)
+                        s = 0.d0
+                        do k = indi(i), indi(i+1)-1
+                            s = s + U(k) * X((indj(k)-1)*nc_u + jX)
+                        end do
+                        R((i-1)*nc_u + jR) = s
                     end do
                 end do
             end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-            deallocate(Rt)
+
+        else if (n.eq.3) then 
+            
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    ! In this case jR = jX
+                    jX = ju + (jv-1)*nc_u
+                    do i = 1, nr
+                        s = 0.d0
+                        do k = indi(i), indi(i+1)-1
+                            s = s + U(k) * X((indj(k)-1)*nc_u*nc_v + jX)
+                        end do
+                        R((i-1)*nc_u*nc_v + jX) = s
+                    end do
+                end do
+            end do
             
         end if
 
@@ -713,30 +659,14 @@ module tensor_methods
         ! -------------
         double precision :: R1
         dimension :: R1(nb_rows_u*nb_cols_v)
-        double precision :: MuVec, MvVec
-        dimension :: MuVec(nb_rows_u*nb_cols_u), MvVec(nb_rows_v*nb_cols_v)
-        integer :: i, j
-        
-        ! Vectorize
-        do j = 1, nb_cols_u
-            do i = 1, nb_rows_u
-                MuVec(i+(j-1)*nb_rows_u) = Mu(i, j)
-            end do
-        end do
-
-        do j = 1, nb_cols_v
-            do i = 1, nb_rows_v
-                MvVec(i+(j-1)*nb_rows_v) = Mv(i, j)
-            end do
-        end do
-
+    
         ! First product
         call tensor_n_mode_product(nb_cols_u, nb_cols_v, 1, vector_in, &
-        nb_rows_u, nb_cols_u, MuVec, 1, nb_rows_u, nb_cols_v, 1, R1)
+        nb_rows_u, nb_cols_u, Mu, 1, nb_rows_u, nb_cols_v, 1, R1)
 
         ! Second product
         call tensor_n_mode_product(nb_rows_u, nb_cols_v, 1, R1, &
-        nb_rows_v, nb_cols_v, MvVec, 2, nb_rows_u, nb_rows_v, 1, vector_out)
+        nb_rows_v, nb_cols_v, Mv, 2, nb_rows_u, nb_rows_v, 1, vector_out)
 
     end subroutine tensor2d_dot_vector
 
@@ -768,43 +698,21 @@ module tensor_methods
         ! Local data 
         ! -------------
         double precision, allocatable, dimension(:) :: R1, R2                    
-        double precision :: MuVec, MvVec, MwVec
-        dimension :: MuVec(nb_rows_u*nb_cols_u), MvVec(nb_rows_v*nb_cols_v), MwVec(nb_rows_w*nb_cols_w)
-        integer :: i, j
-        
-        ! Vectorize
-        do j = 1, nb_cols_u
-            do i = 1, nb_rows_u
-                MuVec(i+(j-1)*nb_rows_u) = Mu(i, j)
-            end do
-        end do
-
-        do j = 1, nb_cols_v
-            do i = 1, nb_rows_v
-                MvVec(i+(j-1)*nb_rows_v) = Mv(i, j)
-            end do
-        end do
-
-        do j = 1, nb_cols_w
-            do i = 1, nb_rows_w
-                MwVec(i+(j-1)*nb_rows_w) = Mw(i, j)
-            end do
-        end do
 
         ! First product
         allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
         call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
-        nb_rows_u, nb_cols_u, MuVec, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+        nb_rows_u, nb_cols_u, Mu, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
 
         ! Second product
         allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
         call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
-        nb_rows_v, nb_cols_v, MvVec, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+        nb_rows_v, nb_cols_v, Mv, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
         deallocate(R1)
 
         ! Third product
         call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
-        nb_rows_w, nb_cols_w, MwVec, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+        nb_rows_w, nb_cols_w, Mw, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
         deallocate(R2)
 
     end subroutine tensor3d_dot_vector
@@ -976,10 +884,10 @@ module tensor_methods
         double precision, allocatable :: Ci0(:), Ci1(:)
 
         ! Create Bl and Wl
-        double precision, allocatable :: BW_u(:), BW_v(:)
+        double precision, allocatable, dimension(:,:) :: BW_u, BW_v
 
         ! Loops
-        integer :: genPosBWl, genPosC
+        integer :: genPosC
         integer :: iu, iv, ju, jv, posu, posv
 
         ! Initiliaze
@@ -997,20 +905,18 @@ module tensor_methods
         end do
 
         ! Set values of BW
-        allocate(BW_u(nnz_row_u*nnz_col_u))
-        allocate(BW_v(nnz_row_v*nnz_col_v))
+        allocate(BW_u(nnz_row_u,nnz_col_u))
+        allocate(BW_v(nnz_row_v,nnz_col_v))
 
         do ju = 1, nnz_col_u
             do iu = 1, nnz_row_u
-                genPosBWl = iu + (ju-1)*nnz_row_u
-                BW_u(genPosBWl) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
+                BW_u(iu, ju) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
             end do
         end do
 
         do jv = 1, nnz_col_v
             do iv = 1, nnz_row_v
-                genPosBWl = iv + (jv-1)*nnz_row_v
-                BW_v(genPosBWl) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
+                BW_v(iv, jv) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
             end do
         end do
 
@@ -1280,10 +1186,10 @@ module tensor_methods
         double precision, allocatable :: Ci0(:), Ci1(:), Ci2(:)
 
         ! Create Bl and Wl
-        double precision, allocatable :: BW_u(:), BW_v(:), BW_w(:)
+        double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w
 
         ! Loops
-        integer :: genPosBWl, genPosC
+        integer :: genPosC
         integer :: iu, iv, iw, ju, jv, jw, posu, posv, posw
 
         ! Initiliaze
@@ -1304,28 +1210,25 @@ module tensor_methods
         end do
 
         ! Set values of BW
-        allocate(BW_u(nnz_row_u*nnz_col_u))
-        allocate(BW_v(nnz_row_v*nnz_col_v))
-        allocate(BW_w(nnz_row_w*nnz_col_w))
+        allocate(BW_u(nnz_row_u,nnz_col_u))
+        allocate(BW_v(nnz_row_v,nnz_col_v))
+        allocate(BW_w(nnz_row_w,nnz_col_w))
 
         do ju = 1, nnz_col_u
             do iu = 1, nnz_row_u
-                genPosBWl = iu + (ju-1)*nnz_row_u
-                BW_u(genPosBWl) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
+                BW_u(iu, ju) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
             end do
         end do
 
         do jv = 1, nnz_col_v
             do iv = 1, nnz_row_v
-                genPosBWl = iv + (jv-1)*nnz_row_v
-                BW_v(genPosBWl) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
+                BW_v(iv, jv) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
             end do
         end do
 
         do jw = 1, nnz_col_w
             do iw = 1, nnz_row_w
-                genPosBWl = iw + (jw-1)*nnz_row_w
-                BW_w(genPosBWl) = B_w(i_nnz_w(iw), j_nnz_w(jw)) * W_w(row_w, j_nnz_w(jw))
+                BW_w(iw, jw) = B_w(i_nnz_w(iw), j_nnz_w(jw)) * W_w(row_w, j_nnz_w(jw))
             end do
         end do
 
@@ -1520,7 +1423,7 @@ module tensor_methods
         !! Computes a diagonal of a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
         !! x: kronecker product and .: inner product
         !! Indices must be in CSR format
-        !! IT IS SLOWER THAN find_physical_diag_3d IN THIS FILE (3 times)
+        !! IT IS SLOWER THAN find_physical_diag_3d IN THIS FILE (8 times more or less)
 
         use omp_lib
         implicit none 

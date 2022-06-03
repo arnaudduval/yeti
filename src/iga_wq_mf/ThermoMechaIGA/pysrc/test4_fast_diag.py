@@ -23,8 +23,10 @@ dataExist = False
 if not dataExist:
     # Set global variables
     DEGREE = 5
-    for NBEL in range(10, 300, 20): 
+    for NBEL in range(50, 300, 20): 
         NB_CTRLPTS = DEGREE + NBEL
+        print('********')
+        print(NB_CTRLPTS)
 
         start = time.time()
         # Define basis (the same for all directions)

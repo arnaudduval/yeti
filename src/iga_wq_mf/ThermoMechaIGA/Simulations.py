@@ -177,7 +177,7 @@ for CUTS in range(5, 6):
         for GEOMETRY_CASE in ['VB', 'TR']:
 
             if IS_IGA_GALERKIN: is_cg_list = [True]
-            else: is_cg_list = [False]
+            else: is_cg_list = [True]
         
             for IS_CG in is_cg_list:
                 for DEGREE in range(3, 4):
@@ -203,8 +203,8 @@ for CUTS in range(5, 6):
                     print([DEGREE, 2**CUTS, txtname])
 
                     # Run simulation
-                    method_list = ["TDS"]
-                    # blockPrint()
+                    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+                    blockPrint()
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                                     method_list, IS_CG, isOnlyIter=True)
                     enablePrint()

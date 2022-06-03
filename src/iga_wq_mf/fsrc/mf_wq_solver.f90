@@ -240,6 +240,7 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
     call cpu_time(finish1)
+    print*, '----'
 
     ! Evaluate diag(coefs) * array_temp1
     allocate(array_temp_1tt(nb_cols_total))
@@ -254,7 +255,10 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
     call cpu_time(finish2)
+    print*, '----'
+    
     print*, finish1-start1, finish2 -start2
+    print*, '===================='
 
     deallocate(array_temp_1tt)
 
@@ -741,7 +745,7 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
 
     ! double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    double precision :: start, finish
+    ! double precision :: start, finish
 
     ! Initialize
     s = 1.d0

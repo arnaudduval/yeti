@@ -41,7 +41,7 @@ else:
 # ====================================================================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for GEOMETRY_CASE in ['SQ', 'CB', 'VB', 'TR', 'RQA']:
+    for GEOMETRY_CASE in ['SQ', 'VB', 'TR', 'RQA', 'CB']:
         for varName in ['K', 'C', 'F', 'J', 'QP']:
             for DEGREE in range(3, 6):
                 norm = []; ddl =[]

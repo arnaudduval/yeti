@@ -261,10 +261,10 @@ subroutine MatMulsp(nr_u, nnz_u, nr_x, nc_x, indi_u, indj_u, U, X, UX)
     integer, intent(in) :: indi_u, indj_u
     dimension :: indi_u(nr_u+1), indj_u(nnz_u)
     double precision, intent(in) :: U, X
-    dimension ::  U(nnz_u), X(nr_x, nc_x)
+    dimension ::  U(nnz_u), X(nr_x*nc_x)
 
     double precision, intent(out) :: UX
-    dimension :: UX(nr_u, nc_x)
+    dimension :: UX(nr_u*nc_x)
 
     ! Local data
     ! -------------
@@ -281,9 +281,9 @@ subroutine MatMulsp(nr_u, nnz_u, nr_x, nc_x, indi_u, indj_u, U, X, UX)
         do i = 1, nr_u
             s = 0.d0
             do k = indi_u(i), indi_u(i+1)-1
-                s = s + U(k) * X(indj_u(k), j)
+                s = s + U(k) * X(indj_u(k) + (j-1)*nr_x)
             end do
-            UX(i, j) = s
+            UX(i + (j-1)*nr_u) = s
         end do
     end do
     !$OMP END DO NOWAIT
