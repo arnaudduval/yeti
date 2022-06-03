@@ -23,7 +23,7 @@ dataExist = False
 if not dataExist:
     # Set global variables
     DEGREE = 5
-    for NBEL in range(10, 300, 10): 
+    for NBEL in range(10, 300, 20): 
         NB_CTRLPTS = DEGREE + NBEL
 
         start = time.time()

@@ -274,63 +274,22 @@ subroutine MatMulsp(nr_u, nnz_u, nr_x, nc_x, indi_u, indj_u, U, X, UX)
     ! Initialize
     UX = 0.d0
 
-    !$OMP PARALLEL PRIVATE(s, j)
+    !$OMP PARALLEL PRIVATE(s, k) 
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nr_u*nc_x/nb_tasks)
-    do i = 1, nr_u
-        do k = 1, nc_x
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_x*nr_u/nb_tasks)
+    do j = 1, nc_x
+        do i = 1, nr_u
             s = 0.d0
-            do j = indi_u(i), indi_u(i+1)-1
-                s = s + U(j) * X(indj_u(j), k)
+            do k = indi_u(i), indi_u(i+1)-1
+                s = s + U(k) * X(indj_u(k), j)
             end do
-            UX(i, k) = s
+            UX(i, j) = s
         end do
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL
 
 end subroutine MatMulsp
-
-subroutine MatMulPll(nr_u, nc_u, nc_x, U, X, UX)
-    !! Matrix multiplication type: U.V but parallelized
-    !! Matrix U = (nr_u, nc_u)
-    !! Matrix V = (nc_u, nc_x)
-
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_u, nc_u, nc_x
-    double precision, intent(in) :: U, X
-    dimension :: U(nr_u, nc_u), X(nc_u, nc_x)
-
-    double precision, intent(out) :: UX
-    dimension :: UX(nr_u, nc_x)
-
-    ! Local data
-    ! -------------
-    integer :: i, j, k, nb_tasks
-    double precision :: s
-
-    ! Initialize
-    UX = 0.d0
-
-    !$OMP PARALLEL PRIVATE(s, j)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nr_u*nc_x/nb_tasks)
-    do i = 1, nr_u
-        do k = 1, nc_x
-            s = 0.d0
-            do j = 1, nc_u
-                s = s + U(i, j) * X(j, k)
-            end do
-            UX(i, k) = s
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
-
-end subroutine MatMulPll
 
 ! -------------
 ! Indices

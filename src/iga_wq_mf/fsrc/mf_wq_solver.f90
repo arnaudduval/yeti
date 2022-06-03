@@ -227,16 +227,19 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     ! Local data 
     ! ----------------- 
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
+    double precision :: start1, finish1, start2, finish2
 
     ! Initialize
     allocate(array_temp_1(nb_cols_total))
     array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
+    call cpu_time(start1)
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
+    call cpu_time(finish1)
 
     ! Evaluate diag(coefs) * array_temp1
     allocate(array_temp_1tt(nb_cols_total))
@@ -245,10 +248,13 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
 
     ! Eval W * array_temp1
     array_output = 0.d0
+    call cpu_time(start2)
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
     data_W00_w, array_temp_1tt, array_output)
+    call cpu_time(finish2)
+    print*, finish1-start1, finish2 -start2
 
     deallocate(array_temp_1tt)
 
@@ -724,6 +730,7 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
 
     ! Local data
     ! ------------------
+    double precision, dimension(:), allocatable :: capacity_coefs
     double precision :: s, r1
     dimension :: s(nb_rows_u*nb_rows_v*nb_rows_w), r1(nb_rows_u*nb_rows_v*nb_rows_w)
     
@@ -779,12 +786,21 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     !             U_u, U_v, U_w, Deigen, s, r)
 
     ! -----------------------
-    ! sumfact3d_dot_vector
-    call cpu_time(start)
-    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
-                U_u, U_v, U_w, s, r1)
-    call cpu_time(finish)
-    print*, finish-start
+    ! ! sumfact3d_dot_vector
+    ! call cpu_time(start)
+    ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+    !             U_u, U_v, U_w, s, r1)
+    ! call cpu_time(finish)
+    ! print*, finish-start
+
+    allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))
+    capacity_coefs = 1.d0
+    call mf_wq_get_cu_3d_csr( nb_rows_u*nb_rows_v*nb_rows_w, nb_cols_u*nb_cols_v*nb_cols_w, capacity_coefs, &
+    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+    size_data_u, size_data_v, size_data_w, &
+    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+    data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
+    s, r1)
 
 end subroutine test_precondfd
 

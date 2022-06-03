@@ -25,7 +25,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-isIGA = True
+isIGA = False
 CONSTRUCTION = True
 SYMMETRY = False
 

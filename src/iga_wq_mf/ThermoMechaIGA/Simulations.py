@@ -172,7 +172,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
     return output
 
 # Constants
-for CUTS in range(4, 5):
+for CUTS in range(5, 6):
     for IS_IGA_GALERKIN in [False]:
         for GEOMETRY_CASE in ['VB', 'TR']:
 
@@ -180,7 +180,7 @@ for CUTS in range(4, 5):
             else: is_cg_list = [False]
         
             for IS_CG in is_cg_list:
-                for DEGREE in range(4, 5):
+                for DEGREE in range(3, 4):
                     # Print current time
                     now = datetime.now()
                     current_time = now.strftime("%H:%M:%S")
@@ -203,10 +203,10 @@ for CUTS in range(4, 5):
                     print([DEGREE, 2**CUTS, txtname])
 
                     # Run simulation
-                    method_list = ["WP", "C", "TDS", "JM"]
-                    blockPrint()
+                    method_list = ["TDS"]
+                    # blockPrint()
                     inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                                    method_list, IS_CG)
+                                    method_list, IS_CG, isOnlyIter=True)
                     enablePrint()
 
                     # Export results
