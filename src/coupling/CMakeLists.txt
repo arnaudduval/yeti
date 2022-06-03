@@ -34,6 +34,7 @@ CreateF2PYModule(NAME cplgmatrix
                        ${CMAKE_CURRENT_SOURCE_DIR}/build_dirichletBCmatrix.f
                        ${CMAKE_CURRENT_SOURCE_DIR}/cplg_U5_wEmbedded.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/weakInterfaceInfos.f
+                       ${CMAKE_CURRENT_SOURCE_DIR}/eval_coupling_gpts.f90
                  LINK_LIBRARIES coupling base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/coupling)
 
