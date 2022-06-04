@@ -152,22 +152,13 @@ subroutine wq_diagonal_dot_vector(nb_cols_total, coefs, array_in, array_out)
     double precision, intent(out) :: array_out
     dimension :: array_out(nb_cols_total)
 
-    ! Local data
-    !--------------
-    integer :: nb_tasks, i
-
-    ! Initialize
-    array_out = 0.d0
-
     !$OMP PARALLEL
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
-    do i = 1, nb_cols_total 
-        array_out(i) = coefs(i)*array_in(i)
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
+    !$OMP WORKSHARE 
+    array_out = coefs * array_in
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
+    
 end subroutine wq_diagonal_dot_vector
 
 subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
@@ -226,12 +217,11 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
 
     ! Local data 
     ! ----------------- 
-    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
-    double precision :: start1, finish1, start2, finish2
+    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t
+    double precision :: start1, finish1, start2, finish2, start3, finish3
 
     ! Initialize
     allocate(array_temp_1(nb_cols_total))
-    array_temp_1 = 0.d0
 
     ! Eval B.transpose * array_in
     call cpu_time(start1)
@@ -240,27 +230,26 @@ subroutine mf_wq_get_cu_3d( nb_cols_total, capacity_coefs, &
     size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
     data_B0T_w, array_input, array_temp_1)
     call cpu_time(finish1)
-    print*, '----'
 
     ! Evaluate diag(coefs) * array_temp1
-    allocate(array_temp_1tt(nb_cols_total))
-    call wq_diagonal_dot_vector(size(array_temp_1), capacity_coefs, array_temp_1, array_temp_1tt)
+    call cpu_time(start3)
+    allocate(array_temp_1t(nb_cols_total))
+    call wq_diagonal_dot_vector(size(array_temp_1), capacity_coefs, array_temp_1, array_temp_1t)
     deallocate(array_temp_1)
+    call cpu_time(finish3)
 
     ! Eval W * array_temp1
-    array_output = 0.d0
     call cpu_time(start2)
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1tt, array_output)
+    data_W00_w, array_temp_1t, array_output)
     call cpu_time(finish2)
-    print*, '----'
     
-    print*, finish1-start1, finish2 -start2
+    print*, finish1-start1, finish3 -start3, finish2 -start2
     print*, '===================='
 
-    deallocate(array_temp_1tt)
+    deallocate(array_temp_1t)
 
 end subroutine mf_wq_get_cu_3d
 
@@ -409,20 +398,18 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! Local data 
     ! ------------------
-    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
+    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t, array_temp_1tt
 
     ! Initialize
-    array_output = 0.d0 
+    array_output = 0.d0
+    allocate(array_temp_1(nb_cols_total))
+    allocate(array_temp_1t(nb_cols_total))
+    allocate(array_temp_1tt(nb_cols_total))
 
     ! ----------------------------------------
     ! For c00, c10 and c20
     ! ----------------------------------------
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
-
-    ! Initialize
-    allocate(array_temp_1(nb_cols_total))
-    array_temp_1 = 0.d0
-
     ! Eval B.transpose * array_in
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B1T_u, & 
@@ -431,61 +418,59 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
 
     ! ---------------------
     ! Get W = W00_w x W00_v x W11_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 1, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 1, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W11_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1tt, array_output)
+    data_W00_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
-
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
+        
     ! ---------------------
     ! Get W = W00_w x W10_v x W01_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 1, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 1, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W01_u, &
     size_data_v, indi_v, indj_v, data_W10_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1tt, array_output)
+    data_W00_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ---------------------
     ! Get W = W10_w x W00_v x W01_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 1, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 1, :), array_temp_1, array_temp_1t)
 
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W01_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W10_w, array_temp_1tt, array_output)
+    data_W10_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
-    deallocate(array_temp_1)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ----------------------------------------
     ! For c01, c11 and c21
     ! ----------------------------------------
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
-    ! Initialize
-    allocate(array_temp_1(nb_cols_total))
-    array_temp_1 = 0.d0
-
     ! Eval B.transpose * array_in
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
@@ -494,61 +479,59 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W00_w x W01_v x W10_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 2, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 2, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W10_u, &
     size_data_v, indi_v, indj_v, data_W01_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1tt, array_output)
-
-    deallocate(array_temp_1tt)
+    data_W00_w, array_temp_1t, array_temp_1tt)
+    
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ---------------------
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 2, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 2, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W11_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1tt, array_output)
-
-    deallocate(array_temp_1tt)
+    data_W00_w, array_temp_1t, array_temp_1tt)
     
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
+
     ! ---------------------
     ! Get W = W10_w x W01_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 2, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 2, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W01_v, size_data_w, indi_w, indj_w, & 
-    data_W10_w, array_temp_1tt, array_output)
+    data_W10_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
-    deallocate(array_temp_1)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ----------------------------------------
     ! For c02, c12 and c22
     ! ----------------------------------------
     ! Get B = B1_w x B0_v x B0_u (Kronecker product)
-    ! Initialize
-    allocate(array_temp_1(nb_cols_total))
-    array_temp_1 = 0.d0
-    
     ! Eval B.transpose * array_in
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
     nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
@@ -557,51 +540,57 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     
     ! ---------------------
     ! Get W = W01_w x W00_v x W10_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 3, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 3, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W10_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W01_w, array_temp_1tt, array_output)
+    data_W01_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
     
     ! ---------------------
     ! Get W = W01_w x W10_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 3, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(2, 3, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W10_v, size_data_w, indi_w, indj_w, & 
-    data_W01_w, array_temp_1tt, array_output)
+    data_W01_w, array_temp_1t, array_temp_1tt)
 
-    deallocate(array_temp_1tt)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ---------------------
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    allocate(array_temp_1tt(nb_cols_total))
-    array_temp_1tt = 0.d0
-
     ! Evaluate diag(coefs) * array_temp1
-    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 3, :), array_temp_1, array_temp_1tt)
+    call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(3, 3, :), array_temp_1, array_temp_1t)
     
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W00_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W11_w, array_temp_1tt, array_output)
+    data_W11_w, array_temp_1t, array_temp_1tt)
+
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    array_output = array_output + array_temp_1tt
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     deallocate(array_temp_1tt)
+    deallocate(array_temp_1t)
     deallocate(array_temp_1)
     
 end subroutine mf_wq_get_ku_3d
@@ -745,7 +734,7 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
 
     ! double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    ! double precision :: start, finish
+    double precision :: start, finish
 
     ! Initialize
     s = 1.d0
@@ -790,11 +779,11 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     !             U_u, U_v, U_w, Deigen, s, r)
 
     ! -----------------------
-    ! ! sumfact3d_dot_vector
-    ! call cpu_time(start)
+    ! sumfact3d_dot_vector
+    call cpu_time(start)
     ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
     !             U_u, U_v, U_w, s, r1)
-    ! call cpu_time(finish)
+    call cpu_time(finish)
     ! print*, finish-start
 
     allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))

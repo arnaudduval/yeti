@@ -248,48 +248,26 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine MatMulsp(nr_u, nnz_u, nr_x, nc_x, indi_u, indj_u, U, X, UX)
-    !! Matrix multiplication between sparse matrix and dense matrix U . X
-    !! It returns a dense matrix
+subroutine spVM(nnz_u, indj_u, U, nr_x, nc_x, X, UX)
+    !! Matrix multiplication between sparse vector and dense matrix U . X
+    !! It returns a dense vector
     !! Here nr_x is equal to nc_u
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nr_u, nr_x, nc_x, nnz_u
-    integer, intent(in) :: indi_u, indj_u
-    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    integer, intent(in) :: nr_x, nc_x, nnz_u
+    integer, intent(in) :: indj_u
+    dimension :: indj_u(nnz_u)
     double precision, intent(in) :: U, X
-    dimension ::  U(nnz_u), X(nr_x*nc_x)
+    dimension :: U(nnz_u), X(nr_x, nc_x)
 
     double precision, intent(out) :: UX
-    dimension :: UX(nr_u*nc_x)
+    dimension :: UX(nc_x)
 
-    ! Local data
-    ! -------------
-    integer :: i, j, k, nb_tasks
-    double precision :: s
+    UX = matmul(U, X(indj_u, :))
 
-    ! Initialize
-    UX = 0.d0
-
-    !$OMP PARALLEL PRIVATE(s, k) 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_x*nr_u/nb_tasks)
-    do j = 1, nc_x
-        do i = 1, nr_u
-            s = 0.d0
-            do k = indi_u(i), indi_u(i+1)-1
-                s = s + U(k) * X(indj_u(k) + (j-1)*nr_x)
-            end do
-            UX(i + (j-1)*nr_u) = s
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
-
-end subroutine MatMulsp
+end subroutine spVM
 
 ! -------------
 ! Indices
