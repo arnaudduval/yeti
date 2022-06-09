@@ -677,6 +677,44 @@ class IGAparametrization:
 
         return inputs
 
+    def get_inputs4eval_coupling_gpts(self, filename, npts_u, npts_v):
+        """Return the necessary data evaluate coupling Gauss points coordinates
+        Paramaters
+        ----------
+        filename : string
+            Base name for resulting files
+        npts_u : integer
+            Number of points to compute along u parametric direction
+        npts_v : integer
+            Number of points to compute along v parametric direction
+        Return
+        ------
+        inputs : dict
+            The necessary input parameters for Fortran subroutin eval_coupling_gpts
+        """
+        inputs = {'filename': filename,
+                  'npts_u': npts_u,
+                  'npts_v': npts_v,
+                  'coords3d': self._COORDS,
+                  'ien': self._IEN_flat,
+                  'nb_elem_patch': self._elementsByPatch,
+                  'nkv': self._Nkv,
+                  'ukv': self._Ukv_flat, 
+                  'nijk': self._Nijk,
+                  'weight': self._weight_flat, 
+                  'jpqr': self._Jpqr,
+                  'elt_type': self._ELT_TYPE_flat,
+                  'props': self._PROPS_flat,
+                  'jprops': self._JPROPS, 
+                  'tensor': self._TENSOR_flat, 
+                  'mcrd': self._mcrd, 
+                  'nb_patch': self._nb_patch,
+                  'nb_elem': self._nb_elem,
+                  'nnode': self._nnode,
+                  'nb_cp': self._nb_cp}
+
+        return inputs
+
     def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3),
                                Flag=np.array([True, True, True])):
         """Get the necessary inputs for .vtu file generation.
