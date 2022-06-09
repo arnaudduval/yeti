@@ -31,6 +31,7 @@ target_link_libraries(coupling base)
 CreateF2PYModule(NAME cplgmatrix
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/build_cplgmatrix.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/build_cplgmatrixU5.f90
+                       ${CMAKE_CURRENT_SOURCE_DIR}/build_cplgmatrixU5_wdatabase.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/build_dirichletBCmatrix.f
                        ${CMAKE_CURRENT_SOURCE_DIR}/cplg_U5_wEmbedded.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/weakInterfaceInfos.f
