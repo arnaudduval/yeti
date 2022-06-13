@@ -41,15 +41,15 @@ plt.xlabel("Time (s)", fontsize= 16)
 plt.ylabel("Memory used (in MiB)", fontsize= 16)
 plt.xticks(fontsize=16)
 plt.yticks(fontsize=16)
-plt.legend(loc='best')
+plt.legend(loc='best',fontsize=16)
 plt.tight_layout()
 
 # # Plot the zoomed portion
 # # Location for the zoomed portion 
-# sub_axes = plt.axes([.28, .577, .25, .25]) 
+# sub_axes = plt.axes([.28, .52, .25, .25]) 
 # sub_axes.plot(time_zoomed, memory_zoommed2, color=color) 
-# plt.xticks(fontsize=16)
-# plt.yticks(fontsize=16)
+# plt.xticks(fontsize=14)
+# plt.yticks(fontsize=14)
 # plt.grid()
 
 # Maybe we can save images in svg format (vectorized)

@@ -137,7 +137,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         # With and without preconditioner
         time_iter, residue, error, memory_iter = [], [], [], []
-        epsilon  = 1e-15
+        epsilon  = 1e-5
         iterations = 100
         tracemalloc.clear_traces()
         for name in method_list:

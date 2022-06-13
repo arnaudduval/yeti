@@ -168,8 +168,7 @@ module tensor_methods
 
         ! Local data
         ! ---------------
-        integer :: ju, jv, jw, i, jX, jR, k
-        integer :: dummy
+        integer :: ju, jv, jw, i, jX, jR, k, dummy, nb_tasks
         double precision :: s
 
         ! Initialize
@@ -177,7 +176,9 @@ module tensor_methods
         dummy = nc
 
         if (n.eq.1) then 
-
+            !$OMP PARALLEL PRIVATE(jX, jR, i, s, k)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     jX = (jv-1)*nc_u + (jw-1)*nc_u*nc_v
@@ -191,9 +192,13 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
 
         else if (n.eq.2) then 
-            
+            !$OMP PARALLEL PRIVATE(jX, jR, i, s, k)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_u/nb_tasks) 
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     jX = ju + (jw-1)*nc_u*nc_v
@@ -207,9 +212,13 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
 
         else if (n.eq.3) then 
-            
+            !$OMP PARALLEL PRIVATE(jX, i, s, k)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_v*nc_u/nb_tasks) 
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     ! In this case jR = jX
@@ -223,6 +232,8 @@ module tensor_methods
                     end do
                 end do
             end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
             
         end if
 
