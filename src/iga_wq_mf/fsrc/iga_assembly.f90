@@ -625,7 +625,6 @@ subroutine iga_get_source_2d(nb_cols_total, source_coefs, &
     end do
 
     ! Find vector 
-    source_vector = 0.d0
     call tensor2d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                                 nb_rows_v, nb_cols_v, &
                                 size_data_u, indi_u, indj_u, data_W00_u, &

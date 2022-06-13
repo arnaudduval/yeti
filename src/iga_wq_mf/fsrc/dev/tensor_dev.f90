@@ -612,3 +612,190 @@ subroutine sumfact3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     !$OMP END PARALLEL 
 
 end subroutine sumfact3d_dot_vector_sp
+
+subroutine csr_get_element_3d(coefs, &
+                        nb_cols_u, nb_cols_v, nb_cols_w, &
+                        nnz_col_u, nnz_col_v, nnz_col_w, &
+                        j_nnz_u, j_nnz_v, j_nnz_w, &
+                        BW_u, BW_v, BW_w, &
+                        data_element)
+    !! Computes a element of a matrix constructed 
+
+    implicit none 
+    ! Input / output 
+    ! ------------------
+    integer, intent(in) ::  nb_cols_u, nb_cols_v, nb_cols_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+    integer, intent(in) :: nnz_col_u, nnz_col_v, nnz_col_w
+    integer, intent(in) :: j_nnz_u, j_nnz_v, j_nnz_w
+    dimension :: j_nnz_u(nnz_col_u), j_nnz_v(nnz_col_v), j_nnz_w(nnz_col_w)
+    double precision, intent(in) :: BW_u, BW_v, BW_w
+    dimension :: BW_u(nnz_col_u), BW_v(nnz_col_v), BW_w(nnz_col_w)
+
+    double precision, intent(out) :: data_element
+
+    ! Local data 
+    ! ----------------- 
+    ! Create Ci
+    integer :: pos_coef
+    double precision, allocatable :: Ci0(:), Ci1(:), Ci2(:)
+    double precision :: Ci3(1)
+
+    ! Loops
+    integer :: genPosC
+    integer :: ju, jv, jw, posu, posv, posw
+
+    ! Initiliaze
+    allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
+
+    ! Set values of C
+    do jw = 1, nnz_col_w
+        do jv = 1, nnz_col_v
+            do ju = 1, nnz_col_u
+                posu = j_nnz_u(ju)
+                posv = j_nnz_v(jv)
+                posw = j_nnz_w(jw)
+                pos_coef = posu + (posv-1)*nb_cols_u + (posw-1)*nb_cols_u*nb_cols_v
+                genPosC = ju + (jv-1)*nnz_col_u + (jw-1)*nnz_col_u*nnz_col_v
+                Ci0(genPosC) = coefs(pos_coef)                    
+            end do
+        end do
+    end do
+
+    ! Evaluate tensor product
+    allocate(Ci1(nnz_col_u*nnz_col_v))
+    call tensor_n_mode_product(nnz_col_u, nnz_col_v, nnz_col_w, Ci0, & 
+                            1, nnz_col_w, BW_w, 3, &
+                            nnz_col_u, nnz_col_v, 1, Ci1)
+
+    allocate(Ci2(nnz_col_u))
+    call tensor_n_mode_product(nnz_col_u, nnz_col_v, 1, Ci1, & 
+                            1, nnz_col_v, BW_v, 2, &
+                            nnz_col_u, 1, 1, Ci2)
+
+    call tensor_n_mode_product(nnz_col_u, 1, 1, Ci2, & 
+                            1, nnz_col_u, BW_u, 1, &
+                            1, 1, 1, Ci3)
+
+    deallocate(Ci0, Ci1, Ci2)
+
+    ! Get result
+    data_element = Ci3(1)
+
+end subroutine csr_get_element_3d 
+
+subroutine csr_get_diagonal_3d(coefs, &
+                            nb_rows_u, nb_cols_u, &
+                            nb_rows_v, nb_cols_v, &
+                            nb_rows_w, nb_cols_w, &
+                            size_data_u, size_data_v, size_data_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, & 
+                            data_W_u, data_W_v, data_W_w, &
+                            data_result)
+    !! Computes a diagonal of a matrix in 3D case (Ww . Bw) x (Wv . Bv) x (Wu . Bu)
+    !! x: kronecker product and .: inner product
+    !! Indices must be in CSR format
+    !! IT IS SLOWER THAN find_physical_diag_3d IN THIS FILE (8 times more or less)
+
+    use omp_lib
+    implicit none 
+    ! Input / output 
+    ! ------------------
+    integer, intent(in) ::  nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nb_cols_u*nb_cols_v*nb_cols_w)
+    integer, intent(in) :: size_data_u, size_data_v, size_data_w
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
+                    indi_v(nb_rows_v+1), indj_v(size_data_v), &
+                    indi_w(nb_rows_w+1), indj_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(size_data_u), data_W_u(size_data_u), &
+                    data_B_v(size_data_v), data_W_v(size_data_v), &
+                    data_B_w(size_data_w), data_W_w(size_data_w)
+
+    double precision, intent(inout) :: data_result
+    dimension :: data_result(nb_rows_u*nb_rows_v*nb_rows_w)
+
+    ! Local data 
+    ! -----------------  
+    double precision :: data_element
+    integer :: genPosResult, offset, nb_tasks, i
+    double precision, allocatable, dimension(:) :: data_BW_u, data_BW_v, data_BW_w
+    double precision, allocatable, dimension(:) :: BW_u, BW_v, BW_w
+    integer :: iu, iv, iw, ju, jv, jw
+    integer :: nnz_col_u, nnz_col_v, nnz_col_w
+    integer, allocatable, dimension(:) :: j_nnz_u, j_nnz_v, j_nnz_w
+
+    ! ====================================================
+    ! Initialize
+    allocate(data_BW_u(size_data_u), data_BW_v(size_data_v), data_BW_w(size_data_w))
+    do i = 1, size_data_u
+        data_BW_u(i) = data_B_u(i) * data_W_u(i)
+    end do
+    do i = 1, size_data_v
+        data_BW_v(i) = data_B_v(i) * data_W_v(i)
+    end do
+    do i = 1, size_data_w
+        data_BW_w(i) = data_B_w(i) * data_W_w(i)
+    end do
+    ! ====================================================
+
+    !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw) &
+    !$OMP PRIVATE(BW_u,BW_v,BW_w,genPosResult,data_element)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w /nb_tasks)
+    do iw = 1, nb_rows_w
+        do iv = 1, nb_rows_v
+            do iu = 1, nb_rows_u
+                
+                ! FOR COLUMNS
+                ! Number of nonzeros  
+                nnz_col_u = indi_u(iu+1) - indi_u(iu)
+                nnz_col_v = indi_v(iv+1) - indi_v(iv)
+                nnz_col_w = indi_w(iw+1) - indi_w(iw)
+
+                ! Set values
+                allocate(j_nnz_u(nnz_col_u), BW_u(nnz_col_u))
+                offset = indi_u(iu)
+                do ju = 1, nnz_col_u
+                    j_nnz_u(ju) = indj_u(ju+offset-1)
+                    BW_u(ju) = data_BW_u(ju+offset-1)
+                end do
+
+                allocate(j_nnz_v(nnz_col_v), BW_v(nnz_col_v))
+                offset = indi_v(iv)
+                do jv = 1, nnz_col_v
+                    j_nnz_v(jv) = indj_v(jv+offset-1)
+                    BW_v(jv) = data_BW_v(jv+offset-1)
+                end do
+
+                allocate(j_nnz_w(nnz_col_w), BW_w(nnz_col_w))
+                offset = indi_w(iw)
+                do jw = 1, nnz_col_w
+                    j_nnz_w(jw) = indj_w(jw+offset-1)
+                    BW_w(jw) = data_BW_w(jw+offset-1)
+                end do
+
+                call csr_get_element_3d(coefs, nb_cols_u, nb_cols_v, nb_cols_w, &
+                                        nnz_col_u, nnz_col_v, nnz_col_w, &
+                                        j_nnz_u, j_nnz_v, j_nnz_w, &
+                                        BW_u, BW_v, BW_w, data_element)
+                deallocate(j_nnz_u, j_nnz_v, j_nnz_w)
+                deallocate(BW_u, BW_v, BW_w)
+
+                ! Get offset in result 
+                genPosResult = iu + (iv-1)*nb_rows_u + (iw-1)*nb_rows_u*nb_rows_v
+                data_result(genPosResult) = data_result(genPosResult) + data_element
+
+            end do
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
+
+    deallocate(data_BW_u, data_BW_v, data_BW_w)
+
+end subroutine csr_get_diagonal_3d 

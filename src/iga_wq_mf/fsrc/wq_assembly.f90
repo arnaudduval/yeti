@@ -614,7 +614,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     ! Get B = B0_w x B0_v x B1_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
@@ -624,7 +623,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     jacob(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B1T_u, &
@@ -638,7 +636,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     ! Get B = B0_w x B1_v x B0_u (Kronecker product)
 
     ! Compute B.Transpose . CP_x
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
@@ -647,7 +644,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     jacob(1, 2, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
@@ -661,7 +657,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     ! Get B = B0_w x B0_v x B0_u (Kronecker product)
     
     ! Compute B.Transpose . CP_x
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
@@ -670,7 +665,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     physical_pos(1, 1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
-    result_temp = 0.d0
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
@@ -748,9 +742,7 @@ subroutine interpolation_2d(nb_rows_total, &
     ! ---------------------------------------------------
     ! For position 
     ! ---------------------------------------------------
-    ! Get B = B_w x B_v x B_u (Kronecker product)
-    interpolation = 0.d0
-    
+    ! Get B = B_w x B_v x B_u (Kronecker product)  
     ! Compute B.Transpose . CP
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, &
@@ -1479,7 +1471,6 @@ subroutine wq_get_flux_3d(nb_cols_total, u, v, coefs, jacob, &
     end do
 
     ! Find vector
-    flux_vector = 0.d0
     call tensor2d_dot_vector_sp(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, &
                         size_data_u, indi_u, indj_u, data_W00_u, &
                         size_data_v, indi_v, indj_v, data_W00_v, &
@@ -1712,7 +1703,6 @@ subroutine wq_get_source_2d(nb_cols_total, source_coefs, &
     dimension :: source_vector(nb_rows_u*nb_rows_v)
 
     ! Find vector
-    source_vector = 0.d0
     call tensor2d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                         nb_rows_v, nb_cols_v, &
                         size_data_u, indi_u, indj_u, data_W00_u, &
