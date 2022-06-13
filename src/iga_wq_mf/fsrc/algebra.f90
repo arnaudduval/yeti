@@ -59,9 +59,7 @@ subroutine product_AWB(nb_rows_A, nb_rows_B, nb_cols, A, W, B, AWB)
     ! -------------------
     integer, intent(in) :: nb_rows_A, nb_rows_B, nb_cols
     double precision, intent(in) :: A, B, W
-    dimension ::    A(nb_rows_A, nb_cols), &
-                    B(nb_rows_B, nb_cols), &
-                    W(nb_cols)
+    dimension :: A(nb_rows_A, nb_cols), B(nb_rows_B, nb_cols), W(nb_cols)
 
     double precision, intent(out) :: AWB
     dimension :: AWB(nb_rows_A, nb_rows_B)
@@ -102,64 +100,64 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
 
     ! Local data
     ! ------------------
-    integer :: i
-    double precision :: A_copy
-    dimension :: A_copy(nb_rows, nb_cols)
-
-    double precision :: xcase1, xcase2
-    dimension :: xcase1(nb_cols), xcase2(nb_rows)
+    double precision :: Atemp
+    dimension :: Atemp(nb_rows, nb_cols)
+    double precision, allocatable, dimension(:) :: xtemp
 
     ! Lapack
-    integer :: IPIV, INFO, LWORK
-    dimension :: IPIV(nb_rows)
-    double precision, allocatable :: WORK(:)
+    integer :: ipiv
+    dimension :: ipiv(nb_rows)
+    double precision, allocatable, dimension(:) :: work
+    integer :: i, info, lwork
 
-    ! Set a copy of matrix A 
-    A_copy = A
-
-    ! Set true solution x and intermediate solutions
+    ! Initialize 
+    Atemp = A
     x = 0.d0
-    xcase1 = 0.d0
-    xcase2 = 0.d0
-
+    
     if (nb_rows.le.nb_cols) then ! Case 1
+
+        allocate(xtemp(nb_cols))
+        xtemp = 0.d0
         
         do i = 1, nb_rows
-            xcase1(i) = b(i)
+            xtemp(i) = b(i)
         end do
 
         if (nb_rows.eq.nb_cols) then
 
             ! Determmined system: 
-            call dgesv(nb_rows, 1, A_copy, nb_rows, IPIV, xcase1, nb_rows, INFO)
+            call dgesv(nb_rows, 1, Atemp, nb_rows, ipiv, xtemp, nb_rows, info)
 
         elseif (nb_rows.lt.nb_cols) then
 
             ! Under-determined system: 
-            LWORK = 2 * nb_rows
-            allocate(WORK(LWORK))
-            call dgels('N', nb_rows, nb_cols, 1, A_copy, nb_rows, xcase1, nb_cols, WORK, LWORK, INFO)
+            lwork = 2*nb_rows
+            allocate(work(lwork))
+            call dgels('N', nb_rows, nb_cols, 1, Atemp, nb_rows, xtemp, nb_cols, work, lwork, info)
                 
         end if
 
         do i = 1, nb_cols
-            x(i) = xcase1(i)
+            x(i) = xtemp(i)
         end do
 
     else if (nb_rows.gt.nb_cols) then ! Case 2
+
+        allocate(xtemp(nb_rows))
+        xtemp = 0.d0
             
         do i = 1, nb_rows
-            xcase2(i) = b(i)
+            xtemp(i) = b(i)
         end do
         
         ! Over-determined system: 
-        LWORK = 2 * nb_cols
-        allocate(WORK(LWORK))
+        lwork = 2*nb_cols
+        allocate(work(lwork))
 
-        call dgels('N', nb_rows, nb_cols, 1, A_copy, nb_rows, xcase2, nb_rows, WORK, LWORK, INFO)
+        call dgels('N', nb_rows, nb_cols, 1, Atemp, nb_rows, xtemp, nb_rows, work, lwork, info)
 
         do i = 1, nb_cols
-            x(i) = xcase2(i)
+            x(i) = xtemp(i)
         end do
 
     end if
@@ -169,6 +167,8 @@ end subroutine solve_system
 subroutine crossproduct(v1, v2, v3)
     !! Computes cross product in a 3D Euclidean space
 
+    ! Input / output data
+    ! -------------------
     double precision, intent(in) :: v1, v2
     dimension :: v1(3), v2(3)
 
@@ -391,7 +391,7 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
         offset = indi_csr(i)
         do k = 1, nnz_col
             j = indj_csr(k+offset-1)
-            A_out(i,j) = A_out(i,j) + a_in(k+offset-1)
+            A_out(i, j) = A_out(i, j) + a_in(k+offset-1)
         end do
     end do
     

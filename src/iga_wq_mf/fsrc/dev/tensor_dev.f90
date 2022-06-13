@@ -1,3 +1,9 @@
+! =========================================
+! module :: sum product (Tensor operations)
+! author :: Joaquin Cornejo
+! disclaimer : These are the function that were discarded for optimized ones 
+! =========================================
+
 subroutine tensor_n_mode_product(nc_u, nc_v, nc_w, X, nr, nc, U, n, nu, nv, nw, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
