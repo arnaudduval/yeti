@@ -301,23 +301,62 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        double precision, allocatable, dimension(:) :: R1, R2                    
+        integer :: u, v, w
+        double precision, allocatable, dimension(:, :) :: X, R
 
         ! First product
-        allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
-        call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
-        nb_rows_u, nb_cols_u, Mu, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+        allocate(X(nb_cols_u, nb_cols_v*nb_cols_w))
+        do w = 1, nb_cols_w
+            do v = 1, nb_cols_v
+                do u = 1, nb_cols_u
+                    X(u, v+(w-1)*nb_cols_v) = vector_in(u+(v-1)*nb_cols_u+(w-1)*nb_cols_u*nb_cols_v)
+                end do
+            end do
+        end do
+
+        allocate(R(nb_rows_u, nb_cols_v*nb_cols_w))
+        R = matmul(Mu, X)
+        deallocate(X)
 
         ! Second product
-        allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
-        call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
-        nb_rows_v, nb_cols_v, Mv, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
-        deallocate(R1)
+        allocate(X(nb_cols_v, nb_rows_u*nb_cols_w))
+        do w = 1, nb_cols_w
+            do v = 1, nb_cols_v
+                do u = 1, nb_rows_u
+                    X(v, u + (w-1)*nb_rows_u) = R(u, v+(w-1)*nb_cols_v)
+                end do
+            end do
+        end do
+        deallocate(R)
+
+        allocate(R(nb_rows_v, nb_rows_u*nb_cols_w))
+        R = matmul(Mv, X)
+        deallocate(X)
 
         ! Third product
-        call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
-        nb_rows_w, nb_cols_w, Mw, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
-        deallocate(R2)
+        allocate(X(nb_cols_w, nb_rows_u*nb_rows_v))
+    
+        do u = 1, nb_rows_u
+            do w = 1, nb_cols_w 
+                do v = 1, nb_rows_v
+                    X(w, u + (v-1)*nb_rows_u) = R(v, u+(w-1)*nb_rows_u)
+                end do
+            end do
+        end do
+        deallocate(R)
+        
+        allocate(R(nb_rows_w, nb_rows_u*nb_rows_v))
+        R = matmul(Mw, X)
+        deallocate(X)
+
+        do v = 1, nb_rows_v
+            do u = 1, nb_rows_u
+                do w = 1, nb_rows_w
+                    vector_out(u+(v-1)*nb_rows_u+(w-1)*nb_rows_u*nb_rows_v) = R(w, u+(v-1)*nb_rows_u)
+                end do
+            end do
+        end do
+        deallocate(R)
 
     end subroutine tensor3d_dot_vector
 

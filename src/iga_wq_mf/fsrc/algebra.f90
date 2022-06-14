@@ -298,27 +298,6 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine spVM(nnz_u, indj_u, U, nr_x, nc_x, X, UX)
-    !! Matrix multiplication between sparse vector and dense matrix U . X
-    !! It returns a dense vector
-    !! Here nr_x is equal to nc_u
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_x, nc_x, nnz_u
-    integer, intent(in) :: indj_u
-    dimension :: indj_u(nnz_u)
-    double precision, intent(in) :: U, X
-    dimension :: U(nnz_u), X(nr_x, nc_x)
-
-    double precision, intent(out) :: UX
-    dimension :: UX(nc_x)
-
-    UX = matmul(U, X(indj_u, :))
-
-end subroutine spVM
-
 ! -------------
 ! Indices
 ! -------------
