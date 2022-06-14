@@ -781,19 +781,19 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     ! -----------------------
     ! sumfact3d_dot_vector
     call cpu_time(start)
-    ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
-    !             U_u, U_v, U_w, s, r1)
+    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                U_u, U_v, U_w, s, r1)
     call cpu_time(finish)
-    ! print*, finish-start
+    print*, finish-start
 
-    allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))
-    capacity_coefs = 1.d0
-    call mf_wq_get_cu_3d_csr( nb_rows_u*nb_rows_v*nb_rows_w, nb_cols_u*nb_cols_v*nb_cols_w, capacity_coefs, &
-    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
-    s, r1)
+    ! allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))
+    ! capacity_coefs = 1.d0
+    ! call mf_wq_get_cu_3d_csr( nb_rows_u*nb_rows_v*nb_rows_w, nb_cols_u*nb_cols_v*nb_cols_w, capacity_coefs, &
+    ! nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+    ! size_data_u, size_data_v, size_data_w, &
+    ! indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+    ! data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
+    ! s, r1)
 
 end subroutine test_precondfd
 

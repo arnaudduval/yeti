@@ -48,37 +48,87 @@ subroutine linspace(x0, xf, n, array)
 
 end subroutine linspace
 
-subroutine product_AWB(nb_rows_A, nb_rows_B, nb_cols, A, W, B, AWB)
-    !! Matrix multiplication type: A.diag(W).transpose(B)
-    !! Matrix A = (nb_rows_A, nb_columns)
-    !! Array W = (nb_columns)
-    !! Matrix B = (nb_rows_B, nb_columns)
+subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
+    !! Matrix multiplication 
+    !! 1: type:  R = A.diag(W).BT
+    !! 2: type:  R = AT.diag(W).B
+    !! Matrix A = (nb_rows_A, nb_columns_A)
+    !! Array W = (*) it depends 
+    !! Matrix B = (nb_rows_B, nb_columns_B)
 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nb_rows_A, nb_rows_B, nb_cols
+    integer, intent(in) :: mode, nrA, ncA, nrB, ncB, nrR, ncR
     double precision, intent(in) :: A, B, W
-    dimension :: A(nb_rows_A, nb_cols), B(nb_rows_B, nb_cols), W(nb_cols)
+    dimension :: A(nrA, ncA), B(nrB, ncB), W(*)
 
-    double precision, intent(out) :: AWB
-    dimension :: AWB(nb_rows_A, nb_rows_B)
+    double precision, intent(out) :: R
+    dimension :: R(nrR, ncR)
 
     ! Local data
     ! -------------
-    double precision :: AW
-    dimension :: AW(nb_rows_A, nb_cols)
-    integer :: i, j
+    integer :: i, j, k
+    double precision :: s
 
-    ! Evaluate AW = A * diag(W)
-    do j = 1, nb_cols
-        do i = 1, nb_rows_A
-            AW(i, j) = A(i, j) * W(j)
+    ! Initiliaze 
+    R = 0.d0
+
+    if (mode.eq.1) then 
+        ! A diag(W) B.T
+        ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
+
+        do j = 1, nrB
+            do i = 1, nrA
+                s = 0.d0
+                do k = 1, ncA
+                    s = s + A(i, k)*W(k)*B(j, k)
+                end do
+                R(i, j) = s
+            end do
         end do
-    end do
 
-    ! Evaluate AB = A * B.T
-    AWB = matmul(AW, transpose(B))
+    else if (mode.eq.2) then 
+        ! A diag(W) B.T
+        ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
+        ! Only diagonal
+
+        do i = 1, nrA
+            s = 0.d0
+            do k = 1, ncA
+                s = s + A(i, k)*W(k)*B(i, k)
+            end do
+            R(i, i) = s
+        end do
+
+    else if (mode.eq.3) then 
+        ! A.T diag(W) B
+        ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
+
+        do j = 1, ncB
+            do i = 1, ncA
+                s = 0.d0
+                do k = 1, nrA
+                    s = s + A(k, i)*W(k)*B(k, j)
+                end do
+                R(i, j) = s
+            end do
+        end do
+
+    else if (mode.eq.4) then 
+        ! A.T diag(W) B
+        ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
+        ! Only diagonal
+
+        do i = 1, ncA
+            s = 0.d0
+            do k = 1, nrA
+                s = s + A(k, i)*W(k)*B(k, i)
+            end do
+            R(i, i) = s
+        end do
+
+    end if
 
 end subroutine product_AWB
 

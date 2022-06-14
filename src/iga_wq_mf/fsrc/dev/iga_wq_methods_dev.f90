@@ -431,7 +431,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     double precision, allocatable, dimension(:,:) :: B0wq_p1, B1wq_p1
 
     ! Integrals
-    double precision, dimension(:,:), allocatable :: I00, I11
+    double precision, dimension(:,:), allocatable :: II, II
 
     ! Weights
     integer :: B0shape
@@ -523,21 +523,21 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
 
     ! ----------------------
     ! I00 = B0cgg_p1 * Wcgg * B0cgg_p0.transpose
-    allocate(I00(nb_ctrlpts_p1, nb_ctrlpts))
+    allocate(II(nb_ctrlpts_p1, nb_ctrlpts))
     call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
-                            B0cgg_p1, qp_cgg_weights, B0cgg_p0, I00)
+                            B0cgg_p1, qp_cgg_weights, B0cgg_p0, II)
     
     ! For W00
-    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, I00, B0shape, MIint, W00)
+    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, II, B0shape, MIint, W00)
 
     ! ----------------------
     ! I11 = B0cgg_p1 * Wcgg * B1cgg_p0.transpose
-    allocate(I11(nb_ctrlpts_p1, nb_ctrlpts))
+    allocate(II(nb_ctrlpts_p1, nb_ctrlpts))
     call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
-                            B0cgg_p1, qp_cgg_weights, B1cgg_p0, I11)
+                            B0cgg_p1, qp_cgg_weights, B1cgg_p0, II)
                     
     ! For W11
-    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, I11, B0shape, MIint, W11)               
+    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, II, B0shape, MIint, W11)               
     deallocate(MIint)
 
 end subroutine wq_get_basis_weights_generalized

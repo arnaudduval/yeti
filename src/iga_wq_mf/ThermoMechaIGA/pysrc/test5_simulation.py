@@ -118,7 +118,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         # Only compute time to prepare method before iterations
         time_noiter, memory_noiter = [], []
-        epsilon  = 1e-10
+        epsilon  = 1e-5
         iterations = 0
         tracemalloc.clear_traces()
         for name in method_list:
@@ -137,7 +137,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
         # With and without preconditioner
         time_iter, residue, error, memory_iter = [], [], [], []
-        epsilon  = 1e-5
+        epsilon  = 1e-15
         iterations = 100
         tracemalloc.clear_traces()
         for name in method_list:
@@ -169,7 +169,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
 
 # Some constants
 FileExist = False
-GEOMETRY_CASE = 'TR'
+GEOMETRY_CASE = 'RQA'
 DEGREE, CUTS = 3, 5
 IS_IGA_GALERKIN = False
 
@@ -191,11 +191,11 @@ for IS_CG in is_cg_list:
     if IS_CG: txtname += '_CG'
     else: txtname += '_BiCG'
     txtname = folder + txtname 
-    method_list = ["JMS"]
+    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
 
     # Run simulation
     if not FileExist:
-        blockPrint()
+        # blockPrint()
         inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
                         method_list, IS_CG, isOnlyIter=True)
         enablePrint()

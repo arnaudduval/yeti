@@ -118,8 +118,8 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     for i, pcgmethod in enumerate(method_list):
         if pcgmethod == "WP": new_method_list.append('Without preconditioner')
         elif pcgmethod == "C": new_method_list.append('Fast Diagonalisation (FD)')
-        elif pcgmethod == "TDS": new_method_list.append('FD optimized - litterature') 
-        elif pcgmethod == "JM": new_method_list.append('FD optimized - our work')  
+        elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
+        elif pcgmethod == "JM": new_method_list.append('FD + jacobien mean')  
         elif pcgmethod == "TD": new_method_list.append('FD + tensor decomp.') 
         elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
 
@@ -145,7 +145,7 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     ax1.set_ylabel('Relative error (%)', fontsize=16)
     ax1.tick_params(axis='x', labelsize=16)
     ax1.tick_params(axis='y', labelsize=16)
-    ax1.legend(loc='best',fontsize=16)
+    ax1.legend(loc='best',fontsize=12)
     ax1.grid()
 
     ax2.set_yscale("log")
@@ -153,7 +153,7 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     ax2.set_ylabel('Relative residue (%)', fontsize=16)
     ax2.tick_params(axis='x', labelsize=16)
     ax2.tick_params(axis='y', labelsize=16)
-    ax2.legend(loc='best',fontsize=16)
+    ax2.legend(loc='best',fontsize=12)
     ax2.grid()
 
     # Save figure

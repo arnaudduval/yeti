@@ -35,9 +35,6 @@ module tensor_methods
         double precision, allocatable, dimension(:, :) :: Xt, Rt
         integer :: ju, jv, jw, i, nb_tasks
 
-        ! Initialize
-        R = 0.d0
-
         if (n.eq.1) then 
 
             allocate(Xt(nc_u, nc_v*nc_w))
@@ -172,7 +169,6 @@ module tensor_methods
         double precision :: s
 
         ! Initialize
-        R = 0.d0
         dummy = nc
 
         if (n.eq.1) then 
@@ -424,6 +420,7 @@ module tensor_methods
     ! ----------------------------------------------------
     ! Sum product to compute matrices 
     ! ----------------------------------------------------
+
     subroutine csr_get_row_2d(coefs, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
@@ -690,7 +687,7 @@ module tensor_methods
         ! Local data 
         ! ----------------- 
         ! Create Ci
-        integer :: pos_coef
+        integer :: genPosCoef
         double precision, allocatable :: Ci0(:), Ci1(:), Ci2(:)
 
         ! Create Bl and Wl
@@ -710,9 +707,9 @@ module tensor_methods
                     posu = j_nnz_u(ju)
                     posv = j_nnz_v(jv)
                     posw = j_nnz_w(jw)
-                    pos_coef = posu + (posv-1)*nb_cols_u + (posw-1)*nb_cols_u*nb_cols_v
+                    genPosCoef = posu + (posv-1)*nb_cols_u + (posw-1)*nb_cols_u*nb_cols_v
                     genPosC = ju + (jv-1)*nnz_col_u + (jw-1)*nnz_col_u*nnz_col_v
-                    Ci0(genPosC) = coefs(pos_coef)                    
+                    Ci0(genPosC) = coefs(genPosCoef)                    
                 end do
             end do
         end do
@@ -960,17 +957,16 @@ module tensor_methods
         integer :: i, j
 
         ! Use Lapack
-        integer, parameter :: ITYPE = 1 ! Type A x = B x D where in this proble A =  KK and B = MM
-        character, parameter :: JOBZ = 'V' ! Computes eigen values and vectors
-        character, parameter :: UPLO = 'U' ! Consider upper triangle of A and B
-        integer :: N, LDA, LDB ! Size of A and B
+        integer, parameter :: itype = 1 ! Type A x = B x D where in this proble A =  KK and B = MM
+        character, parameter :: jobz = 'V' ! Computes eigen values and vectors
+        character, parameter :: uplo = 'U' ! Consider upper triangle of A and B
+        integer :: N, lda, ldb ! Size of A and B
 
-        double precision, allocatable :: W(:) ! Array of eigen values
-        integer :: LWORk, LIWORK
-        double precision, allocatable :: WORK(:), IWORK(:)
+        integer :: lwork, liwork
+        double precision, allocatable, dimension(:) :: W, work, iwork
         double precision :: dummy(1)
         integer :: idum(1)
-        integer :: INFO
+        integer :: info
         
         ! Initialize Masse matrix
         allocate(data_B0_new(size_data))
@@ -1021,29 +1017,29 @@ module tensor_methods
         ! ====================================================
         ! Eigen decomposition KK U = MM U DD
         N = nb_rows
-        LDA = nb_rows
-        LDB = nb_rows
+        lda = nb_rows
+        ldb = nb_rows
 
         ! Set eigen vectors and eigen values
         allocate(W(N))
 
         ! Use routine workspace query to get optimal workspace.
-        LWORk = -1
-        LIWORK = -1
-        call dsygvd(ITYPE, JOBZ, UPLO, N, KK, LDA, MM, LDB, W, dummy, LWORk, idum, LIWORK, INFO)
+        lwork = -1
+        liwork = -1
+        call dsygvd(itype, jobz, uplo, N, KK, lda, MM, ldb, W, dummy, lwork, idum, liwork, info)
 
         ! Make sure that there is enough workspace 
-        LWORK = max(1+(6+2*n)*n, nint(dummy(1)))
-        LIWORK = max(3+5*n, idum(1))
-        allocate (WORK(LWORk), IWORK(LIWORK))
+        lwork = max(1+(6+2*n)*n, nint(dummy(1)))
+        liwork = max(3+5*n, idum(1))
+        allocate (work(lwork), iwork(liwork))
 
         ! Solve
-        call dsygvd(ITYPE, JOBZ, UPLO, N, KK, LDA, MM, LDB, W, WORK, LWORk, IWORK, LIWORK, INFO)
+        call dsygvd(itype, jobz, uplo, N, KK, lda, MM, ldb, W, work, lwork, iwork, liwork, info)
 
         ! Get values
         U = KK
         D = W
-        deallocate(KK, MM, W, WORK, IWORK)
+        deallocate(KK, MM, W, work, iwork)
 
     end subroutine eigen_decomposition
 
@@ -1089,7 +1085,7 @@ module tensor_methods
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nb_rows_total/nb_tasks)
         do i = 1, nb_rows_total
-            array_temp_1(i) = array_temp_1(i) / diagonal(i)
+            array_temp_1(i) = array_temp_1(i)/diagonal(i)
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
@@ -1097,7 +1093,6 @@ module tensor_methods
         ! ----------------------------------
         ! Third part
         ! ---------------------------------
-        array_out = 0.d0
         call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
                                 U_u, U_v, U_w, array_temp_1, array_out)
 
@@ -1139,7 +1134,6 @@ module tensor_methods
         ! ----------------------------------
         ! Second part
         ! ---------------------------------
-        array_out = 0.d0
         call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
                                 U_u, U_v, U_w, array_temp_1, array_out)
 
@@ -1368,6 +1362,7 @@ module tensor_methods
 
     subroutine jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, JJ, L1, L2, L3)
         
+        use omp_lib
         implicit none
         ! Input /  output data
         ! -----------------------
@@ -1376,59 +1371,75 @@ module tensor_methods
         dimension :: JJ(3, 3, nb_cols_total)
     
         double precision, intent(inout) :: L1, L2, L3
+        integer, parameter :: step=2
     
         ! Local data
         ! --------------
-        ! SDV
-        integer :: INFO
-        character, parameter :: JOBU='N', JOBVT='A'
-        integer, parameter :: M=3, N=3
-        integer, parameter :: LDA=M, LDU=M, LDVT=N, LWORK=5*M
-        double precision, dimension(M,N) :: A, U, VT
-        double precision, dimension(M) :: S
-        double precision, dimension(LWORK) :: WORK
-    
-        ! Compute dimensions
-        integer :: i, j, k, nb_qp, Jpos
-        double precision :: LNS
+        integer :: i, j, k, nb_pts, nb_pts_temp, Jpos, nb_tasks
+        double precision :: SQL
         double precision, dimension(3,3) :: Q1
-    
+
+        ! SDV
+        integer :: info
+        character, parameter :: jobu='N', jobvt='A'
+        integer, parameter :: M=3, N=3
+        integer, parameter :: lda=M, ldu=M, ldvt=N, lwork=5*M
+        double precision, dimension(M, N) :: A, U, VT
+        double precision, dimension(M) :: S
+        double precision, dimension(lwork) :: work
+
         ! Count number of quadrature points
-        nb_qp = 0
-        do k = 1, nb_cols_w, 2
-            do j = 1, nb_cols_v, 2
-                do i = 1, nb_cols_u, 2
-                    nb_qp = nb_qp + 1
-                end do
-            end do
+        nb_pts = 1
+        nb_pts_temp = 0
+        
+        do k = 1, nb_cols_w, step
+            nb_pts_temp = nb_pts_temp + 1
         end do
+        nb_pts = nb_pts * nb_pts_temp
+        nb_pts_temp = 0
+
+        do j = 1, nb_cols_v, step
+            nb_pts_temp = nb_pts_temp + 1
+        end do
+        nb_pts = nb_pts * nb_pts_temp
+        nb_pts_temp = 0
+
+        do i = 1, nb_cols_u, step
+            nb_pts_temp = nb_pts_temp + 1
+        end do
+        nb_pts = nb_pts * nb_pts_temp
     
         ! Initialize
         L1 = 0.d0
         L2 = 0.d0
         L3 = 0.d0
     
-        do k = 1, nb_cols_w, 2
-            do j = 1, nb_cols_v, 2
-                do i = 1, nb_cols_u, 2
+        !$OMP PARALLEL PRIVATE(Jpos, A, U, VT, S, work, Q1, info) REDUCTION(+:L1, L2, L3)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_cols_total/(nb_tasks*step*step*step))
+        do k = 1, nb_cols_w, step
+            do j = 1, nb_cols_v, step
+                do i = 1, nb_cols_u, step
                     Jpos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
                     A = JJ(:, :, Jpos)
-                    call dgesvd(JOBU, JOBVT, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK, LWORK, INFO)
-                    call product_AWB(3, 3, 3, transpose(VT), S, transpose(VT), Q1)
+                    call dgesvd(jobu, jobvt, M, N, A, lda, S, U, ldu, VT, ldvt, work, lwork, info)
+                    call product_AWB(4, 3, 3, VT, 3, 3, VT, S, 3, 3, Q1)
     
                     ! Find mean of diagonal of jacobien
-                    L1 = L1 + Q1(1, 1)/nb_qp
-                    L2 = L2 + Q1(2, 2)/nb_qp
-                    L3 = L3 + Q1(3, 3)/nb_qp
+                    L1 = L1 + Q1(1, 1)/nb_pts
+                    L2 = L2 + Q1(2, 2)/nb_pts
+                    L3 = L3 + Q1(3, 3)/nb_pts
                 end do
             end do
         end do
-        
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+
         ! Dimension normalized
-        LNS = sqrt(L1**2 + L2**2 + L3**2)
-        L1 = L1/LNS
-        L2 = L2/LNS
-        L3 = L3/LNS
+        SQL = sqrt(L1**2 + L2**2 + L3**2)
+        L1 = L1/SQL
+        L2 = L2/SQL
+        L3 = L3/SQL
     
     end subroutine jacobien_mean_3d
 
