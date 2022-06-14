@@ -17,7 +17,7 @@ module tensor_methods
         !! Matrix U = (nr, nc)
         !! Tensor R = (nu, nv, nw) (It depends on 'n')
         !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
-
+        !! THESE FUNCTIONS IS NOT OPTIMIZED AND IT COULD BE BETTER
 
         use omp_lib
         implicit none
@@ -458,7 +458,7 @@ module tensor_methods
         ! ----------------- 
         ! Create Ci
         integer :: pos_coef
-        double precision, allocatable :: Ci0(:), Ci1(:)
+        double precision, allocatable :: Ci0(:)
 
         ! Create Bl and Wl
         double precision, allocatable, dimension(:,:) :: BW_u, BW_v
@@ -497,18 +497,8 @@ module tensor_methods
             end do
         end do
 
-        ! Evaluate tensor product
-        allocate(Ci1(nnz_col_u*nnz_row_v))
-        call tensor_n_mode_product(nnz_col_u, nnz_col_v, 1, Ci0, & 
-                                nnz_row_v, nnz_col_v, BW_v, 2, &
-                                nnz_col_u, nnz_row_v, 1, Ci1)
-
-        call tensor_n_mode_product(nnz_col_u, nnz_row_v, 1, Ci1, & 
-                                nnz_row_u, nnz_col_u, BW_u, 1, &
-                                nnz_row_u, nnz_row_v, 1, data_row)
-
-        deallocate(Ci0, Ci1)
-        deallocate(BW_u, BW_v)
+        call tensor2d_dot_vector(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
+                                BW_u, BW_v, Ci0, data_row)
 
     end subroutine csr_get_row_2d 
 
@@ -688,7 +678,7 @@ module tensor_methods
         ! ----------------- 
         ! Create Ci
         integer :: genPosCoef
-        double precision, allocatable :: Ci0(:), Ci1(:), Ci2(:)
+        double precision, allocatable :: Ci0(:)
 
         ! Create Bl and Wl
         double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w
@@ -737,23 +727,8 @@ module tensor_methods
             end do
         end do
 
-        ! Evaluate tensor product
-        allocate(Ci1(nnz_col_u*nnz_col_v*nnz_row_w))
-        call tensor_n_mode_product(nnz_col_u, nnz_col_v, nnz_col_w, Ci0, & 
-                                nnz_row_w, nnz_col_w, BW_w, 3, &
-                                nnz_col_u, nnz_col_v, nnz_row_w, Ci1)
-
-        allocate(Ci2(nnz_col_u*nnz_row_v*nnz_row_w))
-        call tensor_n_mode_product(nnz_col_u, nnz_col_v, nnz_row_w, Ci1, & 
-                                nnz_row_v, nnz_col_v, BW_v, 2, &
-                                nnz_col_u, nnz_row_v, nnz_row_w, Ci2)
-
-        call tensor_n_mode_product(nnz_col_u, nnz_row_v, nnz_row_w, Ci2, & 
-                                nnz_row_u, nnz_col_u, BW_u, 1, &
-                                nnz_row_u, nnz_row_v, nnz_row_w, data_row)
-
-        deallocate(Ci0, Ci1, Ci2)
-        deallocate(BW_u, BW_v, BW_w)
+        call tensor3d_dot_vector(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
+                                nnz_row_w, nnz_col_w, BW_u, BW_v, BW_w, Ci0, data_row)
 
     end subroutine csr_get_row_3d 
 
