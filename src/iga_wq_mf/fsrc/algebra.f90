@@ -298,6 +298,44 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
 end subroutine kron_product_3vec
 
+subroutine spM_dot_dM(nrA, nnzA, data_A, indi_A, indj_A, nrB, ncB, B, C)
+
+    implicit none
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nrA, nnzA, nrB, ncB
+    integer, intent(in) :: indi_A, indj_A
+    dimension :: indi_A(nrA+1), indj_A(nnzA)
+    double precision, intent(in) :: data_A, B
+    dimension :: data_A(nnzA), B(nrB, ncB)
+
+    double precision, intent(out) :: C
+    dimension :: C(nrA, ncB)
+
+    ! Local data
+    ! --------------
+    integer :: i, nnz_row, offset, nnz_table
+    dimension :: nnz_table(nrA)
+    integer, allocatable, dimension(:) :: nnz_indj
+    double precision, allocatable, dimension(:) :: nnz_data
+
+    do i = 1, nrA
+        nnz_table(i) = indi_A(i+1) - indi_A(i)
+    end do
+
+    nnz_row = maxval(nnz_table)
+    allocate(nnz_indj(nnz_row), nnz_data(nnz_row))
+
+    do i = 1, nrA
+        nnz_row = nnz_table(i)
+        offset = indi_A(i)
+        nnz_indj = indj_A(offset:offset+nnz_row-1)
+        nnz_data = data_A(offset:offset+nnz_row-1)
+        C(i, :) = matmul(nnz_data, B(nnz_indj, :))
+    end do
+
+end subroutine spM_dot_dM
+
 ! -------------
 ! Indices
 ! -------------
