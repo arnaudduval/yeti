@@ -733,8 +733,9 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
 
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    double precision :: start1, finish1, start2, finish2, start3, finish3
+    ! double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
+    ! double precision :: start1, finish1, start2, finish2, start3, finish3
+    double precision :: start, finish
     integer :: nb_rows_total
 
     ! Initialize
@@ -744,7 +745,7 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
     ! -------------------------------------------- 
-    call cpu_time(start1)
+    ! call cpu_time(start1)
     allocate(U_u(nb_rows_u, nb_rows_u), D_u(nb_rows_u))
     allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
     allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
@@ -766,33 +767,33 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
                             indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
                             data_W11_w, Method, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
     deallocate(Kdiag_dummy, Mdiag_dummy)
-    call cpu_time(finish1)
+    ! call cpu_time(finish1)
 
-    ! Find diagonal of eigen values
-    call cpu_time(start2)
-    allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
-    allocate(Deigen(nb_rows_total))
-    I_u = 1.d0
-    I_v = 1.d0
-    I_w = 1.d0
-    call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
-                            I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
-    deallocate(I_u, I_v, I_w)
-    call cpu_time(finish2)
+    ! ! Find diagonal of eigen values
+    ! call cpu_time(start2)
+    ! allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
+    ! allocate(Deigen(nb_rows_total))
+    ! I_u = 1.d0
+    ! I_v = 1.d0
+    ! I_w = 1.d0
+    ! call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, 1.d0, 1.d0, 1.d0, &
+    !                         I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+    ! deallocate(I_u, I_v, I_w)
+    ! call cpu_time(finish2)
 
-    ! Do fast diagonalization direct method
-    call cpu_time(start3)
-    call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                U_u, U_v, U_w, Deigen, s, r1)
-    call cpu_time(finish3)
-    ! print*, finish1-start1, finish2-start2, finish3-start3 
+    ! ! Do fast diagonalization direct method
+    ! call cpu_time(start3)
+    ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+    !             U_u, U_v, U_w, Deigen, s, r1)
+    ! call cpu_time(finish3)
+    ! ! print*, finish1-start1, finish2-start2, finish3-start3 
 
-    ! ! -----------------------
-    ! ! sumfact3d_dot_vector
-    ! call cpu_time(start)
-    ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
-    !             U_u, U_v, U_w, s, r1)
-    ! call cpu_time(finish)
+    ! -----------------------
+    ! sumfact3d_dot_vector
+    call cpu_time(start)
+    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+                U_u, U_v, U_w, s, r1)
+    call cpu_time(finish)
     ! print*, finish-start
 
     ! allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))

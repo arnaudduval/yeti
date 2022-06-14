@@ -301,23 +301,32 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        double precision, allocatable, dimension(:) :: R1, R2                    
+        double precision, allocatable, dimension(:) :: R1, R2   
+        double precision :: start1, finish1, start2, finish2, start3, finish3                 
 
         ! First product
+        call cpu_time(start1)
         allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
         call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
         nb_rows_u, nb_cols_u, Mu, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+        call cpu_time(finish1)
 
         ! Second product
+        call cpu_time(start2)
         allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
         call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
         nb_rows_v, nb_cols_v, Mv, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
         deallocate(R1)
+        call cpu_time(finish2)
 
         ! Third product
+        call cpu_time(start3)
         call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
         nb_rows_w, nb_cols_w, Mw, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
         deallocate(R2)
+        call cpu_time(finish3)
+
+        print*, finish1-start1, finish2-start2, finish3-start3 
 
     end subroutine tensor3d_dot_vector
 
@@ -1071,20 +1080,16 @@ module tensor_methods
         integer :: i, nb_tasks
         double precision :: array_temp_1
         dimension :: array_temp_1(nb_rows_total)
-        double precision :: start1, finish1, start2, finish2, start3, finish3
 
         ! ---------------------------------
         ! First part 
         ! ---------------------------------
-        call cpu_time(start1)
         call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
                             transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp_1)
-        call cpu_time(finish1)
 
         ! ---------------------------------
         ! Second part 
         ! ---------------------------------
-        call cpu_time(start2)
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nb_rows_total/nb_tasks)
@@ -1093,17 +1098,13 @@ module tensor_methods
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-        call cpu_time(finish2)
 
         ! ----------------------------------
         ! Third part
         ! ---------------------------------
-        call cpu_time(start3)
         call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
                                 U_u, U_v, U_w, array_temp_1, array_out)
-        call cpu_time(finish3)
-        print*, "  ", finish1-start1, finish2-start2, finish3-start3 
-
+        
     end subroutine fast_diagonalization_3d
 
     subroutine precond_interp_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
