@@ -174,7 +174,7 @@ module tensor_methods
         if (n.eq.1) then 
             !$OMP PARALLEL PRIVATE(jX, jR, i, s, k)
             nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
+            !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_w*nc_v/nb_tasks) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     jX = (jv-1)*nc_u + (jw-1)*nc_u*nc_v
@@ -194,7 +194,7 @@ module tensor_methods
         else if (n.eq.2) then 
             !$OMP PARALLEL PRIVATE(jX, jR, i, s, k)
             nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_u/nb_tasks) 
+            !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_w*nc_u/nb_tasks) 
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     jX = ju + (jw-1)*nc_u*nc_v
@@ -214,7 +214,7 @@ module tensor_methods
         else if (n.eq.3) then 
             !$OMP PARALLEL PRIVATE(jX, i, s, k)
             nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_v*nc_u/nb_tasks) 
+            !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_v*nc_u/nb_tasks) 
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     ! In this case jR = jX
@@ -301,32 +301,23 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        double precision, allocatable, dimension(:) :: R1, R2   
-        double precision :: start1, finish1, start2, finish2, start3, finish3                 
+        double precision, allocatable, dimension(:) :: R1, R2                    
 
         ! First product
-        call cpu_time(start1)
         allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
         call tensor_n_mode_product(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
         nb_rows_u, nb_cols_u, Mu, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
-        call cpu_time(finish1)
 
         ! Second product
-        call cpu_time(start2)
         allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
         call tensor_n_mode_product(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
         nb_rows_v, nb_cols_v, Mv, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
         deallocate(R1)
-        call cpu_time(finish2)
 
         ! Third product
-        call cpu_time(start3)
         call tensor_n_mode_product(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
         nb_rows_w, nb_cols_w, Mw, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
         deallocate(R2)
-        call cpu_time(finish3)
-
-        print*, finish1-start1, finish2-start2, finish3-start3 
 
     end subroutine tensor3d_dot_vector
 
@@ -588,7 +579,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,offset,j_nnz_u,ju,j_nnz_v,jv,nnz_row_u) &
         !$OMP PRIVATE(nnz_row_v,i_nnz_u,i_nnz_v,data_row,size_data_row,genPosResult,result_offset,j)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_u*nb_rows_v/nb_tasks)
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_rows_u*nb_rows_v/nb_tasks)
         do iv = 1, nb_rows_v
             do iu = 1, nb_rows_u
                 
@@ -840,7 +831,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw,nnz_row_u) &
         !$OMP PRIVATE(nnz_row_v,nnz_row_w,i_nnz_u,i_nnz_v,i_nnz_w,data_row,size_data_row,genPosResult,result_offset,j)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks)
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nb_rows_u*nb_rows_v*nb_rows_w/nb_tasks)
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u
@@ -1530,7 +1521,7 @@ module tensor_methods
         !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_u,nnz_v,nnz_w,offset,indj_nnz_u,data_nnz_B_u,data_nnz_W_u) &
         !$OMP PRIVATE(indj_nnz_v,data_nnz_B_v,data_nnz_W_v,indj_nnz_w,data_nnz_B_w,data_nnz_W_w,sum1,sum2,sum3,Cpos,Ipos)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_u*nb_rows_v*nb_rows_w /nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nb_rows_u*nb_rows_v*nb_rows_w /nb_tasks) 
         do iw = 1, nb_rows_w
             do iv = 1, nb_rows_v
                 do iu = 1, nb_rows_u

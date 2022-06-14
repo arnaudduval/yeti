@@ -727,46 +727,46 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     double precision :: s, r1
     dimension :: s(nb_rows_u*nb_rows_v*nb_rows_w), r1(nb_rows_u*nb_rows_v*nb_rows_w)
     
-    ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Kdiag_dummy, Mdiag_dummy
-    double precision, dimension(:), allocatable :: Mcoef_dummy, Kcoef_dummy
-    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w
+    ! ! Fast diagonalization
+    ! double precision, dimension(:), allocatable :: Kdiag_dummy, Mdiag_dummy
+    ! double precision, dimension(:), allocatable :: Mcoef_dummy, Kcoef_dummy
+    ! double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
+    ! double precision, dimension(:), allocatable :: D_u, D_v, D_w
 
     ! double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
     ! double precision :: start1, finish1, start2, finish2, start3, finish3
-    double precision :: start, finish
+    ! double precision :: start, finish
     integer :: nb_rows_total
 
     ! Initialize
     s = 1.d0
     nb_rows_total = nb_rows_u*nb_rows_v*nb_rows_w
 
-    ! --------------------------------------------
-    ! EIGEN DECOMPOSITION
-    ! -------------------------------------------- 
+    ! ! --------------------------------------------
+    ! ! EIGEN DECOMPOSITION
+    ! ! -------------------------------------------- 
     ! call cpu_time(start1)
-    allocate(U_u(nb_rows_u, nb_rows_u), D_u(nb_rows_u))
-    allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
-    allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
+    ! allocate(U_u(nb_rows_u, nb_rows_u), D_u(nb_rows_u))
+    ! allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
+    ! allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
     
-    allocate(Kdiag_dummy(nb_rows_u), Mdiag_dummy(nb_rows_u))
-    call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_dummy, Kcoef_dummy, size_data_u, &
-                            indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                            data_W11_u, Method, D_u, U_u, Kdiag_dummy, Mdiag_dummy)
-    deallocate(Kdiag_dummy, Mdiag_dummy)
+    ! allocate(Kdiag_dummy(nb_rows_u), Mdiag_dummy(nb_rows_u))
+    ! call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_dummy, Kcoef_dummy, size_data_u, &
+    !                         indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
+    !                         data_W11_u, Method, D_u, U_u, Kdiag_dummy, Mdiag_dummy)
+    ! deallocate(Kdiag_dummy, Mdiag_dummy)
 
-    allocate(Kdiag_dummy(nb_rows_v), Mdiag_dummy(nb_rows_v))
-    call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_dummy, Kcoef_dummy, size_data_v, &
-                            indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                            data_W11_v, Method, D_v, U_v, Kdiag_dummy, Mdiag_dummy)    
-    deallocate(Kdiag_dummy, Mdiag_dummy)
+    ! allocate(Kdiag_dummy(nb_rows_v), Mdiag_dummy(nb_rows_v))
+    ! call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_dummy, Kcoef_dummy, size_data_v, &
+    !                         indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
+    !                         data_W11_v, Method, D_v, U_v, Kdiag_dummy, Mdiag_dummy)    
+    ! deallocate(Kdiag_dummy, Mdiag_dummy)
 
-    allocate(Kdiag_dummy(nb_rows_w), Mdiag_dummy(nb_rows_w))
-    call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_dummy, Kcoef_dummy, size_data_w, &
-                            indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                            data_W11_w, Method, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
-    deallocate(Kdiag_dummy, Mdiag_dummy)
+    ! allocate(Kdiag_dummy(nb_rows_w), Mdiag_dummy(nb_rows_w))
+    ! call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_dummy, Kcoef_dummy, size_data_w, &
+    !                         indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
+    !                         data_W11_w, Method, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
+    ! deallocate(Kdiag_dummy, Mdiag_dummy)
     ! call cpu_time(finish1)
 
     ! ! Find diagonal of eigen values
@@ -786,24 +786,24 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
     !             U_u, U_v, U_w, Deigen, s, r1)
     ! call cpu_time(finish3)
-    ! ! print*, finish1-start1, finish2-start2, finish3-start3 
+    ! print*, finish1-start1, finish2-start2, finish3-start3 
 
-    ! -----------------------
-    ! sumfact3d_dot_vector
-    call cpu_time(start)
-    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
-                U_u, U_v, U_w, s, r1)
-    call cpu_time(finish)
+    ! ! -----------------------
+    ! ! sumfact3d_dot_vector
+    ! call cpu_time(start)
+    ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+    !             U_u, U_v, U_w, s, r1)
+    ! call cpu_time(finish)
     ! print*, finish-start
 
-    ! allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))
-    ! capacity_coefs = 1.d0
-    ! call mf_wq_get_cu_3d_csr( nb_rows_u*nb_rows_v*nb_rows_w, nb_cols_u*nb_cols_v*nb_cols_w, capacity_coefs, &
-    ! nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    ! size_data_u, size_data_v, size_data_w, &
-    ! indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    ! data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
-    ! s, r1)
+    allocate(capacity_coefs(nb_cols_u*nb_cols_v*nb_cols_w))
+    capacity_coefs = 1.d0
+    call mf_wq_get_cu_3d_csr( nb_rows_u*nb_rows_v*nb_rows_w, nb_cols_u*nb_cols_v*nb_cols_w, capacity_coefs, &
+    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+    size_data_u, size_data_v, size_data_w, &
+    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+    data_B0_u, data_W00_u, data_B0_v, data_W00_v, data_B0_w, data_W00_w, &
+    s, r1)
 
 end subroutine test_precondfd
 

@@ -581,7 +581,7 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,indj_C_temp) 
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nb_rows_A*nb_rows_B/nb_tasks)
+    !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_rows_A*nb_rows_B/nb_tasks)
     ! Set indices j in csr format
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
@@ -674,7 +674,7 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,j3,indj_D_temp) 
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_rows_A*nb_rows_B*nb_rows_C/nb_tasks)
+    !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nb_rows_A*nb_rows_B*nb_rows_C/nb_tasks)
     ! Set indices j in csr format
     do i1 = 1, nb_rows_A
         do i2 = 1, nb_rows_B
