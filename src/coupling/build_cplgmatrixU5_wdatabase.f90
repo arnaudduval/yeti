@@ -140,12 +140,15 @@ subroutine cplg_matrixU5_wdatabase(nb_data, &
     !! projection spatial tolerance (in physical space)
     !! TODO this should be given as parameter or computed depending on domain size
     double precision :: PROJ_TOL
-    integer :: badproj_count
-
+    integer :: badproj_count, ipt_u, ipt_v, ipt, npts_u, npts_v, i_candidate
+    double precision, allocatable :: gpts_database(:,:)
+    double precision :: dist, best_dist, u, v
+    character(20) :: filename
+    character(5) :: char_iface, char_icpl
 
     !! Set variables
     fmt = '(I5.5)'
-    PROJ_TOL = 1.E-3
+    PROJ_TOL = 5.E-3
 
 
 
@@ -530,7 +533,78 @@ subroutine cplg_matrixU5_wdatabase(nb_data, &
             write(*,*) "Max distance : ", maxval(distance)
             write(*,*) "Min distance :", minval(distance)
             write(*,*) "# proj above tolerance : ", badproj_count
-            
+
+            !! Fix bad projection
+            if (badproj_count .ne. 0) then
+                !! WARNING : number of sample points and file base name is hard coded. It should be set as an input parameter
+                npts_u = 10000
+                npts_v = 10000
+                filename = 'gpts_10000x10000'
+                if (allocated(gpts_database)) deallocate(gpts_database)       !! for security, should be removed later
+                allocate(gpts_database(3, npts_u * npts_v))
+                !! Load pts database
+                write(char_icpl, fmt) iPatch
+                write(char_ipatch, fmt) slavePatch
+                write(char_iface, fmt) slaveFace
+                open(95, file='results/' // trim(filename) // '_' // char_icpl // '_' // char_ipatch // '_' // char_iface // '.txt')
+
+                ipt = 1
+                do ipt_u = 1, npts_u
+                    do ipt_v = 1, npts_u
+                        read(95,*) u, v, gpts_database(:, ipt)
+                        ipt = ipt+1
+                    enddo
+                enddo
+
+                !! WARNING : here, we recompare distance to find bad projection.
+                !! Concerned igps indices should be stored in an array to improve
+                
+                do igps = 1, nb_gps
+                    if (distance(igps) .gt. PROJ_TOL) then
+                        i_candidate = -1
+                        best_dist = distance(igps)
+                        do ipt = 1, npts_u*npts_v
+                            dist = sqrt(dot_product(x_phys(:,igps) - gpts_database(:,ipt), x_phys(:,igps) - gpts_database(:,ipt)))
+                            if (dist .lt. best_dist) then
+                                i_candidate = ipt
+                                best_dist = dist
+                            endif
+                        enddo
+                        if (i_candidate .ne. -1) then
+                            write(*,*) "GP ", igps, " : point replaced, old distance=", distance(igps), " new distance=", best_dist
+                            !! A better point has been found
+                            ipt_v = mod(i_candidate, npts_v)
+                            ipt_u = i_candidate / npts_u    !! Integer division
+                            u = (one*(ipt_u-1))/(npts_u-1)
+                            v = (one*(ipt_v-1))/(npts_v-1)
+                            call point_on_solid_face(u,v, slaveFace, xi_slave(:, igps))
+                            !! Recompute quantities
+                            call updateElementNumber(xi_slave(:,igps))
+                            saveES(igps) = current_elem
+                            call evalnurbs_noder(xi_slave(:, igps), R_slave(:,igps))
+
+                            ! !! Recompute physical coordinate for check (to be removed in final version)
+                            ! if(IsSlaveEmbded) then
+                            !     !! compute xi
+                            !     xi_hull(:) = zero
+                            !     do icp = 1, nnode_patch
+                            !         COORDS_elem(:, icp) = coords3D(:MCRD, IEN_patch(icp, current_elem))
+                            !         do idim = 1, MCRD
+                            !             xi_hull(idim) = x_hull(idim) + R_slave(icp)*COORDS_elem(idim, icp)
+                            !         enddo
+                            !     enddo
+                            ! else
+
+                            ! endif
+                        else
+                            !!write(*,*) "GP ", igps, " : no better point found, distance=", distance(igps)
+                        endif
+                    endif
+                enddo
+
+                close(95)
+                deallocate(gpts_database)
+            endif
             
             !! Define integration points on Lagrange patch
             !! -------------------------------------------
