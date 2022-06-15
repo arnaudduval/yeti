@@ -306,13 +306,15 @@ module tensor_methods
 
         ! First product
         allocate(X(nb_cols_u, nb_cols_v*nb_cols_w))
-        do w = 1, nb_cols_w
-            do v = 1, nb_cols_v
-                do u = 1, nb_cols_u
-                    X(u, v+(w-1)*nb_cols_v) = vector_in(u+(v-1)*nb_cols_u+(w-1)*nb_cols_u*nb_cols_v)
-                end do
-            end do
-        end do
+        ! do w = 1, nb_cols_w
+        !     do v = 1, nb_cols_v
+        !         do u = 1, nb_cols_u
+        !             X(u, v+(w-1)*nb_cols_v) = vector_in(u+(v-1)*nb_cols_u+(w-1)*nb_cols_u*nb_cols_v)
+        !         end do
+        !     end do
+        ! end do
+        
+        X = reshape(vector_in, (/size(X, 1), size(X, 2)/))
 
         allocate(R(nb_rows_u, nb_cols_v*nb_cols_w))
         R = matmul(Mu, X)
@@ -349,6 +351,7 @@ module tensor_methods
         R = matmul(Mw, X)
         deallocate(X)
 
+        ! Re-arrange output
         do v = 1, nb_rows_v
             do u = 1, nb_rows_u
                 do w = 1, nb_rows_w
