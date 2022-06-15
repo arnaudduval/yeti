@@ -18,12 +18,12 @@ from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
 
-dataExist = False
+dataExist = True
 
 if not dataExist:
     # Set global variables
     DEGREE = 5
-    for NBEL in range(120, 350, 50): 
+    for NBEL in range(120, 550, 50): 
         NB_CTRLPTS = DEGREE + NBEL
         # print('********')
         # print(NB_CTRLPTS)
@@ -98,4 +98,30 @@ else:
     plt.legend(loc='best')
 
     plt.tight_layout()
-    plt.savefig(folder_figure + 'ComplexityAlgo' + '.png')
+    plt.savefig(folder_figure + 'TensorProd' + '.png')
+
+
+    # # Import data
+    # file1 = pd.read_table(folder_file + 'Product.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+
+    # # Extract data
+    # degree = file1.degree
+    # arrays = [file1.Cu64, file1.Cu128, file1.Ku64, file1.Ku128]
+    # labels = ['Cu, h = 64', 'Cu, h = 128', 'Ku, h = 64', 'Ku, h = 128']
+    # colors = ['#377eb8', '#377eb8', '#ff7f00', '#ff7f00']
+
+    # for array, label, color in zip(arrays, labels, colors):
+    #     # Plot data
+    #     plt.semilogy(degree, array, 'o--', label=label, color=color)
+
+    # # Set properties
+    # plt.grid()
+    # plt.xlabel("Degree", fontsize= 16)
+    # plt.ylabel("CPU time (s)", fontsize= 16)
+    # plt.ylim([0.01, 10])
+    # plt.xticks(fontsize=16)
+    # plt.yticks(fontsize=16)
+    # plt.legend(loc='best')
+
+    # plt.tight_layout()
+    # plt.savefig(folder_figure + 'ProductMF' + '.png')

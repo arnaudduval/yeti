@@ -348,8 +348,8 @@ module tensor_methods
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
-        do u = 1, nb_rows_u
-            do w = 1, nb_cols_w 
+        do w = 1, nb_cols_w 
+            do u = 1, nb_rows_u
                 do v = 1, nb_rows_v
                     X(w, u+(v-1)*nb_rows_u) = R(v, u+(w-1)*nb_rows_u)
                 end do
