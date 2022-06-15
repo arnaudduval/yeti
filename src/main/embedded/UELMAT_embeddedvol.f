@@ -123,7 +123,7 @@
       !! For loops
       integer ntens, isave
       integer nint, k1, k2, i, j, kk, numCP, Numi, dof, KTypeDload, 
-     &     KNumFace, k3, Na, Nb, Nc
+     &     KNumFace, k3, Na, Nb, Nc, kload
             
 
       !! Initialization
@@ -262,10 +262,14 @@
           !! 5. Body loads
           !! .............
           loadcount = 1
+          kload = 0
           do i = 1, nb_load
               !! Centrifugal load
               !! $f_{b} = \rho \, \omega^{2} \, r$
-              if (JDLTYPE(i)==101) then  
+              if ((JDLTYPE(i)==101) .and. 
+     &          ANY(indDLoad(kload+1:
+     &                       kload+load_target_nbelem(i))==JELEM)) 
+     &            then
                   !! Gauss point location
                   pointGP(:) = zero
                   do numCP = 1, NNODEmap
@@ -296,11 +300,12 @@
                       do j = 1, MCRD
                           kk = kk + 1
                           RHS(kk) = RHS(kk)
-     &                        + DENSITY * ADLMAG(i)**two * vectR(j) * 
-     &                        R(numCP) * dvol
+     &                          + DENSITY * ADLMAG(i)**two * vectR(j) * 
+     &                          R(numCP) * dvol
                       enddo
                   enddo
               endif
+              kload = kload + load_target_nbelem(i)
           enddo
 
       enddo  !! End of the loop on integration points

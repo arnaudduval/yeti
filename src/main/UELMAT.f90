@@ -74,7 +74,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     dimension stiff( MCRD,MCRD,NNODE*(NNODE+1)/2 )
       
     !! Load vector
-    integer :: i,j,kk,KNumFace,KTypeDload,numCP,numI,k3,iField
+    integer :: i,j,kk,KNumFace,KTypeDload,numCP,numI,k3,iField,kload
     double precision :: FbL,VectNorm, y, f_mag
     dimension FbL(NDOFEL),VectNorm(MCRD)
     !! centrifugal load
@@ -114,8 +114,9 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
 
         !! body load
         loadcount = 1
+        kload = 0
         do i = 1,nb_load
-            if (JDLTYPE(i)==101) then
+            if ((JDLTYPE(i)==101) .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i))==JELEM)) then
                 !! Centrifugal load
                 !! Gauss point location
                 pointGP(:) = zero
@@ -142,6 +143,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                     enddo
                 enddo
             endif
+            kload = kload + load_target_nbelem(i)
         enddo
     enddo   !! End of the loop on integration points
       
