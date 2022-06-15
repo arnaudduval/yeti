@@ -301,13 +301,14 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        integer :: u, v, w
+        integer :: u, v, w, nb_tasks
         double precision, allocatable, dimension(:, :) :: X, R
-        double precision :: start1, finish1, start2, finish2, start3, finish3, start4, finish4
 
         ! First product
-        call cpu_time(start1)
         allocate(X(nb_cols_u, nb_cols_v*nb_cols_w))
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks)
         do w = 1, nb_cols_w
             do v = 1, nb_cols_v
                 do u = 1, nb_cols_u
@@ -315,15 +316,18 @@ module tensor_methods
                 end do
             end do
         end do
-        call cpu_time(finish1)
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
 
         allocate(R(nb_rows_u, nb_cols_v*nb_cols_w))
         R = matmul(Mu, X)
         deallocate(X)
 
         ! Second product
-        call cpu_time(start2)
         allocate(X(nb_cols_v, nb_rows_u*nb_cols_w))
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
         do w = 1, nb_cols_w
             do v = 1, nb_cols_v
                 do u = 1, nb_rows_u
@@ -331,16 +335,19 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(R)
-        call cpu_time(finish2)
 
         allocate(R(nb_rows_v, nb_rows_u*nb_cols_w))
         R = matmul(Mv, X)
         deallocate(X)
 
         ! Third product
-        call cpu_time(start3)
         allocate(X(nb_cols_w, nb_rows_u*nb_rows_v))
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
         do u = 1, nb_rows_u
             do w = 1, nb_cols_w 
                 do v = 1, nb_rows_v
@@ -348,15 +355,18 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(R)
-        call cpu_time(finish3)
         
         allocate(R(nb_rows_w, nb_rows_u*nb_rows_v))
         R = matmul(Mw, X)
         deallocate(X)
 
         ! Re-arrange output
-        call cpu_time(start4)
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
         do v = 1, nb_rows_v
             do u = 1, nb_rows_u
                 do w = 1, nb_rows_w
@@ -364,9 +374,9 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(R)
-        call cpu_time(finish4)
-        print*, finish1-start1, finish2-start2, finish3-start3, finish4-start4
 
     end subroutine tensor3d_dot_vector
 
