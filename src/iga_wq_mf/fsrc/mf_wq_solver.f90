@@ -781,6 +781,7 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
     !             U_u, U_v, U_w, Deigen, s, r1)
     ! call cpu_time(finish)
+    ! print *, finish-start
 
     ! ! =============================
     ! ! It is already optimized

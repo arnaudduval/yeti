@@ -329,8 +329,8 @@ module tensor_methods
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
         do w = 1, nb_cols_w
-            do v = 1, nb_cols_v
-                do u = 1, nb_rows_u
+            do u = 1, nb_rows_u
+                do v = 1, nb_cols_v
                     X(v, u+(w-1)*nb_rows_u) = R(u, v+(w-1)*nb_cols_v)
                 end do
             end do
@@ -456,22 +456,76 @@ module tensor_methods
 
         ! Local data 
         ! -------------
+        ! double precision, allocatable, dimension(:) :: R1, R2
+
+        ! ! First product
+        ! allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
+        ! call tensor_n_mode_product_sp(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
+        ! nb_rows_u, nb_cols_u, size_data_u, data_u, indi_u, indj_u, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+
+        ! ! Second product
+        ! allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
+        ! call tensor_n_mode_product_sp(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
+        ! nb_rows_v, nb_cols_v, size_data_v, data_v, indi_v, indj_v, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+        ! deallocate(R1)
+
+        ! ! Third product
+        ! call tensor_n_mode_product_sp(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
+        ! nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+        ! deallocate(R2)
+
+
         double precision, allocatable, dimension(:) :: R1, R2
+        integer :: u, v, w, pX, pR1, pR2, k
+        double precision :: s
 
         ! First product
         allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
-        call tensor_n_mode_product_sp(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
-        nb_rows_u, nb_cols_u, size_data_u, data_u, indi_u, indj_u, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
+        do w = 1, nb_cols_w
+            do v = 1, nb_cols_v
+                pX = (v-1)*nb_cols_u + (w-1)*nb_cols_u*nb_cols_v
+                pR1 = v + (w-1)*nb_rows_u*nb_cols_v
+                do u = 1, nb_rows_u
+                    s = 0.d0
+                    do k = indi_u(u), indi_u(u+1)-1
+                        s = s + data_u(k) * vector_in(indj_u(k) + pX)
+                    end do
+                    R1((u-1)*nb_cols_v + pR1) = s
+                end do
+            end do
+        end do
 
         ! Second product
         allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
-        call tensor_n_mode_product_sp(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
-        nb_rows_v, nb_cols_v, size_data_v, data_v, indi_v, indj_v, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
+        do w = 1, nb_cols_w
+            do u = 1, nb_rows_u
+                pR1 = (u-1)*nb_cols_v + (w-1)*nb_rows_u*nb_cols_v
+                pR2 = w + (u-1)*nb_cols_w
+                do v = 1, nb_rows_v
+                    s = 0.d0
+                    do k = indi_v(v), indi_v(v+1)-1
+                        s = s + data_v(k) * R1(indj_v(k) + pR1)
+                    end do
+                    R2((v-1)*nb_rows_u*nb_cols_w + pR2) = s
+                end do
+            end do
+        end do
         deallocate(R1)
 
         ! Third product
-        call tensor_n_mode_product_sp(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
-        nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
+        do v = 1, nb_rows_v
+            do u = 1, nb_rows_u
+                pR2 = (u-1)*nb_cols_w + (v-1)*nb_rows_u*nb_cols_w
+                pX = u + (v-1)*nb_rows_u
+                do w = 1, nb_rows_w
+                    s = 0.d0
+                    do k = indi_w(w), indi_w(w+1)-1
+                        s = s + data_w(k) * R2(indj_w(k) + pR2)
+                    end do
+                    vector_out((w-1)*nb_rows_u*nb_rows_v + pX) = s
+                end do
+            end do
+        end do
         deallocate(R2)
 
     end subroutine tensor3d_dot_vector_sp
