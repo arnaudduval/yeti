@@ -44,7 +44,7 @@ module tensor_methods
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do ju = 1, nc_u
-                        Xt(ju, jv + (jw-1)*nc_v) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                        Xt(ju, jv+(jw-1)*nc_v) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v)
                     end do
                 end do
             end do
@@ -61,7 +61,7 @@ module tensor_methods
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do i = 1, nr
-                        R(i + (jv-1)*nr + (jw-1)*nr*nc_v) = Rt(i, jv + (jw-1)*nc_v)
+                        R(i+(jv-1)*nr+(jw-1)*nr*nc_v) = Rt(i, jv+(jw-1)*nc_v)
                     end do
                 end do
             end do
@@ -78,7 +78,7 @@ module tensor_methods
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     do jv = 1, nc_v
-                        Xt(jv, ju + (jw-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                        Xt(jv, ju+(jw-1)*nc_u) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v)
                     end do
                 end do
             end do
@@ -95,7 +95,7 @@ module tensor_methods
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     do i = 1, nr
-                        R(ju + (i-1)*nc_u + (jw-1)*nc_u*nr) = Rt(i, ju + (jw-1)*nc_u)
+                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr) = Rt(i, ju+(jw-1)*nc_u)
                     end do
                 end do
             end do
@@ -112,7 +112,7 @@ module tensor_methods
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do jw = 1, nc_w
-                        Xt(jw, ju + (jv-1)*nc_u) = X(ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v)
+                        Xt(jw, ju+(jv-1)*nc_u) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v)
                     end do
                 end do
             end do
@@ -129,7 +129,7 @@ module tensor_methods
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do i = 1, nr
-                        R(ju + (jv-1)*nc_u + (i-1)*nc_u*nc_v) = Rt(i, ju + (jv-1)*nc_u)
+                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v) = Rt(i, ju+(jv-1)*nc_u)
                     end do
                 end do
             end do
@@ -303,55 +303,60 @@ module tensor_methods
         ! -------------
         integer :: u, v, w
         double precision, allocatable, dimension(:, :) :: X, R
+        double precision :: start1, finish1, start2, finish2, start3, finish3, start4, finish4
 
         ! First product
+        call cpu_time(start1)
         allocate(X(nb_cols_u, nb_cols_v*nb_cols_w))
-        ! do w = 1, nb_cols_w
-        !     do v = 1, nb_cols_v
-        !         do u = 1, nb_cols_u
-        !             X(u, v+(w-1)*nb_cols_v) = vector_in(u+(v-1)*nb_cols_u+(w-1)*nb_cols_u*nb_cols_v)
-        !         end do
-        !     end do
-        ! end do
-        
-        X = reshape(vector_in, (/size(X, 1), size(X, 2)/))
+        do w = 1, nb_cols_w
+            do v = 1, nb_cols_v
+                do u = 1, nb_cols_u
+                    X(u, v+(w-1)*nb_cols_v) = vector_in(u+(v-1)*nb_cols_u+(w-1)*nb_cols_u*nb_cols_v)
+                end do
+            end do
+        end do
+        call cpu_time(finish1)
 
         allocate(R(nb_rows_u, nb_cols_v*nb_cols_w))
         R = matmul(Mu, X)
         deallocate(X)
 
         ! Second product
+        call cpu_time(start2)
         allocate(X(nb_cols_v, nb_rows_u*nb_cols_w))
         do w = 1, nb_cols_w
             do v = 1, nb_cols_v
                 do u = 1, nb_rows_u
-                    X(v, u + (w-1)*nb_rows_u) = R(u, v+(w-1)*nb_cols_v)
+                    X(v, u+(w-1)*nb_rows_u) = R(u, v+(w-1)*nb_cols_v)
                 end do
             end do
         end do
         deallocate(R)
+        call cpu_time(finish2)
 
         allocate(R(nb_rows_v, nb_rows_u*nb_cols_w))
         R = matmul(Mv, X)
         deallocate(X)
 
         ! Third product
+        call cpu_time(start3)
         allocate(X(nb_cols_w, nb_rows_u*nb_rows_v))
-    
         do u = 1, nb_rows_u
             do w = 1, nb_cols_w 
                 do v = 1, nb_rows_v
-                    X(w, u + (v-1)*nb_rows_u) = R(v, u+(w-1)*nb_rows_u)
+                    X(w, u+(v-1)*nb_rows_u) = R(v, u+(w-1)*nb_rows_u)
                 end do
             end do
         end do
         deallocate(R)
+        call cpu_time(finish3)
         
         allocate(R(nb_rows_w, nb_rows_u*nb_rows_v))
         R = matmul(Mw, X)
         deallocate(X)
 
         ! Re-arrange output
+        call cpu_time(start4)
         do v = 1, nb_rows_v
             do u = 1, nb_rows_u
                 do w = 1, nb_rows_w
@@ -360,6 +365,8 @@ module tensor_methods
             end do
         end do
         deallocate(R)
+        call cpu_time(finish4)
+        print*, finish1-start1, finish2-start2, finish3-start3, finish4-start4
 
     end subroutine tensor3d_dot_vector
 
