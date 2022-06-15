@@ -132,7 +132,7 @@ subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
 
 end subroutine product_AWB
 
-subroutine solve_system(nb_rows, nb_cols, A, b, x)
+subroutine solve_system(nr, nc, A, b, x)
     !! Solves equation system A.x = b
     !! Matrix A = (nb_rows, nb_columns)
     !! Vector b = (nb_rows)
@@ -141,22 +141,22 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nb_rows, nb_cols
+    integer, intent(in) :: nr, nc
     double precision, intent(in) :: A, b
-    dimension :: A(nb_rows, nb_cols), b(nb_rows)
+    dimension :: A(nr, nc), b(nr)
 
     double precision, intent(out) :: x
-    dimension :: x(nb_cols)
+    dimension :: x(nc)
 
     ! Local data
     ! ------------------
     double precision :: Atemp
-    dimension :: Atemp(nb_rows, nb_cols)
+    dimension :: Atemp(nr, nc)
     double precision, allocatable, dimension(:) :: xtemp
 
     ! Lapack
     integer :: ipiv
-    dimension :: ipiv(nb_rows)
+    dimension :: ipiv(nr)
     double precision, allocatable, dimension(:) :: work
     integer :: i, info, lwork
 
@@ -164,49 +164,49 @@ subroutine solve_system(nb_rows, nb_cols, A, b, x)
     Atemp = A
     x = 0.d0
     
-    if (nb_rows.le.nb_cols) then ! Case 1
+    if (nr.le.nc) then ! Case 1
 
-        allocate(xtemp(nb_cols))
+        allocate(xtemp(nc))
         xtemp = 0.d0
         
-        do i = 1, nb_rows
+        do i = 1, nr
             xtemp(i) = b(i)
         end do
 
-        if (nb_rows.eq.nb_cols) then
+        if (nr.eq.nc) then
 
             ! Determmined system: 
-            call dgesv(nb_rows, 1, Atemp, nb_rows, ipiv, xtemp, nb_rows, info)
+            call dgesv(nr, 1, Atemp, nr, ipiv, xtemp, nr, info)
 
-        elseif (nb_rows.lt.nb_cols) then
+        elseif (nr.lt.nc) then
 
             ! Under-determined system: 
-            lwork = 2*nb_rows
+            lwork = 2*nr
             allocate(work(lwork))
-            call dgels('N', nb_rows, nb_cols, 1, Atemp, nb_rows, xtemp, nb_cols, work, lwork, info)
+            call dgels('N', nr, nc, 1, Atemp, nr, xtemp, nc, work, lwork, info)
                 
         end if
 
-        do i = 1, nb_cols
+        do i = 1, nc
             x(i) = xtemp(i)
         end do
 
-    else if (nb_rows.gt.nb_cols) then ! Case 2
+    else if (nr.gt.nc) then ! Case 2
 
-        allocate(xtemp(nb_rows))
+        allocate(xtemp(nr))
         xtemp = 0.d0
             
-        do i = 1, nb_rows
+        do i = 1, nr
             xtemp(i) = b(i)
         end do
         
         ! Over-determined system: 
-        lwork = 2*nb_cols
+        lwork = 2*nc
         allocate(work(lwork))
 
-        call dgels('N', nb_rows, nb_cols, 1, Atemp, nb_rows, xtemp, nb_rows, work, lwork, info)
+        call dgels('N', nr, nc, 1, Atemp, nr, xtemp, nr, work, lwork, info)
 
-        do i = 1, nb_cols
+        do i = 1, nc
             x(i) = xtemp(i)
         end do
 
@@ -349,13 +349,13 @@ end subroutine spM_dot_dM
 ! -------------
 ! Indices
 ! -------------
-subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
+subroutine coo2csr(nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     !! Change COO format to CSR format
 
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: nb_rows, nnz
+    integer, intent(in) :: nr, nnz
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
     integer, intent(in) :: indi_coo, indj_coo
@@ -364,7 +364,7 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
     double precision, intent(out) :: a_out
     dimension :: a_out(nnz)
     integer, intent(out) :: indj_csr, indi_csr
-    dimension :: indj_csr(nnz), indi_csr(nb_rows+1)
+    dimension :: indj_csr(nnz), indi_csr(nr+1)
 
     ! Local data
     ! -------------
@@ -381,7 +381,7 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
 
     ! Get CSR format for i-indices 
     k = 1
-    do j = 1, nb_rows+1
+    do j = 1, nr+1
         k0 = indi_csr(j)
         indi_csr(j) = k
         k = k + k0
@@ -399,28 +399,28 @@ subroutine coo2csr(nb_rows, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
     end do
 
     ! Update i-indices
-    do  j = nb_rows, 1, -1
+    do  j = nr, 1, -1
         indi_csr(j+1) = indi_csr(j)
     end do
     indi_csr(1) = 1
 
 end subroutine coo2csr
 
-subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nb_rows, nb_cols, A_out)
+subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
     !! Gives a dense matrix from a COO format
     !! Repeated positions are added
 
     implicit none 
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: nnz, nb_rows, nb_cols 
+    integer, intent(in) :: nnz, nr, nc 
     integer, intent(in) :: indi_coo, indj_coo
     dimension :: indi_coo(nnz), indj_coo(nnz)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
 
     double precision, intent(out) :: A_out
-    dimension :: A_out(nb_rows, nb_cols)
+    dimension :: A_out(nr, nc)
 
     ! Local data 
     ! -------------
@@ -438,21 +438,21 @@ subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nb_rows, nb_cols, A_out)
 
 end subroutine coo2matrix
 
-subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
+subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
     !! Gives a dense matrix from a CSR format
     !! Repeated positions are added
 
     implicit none 
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: nnz, nb_rows, nb_cols 
+    integer, intent(in) :: nnz, nr, nc 
     integer, intent(in) :: indi_csr, indj_csr
-    dimension :: indi_csr(nb_rows+1), indj_csr(nnz)
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
 
     double precision, intent(out) :: A_out
-    dimension :: A_out(nb_rows, nb_cols)
+    dimension :: A_out(nr, nc)
 
     ! Local data
     ! -------------
@@ -463,7 +463,7 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
     A_out = 0.d0
     
     ! Update values
-    do i = 1, nb_rows
+    do i = 1, nr
         nnz_col = indi_csr(i+1) - indi_csr(i)
         offset = indi_csr(i)
         do k = 1, nnz_col
@@ -474,19 +474,19 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nb_rows, nb_cols, A_out)
     
 end subroutine csr2matrix
 
-subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
+subroutine matrix2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     !! Returns CSR format from matrix but not the values
     !! Only for integers
 
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: nb_rows, nb_cols, nnz
+    integer, intent(in) :: nr, nc, nnz
     integer, intent(in) :: A_in 
-    dimension :: A_in(nb_rows, nb_cols)
+    dimension :: A_in(nr, nc)
 
     integer, intent(out) :: indi_csr, indj_csr
-    dimension :: indi_csr(nb_rows+1), indj_csr(nnz)
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
 
     ! Local data
     ! -----------
@@ -497,9 +497,9 @@ subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
     indi_csr(1) = 1
 
     ! Update CSR format
-    do i = 1, nb_rows
+    do i = 1, nr
         l = 0
-        do j = 1, nb_cols
+        do j = 1, nc
             ! Save only values greater than zero
             if (abs(A_in(i, j)).gt.0) then
                 indj_csr(k) = j
@@ -512,21 +512,21 @@ subroutine matrix2csr(nb_rows, nb_cols, A_in, nnz, indi_csr, indj_csr)
 
 end subroutine matrix2csr
 
-subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
+subroutine csr2csc(nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
     !! Gets CSC format from CSR format. 
     !! (CSC format can be interpreted as the transpose)
 
     implicit none
     ! Input / output data 
     ! ----------------------
-    integer, intent(in) :: nnz, nb_rows, nb_cols
+    integer, intent(in) :: nnz, nr, nc
     integer, intent(in) :: indi_csr, indj_csr
-    dimension :: indi_csr(nb_rows+1), indj_csr(nnz)
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
 
     integer, intent(out) :: indi_csc, indj_csc
-    dimension :: indi_csc(nb_cols+1), indj_csc(nnz)
+    dimension :: indi_csc(nc+1), indj_csc(nnz)
     double precision, intent(out) :: a_out
     dimension :: a_out(nnz)
 
@@ -538,7 +538,7 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
 
     ! We assume that csr is close to coo format. The only thing that change is indi
     c = 0
-    do i = 1, nb_rows
+    do i = 1, nr
         do j = indi_csr(i), indi_csr(i+1) - 1
             c = c + 1
             indi_coo(c) = i
@@ -546,15 +546,15 @@ subroutine csr2csc(nb_rows, nb_cols, nnz, a_in, indj_csr, indi_csr, a_out, indj_
     end do
 
     ! Do COO to CSR format (inverting order to CSC)
-    call coo2csr(nb_cols, nnz, a_in, indj_csr, indi_coo, a_out, indj_csc, indi_csc)
+    call coo2csr(nc, nnz, a_in, indj_csr, indi_coo, a_out, indj_csc, indi_csc)
 
 end subroutine csr2csc
 
-subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, & 
+subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, & 
                                 indi_A, indj_A, &
-                                nb_rows_B, nb_cols_B, nnz_B, &
+                                nr_B, nc_B, nnz_B, &
                                 indi_B, indj_B, &  
-                                nb_rows_C, nb_cols_C, nnz_C, &
+                                nr_C, nc_C, nnz_C, &
                                 indi_C, indj_C)
     !! Returns indices of A x B = C (x : kronecker product)
     !! Where A and B are sparse matrices in CSR format
@@ -563,16 +563,16 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
     implicit none 
     ! Input / output data
     ! ----------------------
-    integer, intent(in) ::  nb_rows_A, nb_cols_A, nnz_A, &
-                            nb_rows_B, nb_cols_B, nnz_B, &
+    integer, intent(in) ::  nr_A, nc_A, nnz_A, &
+                            nr_B, nc_B, nnz_B, &
                             nnz_C
     integer, intent(in) :: indi_A, indj_A, indi_B, indj_B
-    dimension ::    indi_A(nb_rows_A+1), indj_A(nnz_A), &
-                    indi_B(nb_rows_B+1), indj_B(nnz_B)
+    dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
+                    indi_B(nr_B+1), indj_B(nnz_B)
 
-    integer, intent(out) :: nb_rows_C, nb_cols_C
+    integer, intent(out) :: nr_C, nc_C
     integer, intent(out) :: indi_C, indj_C
-    dimension :: indi_C(nb_rows_A*nb_rows_B+1), indj_C(nnz_C)
+    dimension :: indi_C(nr_A*nr_B+1), indj_C(nnz_C)
 
     ! Loca data
     ! -----------
@@ -582,15 +582,15 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
     integer, allocatable, dimension(:) :: indj_C_temp
 
     ! Set new number of rows
-    nb_rows_C = nb_rows_A * nb_rows_B
-    nb_cols_C = nb_cols_A * nb_cols_B
+    nr_C = nr_A * nr_B
+    nc_C = nc_A * nc_B
 
     ! Set indices i in CSR format
     indi_C(1) = 1
-    do i1 = 1, nb_rows_A
-        do i2 = 1, nb_rows_B
+    do i1 = 1, nr_A
+        do i2 = 1, nr_B
             ! Find C's row position
-            k = i2 + (i1 - 1)*nb_rows_B
+            k = i2 + (i1 - 1)*nr_B
 
             ! Set number of non-zero elements of A's i-row  
             nnz_row_A = indi_A(i1+1) - indi_A(i1) 
@@ -608,12 +608,12 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,indj_C_temp) 
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_rows_A*nb_rows_B/nb_tasks)
+    !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nr_A*nr_B/nb_tasks)
     ! Set indices j in csr format
-    do i1 = 1, nb_rows_A
-        do i2 = 1, nb_rows_B
+    do i1 = 1, nr_A
+        do i2 = 1, nr_B
             ! Select row
-            k = (i1 - 1)*nb_rows_B + i2
+            k = (i1 - 1)*nr_B + i2
             allocate(indj_C_temp(indi_C(k+1) - indi_C(k)))
             
             ! Get values of C's k-row
@@ -621,7 +621,7 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
             do j1 = indi_A(i1), indi_A(i1+1) - 1        
                 do j2 = indi_B(i2), indi_B(i2+1) - 1
                     count = count + 1
-                    indj_C_temp(count) = (indj_A(j1) - 1)*nb_cols_B + indj_B(j2)
+                    indj_C_temp(count) = (indj_A(j1) - 1)*nc_B + indj_B(j2)
                 end do
             end do
 
@@ -635,13 +635,13 @@ subroutine get_indexes_kron2_product(nb_rows_A, nb_cols_A, nnz_A, &
     
 end subroutine get_indexes_kron2_product
 
-subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, & 
+subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, & 
                             indi_A, indj_A, &
-                            nb_rows_B, nb_cols_B, nnz_B, &
+                            nr_B, nc_B, nnz_B, &
                             indi_B, indj_B, &  
-                            nb_rows_C, nb_cols_C, nnz_C, &
+                            nr_C, nc_C, nnz_C, &
                             indi_C, indj_C, &
-                            nb_rows_D, nb_cols_D, nnz_D, &
+                            nr_D, nc_D, nnz_D, &
                             indi_D, indj_D)
     !! Returns indices of A x B x C = D (x : kronecker product)
     !! Where A, B and C are sparse matrices in CSR format
@@ -650,17 +650,17 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
     implicit none 
     ! Input / output data
     ! ----------------------
-    integer, intent(in) ::  nb_rows_A, nb_cols_A, nnz_A, &
-                            nb_rows_B, nb_cols_B, nnz_B, &
-                            nb_rows_C, nb_cols_C, nnz_C, nnz_D
+    integer, intent(in) ::  nr_A, nc_A, nnz_A, &
+                            nr_B, nc_B, nnz_B, &
+                            nr_C, nc_C, nnz_C, nnz_D
     integer, intent(in) :: indi_A, indj_A, indi_B, indj_B, indi_C, indj_C
-    dimension ::    indi_A(nb_rows_A+1), indj_A(nnz_A), &
-                    indi_B(nb_rows_B+1), indj_B(nnz_B), &
-                    indi_C(nb_rows_C+1), indj_C(nnz_C)
+    dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
+                    indi_B(nr_B+1), indj_B(nnz_B), &
+                    indi_C(nr_C+1), indj_C(nnz_C)
 
-    integer, intent(out) :: nb_rows_D, nb_cols_D
+    integer, intent(out) :: nr_D, nc_D
     integer, intent(out) :: indi_D, indj_D
-    dimension :: indi_D(nb_rows_A*nb_rows_B*nb_rows_C+1), indj_D(nnz_D)
+    dimension :: indi_D(nr_A*nr_B*nr_C+1), indj_D(nnz_D)
 
     ! Loca data
     ! -----------
@@ -670,16 +670,16 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
     integer, allocatable, dimension(:) :: indj_D_temp
 
     ! Set new number of rows
-    nb_rows_D = nb_rows_A * nb_rows_B * nb_rows_C
-    nb_cols_D = nb_cols_A * nb_cols_B * nb_cols_D
+    nr_D = nr_A * nr_B * nr_C
+    nc_D = nc_A * nc_B * nc_D
 
     ! Set indices i in CSR format
     indi_D(1) = 1
-    do i1 = 1, nb_rows_A
-        do i2 = 1, nb_rows_B
-            do i3 = 1, nb_rows_C
+    do i1 = 1, nr_A
+        do i2 = 1, nr_B
+            do i3 = 1, nr_C
                 ! Find D's row position
-                k = i3 + (i2-1)*nb_rows_C + (i1 - 1)*nb_rows_C*nb_rows_B
+                k = i3 + (i2-1)*nr_C + (i1 - 1)*nr_C*nr_B
 
                 ! Set number of non-zero elements of A's i1-row  
                 nnz_row_A = indi_A(i1+1) - indi_A(i1) 
@@ -701,13 +701,13 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
 
     !$OMP PARALLEL PRIVATE(count,k,j1,j2,j3,indj_D_temp) 
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nb_rows_A*nb_rows_B*nb_rows_C/nb_tasks)
+    !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_A*nr_B*nr_C/nb_tasks)
     ! Set indices j in csr format
-    do i1 = 1, nb_rows_A
-        do i2 = 1, nb_rows_B
-            do i3 = 1, nb_rows_C
+    do i1 = 1, nr_A
+        do i2 = 1, nr_B
+            do i3 = 1, nr_C
                 ! Select row
-                k = i3 + (i2-1)*nb_rows_C + (i1 - 1)*nb_rows_C*nb_rows_B
+                k = i3 + (i2-1)*nr_C + (i1 - 1)*nr_C*nr_B
                 allocate(indj_D_temp(indi_D(k+1) - indi_D(k)))
                 
                 ! Get values of D's k-row
@@ -716,7 +716,7 @@ subroutine get_indexes_kron3_product(nb_rows_A, nb_cols_A, nnz_A, &
                     do j2 = indi_B(i2), indi_B(i2+1) - 1
                         do j3 = indi_C(i3), indi_C(i3+1) - 1
                             count = count + 1
-                            indj_D_temp(count) = (indj_A(j1)-1)*nb_cols_B*nb_cols_C + (indj_B(j2)-1)*nb_cols_C + indj_C(j3)
+                            indj_D_temp(count) = (indj_A(j1)-1)*nc_B*nc_C + (indj_B(j2)-1)*nc_C + indj_C(j3)
                         end do
                     end do
                 end do
