@@ -776,22 +776,22 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
                             I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
     deallocate(I_u, I_v, I_w)
 
-    ! ! =============================
-    ! ! It is already optimized
-    ! ! Do fast diagonalization direct method
-    ! call cpu_time(start)
-    ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-    !             U_u, U_v, U_w, Deigen, s, r1)
-    ! call cpu_time(finish)
-    ! print *, finish-start
-
     ! =============================
     ! It is already optimized
+    ! Do fast diagonalization direct method
     call cpu_time(start)
-    call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
-                U_u, U_v, U_w, s, r1)
+    call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+                U_u, U_v, U_w, Deigen, s, r1)
     call cpu_time(finish)
-    print*, finish-start
+    print *, finish-start
+
+    ! ! =============================
+    ! ! It is already optimized
+    ! call cpu_time(start)
+    ! call tensor3d_dot_vector(nb_rows_u, nb_rows_u, nb_rows_v, nb_rows_v, nb_rows_w, nb_rows_w, &
+    !             U_u, U_v, U_w, s, r1)
+    ! call cpu_time(finish)
+    ! print*, finish-start
 
     ! ! =============================
     ! allocate(capacity_coefs(nb_cols_total))

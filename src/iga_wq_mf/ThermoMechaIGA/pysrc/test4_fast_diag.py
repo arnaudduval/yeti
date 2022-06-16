@@ -23,6 +23,7 @@ dataExist = False
 if not dataExist:
     # Set global variables
     DEGREE = 5
+    start = time.time()
     for NBEL in range(120, 550, 50): 
         NB_CTRLPTS = DEGREE + NBEL
         # print('********')
@@ -50,12 +51,12 @@ if not dataExist:
             data.append(dW00_t); data.append(dW11_t)
 
         # Solve sylvester equation P s = r
-        start = time.time()
+        
         inputs = [*shape_matrices, *indices, *data]
         solver.test_precondfd(*inputs)
-        stop = time.time()
-        # print('Time computing Fast Diag: %.3e s' %(stop-start,))
         # time.sleep(1)
+    stop = time.time()
+    print('Time computing Fast Diag: %.3e s' %(stop-start,))
 
 else:
     # PLOT 
