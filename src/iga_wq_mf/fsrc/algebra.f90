@@ -346,6 +346,36 @@ subroutine spM_dot_dM(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
 
 end subroutine spM_dot_dM
 
+subroutine gemm_opt(nc, nrA, A, ncB, B, C)
+    !! Trying to improve dense matrix multiplication. It doesn't work 
+
+    implicit none
+    ! Input / output data
+    ! ----------------------
+    integer, intent(in) :: nrA, ncB, nc
+    double precision, intent(in) :: A, B
+    dimension :: A(nc, nrA), B(nc, ncB)
+
+    double precision, intent(out) :: C
+    dimension :: C(nrA, ncB)
+
+    ! Local data
+    ! --------------
+    integer :: i, j, k
+    double precision :: s
+
+    do j = 1, ncB
+        do i = 1, nrA
+            s = 0.d0
+            do k = 1, nc
+                s = s + A(k, i) * B(k, j)
+            end do
+            C(i, j) = s
+        end do
+    end do
+
+end subroutine gemm_opt
+
 ! -------------
 ! Indices
 ! -------------

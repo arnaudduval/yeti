@@ -18,7 +18,7 @@ from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
 
-dataExist = True
+dataExist = False
 
 if not dataExist:
     # Set global variables
@@ -64,64 +64,65 @@ else:
     folder_file = os.path.dirname(full_path) + '/data/'
     folder_figure = os.path.dirname(full_path) + '/results/'
 
-    # Import data
-    file1 = pd.read_table(folder_file + 'Algo1.dat', sep='\t', names=['nbel', 'time'])
-    file2 = pd.read_table(folder_file + 'Algo2.dat', sep='\t', names=['nbel', 'time'])
-    file3 = pd.read_table(folder_file + 'Algo3.dat', sep='\t', names=['nbel', 'time'])
-
-    # Post treatment
-    files = [file1, file2, file3]
-    labels = ['New algorithm', 'Former algorithm', 'Litterature']
-    for file, label in zip(files, labels):
-
-        # Extract data
-        nbel = file.nbel**3
-        times = file.time
-        nbdata = len(nbel)
-
-        # Plot data
-        plt.loglog(nbel, times, 'o--', label=label)
-
-        # Get slope
-        slope, _ = np.polyfit(np.log10(nbel),np.log10(times), 1)
-        slope = round(slope, 3)
-        annotation.slope_marker((nbel[round((nbdata-1)/2)], times[round((nbdata-1)/2)]), slope, 
-                                text_kwargs={'fontsize': 14},
-                                poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-
-    # Set properties
-    plt.grid()
-    plt.xlabel("Total DOF", fontsize= 16)
-    plt.ylabel("CPU time (s)", fontsize= 16)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.legend(loc='best')
-
-    plt.tight_layout()
-    plt.savefig(folder_figure + 'TensorProd' + '.png')
-
-
     # # Import data
-    # file1 = pd.read_table(folder_file + 'Product.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+    # file1 = pd.read_table(folder_file + 'Algo1.dat', sep='\t', names=['nbel', 'time'])
+    # file2 = pd.read_table(folder_file + 'Algo2.dat', sep='\t', names=['nbel', 'time'])
+    # file3 = pd.read_table(folder_file + 'Algo3.dat', sep='\t', names=['nbel', 'time'])
 
-    # # Extract data
-    # degree = file1.degree
-    # arrays = [file1.Cu64, file1.Cu128, file1.Ku64, file1.Ku128]
-    # labels = ['Cu, h = 64', 'Cu, h = 128', 'Ku, h = 64', 'Ku, h = 128']
-    # colors = ['#377eb8', '#377eb8', '#ff7f00', '#ff7f00']
+    # # Post treatment
+    # files = [file1, file2, file3]
+    # labels = ['New algorithm', 'Former algorithm', 'Litterature']
+    # for file, label in zip(files, labels):
 
-    # for array, label, color in zip(arrays, labels, colors):
+    #     # Extract data
+    #     nbel = file.nbel**3
+    #     times = file.time
+    #     nbdata = len(nbel)
+
     #     # Plot data
-    #     plt.semilogy(degree, array, 'o--', label=label, color=color)
+    #     plt.loglog(nbel, times, 'o--', label=label)
+
+    #     # Get slope
+    #     slope, _ = np.polyfit(np.log10(nbel),np.log10(times), 1)
+    #     slope = round(slope, 3)
+    #     annotation.slope_marker((nbel[round((nbdata-1)/2)], times[round((nbdata-1)/2)]), slope, 
+    #                             text_kwargs={'fontsize': 14},
+    #                             poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
     # # Set properties
     # plt.grid()
-    # plt.xlabel("Degree", fontsize= 16)
+    # plt.xlabel("Total DOF", fontsize= 16)
     # plt.ylabel("CPU time (s)", fontsize= 16)
-    # plt.ylim([0.01, 10])
     # plt.xticks(fontsize=16)
     # plt.yticks(fontsize=16)
     # plt.legend(loc='best')
 
     # plt.tight_layout()
-    # plt.savefig(folder_figure + 'ProductMF' + '.png')
+    # plt.savefig(folder_figure + 'TensorProd' + '.png')
+
+
+    # Import data
+    file1 = pd.read_table(folder_file + 'Product.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+
+    # Extract data
+    degree = file1.degree
+    arrays = [file1.Cu64, file1.Cu128, file1.Ku64, file1.Ku128]
+    labels = ['Cu, h = 64', 'Cu, h = 128', 'Ku, h = 64', 'Ku, h = 128']
+    colors = ['#377eb8', '#377eb8', '#ff7f00', '#ff7f00']
+
+    for array, label, color in zip(arrays, labels, colors):
+        # Plot data
+        plt.semilogy(degree, array, 'o--', label=label, color=color)
+
+    # Set properties
+    plt.grid()
+    plt.xlabel("Degree", fontsize= 16)
+    plt.ylabel("CPU time (s)", fontsize= 16)
+    plt.ylim([0.001, 10])
+    plt.xlim([1, 10])
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.legend(loc='best')
+
+    plt.tight_layout()
+    plt.savefig(folder_figure + 'ProductMF' + '.png')

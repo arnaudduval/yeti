@@ -456,31 +456,15 @@ module tensor_methods
 
         ! Local data 
         ! -------------
-        ! double precision, allocatable, dimension(:) :: R1, R2
-
-        ! ! First product
-        ! allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
-        ! call tensor_n_mode_product_sp(nb_cols_u, nb_cols_v, nb_cols_w, vector_in, &
-        ! nb_rows_u, nb_cols_u, size_data_u, data_u, indi_u, indj_u, 1, nb_rows_u, nb_cols_v, nb_cols_w, R1)
-
-        ! ! Second product
-        ! allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
-        ! call tensor_n_mode_product_sp(nb_rows_u, nb_cols_v, nb_cols_w, R1, &
-        ! nb_rows_v, nb_cols_v, size_data_v, data_v, indi_v, indj_v, 2, nb_rows_u, nb_rows_v, nb_cols_w, R2)
-        ! deallocate(R1)
-
-        ! ! Third product
-        ! call tensor_n_mode_product_sp(nb_rows_u, nb_rows_v, nb_cols_w, R2, &
-        ! nb_rows_w, nb_cols_w, size_data_w, data_w, indi_w, indj_w, 3, nb_rows_u, nb_rows_v, nb_rows_w, vector_out)
-        ! deallocate(R2)
-
-
         double precision, allocatable, dimension(:) :: R1, R2
-        integer :: u, v, w, pX, pR1, pR2, k
+        integer :: u, v, w, pX, pR1, pR2, k, nb_tasks
         double precision :: s
 
         ! First product
         allocate(R1(nb_rows_u*nb_cols_v*nb_cols_w))
+        !$OMP PARALLEL PRIVATE(pX, pR1, u, v, w, k, s)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_cols_v*nb_cols_w/nb_tasks)
         do w = 1, nb_cols_w
             do v = 1, nb_cols_v
                 pX = (v-1)*nb_cols_u + (w-1)*nb_cols_u*nb_cols_v
@@ -494,9 +478,14 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
 
         ! Second product
         allocate(R2(nb_rows_u*nb_rows_v*nb_cols_w))
+        !$OMP PARALLEL PRIVATE(pR1, pR2, u, v, w, k, s)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_rows_u*nb_cols_w/nb_tasks)
         do w = 1, nb_cols_w
             do u = 1, nb_rows_u
                 pR1 = (u-1)*nb_cols_v + (w-1)*nb_rows_u*nb_cols_v
@@ -510,8 +499,13 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(R1)
 
+        !$OMP PARALLEL PRIVATE(pX, pR2, u, v, w, k, s)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nb_rows_u*nb_rows_v/nb_tasks)
         ! Third product
         do v = 1, nb_rows_v
             do u = 1, nb_rows_u
@@ -526,6 +520,8 @@ module tensor_methods
                 end do
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(R2)
 
     end subroutine tensor3d_dot_vector_sp
