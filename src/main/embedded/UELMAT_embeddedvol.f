@@ -268,8 +268,7 @@
               !! $f_{b} = \rho \, \omega^{2} \, r$
               if ((JDLTYPE(i)==101) .and. 
      &          ANY(indDLoad(kload+1:
-     &                       kload+load_target_nbelem(i))==JELEM)) 
-     &            then
+     &             kload+load_target_nbelem(i))==JELEM)) then
                   !! Gauss point location
                   pointGP(:) = zero
                   do numCP = 1, NNODEmap
