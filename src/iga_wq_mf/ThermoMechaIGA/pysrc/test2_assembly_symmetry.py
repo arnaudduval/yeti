@@ -80,8 +80,8 @@ if CONSTRUCTION:
                         var2 = Model2._detJ
                     
                     elif varName == 'QP':
-                        var1 = Model1._qp_PS[0,:,:]
-                        var2 = Model2._qp_PS[0,:,:]
+                        var1 = Model1._qp_PS[:,:]
+                        var2 = Model2._qp_PS[:,:]
                 
                     enablePrint()
 

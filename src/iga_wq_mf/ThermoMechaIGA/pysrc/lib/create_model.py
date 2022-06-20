@@ -539,7 +539,7 @@ class thermoMechaModel():
         
         # Initialize 
         J = np.zeros((dimensions, dimensions, nb_pts))
-        PPS = np.zeros((1, dimensions, nb_pts))
+        PPS = np.zeros((dimensions, nb_pts))
 
         # Evaluate jacobien
         for j in range(dimensions):
@@ -559,7 +559,7 @@ class thermoMechaModel():
             for dim in range(dimensions):
                 B = sp.kron(data_DB[dim][0], B)
 
-            PPS[0, i, :] = sp.coo_matrix.dot(B.transpose(), CP[:, i])
+            PPS[i, :] = sp.coo_matrix.dot(B.transpose(), CP[:, i])
         
         stop = time.time()
         print('\tJacobian in : %.5f s' %(stop-start))
@@ -605,7 +605,7 @@ class thermoMechaModel():
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
-        source_coef = [fun(qp[:, :, i][0]) * det[i] 
+        source_coef = [fun(qp[:, i][0]) * det[i] 
                     for i in range(len(det))]
         source_coef = np.array(source_coef)
         stop = time.time()
@@ -629,13 +629,13 @@ class thermoMechaModel():
         print('Getting body force coefficients')   
         start = time.time()
         # Get source coefficient
-        bodyforce_coef = [fun(qp_PS[:, :, _][0]) * detJ[_] * coef for _ in range(len(detJ))]
+        bodyforce_coef = [fun(qp_PS[:, _][0]) * detJ[_] * coef for _ in range(len(detJ))]
         stop = time.time()
         print('\tBody force coefficients in : %.5f s' %(stop-start))
 
         return np.asarray(bodyforce_coef)
 
-    def CG_BiCG_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+    def solver_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
         "Solve system using conjugate gradient or Bi-conjugate gradient. Matrix A must be assembled"
 
         # Find preconditionner
@@ -656,13 +656,14 @@ class thermoMechaModel():
     # ===========================
 
     def interpolate_field(self, u_ctrlpts= None):
+        "Interpolates the input field. In all cases, it returns jacobien."
+
         # =====================
         # Get Basis
         # =====================
         # Set shape
         shape = [1, 1, 1]
-        for _ in range(self._dim):
-            shape[_] = self._sample_size
+        for _ in range(self._dim): shape[_] = self._sample_size
         shape = tuple(shape)
 
         # Define knots
@@ -706,42 +707,37 @@ class thermoMechaModel():
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
-            return jacobien_PS, qp_PS, detJ, u_interp
         else: 
-            return jacobien_PS, qp_PS, detJ
+            u_interp = None
+
+        return jacobien_PS, qp_PS, detJ, u_interp
     
     def export_results(self, u_ctrlpts= None, filename= None): 
         " Returns solution using geometry basis "
 
-        if self._geometry_type == None:
-            raise Warning('Try another method to export results')
-        
-        if self._isMechanical == True:
-            raise Warning('Not coded, try another method')
+        # Warnings
+        if self._geometry_type == None: raise Warning('Try another method to export results')
+        if self._isMechanical == True: raise Warning('Not coded, try another method')
 
-        # For now, only consider scalar field as input !!!!!!!!!!!!!!!!!!!
-        if  u_ctrlpts is None:
+        if u_ctrlpts is None:
             UctrlptsExist = False
+            u_ctrlpts_new = None
         elif isinstance(u_ctrlpts, np.ndarray): 
             UctrlptsExist = True
-            try: u_ctrlpts_new = u_ctrlpts[:, 0] 
-            except: u_ctrlpts_new = u_ctrlpts
+            u_ctrlpts_new = u_ctrlpts
         else: 
             raise Warning('Solution must be ndarray type')
 
         # Set shape
         shape = [1, 1, 1]
-        for _ in range(self._dim):
-            shape[_] = self._sample_size
+        for _ in range(self._dim): shape[_] = self._sample_size
         shape = tuple(shape)
 
         # ==============================
         # Get interpolation
         # ==============================
-        if UctrlptsExist:
-            jacobien_PS, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts_new)
-        else :
-            jacobien_PS, qp_PS, detJ = self.interpolate_field()
+        # Interpolate 
+        _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts_new)
 
         # Find statistics
         mean_detJ = statistics.mean(detJ)
@@ -762,9 +758,9 @@ class thermoMechaModel():
             for j in range(shape[1]):
                 for i in range(shape[0]):
                     pos = i + j * self._sample_size + k * self._sample_size**2
-                    X1[i,j,k] = qp_PS[0, 0, pos]
-                    X2[i,j,k] = qp_PS[0, 1, pos]
-                    if self._dim == 3: X3[i,j,k] = qp_PS[0, 2, pos]
+                    X1[i,j,k] = qp_PS[0, pos]
+                    X2[i,j,k] = qp_PS[1, pos]
+                    if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
 
                     if UctrlptsExist: U[i,j,k] = u_interp[pos]
                     DET[i,j,k] = detJ[pos]
@@ -772,9 +768,9 @@ class thermoMechaModel():
         # Export geometry
         if filename == None: 
             try: name = self._name 
-            except: name = "Results_VTK"
+            except: name = "VTKResults"
         else: name = filename 
-        gridToVTK(name, X1, X2, X3, pointData= {"Temp" : U, 
+        gridToVTK(name, X1, X2, X3, pointData= {"U1" : U, 
                                                 "detJ" : DET,})
         return
 

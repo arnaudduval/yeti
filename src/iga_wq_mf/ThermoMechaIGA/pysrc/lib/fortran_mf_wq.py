@@ -673,25 +673,21 @@ class fortran_mf_wq(thermoMechaModel):
     def MSE_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
-        coef_F = [fun(self._qp_PS[:, :, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+        coef_F = [fun(self._qp_PS[:, _][0])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
 
         # Define inputs for C and F
-        shape_matrices, indices, data_C, data_interp, data_F, size_I = [], [], [], [], [], []
+        shape_matrices, indices, data_interp, data_F = [], [], [], []
 
         for dim in range(self._dim):
             shape_matrices.append(self._nb_qp_wq[dim][0])
             indices.append(self._indices[dim][0])
             indices.append(self._indices[dim][1])
-            data_C.append(self._DB[dim][0])
-            data_C.append(self._DW[dim][0][0])
             data_interp.append(self._DB[dim][0])
             data_interp.append(self._DB[dim][1])
             data_interp.append(self._DW[dim][0][0])
             data_interp.append(self._DW[dim][1][1])
             data_F.append(self._DW[dim][0][0])
-            size_I.append(self._nnz_I_dim[dim])
 
-        inputs_C = [self._detJ, *shape_matrices, *indices, *data_C, *size_I]
         inputs_F = [coef_F, *shape_matrices, *indices, *data_F]
 
         # Calculate capacity matrix and temperature vector
@@ -700,10 +696,7 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 2:
             raise Warning('Until now not done')
         if self._dim == 3:
-            # val_C, indi_C, indj_C = assembly.wq_get_capacity_3d(*inputs_C)
             F = assembly.wq_get_source_3d(*inputs_F)
-        # C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-        #                                     val_C, indi_C, indj_C).tocsc()
 
         # Solve linear system with fortran
         start = time.time()

@@ -15,8 +15,8 @@ from iga_wq_mf import assembly, solver
     
 class fortran_mf_iga(thermoMechaModel):
     
-    def __init__(self, modelIGA: None, thermalblockedboundaries= None):
-        super().__init__(modelIGA, thermalblockedboundaries= thermalblockedboundaries)
+    def __init__(self, modelIGA: None, isThermal= True, thermalblockedboundaries= None):
+        super().__init__(modelIGA, isThermal= isThermal, thermalblockedboundaries= thermalblockedboundaries)
 
         # Set basis and weights
         self.eval_positions_basis_weights()
@@ -374,24 +374,22 @@ class fortran_mf_iga(thermoMechaModel):
     def MSE_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
-        coef_F = [fun(self._qp_PS[:, :, _][0])*self._detJ[_] 
+        coef_F = [fun(self._qp_PS[:, _][0])*self._detJ[_] 
                     for _ in range(self._nb_qp_cgg_total)]
 
         # Define inputs for C and F
-        indices, data, data_interp, size_I = [], [], [], []
+        indices, data_F, data_interp = [], [], []
 
         for dim in range(self._dim):
             indices.append(self._indices[dim][0])
             indices.append(self._indices[dim][1])
-            data.append(self._DB[dim][0])
-            data.append(self._DW[dim])
+            data_F.append(self._DB[dim][0])
+            data_F.append(self._DW[dim])
             data_interp.append(self._DB[dim][0])
             data_interp.append(self._DB[dim][1])
             data_interp.append(self._DW[dim])
-            size_I.append(self._nnz_I_dim[dim])
 
-        inputs_C = [self._detJ, *indices, *data, *size_I]
-        inputs_F = [coef_F, *indices, *data]
+        inputs_F = [coef_F, *indices, *data_F]
 
         # Calculate capacity matrix and temperature vector
         if self._dim < 2 and self._dim > 3:
@@ -399,10 +397,7 @@ class fortran_mf_iga(thermoMechaModel):
         if self._dim == 2:
             raise Warning('Until now not done')
         if self._dim == 3:
-            # val_C, indi_C, indj_C = assembly.iga_get_capacity_3d(*inputs_C)
             F = assembly.iga_get_source_3d(*inputs_F)
-        # C = super().array2csr_matrix(self._nb_ctrlpts_total, self._nb_ctrlpts_total,  
-        #                                     val_C, indi_C, indj_C).tocsc()
 
         # Solve linear system with fortran
         start = time.time()

@@ -272,7 +272,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     dimension ::  jacob(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(1, 3, nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: physical_pos(3, nb_cols_u*nb_cols_v*nb_cols_w)
 
     double precision, intent(out) :: detJ
     dimension :: detJ(nb_cols_u*nb_cols_v*nb_cols_w)
@@ -423,7 +423,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
                                 size_data_w, indi_T_w, indj_T_w, data_B0T_w, &
                                 ctrlpts_x, result_temp)
-    physical_pos(1, 1, :) = result_temp
+    physical_pos(1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
@@ -432,7 +432,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
                                 size_data_w, indi_T_w, indj_T_w, data_B0T_w, &
                                 ctrlpts_y, result_temp)
-    physical_pos(1, 2, :) = result_temp
+    physical_pos(2, :) = result_temp
 
     ! Compute B.Transpose . CP_z
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
@@ -441,7 +441,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
                                 size_data_w, indi_T_w, indj_T_w, data_B0T_w, &
                                 ctrlpts_z, result_temp)
-    physical_pos(1, 3, :) = result_temp
+    physical_pos(3, :) = result_temp
 
     ! ---------------------------------------------------
     ! For det J 
@@ -573,7 +573,7 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     dimension ::  jacob(2, 2, nb_cols_u*nb_cols_v)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(1, 2, nb_cols_u*nb_cols_v)
+    dimension :: physical_pos(2, nb_cols_u*nb_cols_v)
 
     double precision, intent(out) :: detJ
     dimension :: detJ(nb_cols_u*nb_cols_v)
@@ -662,7 +662,7 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
                                 ctrlpts_x, result_temp)
-    physical_pos(1, 1, :) = result_temp
+    physical_pos(1, :) = result_temp
 
     ! Compute B.Transpose . CP_y
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, &
@@ -670,7 +670,7 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
                                 size_data_u, indi_T_u, indj_T_u, data_B0T_u, &
                                 size_data_v, indi_T_v, indj_T_v, data_B0T_v, &
                                 ctrlpts_y, result_temp)
-    physical_pos(1, 2, :) = result_temp
+    physical_pos(2, :) = result_temp
 
     ! ---------------------------------------------------
     ! For det J 

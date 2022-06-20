@@ -340,7 +340,7 @@ elif CASE == 7: # Convergence curve
 
             # Interpolation
             _, qp_PS, _, u_interp = model.interpolate_field(T)
-            u_exact = [solution(qp_PS[:, :, i][0]) for i in range(len(u_interp))]
+            u_exact = [solution(qp_PS[:, i][0]) for i in range(len(u_interp))]
             u_exact = np.array(u_exact)
 
             # Error
