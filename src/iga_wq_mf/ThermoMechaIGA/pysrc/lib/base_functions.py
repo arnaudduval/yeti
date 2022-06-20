@@ -266,25 +266,25 @@ def gaussTable(pgaus):
 
     return x, w
 
-def iga_find_positions_weights_element(degree, knotvector, el):
-    " Computes Gauss weights and positions in isogeometric space for a known element "
-
-    # Find knots of the knot-vector
-    knots = np.unique(knotvector)
-
-    # Find position and weight of Gauss points in isogeometric space
-    xg, wg = gaussTable(degree + 1)
-    
-    # Find position of quadrature points at the element (scaling)
-    xg = 0.5*((knots[el+1] - knots[el])*xg + knots[el] + knots[el+1])
-
-    # Find weight of quadrature points at the element (scaling)
-    wg = 0.5*(knots[el+1] - knots[el])*wg
-
-    return xg, wg
-
 def iga_find_positions_weights(degree, knotvector):
     " Computes Gauss weights and positions in parametric space for a known curve "
+
+    def iga_find_positions_weights_element(degree, knotvector, el):
+        " Computes Gauss weights and positions in isogeometric space for a known element "
+
+        # Find knots of the knot-vector
+        knots = np.unique(knotvector)
+
+        # Find position and weight of Gauss points in isogeometric space
+        xg, wg = gaussTable(degree + 1)
+        
+        # Find position of quadrature points at the element (scaling)
+        xg = 0.5*((knots[el+1] - knots[el])*xg + knots[el] + knots[el+1])
+
+        # Find weight of quadrature points at the element (scaling)
+        wg = 0.5*(knots[el+1] - knots[el])*wg
+
+        return xg, wg
 
     # Find number of elements
     nbel = len(np.unique(knotvector)) - 1
@@ -300,6 +300,31 @@ def iga_find_positions_weights(degree, knotvector):
         xg.extend(xg_el); wg.extend(wg_el)
 
     return xg, wg
+
+def iga_find_basis_weights_opt(degree, knotvector):
+
+    # Find positions and weights
+    xwq, W = iga_find_positions_weights(degree, knotvector)
+
+    # Find basis
+    B0, B1 = eval_basis_python(degree, knotvector, xwq)
+
+    return xwq, B0, B1, W
+
+def iga_find_basis_weights_fortran(degree, nb_el): 
+    " Computes basis and weights "
+
+    # Set number of quadrature points
+    nb_qp = (degree + 1) * nb_el
+
+    # Set size guessed of data arrays
+    nnz_B = (degree + 1) * nb_qp
+
+    # Get basis and weights from fortran
+    xg, wg, B0, B1, \
+    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, nb_el, nnz_B)
+ 
+    return nnz_I, xg, wg, B0, B1, indi, indj
 
 # =========================
 # WQ FUNCTIONS
@@ -669,6 +694,19 @@ def wq_find_basis_weights_opt(degree, knotvector, r):
 
     return xwq, B0, B1, W00, W01, W10, W11
 
+def wq_find_basis_weights_fortran(degree, nbel): 
+    " Computes basis and weights "
+
+    # Set size guessed of data arrays
+    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
+
+    # Get basis and weights from fortran
+    qp_pos, B0, B1, \
+    W00, W01, W10, W11, \
+    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
+
+    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
+    
 # =========================
 # MF FUNCTIONS
 # =========================

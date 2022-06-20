@@ -178,7 +178,7 @@ class thermoMechaModel():
 
         # Set number of samples
         try: self._sample_size = modelIGA._sample_size
-        except: self._sample_size = 51
+        except: self._sample_size = 101
 
         # Set type of model
         self._isThermal = isThermal
@@ -216,8 +216,6 @@ class thermoMechaModel():
             # Initialize thermal exapansion
             print('Setting thermo-mechanical properties')
             self._thermalexpansion = 9.0e-6
-            self._thermalblockedboundaries = np.asarray(thermalblockedboundaries)
-            self._mechablockedboundaries = np.asarray(mechablockedboundaries)
 
         # Get nodes
         self.__get_free_blocked_nodes()

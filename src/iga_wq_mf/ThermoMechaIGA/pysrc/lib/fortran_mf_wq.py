@@ -9,22 +9,9 @@ import numpy as np
 import time
 
 # My libraries
-from .base_functions import erase_rows_csr
+from .base_functions import erase_rows_csr, wq_find_basis_weights_fortran
 from .create_model import thermoMechaModel
-from iga_wq_mf import basis_weights, assembly, solver
-
-def wq_find_basis_weights_fortran(degree, nbel): 
-    " Computes basis and weights "
-
-    # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
-
-    # Get basis and weights from fortran
-    qp_pos, B0, B1, \
-    W00, W01, W10, W11, \
-    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
-
-    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
+from iga_wq_mf import assembly, solver
 
 class fortran_mf_wq(thermoMechaModel):
 

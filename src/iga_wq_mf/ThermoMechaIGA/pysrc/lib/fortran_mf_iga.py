@@ -9,24 +9,9 @@ import numpy as np
 import time
 
 # My libraries
-from .base_functions import erase_rows_csr
+from .base_functions import erase_rows_csr, iga_find_basis_weights_fortran
 from .create_model import thermoMechaModel
-from iga_wq_mf import basis_weights, assembly, solver
-
-def iga_get_basis_weights(degree, nb_el): 
-    " Computes basis and weights "
-
-    # Set number of quadrature points
-    nb_qp = (degree + 1) * nb_el
-
-    # Set size guessed of data arrays
-    nnz_B = (degree + 1) * nb_qp
-
-    # Get basis and weights from fortran
-    qp_pos, qp_weights, B0, B1, \
-    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, nb_el, nnz_B)
- 
-    return nnz_I, qp_pos, qp_weights, B0, B1, indi, indj
+from iga_wq_mf import assembly, solver
     
 class fortran_mf_iga(thermoMechaModel):
     
@@ -198,7 +183,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, qp_weights, \
-            B0, B1, indi, indj  = iga_get_basis_weights(self._degree[dim][0], self._nb_el[dim][0])
+            B0, B1, indi, indj  = iga_find_basis_weights_fortran(self._degree[dim][0], self._nb_el[dim][0])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)

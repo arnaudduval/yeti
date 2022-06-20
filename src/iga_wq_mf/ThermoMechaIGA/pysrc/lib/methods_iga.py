@@ -11,7 +11,7 @@ from scipy import sparse as sp
 import time
 
 # My libraries
-from .base_functions import eval_basis_python, iga_find_positions_weights
+from .base_functions import iga_find_basis_weights_opt
 from .create_model import thermoMechaModel
 
 class IGA(thermoMechaModel):
@@ -29,11 +29,8 @@ class IGA(thermoMechaModel):
             # Topology of quadrature points
             self.__set_qp_topology()
 
-        # Quadrature points and weights in each dimension
-        self.eval_positions_weights()
-
-        # Eval basis in each dimension
-        self.eval_basis()
+        # Evaluate basis and weights
+        self.eval_basis_weights()
 
         # Jacobien 
         self._Jqp, self._qp_PS = super().eval_jacobien_pps(self._dim, self._ctrlpts, self._DB, self._nb_qp_cgg_total)
@@ -243,34 +240,32 @@ class IGA(thermoMechaModel):
 
         return IEN, INC
 
-    def eval_positions_weights(self):
-        " Computes weights and position of quadrature points "
-
-        # Initialize quadrature weigths and positions
-        self._qp_cgg_dim = []
-        self._DW = []
-
-        for dim in range(self._dim): 
-            qp_dim_temp, weight_dim_temp = iga_find_positions_weights(self._degree[dim][0], self._knotvector[0][dim])
-            self._qp_cgg_dim.append(qp_dim_temp)
-            self._DW.append(weight_dim_temp)
-
-        return
-    
-    def eval_basis(self):
-        " Computes basis at quadrature points "
-
-        print('Evaluating basis')
-        start = time.time()
-        self._DB = []
-        for dim in range(self._dim): 
-            B0, B1 = eval_basis_python(self._degree[dim][0], self._knotvector[0][dim], 
-                                    self._qp_cgg_dim[dim])
-            self._DB.append([B0, B1]) 
-        stop = time.time()
-        print('\tBasis in : %.5f s' %(stop-start))
+    def eval_basis_weights(self): 
+        " Computes Basis and weights in WQ approach "
         
-        return
+        print('Evaluating basis and weights')
+        start = time.time()
+
+        # Initalize storage vectors
+        self._qp_cgg_dim = []
+        self._DB = [] # Stocks B-spline functions
+        self._DW = [] # Stocks weights
+
+        for dim in range(self._dim): 
+            # Find basis and weights 
+            qp_pos, B0, B1, W = iga_find_basis_weights_opt(self._degree[dim][0], self._knotvector[0][dim]) 
+
+            # Save quadrature points
+            self._qp_cgg_dim.append(qp_pos)
+
+            # Save DB
+            self._DB.append([B0, B1])
+
+            # Save DW
+            self._DW.append(W)
+
+        stop = time.time()
+        print('\tBasis and weights in : %.5f s' %(stop-start))
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
