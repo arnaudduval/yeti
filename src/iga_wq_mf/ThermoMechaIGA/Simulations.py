@@ -66,7 +66,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         # Assemble source vector F
         if funtemp is not None: 
             dod = Model1._thermal_dod
-            T_cp, Td = Model1.MSE_ControlPoints(funtemp)
+            T_cp, Td = Model1.interpolate_ControlPoints(funtemp)
             F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
             del dod, Td, T_cp
         else: 
@@ -104,7 +104,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         # Assemble source vector F
         if funtemp is not None:  
             dod = Model1._thermal_dod
-            T_cp, Td = Model1.MSE_ControlPoints(funtemp)
+            T_cp, Td = Model1.interpolate_ControlPoints(funtemp)
             F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
             del dod, Td, T_cp
         else:

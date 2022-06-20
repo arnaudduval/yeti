@@ -371,7 +371,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
-    def MSE_ControlPoints(self, fun, nbIter=100, eps=1e-14):
+    def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
         coef_F = [fun(self._qp_PS[:, _][0])*self._detJ[_] 
