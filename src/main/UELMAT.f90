@@ -102,14 +102,14 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     !! Loop on integration points
     do n = 1,NBINT
         !! Compute NURBS basis functions and derivatives
-        call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
+       call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
          
         !! Compute stiffness matrix
         call stiffmatrix_byCP(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,  &
             &        stiff)
                   
         !! Assemble AMATRIX
-        dvol = GaussPdsCoord(1,n)*detJac
+        dvol = GaussPdsCoord(1,n)*ABS(detJac)
         AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
 
         !! body load
