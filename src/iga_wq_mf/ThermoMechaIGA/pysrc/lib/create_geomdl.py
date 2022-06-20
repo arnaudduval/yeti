@@ -31,7 +31,7 @@ class geomdlModel():
 
         print('\nCreating geometry: ' + filename + '...')
         start = time.time()
-        if filename == 'quarter_annulus':
+        if filename == 'quarter_annulus' or filename == 'QA':
             # Set number of dimension 
             self._dim = [2]
 
@@ -41,7 +41,7 @@ class geomdlModel():
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 3, 2])
             self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
 
-        elif filename == 'quadrilateral':
+        elif filename == 'quadrilateral' or filename == 'SQ':
             # Set number of dimension
             self._dim = [2]
             
@@ -50,7 +50,7 @@ class geomdlModel():
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
 
-        elif filename == 'parallelepiped': 
+        elif filename == 'parallelepiped' or filename == 'CB': 
             # Set number of dimension
             self._dim = [3]
             
@@ -61,7 +61,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'thick_ring':
+        elif filename == 'thick_ring' or filename == 'TR':
             # Set number of dimension 
             self._dim = [3]
 
@@ -72,7 +72,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
             self._geometry = self.create_thick_ring(Rin, Rout, Height, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'rotated_quarter_annulus':
+        elif filename == 'rotated_quarter_annulus' or filename == 'RQA':
             # Set number of dimension 
             self._dim = [3]
 
@@ -83,7 +83,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
             self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'prism':
+        elif filename == 'prism' or filename == 'VB':
             # Set number of dimension
             self._dim = [3]
             
@@ -192,7 +192,7 @@ class geomdlModel():
 
         return
 
-    def write_YETI_inputfile(self, filename):
+    def write_abaqus_file(self, filename):
         "Returns the inp and NB file. It only works with one patch and with 3D geometries"
 
         # With inp file
@@ -464,7 +464,7 @@ class geomdlModel():
                 for j in range(nb_ctrlpts_nu): 
                     control_points.append([ctrlpts_u[i], ctrlpts_v[j], ctrlpts_w[k]])
 
-        # Create a B-spline surface
+        # Create a B-spline volume
         vol = BSpline.Volume()
 
         # Set degree
@@ -542,7 +542,7 @@ class geomdlModel():
                     z = ctrlpts_z[k]
                     ctrlpts.append([x, y, z])
 
-        # Create Volume
+        # Create volume
         vol = BSpline.Volume()
 
         # Set degree
@@ -637,11 +637,11 @@ class geomdlModel():
                 for x_arc_1, y_arc_1 in ctrlpts_arc_1:
                     # ctrlpts_x[i] = radius_1
                     x = ctrlpts_x[i] * x_arc_1
-                    y = (ctrlpts_x[i] * y_arc_1 + exc)*y_arc_2 - exc
+                    y = (ctrlpts_x[i] * y_arc_1 + exc)*y_arc_2 
                     z = (ctrlpts_x[i] * y_arc_1 + exc)*z_arc_2
                     ctrlpts.append([x, y, z])
 
-        # Create Volume
+        # Create volume
         vol = BSpline.Volume()
 
         # Set degree
@@ -723,7 +723,8 @@ class geomdlModel():
         vol.degree_w = degree_eta
         
         # Set number of control points 
-        vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = nb_ctrlpts_xi, nb_ctrlpts_nu, nb_ctrlpts_eta
+        vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
+        nb_ctrlpts_xi, nb_ctrlpts_nu, nb_ctrlpts_eta
 
         # Set control points
         vol.ctrlpts = ctrlpts
@@ -828,16 +829,9 @@ class geomdlModel():
 
 def create_geometry(degree, cuts, geometry_case):
 
-    if geometry_case == 'CB': filename = 'parallelepiped'
-    elif geometry_case == 'VB': filename = 'prism'
-    elif geometry_case == 'TR': filename = 'thick_ring'
-    elif geometry_case == 'RQA': filename = 'rotated_quarter_annulus'
-    elif geometry_case == 'SQ': filename = 'quadrilateral'
-    else: raise Warning('Geometry does not exist')
-
     # Create and refine model
     geometry = {'degree': [degree, degree, degree]}
-    modelGeo = geomdlModel(filename=filename, **geometry)
+    modelGeo = geomdlModel(filename=geometry_case, **geometry)
     modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
 
     return modelGeo

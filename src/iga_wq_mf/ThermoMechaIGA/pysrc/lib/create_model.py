@@ -10,7 +10,6 @@ from scipy import sparse as sp
 import time
 import matplotlib.pyplot as plt
 from pyevtk.hl import gridToVTK 
-import multiprocessing as mp 
 
 # Yeti libraries
 from preprocessing.igaparametrization import IGAparametrization

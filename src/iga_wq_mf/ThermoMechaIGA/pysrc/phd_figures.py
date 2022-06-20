@@ -8,6 +8,7 @@
 .. CASE 4: Quadrature points in IGA-WQ approach
 .. CASE 5: B-spline surface
 .. CASE 6: FEM basis 
+.. CASE 7: Convergence curve
 """
 
 # Python libraries
@@ -25,7 +26,6 @@ from lib.base_functions import (create_knotvector,
                                 iga_find_positions_weights
 )
 from lib.create_geomdl import geomdlModel
-from lib.fortran_mf_iga import fortran_mf_iga
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib import enablePrint, blockPrint
 
@@ -356,12 +356,12 @@ elif CASE == 7: # Convergence curve
         # Figure 
         ax.loglog(ddl, norm, label='p = ' + str(degree))
         
-        # # Get slope
-        # slope, _ = np.polyfit(np.log10(ddl[1:5]),np.log10(norm[1:5]), 1)
-        # slope = round(slope)
-        # annotation.slope_marker((ddl[3], norm[3]), slope, 
-        #                         text_kwargs={'fontsize': 14},
-        #                         poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+        # Get slope
+        slope, _ = np.polyfit(np.log10(ddl[1:5]),np.log10(norm[1:5]), 1)
+        slope = round(slope)
+        annotation.slope_marker((ddl[3], norm[3]), slope, 
+                                text_kwargs={'fontsize': 14},
+                                poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
     # Set filename
     filename = folder + 'ConvergenceIGA_Annulus2'+ extension

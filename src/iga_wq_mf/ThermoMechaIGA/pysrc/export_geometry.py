@@ -20,7 +20,7 @@ DEGREE = 3
 CUTS = 5
 
 # for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
-for GEOMETRY_CASE in ['TR']:
+for GEOMETRY_CASE in ['RQA']:
 
     if GEOMETRY_CASE == 'CB': filename = 'parallelepiped'
     elif GEOMETRY_CASE == 'VB': filename = 'prism'
@@ -31,7 +31,7 @@ for GEOMETRY_CASE in ['TR']:
     # Create and refine model
     geometry = {'degree': [DEGREE, DEGREE, DEGREE]}
     modelGeo = geomdlModel(filename=filename, **geometry)
-    modelGeo.write_YETI_inputfile(filename= folder + GEOMETRY_CASE)
+    modelGeo.write_abaqus_file(filename= folder + GEOMETRY_CASE)
     modelIGA = IGAparametrization(filename= folder + GEOMETRY_CASE)
 
     # # ==============================
