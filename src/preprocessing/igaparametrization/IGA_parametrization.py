@@ -2131,9 +2131,9 @@ class IGAparametrization:
             # Get pressure magnitude at nodes
             init_field = distrib[0]
             # Reshape to a two-dimensionnal array
-            init_field = init_field.reshape((len(init_field), 1))
+            init_field = np.vstack(init_field)
             # Compute new field
-            new_field = self._updateNodalField(init_field).flatten()
+            new_field = self._updateNodalField(init_field).T
             # Get initial type of load (does not change)
             l_name = distrib[1]
             # Fill new dictionnary with refined pressure field
