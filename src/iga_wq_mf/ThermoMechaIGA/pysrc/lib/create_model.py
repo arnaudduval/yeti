@@ -527,7 +527,7 @@ class thermoMechaModel():
     # ASSEMBLY  FUNCTIONS 
     # ===========================
 
-    def eval_jacobien_pps(self, dimensions, ctrlpts, data_DB, nb_pts): 
+    def eval_jacobien_physicalPosition(self, dimensions, ctrlpts, data_DB, nb_pts): 
         """ Computes Jacobien matrix and find the position in physical space 
         of P (in pts list) in parametric space
         """
@@ -566,7 +566,7 @@ class thermoMechaModel():
         
         return J, PPS
 
-    def eval_K_C_coefficient(self, nb_pts, J_pts, Kprop, Cprop): 
+    def eval_thermal_coefficient(self, nb_pts, J_pts, Kprop, Cprop): 
         " Computes coefficients at points P in parametric space "
 
         print('Getting conductivity and capacity coefficients')
@@ -599,7 +599,7 @@ class thermoMechaModel():
 
         return Kcoef, Ccoef, detJ
 
-    def eval_F_coefficient(self, fun, qp, det): 
+    def eval_source_coefficient(self, fun, qp, det): 
         " Computes coefficients at points P in parametric space "
 
         print('Getting source coefficients')
@@ -613,7 +613,7 @@ class thermoMechaModel():
 
         return source_coef
 
-    def eval_BodyForce_coefficient(self, fun, qp_PS, detJ): 
+    def eval_bodyforce_coefficient(self, fun, qp_PS, detJ): 
         " Computes coefficients at points P in parametric space "
 
         # Set material properties
@@ -635,35 +635,8 @@ class thermoMechaModel():
 
         return np.asarray(bodyforce_coef)
 
-    def conjugate_gradient_python(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
-        " Evaluate K u at choosen equations "
-
-        # ------------------
-        # Conjugate Gradient algorithm
-        # ------------------
-        x = np.zeros(len(bi))
-        r = bi
-        p = r
-        rsold = np.dot(r, r)
-        RelRes = np.zeros(nbIterations+1)
-        RelRes[0] = 1.0
-
-        for k in range(nbIterations):
-            Ap = fun_Au(p, dof)
-            alpha = rsold/np.dot(p, Ap)
-            x = x + alpha*p
-            r = r - alpha*Ap
-            RelRes[k+1] = (np.linalg.norm(r, np.inf)/np.linalg.norm(bi, np.inf))
-
-            if RelRes[k+1]<epsilon:
-                break
-            rsnew = np.dot(r, r)
-            p = r + rsnew/rsold * p
-            rsold = rsnew
-
-        return x, RelRes
-
-    def conjugate_gradient_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+    def CG_BiCG_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+        "Solve system using conjugate gradient or Bi-conjugate gradient. Matrix A must be assembled"
 
         # Find preconditionner
         if PreCond == 'ilu': 
@@ -682,30 +655,7 @@ class thermoMechaModel():
     # POST-PROCESSING 
     # ===========================
 
-    def reconstruct_solution(self, x, dof):
-        " Returns the data reconstructed "
-
-        # Degrees of freedom
-        MCRD = 3
-
-        # Number of control points
-        nb_ctrlpts_total = self._nb_ctrlpts_total
-        
-        # Initialize solution
-        SOL_vector = np.zeros(nb_ctrlpts_total * MCRD)
-        SOL_matrix = np.zeros((nb_ctrlpts_total, MCRD))
-        
-        # Set solution
-        SOL_vector[dof] = x
-
-        # Array to matrix 
-        for _ in range(nb_ctrlpts_total): 
-            SOL_matrix[_, :] = [SOL_vector[_], SOL_vector[_+nb_ctrlpts_total], 
-                                SOL_vector[_+2*nb_ctrlpts_total]]
-
-        return SOL_matrix
-
-    def interpolate_results(self, u_ctrlpts= None):
+    def interpolate_field(self, u_ctrlpts= None):
         # =====================
         # Get Basis
         # =====================
@@ -789,9 +739,9 @@ class thermoMechaModel():
         # Get interpolation
         # ==============================
         if UctrlptsExist:
-            jacobien_PS, qp_PS, detJ, u_interp = self.interpolate_results(u_ctrlpts_new)
+            jacobien_PS, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts_new)
         else :
-            jacobien_PS, qp_PS, detJ = self.interpolate_results()
+            jacobien_PS, qp_PS, detJ = self.interpolate_field()
 
         # Find statistics
         mean_detJ = statistics.mean(detJ)
@@ -828,134 +778,3 @@ class thermoMechaModel():
                                                 "detJ" : DET,})
         return
 
-    def plot_pojection_jacobien(self, normalvector=0):
-
-        # =====================
-        # Get Basis
-        # =====================
-        # Define knots
-        knots = np.linspace(0, 1, self._sample_size)
-
-        # Set basis 
-        DB = []
-
-        # Set indices 
-        ind = []
-
-        for dim in range(self._dim):  
-            B0, B1, indi, indj = eval_basis_fortran(self._degree[dim][0], self._nb_el[dim][0], knots)
-            DB.append([B0, B1])
-            ind.append([indi, indj])
-
-        # =====================
-        # Get inputs
-        # =====================
-        shape_matrices = []
-        indices = []
-        data = []
-        ctrlpts = []
-
-        for dim in range(self._dim):
-            shape_matrices.append(self._sample_size)
-            indices.append(ind[dim][0])
-            indices.append(ind[dim][1])
-            data.append(DB[dim][0])
-            data.append(DB[dim][1])
-            ctrlpts.append(self._ctrlpts[:, dim])
-        
-        inputs = [self._nb_ctrlpts_total, *shape_matrices, *ctrlpts, *indices, *data]
-
-        # =========================
-        # Get position and jacobien
-        # =========================
-        if self._dim == 2: raise Warning('Until now not done')    
-                
-        if self._dim == 3:
-            _, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
-
-        # Find statistics
-        mean_detJ = statistics.mean(detJ)
-
-        # Normalize data
-        detJ /= mean_detJ
-        variance_detJ = statistics.variance(detJ)
-        print("The variance of jacobien normalized is: %.5f" %(variance_detJ))
-
-        # ----------------------------------------------------------------------
-        # FIRST TRY: det J
-        # ----------------------------------------------------------------------
-        if self._dim == 2:
-            X1 = np.zeros((self._sample_size, self._sample_size))
-            X2 = np.zeros((self._sample_size, self._sample_size))
-            U = np.zeros((self._sample_size, self._sample_size))
-            for j in range(self._sample_size):
-                for i in range(self._sample_size):
-                    pos = i + j * self._sample_size
-                    X1[i, j] = qp_PS[0, 0, pos]
-                    X2[i, j] = qp_PS[0, 1, pos]
-                    U[i, j] = detJ[pos]
-            X1label = 'X (m)'
-            X2label = 'Y (m)'
-
-        elif self._dim ==3: 
-            X1 = np.zeros((self._sample_size, self._sample_size))
-            X2 = np.zeros((self._sample_size, self._sample_size))
-            U = np.zeros((self._sample_size, self._sample_size))
-            indpos = round((self._sample_size+1)/2)
-
-            if normalvector == 0:
-                # Normal following x 
-                for k in range(self._sample_size):
-                    for j in range(self._sample_size):
-                        for i in [0]:
-                            pos = i + j * self._sample_size + k * self._sample_size**2
-                            X1[j,k] = qp_PS[0, 1, pos]
-                            X2[j,k] = qp_PS[0, 2, pos]
-                            U[j,k] = detJ[pos]
-                X1label = 'Y (m)'
-                X2label = 'Z (m)'
-
-            elif normalvector == 1:
-                # Normal following y
-                for k in range(self._sample_size):
-                    for j in [0]:
-                        for i in range(self._sample_size):
-                            pos = i + j * self._sample_size + k * self._sample_size**2
-                            X1[i,k] = qp_PS[0, 0, pos]
-                            X2[i,k] = qp_PS[0, 2, pos]
-                            U[i,k] = detJ[pos]
-                X1label = 'X (m)'
-                X2label = 'Z (m)'
-            
-            elif normalvector == 2:
-                # Normal following z
-                for k in [indpos]:
-                    for j in range(self._sample_size):
-                        for i in range(self._sample_size):
-                            pos = i + j * self._sample_size + k * self._sample_size**2
-                            X1[i,j] = qp_PS[0, 0, pos]
-                            X2[i,j] = qp_PS[0, 1, pos]
-                            U[i,j] = detJ[pos]
-                X1label = 'X (m)'
-                X2label = 'Y (m)'
-                            
-            else:
-                raise Warning('That direction is not coded yet. Try another method')
-
-        # Plot the surface
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.pcolormesh(X1, X2, U, cmap='inferno', shading = 'gouraud')
-        ax.set_xlabel(X1label, fontsize=14); 
-        ax.set_ylabel(X2label, fontsize=14)
-
-       # Set parameters
-        ax.axis('equal')
-        ax.tick_params(axis='both', which='major', labelsize=16)
-        ax.set_xlabel('X', fontsize=16)
-        ax.set_ylabel('Y', fontsize=16)
-        fig.tight_layout()
-
-        return fig
-
-        

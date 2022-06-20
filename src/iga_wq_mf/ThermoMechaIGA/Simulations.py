@@ -127,7 +127,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
-            Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, iscg)
+            Model1.MFsolver(F2solve, iterations, epsilon, name, sol_direct, iscg)
             stop = time.time()
             time_noiter_t = stop - start 
             time.sleep(1)
@@ -147,7 +147,7 @@ def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga,
         tracemalloc.clear_traces()
         for name in method_list:
             start = time.time()
-            _, residue_t, error_t = Model1.mf_conj_grad(F2solve, iterations, epsilon, name, sol_direct, iscg)
+            _, residue_t, error_t = Model1.MFsolver(F2solve, iterations, epsilon, name, sol_direct, iscg)
             stop = time.time()
             time_iter_t = stop - start 
             time.sleep(1)

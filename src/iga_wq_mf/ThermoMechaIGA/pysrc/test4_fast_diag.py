@@ -18,6 +18,11 @@ from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
 
+# Chosee folder
+full_path = os.path.realpath(__file__)
+folder_file = os.path.dirname(full_path) + '/data/'
+folder_figure = os.path.dirname(full_path) + '/results/test4/'
+
 dataExist = False
 
 if not dataExist:
@@ -59,12 +64,7 @@ if not dataExist:
     print('Time computing Fast Diag: %.3e s' %(stop-start,))
 
 else:
-    # PLOT 
-    # Chosee folder
-    full_path = os.path.realpath(__file__)
-    folder_file = os.path.dirname(full_path) + '/data/'
-    folder_figure = os.path.dirname(full_path) + '/results/'
-
+    # # PLOT 
     # # Import data
     # file1 = pd.read_table(folder_file + 'Algo1.dat', sep='\t', names=['nbel', 'time'])
     # file2 = pd.read_table(folder_file + 'Algo2.dat', sep='\t', names=['nbel', 'time'])
@@ -100,7 +100,6 @@ else:
 
     # plt.tight_layout()
     # plt.savefig(folder_figure + 'TensorProd' + '.png')
-
 
     # Import data
     file1 = pd.read_table(folder_file + 'Product.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])

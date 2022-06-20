@@ -112,10 +112,38 @@ class MF(WQ):
         Axi = self.eval_Ku(ui, dof, dof)
         return Axi
 
-    def mf_wq_conj_grad(self, bi, dof, nbIterations, epsilon): 
+    def conjugate_gradient(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
+        " Evaluate K u at choosen equations "
+
+        # ------------------
+        # Conjugate Gradient algorithm
+        # ------------------
+        x = np.zeros(len(bi))
+        r = bi
+        p = r
+        rsold = np.dot(r, r)
+        RelRes = np.zeros(nbIterations+1)
+        RelRes[0] = 1.0
+
+        for k in range(nbIterations):
+            Ap = fun_Au(p, dof)
+            alpha = rsold/np.dot(p, Ap)
+            x = x + alpha*p
+            r = r - alpha*Ap
+            RelRes[k+1] = (np.linalg.norm(r, np.inf)/np.linalg.norm(bi, np.inf))
+
+            if RelRes[k+1]<epsilon:
+                break
+            rsnew = np.dot(r, r)
+            p = r + rsnew/rsold * p
+            rsold = rsnew
+
+        return x, RelRes
+
+    def MFsolver(self, bi, dof, nbIterations, epsilon): 
 
         fun = self.mf_wq_evaluate_Au
-        x, residue = super().conjugate_gradient_python(fun, bi, dof, nbIterations, epsilon)
+        x, residue = self.conjugate_gradient(fun, bi, dof, nbIterations, epsilon)
 
         return x, residue
         

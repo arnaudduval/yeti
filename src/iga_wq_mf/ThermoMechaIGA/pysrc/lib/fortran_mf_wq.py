@@ -402,12 +402,12 @@ class fortran_mf_wq(thermoMechaModel):
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
-        source_coef = super().eval_F_coefficient(fun, self._qp_PS, self._detJ)
+        source_coef = super().eval_source_coefficient(fun, self._qp_PS, self._detJ)
         return source_coef
 
     def eval_bodyforce_coefficient(self, fun): 
         " Computes source coefficients "
-        bodyforce = super().eval_BodyForce_coefficient(fun, self._qp_PS, self._detJ)
+        bodyforce = super().eval_bodyforce_coefficient(fun, self._qp_PS, self._detJ)
         return bodyforce
 
     # Assemble matrices
@@ -651,7 +651,7 @@ class fortran_mf_wq(thermoMechaModel):
     # MATRIX FREE SOLUTION
     # =============================    
 
-    def mf_conj_grad(self, bi, nbIterations, epsilon, method, directsol, isCG): 
+    def MFsolver(self, bi, nbIterations, epsilon, method, directsol, isCG): 
 
         # Get inputs 
         inputs = self.get_input4ConjugateGradient(bi, nbIterations, epsilon, method)
@@ -713,9 +713,6 @@ class fortran_mf_wq(thermoMechaModel):
         Tdir = Tf[self._thermal_dod]
         stop = time.time()
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, lastres))
-
-        # # Solve linear system with python
-        # Tp = self.conjugate_gradient_scipy(C, F, isCG=False)
 
         return Tf, Tdir
         

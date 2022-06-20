@@ -27,12 +27,12 @@ class WQ(thermoMechaModel):
         self.eval_basis_weights()
 
         # Evaluate jacobian 
-        self._Jqp, self._qp_PS = super().eval_jacobien_pps(self._dim, self._ctrlpts, 
+        self._Jqp, self._qp_PS = super().eval_jacobien_physicalPosition(self._dim, self._ctrlpts, 
                                                         self._DB, self._nb_qp_wq_total)
 
         # Evaluate conductivity and capacity coefficients
         self._conductivity_coef, self._capacity_coef, self._detJ = \
-            super().eval_K_C_coefficient(self._nb_qp_wq_total, self._Jqp, 
+            super().eval_thermal_coefficient(self._nb_qp_wq_total, self._Jqp, 
                                         self._conductivity, self._capacity)
         
         return 
@@ -67,7 +67,7 @@ class WQ(thermoMechaModel):
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
-        source_coef = super().eval_F_coefficient(fun, self._qp_PS, self._detJ)
+        source_coef = super().eval_source_coefficient(fun, self._qp_PS, self._detJ)
         return source_coef
     
     # ===========================

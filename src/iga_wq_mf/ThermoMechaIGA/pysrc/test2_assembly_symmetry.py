@@ -22,10 +22,10 @@ from lib.physics import power_density
 
 # Choose folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-isIGA = False
+isIGA = True
 CONSTRUCTION = True
 SYMMETRY = False
 

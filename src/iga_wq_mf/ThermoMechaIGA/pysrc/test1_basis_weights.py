@@ -21,7 +21,7 @@ from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 
 # Choose folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test1/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set number of elements
