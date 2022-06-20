@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # My libraries
-from pysrc.lib.create_model import read_text_file, plot_iterative_solver
+from pysrc.lib.post_treat_methods import read_text_file, plot_iterative_solver
 
 # Choose folder
 full_path = os.path.realpath(__file__)

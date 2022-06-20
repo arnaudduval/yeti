@@ -9,7 +9,6 @@ import numpy as np
 import scipy 
 
 # My libraries
-from lib import blockPrint, enablePrint
 from lib.physics import powden_rotring, temperature_rotring
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
@@ -20,7 +19,7 @@ DEGREE = 4
 CUTS = 4
 
 # Create geometry using geomdl
-modelGeo = create_geometry(DEGREE, CUTS, 'TR')
+modelGeo = create_geometry(DEGREE, CUTS, 'RQA')
 
 # ===========================================
 # IGA WQ MF APPROACH
@@ -28,39 +27,37 @@ modelGeo = create_geometry(DEGREE, CUTS, 'TR')
 
 for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
 
-    # blockPrint()
     # Creation of thermal model object
-    Model1 = fortran_model(modelGeo, thermalblockedboundaries=[[1,1], [1,1], [1,1]])
-    Temp_CP, Td = Model1.MSE_ControlPoints(temperature_rotring)
-    _, qp_PS_1, _, Temp_qp_PS_1 = Model1.interpolate_results(u_ctrlpts=Temp_CP)
-    Treal_sample = np.asarray([temperature_rotring(qp_PS_1[:, _][0]) for _ in range(np.shape(qp_PS_1)[2])])
-    error_Temp_1 = np.linalg.norm(Treal_sample-Temp_qp_PS_1, np.inf)/np.linalg.norm(Treal_sample, np.inf)*100
+    modelPhy = fortran_model(modelGeo)
+    Temp_CP, Temp_Surface = modelPhy.interpolate_ControlPoints(temperature_rotring)
+    _, qp_sample, _, Temp_Sample_interp = modelPhy.interpolate_field(u_ctrlpts=Temp_CP)
+    Temp_Sample_exact = np.asarray([temperature_rotring(qp_sample[:, _]) for _ in range(np.shape(qp_sample)[1])])
+    error_1 = np.linalg.norm(Temp_Sample_exact-Temp_Sample_interp, np.inf)/np.linalg.norm(Temp_Sample_exact, np.inf)*100
 
     # Block boundaries
-    dof = Model1._thermal_dof
-    dod = Model1._thermal_dod
+    dof = modelPhy._thermal_dof
+    dod = modelPhy._thermal_dod
 
     # Assemble conductivity matrix K
-    K2nn = Model1.eval_conductivity_matrix(dof, dof)
+    K2nn = modelPhy.eval_conductivity_matrix(dof, dof)
 
     # Assemble source vector F
-    F2n = Model1.eval_source_vector(powden_rotring, dof, indj=dod, Td=Td)
+    F2n = modelPhy.eval_source_vector(powden_rotring, dof, indj=dod, Td=Temp_Surface)
 
     # Solve system
     Tn = scipy.linalg.solve(K2nn.todense(), F2n)
 
     # Assembly
-    Tsolution = np.zeros(Model1._nb_ctrlpts_total)
+    Tsolution = np.zeros(modelPhy._nb_ctrlpts_total)
     Tsolution[dof] = Tn
-    Tsolution[dod] = Td
+    Tsolution[dod] = Temp_Surface
 
     # Compare solutions 
-    _, qp_PS_2, _, Temp_qp_PS_2 = Model1.interpolate_results(u_ctrlpts=Tsolution)
-    error_Temp_2 = np.linalg.norm(Temp_qp_PS_1 - Temp_qp_PS_2, np.inf)/np.linalg.norm(Temp_qp_PS_1, np.inf)*100
-    enablePrint()
+    _, qp_sample, _, Temp_Sample_interp2 = modelPhy.interpolate_field(u_ctrlpts=Tsolution)
+    error_2 = np.linalg.norm(Temp_Sample_interp-Temp_Sample_interp2, np.inf)/np.linalg.norm(Temp_Sample_interp, np.inf)*100
 
-    print("Error using interpolation : %.3e %%" %(error_Temp_1,))
-    print("Error interpolation/direct solution : %.3e %%" %(error_Temp_2,))
+    print("Error using interpolation : %.3e %%" %(error_1,))
+    print("Error interpolation/direct solution : %.3e %%" %(error_2,))
 
     # Solution using conjugate gradient
     iterations = 80
@@ -70,11 +67,11 @@ for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
     method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
     for name in method_list: 
         inputs = [F2n, iterations, epsilon, name, Tn, True]   
-        Tn_t, residue_t, error_t = Model1.mf_conj_grad(*inputs)
-        Tsolution_t = np.zeros(Model1._nb_ctrlpts_total)
+        Tn_t, residue_t, error_t = modelPhy.MFsolver(*inputs)
+        Tsolution_t = np.zeros(modelPhy._nb_ctrlpts_total)
         Tsolution_t[dof] = Tn_t
-        Tsolution_t[dod] = Td
-        error_precond = np.linalg.norm(Tsolution-Tsolution_t, np.inf)/np.linalg.norm(Tsolution, np.inf)*100
-        print("Error direct/iterative solution : %.3e %%" %(error_precond,))
+        Tsolution_t[dod] = Temp_Surface
+        error_3 = np.linalg.norm(Tsolution-Tsolution_t, np.inf)/np.linalg.norm(Tsolution, np.inf)*100
+        print("Error direct/iterative solution : %.3e %%" %(error_3,))
     
     print("------------------")

@@ -1,7 +1,11 @@
+"""
+.. module :: Post - treatment
+    :synopsis: Provides functions used to plot our results
+.. author :: Joaquin Cornejo
+"""
 # Python libraries
 import numpy as np
 import matplotlib.pyplot as plt
-
 
 def write_text_file(filename, method_list, inputs): 
 

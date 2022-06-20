@@ -462,7 +462,7 @@ class thermoMechaModel():
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
-        source_coef = [fun(qp[:, i][0]) * det[i] 
+        source_coef = [fun(qp[:, i]) * det[i] 
                     for i in range(len(det))]
         source_coef = np.array(source_coef)
         stop = time.time()
@@ -486,7 +486,7 @@ class thermoMechaModel():
         print('Getting body force coefficients')   
         start = time.time()
         # Get source coefficient
-        bodyforce_coef = [fun(qp_PS[:, _][0]) * detJ[_] * coef for _ in range(len(detJ))]
+        bodyforce_coef = [fun(qp_PS[:, _]) * detJ[_] * coef for _ in range(len(detJ))]
         stop = time.time()
         print('\tBody force coefficients in : %.5f s' %(stop-start))
 

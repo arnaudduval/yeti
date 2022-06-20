@@ -50,38 +50,34 @@ if CONSTRUCTION:
 
                     blockPrint()
                     # Get file name
-                    if GEOMETRY_CASE == 'CB': funpow = power_density 
-                    elif GEOMETRY_CASE == 'VB': funpow = power_density 
-                    elif GEOMETRY_CASE == 'TR': funpow = power_density 
-                    elif GEOMETRY_CASE == 'RQA': funpow = power_density
-                    elif GEOMETRY_CASE == 'SQ': funpow = power_density 
+                    funpow = power_density 
 
                     # Define geometry 
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
                 
                     # Creation of thermal model object
-                    Model1 = classfortran(modelGeo)
-                    Model2 = classpython(modelGeo)
+                    modelPhy1 = classfortran(modelGeo)
+                    modelPhy2 = classpython(modelGeo)
 
                     if varName == "K": 
-                        var1 = Model1.eval_conductivity_matrix()
-                        var2 = Model2.eval_conductivity_matrix()
+                        var1 = modelPhy1.eval_conductivity_matrix()
+                        var2 = modelPhy2.eval_conductivity_matrix()
 
                     elif varName == "C": 
-                        var1 = Model1.eval_capacity_matrix()
-                        var2 = Model2.eval_capacity_matrix()
+                        var1 = modelPhy1.eval_capacity_matrix()
+                        var2 = modelPhy2.eval_capacity_matrix()
                     
                     elif varName == 'F':
-                        var1 = Model1.eval_source_vector(funpow)
-                        var2 = Model2.eval_source_vector(funpow)
+                        var1 = modelPhy1.eval_source_vector(funpow)
+                        var2 = modelPhy2.eval_source_vector(funpow)
 
                     elif varName == 'J':
-                        var1 = Model1._detJ
-                        var2 = Model2._detJ
+                        var1 = modelPhy1._detJ
+                        var2 = modelPhy2._detJ
                     
                     elif varName == 'QP':
-                        var1 = Model1._qp_PS[:,:]
-                        var2 = Model2._qp_PS[:,:]
+                        var1 = modelPhy1._qp_PS[:,:]
+                        var2 = modelPhy2._qp_PS[:,:]
                 
                     enablePrint()
 
@@ -138,12 +134,12 @@ if SYMMETRY:
                     modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
 
                     # Creation of thermal model object
-                    Model1 = classfortran(modelGeo)
+                    modelPhy1 = classfortran(modelGeo)
                     del modelGeo
 
-                    if varName == "K": var1 = Model1.eval_conductivity_matrix()
-                    elif varName == "C": var1 = Model1.eval_capacity_matrix()
-                    del Model1
+                    if varName == "K": var1 = modelPhy1.eval_conductivity_matrix()
+                    elif varName == "C": var1 = modelPhy1.eval_capacity_matrix()
+                    del modelPhy1
                     enablePrint()
 
                     # Compare results 
