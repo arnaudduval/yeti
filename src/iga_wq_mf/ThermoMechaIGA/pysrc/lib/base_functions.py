@@ -382,7 +382,7 @@ def wq_get_shape_B(degree, nbel, r, multiplicity= 1, maxrule= 1):
     return B0shape, B1shape
 
 def wq_solve_equation_system(B, I):
-    " Return solution of matrix system B w = I "
+    " Return solution of matrix system B w = I. B and I are in CSR format "
 
     # Convert type of B to array
     B = B.toarray()

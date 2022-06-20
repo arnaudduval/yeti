@@ -13,16 +13,6 @@ def power_density(P: list):
 
     return f
 
-def body_force(P:list):
-
-    # For some purposes we consider a body force as 1000
-    if len(P) == 2: 
-        f = np.asarray([0, 1e-1])
-    elif len(P) == 3:
-        f = np.asarray([0, 1e-2, 0])
-
-    return f
-
 def powden_cube(P: list):
     """ u = sin(pi*x)*sin(pi*y)*sin(pi*z)
         f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
@@ -39,7 +29,6 @@ def powden_prism(P: list):
     """ u = (-5*x+6*y+45)*(5*x+6*y-45)*x*(x-6)*sin(pi*z)
         f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
     """
-
     x = P[0]
     y = P[1]
     z = P[2]
@@ -92,5 +81,6 @@ def temperature_rotring(P):
     x = P[0]
     y = P[1]
     z = P[2]
-    u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
-    return u
+    f = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
+
+    return f
