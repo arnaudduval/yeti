@@ -8,7 +8,6 @@ import statistics
 import numpy as np
 from scipy import sparse as sp
 import time
-import matplotlib.pyplot as plt
 from pyevtk.hl import gridToVTK 
 
 # Yeti libraries
@@ -569,8 +568,15 @@ class thermoMechaModel():
 
         return jacobien_PS, qp_PS, detJ, u_interp
     
-    def export_results(self, u_ctrlpts= None, filename= None): 
+    def export_results(self, u_ctrlpts= None, filename= None, folder=None): 
         " Returns solution using geometry basis "
+
+        if folder == None: 
+            import os
+            full_path = os.path.realpath(__file__)
+            dirname = os.path.dirname
+            folder = dirname(dirname(full_path)) + '/results/'
+            if not os.path.isdir(folder): os.mkdir(folder)
 
         # Warnings
         if self._geometry_type == None: raise Warning('Try another method to export results')
@@ -627,6 +633,7 @@ class thermoMechaModel():
             try: name = self._name 
             except: name = "VTKResults"
         else: name = filename 
+        name =  folder + name
         gridToVTK(name, X1, X2, X3, pointData= {"U1" : U, 
                                                 "detJ" : DET,})
         return

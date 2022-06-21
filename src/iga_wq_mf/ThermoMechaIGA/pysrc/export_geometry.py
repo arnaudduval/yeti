@@ -8,39 +8,20 @@
 import os
 
 # My libraries
-from preprocessing.igaparametrization import IGAparametrization
-from lib.create_geomdl import create_geometry, geomdlModel
+from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 
-# Choose folder
-full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+degree = 3
+cuts = 4
 
-DEGREE = 3
-CUTS = 5
+for geometry_case in ['SQ', 'VB', 'TR', 'RQA', 'CB']:
 
-# for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
-for GEOMETRY_CASE in ['RQA']:
+    # Create geometry using geomdl
+    modelGeo = create_geometry(degree, cuts, geometry_case)
 
-    if GEOMETRY_CASE == 'CB': filename = 'parallelepiped'
-    elif GEOMETRY_CASE == 'VB': filename = 'prism'
-    elif GEOMETRY_CASE == 'TR': filename = 'thick_ring'
-    elif GEOMETRY_CASE == 'RQA': filename = 'rotated_quarter_annulus'
-    elif GEOMETRY_CASE == 'SQ': filename = 'quadrilateral'
+    # Creation of thermal model object
+    modelPhy = fortran_mf_wq(modelGeo, isThermal=False)
 
-    # Create and refine model
-    geometry = {'degree': [DEGREE, DEGREE, DEGREE]}
-    modelGeo = geomdlModel(filename=filename, **geometry)
-    modelGeo.write_abaqus_file(filename= folder + GEOMETRY_CASE)
-    modelIGA = IGAparametrization(filename= folder + GEOMETRY_CASE)
-
-    # # ==============================
-    # # Create geometry using geomdl
-    # modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
-
-    # # Creation of thermal model object
-    # Model1 = fortran_mf_wq(modelGeo, isThermal=False)
-
-    # # Different type of plots and data
-    # Model1.export_results(filename= folder + GEOMETRY_CASE)
+    # Different type of plots and data
+    modelPhy.export_results(filename= geometry_case)
     

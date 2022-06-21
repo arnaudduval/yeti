@@ -16,6 +16,9 @@ import copy, time
 # My libraries
 from .base_functions import create_knotvector
 
+# YETI libraries 
+from preprocessing.igaparametrization import IGAparametrization
+
 class geomdlModel(): 
 
     def __init__(self, filename= None, **geometry: None): 
@@ -105,7 +108,8 @@ class geomdlModel():
         return
 
     def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
-        
+        "Refine geometry following each direction. It is slow because it uses python methods"
+
         start = time.time()
         # Copy geometry
         geometry = copy.deepcopy(self._geometry)
@@ -193,9 +197,14 @@ class geomdlModel():
         return
 
     def write_abaqus_file(self, filename):
-        "Returns the inp and NB file. It only works with one patch and with 3D geometries"
+        "Returns the inp and NB file. It only works with one patch"
 
+        def array2txt(array: np.array, format= '%.2f'):
+            return ','.join([format %(i) for i in array])
+
+        # ------------
         # With inp file
+        # ------------
         inpfile = filename + '.inp'
         introduction =  [
             '** Copyright 2020 Thibaut Hirschler',
@@ -212,7 +221,7 @@ class geomdlModel():
             '**',
             '** You should have received a copy of the GNU Lesser General Public License along',
             '** with Yeti. If not, see <https://www.gnu.org/licenses/>',
-            ' ', 
+            '**', 
             '*HEADING',
             '**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon'
             ]
@@ -220,30 +229,24 @@ class geomdlModel():
             f.write('\n'.join(introduction))
             f.write('\n')
             f.write('*Part, name=%s\n' %self._name)
-            f.write('*USER ELEMENT, NODES=%d, TYPE=U1, COORDINATES=%d, INTEGRATION=%d, TENSOR=THREED\n' %(self._nb_ctrlpts_total, self._dim[0], self._nb_ctrlpts_total))
-            for i in range(self._dim[0]):
-                if i+1 == self._dim[0]: f.write('%d' %(i+1))
-                else: f.write('%d,' %(i+1))
+            f.write('*USER ELEMENT, NODES=%d, TYPE=U1, COORDINATES=%d, INTEGRATION=%d\n' 
+                    %(self._nb_ctrlpts_total, self._dim[0], self._nb_ctrlpts_total))
+            f.write(array2txt(np.arange(self._dim[0])+1, format='%d'))
             f.write('\n*Node,nset=AllNode\n')
             for i, CP in enumerate(self._ctrlpts):
-                f.write('%d, %.14f, %.14f, %.14f\n' %(i+1, CP[0], CP[1], CP[2]))
+                f.write('%d, %.15f, %.15f, %.15f\n' %(i+1, CP[0], CP[1], CP[2]))
             f.write('*Element,type=U1,elset=AllEls\n1,\t')
-            for i in range(self._nb_ctrlpts_total, 0, -1):
-                if i == 1: f.write('%d' %i)
-                else: f.write('%d,' %i)
+            f.write(array2txt(np.arange(self._nb_ctrlpts_total, 0, -1), format='%d'))
             f.write('\n')
             f.write('*ELSET,ELSET=EltPatch1,generate\n1,1,1\n')
-            # f.write('*NSET,NSET=CPonBlocked')
-            # f.write(' ') # !!!! No boundaries
             f.write('*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=Mat\n1\n')
             f.write('*End Part\n')
             f.write('**ASSEMBLY\n*Assembly, name=Assembly\n')
             f.write('*Instance, name=I1, part=%s\n' %self._name)
             f.write('*End Instance\n*End Assembly\n')
             f.write('**MATERIAL\n*MATERIAL,NAME=Mat\n*Elastic\n')
-            f.write('%f, %f\n' %(3e3,0.3))
+            f.write('%f, %f\n' %(3e3, 0.3))
             f.write('*STEP,extrapolation=NO,NLGEOM=NO\n*Static\n')
-            # !!!!! No conditions at the boundary
             f.write('** OUTPUT REQUESTS\n*node file,frequency=1\nU,RF,CF\n*el file,frequency=1\nSDV\n*End Step')
 
         # ------------
@@ -270,33 +273,25 @@ class geomdlModel():
         with open(NBfile, 'w') as f:
             f.write('\n'.join(introduction))
             f.write('\n\n')
-            f.write('*Dimension\n%d\n' %self._dim[0])
-            f.write('*Number of CP by element\n%d\n' %self._nb_ctrlpts_total)
+            f.write('*Dimension\n%d\n' %(self._dim[0]))
+            f.write('*Number of CP by element\n%d\n' %(self._nb_ctrlpts_total))
             f.write('*Number of patch\n%d\n' %(1))
             f.write('*Total number of element \n%d\n' %(1))
             f.write('*Number of element by patch\n%d\n' %(1))
             f.write('*Patch(1)\n')
             for i in range(self._dim[0]):
                 kv = self._knotvector[0][i]
-                f.write('%d\n' %len(kv))
-                for j, el in enumerate(kv):
-                    if j+1 == len(kv): f.write('%.1f' %(el))
-                    else: f.write('%.1f,' %(el))
+                f.write('%d\n' %(len(kv)))
+                f.write(array2txt(kv))
                 f.write('\n')
             f.write('*Jpqr\n')
-            for i, deg in enumerate(self._degree):
-                if i+1 == self._dim[0]: f.write('%d' %deg)
-                else: f.write('%d,' %deg)
+            f.write(array2txt(self._degree[:self._dim[0]], format='%d'))
             f.write('\n')
             f.write('*Nijk\n1,\t')
-            for i, nbCP in enumerate(self._nb_ctrlpts):
-                if i+1 == self._dim[0]: f.write('%d' %nbCP)
-                else: f.write('%d,' %nbCP)
+            f.write(array2txt(self._nb_ctrlpts[:self._dim[0]], format='%d'))
             f.write('\n')
             f.write('*Weight\n1,\t')
-            for i in range(self._nb_ctrlpts_total):
-                if i+1 == self._nb_ctrlpts_total: f.write('%.1f' %(1.))
-                else: f.write('%.1f,' %(1.))
+            f.write(array2txt(np.ones(self._nb_ctrlpts_total)))
             
         return
 
@@ -827,11 +822,23 @@ class geomdlModel():
         
         return fig
 
-def create_geometry(degree, cuts, geometry_case):
+def create_geometry(degree, cuts, geoName, folder= None):
 
-    # Create and refine model
-    geometry = {'degree': [degree, degree, degree]}
-    modelGeo = geomdlModel(filename=geometry_case, **geometry)
-    modelGeo.knot_refinement(nb_refinementByDirection= cuts*np.array([1, 1, 1]))
+    if folder == None: 
+        import os
+        full_path = os.path.realpath(__file__)
+        dirname = os.path.dirname
+        folder = dirname(dirname(full_path)) + '/results/geometry/'
+        if not os.path.isdir(folder): os.mkdir(folder)
 
-    return modelGeo
+    # Create basic model (only one element)
+    geoProp = {'degree': [degree, degree, degree]}
+    modelGeo = geomdlModel(filename= geoName, **geoProp)
+    modelGeo.write_abaqus_file(filename= folder + geoName)
+    del modelGeo
+
+    # Discretisize the part
+    modelIGA = IGAparametrization(filename= folder + geoName)
+    modelIGA.refine(nb_refinementByDirection=np.array([cuts, cuts, cuts]))
+
+    return modelIGA
