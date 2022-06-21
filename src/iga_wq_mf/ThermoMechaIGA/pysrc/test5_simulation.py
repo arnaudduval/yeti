@@ -5,208 +5,50 @@
 """
 
 # Python libraries
-import os, tracemalloc
-import scipy, numpy as np
-import time
+import os
 
 # My libraries
-from lib import enablePrint, blockPrint
-from lib.create_geomdl import create_geometry
-from lib.fortran_mf_iga import fortran_mf_iga
-from lib.fortran_mf_wq import fortran_mf_wq
-from lib.physics import (powden_cube, powden_prism,
-                        powden_thickring, powden_rotring, 
-                        temperature_rotring
+from lib.physics import (powden_cube, 
+                        powden_prism,
+                        powden_thickring, 
+                        powden_rotring, 
 )
-from lib.create_model import write_text_file, read_text_file, plot_iterative_solver
+from lib.post_treat_methods import ThermalSimulation, SimulationData, plot_iterative_solver
 
 # Choose folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def run_simulation(degree, cuts, geometry_case, funpowden, funtemp, isiga, 
-                    method_list, iscg, isOnlyDirect=False, isOnlyIter=False):
-    
-    # Define actions 
-    doDirect, doIterative = True, True
-    if isOnlyDirect is True: doIterative = False
-    if isOnlyIter is True: 
-        doDirect = False
-        time_assembly = time_direct = memory_direct = -1e5
-
-    # Define solution 
-    sol_direct = None
-    tracemalloc.start()
-
-    # Direct solver
-    # -------------
-    if doDirect :
-        tracemalloc.clear_traces()
-
-        # Define geometry 
-        modelGeo = create_geometry(degree, cuts, geometry_case)
-
-        # Create thermal model object
-        if isiga: Model1 = fortran_mf_iga(modelGeo)
-        else: Model1 = fortran_mf_wq(modelGeo)
-        del modelGeo
-
-        # Block boundaries
-        dof = Model1._thermal_dof
-        
-        # Assemble conductivity matrix K
-        start = time.time()
-        K2solve = Model1.eval_conductivity_matrix(indi=dof, indj=dof)
-        stop = time.time()
-        time_assembly = stop - start
-
-        # Assemble source vector F
-        if funtemp is not None: 
-            dod = Model1._thermal_dod
-            T_cp, Td = Model1.interpolate_ControlPoints(funtemp)
-            F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
-            del dod, Td, T_cp
-        else: 
-            F2solve = Model1.eval_source_vector(funpowden, indi=dof)
-        
-        # Solve system
-        start = time.time()
-        sol_direct = scipy.sparse.linalg.spsolve(K2solve, F2solve)
-        stop = time.time()
-        time_direct = stop - start
-        time.sleep(1)
-        _, memory_direct = tracemalloc.get_traced_memory()
-        memory_direct /= 1024*1024
-        del K2solve, F2solve, Model1, dof
-        tracemalloc.clear_traces()
-
-    # Recursive solver 
-    # ----------------
-    if doIterative:
-        tracemalloc.clear_traces()
-
-        # Define geometry 
-        modelGeo = create_geometry(degree, cuts, geometry_case)
-
-        # Create thermal model object
-        if isiga: Model1 = fortran_mf_iga(modelGeo)
-        else: Model1 = fortran_mf_wq(modelGeo)
-        del modelGeo
-
-        # Block boundaries
-        dof = Model1._thermal_dof
-
-        # Assemble source vector F
-        if funtemp is not None:  
-            dod = Model1._thermal_dod
-            T_cp, Td = Model1.interpolate_ControlPoints(funtemp)
-            F2solve = Model1.eval_source_vector(funpowden, indi=dof, indj=dod, Td=Td)
-            del dod, Td, T_cp
-        else:
-            F2solve = Model1.eval_source_vector(funpowden, indi=dof)
-
-        time.sleep(1)
-        _, memory_iter_base = tracemalloc.get_traced_memory()
-        memory_iter_base /= 1024*1024
-
-        # enablePrint()
-        if sol_direct is None: 
-            sol_direct = np.ones(len(F2solve))
-            print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
-        # blockPrint()
-
-        # Only compute time to prepare method before iterations
-        time_noiter, memory_noiter = [], []
-        epsilon  = 1e-5
-        iterations = 0
-        tracemalloc.clear_traces()
-        for name in method_list:
-            start = time.time()
-            Model1.MFsolver(F2solve, iterations, epsilon, name, sol_direct, iscg)
-            stop = time.time()
-            time_noiter_t = stop - start 
-            time.sleep(1)
-            _, memory_noiter_t = tracemalloc.get_traced_memory()
-            memory_noiter_t /= 1024*1024
-            tracemalloc.clear_traces()
-
-            # Save data
-            time_noiter.append(time_noiter_t)
-            memory_noiter.append(memory_noiter_t)
-
-        # With and without preconditioner
-        time_iter, residue, error, memory_iter = [], [], [], []
-        epsilon  = 1e-15
-        iterations = 100
-        tracemalloc.clear_traces()
-        for name in method_list:
-            start = time.time()
-            _, residue_t, error_t = Model1.MFsolver(F2solve, iterations, epsilon, name, sol_direct, iscg)
-            stop = time.time()
-            time_iter_t = stop - start 
-            time.sleep(1)
-            _, memory_iter_sup = tracemalloc.get_traced_memory()
-            memory_iter_sup /= 1024*1024
-            tracemalloc.clear_traces()
-        
-            # Save data
-            time_iter.append(time_iter_t)
-            residue.append(residue_t)
-            error.append(error_t)
-            memory_iter.append(memory_iter_base+memory_iter_sup)
-
-        del Model1, F2solve, dof
-        tracemalloc.clear_traces()
-
-    tracemalloc.stop()
-    try: output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
-                    "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
-                    "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
-    except: print('Somethng happened'); output=None
-
-    return output
-
 # Some constants
-FileExist = False
+FileExist = True
 GEOMETRY_CASE = 'RQA'
-DEGREE, CUTS = 3, 5
-IS_IGA_GALERKIN = False
-
-if IS_IGA_GALERKIN: is_cg_list = [True]
+DEGREE, CUTS = 3, 3
+IS_IGA = False
+if IS_IGA: is_cg_list = [True]
 else: is_cg_list = [False]
+method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
 
 for IS_CG in is_cg_list:
-
+    
     # Get file name
     if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
     elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
     elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
     elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, None 
     
-    # Get text file name
-    txtname = GEOMETRY_CASE + '_p' + str(DEGREE) + '_nbel' + str(2**CUTS)
-    if IS_IGA_GALERKIN: txtname += '_IGAG'
-    else: txtname += '_IGAWQ'
-    if IS_CG: txtname += '_CG'
-    else: txtname += '_BiCG'
-    txtname = folder + txtname 
-    method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+    # Run simulation
+    thermalinputs = {'degree': DEGREE, 'cuts': CUTS, 'case': GEOMETRY_CASE, 'isIGA': IS_IGA, 'isCG': IS_CG, 
+                'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
+    SimuRun = ThermalSimulation(thermalinputs, folder)  
+    filename = SimuRun._filename
 
     # Run simulation
     if not FileExist:
-        # blockPrint()
-        inputs_export = run_simulation(DEGREE, CUTS, GEOMETRY_CASE, funpow, funtemp, IS_IGA_GALERKIN, 
-                        method_list, IS_CG, isOnlyIter=True)
-        enablePrint()
-
-        # Export results
-        try: write_text_file(txtname+'.txt', method_list, inputs_export)
-        except: print('It could not be possible to write file')
+        SimuRun.run_simulation()
 
     else :
-        try: 
-            inputs = read_text_file(txtname + '.txt')
-            plot_iterative_solver(txtname, inputs, method_list)
-        except: 
-            print("It seems that the file does not exist or is corrupted")
+        simuData = SimulationData(folder, filename)
+        output = simuData._dataIter
+        plot_iterative_solver(folder + filename, output)
+

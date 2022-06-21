@@ -6,91 +6,17 @@
 # Python libraries
 import numpy as np
 import matplotlib.pyplot as plt
+import tracemalloc
+import scipy, numpy as np
+import time
 
-def write_text_file(filename, method_list, inputs): 
+# My libraries
+from . import enablePrint, blockPrint
+from .create_geomdl import create_geometry
+from .fortran_mf_iga import fortran_mf_iga
+from .fortran_mf_wq import fortran_mf_wq
 
-    # Define inputs
-    time_assembly = inputs["TimeAssembly"]
-    time_direct = inputs["TimeDirect"]
-    memory_direct = inputs["MemDirect"]
-    time_iter = inputs["TimeIter"]
-    time_noiter = inputs["TimeNoIter"]
-    residue = inputs["Res"]
-    error = inputs["Error"]
-    memory_iter = inputs["MemIter"]
-    memory_noiter = inputs["MemNoIter"]
-
-    with open(filename, 'w') as outputfile:
-        outputfile.write('** RESULTS **\n')
-        outputfile.write('* DIRECT SOLVER\n')
-        outputfile.write("{:E}".format(time_assembly) + "\t"
-                        +"{:E}".format(time_direct) + "\t" 
-                        +"{:E}".format(memory_direct) +"\n"
-        )
-
-        for i, pcgmethod in enumerate(method_list):
-            outputfile.write('* ITERATIVE SOLVER : ' + pcgmethod + '\n')
-            outputfile.write("{:E}".format(time_noiter[i]) + '\t' 
-                            +"{:E}".format(memory_noiter[i])+ '\t' 
-                            +"{:E}".format(time_iter[i]) + '\t' 
-                            +"{:E}".format(memory_iter[i]) +'\n'
-            )
-            outputfile.writelines(["{:E}".format(res) + "\t"+ "{:E}".format(err)+"\n"
-                            for res, err in zip(residue[i], error[i])]) 
-    return
-
-def read_text_file(filename):
-    # Read file 
-    residue_list = []
-    error_list = []
-    time_iter = []
-    time_noiter = []
-    memory_iter = []
-    memory_noiter = []
-
-    with open(filename, 'r') as inputfile:
-        lines = inputfile.readlines()
-
-        text_position = []
-        for _ in range(len(lines)):
-            if lines[_][0] == '*': 
-                text_position.append(_)
-        text_position.append(len(lines)+1)
-
-        # We know that our first numerical line is direct method: 
-        lines_data_split = lines[2].split('\t')
-        time_assembly = float(lines_data_split[0])
-        time_direct = float(lines_data_split[1])
-        memory_direct = float(lines_data_split[2])
-        del text_position[0:2]
-
-        # For the different type of solvers
-        for _ in range(len(text_position)-1):
-            ind = [text_position[_]+1, text_position[_+1]]
-            lines_data = lines[ind[0]:ind[1]]
-            lines_data_split = lines_data[0].split('\t')
-            time_noiter.append(float(lines_data_split[0]))
-            memory_noiter.append(float(lines_data_split[1]))
-            time_iter.append(float(lines_data_split[2]))
-            memory_iter.append(float(lines_data_split[3]))
-
-            residue_tmp = []
-            error_tmp = []
-            for i  in range(1, len(lines_data)):
-                lines_data_split = lines_data[i].split('\t')
-                residue_tmp.append(float(lines_data_split[0]))
-                error_tmp.append(float(lines_data_split[1]))
-                
-            residue_list.append(residue_tmp)
-            error_list.append(error_tmp)
-
-        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
-                "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue_list, 
-                "Error": error_list, "MemNoIter": memory_noiter, "MemIter": memory_iter}
-
-    return output
-
-def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
+def plot_iterative_solver(filename, inputs, extension ='.png'):
     # Define color
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                     '#f781bf', '#a65628', '#984ea3',
@@ -99,6 +25,7 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     # Define inputs
     residue = inputs["Res"]
     error = inputs["Error"]
+    method_list = inputs["Methods"]
 
     # Get new names
     new_method_list = []
@@ -111,7 +38,7 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
         elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
 
     # Select important values
-    tol = 1.e-17
+    tol = 1.e-16
     
     # Set figure parameters
     fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
@@ -149,3 +76,359 @@ def plot_iterative_solver(filename, inputs, method_list, extension ='.png'):
     plt.close(fig)
 
     return
+
+class ThermalSimulation():
+
+    def __init__(self, inputs: dict, folder):
+
+        # Get essential data to run simulation
+        self._degree = inputs.get('degree', 2)
+        self._cuts = inputs.get('cuts', 2)
+        self._geoCase = inputs.get('case', 'TR')
+        self._isIGA = inputs.get('isIGA', False)
+        self._isCG = inputs.get('isCG', True)
+        self._funPowDen = inputs.get('funPowDen', None)
+        self._funTemp = inputs.get('funTemp', None)   
+
+        # Get extra data to run simulation  
+        self._IterMethods = inputs.get('IterMethods', ['WP'])
+        self._isOnlyDirect = inputs.get('isOnlyDirect', False)
+        self._isOnlyIter = inputs.get('isOnlyIter', True)
+
+        # Get filename
+        self._filename = self._get_filename()
+        self._savename = folder + self._filename + '.txt'
+        
+        # Create thermal mode
+        self._thermalModel = None
+
+        # Create source vector 
+        self._Fd = None
+
+        # Set number of iterations
+        self._nbIter = 100
+        
+        return
+
+    def _get_filename(self):
+
+        # Get text file name
+        filename = self._geoCase + '_p_' + str(self._degree) + '_nbel_' + str(2**self._cuts)
+        if self._isIGA: filename += '_IGAG'
+        else: filename += '_IGAWQ'
+        if self._isCG: filename += '_CG'
+        else: filename += '_BiCG'
+
+        return filename
+
+    def write_text_file(self, inputs: dict): 
+
+        # Define inputs
+        time_assembly = inputs['TimeAssembly']
+        time_direct = inputs['TimeDirect']
+        memory_direct = inputs['MemDirect']
+        
+        method_list = inputs['Methods']
+        time_noiter = inputs['TimeNoIter']
+        memory_noiter = inputs['MemNoIter']
+        time_iter = inputs['TimeIter']
+        memory_iter = inputs['MemIter']
+        residue = inputs['Res']
+        error = inputs['Error']
+        
+        # Write file
+        with open(self._savename, 'w') as f:
+            f.write('** RESULTS **\n')
+            f.write('** Direct solver\n')
+            f.write('*Time assembly\n')
+            f.write('{:E}\n'.format(time_assembly))
+            f.write('*Time direct\n')
+            f.write('{:E}\n'.format(time_direct))
+            f.write('*Memory direct\n')
+            f.write('{:E}\n'.format(memory_direct))
+            f.write('** Iterative solver ' + ','.join([item for item in method_list]) + '\n')
+            f.write('** Number of iterations ' + '{:d}\n'.format(self._nbIter))
+
+            for i, precond in enumerate(method_list):
+                f.write('**' + precond + '\n')
+                f.write('*Time prepare ' + precond +'\n')
+                f.write('{:E}\n'.format(time_noiter[i]))
+                f.write('*Memory prepare ' + precond +'\n')
+                f.write('{:E}\n'.format(memory_noiter[i]))
+                f.write('*Time iter ' + precond +'\n')
+                f.write('{:E}\n'.format(time_iter[i]))
+                f.write('*Memory iter ' + precond +'\n')
+                f.write('{:E}\n'.format(memory_iter[i]))
+                f.write('*Residue ' + precond + '\n')
+                f.writelines(['{:E}'.format(res) + ',' + '{:E}'.format(err) + '\n'
+                                for res, err in zip(residue[i], error[i])]) 
+        return
+
+    # Run simulations
+
+    def create_geometryModel(self):
+        geoModel = create_geometry(self._degree, self._cuts, self._geoCase)
+        return geoModel
+
+    def create_thermalModel(self):
+        geoModel = self.create_geometryModel()
+        if self._isIGA: thermalModel = fortran_mf_iga(geoModel)
+        else: thermalModel = fortran_mf_wq(geoModel)
+        del geoModel
+        return thermalModel
+
+    def compute_source(self, model, funPowDen, funTemp=None):
+        # Get data
+        dof = model._thermal_dof
+        dod = model._thermal_dod
+
+        # Assemble source vector F
+        if funTemp is not None:  
+            Td = model.interpolate_ControlPoints(funTemp)[1]
+            Fd = model.eval_source_vector(funPowDen, indi=dof, indj=dod, Td=Td)
+        else:
+            Fd = model.eval_source_vector(funPowDen, indi=dof)
+
+        return Fd
+    
+    def run_iterative_solver(self, model, Fd, nbIter=100, eps=1e-15, precond='WP', solDir=None):
+
+        if solDir == None: 
+            solDir = np.ones(len(Fd))
+            print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
+
+        # Run matrix free solver
+        start = time.time()
+        solIter, residue, error = model.MFsolver(Fd, nbIter, eps, precond, solDir, self._isCG)
+        stop = time.time()
+        time_MF = stop - start 
+
+        return solIter, residue, error, time_MF
+
+    def run_direct_solver(self, model, Fd):
+       
+        # Assemble conductivity matrix K
+        start = time.time()
+        Kdd = model.eval_conductivity_matrix(indi=model._thermal_dof, indj=model._thermal_dof)
+        stop = time.time()
+        time_assembly = stop - start 
+
+        # Solve system
+        start = time.time()
+        solDir = scipy.sparse.linalg.spsolve(Kdd, Fd)
+        stop = time.time()
+        time_direct = stop - start 
+
+        return solDir, time_assembly, time_direct
+
+    def run_simulation(self):
+
+        # Initialize
+        memory_base = time_assembly = time_direct = memory_direct = -1e5
+
+        # Create thermal model
+        solDir = None
+        self._thermalModel = self.create_thermalModel()
+
+        # Create source vector 
+        self._Fd = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)
+
+        # Define actions 
+        doDirect, doIterative = True, True
+        if self._isOnlyDirect: doIterative = False
+        if self._isOnlyIter: doDirect = False
+
+        if doDirect :
+            solDir, time_assembly, time_direct = self.run_direct_solver(self._thermalModel, self._Fd)
+
+        if doIterative:
+
+            # Only compute time to prepare method before iterations
+            time_noiter, memory_noiter = [], []
+            for item in self._IterMethods:
+                time_noiter_t = self.run_iterative_solver(self._thermalModel, self._Fd, nbIter=self._nbIter, precond=item, solDir=solDir)[3]
+                memory_noiter_t = -1e5
+                
+                # Save data
+                time_noiter.append(time_noiter_t)
+                memory_noiter.append(memory_noiter_t)
+
+            # With and without preconditioner
+            time_iter, memory_iter, residue, error = [], [], [], []
+            for item in self._IterMethods:
+                _, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, precond=item, solDir=solDir)
+                memory_iter_t = -1e5
+
+                # Save data
+                time_iter.append(time_iter_t)
+                residue.append(residue_t)
+                error.append(error_t)
+                memory_iter.append(memory_base+memory_iter_t)
+        
+        # Write file
+        output = {"Methods": self._IterMethods, "TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
+                "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
+                "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
+
+        self.write_text_file(output)
+
+        return 
+
+class SimulationData(): 
+
+    def __init__(self, folder, filename): 
+
+        # Set filename
+        self._filename = filename
+        self._savename = folder + filename + '.txt'
+
+        # Get important data from title
+        self._interpret_title(filename)
+
+        # Get data from file
+        self._dataDir = self.getInfosDirect()
+        self._dataIter = self.getInfosIter()
+    
+        return
+
+    # Read data
+
+    def _interpret_title(self, filename):
+
+        # Split string
+        ls = filename.split('_')
+
+        # Get data
+        self._geoCase = ls[0]
+        self._degree = int(ls[2])
+        self._cuts = int(np.log2(int(ls[4])))
+
+        if ls[5] == 'IGAG': self._isIGA = True
+        else: self._isIGA = False
+
+        if ls[6] == 'CG': self._isCG = True
+        else: self._isCG = False
+
+        return
+
+    def getInfosDirect(self):
+        lines = self._get_cleanLines()
+        time_assembly = self._read_time_assembly(lines)
+        time_direct = self._read_time_solve(lines)
+        memory_direct = self._read_memory_direct(lines)
+
+        output = {"TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct}
+        return output
+
+    def getInfosIter(self):
+        lines = self._get_cleanLines()
+        iter_methods, nbIter = self._read_iter_methods(lines)
+
+        time_noiter, memory_noiter = [], []
+        time_iter, memory_iter, residue, error = [], [], [], []
+        for method in iter_methods:
+            tni = self._read_time_preparation(lines, method)
+            ti = self._read_time_iterations(lines, method)
+            mni = self._read_memory_preparation(lines, method)
+            mi = self._read_memory_iterations(lines, method)
+            res, err = self._read_residue_error(lines, method, nbIter)
+
+            time_noiter.append(tni)
+            memory_noiter.append(mni)
+            time_iter.append(ti)
+            memory_iter.append(mi)
+            residue.append(res)
+            error.append(err)
+
+        output = {"Methods": iter_methods, "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
+                "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
+        return output
+
+    def _get_cleanLines(self):
+        inputFile  = open(self._savename, 'r')
+        lines      = inputFile.readlines()
+        linesClean = []
+        theLine    = ''
+        # Joining lines ending with ',' in a new list of lines
+        # This allow to merge definitions written on more than a single line
+        for i in range(0, len(lines)):
+            words = lines[i].rstrip().split(',')
+            # Removing trailing spaces
+            lastWord = words[-1].split()
+            if(len(lastWord) == 0):
+                theLine = theLine + lines[i]
+                # Removing '\n' character
+                theLine = theLine.rstrip()
+            else:
+                theLine = theLine + lines[i]
+                linesClean.append(theLine.rstrip())
+                theLine = ''
+        inputFile.close()
+        return linesClean
+
+    def _get_num_line(self, lines, str2find):
+        i=0
+        for line in lines:
+            if line.startswith(str2find):
+                break
+            i += 1
+        if i==len(lines):
+            print("Error: keyword " + str2find + " is missing in data file.")
+        return i
+
+    def _read_time_assembly(self, lines):
+        i = self._get_num_line(lines,'*Time assembly')
+        time = float(lines[i+1])
+        return time
+
+    def _read_time_solve(self, lines): 
+        i = self._get_num_line(lines,'*Time direct')
+        time = float(lines[i+1])
+        return time
+
+    def _read_memory_direct(self, lines): 
+        i = self._get_num_line(lines,'*Memory direct')
+        memory = float(lines[i+1])
+        return memory
+
+    def _read_iter_methods(self, lines):
+        i = self._get_num_line(lines,'** Iterative solver')
+        ls = lines[i].split(' ')[-1]
+        methods = ls.split(',')
+        ls = lines[i+1].split(' ')[-1]
+        nbIter = int(ls)
+        return methods, nbIter
+
+    def _read_time_preparation(self, lines, method):
+        i = self._get_num_line(lines,'*Time prepare ' + method)
+        time = float(lines[i+1])
+        return time
+
+    def _read_time_iterations(self, lines, method):
+        i = self._get_num_line(lines,'*Time iter ' + method)
+        time = float(lines[i+1])
+        return time
+
+    def _read_memory_preparation(self, lines, method):
+        i = self._get_num_line(lines,'*Memory prepare ' + method)
+        memory = float(lines[i+1])
+        return memory
+
+    def _read_memory_iterations(self, lines, method):
+        i = self._get_num_line(lines,'*Memory iter ' + method)
+        memory = float(lines[i+1])
+        return memory
+    
+    def _read_residue_error(self, lines, method, length=100):
+        i = self._get_num_line(lines,'*Residue ' + method)
+        i += 1
+        lines_data = lines[i:i+length+1]
+
+        residue, error = [], []
+        for line in lines_data:
+            ls = line.split(',')
+            residue.append(float(ls[0]))
+            error.append(float(ls[1]))
+
+        return residue, error
+    
