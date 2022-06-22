@@ -40,15 +40,15 @@ for IS_CG in is_cg_list:
     # Run simulation
     thermalinputs = {'degree': DEGREE, 'cuts': CUTS, 'case': GEOMETRY_CASE, 'isIGA': IS_IGA, 'isCG': IS_CG, 
                 'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
-    SimuRun = ThermalSimulation(thermalinputs, folder)  
-    filename = SimuRun._filename
+    Simulation = ThermalSimulation(thermalinputs, folder)  
+    filename = Simulation._filename
 
     # Run simulation
     if not FileExist:
-        SimuRun.run_simulation()
+        Simulation.run_simulation()
 
     else :
-        simuData = SimulationData(folder, filename)
-        output = simuData._dataIter
-        plot_iterative_solver(folder + filename, output)
+        Data = SimulationData(filename)
+        output = Data._dataIter
+        plot_iterative_solver(filename, output)
 

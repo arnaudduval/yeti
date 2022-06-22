@@ -5,35 +5,51 @@
 """
 
 # Python libraries
+import memory_profiler as mp
 import tracemalloc
 import os, psutil
 import numpy as np
+from resource import getrusage, RUSAGE_SELF
 
 # My libraries
 from iga_wq_mf import basis_weights
 
+def fun_f2py():
+    basis_weights.test_memory('Y')
+    return 
+
+def fun_py():
+    # It is the same function in fortran
+    N = 500
+    A = np.zeros((N, N), dtype=float)
+    for i in range(N):
+        for j in range(N):
+            A[i, j] = i + 0.5*j
+    B = A @ A
+    return
+
+# Define some cases
+case = 1
+if case == 0: fun = fun_f2py
+else: fun = fun_py
+
 tracemalloc.start()
-basis_weights.test_memory('Y')
+fun()
 _, memory_direct = tracemalloc.get_traced_memory()
 memory_direct /= 1024*1024
-print(memory_direct)
+print('used mem in tracemalloc', memory_direct)
 tracemalloc.clear_traces()
 tracemalloc.stop()
 
 process = psutil.Process(os.getpid())
 memi = process.memory_info().rss/(1024*1024)
-vec = np.ones(100000)
-basis_weights.test_memory('Y')
+fun()
 memf = process.memory_info().rss/(1024*1024)
-print(memf-memi)
+print('used mem in psutil', memf-memi)
 
-# ===========================
-import memory_profiler as mp
-def fun():
-    basis_weights.test_memory('Y')
-    return "XXXXX"
 start_mem = mp.memory_usage(max_usage=True)
-res = mp.memory_usage(proc=(fun,), max_usage=True, interval=.001) 
-print('start mem', start_mem)
-print('max mem', res)
-print('used mem', res-start_mem)
+res = mp.memory_usage(proc=(fun,), max_usage=True, interval=.0001) 
+print('used mem in mprofiler', res-start_mem)
+
+print("Peak memory (MiB):",
+      getrusage(RUSAGE_SELF).ru_maxrss / 1024)

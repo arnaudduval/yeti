@@ -313,20 +313,20 @@ subroutine test_memory(isAllocation)
 
     implicit none
     character(len=10) :: isAllocation
-    double precision, dimension(:, :), allocatable :: matrix
-    integer :: i, j, M, N
+    integer, parameter :: N = 500
+    double precision, dimension(N, N) :: A, B
+    integer :: i, j
 
-    M = 20000
-    N = 20000
     if (isAllocation.eq.'Y') then
         print*, 'Allocating vector'
-        allocate(matrix(M, N))
-        do i = 1, M
+        do i = 1, N
             do j = 1, N
-                matrix(i, j) = i + 0.5*j
+                A(i, j) = i + 0.5*j
             end do
         end do
-        deallocate(matrix)
+
+        call dgemm('N', 'N', size(A, 1), size(A, 2), size(A, 2), 1.d0, &
+                A, size(A, 1), A, size(A, 1), 0.d0, B, size(B, 1))
     end if
 
 end subroutine test_memory

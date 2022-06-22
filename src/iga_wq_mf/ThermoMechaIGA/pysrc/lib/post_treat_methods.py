@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tracemalloc
 import scipy, numpy as np
-import time
+import os, time
 
 # My libraries
 from . import enablePrint, blockPrint
@@ -17,6 +17,10 @@ from .fortran_mf_iga import fortran_mf_iga
 from .fortran_mf_wq import fortran_mf_wq
 
 def plot_iterative_solver(filename, inputs, extension ='.png'):
+    
+    # Get new name
+    savename = filename.split('.')[0] + extension
+    
     # Define color
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                     '#f781bf', '#a65628', '#984ea3',
@@ -50,29 +54,27 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
         error_method = error_method[residue_method>tol]
         residue_method = residue_method[residue_method>tol]
         
-        ax1.plot(np.arange(len(error_method)), error_method*100, label=pcgmethod, color=CB_color_cycle[i])
-        ax2.plot(np.arange(len(residue_method)), residue_method*100, label=pcgmethod, color=CB_color_cycle[i])
+        ax1.semilogy(np.arange(len(error_method)), error_method*100, label=pcgmethod, color=CB_color_cycle[i])
+        ax2.semilogy(np.arange(len(residue_method)), residue_method*100, label=pcgmethod, color=CB_color_cycle[i])
 
     # Set properties
-    ax1.set_yscale("log")
     ax1.set_xlabel('Number of iterations', fontsize=16)
     ax1.set_ylabel('Relative error (%)', fontsize=16)
     ax1.tick_params(axis='x', labelsize=16)
     ax1.tick_params(axis='y', labelsize=16)
-    ax1.legend(loc='best',fontsize=12)
+    ax1.legend(loc='best', fontsize=12)
     ax1.grid()
 
-    ax2.set_yscale("log")
     ax2.set_xlabel('Number of iterations', fontsize=16)
     ax2.set_ylabel('Relative residue (%)', fontsize=16)
     ax2.tick_params(axis='x', labelsize=16)
     ax2.tick_params(axis='y', labelsize=16)
-    ax2.legend(loc='best',fontsize=12)
+    ax2.legend(loc='best', fontsize=12)
     ax2.grid()
 
     # Save figure
     plt.tight_layout()
-    plt.savefig(filename + extension)
+    plt.savefig(savename)
     plt.close(fig)
 
     return
@@ -91,13 +93,13 @@ class ThermalSimulation():
         self._funTemp = inputs.get('funTemp', None)   
 
         # Get extra data to run simulation  
-        self._IterMethods = inputs.get('IterMethods', ['WP'])
+        self._iterMethods = inputs.get('IterMethods', ['WP'])
         self._isOnlyDirect = inputs.get('isOnlyDirect', False)
         self._isOnlyIter = inputs.get('isOnlyIter', True)
 
         # Get filename
-        self._filename = self._get_filename()
-        self._savename = folder + self._filename + '.txt'
+        filename = self._get_filename()
+        self._filename = folder + filename + '.txt'
         
         # Create thermal mode
         self._thermalModel = None
@@ -128,7 +130,7 @@ class ThermalSimulation():
         time_direct = inputs['TimeDirect']
         memory_direct = inputs['MemDirect']
         
-        method_list = inputs['Methods']
+        iterMethods = inputs['Methods']
         time_noiter = inputs['TimeNoIter']
         memory_noiter = inputs['MemNoIter']
         time_iter = inputs['TimeIter']
@@ -137,7 +139,7 @@ class ThermalSimulation():
         error = inputs['Error']
         
         # Write file
-        with open(self._savename, 'w') as f:
+        with open(self._filename, 'w') as f:
             f.write('** RESULTS **\n')
             f.write('** Direct solver\n')
             f.write('*Time assembly\n')
@@ -146,20 +148,20 @@ class ThermalSimulation():
             f.write('{:E}\n'.format(time_direct))
             f.write('*Memory direct\n')
             f.write('{:E}\n'.format(memory_direct))
-            f.write('** Iterative solver ' + ','.join([item for item in method_list]) + '\n')
+            f.write('** Iterative solver ' + ','.join([item for item in iterMethods]) + '\n')
             f.write('** Number of iterations ' + '{:d}\n'.format(self._nbIter))
 
-            for i, precond in enumerate(method_list):
-                f.write('**' + precond + '\n')
-                f.write('*Time prepare ' + precond +'\n')
+            for i, method in enumerate(iterMethods):
+                f.write('**' + method + '\n')
+                f.write('*Time prepare ' + method +'\n')
                 f.write('{:E}\n'.format(time_noiter[i]))
-                f.write('*Memory prepare ' + precond +'\n')
+                f.write('*Memory prepare ' + method +'\n')
                 f.write('{:E}\n'.format(memory_noiter[i]))
-                f.write('*Time iter ' + precond +'\n')
+                f.write('*Time iter ' + method +'\n')
                 f.write('{:E}\n'.format(time_iter[i]))
-                f.write('*Memory iter ' + precond +'\n')
+                f.write('*Memory iter ' + method +'\n')
                 f.write('{:E}\n'.format(memory_iter[i]))
-                f.write('*Residue ' + precond + '\n')
+                f.write('*Residue ' + method + '\n')
                 f.writelines(['{:E}'.format(res) + ',' + '{:E}'.format(err) + '\n'
                                 for res, err in zip(residue[i], error[i])]) 
         return
@@ -191,16 +193,16 @@ class ThermalSimulation():
 
         return Fd
     
-    def run_iterative_solver(self, model, Fd, nbIter=100, eps=1e-15, precond='WP', solDir=None):
+    def run_iterative_solver(self, model, Fd, nbIter=100, eps=1e-15, method='WP', solDir=None):
 
         if solDir == None: 
             solDir = np.ones(len(Fd))
             print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
 
         # Run matrix free solver
-        start = time.time()
-        solIter, residue, error = model.MFsolver(Fd, nbIter, eps, precond, solDir, self._isCG)
-        stop = time.time()
+        start = time.process_time()
+        solIter, residue, error = model.MFsolver(Fd, nbIter, eps, method, solDir, self._isCG)
+        stop = time.process_time()
         time_MF = stop - start 
 
         return solIter, residue, error, time_MF
@@ -208,15 +210,15 @@ class ThermalSimulation():
     def run_direct_solver(self, model, Fd):
        
         # Assemble conductivity matrix K
-        start = time.time()
+        start = time.process_time()
         Kdd = model.eval_conductivity_matrix(indi=model._thermal_dof, indj=model._thermal_dof)
-        stop = time.time()
+        stop = time.process_time()
         time_assembly = stop - start 
 
         # Solve system
-        start = time.time()
+        start = time.process_time()
         solDir = scipy.sparse.linalg.spsolve(Kdd, Fd)
-        stop = time.time()
+        stop = time.process_time()
         time_direct = stop - start 
 
         return solDir, time_assembly, time_direct
@@ -224,7 +226,10 @@ class ThermalSimulation():
     def run_simulation(self):
 
         # Initialize
-        memory_base = time_assembly = time_direct = memory_direct = -1e5
+        time_assembly, time_direct, memory_direct = 0.0, 0.0, 0.0
+        time_noiter, memory_noiter = 0.0, 0.0
+        time_iter, memory_iter = 0.0, 0.0
+        residue, error = np.zeros(self._nbIter+1), np.zeros(self._nbIter+1)
 
         # Create thermal model
         solDir = None
@@ -242,12 +247,11 @@ class ThermalSimulation():
             solDir, time_assembly, time_direct = self.run_direct_solver(self._thermalModel, self._Fd)
 
         if doIterative:
-
             # Only compute time to prepare method before iterations
             time_noiter, memory_noiter = [], []
-            for item in self._IterMethods:
-                time_noiter_t = self.run_iterative_solver(self._thermalModel, self._Fd, nbIter=self._nbIter, precond=item, solDir=solDir)[3]
-                memory_noiter_t = -1e5
+            for method in self._iterMethods:
+                time_noiter_t = self.run_iterative_solver(self._thermalModel, self._Fd, nbIter=0, method=method, solDir=solDir)[3]
+                memory_noiter_t = 0.0
                 
                 # Save data
                 time_noiter.append(time_noiter_t)
@@ -255,18 +259,19 @@ class ThermalSimulation():
 
             # With and without preconditioner
             time_iter, memory_iter, residue, error = [], [], [], []
-            for item in self._IterMethods:
-                _, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, precond=item, solDir=solDir)
-                memory_iter_t = -1e5
+            for method in self._iterMethods:
+                _, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, method=method, solDir=solDir)
+                memory_iter_t = 0.0
 
                 # Save data
                 time_iter.append(time_iter_t)
                 residue.append(residue_t)
                 error.append(error_t)
-                memory_iter.append(memory_base+memory_iter_t)
+                memory_iter.append(memory_iter_t)
         
         # Write file
-        output = {"Methods": self._IterMethods, "TimeAssembly": time_assembly, "TimeDirect": time_direct, "MemDirect": memory_direct, 
+        output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, 
+                "TimeDirect": time_direct, "MemDirect": memory_direct, 
                 "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                 "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
 
@@ -276,14 +281,15 @@ class ThermalSimulation():
 
 class SimulationData(): 
 
-    def __init__(self, folder, filename): 
+    def __init__(self, filename): 
 
         # Set filename
         self._filename = filename
-        self._savename = folder + filename + '.txt'
-
+        
         # Get important data from title
-        self._interpret_title(filename)
+        full_path = os.path.realpath(filename)
+        name = os.path.basename(full_path).split('.')[0]
+        self._interpret_title(name)
 
         # Get data from file
         self._dataDir = self.getInfosDirect()
@@ -322,11 +328,11 @@ class SimulationData():
 
     def getInfosIter(self):
         lines = self._get_cleanLines()
-        iter_methods, nbIter = self._read_iter_methods(lines)
+        iterMethods, nbIter = self._read_iter_methods(lines)
 
         time_noiter, memory_noiter = [], []
         time_iter, memory_iter, residue, error = [], [], [], []
-        for method in iter_methods:
+        for method in iterMethods:
             tni = self._read_time_preparation(lines, method)
             ti = self._read_time_iterations(lines, method)
             mni = self._read_memory_preparation(lines, method)
@@ -340,12 +346,12 @@ class SimulationData():
             residue.append(res)
             error.append(err)
 
-        output = {"Methods": iter_methods, "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
+        output = {"Methods": iterMethods, "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
                 "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
         return output
 
     def _get_cleanLines(self):
-        inputFile  = open(self._savename, 'r')
+        inputFile  = open(self._filename, 'r')
         lines      = inputFile.readlines()
         linesClean = []
         theLine    = ''
