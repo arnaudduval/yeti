@@ -673,7 +673,8 @@ class fortran_mf_wq(thermoMechaModel):
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
-        coef_F = [fun(self._qp_PS[:, _])*self._detJ[_] for _ in range(self._nb_qp_wq_total)]
+        fun_qp = fun(self._qp_PS)  
+        coef_F = fun_qp * self._detJ
 
         # Define inputs for C and F
         shape_matrices, indices, data_interp, data_F = [], [], [], []

@@ -16,7 +16,7 @@ from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
 DEGREE = 4
-CUTS = 4
+CUTS = 4 # It can not exceed 5 
 
 # Create geometry using geomdl
 modelGeo = create_geometry(DEGREE, CUTS, 'RQA')
@@ -25,13 +25,13 @@ modelGeo = create_geometry(DEGREE, CUTS, 'RQA')
 # IGA WQ MF APPROACH
 # ===========================================
 
-for fortran_model in [fortran_mf_iga, fortran_mf_wq]:
+for fortran_model in [fortran_mf_wq]:
 
     # Creation of thermal model object
     modelPhy = fortran_model(modelGeo)
     Temp_CP, Temp_Surface = modelPhy.interpolate_ControlPoints(temperature_rotring)
     _, qp_sample, _, Temp_Sample_interp = modelPhy.interpolate_field(u_ctrlpts=Temp_CP)
-    Temp_Sample_exact = np.asarray([temperature_rotring(qp_sample[:, _]) for _ in range(np.shape(qp_sample)[1])])
+    Temp_Sample_exact = temperature_rotring(qp_sample)
     error_1 = np.linalg.norm(Temp_Sample_exact-Temp_Sample_interp, np.inf)/np.linalg.norm(Temp_Sample_exact, np.inf)*100
 
     # Block boundaries

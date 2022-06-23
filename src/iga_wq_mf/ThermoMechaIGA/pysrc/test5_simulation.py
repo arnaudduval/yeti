@@ -21,9 +21,9 @@ folder = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = True
+FileExist = False
 GEOMETRY_CASE = 'RQA'
-DEGREE, CUTS = 3, 3
+DEGREE, CUTS = 3, 6
 IS_IGA = False
 if IS_IGA: is_cg_list = [True]
 else: is_cg_list = [False]
