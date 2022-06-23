@@ -399,7 +399,6 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t, array_temp_1tt
 
     ! Initialize
-    array_output = 0.d0
     allocate(array_temp_1(nb_cols_total))
     allocate(array_temp_1t(nb_cols_total))
     allocate(array_temp_1tt(nb_cols_total))
@@ -423,13 +422,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W11_u, &
     size_data_v, indi_v, indj_v, data_W00_v, size_data_w, indi_w, indj_w, & 
-    data_W00_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
+    data_W00_w, array_temp_1t, array_output)
         
     ! ---------------------
     ! Get W = W00_w x W10_v x W01_u (Kronecker produt)
@@ -776,14 +769,14 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
                             I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
     deallocate(I_u, I_v, I_w)
 
-    ! =============================
-    ! It is already optimized
-    ! Do fast diagonalization direct method
-    call cpu_time(start)
-    call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
-                U_u, U_v, U_w, Deigen, s, r1)
-    call cpu_time(finish)
-    print *, finish-start
+    ! ! =============================
+    ! ! It is already optimized
+    ! ! Do fast diagonalization direct method
+    ! call cpu_time(start)
+    ! call fast_diagonalization_3d(nb_rows_total, nb_rows_u, nb_rows_v, nb_rows_w, &
+    !             U_u, U_v, U_w, Deigen, s, r1)
+    ! call cpu_time(finish)
+    ! print *, finish-start
 
     ! ! =============================
     ! ! It is already optimized
@@ -807,21 +800,21 @@ subroutine test_precondfd(nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w,
     ! call cpu_time(finish)
     ! print*, finish-start
 
-    ! ! =============================
-    ! allocate(cond_coefs(3, 3, nb_cols_total))
-    ! cond_coefs = 1.d0
+    ! =============================
+    allocate(cond_coefs(3, 3, nb_cols_total))
+    cond_coefs = 1.d0
 
-    ! call cpu_time(start)
-    ! call mf_wq_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
-    ! nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    ! size_data_u, size_data_v, size_data_w, &
-    ! indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    ! data_B0_u, data_B1_u, data_W00_u, data_W00_u, data_W11_u, data_W11_u, &
-    ! data_B0_v, data_B1_v, data_W00_v, data_W00_v, data_W11_v, data_W11_v, &
-    ! data_B0_w, data_B1_w, data_W00_w, data_W00_w, data_W11_w, data_W11_w, &
-    ! s, r1)
-    ! call cpu_time(finish)
-    ! print*, finish-start
+    call cpu_time(start)
+    call mf_wq_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
+    nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+    size_data_u, size_data_v, size_data_w, &
+    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+    data_B0_u, data_B1_u, data_W00_u, data_W00_u, data_W11_u, data_W11_u, &
+    data_B0_v, data_B1_v, data_W00_v, data_W00_v, data_W11_v, data_W11_v, &
+    data_B0_w, data_B1_w, data_W00_w, data_W00_w, data_W11_w, data_W11_w, &
+    s, r1)
+    call cpu_time(finish)
+    print*, finish-start
 
 end subroutine test_precondfd
 

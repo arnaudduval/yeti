@@ -570,11 +570,13 @@ module tensor_methods
         double precision, allocatable :: Ci0(:)
 
         ! Create Bl and Wl
-        double precision, allocatable, dimension(:,:) :: BW_u, BW_v
+        integer :: i, j
+        double precision, allocatable, dimension(:,:) :: BW_u, BW_v, Bt
+        double precision, allocatable, dimension(:) :: Wt
 
         ! Loops
         integer :: genPosC
-        integer :: iu, iv, ju, jv, posu, posv
+        integer :: ju, jv, posu, posv
 
         ! Initiliaze
         allocate(Ci0(nnz_col_u*nnz_col_v))
@@ -591,20 +593,23 @@ module tensor_methods
         end do
 
         ! Set values of BW
-        allocate(BW_u(nnz_row_u,nnz_col_u))
-        allocate(BW_v(nnz_row_v,nnz_col_v))
+        allocate(BW_u(nnz_row_u,nnz_col_u), Bt(nnz_row_u,nnz_col_u), Wt(nnz_col_u))
+        Bt = B_u(i_nnz_u, j_nnz_u)
+        Wt = W_u(row_u, j_nnz_u)
+        
+        forall (i = 1 : size(Bt, 1), j = 1 : size(Bt, 2)) 
+            BW_u(i, j) = Bt(i, j) * Wt(j)
+        end forall
+        deallocate(Bt, Wt)
 
-        do ju = 1, nnz_col_u
-            do iu = 1, nnz_row_u
-                BW_u(iu, ju) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
-            end do
-        end do
+        allocate(BW_v(nnz_row_v,nnz_col_v), Bt(nnz_row_v,nnz_col_v), Wt(nnz_col_v))
+        Bt = B_v(i_nnz_v, j_nnz_v)
+        Wt = W_v(row_v, j_nnz_v)
 
-        do jv = 1, nnz_col_v
-            do iv = 1, nnz_row_v
-                BW_v(iv, jv) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
-            end do
-        end do
+        forall (i = 1 : size(Bt, 1), j = 1 : size(Bt, 2)) 
+            BW_v(i, j) = Bt(i, j) * Wt(j)
+        end forall
+        deallocate(Bt, Wt)
 
         call tensor2d_dot_vector(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
                                 BW_u, BW_v, Ci0, data_row)
@@ -648,7 +653,7 @@ module tensor_methods
         dimension :: indi_result(nb_rows_u*nb_rows_v+1) 
         integer, intent(in) :: size_data_result
 
-        double precision, intent(inout) :: data_result
+        double precision, intent(out) :: data_result
         dimension :: data_result(size_data_result)
 
         ! Local data 
@@ -734,7 +739,7 @@ module tensor_methods
             
                 ! Get result
                 do j = 1, size_data_row
-                    data_result(result_offset+j-1) = data_result(result_offset+j-1) + data_row(j)
+                    data_result(result_offset+j-1) = data_row(j)
                 end do   
 
                 deallocate(data_row)
@@ -790,11 +795,13 @@ module tensor_methods
         double precision, allocatable :: Ci0(:)
 
         ! Create Bl and Wl
-        double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w
+        integer :: i, j
+        double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w, Bt
+        double precision, allocatable, dimension(:) :: Wt
 
         ! Loops
         integer :: genPosC
-        integer :: iu, iv, iw, ju, jv, jw, posu, posv, posw
+        integer :: ju, jv, jw, posu, posv, posw
 
         ! Initiliaze
         allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
@@ -814,27 +821,32 @@ module tensor_methods
         end do
 
         ! Set values of BW
-        allocate(BW_u(nnz_row_u,nnz_col_u))
-        allocate(BW_v(nnz_row_v,nnz_col_v))
-        allocate(BW_w(nnz_row_w,nnz_col_w))
+        allocate(BW_u(nnz_row_u,nnz_col_u), Bt(nnz_row_u,nnz_col_u), Wt(nnz_col_u))
+        Bt = B_u(i_nnz_u, j_nnz_u)
+        Wt = W_u(row_u, j_nnz_u)
+        
+        forall (i = 1 : size(Bt, 1), j = 1 : size(Bt, 2)) 
+            BW_u(i, j) = Bt(i, j) * Wt(j)
+        end forall
+        deallocate(Bt, Wt)
 
-        do ju = 1, nnz_col_u
-            do iu = 1, nnz_row_u
-                BW_u(iu, ju) = B_u(i_nnz_u(iu), j_nnz_u(ju)) * W_u(row_u, j_nnz_u(ju))
-            end do
-        end do
+        allocate(BW_v(nnz_row_v,nnz_col_v), Bt(nnz_row_v,nnz_col_v), Wt(nnz_col_v))
+        Bt = B_v(i_nnz_v, j_nnz_v)
+        Wt = W_v(row_v, j_nnz_v)
+        
+        forall (i = 1 : size(Bt, 1), j = 1 : size(Bt, 2)) 
+            BW_v(i, j) = Bt(i, j) * Wt(j)
+        end forall
+        deallocate(Bt, Wt)
 
-        do jv = 1, nnz_col_v
-            do iv = 1, nnz_row_v
-                BW_v(iv, jv) = B_v(i_nnz_v(iv), j_nnz_v(jv)) * W_v(row_v, j_nnz_v(jv))
-            end do
-        end do
+        allocate(BW_w(nnz_row_w,nnz_col_w), Bt(nnz_row_w,nnz_col_w), Wt(nnz_col_w))
+        Bt = B_w(i_nnz_w, j_nnz_w)
+        Wt = W_w(row_w, j_nnz_w)
 
-        do jw = 1, nnz_col_w
-            do iw = 1, nnz_row_w
-                BW_w(iw, jw) = B_w(i_nnz_w(iw), j_nnz_w(jw)) * W_w(row_w, j_nnz_w(jw))
-            end do
-        end do
+        forall (i = 1 : size(Bt, 1), j = 1 : size(Bt, 2)) 
+            BW_w(i, j) = Bt(i, j) * Wt(j)
+        end forall
+        deallocate(Bt, Wt)
 
         call tensor3d_dot_vector(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
                                 nnz_row_w, nnz_col_w, BW_u, BW_v, BW_w, Ci0, data_row)
@@ -881,7 +893,7 @@ module tensor_methods
         dimension :: indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1) 
         integer, intent(in) :: size_data_result
 
-        double precision, intent(inout) :: data_result
+        double precision, intent(out) :: data_result
         dimension :: data_result(size_data_result)
 
         ! Local data 
@@ -986,7 +998,7 @@ module tensor_methods
                 
                     ! Get result
                     do j = 1, size_data_row
-                        data_result(result_offset+j-1) = data_result(result_offset+j-1) + data_row(j)
+                        data_result(result_offset+j-1) = data_row(j)
                     end do   
 
                     deallocate(data_row)

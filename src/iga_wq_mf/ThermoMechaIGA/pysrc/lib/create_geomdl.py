@@ -468,9 +468,9 @@ class geomdlModel():
         vol.degree_w = degree_eta
 
         # Set number of control points 
-        vol.ctrlpts_size_u = nb_ctrlpts_xi
-        vol.ctrlpts_size_v = nb_ctrlpts_nu
-        vol.ctrlpts_size_w = nb_ctrlpts_eta
+        vol.ctrlpts_size_u = int(nb_ctrlpts_xi)
+        vol.ctrlpts_size_v = int(nb_ctrlpts_nu)
+        vol.ctrlpts_size_w = int(nb_ctrlpts_eta)
 
         # Set control points
         vol.ctrlpts = control_points
@@ -547,7 +547,7 @@ class geomdlModel():
 
         # Set number of control points 
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-            nb_ctrlpts_xi, nb_ctrlpts_nu, nb_ctrlpts_eta
+            int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
 
         # Set control points
         vol.ctrlpts = ctrlpts
@@ -646,7 +646,7 @@ class geomdlModel():
 
         # Set number of control points 
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-            nb_ctrlpts_xi, nb_ctrlpts_nu, nb_ctrlpts_eta
+            int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
 
         # Set control points
         vol.ctrlpts = ctrlpts
@@ -719,7 +719,7 @@ class geomdlModel():
         
         # Set number of control points 
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-        nb_ctrlpts_xi, nb_ctrlpts_nu, nb_ctrlpts_eta
+        int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
 
         # Set control points
         vol.ctrlpts = ctrlpts

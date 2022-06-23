@@ -228,7 +228,8 @@ class thermoMechaModel():
         self._nb_qp_cgg_total = np.prod(self._nb_qp_cgg[:self._dim, 0])
         self._nb_qp_wq_total = np.prod(self._nb_qp_wq[:self._dim, 0])
 
-        print(' -Number of WQ quadrature points: %s\n\
+        print(' \n\
+                -Number of WQ quadrature points: %s\n\
                 -Number of Gauss quadrature points: %s'
                 %(
                     self._nb_qp_wq.reshape(1, -1), 

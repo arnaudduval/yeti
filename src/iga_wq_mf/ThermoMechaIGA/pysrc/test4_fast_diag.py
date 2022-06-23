@@ -13,7 +13,6 @@ from mpltools import annotation
 import time
 
 # My libraries
-from lib import blockPrint, enablePrint
 from lib.base_functions import erase_rows_csr
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 from iga_wq_mf import solver
@@ -30,7 +29,6 @@ if not dataExist:
     # Set global variables
     DEGREE = 5
     for NBEL in range(120, 550, 50): 
-        NB_CTRLPTS = DEGREE + NBEL
 
         start = time.time()
         # Define basis (the same for all directions)
@@ -62,9 +60,9 @@ else:
     plt.figure(1)
 
     # Import data
-    file1 = pd.read_table(folder_file + 'Algo1.dat', sep='\t', names=['nbel', 'time'])
-    file2 = pd.read_table(folder_file + 'Algo2.dat', sep='\t', names=['nbel', 'time'])
-    file3 = pd.read_table(folder_file + 'Algo3.dat', sep='\t', names=['nbel', 'time'])
+    file1 = pd.read_table(folder_file + 'TenP_new.dat', sep='\t', names=['nbel', 'time'])
+    file2 = pd.read_table(folder_file + 'TenP_former.dat', sep='\t', names=['nbel', 'time'])
+    file3 = pd.read_table(folder_file + 'TenP_lit.dat', sep='\t', names=['nbel', 'time'])
 
     # Post treatment
     files = [file1, file2, file3]
@@ -102,13 +100,23 @@ else:
     plt.figure(2)
 
     # Import data
-    file1 = pd.read_table(folder_file + 'Product.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+    file1 = pd.read_table(folder_file + 'MFProd.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+    file2 = pd.read_table(folder_file + 'MFProd_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
+
+    # Litterature
+    degree = file2.degree
+    arrays = [file2.Cu64, file2.Ku64]
+    labels = ['MF-WQ Mass Lit.', 'MF-WQ Stiffness Lit.']
+    colors = ['#377eb8', '#ff7f00']
+
+    for array, label, color in zip(arrays, labels, colors):
+        plt.semilogy(degree, array, 'x--', label=label, color=color)
 
     # Extract data
     degree = file1.degree
-    arrays = [file1.Cu64, file1.Cu128, file1.Ku64, file1.Ku128]
-    labels = ['Cu, h = 64', 'Cu, h = 128', 'Ku, h = 64', 'Ku, h = 128']
-    colors = ['#377eb8', '#377eb8', '#ff7f00', '#ff7f00']
+    arrays = [file1.Cu64, file1.Ku64]
+    labels = ['MF-WQ Mass', 'MF-WQ Stiffness']
+    colors = ['#377eb8', '#ff7f00']
 
     for array, label, color in zip(arrays, labels, colors):
         plt.semilogy(degree, array, 'o--', label=label, color=color)

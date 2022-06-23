@@ -39,7 +39,8 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
                     data_B_w(size_data_w), W_w(nb_cols_w)
     integer, intent(in) :: size_data_I_u, size_data_I_v, size_data_I_w
 
-    double precision, intent(out) :: data_result(size_data_I_u*size_data_I_v*size_data_I_w)
+    double precision, intent(out) :: data_result
+    dimension :: data_result(size_data_I_u*size_data_I_v*size_data_I_w)
     integer, intent(out) :: indi_result, indj_result
     dimension ::    indi_result(nb_rows_u*nb_rows_v*nb_rows_w+1), &
                     indj_result(size_data_I_u*size_data_I_v*size_data_I_w)
@@ -65,7 +66,6 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
-    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
 
     allocate(data_W00_u(size_data_u))
@@ -144,6 +144,8 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
 
     ! Local data
     ! ---------------
+    double precision :: data_result_temp
+    dimension :: data_result_temp(size_data_I_u*size_data_I_v*size_data_I_w)
     integer :: i, size_data_result
     integer :: indi_I_u, indi_I_v, indi_I_w
     dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1), indi_I_w(nb_rows_w+1)
@@ -164,7 +166,6 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
-    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v*size_data_I_w
 
     allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
@@ -208,7 +209,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W10_w x W00_v x W01_u (Kronecker produt)
     call csr_get_matrix_3d(cond_coefs(3, 1, :), nb_rows_u, nb_cols_u, &
@@ -218,7 +224,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ----------------------------------------
     ! For c01, c11 and c21
@@ -232,7 +243,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B1_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
     call csr_get_matrix_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
@@ -242,7 +258,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W10_w x W01_v x W00_u (Kronecker produt)
     call csr_get_matrix_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
@@ -252,7 +273,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ----------------------------------------
     ! For c02, c12 and c22
@@ -266,7 +292,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B0_v, data_B1_w, data_W11_u, data_W00_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W01_w x W10_v x W00_u (Kronecker produt)
     call csr_get_matrix_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
@@ -276,7 +307,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W11_v, data_W00_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
     call csr_get_matrix_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
@@ -286,7 +322,12 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W00_v, data_W11_w, &
                         size_data_I_u, size_data_I_v, size_data_I_w, & 
                         indi_I_u, indi_I_v, indi_I_w, indj_I_u, indj_I_v, indj_I_w, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
     deallocate(indj_I_u, indj_I_v, indj_I_w)
     deallocate(data_W00_u, data_W00_v, data_W00_w)
     deallocate(data_W11_u, data_W11_v, data_W11_w)
@@ -417,7 +458,6 @@ subroutine iga_get_capacity_2d(nb_cols_total, capacity_coefs, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
-    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v
 
     allocate(data_W00_u(size_data_u))
@@ -487,6 +527,8 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
 
     ! Local data
     ! ---------------
+    double precision :: data_result_temp
+    dimension :: data_result_temp(size_data_I_u*size_data_I_v)
     integer :: i, size_data_result
     integer :: indi_I_u, indi_I_v
     dimension :: indi_I_u(nb_rows_u+1), indi_I_v(nb_rows_v+1)
@@ -505,7 +547,6 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
             dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
-    data_result = 0.d0
     size_data_result = size_data_I_u*size_data_I_v
 
     allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
@@ -543,7 +584,12 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
                         data_B1_u, data_B0_v, data_W00_u, data_W11_v, &
                         size_data_I_u, size_data_I_v, & 
                         indi_I_u, indi_I_v, indj_I_u, indj_I_v, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! ----------------------------------------
     ! For c01, c11 and c21
@@ -557,7 +603,12 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B1_v, data_W11_u, data_W00_v, &
                         size_data_I_u, size_data_I_v, & 
                         indi_I_u, indi_I_v, indj_I_u, indj_I_v, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
 
     ! Get W = W11_v x W00_u (Kronecker produt)
     call csr_get_matrix_2d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
@@ -567,7 +618,13 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
                         data_B0_u, data_B1_v, data_W00_u, data_W11_v, &
                         size_data_I_u, size_data_I_v, & 
                         indi_I_u, indi_I_v, indj_I_u, indj_I_v, &
-                        indi_result, size_data_result, data_result)
+                        indi_result, size_data_result, data_result_temp)
+    !$OMP PARALLEL
+    !$OMP WORKSHARE 
+    data_result = data_result + data_result_temp
+    !$OMP END WORKSHARE NOWAIT
+    !$OMP END PARALLEL 
+
     deallocate(indj_I_u, indj_I_v)
     deallocate(data_W00_u, data_W00_v)
     deallocate(data_W11_u, data_W11_v)
