@@ -54,7 +54,7 @@ class fortran_mf_iga(thermoMechaModel):
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
         
-        inputs = [*shape_matrices, *ctrlpts, *indices, *data]
+        inputs = [self._nb_qp_cgg_total, *shape_matrices, *ctrlpts, *indices, *data]
 
         return inputs
 

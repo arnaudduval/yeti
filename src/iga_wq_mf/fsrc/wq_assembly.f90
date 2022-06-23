@@ -4,194 +4,187 @@
 ! modules :: operateurs.f90 (MatrixInv and MatrixDet)
 ! ==========================
 
-subroutine eval_thermal_coefficient(dime, nb_pts, J_pts, Kprop, Cprop, Kcoef, Ccoef)
+subroutine eval_thermal_coefficient(dime, nnz, JJ, KK, CC, Kcoef, Ccoef)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------    
-    integer, intent(in) :: dime, nb_pts
-    double precision, intent(in) :: J_pts, Kprop
-    dimension :: J_pts(dime, dime, nb_pts), Kprop(dime, dime)
-    double precision, intent(in) :: Cprop
+    integer, intent(in) :: dime, nnz
+    double precision, intent(in) :: JJ, KK
+    dimension :: JJ(dime, dime, nnz), KK(dime, dime)
+    double precision, intent(in) :: CC
 
     double precision, intent(out) :: Kcoef, Ccoef
-    dimension :: Kcoef(dime, dime, nb_pts), Ccoef(nb_pts)
+    dimension :: Kcoef(dime, dime, nnz), Ccoef(nnz)
 
     ! Local data
     ! -----------
     integer :: i, nb_tasks
-    double precision :: J, detJ, invJ
-    dimension :: J(dime, dime), invJ(dime, dime)
-    double precision :: Ktemp
-    dimension :: Ktemp(dime, dime)  
+    double precision :: Jt, detJt, invJt
+    dimension :: Jt(dime, dime), invJt(dime, dime)
+    double precision :: Kt
+    dimension :: Kt(dime, dime)  
 
-    !$OMP PARALLEL PRIVATE(J, invJ, detJ, Ktemp)
+    !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_pts/nb_tasks) 
-    do i = 1, nb_pts
+    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+    do i = 1, nnz
         ! Get individual jacobien
-        J = J_pts(:, :, i)
+        Jt = JJ(:, :, i)
 
         ! Evaluate inverse
-        call MatrixInv(invJ, J, detJ, dime)
+        call MatrixInv(invJt, Jt, detJt, dime)
 
-        ! For K = invJ * detJ * transpose(invJ) * prop 
-        Ktemp = matmul(invJ, transpose(invJ)) * detJ
-        Kcoef(:, :, i) = matmul(Ktemp, Kprop)
+        ! For K = invJ * prop * detJ * transpose(invJ) 
+        Kt = detJt * matmul(invJt, KK) 
+        Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
 
         ! For C = detJ  * prop
-        Ccoef(i) = detJ * Cprop
+        Ccoef(i) = detJt * CC
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine eval_thermal_coefficient
 
-subroutine eval_mech_coefficient(dime, nb_pts, J_pts, DD, Scoef)
+subroutine eval_mech_coefficient(dime, nnz, JJ, DD, Scoef)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in):: dime, nb_pts
-    double precision, intent(in) :: J_pts, DD
-    dimension ::    J_pts(dime, dime, nb_pts), &
-                    DD(3*(dime-1), 3*(dime-1))
+    integer, intent(in):: dime, nnz
+    double precision, intent(in) :: JJ, DD
+    dimension :: JJ(dime, dime, nnz), DD(3*(dime-1), 3*(dime-1))
     double precision, intent(out) :: Scoef
-    dimension ::    Scoef(dime*dime, dime*dime, nb_pts)
+    dimension :: Scoef(dime*dime, dime*dime, nnz)
 
     ! Local data
     ! -----------
-    external :: MatrixInv
     integer :: i, k, nb_tasks
-    double precision :: J, detJ, invJ
-    dimension :: J(dime, dime), &
-                invJ(dime, dime)
-    double precision :: Stemp1, Stemp2
-    dimension :: Stemp1(dime*dime, dime*dime), &
-                    Stemp2(dime*dime, dime*dime)  
+    double precision :: Jt, detJt, invJt
+    dimension :: Jt(dime, dime), invJt(dime, dime)
+    double precision :: St1, St2
+    dimension :: St1(dime*dime, dime*dime), St2(dime*dime, dime*dime)  
 
-    double precision, allocatable, dimension(:, :) :: MM
-    double precision, allocatable, dimension(:, :) :: MDM_temp
+    double precision, allocatable, dimension(:, :) :: M
+    double precision, allocatable, dimension(:, :) :: MDMt
     double precision :: MDM(dime*dime, dime*dime)
     double precision :: invJextend(dime*dime, dime*dime)
 
     ! Define MM transformation matrix 
     if (dime.eq.2) then 
-        allocate(MM(3, 4))
-        allocate(MDM_temp(4, 3))
-        MM = 0.d0
-        MM(1, 1) = 1.d0
-        MM(2, 4) = 1.d0
-        MM(3, 2) = 1.d0
-        MM(3, 3) = 1.d0
+        allocate(M(3, 4))
+        allocate(MDMt(4, 3))
+        M = 0.d0
+        M(1, 1) = 1.d0
+        M(2, 4) = 1.d0
+        M(3, 2) = 1.d0
+        M(3, 3) = 1.d0
 
     else if (dime.eq.3) then 
-        allocate(MM(6, 9))
-        allocate(MDM_temp(9, 6))
-        MM = 0.d0
-        MM(1, 1) = 1.d0
-        MM(2, 5) = 1.d0
-        MM(3, 9) = 1.d0
-        MM(4, 2) = 1.d0
-        MM(4, 4) = 1.d0
-        MM(5, 6) = 1.d0
-        MM(5, 8) = 1.d0
-        MM(6, 3) = 1.d0
-        MM(6, 7) = 1.d0
+        allocate(M(6, 9))
+        allocate(MDMt(9, 6))
+        M = 0.d0
+        M(1, 1) = 1.d0
+        M(2, 5) = 1.d0
+        M(3, 9) = 1.d0
+        M(4, 2) = 1.d0
+        M(4, 4) = 1.d0
+        M(5, 6) = 1.d0
+        M(5, 8) = 1.d0
+        M(6, 3) = 1.d0
+        M(6, 7) = 1.d0
     end if
 
     ! Evaluate MM.transpose * DD * MM
-    MDM_temp = matmul(transpose(MM), DD)
-    MDM = matmul(MDM_temp, MM)
-    deallocate(MM, MDM_temp)
+    MDMt = matmul(transpose(M), DD)
+    MDM = matmul(MDMt, M)
+    deallocate(M, MDMt)
 
-    !$OMP PARALLEL PRIVATE(J, invJ, detJ, invJextend, Stemp1, Stemp2, k)
+    !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, invJextend, St1, St2, k)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_pts/nb_tasks) 
-    do i = 1, nb_pts
+    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+    do i = 1, nnz
 
         ! Initialize
         invJextend = 0.d0
 
         ! Get individual jacobien
-        J = J_pts(:, :, i)
+        Jt = JJ(:, :, i)
 
         ! Evaluate inverse
-        call MatrixInv(invJ, J, detJ, dime)
+        call MatrixInv(invJt, Jt, detJt, dime)
 
         do k = 1, dime
-            invJextend((k-1)*dime+1:k*dime, (k-1)*dime+1:k*dime) = invJ
+            invJextend((k-1)*dime+1:k*dime, (k-1)*dime+1:k*dime) = invJt
         end do
         
-        Stemp1 = matmul(transpose(invJextend), MDM)
-        Stemp2 = matmul(Stemp1, invJextend) * detJ
+        St1 = matmul(transpose(invJextend), MDM)
+        St2 = matmul(St1, invJextend) * detJt
 
-        Scoef(:, :, i) = Stemp2
+        Scoef(:, :, i) = St2
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine eval_mech_coefficient
 
-subroutine eval_thermomech_coefficient(dime, nb_pts, J_pts, DD, alpha, Tcoef)
+subroutine eval_thermomech_coefficient(dime, nnz, JJ, DD, alpha, Tcoef)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: dime, nb_pts
-    double precision, intent(in) :: J_pts, DD
-    dimension ::    J_pts(dime, dime, nb_pts), &
-                    DD(3*(dime-1), 3*(dime-1))
+    integer, intent(in) :: dime, nnz
+    double precision, intent(in) :: JJ, DD
+    dimension :: JJ(dime, dime, nnz), DD(3*(dime-1), 3*(dime-1))
     double precision, intent(in) :: alpha
             
     double precision, intent(out) :: Tcoef
-    dimension ::    Tcoef(dime*dime, nb_pts)
+    dimension :: Tcoef(dime*dime, nnz)
 
     ! Local data
     ! -----------
-    external :: MatrixInv
     integer :: i, k, nb_tasks
-    double precision :: J, detJ, invJ
-    dimension :: J(dime, dime), &
-                invJ(dime, dime)
-    double precision :: Rtemp1
-    dimension :: Rtemp1(dime*dime)
+    double precision :: Jt, detJt, invJt
+    dimension :: Jt(dime, dime), invJt(dime, dime)
+    double precision :: Rt
+    dimension :: Rt(dime*dime)
 
-    double precision, allocatable, dimension(:, :) :: MM
+    double precision, allocatable, dimension(:, :) :: Mt
     double precision :: MDV(dime*dime), VV(3*(dime-1)), DV(3*(dime-1))
     double precision :: invJextend(dime*dime, dime*dime)
 
     ! Define MM transformation matrix 
     if (dime.eq.2) then 
-        allocate(MM(3, 4))
-        MM = 0.d0
-        MM(1, 1) = 1.d0
-        MM(2, 4) = 1.d0
-        MM(3, 2) = 1.d0
-        MM(3, 3) = 1.d0
+        allocate(Mt(3, 4))
+        Mt = 0.d0
+        Mt(1, 1) = 1.d0
+        Mt(2, 4) = 1.d0
+        Mt(3, 2) = 1.d0
+        Mt(3, 3) = 1.d0
 
         VV = 0.d0
         VV(1) = 1.d0
         VV(2) = 1.d0
 
     else if (dime.eq.3) then 
-        allocate(MM(6, 9))
-        MM = 0.d0
-        MM(1, 1) = 1.d0
-        MM(2, 5) = 1.d0
-        MM(3, 9) = 1.d0
-        MM(4, 2) = 1.d0
-        MM(4, 4) = 1.d0
-        MM(5, 6) = 1.d0
-        MM(5, 8) = 1.d0
-        MM(6, 3) = 1.d0
-        MM(6, 7) = 1.d0
+        allocate(Mt(6, 9))
+        Mt = 0.d0
+        Mt(1, 1) = 1.d0
+        Mt(2, 5) = 1.d0
+        Mt(3, 9) = 1.d0
+        Mt(4, 2) = 1.d0
+        Mt(4, 4) = 1.d0
+        Mt(5, 6) = 1.d0
+        Mt(5, 8) = 1.d0
+        Mt(6, 3) = 1.d0
+        Mt(6, 7) = 1.d0
 
         VV = 0.d0
         VV(1) = 1.d0
@@ -201,36 +194,36 @@ subroutine eval_thermomech_coefficient(dime, nb_pts, J_pts, DD, alpha, Tcoef)
 
     ! Evaluate MM.transpose * DD * MM
     DV = matmul(DD, VV)
-    MDV = matmul(transpose(MM), DV)
-    deallocate(MM)
+    MDV = matmul(transpose(Mt), DV)
+    deallocate(Mt)
 
-    !$OMP PARALLEL PRIVATE(J, invJ, detJ, invJextend, Rtemp1, k)
+    !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, invJextend, Rt, k)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_pts/nb_tasks) 
-    do i = 1, nb_pts
+    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+    do i = 1, nnz
 
         ! Initialize
         invJextend = 0.d0
 
         ! Get individual jacobien
-        J = J_pts(:, :, i)
+        Jt = JJ(:, :, i)
 
         ! Evaluate inverse
-        call MatrixInv(invJ, J, detJ, dime)
+        call MatrixInv(invJt, Jt, detJt, dime)
 
         do k = 1, dime
-            invJextend((k-1)*dime+1:k*dime, (k-1)*dime+1:k*dime) = invJ
+            invJextend((k-1)*dime+1:k*dime, (k-1)*dime+1:k*dime) = invJt
         end do
         
-        Rtemp1 = matmul(transpose(invJextend), MDV) * detJ * alpha
-        Tcoef(:, i) = Rtemp1
+        Rt = matmul(transpose(invJextend), MDV) * detJt * alpha
+        Tcoef(:, i) = Rt
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine eval_thermomech_coefficient
 
-subroutine jacobien_physicalposition_3d(nb_rows_total, &
+subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
                                         nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         nb_rows_w, nb_cols_w, &
@@ -249,7 +242,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) :: nb_rows_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
                             nb_cols_u, nb_cols_v, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w
@@ -264,25 +257,23 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
                     data_B0_v(size_data_v), data_B1_v(size_data_v), &
                     data_B0_w(size_data_w), data_B1_w(size_data_w)
     double precision, intent(in) :: ctrlpts_x, ctrlpts_y, ctrlpts_z
-    dimension ::    ctrlpts_x(nb_rows_total), &
-                    ctrlpts_y(nb_rows_total), &
-                    ctrlpts_z(nb_rows_total)
+    dimension :: ctrlpts_x(nb_rows_total), ctrlpts_y(nb_rows_total), ctrlpts_z(nb_rows_total)
 
     double precision, intent(out) :: jacob
-    dimension ::  jacob(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: jacob(3, 3, nb_cols_total)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(3, nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: physical_pos(3, nb_cols_total)
 
     double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: detJ(nb_cols_total)
 
     ! Local data
     !-----------------
     double precision :: result_temp
-    dimension ::  result_temp(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension ::  result_temp(nb_cols_total)
     integer :: nb_tasks, i
-    double precision :: detJ_temp
+    double precision :: detJt
 
     ! Csr format (Transpose)
     integer ::  indi_T_u, indi_T_v, indi_T_w
@@ -446,22 +437,22 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, &
     ! ---------------------------------------------------
     ! For det J 
     ! ---------------------------------------------------
-    !$OMP PARALLEL PRIVATE(detJ_temp)
+    !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_cols_u*nb_cols_v*nb_cols_w/nb_tasks) 
-    do i = 1, nb_cols_u*nb_cols_v*nb_cols_w
+    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
+    do i = 1, nb_cols_total
         ! Evaluate determinant
-        call MatrixDet(jacob(:, :, i), detJ_temp, 3)
+        call MatrixDet(jacob(:, :, i), detJt, 3)
 
         ! Assign values
-        detJ(i) = detJ_temp
+        detJ(i) = detJt
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine jacobien_physicalposition_3d
 
-subroutine interpolation_3d(nb_rows_total, &
+subroutine interpolation_3d(nb_rows_total, nb_cols_total, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
@@ -479,7 +470,7 @@ subroutine interpolation_3d(nb_rows_total, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) :: nb_rows_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
                             nb_cols_u, nb_cols_v, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w
@@ -492,10 +483,10 @@ subroutine interpolation_3d(nb_rows_total, &
                     data_B_v(size_data_v), &
                     data_B_w(size_data_w)
     double precision, intent(in) :: ctrlpts
-    dimension ::    ctrlpts(nb_rows_total)
+    dimension :: ctrlpts(nb_rows_total)
 
     double precision, intent(out) :: interpolation
-    dimension :: interpolation(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: interpolation(nb_cols_total)
 
     ! Local data
     !-----------------
@@ -537,7 +528,7 @@ subroutine interpolation_3d(nb_rows_total, &
 
 end subroutine interpolation_3d
 
-subroutine jacobien_physicalposition_2d(nb_rows_total, &
+subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
                                         nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         size_data_u, size_data_v, &
@@ -554,7 +545,7 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) :: nb_rows_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, &
                             nb_cols_u, nb_cols_v, &
                             size_data_u, size_data_v
@@ -570,20 +561,20 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
                     ctrlpts_y(nb_rows_total)
 
     double precision, intent(out) :: jacob
-    dimension ::  jacob(2, 2, nb_cols_u*nb_cols_v)
+    dimension ::  jacob(2, 2, nb_cols_total)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(2, nb_cols_u*nb_cols_v)
+    dimension :: physical_pos(2, nb_cols_total)
 
     double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_u*nb_cols_v)
+    dimension :: detJ(nb_cols_total)
 
     ! Local data
     !-----------------
     double precision :: result_temp
-    dimension ::  result_temp(nb_cols_u*nb_cols_v)
+    dimension ::  result_temp(nb_cols_total)
     integer :: nb_tasks, i
-    double precision :: detJ_temp
+    double precision :: detJt
 
     ! Csr format (Transpose)
     integer ::  indi_T_u, indi_T_v
@@ -675,22 +666,22 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, &
     ! ---------------------------------------------------
     ! For det J 
     ! ---------------------------------------------------
-    !$OMP PARALLEL PRIVATE(detJ_temp)
+    !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_cols_u*nb_cols_v/nb_tasks) 
-    do i = 1, nb_cols_u*nb_cols_v
+    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
+    do i = 1, nb_cols_total
         ! Evaluate determinant
-        call MatrixDet(jacob(:, :, i), detJ_temp, 2)
+        call MatrixDet(jacob(:, :, i), detJt, 2)
 
         ! Assign values
-        detJ(i) = detJ_temp
+        detJ(i) = detJt
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine jacobien_physicalposition_2d
 
-subroutine interpolation_2d(nb_rows_total, &
+subroutine interpolation_2d(nb_rows_total, nb_cols_total, &
                             nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             size_data_u, size_data_v, &
@@ -706,7 +697,7 @@ subroutine interpolation_2d(nb_rows_total, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) :: nb_rows_total
+    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, &
                             nb_cols_u, nb_cols_v, &
                             size_data_u, size_data_v
@@ -719,7 +710,7 @@ subroutine interpolation_2d(nb_rows_total, &
     dimension :: ctrlpts(nb_rows_total)
 
     double precision, intent(out) :: interpolation
-    dimension :: interpolation(nb_cols_u*nb_cols_v)
+    dimension :: interpolation(nb_cols_total)
 
     ! Local data
     !-----------------
