@@ -25,7 +25,7 @@ modelGeo = create_geometry(DEGREE, CUTS, 'RQA')
 # IGA WQ MF APPROACH
 # ===========================================
 
-for fortran_model in [fortran_mf_wq]:
+for fortran_model in [fortran_mf_wq, fortran_mf_iga]:
 
     # Creation of thermal model object
     modelPhy = fortran_model(modelGeo)

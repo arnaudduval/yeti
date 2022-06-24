@@ -521,9 +521,9 @@ class thermoMechaModel():
         # Get Basis
         # =====================
         # Set shape
-        shape = [1, 1, 1]
-        for _ in range(self._dim): shape[_] = self._sample_size
-        shape = tuple(shape)
+        shape_pts = [1, 1, 1]
+        for _ in range(self._dim): shape_pts[_] = self._sample_size
+        shape_pts = tuple(shape_pts)
 
         # Define knots
         knots = np.linspace(0, 1, self._sample_size)
@@ -546,7 +546,7 @@ class thermoMechaModel():
             data.append(DB[dim][0])
             data.append(DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
-        inputs = [np.prod(shape), *shape, *ctrlpts, *indices, *data]
+        inputs = [*shape_pts[:self._dim], *indices, *data, *ctrlpts]
 
         if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)    
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
@@ -560,7 +560,7 @@ class thermoMechaModel():
                 indices.append(ind[dim][0])
                 indices.append(ind[dim][1])
                 data.append(DB[dim][0])
-            inputs = [np.prod(shape), *shape, u_ctrlpts, *indices, *data]
+            inputs = [*shape_pts[:self._dim], *indices, *data, u_ctrlpts]
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
@@ -596,9 +596,9 @@ class thermoMechaModel():
             raise Warning('Solution must be ndarray type')
 
         # Set shape
-        shape = [1, 1, 1]
-        for _ in range(self._dim): shape[_] = self._sample_size
-        shape = tuple(shape)
+        shape_pts = [1, 1, 1]
+        for _ in range(self._dim): shape_pts[_] = self._sample_size
+        shape_pts = tuple(shape_pts)
 
         # ==============================
         # Get interpolation
@@ -615,15 +615,15 @@ class thermoMechaModel():
         # ==============================
         # Export results
         # ==============================
-        X1 = np.zeros(shape)
-        X2 = np.zeros(shape)
-        X3 = np.zeros(shape)
-        U = np.zeros(shape)
-        DET = np.zeros(shape)
+        X1 = np.zeros(shape_pts)
+        X2 = np.zeros(shape_pts)
+        X3 = np.zeros(shape_pts)
+        U = np.zeros(shape_pts)
+        DET = np.zeros(shape_pts)
 
-        for k in range(shape[2]):
-            for j in range(shape[1]):
-                for i in range(shape[0]):
+        for k in range(shape_pts[2]):
+            for j in range(shape_pts[1]):
+                for i in range(shape_pts[0]):
                     pos = i + j * self._sample_size + k * self._sample_size**2
                     X1[i,j,k] = qp_PS[0, pos]
                     X2[i,j,k] = qp_PS[1, pos]

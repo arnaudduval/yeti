@@ -76,7 +76,7 @@ class fortran_mf_wq(thermoMechaModel):
             data.append(self._DB[dim][1])
             ctrlpts.append(self._ctrlpts[:, dim])
         
-        inputs = [self._nb_qp_wq_total, *shape_matrices, *ctrlpts, *indices, *data]
+        inputs = [*shape_matrices, *indices, *data, *ctrlpts]
 
         return inputs
 

@@ -105,7 +105,7 @@ class ThermalSimulation():
         self._thermalModel = None
 
         # Create source vector 
-        self._Fd = None
+        self._Fn = None
 
         # Set number of iterations
         self._nbIter = 100
@@ -187,38 +187,38 @@ class ThermalSimulation():
         # Assemble source vector F
         if funTemp is not None:  
             Td = model.interpolate_ControlPoints(funTemp)[1]
-            Fd = model.eval_source_vector(funPowDen, indi=dof, indj=dod, Td=Td)
+            Fn = model.eval_source_vector(funPowDen, indi=dof, indj=dod, Td=Td)
         else:
             Td = None
-            Fd = model.eval_source_vector(funPowDen, indi=dof)
+            Fn = model.eval_source_vector(funPowDen, indi=dof)
             
-        return Fd, Td
+        return Fn, Td
     
-    def run_iterative_solver(self, model, Fd, nbIter=100, eps=1e-15, method='WP', solDir=None):
+    def run_iterative_solver(self, model, Fn, nbIter=100, eps=1e-15, method='WP', solDir=None):
 
         if solDir == None: 
-            solDir = np.ones(len(Fd))
+            solDir = np.ones(len(Fn))
             print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
 
         # Run matrix free solver
         start = time.process_time()
-        solIter, residue, error = model.MFsolver(Fd, nbIter, eps, method, solDir, self._isCG)
+        solIter, residue, error = model.MFsolver(Fn, nbIter, eps, method, solDir, self._isCG)
         stop = time.process_time()
         time_MF = stop - start 
 
         return solIter, residue, error, time_MF
 
-    def run_direct_solver(self, model, Fd):
+    def run_direct_solver(self, model, Fn):
        
         # Assemble conductivity matrix K
         start = time.process_time()
-        Kdd = model.eval_conductivity_matrix(indi=model._thermal_dof, indj=model._thermal_dof)
+        Knn = model.eval_conductivity_matrix(indi=model._thermal_dof, indj=model._thermal_dof)
         stop = time.process_time()
         time_assembly = stop - start 
 
         # Solve system
         start = time.process_time()
-        solDir = scipy.sparse.linalg.spsolve(Kdd, Fd)
+        solDir = scipy.sparse.linalg.spsolve(Knn, Fn)
         stop = time.process_time()
         time_direct = stop - start 
 
@@ -237,7 +237,7 @@ class ThermalSimulation():
         self._thermalModel = self.create_thermalModel(**properties)
 
         # Create source vector 
-        self._Fd, Td = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)
+        self._Fn, Td = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)
 
         # Define actions 
         doDirect, doIterative = True, True
@@ -245,13 +245,13 @@ class ThermalSimulation():
         if self._isOnlyIter: doDirect = False
 
         if doDirect :
-            solDir, time_assembly, time_direct = self.run_direct_solver(self._thermalModel, self._Fd)
+            solDir, time_assembly, time_direct = self.run_direct_solver(self._thermalModel, self._Fn)
 
         if doIterative:
             # Only compute time to prepare method before iterations
             time_noiter, memory_noiter = [], []
             for method in self._iterMethods:
-                time_noiter_t = self.run_iterative_solver(self._thermalModel, self._Fd, nbIter=0, method=method, solDir=solDir)[3]
+                time_noiter_t = self.run_iterative_solver(self._thermalModel, self._Fn, nbIter=0, method=method, solDir=solDir)[3]
                 memory_noiter_t = 0.0
                 
                 # Save data
@@ -261,7 +261,7 @@ class ThermalSimulation():
             # With and without preconditioner
             time_iter, memory_iter, residue, error = [], [], [], []
             for method in self._iterMethods:
-                solution_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, method=method, solDir=solDir)
+                Tn_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fn, method=method, solDir=solDir)
                 memory_iter_t = 0.0
 
                 # Save data
@@ -275,11 +275,11 @@ class ThermalSimulation():
         dof = self._thermalModel._thermal_dof
 
         if Td == None:
-            solution[dof] = solution_t
+            solution[dof] = Tn_t
         else: 
             dod = self._thermalModel._thermal_dod
             solution[dod] = Td
-            solution[dof] = solution_t
+            solution[dof] = Tn_t
         
         self._thermalModel.export_results(u_ctrlpts=solution)
         

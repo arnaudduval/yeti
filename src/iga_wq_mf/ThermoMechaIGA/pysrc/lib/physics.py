@@ -21,8 +21,7 @@ def powden_cube(P: list):
     y = P[1, :]
     z = P[2, :]
 
-    # f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
-    f = (21*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z))/10
+    f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
 
     return f
 
@@ -50,18 +49,7 @@ def powden_thickring(P: list):
     y = P[1, :]
     z = P[2, :] 
 
-    # f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    #     - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    #     - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4)
-    # )
-
-    f = ((105*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/2 
+    f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
         - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
         - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
         - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
@@ -96,4 +84,38 @@ def temperature_rotring(P):
     z = P[2, :]
     f = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
 
+    return f
+
+def powden_annulus(P):
+
+    """ u = (x**2 + y**2 - 1)*(x**2 + y**2 - 4)*sin(pi*x)*sin(pi*y)
+        f = -div(lambda * grad(u))
+    """
+    x = P[0, :]
+    y = P[1, :]
+
+    # # Isotropy
+    # f = (2*pi**2*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    #     - 8*y**2*sin(pi*x)*sin(pi*y) 
+    #     - 4*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
+    #     - 4*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
+    #     - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
+    #     - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
+    #     - 4*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 1) 
+    #     - 4*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 4) 
+    #     - 8*x**2*sin(pi*x)*sin(pi*y)
+    # )
+
+    # Anisotropy
+    f = ((11*pi**2*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/10 
+        - (4*y**2*sin(pi*x)*sin(pi*y))/5 
+        - (11*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1))/5 
+        - (11*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 4))/5 
+        - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
+        - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
+        - (2*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 1))/5 
+        - (2*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 4))/5 
+        - 8*x**2*sin(pi*x)*sin(pi*y)
+    )
+    
     return f

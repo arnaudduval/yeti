@@ -223,16 +223,15 @@ subroutine eval_thermomech_coefficient(dime, nnz, JJ, DD, alpha, Tcoef)
 
 end subroutine eval_thermomech_coefficient
 
-subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
-                                        nb_rows_u, nb_cols_u, &
+subroutine jacobien_physicalposition_3d(nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         nb_rows_w, nb_cols_w, &
                                         size_data_u, size_data_v, size_data_w, &
-                                        ctrlpts_x, ctrlpts_y, ctrlpts_z, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                         data_B0_u, data_B1_u, &
                                         data_B0_v, data_B1_v, &
                                         data_B0_w, data_B1_w, &
+                                        ctrlpts_x, ctrlpts_y, ctrlpts_z, &
                                         jacob, physical_pos, detJ)
     !! Computes jacobien in 3D case
     !! IN CSR FORMAT
@@ -242,7 +241,6 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
                             nb_cols_u, nb_cols_v, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w
@@ -257,21 +255,23 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
                     data_B0_v(size_data_v), data_B1_v(size_data_v), &
                     data_B0_w(size_data_w), data_B1_w(size_data_w)
     double precision, intent(in) :: ctrlpts_x, ctrlpts_y, ctrlpts_z
-    dimension :: ctrlpts_x(nb_rows_total), ctrlpts_y(nb_rows_total), ctrlpts_z(nb_rows_total)
+    dimension :: ctrlpts_x(nb_rows_u*nb_rows_v*nb_rows_w), &
+                ctrlpts_y(nb_rows_u*nb_rows_v*nb_rows_w), &
+                ctrlpts_z(nb_rows_u*nb_rows_v*nb_rows_w)
 
     double precision, intent(out) :: jacob
-    dimension :: jacob(3, 3, nb_cols_total)
+    dimension :: jacob(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(3, nb_cols_total)
+    dimension :: physical_pos(3, nb_cols_u*nb_cols_v*nb_cols_w)
 
     double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_total)
+    dimension :: detJ(nb_cols_u*nb_cols_v*nb_cols_w)
 
     ! Local data
     !-----------------
     double precision :: result_temp
-    dimension ::  result_temp(nb_cols_total)
+    dimension ::  result_temp(nb_cols_u*nb_cols_v*nb_cols_w)
     integer :: nb_tasks, i
     double precision :: detJt
 
@@ -439,8 +439,8 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
     ! ---------------------------------------------------
     !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
-    do i = 1, nb_cols_total
+    !$OMP DO SCHEDULE(STATIC, nb_cols_u*nb_cols_v*nb_cols_w/nb_tasks) 
+    do i = 1, nb_cols_u*nb_cols_v*nb_cols_w
         ! Evaluate determinant
         call MatrixDet(jacob(:, :, i), detJt, 3)
 
@@ -452,16 +452,15 @@ subroutine jacobien_physicalposition_3d(nb_rows_total, nb_cols_total, &
 
 end subroutine jacobien_physicalposition_3d
 
-subroutine interpolation_3d(nb_rows_total, nb_cols_total, &
-                            nb_rows_u, nb_cols_u, &
+subroutine interpolation_3d(nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
-                            ctrlpts, &
                             indi_u, indj_u, &
                             indi_v, indj_v, &
                             indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, &
+                            ctrlpts, &
                             interpolation)
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
@@ -470,7 +469,6 @@ subroutine interpolation_3d(nb_rows_total, nb_cols_total, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
                             nb_cols_u, nb_cols_v, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w
@@ -483,10 +481,10 @@ subroutine interpolation_3d(nb_rows_total, nb_cols_total, &
                     data_B_v(size_data_v), &
                     data_B_w(size_data_w)
     double precision, intent(in) :: ctrlpts
-    dimension :: ctrlpts(nb_rows_total)
+    dimension :: ctrlpts(nb_rows_u*nb_rows_v*nb_rows_w)
 
     double precision, intent(out) :: interpolation
-    dimension :: interpolation(nb_cols_total)
+    dimension :: interpolation(nb_cols_u*nb_cols_v*nb_cols_w)
 
     ! Local data
     !-----------------
@@ -528,14 +526,13 @@ subroutine interpolation_3d(nb_rows_total, nb_cols_total, &
 
 end subroutine interpolation_3d
 
-subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
-                                        nb_rows_u, nb_cols_u, &
+subroutine jacobien_physicalposition_2d(nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &
                                         size_data_u, size_data_v, &
-                                        ctrlpts_x, ctrlpts_y, &
                                         indi_u, indj_u, indi_v, indj_v, &
                                         data_B0_u, data_B1_u, &
                                         data_B0_v, data_B1_v, &
+                                        ctrlpts_x, ctrlpts_y, &
                                         jacob, physical_pos, detJ)
     !! Computes jacobien in 2D case
     !! IN CSR FORMAT
@@ -545,7 +542,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, &
                             nb_cols_u, nb_cols_v, &
                             size_data_u, size_data_v
@@ -557,22 +553,21 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
     dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
                     data_B0_v(size_data_v), data_B1_v(size_data_v)
     double precision, intent(in) :: ctrlpts_x, ctrlpts_y
-    dimension ::    ctrlpts_x(nb_rows_total), &
-                    ctrlpts_y(nb_rows_total)
+    dimension :: ctrlpts_x(nb_rows_u*nb_rows_v), ctrlpts_y(nb_rows_u*nb_rows_v)
 
     double precision, intent(out) :: jacob
-    dimension ::  jacob(2, 2, nb_cols_total)
+    dimension :: jacob(2, 2, nb_cols_u*nb_cols_v)
 
     double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(2, nb_cols_total)
+    dimension :: physical_pos(2, nb_cols_u*nb_cols_v)
 
     double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_total)
+    dimension :: detJ(nb_cols_u*nb_cols_v)
 
     ! Local data
     !-----------------
     double precision :: result_temp
-    dimension ::  result_temp(nb_cols_total)
+    dimension ::  result_temp(nb_cols_u*nb_cols_v)
     integer :: nb_tasks, i
     double precision :: detJt
 
@@ -668,8 +663,8 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
     ! ---------------------------------------------------
     !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nb_cols_total/nb_tasks) 
-    do i = 1, nb_cols_total
+    !$OMP DO SCHEDULE(STATIC, nb_cols_u*nb_cols_v/nb_tasks) 
+    do i = 1, nb_cols_u*nb_cols_v
         ! Evaluate determinant
         call MatrixDet(jacob(:, :, i), detJt, 2)
 
@@ -681,14 +676,13 @@ subroutine jacobien_physicalposition_2d(nb_rows_total, nb_cols_total, &
 
 end subroutine jacobien_physicalposition_2d
 
-subroutine interpolation_2d(nb_rows_total, nb_cols_total, &
-                            nb_rows_u, nb_cols_u, &
+subroutine interpolation_2d(nb_rows_u, nb_cols_u, &
                             nb_rows_v, nb_cols_v, &
                             size_data_u, size_data_v, &
-                            ctrlpts, &
                             indi_u, indj_u, &
                             indi_v, indj_v, &
                             data_B_u, data_B_v, &
+                            ctrlpts, &
                             interpolation)
     !! Computes interpolation in 2D case (from parametric space to physical space)
     !! IN CSR FORMAT
@@ -697,7 +691,6 @@ subroutine interpolation_2d(nb_rows_total, nb_cols_total, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) :: nb_rows_total, nb_cols_total
     integer, intent(in) ::  nb_rows_u, nb_rows_v, &
                             nb_cols_u, nb_cols_v, &
                             size_data_u, size_data_v
@@ -707,10 +700,10 @@ subroutine interpolation_2d(nb_rows_total, nb_cols_total, &
     double precision, intent(in) :: data_B_u, data_B_v
     dimension :: data_B_u(size_data_u), data_B_v(size_data_v)
     double precision, intent(in) :: ctrlpts
-    dimension :: ctrlpts(nb_rows_total)
+    dimension :: ctrlpts(nb_rows_u*nb_rows_v)
 
     double precision, intent(out) :: interpolation
-    dimension :: interpolation(nb_cols_total)
+    dimension :: interpolation(nb_cols_u*nb_cols_v)
 
     ! Local data
     !-----------------
