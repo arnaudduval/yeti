@@ -365,7 +365,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         if self._dim == 3:
             if isCG :
-                sol, residue, error = solver.iga_mf_cg_3d(*inputs, self._Jqp, directsol)
+                sol, residue, error = solver.iga_mf_cg_3d(*inputs, self._conductivity, self._Jqp, directsol)
             else: 
                 raise Warning('It can only be Conjugate Gradient')
 

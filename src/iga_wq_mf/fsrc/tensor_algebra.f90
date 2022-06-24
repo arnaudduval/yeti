@@ -1466,7 +1466,7 @@ module tensor_methods
         double precision, intent(in) :: JJ
         dimension :: JJ(3, 3, nb_cols_total)
     
-        double precision, intent(inout) :: L1, L2, L3
+        double precision, intent(out) :: L1, L2, L3
         integer, parameter :: step=2
     
         ! Local data
@@ -1541,7 +1541,7 @@ module tensor_methods
 
     ! For scaling (TDS and JMS)
     
-    subroutine find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+    subroutine find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, c_u, c_v, c_w, &
                                 Mdiag_u, Mdiag_v, Mdiag_w, &
                                 Kdiag_u, Kdiag_v, Kdiag_w, diag)
         !! Find the diagonal of the preconditioner "fast diagonalization"
@@ -1550,7 +1550,7 @@ module tensor_methods
         ! Input / output data
         ! -------------------------
         integer, intent(in) :: nb_rows_u, nb_rows_v, nb_rows_w
-        double precision, intent(in) :: Lu, Lv, Lw
+        double precision, intent(in) :: c_u, c_v, c_w
         double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, &
                                         Kdiag_u, Kdiag_v, Kdiag_w
         dimension :: Mdiag_u(nb_rows_u), Mdiag_v(nb_rows_v), Mdiag_w(nb_rows_w), &
@@ -1563,13 +1563,13 @@ module tensor_methods
         diag = 0.d0
 
         ! Find K3 M2 M1
-        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, Lu*Lv/Lw)
+        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, c_u)
 
         ! Find M3 K2 M1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, Lw*Lu/Lv)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, c_v)
 
         ! Find M3 M2 K1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, Lv*Lw/Lu)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, c_w)
 
     end subroutine find_parametric_diag_3d
 

@@ -625,7 +625,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         data_B0_v, data_B1_v, W_v, &
                         data_B0_w, data_B1_w, W_w, &
                         b, nbIterations, epsilon, & 
-                        Method, Jacob, directsol, x, RelRes, RelError)
+                        Method, conductivity, Jacob, directsol, x, RelRes, RelError)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         
@@ -651,6 +651,8 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 
     character(len = 10) :: Method
     integer, intent(in) :: nbIterations
+    double precision, intent(in) :: conductivity
+    dimension :: conductivity(3, 3)
     double precision, intent(in) :: epsilon
     double precision, intent(in) :: b, Jacob, directsol
     dimension :: b(nb_rows_total), &
@@ -704,6 +706,11 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
     dimension ::    data_B1T_u(size_data_u), &
                     data_B1T_v(size_data_v), &
                     data_B1T_w(size_data_w)
+
+    integer :: info
+    double precision, allocatable, dimension(:, :) :: U, VT
+    double precision, allocatable, dimension(:) :: lambda, work
+    double precision :: c_u, c_v, c_w
 
     ! ====================================================
     ! Initialize B transpose in CSR format
@@ -767,9 +774,9 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         end if
     else 
         ! Dimensions
-        Lu = 1.d0
-        Lv = 1.d0
-        Lw = 1.d0
+        c_u = 1.d0
+        c_v = 1.d0
+        c_w = 1.d0
 
         if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
             ! --------------------------------------------
@@ -794,7 +801,18 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! NEW METHOD
             ! -------------------------------------------- 
+            ! Find dimensions
             call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
+            
+            ! Find conductivity
+            allocate(U(3, 3), VT(3, 3), lambda(3), work(15))
+            call dgesvd('N', 'A', 3, 3, conductivity, 3, lambda, U, 3, VT, 3, work, 15, info)
+            deallocate(U, VT, work)
+
+            c_u = lambda(1) * Lv*Lw/Lu
+            c_v = lambda(2) * Lw*Lu/Lv
+            c_w = lambda(3) * Lu*Lv/Lw
+
         end if
 
         ! --------------------------------------------
@@ -843,7 +861,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         I_u = 1.d0
         I_v = 1.d0
         I_w = 1.d0
-        call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, Lu, Lv, Lw, &
+        call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, c_u, c_v, c_w, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
@@ -858,7 +876,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! Find diagonal of preconditioner
             allocate(preconddiag(nb_rows_total))
             call find_parametric_diag_3d(nb_rows_u, nb_rows_v, nb_rows_w, &
-                                    Lu, Lv, Lw, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                    c_u, c_v, c_w, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, preconddiag)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 

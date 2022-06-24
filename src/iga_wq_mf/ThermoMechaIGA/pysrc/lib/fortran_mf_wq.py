@@ -664,9 +664,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         if self._dim == 3:
             if isCG:
-                sol, residue, error = solver.wq_mf_cg_3d(*inputs, self._Jqp, directsol)
+                sol, residue, error = solver.wq_mf_cg_3d(*inputs, self._conductivity, self._Jqp, directsol)
             else:
-                sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs, self._Jqp, directsol)
+                sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs, self._conductivity, self._Jqp, directsol)
 
         return sol, residue, error
 
