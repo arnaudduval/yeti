@@ -21,7 +21,7 @@ from iga_wq_mf import assembly
 class thermoMechaModel(): 
 
     def __init__(self, modelIGA= None, isThermal= True, isMechanical=False, 
-                thermalblockedboundaries= None, mechablockedboundaries= None):
+                thermalblockedboundaries= None, mechablockedboundaries= None, **properties):
 
         print('\nInitializing thermo-mechanical model')
         if isinstance(modelIGA, IGAparametrization):
@@ -47,7 +47,9 @@ class thermoMechaModel():
         if self._isThermal:
             # Initialize thermal properties
             print('Settig thermal properties')
-            self.__set_thermal_properties(conductivity=np.eye(self._dim), capacity= 1.)
+            conductivity = properties.get('conductivity', np.eye(self._dim))
+            capacity = properties.get('capacity', 1)
+            self.__set_thermal_properties(conductivity=conductivity, capacity=capacity)
 
             # Set free and bloqued nodes
             print('Settig free and blocked control points')
@@ -586,7 +588,10 @@ class thermoMechaModel():
             u_ctrlpts_new = None
         elif isinstance(u_ctrlpts, np.ndarray): 
             UctrlptsExist = True
-            u_ctrlpts_new = u_ctrlpts
+            if len(u_ctrlpts) == self._nb_ctrlpts_total:
+                u_ctrlpts_new = u_ctrlpts
+            else:
+                raise Warning('Not enough control points')
         else: 
             raise Warning('Solution must be ndarray type')
 

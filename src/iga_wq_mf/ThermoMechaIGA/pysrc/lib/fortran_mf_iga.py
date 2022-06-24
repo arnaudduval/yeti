@@ -15,8 +15,8 @@ from iga_wq_mf import assembly, solver
     
 class fortran_mf_iga(thermoMechaModel):
     
-    def __init__(self, modelIGA: None, isThermal= True, thermalblockedboundaries= None):
-        super().__init__(modelIGA, isThermal= isThermal, thermalblockedboundaries= thermalblockedboundaries)
+    def __init__(self, modelIGA: None, isThermal= True, thermalblockedboundaries= None, **properties):
+        super().__init__(modelIGA, isThermal= isThermal, thermalblockedboundaries= thermalblockedboundaries, **properties)
 
         # Set basis and weights
         self.eval_positions_basis_weights()

@@ -172,10 +172,10 @@ class ThermalSimulation():
         geoModel = create_geometry(self._degree, self._cuts, self._geoCase)
         return geoModel
 
-    def create_thermalModel(self):
+    def create_thermalModel(self, **properties):
         geoModel = self.create_geometryModel()
-        if self._isIGA: thermalModel = fortran_mf_iga(geoModel)
-        else: thermalModel = fortran_mf_wq(geoModel)
+        if self._isIGA: thermalModel = fortran_mf_iga(geoModel, **properties)
+        else: thermalModel = fortran_mf_wq(geoModel, **properties)
         del geoModel
         return thermalModel
 
@@ -189,9 +189,10 @@ class ThermalSimulation():
             Td = model.interpolate_ControlPoints(funTemp)[1]
             Fd = model.eval_source_vector(funPowDen, indi=dof, indj=dod, Td=Td)
         else:
+            Td = None
             Fd = model.eval_source_vector(funPowDen, indi=dof)
-
-        return Fd
+            
+        return Fd, Td
     
     def run_iterative_solver(self, model, Fd, nbIter=100, eps=1e-15, method='WP', solDir=None):
 
@@ -223,7 +224,7 @@ class ThermalSimulation():
 
         return solDir, time_assembly, time_direct
 
-    def run_simulation(self):
+    def run_simulation(self, **properties):
 
         # Initialize
         time_assembly, time_direct, memory_direct = 0.0, 0.0, 0.0
@@ -233,10 +234,10 @@ class ThermalSimulation():
 
         # Create thermal model
         solDir = None
-        self._thermalModel = self.create_thermalModel()
+        self._thermalModel = self.create_thermalModel(**properties)
 
         # Create source vector 
-        self._Fd = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)
+        self._Fd, Td = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)
 
         # Define actions 
         doDirect, doIterative = True, True
@@ -260,7 +261,7 @@ class ThermalSimulation():
             # With and without preconditioner
             time_iter, memory_iter, residue, error = [], [], [], []
             for method in self._iterMethods:
-                _, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, method=method, solDir=solDir)
+                solution_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fd, method=method, solDir=solDir)
                 memory_iter_t = 0.0
 
                 # Save data
@@ -268,6 +269,19 @@ class ThermalSimulation():
                 residue.append(residue_t)
                 error.append(error_t)
                 memory_iter.append(memory_iter_t)
+
+        # Export results
+        solution = np.zeros(self._thermalModel._nb_ctrlpts_total)
+        dof = self._thermalModel._thermal_dof
+
+        if Td == None:
+            solution[dof] = solution_t
+        else: 
+            dod = self._thermalModel._thermal_dod
+            solution[dod] = Td
+            solution[dof] = solution_t
+        
+        self._thermalModel.export_results(u_ctrlpts=solution)
         
         # Write file
         output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, 

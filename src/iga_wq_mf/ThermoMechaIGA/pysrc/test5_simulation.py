@@ -22,8 +22,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
 FileExist = False
-GEOMETRY_CASE = 'RQA'
-DEGREE, CUTS = 3, 6
+GEOMETRY_CASE = 'TR'
+DEGREE, CUTS = 3, 5
 IS_IGA = False
 if IS_IGA: is_cg_list = [True]
 else: is_cg_list = [False]
@@ -45,7 +45,8 @@ for IS_CG in is_cg_list:
 
     # Run simulation
     if not FileExist:
-        Simulation.run_simulation()
+        properties = {'capacity': 2.0}
+        Simulation.run_simulation(**properties)
 
     else :
         Data = SimulationData(filename)

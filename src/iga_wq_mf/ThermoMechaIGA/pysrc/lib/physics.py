@@ -15,19 +15,20 @@ def power_density(P: list):
 
 def powden_cube(P: list):
     """ u = sin(pi*x)*sin(pi*y)*sin(pi*z)
-        f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
+        f = -div(lambda * grad(u))
     """
     x = P[0, :]
     y = P[1, :]
     z = P[2, :]
 
-    f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    # f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
+    f = (21*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z))/10
 
     return f
 
 def powden_prism(P: list):
     """ u = (-5*x+6*y+45)*(5*x+6*y-45)*x*(x-6)*sin(pi*z)
-        f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
+        f = -div(lambda * grad(u))
     """
     x = P[0, :]
     y = P[1, :]
@@ -43,27 +44,39 @@ def powden_prism(P: list):
 
 def powden_thickring(P: list):
     """ u = sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
-        f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
+        f = -div(lambda * grad(u))
     """
     x = P[0, :]
     y = P[1, :]
     z = P[2, :] 
 
-    f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-        - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
+    # f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    #     - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
+    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
+    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
+    #     - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
+    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
+    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
+    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
+    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4)
+    # )
+
+    f = ((105*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/2 
+        - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
+        - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
+        - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
+        - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
         - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
         - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
         - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
         - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4)
     )
-    
+
     return f
 
 def powden_rotring(P: list):
-    """
-    u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)
-    f = -(d2u/dx2 + d2u/dy2 + d2u/dz2)
+    """ u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)
+        f = -div(lambda * grad(u))
     """
     x = P[0, :]
     y = P[1, :]
@@ -77,7 +90,7 @@ def powden_rotring(P: list):
     return f
 
 def temperature_rotring(P):
-    "T = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)"
+    " T = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z) "
     x = P[0, :]
     y = P[1, :]
     z = P[2, :]

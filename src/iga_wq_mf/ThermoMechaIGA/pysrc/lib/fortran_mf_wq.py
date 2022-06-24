@@ -16,11 +16,11 @@ from iga_wq_mf import assembly, solver
 class fortran_mf_wq(thermoMechaModel):
 
     def __init__(self, modelIGA: None, isThermal= True, isMechanical= False, 
-                thermalblockedboundaries= None, mechablockedboundaries= None):
+                thermalblockedboundaries= None, mechablockedboundaries= None, **properties):
 
         super().__init__(modelIGA= modelIGA, isThermal= isThermal, isMechanical= isMechanical,
                         thermalblockedboundaries= thermalblockedboundaries,
-                        mechablockedboundaries= mechablockedboundaries)
+                        mechablockedboundaries= mechablockedboundaries, **properties)
 
         # Set basis and weights
         self.eval_basis_weigths()

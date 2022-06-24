@@ -4,9 +4,6 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
-import os
-
 # My libraries
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
