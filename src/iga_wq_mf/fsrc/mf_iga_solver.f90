@@ -778,7 +778,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         c_v = 1.d0
         c_w = 1.d0
 
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             ! --------------------------------------------
             ! DIAGONAL DECOMPOSITION
             ! -------------------------------------------- 
@@ -797,7 +797,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
-        else if ((Method.eq.'JMS').or.(Method.eq.'JM')) then 
+        else if ((Method.eq.'JMS').or.(Method.eq.'JMC')) then 
             ! --------------------------------------------
             ! NEW METHOD
             ! -------------------------------------------- 
@@ -865,7 +865,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         end if
 

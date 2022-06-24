@@ -6,12 +6,12 @@
 
 # Python libraries
 import os
+import numpy as np
 
 # My libraries
 from lib.physics import (powden_cube, 
                         powden_prism,
                         powden_thickring, 
-                        powden_rotring, 
 )
 from lib.post_treat_methods import ThermalSimulation, SimulationData, plot_iterative_solver
 
@@ -21,21 +21,18 @@ folder = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = True
-GEOMETRY_CASE = 'TR'
+FileExist = False
 DEGREE, CUTS = 3, 5
 IS_IGA = False
-if IS_IGA: is_cg_list = [True]
-else: is_cg_list = [False]
-method_list = ["WP", "C", "TDS", "JMS", "TD", "JM"]
+IS_CG = False
+method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for IS_CG in is_cg_list:
+for GEOMETRY_CASE in ['VB', 'CB', 'TR']:
     
     # Get file name
     if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
     elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
     elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
-    elif GEOMETRY_CASE == 'RQA': funpow, funtemp = powden_rotring, None 
     
     # Run simulation
     thermalinputs = {'degree': DEGREE, 'cuts': CUTS, 'case': GEOMETRY_CASE, 'isIGA': IS_IGA, 'isCG': IS_CG, 
@@ -45,7 +42,8 @@ for IS_CG in is_cg_list:
 
     # Run simulation
     if not FileExist:
-        properties = {'capacity': 2.0}
+        conductivity = np.array([[1, -0.5, -0.1],[-0.5, 1, -0.25], [-0.1, -0.25, 1]])
+        properties = {"conductivity": conductivity}
         Simulation.run_simulation(**properties)
 
     else :

@@ -1067,7 +1067,7 @@ module tensor_methods
         ! Initialize Masse matrix
         allocate(data_B0_new(size_data))
         data_B0_new = data_B0
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then 
+        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             do i = 1, nb_rows
                 do j = indi(i), indi(i+1)-1
                     data_B0_new(j) = data_B0_new(j)*Mcoef(indj(j))
@@ -1087,7 +1087,7 @@ module tensor_methods
         ! Initialize Stiffness matrix
         allocate(data_B1_new(size_data))
         data_B1_new = data_B1
-        if ((Method.eq.'TDS').or.(Method.eq.'TD')) then
+        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then
             do i = 1, nb_rows
                 do j = indi(i), indi(i+1)-1
                     data_B1_new(j) = data_B1_new(j)*Kcoef(indj(j))

@@ -25,6 +25,7 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                     '#f781bf', '#a65628', '#984ea3',
                     '#999999', '#e41a1c', '#dede00']
+    marker_cycle = ['o', 'v', 'X', 's', '+', 'p']
 
     # Define inputs
     residue = inputs["Res"]
@@ -37,8 +38,8 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
         if pcgmethod == "WP": new_method_list.append('Without preconditioner')
         elif pcgmethod == "C": new_method_list.append('Fast Diagonalisation (FD)')
         elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
-        elif pcgmethod == "JM": new_method_list.append('FD + jacobien mean')  
-        elif pcgmethod == "TD": new_method_list.append('FD + tensor decomp.') 
+        elif pcgmethod == "JMC": new_method_list.append('FD + jacobien mean')  
+        elif pcgmethod == "TDC": new_method_list.append('FD + tensor decomp.') 
         elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
 
     # Select important values
@@ -54,8 +55,10 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
         error_method = error_method[residue_method>tol]
         residue_method = residue_method[residue_method>tol]
         
-        ax1.semilogy(np.arange(len(error_method)), error_method*100, label=pcgmethod, color=CB_color_cycle[i])
-        ax2.semilogy(np.arange(len(residue_method)), residue_method*100, label=pcgmethod, color=CB_color_cycle[i])
+        ax1.semilogy(np.arange(len(error_method)), error_method*100, '--',
+                    label=pcgmethod, color=CB_color_cycle[i], marker=marker_cycle[i])
+        ax2.semilogy(np.arange(len(residue_method)), residue_method*100, '--',
+                    label=pcgmethod, color=CB_color_cycle[i], marker=marker_cycle[i])
 
     # Set properties
     ax1.set_xlabel('Number of iterations', fontsize=16)
@@ -261,6 +264,7 @@ class ThermalSimulation():
             # With and without preconditioner
             time_iter, memory_iter, residue, error = [], [], [], []
             for method in self._iterMethods:
+                print(method)
                 Tn_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fn, method=method, solDir=solDir)
                 memory_iter_t = 0.0
 

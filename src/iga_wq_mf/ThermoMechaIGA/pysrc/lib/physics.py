@@ -72,7 +72,7 @@ def powden_thickring(P: list):
     y = P[1, :]
     z = P[2, :] 
 
-    # Isotropy
+    # # Isotropy
     # f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
     #     - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
     #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
