@@ -1256,7 +1256,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                     data_B1T_w(size_data_w)
 
     integer :: info
-    double precision, allocatable, dimension(:, :) :: U, VT
+    double precision, allocatable, dimension(:, :) :: U, VT, lambda_main
     double precision, allocatable, dimension(:) :: lambda, work
     double precision :: c_u, c_v, c_w
     
@@ -1369,13 +1369,14 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
             
             ! Find conductivity
-            allocate(U(3, 3), VT(3, 3), lambda(3), work(15))
+            allocate(U(3, 3), VT(3, 3), lambda(3), work(15), lambda_main(3, 3))
             call dgesvd('N', 'A', 3, 3, conductivity, 3, lambda, U, 3, VT, 3, work, 15, info)
-            deallocate(U, VT, work)
-
-            c_u = lambda(1)*Lv*Lw/Lu
-            c_v = lambda(2)*Lw*Lu/Lv
-            c_w = lambda(3)*Lu*Lv/Lw
+            call product_AWB(4, 3, 3, VT, 3, 3, VT, lambda, 3, 3, lambda_main)
+            deallocate(U, work, VT, lambda)
+                    
+            c_u = lambda_main(1, 1)*Lv*Lw/Lu
+            c_v = lambda_main(2, 2)*Lw*Lu/Lv
+            c_w = lambda_main(3, 3)*Lu*Lv/Lw
 
         end if
 

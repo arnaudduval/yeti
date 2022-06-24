@@ -21,13 +21,13 @@ folder = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = False
+FileExist = True
 DEGREE, CUTS = 3, 5
 IS_IGA = False
 IS_CG = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for GEOMETRY_CASE in ['VB', 'CB', 'TR']:
+for GEOMETRY_CASE in ['CB', 'VB', 'TR']:
     
     # Get file name
     if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
@@ -42,7 +42,7 @@ for GEOMETRY_CASE in ['VB', 'CB', 'TR']:
 
     # Run simulation
     if not FileExist:
-        conductivity = np.array([[1, -0.5, -0.1],[-0.5, 1, -0.25], [-0.1, -0.25, 1]])
+        conductivity = np.array([[1, -0.5, -0.1],[-0.5, 2, -0.25], [-0.1, -0.25, 3]])
         properties = {"conductivity": conductivity}
         Simulation.run_simulation(**properties)
 

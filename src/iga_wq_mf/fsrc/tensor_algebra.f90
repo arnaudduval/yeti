@@ -1563,13 +1563,13 @@ module tensor_methods
         diag = 0.d0
 
         ! Find K3 M2 M1
-        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, c_u)
+        call kron_product_3vec(nb_rows_w, Kdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Mdiag_u, diag, c_w)
 
         ! Find M3 K2 M1
         call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Kdiag_v, nb_rows_u, Mdiag_u, diag, c_v)
 
         ! Find M3 M2 K1
-        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, c_w)
+        call kron_product_3vec(nb_rows_w, Mdiag_w, nb_rows_v, Mdiag_v, nb_rows_u, Kdiag_u, diag, c_u)
 
     end subroutine find_parametric_diag_3d
 
