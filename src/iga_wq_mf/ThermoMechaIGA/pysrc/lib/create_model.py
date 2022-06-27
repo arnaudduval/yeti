@@ -443,7 +443,7 @@ class thermoMechaModel():
             inv_J = np.linalg.inv(J_pts[:, :, _])
 
             # Find coefficient of conductivity matrix
-            Kcoef_temp = inv_J @ inv_J.T @ Kprop * det_J
+            Kcoef_temp = inv_J @ Kprop @ inv_J.T * det_J
             Kcoef[:, :, _] = Kcoef_temp
 
             # Find coefficient of capacity matrix or heat vector

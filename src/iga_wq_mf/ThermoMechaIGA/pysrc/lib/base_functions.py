@@ -58,6 +58,22 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
 
     return indi_out, indj_out, data_out
 
+def generate_rand_positive_matrix(dim, nnz):
+    "Return a random symetric positive definite matrix"
+    
+    # Generate random matrix 
+    A = np.random.random((dim, dim, nnz))
+    I = np.eye(dim)
+
+    for i in range(nnz):
+        # Construct symmetric matrix 
+        # Since Aij < 1 by construction, we assure diagonally dominant by adding nI
+        B = A[:, :, i]
+        B = np.matmul(B, B.T) + I
+        A[:, :, i] = B
+
+    return A 
+
 # ==========================
 # B-SPLINE FUNCTIONS
 # ==========================
