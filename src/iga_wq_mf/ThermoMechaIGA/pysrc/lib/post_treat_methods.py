@@ -89,6 +89,7 @@ class ThermalSimulation():
         # Get essential data to run simulation
         self._degree = inputs.get('degree', 2)
         self._cuts = inputs.get('cuts', 2)
+        self._nbel = 2**self._cuts
         self._geoCase = inputs.get('case', 'TR')
         self._isIGA = inputs.get('isIGA', False)
         self._isCG = inputs.get('isCG', True)
@@ -112,6 +113,9 @@ class ThermalSimulation():
 
         # Set number of iterations
         self._nbIter = 100
+
+        # Set quadrature properties
+        self._set_qp_properties()
         
         return
 
@@ -170,6 +174,21 @@ class ThermalSimulation():
         return
 
     # Run simulations
+    def _set_qp_properties(self):
+        " Sets some WQ properties "
+
+        # Set number of quadrature points
+        # In WQ approach
+        self._nb_qp_wq = 2*(self._degree + self._nbel + 2) - 5 
+
+        # In IGA approach
+        self._nb_qp_cgg = (self._degree + 1)*self._nbel
+
+        # Set total number of quadrature points
+        self._nb_qp_cgg_total = self._nb_qp_cgg**3
+        self._nb_qp_wq_total = self._nb_qp_wq**3
+
+        return
 
     def create_geometryModel(self):
         geoModel = create_geometry(self._degree, self._cuts, self._geoCase)

@@ -4,7 +4,7 @@
 ! modules :: operateurs.f90 (MatrixInv and MatrixDet)
 ! ==========================
 
-subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, Ccoef)
+subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, Ccoef, info)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
@@ -15,6 +15,7 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
     double precision, intent(in) :: JJ, KK, CC
     dimension :: JJ(dime, dime, nnz), KK(dime, dime, nnz_K), CC(nnz_C)
 
+    integer, intent(out) :: info
     double precision, intent(out) :: Kcoef, Ccoef
     dimension :: Kcoef(dime, dime, nnz), Ccoef(nnz)
 
@@ -25,6 +26,8 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
     dimension :: Jt(dime, dime), invJt(dime, dime)
     double precision :: Kt
     dimension :: Kt(dime, dime)  
+
+    info = 1
 
     ! Verifiy nnz_KK value
     if (nnz_K.eq.1) then 
@@ -63,6 +66,7 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
     else 
+        info = 0
         print*, "Error computing thermal coefficient (Conductivity)"
     end if
 
@@ -97,6 +101,7 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
         !$OMP END PARALLEL 
 
     else
+        info = 0
         print*, "Error computing thermal coefficient (Capapcity) "
     end if
 

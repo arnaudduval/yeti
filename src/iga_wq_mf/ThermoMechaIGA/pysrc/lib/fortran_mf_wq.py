@@ -33,10 +33,12 @@ class fortran_mf_wq(thermoMechaModel):
             # Get conductivity and capacity coefficients
             print('Getting conductivity and capacity coefficients')
             start = time.time()
-            self._conductivity_coef, self._capacity_coef = \
+            self._conductivity_coef, self._capacity_coef, info = \
                 assembly.eval_thermal_coefficient(self._Jqp, self._conductivity, self._capacity)
             stop = time.time()
             print('\tConductivity and capacity coefficients in : %.5f s' %(stop-start))
+            if info == 0:
+                raise Warning('Something happen computing coefficients')
 
         if self._isMechanical:
             # Get stiffness coefficients

@@ -9,6 +9,7 @@ import os
 import numpy as np
 
 # My libraries
+from lib.base_functions import generate_rand_positive_matrix
 from lib.physics import (powden_cube, 
                         powden_prism,
                         powden_thickring, 
@@ -42,7 +43,10 @@ for GEOMETRY_CASE in ['CB', 'VB', 'TR']:
 
     # Run simulation
     if not FileExist:
-        conductivity = np.array([[1, -0.5, -0.1],[-0.5, 2, -0.25], [-0.1, -0.25, 3]])
+        # conductivity = np.array([[1, -0.5, -0.1],[-0.5, 2, -0.25], [-0.1, -0.25, 3]])
+        if IS_IGA: nnz = Simulation._nb_qp_cgg_total
+        else: nnz = Simulation._nb_qp_wq_total
+        conductivity = generate_rand_positive_matrix(3, nnz)
         properties = {"conductivity": conductivity}
         Simulation.run_simulation(**properties)
 
