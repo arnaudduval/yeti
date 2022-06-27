@@ -27,11 +27,11 @@ class WQ(thermoMechaModel):
         self.eval_basis_weights()
 
         # Evaluate jacobian 
-        self._Jqp, self._qp_PS = super().eval_jacobien_physicalPosition(self._dim, self._ctrlpts, 
+        self._Jqp, self._qp_PS, self._detJ = super().eval_jacobien_physicalPosition(self._dim, self._ctrlpts, 
                                                         self._DB, self._nb_qp_wq_total)
 
         # Evaluate conductivity and capacity coefficients
-        self._conductivity_coef, self._capacity_coef, self._detJ = \
+        self._conductivity_coef, self._capacity_coef= \
             super().eval_thermal_coefficient(self._nb_qp_wq_total, self._Jqp, 
                                         self._conductivity, self._capacity)
         

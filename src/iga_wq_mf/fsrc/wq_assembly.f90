@@ -4,17 +4,16 @@
 ! modules :: operateurs.f90 (MatrixInv and MatrixDet)
 ! ==========================
 
-subroutine eval_thermal_coefficient(dime, nnz, JJ, KK, CC, Kcoef, Ccoef)
+subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, Ccoef)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------    
-    integer, intent(in) :: dime, nnz
-    double precision, intent(in) :: JJ, KK
-    dimension :: JJ(dime, dime, nnz), KK(dime, dime)
-    double precision, intent(in) :: CC
+    integer, intent(in) :: dime, nnz, nnz_K, nnz_C
+    double precision, intent(in) :: JJ, KK, CC
+    dimension :: JJ(dime, dime, nnz), KK(dime, dime, nnz_K), CC(nnz_C)
 
     double precision, intent(out) :: Kcoef, Ccoef
     dimension :: Kcoef(dime, dime, nnz), Ccoef(nnz)
@@ -27,25 +26,79 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, KK, CC, Kcoef, Ccoef)
     double precision :: Kt
     dimension :: Kt(dime, dime)  
 
-    !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-    do i = 1, nnz
-        ! Get individual jacobien
-        Jt = JJ(:, :, i)
+    ! Verifiy nnz_KK value
+    if (nnz_K.eq.1) then 
+        !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+        do i = 1, nnz
+            ! Get individual jacobien
+            Jt = JJ(:, :, i)
 
-        ! Evaluate inverse
-        call MatrixInv(invJt, Jt, detJt, dime)
+            ! Evaluate inverse
+            call MatrixInv(invJt, Jt, detJt, dime)
 
-        ! For K = invJ * prop * detJ * transpose(invJ) 
-        Kt = detJt * matmul(invJt, KK) 
-        Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
+            ! For K = invJ * prop * detJ * transpose(invJ) 
+            Kt = detJt * matmul(invJt, KK(:,:,1)) 
+            Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+    else if (nnz_K.eq.nnz) then 
+        !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+        do i = 1, nnz
+            ! Get individual jacobien
+            Jt = JJ(:, :, i)
 
-        ! For C = detJ  * prop
-        Ccoef(i) = detJt * CC
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
+            ! Evaluate inverse
+            call MatrixInv(invJt, Jt, detJt, dime)
+
+            ! For K = invJ * prop * detJ * transpose(invJ) 
+            Kt = detJt * matmul(invJt, KK(:,:,i)) 
+            Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
+
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+    else 
+        print*, "Error computing thermal coefficient (Conductivity)"
+    end if
+
+    if (nnz_C.eq.1) then 
+        !$OMP PARALLEL PRIVATE(Jt, detJt)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+        do i = 1, nnz
+            ! Get individual jacobien
+            Jt = JJ(:, :, i)
+
+            ! For C = detJ  * prop
+            call MatrixDet(Jt, detJt, dime)
+            Ccoef(i) = detJt * CC(1)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+
+    else if (nnz_C.eq.nnz) then
+        !$OMP PARALLEL PRIVATE(Jt, detJt)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+        do i = 1, nnz
+            ! Get individual jacobien
+            Jt = JJ(:, :, i)
+
+            ! For C = detJ  * prop
+            call MatrixDet(Jt, detJt, dime)
+            Ccoef(i) = detJt * CC(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+
+    else
+        print*, "Error computing thermal coefficient (Capapcity) "
+    end if
 
 end subroutine eval_thermal_coefficient
 

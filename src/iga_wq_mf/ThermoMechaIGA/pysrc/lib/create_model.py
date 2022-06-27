@@ -399,6 +399,7 @@ class thermoMechaModel():
         # Initialize 
         J = np.zeros((dimensions, dimensions, nb_pts))
         PPS = np.zeros((dimensions, nb_pts))
+        detJ = np.zeros(nb_pts)
 
         # Evaluate jacobien
         for j in range(dimensions):
@@ -419,11 +420,15 @@ class thermoMechaModel():
                 B = sp.kron(data_DB[dim][0], B)
 
             PPS[i, :] = sp.coo_matrix.dot(B.transpose(), CP[:, i])
+
+        # Evaluate determinant
+        for _ in range(nb_pts):
+            detJ[_] = np.linalg.det(J[:, :, _])
         
         stop = time.time()
         print('\tJacobian in : %.5f s' %(stop-start))
         
-        return J, PPS
+        return J, PPS, detJ
 
     def eval_thermal_coefficient(self, nb_pts, J_pts, Kprop, Cprop): 
         " Computes coefficients at points P in parametric space "
@@ -433,30 +438,59 @@ class thermoMechaModel():
 
         Kcoef = np.zeros(np.shape(J_pts))
         Ccoef = np.zeros(nb_pts)
-        detJ = np.zeros(nb_pts)
 
-        for _ in range(nb_pts): 
-            # Find determinant of Jacobien 
-            det_J = np.linalg.det(J_pts[:, :, _])
+        # Transform Kprop and Cprop
+        Kprop = np.atleast_3d(Kprop)
+        Cprop = np.atleast_1d(Cprop)
 
-            # Find inverse of Jacobien 
-            inv_J = np.linalg.inv(J_pts[:, :, _])
+        if np.shape(Kprop)[2] == 1:
+            for _ in range(nb_pts): 
+                # Find determinant of Jacobien 
+                det_J = np.linalg.det(J_pts[:, :, _])
 
-            # Find coefficient of conductivity matrix
-            Kcoef_temp = inv_J @ Kprop @ inv_J.T * det_J
-            Kcoef[:, :, _] = Kcoef_temp
+                # Find inverse of Jacobien 
+                inv_J = np.linalg.inv(J_pts[:, :, _])
 
-            # Find coefficient of capacity matrix or heat vector
-            Ccoef_temp = Cprop * det_J
-            Ccoef[_] = Ccoef_temp
+                # Find coefficient of conductivity matrix
+                Kcoef[:, :, _] = inv_J @ Kprop[:, :, 0] @ inv_J.T * det_J
 
-            # Find determinant of Jacobien
-            detJ[_] = det_J
+        elif np.shape(Kprop)[2] == nb_pts:
+            for _ in range(nb_pts): 
+                # Find determinant of Jacobien 
+                det_J = np.linalg.det(J_pts[:, :, _])
+
+                # Find inverse of Jacobien 
+                inv_J = np.linalg.inv(J_pts[:, :, _])
+
+                # Find coefficient of conductivity matrix
+                Kcoef[:, :, _] = inv_J @ Kprop[:, :, _] @ inv_J.T * det_J
+
+        else: 
+            raise Warning('Something happen, it is not possible to compute coefficients')
+
+        if len(Cprop) == 1:
+            for _ in range(nb_pts): 
+                # Find determinant of Jacobien 
+                det_J = np.linalg.det(J_pts[:, :, _])
+
+                # Find coefficient of capacity matrix or heat vector
+                Ccoef[_] = Cprop[0] * det_J
+
+        elif len(Cprop) == nb_pts:
+            for _ in range(nb_pts): 
+                # Find determinant of Jacobien 
+                det_J = np.linalg.det(J_pts[:, :, _])
+
+                # Find coefficient of capacity matrix or heat vector
+                Ccoef[_] = Cprop[_] * det_J
+
+        else: 
+            raise Warning('Something happen, it is not possible to compute coefficients')
 
         stop = time.time()
         print('\tConductivity and capacity coefficients in : %.5f s' %(stop-start))
 
-        return Kcoef, Ccoef, detJ
+        return Kcoef, Ccoef
 
     def eval_source_coefficient(self, fun, qp, det): 
         " Computes coefficients at points P in parametric space "

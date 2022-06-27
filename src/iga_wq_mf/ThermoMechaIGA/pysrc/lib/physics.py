@@ -117,30 +117,12 @@ def powden_rotring(P: list):
     x = P[0, :]
     y = P[1, :]
     z = P[2, :]
-    # f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
-    #     + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
-    #     + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    #     - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
-    # )
-    
-    f = (8*x*y**4*sin(pi*z) 
-        - 8*x**2*y**3*sin(pi*z) 
-        + 8*x**3*y**2*sin(pi*z) 
-        - 2*y**3*sin(pi*z)*(x**2 + y**2 - 1) 
-        - 2*y**3*sin(pi*z)*(x**2 + y**2 - 4) 
-        + 16*x*y**2*sin(pi*z)*(x**2 + y**2 - 1) 
-        - 4*x**2*y*sin(pi*z)*(x**2 + y**2 - 1) 
-        + 16*x*y**2*sin(pi*z)*(x**2 + y**2 - 4) 
-        - 4*x**2*y*sin(pi*z)*(x**2 + y**2 - 4) 
-        + 2*x*sin(pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - 2*y*sin(pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - (y**2*pi*cos(pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/5 
-        - x*y**3*pi*cos(pi*z)*(x**2 + y**2 - 1) 
-        - x*y**3*pi*cos(pi*z)*(x**2 + y**2 - 4) 
-        - (2*x**2*y**2*pi*cos(pi*z)*(x**2 + y**2 - 1))/5 
-        - (2*x**2*y**2*pi*cos(pi*z)*(x**2 + y**2 - 4))/5 
-        - x*y**2*pi**2*sin(pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - x*y*pi*cos(pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+
+    # Isotropy
+    f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
+        + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+        + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+        - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
     )
 
     return f

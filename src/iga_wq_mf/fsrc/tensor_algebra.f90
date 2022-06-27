@@ -1456,39 +1456,36 @@ module tensor_methods
 
     end subroutine tensor_decomposition_3d
 
-    subroutine jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, JJ, L1, L2, L3)
+    subroutine jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, size_J, JJ, size_K, KK, &
+                                L1, L2, L3, lambda1, lambda2, lambda3)
         
         use omp_lib
         implicit none
         ! Input /  output data
         ! -----------------------
-        integer, intent(in) :: nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
-        double precision, intent(in) :: JJ
-        dimension :: JJ(3, 3, nb_cols_total)
+        integer, intent(in) :: nb_cols_u, nb_cols_v, nb_cols_w, size_J, size_K
+        double precision, intent(in) :: JJ, KK
+        dimension :: JJ(3, 3, size_J), KK(3, 3, size_K)
     
         double precision, intent(out) :: L1, L2, L3
+        double precision, intent(out) :: lambda1, lambda2, lambda3
         integer, parameter :: step=2
     
         ! Local data
         ! --------------
-        integer :: i, j, k, nb_pts, nb_pts_temp, Jpos, nb_tasks
-        double precision :: SQL
-        double precision, dimension(3,3) :: Q1
+        integer :: i, j, k, nb_pts, nb_pts_temp, nb_tasks, pos
+        double precision, dimension(3,3) :: dist, lambda, MatrixT
+        double precision :: sq
 
         ! SDV
+        double precision :: U, VT, Sigma, work
+        dimension :: Sigma(3), work(15), U(3, 3), VT(3, 3)
         integer :: info
-        character, parameter :: jobu='N', jobvt='A'
-        integer, parameter :: M=3, N=3
-        integer, parameter :: lda=M, ldu=M, ldvt=N, lwork=5*M
-        double precision, dimension(M, N) :: A, U, VT
-        double precision, dimension(M) :: S
-        double precision, dimension(lwork) :: work
 
         ! Count number of quadrature points
         nb_pts = 1
         nb_pts_temp = 0
-        
-        do k = 1, nb_cols_w, step
+        do i = 1, nb_cols_u, step
             nb_pts_temp = nb_pts_temp + 1
         end do
         nb_pts = nb_pts * nb_pts_temp
@@ -1500,31 +1497,32 @@ module tensor_methods
         nb_pts = nb_pts * nb_pts_temp
         nb_pts_temp = 0
 
-        do i = 1, nb_cols_u, step
+        do k = 1, nb_cols_w, step
             nb_pts_temp = nb_pts_temp + 1
         end do
         nb_pts = nb_pts * nb_pts_temp
     
-        ! Initialize
+        ! Compute distance
+        !--------------------------
         L1 = 0.d0
         L2 = 0.d0
         L3 = 0.d0
     
-        !$OMP PARALLEL PRIVATE(Jpos, A, U, VT, S, work, Q1, info) REDUCTION(+:L1, L2, L3)
+        !$OMP PARALLEL PRIVATE(pos, MatrixT, U, VT, Sigma, work, dist, info) REDUCTION(+:L1, L2, L3)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_cols_total/(nb_tasks*step*step*step))
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_J/(nb_tasks*step*step*step))
         do k = 1, nb_cols_w, step
             do j = 1, nb_cols_v, step
                 do i = 1, nb_cols_u, step
-                    Jpos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
-                    A = JJ(:, :, Jpos)
-                    call dgesvd(jobu, jobvt, M, N, A, lda, S, U, ldu, VT, ldvt, work, lwork, info)
-                    call product_AWB(4, 3, 3, VT, 3, 3, VT, S, 3, 3, Q1)
+                    pos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
+                    MatrixT = JJ(:, :, pos)
+                    call dgesvd('N', 'A', 3, 3, MatrixT, 3, Sigma, U, 3, VT, 3, work, 15, info)
+                    call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, dist)
     
                     ! Find mean of diagonal of jacobien
-                    L1 = L1 + Q1(1, 1)/nb_pts
-                    L2 = L2 + Q1(2, 2)/nb_pts
-                    L3 = L3 + Q1(3, 3)/nb_pts
+                    L1 = L1 + dist(1, 1)/nb_pts
+                    L2 = L2 + dist(2, 2)/nb_pts
+                    L3 = L3 + dist(3, 3)/nb_pts
                 end do
             end do
         end do
@@ -1532,11 +1530,58 @@ module tensor_methods
         !$OMP END PARALLEL 
 
         ! Dimension normalized
-        SQL = sqrt(L1**2 + L2**2 + L3**2)
-        L1 = L1/SQL
-        L2 = L2/SQL
-        L3 = L3/SQL
-    
+        sq = sqrt(L1**2 + L2**2 + L3**2)
+        L1 = L1/sq
+        L2 = L2/sq
+        L3 = L3/sq
+
+        ! Compute conductivity
+        !--------------------------
+        if (size_K.eq.1) then
+            call dgesvd('N', 'A', 3, 3, KK(:, :, 1), 3, Sigma, U, 3, VT, 3, work, 15, info)
+            call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, lambda)
+            lambda1 = lambda(1, 1)
+            lambda2 = lambda(2, 2)
+            lambda3 = lambda(3, 3)
+
+        else if (size_K.eq.size_J) then
+
+            lambda1 = 0.d0
+            lambda2 = 0.d0
+            lambda3 = 0.d0
+
+            !$OMP PARALLEL PRIVATE(pos, MatrixT, U, VT, Sigma, work, lambda, info) REDUCTION(+:lambda1, lambda2, lambda3)
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_J/(nb_tasks*step*step*step))
+            do k = 1, nb_cols_w, step
+                do j = 1, nb_cols_v, step
+                    do i = 1, nb_cols_u, step
+                        pos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
+                        MatrixT = KK(:, :, pos)
+                        call dgesvd('N', 'A', 3, 3, MatrixT, 3, Sigma, U, 3, VT, 3, work, 15, info)
+                        call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, lambda)
+        
+                        ! Find mean of diagonal of jacobien
+                        lambda1 = lambda1 + lambda(1, 1)/nb_pts
+                        lambda2 = lambda2 + lambda(2, 2)/nb_pts
+                        lambda3 = lambda3 + lambda(3, 3)/nb_pts
+                    end do
+                end do
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL 
+
+            ! Conductivity normalized
+            sq = sqrt(lambda1**2 + lambda2**2 + lambda3**2)
+            lambda1 = lambda1/sq
+            lambda2 = lambda2/sq
+            lambda3 = lambda3/sq
+
+        end if
+
+        print*, lambda1, lambda2, lambda3
+        print*, L1, L2, L3
+        
     end subroutine jacobien_mean_3d
 
     ! For scaling (TDS and JMS)

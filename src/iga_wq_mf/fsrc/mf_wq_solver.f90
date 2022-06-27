@@ -832,7 +832,8 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         data_W00_w, data_W01_w, &
                         data_W10_w, data_W11_w, &
                         b, nbIterations, epsilon, & 
-                        Method, conductivity, Jacob, directsol, x, RelRes, RelError)
+                        Method, size_cond, conductivity, &
+                        Jacob, directsol, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 
@@ -865,8 +866,9 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 
     character(len=10) :: Method
     integer, intent(in) :: nbIterations
+    integer, intent(in) :: size_cond
     double precision, intent(in) :: conductivity
-    dimension :: conductivity(3, 3)
+    dimension :: conductivity(3, 3, size_cond)
     double precision, intent(in) :: epsilon
     double precision, intent(in) :: b, Jacob, directsol
     dimension :: b(nb_rows_total), &
@@ -920,10 +922,8 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                 data_B1T_v(size_data_v), &
                 data_B1T_w(size_data_w)
 
-    integer :: info
-    double precision, allocatable, dimension(:, :) :: U, VT
-    double precision, allocatable, dimension(:) :: lambda, work
     double precision :: c_u, c_v, c_w
+    double precision :: lambda1, lambda2, lambda3
 
     ! ====================================================
     ! Initialize B transpose in CSR format
@@ -1016,17 +1016,13 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! NEW METHOD
             ! --------------------------------------------
-            ! Find dimensions
-            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
-            
-            ! Find conductivity
-            allocate(U(3, 3), VT(3, 3), lambda(3), work(15))
-            call dgesvd('N', 'A', 3, 3, conductivity, 3, lambda, U, 3, VT, 3, work, 15, info)
-            deallocate(U, VT, work)
-
-            c_u = lambda(1) * Lv*Lw/Lu
-            c_v = lambda(2) * Lw*Lu/Lv
-            c_w = lambda(3) * Lu*Lv/Lw
+            ! Find dimensions and conductivity
+            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, nb_cols_total, Jacob, &
+                                size_cond, conductivity, Lu, Lv, Lw, lambda1, lambda2, lambda3)
+                    
+            c_u = lambda1*Lv*Lw/Lu
+            c_v = lambda2*Lw*Lu/Lv
+            c_w = lambda3*Lu*Lv/Lw
         
         end if
 
@@ -1166,7 +1162,8 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                             data_W00_w, data_W01_w, &
                             data_W10_w, data_W11_w, &
                             b, nbIterations, epsilon, & 
-                            Method, conductivity, Jacob, directsol, x, RelRes, RelError)
+                            Method, size_cond, conductivity, & 
+                            Jacob, directsol, x, RelRes, RelError)
     
     use tensor_methods
     implicit none 
@@ -1199,8 +1196,9 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
 
     character(len=10), intent(in) :: Method
     integer, intent(in) :: nbIterations
+    integer, intent(in) :: size_cond
     double precision, intent(in) :: conductivity
-    dimension :: conductivity(3, 3)
+    dimension :: conductivity(3, 3, size_cond)
     double precision, intent(in) :: epsilon
     double precision, intent(in) :: b, Jacob, directsol
     dimension ::    b(nb_rows_total), &
@@ -1254,11 +1252,9 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
     dimension ::    data_B1T_u(size_data_u), &
                     data_B1T_v(size_data_v), &
                     data_B1T_w(size_data_w)
-
-    integer :: info
-    double precision, allocatable, dimension(:, :) :: U, VT, lambda_main
-    double precision, allocatable, dimension(:) :: lambda, work
+                    
     double precision :: c_u, c_v, c_w
+    double precision :: lambda1, lambda2, lambda3
     
     ! ====================================================
     ! Initialize
@@ -1365,18 +1361,13 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! NEW METHOD
             ! --------------------------------------------
-            ! Find dimensions
-            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
-            
-            ! Find conductivity
-            allocate(U(3, 3), VT(3, 3), lambda(3), work(15), lambda_main(3, 3))
-            call dgesvd('N', 'A', 3, 3, conductivity, 3, lambda, U, 3, VT, 3, work, 15, info)
-            call product_AWB(4, 3, 3, VT, 3, 3, VT, lambda, 3, 3, lambda_main)
-            deallocate(U, work, VT, lambda)
+            ! Find dimensions and conductivity
+            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, nb_cols_total, Jacob, &
+                                size_cond, conductivity, Lu, Lv, Lw, lambda1, lambda2, lambda3)
                     
-            c_u = lambda_main(1, 1)*Lv*Lw/Lu
-            c_v = lambda_main(2, 2)*Lw*Lu/Lv
-            c_w = lambda_main(3, 3)*Lu*Lv/Lw
+            c_u = lambda1*Lv*Lw/Lu
+            c_v = lambda2*Lw*Lu/Lv
+            c_w = lambda3*Lu*Lv/Lw
 
         end if
 

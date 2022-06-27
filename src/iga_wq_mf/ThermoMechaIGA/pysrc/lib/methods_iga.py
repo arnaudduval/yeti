@@ -33,10 +33,10 @@ class IGA(thermoMechaModel):
         self.eval_basis_weights()
 
         # Jacobien 
-        self._Jqp, self._qp_PS = super().eval_jacobien_physicalPosition(self._dim, self._ctrlpts, self._DB, self._nb_qp_cgg_total)
+        self._Jqp, self._qp_PS, self._detJ = super().eval_jacobien_physicalPosition(self._dim, self._ctrlpts, self._DB, self._nb_qp_cgg_total)
 
         # Get conductivity and capacity coefficients
-        self._conductivity_coef, self._capacity_coef, self._detJ = \
+        self._conductivity_coef, self._capacity_coef = \
             super().eval_thermal_coefficient(self._nb_qp_cgg_total, self._Jqp, 
                                         self._conductivity, self._capacity)
 

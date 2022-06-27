@@ -625,7 +625,8 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         data_B0_v, data_B1_v, W_v, &
                         data_B0_w, data_B1_w, W_w, &
                         b, nbIterations, epsilon, & 
-                        Method, conductivity, Jacob, directsol, x, RelRes, RelError)
+                        Method, size_cond, conductivity, &
+                        Jacob, directsol, x, RelRes, RelError)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         
@@ -651,8 +652,9 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 
     character(len = 10) :: Method
     integer, intent(in) :: nbIterations
+    integer, intent(in) :: size_cond
     double precision, intent(in) :: conductivity
-    dimension :: conductivity(3, 3)
+    dimension :: conductivity(3, 3, size_cond)
     double precision, intent(in) :: epsilon
     double precision, intent(in) :: b, Jacob, directsol
     dimension :: b(nb_rows_total), &
@@ -707,10 +709,8 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                     data_B1T_v(size_data_v), &
                     data_B1T_w(size_data_w)
 
-    integer :: info
-    double precision, allocatable, dimension(:, :) :: U, VT
-    double precision, allocatable, dimension(:) :: lambda, work
     double precision :: c_u, c_v, c_w
+    double precision :: lambda1, lambda2, lambda3
 
     ! ====================================================
     ! Initialize B transpose in CSR format
@@ -801,17 +801,13 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             ! --------------------------------------------
             ! NEW METHOD
             ! -------------------------------------------- 
-            ! Find dimensions
-            call jacobien_mean_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, Jacob, Lu, Lv, Lw)
-            
-            ! Find conductivity
-            allocate(U(3, 3), VT(3, 3), lambda(3), work(15))
-            call dgesvd('N', 'A', 3, 3, conductivity, 3, lambda, U, 3, VT, 3, work, 15, info)
-            deallocate(U, VT, work)
-
-            c_u = lambda(1) * Lv*Lw/Lu
-            c_v = lambda(2) * Lw*Lu/Lv
-            c_w = lambda(3) * Lu*Lv/Lw
+            ! Find dimensions and conductivity
+            call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, nb_cols_total, Jacob, &
+                                size_cond, conductivity, Lu, Lv, Lw, lambda1, lambda2, lambda3)
+                    
+            c_u = lambda1*Lv*Lw/Lu
+            c_v = lambda2*Lw*Lu/Lv
+            c_w = lambda3*Lu*Lv/Lw
 
         end if
 
