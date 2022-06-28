@@ -469,9 +469,9 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     double precision, dimension(:,:), allocatable :: II
 
     ! Weights
-    integer :: B0shape
-    dimension :: B0shape(nb_ctrlpts, 2)
-    integer, allocatable, dimension(:, :) :: MIint, B1shape
+    integer :: B0shape, B1shape
+    dimension :: B0shape(nb_ctrlpts, 2), B1shape(nb_ctrlpts, 2)
+    integer, allocatable, dimension(:, :) :: MIint
     
     ! Find knots non-repeated of knot-vector
     call get_parametric_nodes(nb_el, nodes)
@@ -486,9 +486,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
                                     nb_qp_wq_p1, nb_qp_cgg_p1)
 
     ! Get non-zero values shape
-    allocate(B1shape(nb_ctrlpts, 2))
     call wq_get_B0_B1_shape(degree, nb_el, nb_ctrlpts, nb_qp_wq, multiplicity, maxrule, B0shape, B1shape)
-    deallocate(B1shape)
 
     ! --------------------------
     ! Degree p
@@ -569,7 +567,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     nb_ctrlpts, nb_qp_cgg,  B1cgg_p0, qp_cgg_weights, nb_ctrlpts, nb_ctrlpts, II)
 
     ! For W10
-    call wq_get_quadrature_rules(nb_ctrlpts, nb_ctrlpts, nb_qp_wq, B0wq_p0, II, B0shape, MIint, W10)
+    call wq_get_quadrature_rules(nb_ctrlpts, nb_ctrlpts, nb_qp_wq, B0wq_p0, II, B1shape, MIint, W10)
     deallocate(MIint, II)
 
     ! ----------------------
@@ -590,7 +588,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     nb_ctrlpts, nb_qp_cgg,  B1cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, nb_ctrlpts, II)
                     
     ! For W11
-    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, II, B0shape, MIint, W11)               
+    call wq_get_quadrature_rules(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_wq, B0wq_p1, II, B1shape, MIint, W11)               
     deallocate(MIint, II)
 
 end subroutine wq_get_basis_weights_generalized

@@ -63,7 +63,6 @@ def generate_rand_positive_matrix(dim, nnz):
     
     # Generate random matrix 
     A = np.random.random((dim, dim, nnz))
-    # I = np.eye(dim)
     I = np.diag(np.random.rand(3) + np.array([1, 1, 1])) 
     
     for i in range(nnz):
@@ -74,8 +73,8 @@ def generate_rand_positive_matrix(dim, nnz):
         # A[:, :, i] = B
 
         # -------------------
-        # A[:, :, i] = np.eye(dim) + np.diag(np.random.rand(3))
-        A[:, :, i] = I
+        # Testing 
+        A[:, :, i] = np.eye(dim) + np.diag(np.random.rand(3))
 
     return A 
 
@@ -580,17 +579,17 @@ def wq_find_weights(degree, knotvector, r):
     data_W00, data_W01, data_W10, data_W11 = [], [], [], []
     
     # Find shape of B and I
-    shape_B_p0 = wq_get_shape_B(degree, nbel, r)[0]
+    shape_B0_p0, shape_B1_p0 = wq_get_shape_B(degree, nbel, r)
     shape_B_p1 = wq_get_shape_B(degree-1, nbel, r+1)[0]
 
     # -----------------------------------------------
     # Computation of W00
     # -----------------------------------------------
-    Ishape = shape_B_p0 @ shape_B_p0.T 
+    Ishape = shape_B0_p0 @ shape_B0_p0.T 
     indi = []; indj = []
     for i in range(nbfunct):
         F = np.nonzero(Ishape[:, i])[0]
-        P = np.nonzero(shape_B_p0[i, :])[1]
+        P = np.nonzero(shape_B0_p0[i, :])[1]
 
         Bt = B0wq_p0[np.ix_(F,P)]
         It = I00[np.ix_(F, [i])]
@@ -599,15 +598,15 @@ def wq_find_weights(degree, knotvector, r):
         indi.extend(i*np.ones(len(P), dtype= int))
         indj.extend(P)
     W00 = sp.csr_matrix((data_W00, (indi, indj)), shape=(nbfunct, nbx))
-    
+
     # -----------------------------------------------
     # Computation of W01
     # -----------------------------------------------
-    Ishape = shape_B_p1 @ shape_B_p0.T 
+    Ishape = shape_B_p1 @ shape_B0_p0.T 
     indi = []; indj = []
     for i in range(nbfunct):
         F = np.nonzero(Ishape[:,i])[0]
-        P = np.nonzero(shape_B_p0[i, :])[1]
+        P = np.nonzero(shape_B0_p0[i, :])[1]
 
         Bt = B0wq_p1[np.ix_(F,P)]
         It = I01[np.ix_(F, [i])]
@@ -620,11 +619,11 @@ def wq_find_weights(degree, knotvector, r):
     # -----------------------------------------------
     # Computation of W10
     # -----------------------------------------------
-    Ishape = shape_B_p0 @ shape_B_p0.T 
+    Ishape = shape_B1_p0 @ shape_B0_p0.T 
     indi = []; indj = []
     for i in range(nbfunct):
         F = np.nonzero(Ishape[:, i])[0]
-        P = np.nonzero(shape_B_p0[i, :])[1]
+        P = np.nonzero(shape_B1_p0[i, :])[1]
 
         Bt = B0wq_p0[np.ix_(F,P)]
         It = I10[np.ix_(F, [i])]
@@ -634,15 +633,15 @@ def wq_find_weights(degree, knotvector, r):
         indj.extend(P)
 
     W10 = sp.csr_matrix((data_W10, (indi, indj)), shape=(nbfunct, nbx))
-    
+
     # -----------------------------------------------
     # Computation of W11
     # -----------------------------------------------
-    Ishape = shape_B_p1 @ shape_B_p0.T
+    Ishape = shape_B_p1 @ shape_B1_p0.T
     indi = []; indj = []
     for i in range(nbfunct):
         F = np.nonzero(Ishape[:,i])[0]
-        P = np.nonzero(shape_B_p0[i, :])[1]
+        P = np.nonzero(shape_B1_p0[i, :])[1]
 
         Bt = B0wq_p1[np.ix_(F,P)]
         It = I11[np.ix_(F, [i])]

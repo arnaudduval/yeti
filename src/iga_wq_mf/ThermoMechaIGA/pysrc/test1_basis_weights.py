@@ -31,7 +31,7 @@ NBEL = [2**_ for _ in CUTS]
 for varName in ['I00', 'I01', 'I10', 'I11']:
     plt.figure(1)
     ax = plt.gca()
-    for degree in range(3, 6):
+    for degree in range(3, 8):
 
         norm_fortran = []; norm_python = []; ddl =[]
         color = next(ax._get_lines.prop_cycler)['color']
