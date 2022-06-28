@@ -63,7 +63,8 @@ def generate_rand_positive_matrix(dim, nnz):
     
     # Generate random matrix 
     A = np.random.random((dim, dim, nnz))
-    I = np.eye(dim)
+    # I = np.eye(dim)
+    I = np.diag(np.random.rand(3))
 
     for i in range(nnz):
         # Construct symmetric matrix 

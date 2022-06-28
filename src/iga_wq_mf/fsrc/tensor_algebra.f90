@@ -1469,7 +1469,7 @@ module tensor_methods
     
         double precision, intent(out) :: L1, L2, L3
         double precision, intent(out) :: lambda1, lambda2, lambda3
-        integer, parameter :: step=2
+        integer, parameter :: step=4
     
         ! Local data
         ! --------------
@@ -1578,9 +1578,6 @@ module tensor_methods
             lambda3 = lambda3/sq
 
         end if
-
-        print*, lambda1, lambda2, lambda3
-        print*, L1, L2, L3
         
     end subroutine jacobien_mean_3d
 

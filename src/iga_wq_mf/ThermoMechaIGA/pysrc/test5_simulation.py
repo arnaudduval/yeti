@@ -22,19 +22,19 @@ folder = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = True
-DEGREE, CUTS = 3, 5
+FileExist = False
+DEGREE, CUTS = 6, 5
 IS_IGA = False
 IS_CG = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for GEOMETRY_CASE in ['CB', 'VB', 'TR']:
+for GEOMETRY_CASE in ['VB', 'TR', 'CB']: 
     
     # Get file name
     if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
     elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
     elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
-    
+
     # Run simulation
     thermalinputs = {'degree': DEGREE, 'cuts': CUTS, 'case': GEOMETRY_CASE, 'isIGA': IS_IGA, 'isCG': IS_CG, 
                 'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
