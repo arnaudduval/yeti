@@ -20,7 +20,7 @@ from iga_wq_mf import solver
 # Chosee folder
 full_path = os.path.realpath(__file__)
 folder_file = os.path.dirname(full_path) + '/data/'
-folder_figure = os.path.dirname(full_path) + '/results/test4/'
+folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 dataExist = True

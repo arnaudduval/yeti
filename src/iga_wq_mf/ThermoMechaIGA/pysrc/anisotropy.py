@@ -24,8 +24,7 @@ modelGeo = create_geometry(DEGREE, CUTS, 'QA')
 # ===========================================
 
 # Creation of thermal model object
-# conductivity = np.eye(2)
-conductivity = np.array([[1, 0],[0, 0.1]])
+conductivity = np.array([[1, 0],[0, 1]])
 properties = {"conductivity": conductivity}
 modelPhy = fortran_mf_wq(modelGeo, **properties)
 

@@ -1469,7 +1469,7 @@ module tensor_methods
     
         double precision, intent(out) :: L1, L2, L3
         double precision, intent(out) :: lambda1, lambda2, lambda3
-        integer, parameter :: step=4
+        integer :: step
     
         ! Local data
         ! --------------
@@ -1482,6 +1482,9 @@ module tensor_methods
         dimension :: Sigma(3), work(15), U(3, 3), VT(3, 3)
         integer :: info
 
+        ! Define Step
+        step = min((nb_cols_u-1)/2, (nb_cols_v-1)/2, (nb_cols_w-1)/2)
+        
         ! Count number of quadrature points
         nb_pts = 1
         nb_pts_temp = 0

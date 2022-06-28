@@ -18,11 +18,11 @@ from lib.post_treat_methods import ThermalSimulation, SimulationData, plot_itera
 
 # Choose folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test5/'
+folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = False
+FileExist = True
 DEGREE, CUTS = 6, 5
 IS_IGA = False
 IS_CG = False
@@ -43,10 +43,10 @@ for GEOMETRY_CASE in ['VB', 'TR', 'CB']:
 
     # Run simulation
     if not FileExist:
-        # conductivity = np.array([[1, -0.5, -0.1],[-0.5, 2, -0.25], [-0.1, -0.25, 3]])
-        if IS_IGA: nnz = Simulation._nb_qp_cgg_total
-        else: nnz = Simulation._nb_qp_wq_total
-        conductivity = generate_rand_positive_matrix(3, nnz)
+        conductivity = np.array([[1, -0.5, -0.1],[-0.5, 2, -0.25], [-0.1, -0.25, 3]])
+        # if IS_IGA: nnz = Simulation._nb_qp_cgg_total
+        # else: nnz = Simulation._nb_qp_wq_total
+        # conductivity = generate_rand_positive_matrix(3, nnz)
         properties = {"conductivity": conductivity}
         Simulation.run_simulation(**properties)
 
