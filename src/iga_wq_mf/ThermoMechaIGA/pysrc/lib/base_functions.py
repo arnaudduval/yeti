@@ -64,14 +64,18 @@ def generate_rand_positive_matrix(dim, nnz):
     # Generate random matrix 
     A = np.random.random((dim, dim, nnz))
     # I = np.eye(dim)
-    I = np.diag(np.random.rand(3))
-
+    I = np.diag(np.random.rand(3) + np.array([1, 1, 1])) 
+    
     for i in range(nnz):
-        # Construct symmetric matrix 
-        # Since Aij < 1 by construction, we assure diagonally dominant by adding nI
-        B = A[:, :, i]
-        B = np.matmul(B, B.T) + I
-        A[:, :, i] = B
+        # # Construct symmetric matrix 
+        # # Since Aij < 1 by construction, we assure diagonally dominant by adding nI
+        # B = A[:, :, i]
+        # B = np.matmul(B, B.T) + I
+        # A[:, :, i] = B
+
+        # -------------------
+        # A[:, :, i] = np.eye(dim) + np.diag(np.random.rand(3))
+        A[:, :, i] = I
 
     return A 
 

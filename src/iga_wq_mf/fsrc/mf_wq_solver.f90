@@ -1426,6 +1426,8 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             data_B0_u, data_B1_u, data_W00_u, data_W01_u, data_W10_u, data_W11_u, data_B0_v, data_B1_v, &
             data_W00_v, data_W01_v, data_W10_v, data_W11_v, data_B0_w, data_B1_w, data_W00_w, data_W01_w, &
             data_W10_w, data_W11_w, matrixdiag)
+
+            print*, minval(matrixdiag), maxval(matrixdiag)
         end if
 
         if (nbIterations.gt.0) then

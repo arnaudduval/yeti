@@ -885,6 +885,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                 data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
                                 matrixdiag)
                     
+            print*, minval(matrixdiag), maxval(matrixdiag)
         end if
         
         if (nbIterations.gt.0) then

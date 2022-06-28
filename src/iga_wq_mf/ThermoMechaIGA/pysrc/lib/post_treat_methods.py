@@ -280,39 +280,39 @@ class ThermalSimulation():
                 time_noiter.append(time_noiter_t)
                 memory_noiter.append(memory_noiter_t)
 
-            # With and without preconditioner
-            time_iter, memory_iter, residue, error = [], [], [], []
-            for method in self._iterMethods:
-                print(method)
-                Tn_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fn, method=method, solDir=solDir)
-                memory_iter_t = 0.0
+        #     # With and without preconditioner
+        #     time_iter, memory_iter, residue, error = [], [], [], []
+        #     for method in self._iterMethods:
+        #         print(method)
+        #         Tn_t, residue_t, error_t, time_iter_t = self.run_iterative_solver(self._thermalModel, self._Fn, method=method, solDir=solDir)
+        #         memory_iter_t = 0.0
 
-                # Save data
-                time_iter.append(time_iter_t)
-                residue.append(residue_t)
-                error.append(error_t)
-                memory_iter.append(memory_iter_t)
+        #         # Save data
+        #         time_iter.append(time_iter_t)
+        #         residue.append(residue_t)
+        #         error.append(error_t)
+        #         memory_iter.append(memory_iter_t)
 
-        # Export results
-        solution = np.zeros(self._thermalModel._nb_ctrlpts_total)
-        dof = self._thermalModel._thermal_dof
+        # # Export results
+        # solution = np.zeros(self._thermalModel._nb_ctrlpts_total)
+        # dof = self._thermalModel._thermal_dof
 
-        if Td == None:
-            solution[dof] = Tn_t
-        else: 
-            dod = self._thermalModel._thermal_dod
-            solution[dod] = Td
-            solution[dof] = Tn_t
+        # if Td == None:
+        #     solution[dof] = Tn_t
+        # else: 
+        #     dod = self._thermalModel._thermal_dod
+        #     solution[dod] = Td
+        #     solution[dof] = Tn_t
         
-        self._thermalModel.export_results(u_ctrlpts=solution)
+        # self._thermalModel.export_results(u_ctrlpts=solution)
         
-        # Write file
-        output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, 
-                "TimeDirect": time_direct, "MemDirect": memory_direct, 
-                "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
-                "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
+        # # Write file
+        # output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, 
+        #         "TimeDirect": time_direct, "MemDirect": memory_direct, 
+        #         "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, 
+        #         "Error": error, "MemNoIter": memory_noiter, "MemIter": memory_iter}
 
-        self.write_text_file(output)
+        # self.write_text_file(output)
 
         return 
 
