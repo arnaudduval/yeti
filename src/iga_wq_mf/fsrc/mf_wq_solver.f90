@@ -1364,7 +1364,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             ! Find dimensions and conductivity
             call jacobien_mean_3d(nb_cols_u, nb_cols_v, nb_cols_w, nb_cols_total, Jacob, &
                                 size_cond, conductivity, Lu, Lv, Lw, lambda1, lambda2, lambda3)
-                    
+                                
             c_u = lambda1*Lv*Lw/Lu
             c_v = lambda2*Lw*Lu/Lv
             c_w = lambda3*Lu*Lv/Lw
@@ -1427,7 +1427,6 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             data_W00_v, data_W01_v, data_W10_v, data_W11_v, data_B0_w, data_B1_w, data_W00_w, data_W01_w, &
             data_W10_w, data_W11_w, matrixdiag)
 
-            print*, minval(matrixdiag), maxval(matrixdiag)
         end if
 
         if (nbIterations.gt.0) then

@@ -1474,13 +1474,8 @@ module tensor_methods
         ! Local data
         ! --------------
         integer :: i, j, k, nb_pts, nb_pts_temp, nb_tasks, pos
-        double precision, dimension(3,3) :: dist, lambda, MatrixT
+        double precision, dimension(3,3) :: dist, lambda, MatrixT, Q
         double precision :: sq
-
-        ! SDV
-        double precision :: U, VT, Sigma, work
-        dimension :: Sigma(3), work(15), U(3, 3), VT(3, 3)
-        integer :: info
 
         ! Define Step
         step = min((nb_cols_u-1)/2, (nb_cols_v-1)/2, (nb_cols_w-1)/2)
@@ -1511,7 +1506,7 @@ module tensor_methods
         L2 = 0.d0
         L3 = 0.d0
     
-        !$OMP PARALLEL PRIVATE(pos, MatrixT, U, VT, Sigma, work, dist, info) REDUCTION(+:L1, L2, L3)
+        !$OMP PARALLEL PRIVATE(pos, MatrixT, dist) REDUCTION(+:L1, L2, L3)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_J/(nb_tasks*step*step*step))
         do k = 1, nb_cols_w, step
@@ -1519,8 +1514,7 @@ module tensor_methods
                 do i = 1, nb_cols_u, step
                     pos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
                     MatrixT = JJ(:, :, pos)
-                    call dgesvd('N', 'A', 3, 3, MatrixT, 3, Sigma, U, 3, VT, 3, work, 15, info)
-                    call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, dist)
+                    call polar_decomposition(MatrixT, Q, dist, 1, 1)
     
                     ! Find mean of diagonal of jacobien
                     L1 = L1 + dist(1, 1)/nb_pts
@@ -1541,8 +1535,8 @@ module tensor_methods
         ! Compute conductivity
         !--------------------------
         if (size_K.eq.1) then
-            call dgesvd('N', 'A', 3, 3, KK(:, :, 1), 3, Sigma, U, 3, VT, 3, work, 15, info)
-            call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, lambda)
+            call polar_decomposition(KK(:, :, 1), Q, lambda, 1, 1)
+
             lambda1 = lambda(1, 1)
             lambda2 = lambda(2, 2)
             lambda3 = lambda(3, 3)
@@ -1553,7 +1547,7 @@ module tensor_methods
             lambda2 = 0.d0
             lambda3 = 0.d0
 
-            !$OMP PARALLEL PRIVATE(pos, MatrixT, U, VT, Sigma, work, lambda, info) REDUCTION(+:lambda1, lambda2, lambda3)
+            !$OMP PARALLEL PRIVATE(pos, MatrixT, Q, lambda) REDUCTION(+:lambda1, lambda2, lambda3)
             nb_tasks = omp_get_num_threads()
             !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_J/(nb_tasks*step*step*step))
             do k = 1, nb_cols_w, step
@@ -1561,8 +1555,7 @@ module tensor_methods
                     do i = 1, nb_cols_u, step
                         pos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
                         MatrixT = KK(:, :, pos)
-                        call dgesvd('N', 'A', 3, 3, MatrixT, 3, Sigma, U, 3, VT, 3, work, 15, info)
-                        call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, lambda)
+                        call polar_decomposition(MatrixT, Q, lambda, 1, 1)
         
                         ! Find mean of diagonal of jacobien
                         lambda1 = lambda1 + lambda(1, 1)/nb_pts

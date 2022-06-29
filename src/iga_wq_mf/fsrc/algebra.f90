@@ -50,8 +50,10 @@ end subroutine linspace
 
 subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
     !! Matrix multiplication 
-    !! 1: type:  R = A.diag(W).BT
-    !! 2: type:  R = AT.diag(W).B
+    !! 1: R = A.diag(W).BT
+    !! 2: R = A.diag(W).BT only diagonal
+    !! 3: R = AT.diag(W).B
+    !! 4: R = AT.diag(W).B only diagonal
     !! Matrix A = (nb_rows_A, nb_columns_A)
     !! Array W = (*) it depends 
     !! Matrix B = (nb_rows_B, nb_columns_B)
@@ -68,6 +70,7 @@ subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
 
     ! Local data
     ! -------------
+    double precision, allocatable, dimension(:, :) :: TT
     integer :: i, j, k
     double precision :: s
 
@@ -78,15 +81,11 @@ subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! A diag(W) B.T
         ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
 
-        do j = 1, nrB
-            do i = 1, nrA
-                s = 0.d0
-                do k = 1, ncA
-                    s = s + A(i, k)*W(k)*B(j, k)
-                end do
-                R(i, j) = s
-            end do
-        end do
+        allocate(TT(nrA, ncA))
+        forall (i = 1 : nrA, j = 1 : ncA) 
+            TT(i, j) = A(i, j) * W(j)
+        end forall
+        R = matmul(TT, transpose(B))
 
     else if (mode.eq.2) then 
         ! A diag(W) B.T
@@ -105,15 +104,11 @@ subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! A.T diag(W) B
         ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
 
-        do j = 1, ncB
-            do i = 1, ncA
-                s = 0.d0
-                do k = 1, nrA
-                    s = s + A(k, i)*W(k)*B(k, j)
-                end do
-                R(i, j) = s
-            end do
-        end do
+        allocate(TT(nrB, ncB))
+        forall (i = 1 : nrB, j = 1 : ncB) 
+            TT(i, j) = W(i) * B(i, j) 
+        end forall
+        R = matmul(transpose(A), TT)
 
     else if (mode.eq.4) then 
         ! A.T diag(W) B
@@ -346,35 +341,45 @@ subroutine spM_dot_dM(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
 
 end subroutine spM_dot_dM
 
-subroutine gemm_opt(nc, nrA, A, ncB, B, C)
-    !! Trying to improve dense matrix multiplication. It doesn't work 
+subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
+    !! Polar decompoition of 3-by-3 matrix A = Q*H, where Q is orthogonal
+    !! and H is symmetric positive semidefinite.
+    !! It uses SDV: A = U S VT = U VT . V S VT then Q = U VT and H = V S VT
 
     implicit none
     ! Input / output data
-    ! ----------------------
-    integer, intent(in) :: nrA, ncB, nc
-    double precision, intent(in) :: A, B
-    dimension :: A(nc, nrA), B(nc, ncB)
+    ! --------------------
+    double precision, intent(in) :: A
+    integer, intent(in) :: onlyH, onlyDiag 
+    dimension :: A(3, 3)
 
-    double precision, intent(out) :: C
-    dimension :: C(nrA, ncB)
+    double precision, intent(out) :: Q, H
+    dimension :: Q(3, 3), H(3, 3)
 
     ! Local data
     ! --------------
-    integer :: i, j, k
-    double precision :: s
+    double precision :: U, VT, Sigma, work
+    dimension :: Sigma(3), work(15), U(3, 3), VT(3, 3)
+    integer :: info
 
-    do j = 1, ncB
-        do i = 1, nrA
-            s = 0.d0
-            do k = 1, nc
-                s = s + A(k, i) * B(k, j)
-            end do
-            C(i, j) = s
-        end do
-    end do
+    ! Compute Singular value decomposition
+    if (onlyH.eq.1) then
+        ! We do not compute Q = U VT, then U = zeros
+        call dgesvd('N', 'A', 3, 3, A, 3, Sigma, U, 3, VT, 3, work, 15, info)
+        Q = 0.d0
+    else 
+        ! We do compute Q = U VT
+        call dgesvd('A', 'A', 3, 3, A, 3, Sigma, U, 3, VT, 3, work, 15, info)
+        Q = matmul(U, VT)
+    end if
 
-end subroutine gemm_opt
+    if (onlyDiag.eq.1) then
+        call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+    else
+        call product_AWB(3, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+    end if
+
+end subroutine polar_decomposition
 
 ! -------------
 ! Indices

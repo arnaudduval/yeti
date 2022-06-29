@@ -5,19 +5,19 @@
 
 # Python libraries
 import numpy as np
-import scipy 
 from scipy import sparse as sp
+import matplotlib.pyplot as plt
 
 # My libraries
 from lib.physics import powden_annulus
 from lib.create_geomdl import create_geometry
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.fortran_mf_wq import wq_find_basis_weights_fortran
-from lib.base_functions import create_knotvector, generate_rand_positive_matrix, wq_find_basis_weights_opt
+from lib.base_functions import generate_rand_positive_matrix
 
 
 # Set global variables
-DEGREE = 7
+DEGREE = 2
 CUTS = 3
 NBEL = 2**CUTS
 
@@ -44,7 +44,7 @@ NBEL = 2**CUTS
 # F2n = modelPhy.eval_source_vector(powden_annulus, dof)
 
 # # Solve system
-# Tn = scipy.sparse.linalg.spsolve(K2nn, F2n)
+# Tn = sp.linalg.spsolve(K2nn, F2n)
 
 # # Assembly
 # Tsolution = np.zeros(modelPhy._nb_ctrlpts_total)
@@ -71,17 +71,14 @@ W01 = sp.csr_matrix((dW01, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
 W10 = sp.csr_matrix((dW10, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
 W11 = sp.csr_matrix((dW11, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
 
-# knotvector = create_knotvector(DEGREE, NBEL)
-# qp_wq, B0, B1, W00, W01, W10, W11 = wq_find_basis_weights_opt(DEGREE, knotvector, 2)
-# nb_qp_wq = len(qp_wq)
-# nb_ctrlpts = DEGREE + NBEL
-# nb_ctrlpts_total = nb_ctrlpts**3
-# nb_qp_wq_total = nb_qp_wq**3
-
 DB = [B0, B1]
 DW = [[W00, W01], [W10, W11]]
 
 conductivity = generate_rand_positive_matrix(3, nb_qp_wq_total)
+
+# conductivity = np.zeros((3, 3, nb_qp_wq_total))
+# for _ in range(nb_qp_wq_total):
+#     conductivity[:,:,_] = np.eye(3)
 
 # Initialize conductivity matrix 
 K = sp.csr_matrix((nb_ctrlpts_total, nb_ctrlpts_total))
@@ -110,4 +107,17 @@ for j in range(3):
 
 # Extract diagonal
 diag_K = K.diagonal()
-print(np.min(diag_K), np.max(diag_K))
+min_val = np.min(diag_K)
+min_pos = np.where(diag_K == min_val)[0]
+min_row = K.getrow(min_pos)
+print(min_row.todense())
+
+max_val = np.max(diag_K)
+max_pos = np.where(diag_K == max_val)[0]
+max_row = K.getrow(max_pos)
+print(max_row.todense())
+
+plt.figure(1)
+plt.imshow(K.todense(), interpolation='none',cmap='binary')
+plt.colorbar()
+plt.savefig('sparsity.png')
