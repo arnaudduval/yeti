@@ -27,26 +27,24 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import IGAmanip as manip
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from preprocessing.igaparametrization import IGAparametrization
+from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 
 # Read data and create IGAparametrization object
 modeleIGA = IGAparametrization(filename='beam-triangle-1')
 
 # Refine modele
-nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
-nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
+nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
+nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 
-nb_deg[0,0] = 1
-nb_deg[1,0] = 1
-nb_deg[2,0] = 1
+nb_deg[0, 0] = 1
+nb_deg[1, 0] = 1
+nb_deg[2, 0] = 1
 
-nb_ref[0,0] = 4
-nb_ref[1,0] = 3
-nb_ref[2,0] = 6
+nb_ref[0, 0] = 4
+nb_ref[1, 0] = 3
+nb_ref[2, 0] = 6
 
 # Initial refinement (none)
 modeleIGA.refine(nb_deg, nb_ref)
@@ -79,33 +77,33 @@ print(('\n Time for direct solving :    %.2f s\n\n' % (time.time() - t2)))
 SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 # Recherche d'un point pour verifier la solution
 # Méthode pas optimale
-pt_coords = np.array([20.,0.,0.])
+pt_coords = np.array([20., 0., 0.])
 
 found = False
 for idx in range(np.shape(modeleIGA._COORDS)[1]):
-    if(np.all(modeleIGA._COORDS[:,idx] == pt_coords)):
+    if np.all(modeleIGA._COORDS[:, idx] == pt_coords):
         found = True
         break
     
 if not found:
     sys.exit(-1)
 
-print(SOL[idx,2])
+print(SOL[idx, 2])
 
 # Analytic solution
 
-b = 3.      # Base of section
-h = 1.      # height of section
-E = 210000. # Yound Modulus
-L = 20.     # beam length
-q0 = 1000.  # Load
-I = b * h**3. / 12. #Inertia of section
+b = 3.          # Base of section
+h = 1.          # Height of section
+E = 210000.     # Yound Modulus
+L = 20.         # Beam length
+q0 = 1000.      # Load
+I = b * h**3. / 12.     # Inertia of section
 
 # max deflexion
 f = - 11. * q0 * b * L**4. / (120. * E * I)
 print(f)
 
-error = ( SOL[idx,2] - f ) / f
+error = (SOL[idx, 2] - f) / f
 print(error)
 
 if abs(error) > 0.03:
