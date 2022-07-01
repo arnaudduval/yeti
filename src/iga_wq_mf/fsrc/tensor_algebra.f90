@@ -1474,7 +1474,7 @@ module tensor_methods
         ! Local data
         ! --------------
         integer :: i, j, k, nb_pts, nb_pts_temp, nb_tasks, pos
-        double precision, dimension(3,3) :: dist, lambda, MatrixT, Q
+        double precision, dimension(3,3) :: dist, MatrixT, Q
         double precision :: sq
 
         ! Define Step
@@ -1535,11 +1535,10 @@ module tensor_methods
         ! Compute conductivity
         !--------------------------
         if (size_K.eq.1) then
-            call polar_decomposition(KK(:, :, 1), Q, lambda, 1, 1)
 
-            lambda1 = lambda(1, 1)
-            lambda2 = lambda(2, 2)
-            lambda3 = lambda(3, 3)
+            lambda1 = KK(1, 1, 1)
+            lambda2 = KK(2, 2, 1)
+            lambda3 = KK(3, 3, 1)
 
         else if (size_K.eq.size_J) then
 
@@ -1547,33 +1546,31 @@ module tensor_methods
             lambda2 = 0.d0
             lambda3 = 0.d0
 
-            !$OMP PARALLEL PRIVATE(pos, MatrixT, Q, lambda) REDUCTION(+:lambda1, lambda2, lambda3)
+            !$OMP PARALLEL PRIVATE(pos) REDUCTION(+:lambda1, lambda2, lambda3)
             nb_tasks = omp_get_num_threads()
             !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_J/(nb_tasks*step*step*step))
             do k = 1, nb_cols_w, step
                 do j = 1, nb_cols_v, step
                     do i = 1, nb_cols_u, step
                         pos = i + (j-1)*nb_cols_u + (k-1)*nb_cols_u*nb_cols_v
-                        MatrixT = KK(:, :, pos)
-                        call polar_decomposition(MatrixT, Q, lambda, 1, 1)
         
-                        ! Find mean of diagonal of jacobien
-                        lambda1 = lambda1 + lambda(1, 1)/nb_pts
-                        lambda2 = lambda2 + lambda(2, 2)/nb_pts
-                        lambda3 = lambda3 + lambda(3, 3)/nb_pts
+                        ! Find mean of diagonal 
+                        lambda1 = lambda1 + KK(1, 1, pos)/nb_pts
+                        lambda2 = lambda2 + KK(2, 2, pos)/nb_pts
+                        lambda3 = lambda3 + KK(3, 3, pos)/nb_pts
                     end do
                 end do
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL 
-
-            ! Conductivity normalized
-            sq = sqrt(lambda1**2 + lambda2**2 + lambda3**2)
-            lambda1 = lambda1/sq
-            lambda2 = lambda2/sq
-            lambda3 = lambda3/sq
-
+            
         end if
+
+        ! Conductivity normalized
+        sq = sqrt(lambda1**2 + lambda2**2 + lambda3**2)
+        lambda1 = lambda1/sq
+        lambda2 = lambda2/sq
+        lambda3 = lambda3/sq
         
     end subroutine jacobien_mean_3d
 

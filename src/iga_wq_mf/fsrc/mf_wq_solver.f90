@@ -1000,12 +1000,9 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             allocate(Mcoef_u(nb_cols_u), Kcoef_u(nb_cols_u), &
                     Mcoef_v(nb_cols_v), Kcoef_v(nb_cols_v), &
                     Mcoef_w(nb_cols_w), Kcoef_w(nb_cols_w))
-            Mcoef_u = 1.d0
-            Kcoef_u = 1.d0
-            Mcoef_v = 1.d0
-            Kcoef_v = 1.d0
-            Mcoef_w = 1.d0
-            Kcoef_w = 1.d0
+            Mcoef_u = 1.d0; Kcoef_u = 1.d0
+            Mcoef_v = 1.d0; Kcoef_v = 1.d0
+            Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
             do iter = 1, 2
                 call tensor_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &
@@ -1345,12 +1342,9 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             allocate(Mcoef_u(nb_cols_u), Kcoef_u(nb_cols_u), &
                     Mcoef_v(nb_cols_v), Kcoef_v(nb_cols_v), &
                     Mcoef_w(nb_cols_w), Kcoef_w(nb_cols_w))            
-            Mcoef_u = 1.d0
-            Kcoef_u = 1.d0
-            Mcoef_v = 1.d0
-            Kcoef_v = 1.d0
-            Mcoef_w = 1.d0
-            Kcoef_w = 1.d0
+            Mcoef_u = 1.d0; Kcoef_u = 1.d0
+            Mcoef_v = 1.d0; Kcoef_v = 1.d0
+            Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
             do iter = 1, 2
                 call tensor_decomposition_3d(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, coefs, &

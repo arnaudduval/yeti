@@ -548,19 +548,22 @@ class thermoMechaModel():
     # POST-PROCESSING 
     # ===========================
 
-    def interpolate_field(self, u_ctrlpts= None):
+    def interpolate_field(self, nb_pts= None, u_ctrlpts= None):
         "Interpolates the input field. In all cases, it returns jacobien."
+
+        if nb_pts == None:
+            nb_pts = self._sample_size
 
         # =====================
         # Get Basis
         # =====================
         # Set shape
         shape_pts = [1, 1, 1]
-        for _ in range(self._dim): shape_pts[_] = self._sample_size
+        for _ in range(self._dim): shape_pts[_] = nb_pts
         shape_pts = tuple(shape_pts)
 
         # Define knots
-        knots = np.linspace(0, 1, self._sample_size)
+        knots = np.linspace(0, 1, nb_pts)
 
         # Set basis and indices
         DB, ind = [], []

@@ -6,7 +6,7 @@
 # Python libraries
 import numpy as np
 from geomdl import helpers
-from scipy import sparse as sp
+from scipy import sparse as sp, linalg as sclin
 
 # My libraries
 from iga_wq_mf import basis_weights
@@ -73,6 +73,24 @@ def generate_rand_positive_matrix(dim, nnz):
         A[:, :, i] = B
 
     return A 
+
+def compute_jacobien_mean(J):
+    "Returns the average of the diagonal of H. H is the stretch tensor in the polar decomposition of J"
+
+    # Get the size of J
+    J = np.atleast_3d(J)
+    nnz = np.shape(J)[2]
+    dim = np.shape(J)[1]
+
+    # Initialize diagP
+    diagP = np.zeros(dim)
+
+    for i in range(nnz):
+        _, P = sclin.polar(J[:, :, i])
+        diagP += np.diagonal(P)/nnz
+
+    return diagP
+
 
 # ==========================
 # B-SPLINE FUNCTIONS
