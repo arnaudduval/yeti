@@ -29,6 +29,7 @@ import scipy.sparse as sp
 from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 from massmtrx import build_cmassmatrix
 from coupling.cplgmatrix import cplg_matrix
+from coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
 import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
@@ -270,6 +271,19 @@ class OPTmodelling:
             # Coupling
             Cdata, Crow, Ccol = \
                 cplg_matrix(*self._fineParametrization.get_inputs4cplgmatrix())
+            Cside = sp.coo_matrix(
+                (Cdata, (Crow, Ccol)),
+                shape=(self._fineParametrization._nb_dof_tot,
+                       self._fineParametrization._nb_dof_tot),
+                dtype='float64').tocsc()
+            Ctot = Cside + Cside.transpose()
+            C2solve = Ctot[idof, :][:, idof]
+            del Cdata, Crow, Ccol, Cside, Ctot
+            K2solve = K2solve + C2solve
+        if np.any(self._fineParametrization._ELT_TYPE == 'U5'):
+            # Coupling U5
+            Cdata, Crow, Ccol = \
+                cplg_matrixU5(*self._fineParametrization.get_inputs4cplgmatrixU5())
             Cside = sp.coo_matrix(
                 (Cdata, (Crow, Ccol)),
                 shape=(self._fineParametrization._nb_dof_tot,
