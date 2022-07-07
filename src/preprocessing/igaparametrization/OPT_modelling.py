@@ -302,8 +302,10 @@ class OPTmodelling:
         else:
             print(' Linear elasticity analysis...')
             K, F = self.get_LinElastSystem(vectX)
-            LU = sp.linalg.splu(K)
-            sol_fine = LU.solve(F)
+            # Replace splu solver by spsolve
+            #LU = sp.linalg.splu(K)
+            #sol_fine = LU.solve(F)
+            sol_fine = sp.linalg.spsolve(K, F)
 
             self._save_sol_fine = sol_fine
             self._save_secondmembre = F
