@@ -40,13 +40,22 @@ from optim import disp, stress, vibration, volume
 
 
 class OPTmodelling:
-    """A class defining shape optimization problems."""
+    """A class defining shape optimization problems.
+
+    Parameters
+    ----------
+    useSPLU : bool
+        Boolean indicating if optimization problem should use splu linear solver (default=True)
+        WARNING : this parameter is not taken into account in all cases
+
+    """
 
     def __init__(self, initialParametrization, nb_DesignVar,
                  fct_updateCoarseCoords,
                  nb_degreeElevationByDirection=np.array([0, 0, 0]),
                  nb_refinementByDirection=np.array([0, 0, 0]),
-                 fct_dervShapeParam=None):
+                 fct_dervShapeParam=None,
+                 useSPLU=True):
 
         self._coarseParametrization = deepcopy(initialParametrization)
         self._fineParametrization = deepcopy(initialParametrization)
@@ -69,6 +78,8 @@ class OPTmodelling:
         self._dir_by_var = self.get_dirCPbyDesignVar()
         self._elem_by_var = self.get_ElembyDesignVar()
         self._movable_patch = self.get_movablePatchesInd()
+
+        self._useSPLU=useSPLU
         
         return None
     
@@ -302,15 +313,18 @@ class OPTmodelling:
         else:
             print(' Linear elasticity analysis...')
             K, F = self.get_LinElastSystem(vectX)
-            # Replace splu solver by spsolve
-            #LU = sp.linalg.splu(K)
-            #sol_fine = LU.solve(F)
-            sol_fine = sp.linalg.spsolve(K, F)
+            
+            if self._useSPLU:
+                LU = sp.linalg.splu(K)
+                sol_fine = LU.solve(F)
+            else:
+                sol_fine = sp.linalg.spsolve(K, F)
 
             self._save_sol_fine = sol_fine
             self._save_secondmembre = F
             self._save_raideur = K
-            #self._save_LU = LU
+            if self._useSPLU:
+                self._save_LU = LU
             self._current_vectX[:] = vectX[:]
 
             return sol_fine
