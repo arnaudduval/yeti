@@ -310,7 +310,7 @@ class OPTmodelling:
             self._save_sol_fine = sol_fine
             self._save_secondmembre = F
             self._save_raideur = K
-            self._save_LU = LU
+            #self._save_LU = LU
             self._current_vectX[:] = vectX[:]
 
             return sol_fine
