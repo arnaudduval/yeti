@@ -63,7 +63,8 @@ def generate_rand_positive_matrix(dim, nnz):
     
     # Generate random matrix 
     A = np.random.random((dim, dim, nnz))
-    I = np.diag(np.random.rand(3) + np.array([1, 1, 1])) 
+    # I = np.diag(np.random.rand(3) + np.array([1, 1, 1])) 
+    I = np.eye(dim)
     
     for i in range(nnz):
         # Construct symmetric matrix 
@@ -90,7 +91,6 @@ def compute_jacobien_mean(J):
         diagP += np.diagonal(P)/nnz
 
     return diagP
-
 
 # ==========================
 # B-SPLINE FUNCTIONS

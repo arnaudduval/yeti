@@ -641,7 +641,7 @@ class thermoMechaModel():
         # Get interpolation
         # ==============================
         # Interpolate 
-        _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts_new)
+        _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts=u_ctrlpts_new)
 
         # Find statistics
         mean_detJ = statistics.mean(detJ)

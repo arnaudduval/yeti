@@ -1376,6 +1376,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
                                 indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
                                 data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
+        print*, minval(D_u), maxval(D_u)
 
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
