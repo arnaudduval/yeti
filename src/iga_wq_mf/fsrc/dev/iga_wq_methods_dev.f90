@@ -346,7 +346,7 @@ subroutine wq_get_quadrature_rule_row(ifunct, nb_rows, nb_ctrlpts, nb_qp, MB, MI
         end if
     end do jloop_max
 
-    call solve_system(Fmax-Fmin+1, Pmax-Pmin+1, MB(Fmin:Fmax, Pmin:Pmax), & 
+    call solve_linear_system(Fmax-Fmin+1, Pmax-Pmin+1, MB(Fmin:Fmax, Pmin:Pmax), & 
                         MI(Fmin:Fmax, ifunct), irule(Pmin:Pmax))
 
 end subroutine wq_get_quadrature_rule_row
@@ -524,7 +524,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! ----------------------
     ! I00 = B0cgg_p1 * Wcgg * B0cgg_p0.transpose
     allocate(II(nb_ctrlpts_p1, nb_ctrlpts))
-    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
+    call gemm_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
                             B0cgg_p1, qp_cgg_weights, B0cgg_p0, II)
     
     ! For W00
@@ -533,7 +533,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! ----------------------
     ! I11 = B0cgg_p1 * Wcgg * B1cgg_p0.transpose
     allocate(II(nb_ctrlpts_p1, nb_ctrlpts))
-    call product_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
+    call gemm_AWB(nb_ctrlpts_p1, nb_ctrlpts, nb_qp_cgg, &
                             B0cgg_p1, qp_cgg_weights, B1cgg_p0, II)
                     
     ! For W11

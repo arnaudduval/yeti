@@ -48,8 +48,8 @@ subroutine linspace(x0, xf, n, array)
 
 end subroutine linspace
 
-subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
-    !! Matrix multiplication 
+subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
+    !! General matrix multiplication M1 Diag M2
     !! 1: R = A.diag(W).BT
     !! 2: R = A.diag(W).BT only diagonal
     !! 3: R = AT.diag(W).B
@@ -125,9 +125,9 @@ subroutine product_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
 
     end if
 
-end subroutine product_AWB
+end subroutine gemm_AWB
 
-subroutine solve_system(nr, nc, A, b, x)
+subroutine solve_linear_system(nr, nc, A, b, x)
     !! Solves equation system A.x = b
     !! Matrix A = (nb_rows, nb_columns)
     !! Vector b = (nb_rows)
@@ -207,7 +207,7 @@ subroutine solve_system(nr, nc, A, b, x)
 
     end if
 
-end subroutine solve_system
+end subroutine solve_linear_system
 
 subroutine crossproduct(v1, v2, v3)
     !! Computes cross product in a 3D Euclidean space
@@ -227,18 +227,18 @@ subroutine crossproduct(v1, v2, v3)
 
 end subroutine crossproduct
 
-subroutine kron_product_2vec(size_A, A, size_B, B, C, alpha)
-    !! Evaluates kron product A x B = C (x : tensor product)
+subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
+    !! Evaluates kron product R = alpha*R + A1 x A2 (x : tensor product)
 
     use omp_lib
     implicit none
     ! Input / output
     ! ---------------- 
-    integer, intent(in) :: size_A, size_B
-    double precision, intent(in) :: A(size_A), B(size_B)
+    integer, intent(in) :: nnz_A1, nnz_A2
+    double precision, intent(in) :: A1(nnz_A1), A2(nnz_A2)
     double precision, intent(in) :: alpha
 
-    double precision, intent(inout) :: C(size_A*size_B)
+    double precision, intent(inout) :: R(nnz_A1*nnz_A2)
 
     ! Local data
     ! ------------
@@ -246,11 +246,11 @@ subroutine kron_product_2vec(size_A, A, size_B, B, C, alpha)
 
     !$OMP PARALLEL PRIVATE(j)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size_A*size_B/nb_tasks)
-    do i1 = 1, size_A
-        do i2 = 1, size_B
-            j = i2 + (i1-1)*size_B
-            C(j) = C(j) + alpha * A(i1) * B(i2)
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nnz_A1*nnz_A2/nb_tasks)
+    do i1 = 1, nnz_A1
+        do i2 = 1, nnz_A2
+            j = i2 + (i1-1)*nnz_A2
+            R(j) = R(j) + alpha * A1(i1) * A2(i2)
         end do 
     end do
     !$OMP END DO NOWAIT
@@ -258,20 +258,20 @@ subroutine kron_product_2vec(size_A, A, size_B, B, C, alpha)
 
 end subroutine kron_product_2vec 
 
-subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
-    !! Returns the result of A x B x C = D, where x is kronecker product
+subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
+    !! Returns the result of R = alpha*R + A1 x A2 x A3, where x is kronecker product
 
     use omp_lib
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: size_A,size_B, size_C
-    double precision, intent(in) :: A, B, C
-    dimension :: A(size_A), B(size_B), C(size_C)
+    integer, intent(in) :: nnz_A1,nnz_A2, nnz_A3
+    double precision, intent(in) :: A1, A2, A3
+    dimension :: A1(nnz_A1), A2(nnz_A2), A3(nnz_A3)
     double precision, intent(in) :: alpha
 
-    double precision, intent(inout) :: D
-    dimension :: D(size_A*size_B*size_C)
+    double precision, intent(inout) :: R
+    dimension :: R(nnz_A1*nnz_A2*nnz_A3)
 
     ! Local data
     ! -------------
@@ -279,12 +279,12 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
     !$OMP PARALLEL PRIVATE(j)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size_A*size_B*size_C/nb_tasks)
-    do i1 = 1, size_A
-        do i2 = 1, size_B
-            do i3 = 1, size_C
-                j = i3 + (i2-1)*size_C + (i1-1)*size_C*size_B
-                D(j) = D(j) + alpha * A(i1) * B(i2) * C(i3)
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_A1*nnz_A2*nnz_A3/nb_tasks)
+    do i1 = 1, nnz_A1
+        do i2 = 1, nnz_A2
+            do i3 = 1, nnz_A3
+                j = i3 + (i2-1)*nnz_A3 + (i1-1)*nnz_A3*nnz_A2
+                R(j) = R(j) + alpha * A1(i1) * A2(i2) * A3(i3)
             end do
         end do 
     end do
@@ -293,7 +293,7 @@ subroutine kron_product_3vec(size_A, A, size_B, B, size_C, C, D, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine spM_dot_dM(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
+subroutine spdmm(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
     !! Returns the dot produt between a sparse matrix and a dense matrix
     !! It seems that it is not optimized
 
@@ -339,7 +339,7 @@ subroutine spM_dot_dM(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
         C(i, :) = matmul(data_row, B(indj_row, :))
     end do
 
-end subroutine spM_dot_dM
+end subroutine spdmm
 
 subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
     !! Polar decompoition of 3-by-3 matrix A = Q*H, where Q is orthogonal
@@ -374,9 +374,9 @@ subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
     end if
 
     if (onlyDiag.eq.1) then
-        call product_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+        call gemm_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
     else
-        call product_AWB(3, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+        call gemm_AWB(3, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
     end if
 
 end subroutine polar_decomposition
