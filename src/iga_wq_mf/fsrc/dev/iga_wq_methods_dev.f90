@@ -431,7 +431,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     double precision, allocatable, dimension(:,:) :: B0wq_p1, B1wq_p1
 
     ! Integrals
-    double precision, dimension(:,:), allocatable :: II, II
+    double precision, dimension(:,:), allocatable :: II
 
     ! Weights
     integer :: B0shape
