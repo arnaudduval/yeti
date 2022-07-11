@@ -293,54 +293,6 @@ subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine spdmm(nrA, nnz_A, data_A, indi_A, indj_A, nrB, ncB, B, C)
-    !! Returns the dot produt between a sparse matrix and a dense matrix
-    !! It seems that it is not optimized
-
-    implicit none
-    ! Input / output data
-    ! ---------------------
-    integer, intent(in) :: nrA, nnz_A, nrB, ncB
-    integer, intent(in) :: indi_A, indj_A
-    dimension :: indi_A(nrA+1), indj_A(nnz_A)
-    double precision, intent(in) :: data_A, B
-    dimension :: data_A(nnz_A), B(nrB, ncB)
-
-    double precision, intent(out) :: C
-    dimension :: C(nrA, ncB)
-
-    ! Local data
-    ! --------------
-    integer :: i, nnz_row, offset, table_nnz
-    dimension :: table_nnz(nrA)
-    integer, allocatable, dimension(:) :: indj_row
-    double precision, allocatable, dimension(:) :: data_row
-
-    ! Get number of non zeros in each row
-    do i = 1, nrA
-        table_nnz(i) = indi_A(i+1) - indi_A(i)
-    end do
-
-    ! Allocate indj and data with maximum value of non zeros
-    nnz_row = maxval(table_nnz)
-    allocate(indj_row(nnz_row), data_row(nnz_row))
-
-    ! Compute result
-    do i = 1, nrA
-        ! Get information for each row
-        nnz_row = table_nnz(i)
-        offset = indi_A(i)
-
-        ! Set the data for each row
-        indj_row(1:nnz_row) = indj_A(offset:offset+nnz_row-1)
-        data_row(1:nnz_row) = data_A(offset:offset+nnz_row-1)
-
-        ! Do the dot product
-        C(i, :) = matmul(data_row, B(indj_row, :))
-    end do
-
-end subroutine spdmm
-
 subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
     !! Polar decompoition of 3-by-3 matrix A = Q*H, where Q is orthogonal
     !! and H is symmetric positive semidefinite.
@@ -441,7 +393,7 @@ subroutine coo2csr(nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
 
 end subroutine coo2csr
 
-subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
+subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
     !! Gives a dense matrix from a COO format
     !! Repeated positions are added
 
@@ -471,9 +423,9 @@ subroutine coo2matrix(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
         A_out(i, j) = A_out(i, j) + a_in(k)
     end do
 
-end subroutine coo2matrix
+end subroutine coo2dense
 
-subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
+subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
     !! Gives a dense matrix from a CSR format
     !! Repeated positions are added
 
@@ -507,9 +459,9 @@ subroutine csr2matrix(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
         end do
     end do
     
-end subroutine csr2matrix
+end subroutine csr2dense
 
-subroutine matrix2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
+subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     !! Returns CSR format from matrix but not the values
     !! Only for integers
 
@@ -545,7 +497,7 @@ subroutine matrix2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
         indi_csr(i+1) = indi_csr(i) + l
     end do
 
-end subroutine matrix2csr
+end subroutine dense2csr
 
 subroutine csr2csc(nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
     !! Gets CSC format from CSR format. 

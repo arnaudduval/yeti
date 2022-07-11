@@ -326,7 +326,7 @@ subroutine get_I_csr(nb_ctrlpts, nb_qp, nnz_B, data_B, indi_B, indj_B, &
     dimension :: MIint(nb_ctrlpts, nb_ctrlpts), MBint(nb_ctrlpts, nb_qp)
 
     ! Initialize matrix B
-    call csr2matrix(nnz_B, indi_B, indj_B, data_B, nb_ctrlpts, nb_qp, MB)
+    call csr2dense(nnz_B, indi_B, indj_B, data_B, nb_ctrlpts, nb_qp, MB)
     MBint = 0
     where (abs(MB).gt.tol)
         MBint = 1
@@ -336,7 +336,7 @@ subroutine get_I_csr(nb_ctrlpts, nb_qp, nnz_B, data_B, indi_B, indj_B, &
     MIint = matmul(MBint, transpose(MBint))
     
     ! Get CSR format
-    call matrix2csr(nb_ctrlpts, nb_ctrlpts, MIint, nnz_I, indi_I, indj_I)
+    call dense2csr(nb_ctrlpts, nb_ctrlpts, MIint, nnz_I, indi_I, indj_I)
 
 end subroutine get_I_csr
 

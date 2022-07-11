@@ -40,7 +40,7 @@ subroutine find_knotvector_span(degree, nb_ctrlpts, size_kv, knotvector, x, span
     ! -------------------
     integer, intent(in) :: degree, nb_ctrlpts, size_kv 
     double precision, intent(in) :: knotvector, x 
-    dimension ::  knotvector(size_kv)
+    dimension :: knotvector(size_kv)
 
     integer, intent(out) :: span 
 
@@ -249,10 +249,10 @@ subroutine get_basis(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, nb_k
     end do
 
     ! Matrix construction
-    call coo2matrix((degree+1)*nb_knots, indexes_B(:, 1), indexes_B(:, 2), data_B0, & 
+    call coo2dense((degree+1)*nb_knots, indexes_B(:, 1), indexes_B(:, 2), data_B0, & 
                     nb_ctrlpts, nb_knots, B0)
 
-    call coo2matrix((degree+1)*nb_knots, indexes_B(:, 1), indexes_B(:, 2), data_B1, & 
+    call coo2dense((degree+1)*nb_knots, indexes_B(:, 1), indexes_B(:, 2), data_B1, & 
                     nb_ctrlpts, nb_knots, B1)
 
 end subroutine get_basis

@@ -102,7 +102,7 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
 
     else
         info = 0
-        print*, "Error computing thermal coefficient (Capapcity) "
+        print*, "Error computing thermal coefficient (Capacity) "
     end if
 
 end subroutine eval_thermal_coefficient

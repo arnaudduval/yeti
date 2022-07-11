@@ -674,10 +674,10 @@ module tensor_methods
                 B_v(nb_rows_v, nb_cols_v), &
                 W_u(nb_rows_u, nb_cols_u), &
                 W_v(nb_rows_v, nb_cols_v))
-        call csr2matrix(size_data_u, indi_u, indj_u, data_B_u, nb_rows_u, nb_cols_u, B_u)
-        call csr2matrix(size_data_v, indi_v, indj_v, data_B_v, nb_rows_v, nb_cols_v, B_v)
-        call csr2matrix(size_data_u, indi_u, indj_u, data_W_u, nb_rows_u, nb_cols_u, W_u)
-        call csr2matrix(size_data_v, indi_v, indj_v, data_W_v, nb_rows_v, nb_cols_v, W_v)
+        call csr2dense(size_data_u, indi_u, indj_u, data_B_u, nb_rows_u, nb_cols_u, B_u)
+        call csr2dense(size_data_v, indi_v, indj_v, data_B_v, nb_rows_v, nb_cols_v, B_v)
+        call csr2dense(size_data_u, indi_u, indj_u, data_W_u, nb_rows_u, nb_cols_u, W_u)
+        call csr2dense(size_data_v, indi_v, indj_v, data_W_v, nb_rows_v, nb_cols_v, W_v)
         ! ====================================================
 
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,offset,j_nnz_u,ju,j_nnz_v,jv,nnz_row_u) &
@@ -916,12 +916,12 @@ module tensor_methods
                 W_u(nb_rows_u, nb_cols_u), &
                 W_v(nb_rows_v, nb_cols_v), &
                 W_w(nb_rows_w, nb_cols_w))
-        call csr2matrix(size_data_u, indi_u, indj_u, data_B_u, nb_rows_u, nb_cols_u, B_u)
-        call csr2matrix(size_data_v, indi_v, indj_v, data_B_v, nb_rows_v, nb_cols_v, B_v)
-        call csr2matrix(size_data_w, indi_w, indj_w, data_B_w, nb_rows_w, nb_cols_w, B_w)
-        call csr2matrix(size_data_u, indi_u, indj_u, data_W_u, nb_rows_u, nb_cols_u, W_u)
-        call csr2matrix(size_data_v, indi_v, indj_v, data_W_v, nb_rows_v, nb_cols_v, W_v)
-        call csr2matrix(size_data_w, indi_w, indj_w, data_W_w, nb_rows_w, nb_cols_w, W_w)
+        call csr2dense(size_data_u, indi_u, indj_u, data_B_u, nb_rows_u, nb_cols_u, B_u)
+        call csr2dense(size_data_v, indi_v, indj_v, data_B_v, nb_rows_v, nb_cols_v, B_v)
+        call csr2dense(size_data_w, indi_w, indj_w, data_B_w, nb_rows_w, nb_cols_w, B_w)
+        call csr2dense(size_data_u, indi_u, indj_u, data_W_u, nb_rows_u, nb_cols_u, W_u)
+        call csr2dense(size_data_v, indi_v, indj_v, data_W_v, nb_rows_v, nb_cols_v, W_v)
+        call csr2dense(size_data_w, indi_w, indj_w, data_W_w, nb_rows_w, nb_cols_w, W_w)
         ! ====================================================
 
         !$OMP PARALLEL PRIVATE(nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,ju,j_nnz_v,jv,j_nnz_w,jw,nnz_row_u) &
@@ -1076,10 +1076,10 @@ module tensor_methods
         end if
 
         allocate(BB0(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_B0_new, nb_rows, nb_cols, BB0)
+        call csr2dense(size_data, indi, indj, data_B0_new, nb_rows, nb_cols, BB0)
         deallocate(data_B0_new)
         allocate(WW0(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
+        call csr2dense(size_data, indi, indj, data_W00, nb_rows, nb_cols, WW0)
         allocate(MM(nb_rows, nb_rows))
         MM = matmul(WW0, transpose(BB0))
         deallocate(BB0, WW0)
@@ -1096,10 +1096,10 @@ module tensor_methods
         end if
 
         allocate(BB1(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_B1_new, nb_rows, nb_cols, BB1)
+        call csr2dense(size_data, indi, indj, data_B1_new, nb_rows, nb_cols, BB1)
         deallocate(data_B1_new)
         allocate(WW1(nb_rows, nb_cols))
-        call csr2matrix(size_data, indi, indj, data_W11, nb_rows, nb_cols, WW1)
+        call csr2dense(size_data, indi, indj, data_W11, nb_rows, nb_cols, WW1)
         allocate(KK(nb_rows, nb_rows))
         KK = matmul(WW1, transpose(BB1))
         deallocate(BB1, WW1)
