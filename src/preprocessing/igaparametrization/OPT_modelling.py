@@ -313,7 +313,7 @@ class OPTmodelling:
         else:
             print(' Linear elasticity analysis...')
             K, F = self.get_LinElastSystem(vectX)
-            
+
             if self._useSPLU:
                 LU = sp.linalg.splu(K)
                 sol_fine = LU.solve(F)
