@@ -83,7 +83,7 @@ add_test(NAME ROM1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM
 # Postprocessing of an IGA model to plot faces numbers in a VTU file
 add_test(NAME post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_face/post_faces.py WORKING_DIRECTORY ${BENCH_PATH}/post_face)
 
-# Bench for centrifugal body force
+# Benchs for centrifugal body force
 add_test(NAME centrif_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1)
 add_test(NAME centrif_U10 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U10/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U10)
 add_test(NAME centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_C0/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_C0)
@@ -93,6 +93,10 @@ add_test(NAME centrif_U1_cpl_U1_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH
 add_test(NAME centrif_U1_cpl_U1_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads)
 add_test(NAME centrif_U1_cpl_U10_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_1load/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_1load)
 add_test(NAME centrif_U1_cpl_U10_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads)
+
+# Benchs for compliance optimisation with centrifugal force
+add_test(NAME opt_centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0)
+add_test(NAME opt_centrif_U1_cplg_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1)
 
 set_tests_properties(
                      platevib 
@@ -129,6 +133,8 @@ set_tests_properties(
                      centrif_U1_cpl_U1_2loads
                      centrif_U1_cpl_U10_1load
                      centrif_U1_cpl_U10_2loads
+                     opt_centrif_U1_C0
+                     opt_centrif_U1_cplg_U1
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 
