@@ -137,7 +137,7 @@ error = np.sqrt(sum((res['x']-x_ref)**2.))
 
 print(error)
 
-if error > 1.e-5:
+if error > 1.e-2:
     sys.exit(-1)
 else:
     sys.exit(0)
