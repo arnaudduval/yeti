@@ -374,26 +374,27 @@ end subroutine polar_decomposition
 ! -------------
 ! Indices
 ! -------------
-subroutine coo2csr(nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
+subroutine coo2csr(nba, nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     !! Change COO format to CSR format
 
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: nr, nnz
+    integer, intent(in) :: nba, nr, nnz
     double precision, intent(in) :: a_in
-    dimension :: a_in(nnz)
+    dimension :: a_in(nnz, nba)
     integer, intent(in) :: indi_coo, indj_coo
     dimension :: indi_coo(nnz), indj_coo(nnz)
 
     double precision, intent(out) :: a_out
-    dimension :: a_out(nnz)
+    dimension :: a_out(nnz, nba)
     integer, intent(out) :: indj_csr, indi_csr
     dimension :: indj_csr(nnz), indi_csr(nr+1)
 
     ! Local data
     ! -------------
     double precision :: x
+    dimension :: x(nba)
     integer :: i, j, k, k0, iad
 
     ! Initialize
@@ -416,9 +417,9 @@ subroutine coo2csr(nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     do k = 1, nnz
         i = indi_coo(k)
         j = indj_coo(k)
-        x = a_in(k)
+        x = a_in(k, :)
         iad = indi_csr(i)
-        a_out(iad) =  x
+        a_out(iad, :) =  x
         indj_csr(iad) = j
         indi_csr(i) = iad + 1
     end do
@@ -430,6 +431,44 @@ subroutine coo2csr(nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     indi_csr(1) = 1
 
 end subroutine coo2csr
+
+subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
+    !! Gets CSC format from CSR format. 
+    !! (CSC format can be interpreted as the transpose)
+
+    implicit none
+    ! Input / output data 
+    ! ----------------------
+    integer, intent(in) :: nba, nnz, nr, nc
+    integer, intent(in) :: indi_csr, indj_csr
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
+    double precision, intent(in) :: a_in
+    dimension :: a_in(nnz, nba)
+
+    integer, intent(out) :: indi_csc, indj_csc
+    dimension :: indi_csc(nc+1), indj_csc(nnz)
+    double precision, intent(out) :: a_out
+    dimension :: a_out(nnz, nba)
+
+    ! Local data
+    ! --------------
+    integer :: indi_coo 
+    dimension :: indi_coo(nnz)
+    integer :: i, j, c
+
+    ! We assume that csr is close to coo format. The only thing that change is indi
+    c = 0
+    do i = 1, nr
+        do j = indi_csr(i), indi_csr(i+1) - 1
+            c = c + 1
+            indi_coo(c) = i
+        end do
+    end do
+
+    ! Do COO to CSR format (inverting order to CSC)
+    call coo2csr(nba, nc, nnz, a_in, indj_csr, indi_coo, a_out, indj_csc, indi_csc)
+
+end subroutine csr2csc
 
 subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
     !! Gives a dense matrix from a COO format
@@ -536,44 +575,6 @@ subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     end do
 
 end subroutine dense2csr
-
-subroutine csr2csc(nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
-    !! Gets CSC format from CSR format. 
-    !! (CSC format can be interpreted as the transpose)
-
-    implicit none
-    ! Input / output data 
-    ! ----------------------
-    integer, intent(in) :: nnz, nr, nc
-    integer, intent(in) :: indi_csr, indj_csr
-    dimension :: indi_csr(nr+1), indj_csr(nnz)
-    double precision, intent(in) :: a_in
-    dimension :: a_in(nnz)
-
-    integer, intent(out) :: indi_csc, indj_csc
-    dimension :: indi_csc(nc+1), indj_csc(nnz)
-    double precision, intent(out) :: a_out
-    dimension :: a_out(nnz)
-
-    ! Local data
-    ! --------------
-    integer :: indi_coo 
-    dimension :: indi_coo(nnz)
-    integer :: i, j, c
-
-    ! We assume that csr is close to coo format. The only thing that change is indi
-    c = 0
-    do i = 1, nr
-        do j = indi_csr(i), indi_csr(i+1) - 1
-            c = c + 1
-            indi_coo(c) = i
-        end do
-    end do
-
-    ! Do COO to CSR format (inverting order to CSC)
-    call coo2csr(nc, nnz, a_in, indj_csr, indi_coo, a_out, indj_csc, indi_csc)
-
-end subroutine csr2csc
 
 subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, & 
                                 indi_A, indj_A, &

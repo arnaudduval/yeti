@@ -12,4 +12,7 @@ IGAmodel = Geomodel.export_IGAparametrization(nb_refinementByDirection=np.array(
 
 # Create model
 phymodel = thermoMechaModel(IGAmodel)
-phymodel.export_results()
+nnz = phymodel._nb_ctrlpts_total
+u_ctrlpts = np.arange(nnz)
+phymodel.export_results(u_ctrlpts= u_ctrlpts)
+

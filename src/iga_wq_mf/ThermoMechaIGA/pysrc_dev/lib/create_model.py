@@ -27,6 +27,7 @@ class thermoMechaModel():
         print('Setting B-spline properties')
         self._sample_size = 101
         self._r_ = 2
+        self._name = self.read_name(modelIGA)
         self._dim = self.read_dimensions(modelIGA)
         self._degree = self.read_degree(modelIGA)
         self._knotvector, self._size_kv = self.read_knotvector(modelIGA)
@@ -429,22 +430,20 @@ class thermoMechaModel():
         # Set basis and indices
         DB, ind = [], []
         for dim in range(self._dim):  
-            B0, B1, indi, indj = eval_basis_fortran(self._degree[dim], self._knotvector[dim], knots)
-            DB.append([B0, B1])
+            B, indi, indj = eval_basis_fortran(self._degree[dim], self._knotvector[dim], knots)
+            DB.append(B)
             ind.append([indi, indj])
 
         # ==============================
         # Get position and determinant
         # ==============================
-        indices, data, ctrlpts = [], [], []
+        indices, data = [], []
         for dim in range(self._dim):
             indices.append(ind[dim][0])
             indices.append(ind[dim][1])
-            data.append(DB[dim][0])
-            data.append(DB[dim][1])
-            ctrlpts.append(self._ctrlpts[dim, :])
-        inputs = [self._dim*[nnz], *indices, *data, *ctrlpts]
-
+            data.append(DB[dim])
+        inputs = [*self._dim*[nnz], *indices, *data, self._ctrlpts]
+        
         if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)    
         elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
 
@@ -456,8 +455,8 @@ class thermoMechaModel():
             for dim in range(self._dim):
                 indices.append(ind[dim][0])
                 indices.append(ind[dim][1])
-                data.append(DB[dim][0])
-            inputs = [self._dim*[nnz], *indices, *data, u_ctrlpts]
+                data.append(DB[dim][:, 0])
+            inputs = [*self._dim*[nnz], *indices, *data, u_ctrlpts]
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolation_3d(*inputs)
@@ -476,7 +475,7 @@ class thermoMechaModel():
             folder = dirname(dirname(full_path)) + '/results/'
             if not os.path.isdir(folder): os.mkdir(folder)
 
-        if u_ctrlpts == None: pass
+        if u_ctrlpts is None: pass
         elif isinstance(u_ctrlpts, np.ndarray): 
             if len(u_ctrlpts) == self._nb_ctrlpts_total: pass
             else: raise Warning('Not enough control points')
@@ -512,7 +511,7 @@ class thermoMechaModel():
                     X2[i,j,k] = qp_PS[1, pos]
                     DET[i,j,k] = detJ[pos]
                     if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
-                    if u_interp != None: U[i,j,k] = u_interp[pos]
+                    if u_interp is not None: U[i,j,k] = u_interp[pos]
                     
         # Export geometry
         name = folder + self._name

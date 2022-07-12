@@ -33,7 +33,8 @@ CreateF2PYModule(NAME basis_weights
 )
 
 CreateF2PYModule(NAME assembly
-                 FILES  "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_gk_assembly.f90"
+                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_geophy.f90"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_gk_assembly.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_assembly.f90"
                  LINK_LIBRARIES iga_wq_mf base 
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
