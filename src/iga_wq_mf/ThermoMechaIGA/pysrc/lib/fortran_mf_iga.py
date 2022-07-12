@@ -50,7 +50,7 @@ class fortran_mf_iga(thermoMechaModel):
         shape_matrices, indices, data, ctrlpts = [], [], [], []
 
         for dim in range(self._dim):
-            shape_matrices.append(self._nb_qp_cgg[dim][0])
+            shape_matrices.append(self._nb_qp_cgg[dim])
             indices.append(self._indices[dim][0])
             indices.append(self._indices[dim][1])
             data.append(self._DB[dim][0])
@@ -186,7 +186,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, qp_weights, \
-            B0, B1, indi, indj  = iga_find_basis_weights_fortran(self._degree[dim][0], self._knotvector[dim][0])
+            B0, B1, indi, indj  = iga_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)

@@ -20,7 +20,6 @@
 find_package(
     LAPACK 
     REQUIRED
-    # BLA_STATIC ON
 ) 
 
 find_package(OpenMP REQUIRED)

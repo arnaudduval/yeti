@@ -15,7 +15,7 @@ from iga_wq_mf import basis_weights
 # GENERAL FUNCTIONS
 # ==========================
 
-def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
+def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran= True):
     "Returns new data after erasing some rows in CSR format"
     
     # Initialize outputs
@@ -63,12 +63,10 @@ def generate_rand_positive_matrix(dim, nnz):
     
     # Generate random matrix 
     A = np.random.random((dim, dim, nnz))
-    # I = np.diag(np.random.rand(3) + np.array([1, 1, 1])) 
     I = np.eye(dim)
     
     for i in range(nnz):
         # Construct symmetric matrix 
-        # Since Aij < 1 by construction, we assure diagonally dominant by adding nI
         B = A[:, :, i]
         B = np.matmul(B, B.T) + I
         A[:, :, i] = B
@@ -81,7 +79,7 @@ def compute_jacobien_mean(J):
     # Get the size of J
     J = np.atleast_3d(J)
     nnz = np.shape(J)[2]
-    dim = np.shape(J)[1]
+    dim = np.shape(J)[1] # or [0]
 
     # Initialize diagP
     diagP = np.zeros(dim)
@@ -97,7 +95,7 @@ def compute_jacobien_mean(J):
 # ==========================
 
 def create_knotvector(p, nbel, multiplicity= 1):
-    " Creates an uniform and open knot-vector "
+    " Creates an uniform and open, with maximum regularity, knot-vector "
 
     # Set knot-vector to be inserted
     knotvector_Unique = np.linspace(0., 1., nbel + 1)[1 : -1]
@@ -114,7 +112,7 @@ def create_knotvector(p, nbel, multiplicity= 1):
     for _ in range(p+1): 
         knotvector.append(1.0)
     
-    return knotvector
+    return np.array(knotvector)
 
 def eval_basis_python(degree, knotvector, knots, multiplicity= 1): 
     " Evaluates B-spline functions at given knots "
@@ -169,6 +167,9 @@ def eval_basis_python(degree, knotvector, knots, multiplicity= 1):
         # Replace values
         B0[np.ix_(functions_element, [_])] = np.asarray(B0t).reshape((-1,1))
         B1[np.ix_(functions_element, [_])] = np.asarray(B1t).reshape((-1,1))
+
+    # Convert format 
+    B0, B1 = B0.tocsr(), B1.tocsr()
 
     return B0, B1
 
@@ -342,7 +343,7 @@ def gaussTable(pgaus):
             0.0556685671161737]
     
     # Change type of arrays
-    x = np.asarray(x); w = np.asarray(w)
+    x, w = np.array(x), np.array(w)
 
     return x, w
 
@@ -379,17 +380,17 @@ def iga_find_positions_weights(degree, knotvector):
         # Assmbly vectors
         xg.extend(xg_el); wg.extend(wg_el)
 
-    return xg, wg
+    return np.array(xg), np.array(wg)
 
 def iga_find_basis_weights_opt(degree, knotvector):
 
     # Find positions and weights
-    xwq, W = iga_find_positions_weights(degree, knotvector)
+    qp_pos, weights = iga_find_positions_weights(degree, knotvector)
 
     # Find basis
-    B0, B1 = eval_basis_python(degree, knotvector, xwq)
+    B0, B1 = eval_basis_python(degree, knotvector, qp_pos)
 
-    return xwq, B0, B1, W
+    return qp_pos, B0, B1, weights
 
 def iga_find_basis_weights_fortran(degree, knotvector): 
     " Computes basis and weights "
@@ -398,16 +399,16 @@ def iga_find_basis_weights_fortran(degree, knotvector):
     nb_el = len(np.unique(knotvector))
 
     # Set number of quadrature points
-    nb_qp = (degree + 1) * nb_el
+    nnz_qp = (degree + 1) * nb_el
 
     # Set size guessed of data arrays
-    nnz_B = (degree + 1) * nb_qp
+    nnz_B = (degree + 1) * nnz_qp
 
     # Get basis and weights from fortran
-    xg, wg, B0, B1, \
-    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, knotvector, nb_qp, nnz_B)
+    qp_pos, weights, B0, B1, \
+    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, knotvector, nnz_qp, nnz_B)
  
-    return nnz_I, xg, wg, B0, B1, indi, indj
+    return nnz_I, qp_pos, weights, B0, B1, indi, indj
 
 # =========================
 # WQ FUNCTIONS
@@ -501,9 +502,9 @@ def wq_solve_equation_system(B, I):
     sol1, _, _, _ = np.linalg.lstsq(B, I, rcond=None)
 
     # Set solution
-    w = sol1.reshape((1, -1)).tolist()
+    w = sol1.reshape((1, -1)).tolist()[0]
     
-    return w[0]
+    return w
 
 def wq_find_positions(degree, knotvector, r, maxrule= 1):
     " Return position of quadrature points in WQ approach "
@@ -528,15 +529,15 @@ def wq_find_positions(degree, knotvector, r, maxrule= 1):
             xt = np.linspace(kvUnique[i], kvUnique[i+1], 2 + maxrule)[1:-1]
         
         # Assemble vector
-        xwq = np.append(xwq, xt)
+        xwq.append(xt)
     
     #  Include knots of knot-vector
-    xwq = np.append(xwq, kvUnique)
+    xwq.append(kvUnique)
 
     # Sort vector
-    xwq = np.sort(xwq).tolist()
-
-    return xwq
+    xwq.sort()
+    
+    return np.array(xwq)
 
 def wq_find_weights(degree, knotvector, r):
     " Returns weights at quadrature points in WQ approach using Space p-1 technique "
@@ -781,12 +782,12 @@ def wq_find_basis_weights_fortran(degree, knotvector):
     " Computes basis and weights "
 
     # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, knotvector)
+    nnz_B, nnz_qp = basis_weights.wq_get_size_data(degree, knotvector)
 
     # Get basis and weights from fortran
     qp_pos, B0, B1, \
     W00, W01, W10, W11, \
-    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, knotvector, nnz_B, size_qp)
+    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, knotvector, nnz_B, nnz_qp)
 
     return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
     

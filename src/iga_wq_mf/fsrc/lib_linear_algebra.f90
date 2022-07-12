@@ -17,6 +17,44 @@ end module constants_iga_wq_mf
 ! -------------------
 ! Vector and matrices
 ! -------------------
+subroutine diff_vector(times, nnz, vector_in, vector_out)
+    !! Returns the difference between elements of array
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer, intent(in) :: nnz, times
+    double precision, intent(in) :: vector_in
+    dimension :: vector_in(nnz)
+
+    double precision, intent(out) :: vector_out
+    dimension :: vector_out(nnz)
+
+    ! Local data
+    ! -----------
+    double precision :: vector_temp
+    dimension :: vector_temp(nnz)
+    integer :: i, j
+
+    ! Initialize
+    vector_out = vector_in
+    vector_temp = vector_out
+
+    do j = 1, times
+
+        do i = 1, nnz-j
+            vector_out(i) = vector_temp(i+1) - vector_temp(i)
+        end do
+
+        do i = nnz-j+1, nnz
+            vector_out(i) = 0.d0
+        end do
+
+        vector_temp = vector_out
+    end do
+    
+end subroutine diff_vector
+
 subroutine linspace(x0, xf, n, array) 
     !! Evaluates N equidistant points given the first and last points 
 

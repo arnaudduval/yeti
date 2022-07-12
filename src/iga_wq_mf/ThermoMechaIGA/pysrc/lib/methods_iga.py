@@ -50,13 +50,13 @@ class IGA(thermoMechaModel):
 
         for dim in range(self._dim):
             # Set table of functions per element 
-            table = np.zeros((self._nb_el[dim][0], self._degree[dim][0] + 2), dtype= int); 
-            table[0, 0] = self._degree[dim][0]; table[0, 1:] = np.arange(self._degree[dim][0] + 1) 
+            table = np.zeros((self._nb_el[dim], self._degree[dim] + 2), dtype= int); 
+            table[0, 0] = self._degree[dim]; table[0, 1:] = np.arange(self._degree[dim] + 1) 
 
             # Set multiplicity
             multiplicity = 1
 
-            for _ in range(1, self._nb_el[dim][0]): 
+            for _ in range(1, self._nb_el[dim]): 
                 # Set values of the table
                 table[_, :2] = table[_-1, :2] + multiplicity
                 table[_, 2:] = table[_, 1] + np.arange(1, self._degree[dim] + 1) 
@@ -120,12 +120,12 @@ class IGA(thermoMechaModel):
         # Find IEN for each dimension
         IEN_dim = []
         for dim in range(self._dim): 
-            IEN_dimt = np.zeros((self._nb_el[dim][0], self._degree[dim][0] + 1), dtype= int)
-            IEN_dimt[0, :] = range(self._degree[dim][0] + 1)
+            IEN_dimt = np.zeros((self._nb_el[dim], self._degree[dim] + 1), dtype= int)
+            IEN_dimt[0, :] = range(self._degree[dim] + 1)
         
-            for _ in range(1, self._nb_el[dim][0]): 
+            for _ in range(1, self._nb_el[dim]): 
                 IEN_dimt[_, 0] = IEN_dimt[_-1, 0] + 1
-                IEN_dimt[_, 1:] = IEN_dimt[_, 0] + np.arange(1, self._degree[dim][0] + 1) 
+                IEN_dimt[_, 1:] = IEN_dimt[_, 0] + np.arange(1, self._degree[dim] + 1) 
 
             IEN_dim.append(IEN_dimt.tolist())
         
@@ -171,7 +171,7 @@ class IGA(thermoMechaModel):
         # Get number of control points in each dimension
         nb_qp_cgg = np.ones(3, dtype= int)
         for dim in range(dimensions):
-            nb_qp_cgg[dim] = self._nb_qp_cgg[dim][0]
+            nb_qp_cgg[dim] = self._nb_qp_cgg[dim]
 
         # Find total number of control points 
         nb_qp_cgg_total = self._nb_qp_cgg_total
@@ -199,12 +199,12 @@ class IGA(thermoMechaModel):
         # Find IEN for each dimension
         IEN_dim = []
         for dim in range(self._dim): 
-            IEN_dimt = np.zeros((self._nb_el[dim][0], self._degree[dim][0] + 1), dtype= int)
-            IEN_dimt[0, :] = range(self._degree[dim][0] + 1)
+            IEN_dimt = np.zeros((self._nb_el[dim], self._degree[dim] + 1), dtype= int)
+            IEN_dimt[0, :] = range(self._degree[dim] + 1)
         
-            for _ in range(1, self._nb_el[dim][0]): 
+            for _ in range(1, self._nb_el[dim]): 
                 IEN_dimt[_, 0] = IEN_dimt[_-1, -1] + 1
-                IEN_dimt[_, 1:] = IEN_dimt[_, 0] + np.arange(1, self._degree[dim][0] + 1) 
+                IEN_dimt[_, 1:] = IEN_dimt[_, 0] + np.arange(1, self._degree[dim] + 1) 
 
             IEN_dim.append(IEN_dimt.tolist())
         
@@ -253,7 +253,7 @@ class IGA(thermoMechaModel):
 
         for dim in range(self._dim): 
             # Find basis and weights 
-            qp_pos, B0, B1, W = iga_find_basis_weights_opt(self._degree[dim][0], self._knotvector[0][dim]) 
+            qp_pos, B0, B1, W = iga_find_basis_weights_opt(self._degree[dim], self._knotvector[dim]) 
 
             # Save quadrature points
             self._qp_cgg_dim.append(qp_pos)
@@ -392,7 +392,7 @@ class IGA(thermoMechaModel):
                 el_dim = INE_el[dim]
 
                 # Set indices (positions) of quadrature points in each dimension  
-                ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
+                ind_xg = np.arange(el_dim*(self._degree[dim]+1), (el_dim+1)*(self._degree[dim]+1), dtype= int)
 
                 # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]
@@ -470,7 +470,7 @@ class IGA(thermoMechaModel):
                 el_dim = INE_el[dim]
 
                 # Set indices (positions) of quadrature points in each dimension  
-                ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
+                ind_xg = np.arange(el_dim*(self._degree[dim]+1), (el_dim+1)*(self._degree[dim]+1), dtype= int)
 
                 # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]
@@ -534,7 +534,7 @@ class IGA(thermoMechaModel):
                 el_dim = INE_el[dim]
 
                 # Set indices (positions) of quadrature points in each dimension  
-                ind_xg = np.arange(el_dim*(self._degree[dim][0]+1), (el_dim+1)*(self._degree[dim][0]+1), dtype= int)
+                ind_xg = np.arange(el_dim*(self._degree[dim]+1), (el_dim+1)*(self._degree[dim]+1), dtype= int)
 
                 # Find indices of functions in NURBS element in each dimension
                 ind_basis = self._table_funct_span[dim][el_dim][1:]

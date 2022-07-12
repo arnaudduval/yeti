@@ -51,7 +51,7 @@ class WQ(thermoMechaModel):
         for dim in range(self._dim): 
             # Find basis and weights 
             qp_pos, B0, B1, W00, W01, W10, W11 = \
-            wq_find_basis_weights_opt(self._degree[dim][0], self._knotvector[0][dim], self._r_)  
+            wq_find_basis_weights_opt(self._degree[dim], self._knotvector[dim], self._r_)  
 
             # Save quadrature points
             self._qp_wq_dim.append(qp_pos)

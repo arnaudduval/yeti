@@ -147,38 +147,40 @@ class thermoMechaModel():
         # Set some variables we will use :
         # --------------------------------- 
         # Degree in each dimension
-        if isinstance(modelIGA, IGAparametrization): self._degree = modelIGA._Jpqr
+        if isinstance(modelIGA, IGAparametrization): self._degree = modelIGA._Jpqr.flatten()
         elif isinstance(modelIGA, geomdlModel): self._degree = modelIGA._degree
 
         # Dimensions
-        self._dim = modelIGA._dim[0]
+        try: self._dim = modelIGA._dim[0]
+        except: self._dim = modelIGA._dim
         if any(p == 1 for p in self._degree[:self._dim]): 
             raise Warning('Model must have at least degree p = 2')
 
         # knot-vector in each dimension
-        if isinstance(modelIGA, IGAparametrization): self._knotvector = modelIGA._Ukv
+        if isinstance(modelIGA, IGAparametrization): self._knotvector = modelIGA._Ukv[0]
         elif isinstance(modelIGA, geomdlModel): self._knotvector = modelIGA._knotvector
 
         # Size knot-vector in each dimension
-        if isinstance(modelIGA, IGAparametrization): self._size_kv = modelIGA._Nkv
+        if isinstance(modelIGA, IGAparametrization): self._size_kv = modelIGA._Nkv.flatten()
         elif isinstance(modelIGA, geomdlModel): self._size_kv = modelIGA._size_kv
 
         # Number of elements in each dimension
-        self._nb_el = np.zeros((3, 1), dtype= int)  
+        self._nb_el = np.ones(3, dtype= int)  
         if isinstance(modelIGA, IGAparametrization): 
-            self._nb_el[:self._dim, 0] = self._size_kv[:self._dim, 0]\
-                                    - (2*self._degree[:self._dim, 0] + 1)
+            for dim in range(self._dim):
+                self._nb_el[dim] = len(np.unique(self._knotvector[dim])) - 1
+
         elif isinstance(modelIGA, geomdlModel):
-             self._nb_el[:self._dim, 0] = modelIGA._nb_el[:self._dim, 0]
+             self._nb_el[:self._dim] = modelIGA._nb_el[:self._dim]
 
         # Total number of elements
-        self._nb_el_total = np.product(self._nb_el[:self._dim][:])
+        self._nb_el_total = np.product(self._nb_el)
 
         # Control points
         if isinstance(modelIGA, IGAparametrization): 
             self._ctrlpts = modelIGA._COORDS[:self._dim, :].T
         elif isinstance(modelIGA, geomdlModel): 
-            self._ctrlpts = np.asarray(modelIGA._ctrlpts)
+            self._ctrlpts = modelIGA._ctrlpts
 
         if isinstance(modelIGA, IGAparametrization): 
             self._nb_ctrlpts_total = modelIGA._nb_cp
@@ -186,7 +188,9 @@ class thermoMechaModel():
             self._nb_ctrlpts_total = modelIGA._nb_ctrlpts_total
 
         # Set number of quadrature points/functions in each dimension
-        self._nb_ctrlpts = self._degree + self._nb_el
+        self._nb_ctrlpts = np.ones(3, dtype= int)  
+        for dim in range(self._dim):
+            self._nb_ctrlpts[dim] = self._size_kv[dim] - self._degree[dim] - 1
 
         print('B-spline properties :\n\
                 -Dimensions: %d\n\
@@ -218,17 +222,16 @@ class thermoMechaModel():
 
         # Set number of quadrature points
         # In WQ approach
-        self._nb_qp_wq = np.zeros((3, 1), dtype= int) 
-        self._nb_qp_wq[:self._dim, 0] = 2*(self._degree[:self._dim, 0] 
-                                            + self._nb_el[:self._dim, 0] + self._r_) - 5 
+        self._nb_qp_wq = np.ones(3, dtype= int) 
+        self._nb_qp_wq[:self._dim] = 2*(self._degree[:self._dim] 
+                                        + self._nb_el[:self._dim] + self._r_) - 5 
         # In IGA approach
-        self._nb_qp_cgg = np.zeros((3, 1), dtype= int)
-        self._nb_qp_cgg[:self._dim, 0] = (self._degree[:self._dim, 0] + 1)\
-                                            *self._nb_el[:self._dim, 0]
+        self._nb_qp_cgg = np.ones(3, dtype= int)
+        self._nb_qp_cgg[:self._dim] = (self._degree[:self._dim] + 1)*self._nb_el[:self._dim]
 
         # Set total number of quadrature points
-        self._nb_qp_cgg_total = np.prod(self._nb_qp_cgg[:self._dim, 0])
-        self._nb_qp_wq_total = np.prod(self._nb_qp_wq[:self._dim, 0])
+        self._nb_qp_cgg_total = np.prod(self._nb_qp_cgg)
+        self._nb_qp_wq_total = np.prod(self._nb_qp_wq)
 
         print(' \n\
                 -Number of WQ quadrature points: %s\n\
@@ -347,7 +350,7 @@ class thermoMechaModel():
                 nd.extend(np.where(INC[:, dim] == 0)[0])
 
             if block_bound_dim[1]:
-                nd.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim][0]-1)[0])
+                nd.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim]-1)[0])
 
         nd = np.unique(nd).tolist()
 

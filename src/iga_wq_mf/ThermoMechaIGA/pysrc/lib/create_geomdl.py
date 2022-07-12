@@ -36,7 +36,7 @@ class geomdlModel():
         start = time.time()
         if filename == 'quarter_annulus' or filename == 'QA':
             # Set number of dimension 
-            self._dim = [2]
+            self._dim = 2
 
             # Create quarter annulus
             Rin = geometry.get('Rin', 1.0)
@@ -46,7 +46,7 @@ class geomdlModel():
 
         elif filename == 'quadrilateral' or filename == 'SQ':
             # Set number of dimension
-            self._dim = [2]
+            self._dim = 2
             
             # Create parallelepiped
             XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
@@ -55,7 +55,7 @@ class geomdlModel():
 
         elif filename == 'parallelepiped' or filename == 'CB': 
             # Set number of dimension
-            self._dim = [3]
+            self._dim = 3
             
             # Create parallelepiped
             Lx = geometry.get('Lx', 1.0)
@@ -66,7 +66,7 @@ class geomdlModel():
 
         elif filename == 'thick_ring' or filename == 'TR':
             # Set number of dimension 
-            self._dim = [3]
+            self._dim = 3
 
             # Create quarter annulus
             Rin = geometry.get('Rin', 1.0)
@@ -77,7 +77,7 @@ class geomdlModel():
 
         elif filename == 'rotated_quarter_annulus' or filename == 'RQA':
             # Set number of dimension 
-            self._dim = [3]
+            self._dim = 3
 
             # Create quarter annulus
             Rin = geometry.get('Rin', 1.0)
@@ -88,7 +88,7 @@ class geomdlModel():
 
         elif filename == 'prism' or filename == 'VB':
             # Set number of dimension
-            self._dim = [3]
+            self._dim = 3
             
             # Create parallelepiped
             XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
@@ -116,17 +116,17 @@ class geomdlModel():
 
         # Set new number of elements
         cuts = nb_refinementByDirection
-        nbel = [2**cuts[dim]*self._nb_el[dim][0] for dim in range(self._dim[0])]
+        nbel = [2**cuts[dim]*self._nb_el[dim] for dim in range(self._dim)]
 
         # Create knots to be inserted
         knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
 
         # Insert knots
-        for dim in range(self._dim[0]):
-            multiplicity = np.zeros(self._dim[0], dtype= int)
+        for dim in range(self._dim):
+            multiplicity = np.zeros(self._dim, dtype= int)
             multiplicity[dim] = 1
             for knot in knotvector_insert[dim]: 
-                knot_insert = np.zeros(self._dim[0])
+                knot_insert = np.zeros(self._dim)
                 knot_insert[dim] = knot
                 operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
         self._geometry = geometry
@@ -145,52 +145,54 @@ class geomdlModel():
         if obj is None: raise Warning('Geometry unknown')
 
         # Set degree
-        self._degree = np.zeros((3, 1), dtype= int)
-        self._degree[:self._dim[0], 0] = np.asarray(obj._degree)
-        if any(p == 1 for p in self._degree[:self._dim[0]]): 
+        self._degree = np.ones(3, dtype= int)
+        self._degree[:self._dim] = np.array(obj._degree)
+        if any(p == 1 for p in self._degree[:self._dim]): 
            raise Warning('Model must have at least degree p = 2')
 
         # Set knot vector
-        self._knotvector = [[np.asarray(obj._knot_vector[dim]) for dim in range(self._dim[0])]]
+        self._knotvector = [np.array(obj._knot_vector[dim]) for dim in range(self._dim)]
 
         # Set size knot-vector in each dimension
-        self._size_kv = np.zeros((3, 1), dtype= int)  
-        for dim in range(self._dim[0]):
-            self._size_kv[dim] = np.size(self._knotvector[0][dim])
+        self._size_kv = np.ones(3, dtype= int)  
+        for dim in range(self._dim):
+            self._size_kv[dim] = np.size(self._knotvector[dim])
 
         # Set number of elements in each dimension
-        self._nb_el = np.zeros((3, 1), dtype= int)  
-        self._nb_el[:self._dim[0], 0] = self._size_kv[:self._dim[0], 0]\
-                                    - (2*self._degree[:self._dim[0], 0] + 1)
+        self._nb_el = np.ones(3, dtype= int)  
+        for dim in range(self._dim):
+            self._nb_el[dim] = len(np.unique(self._knotvector[dim])) - 1
 
         # Set total number of elements
-        self._nb_el_total = np.product(self._nb_el[:self._dim[0]][:])
+        self._nb_el_total = np.product(self._nb_el)
 
         # Set number of quadrature points/functions in each dimension
-        self._nb_ctrlpts = self._degree + self._nb_el
-        self._nb_ctrlpts_total = np.product(self._nb_ctrlpts[:self._dim[0]][:])
+        self._nb_ctrlpts = np.ones(3, dtype= int)  
+        for dim in range(self._dim):
+            self._nb_ctrlpts[dim] = self._size_kv[dim] - self._degree[dim] - 1
+        self._nb_ctrlpts_total = np.product(self._nb_ctrlpts)
 
-        if self._dim[0] == 2: 
-            ctrlpts_old = np.asarray(obj._control_points)
+        if self._dim == 2: 
+            ctrlpts_old = obj._control_points
             ctrlpts_new = []
-            for j in range(self._nb_ctrlpts[1][0]):
-                for i in range(self._nb_ctrlpts[0][0]):
-                    pos = j + i*self._nb_ctrlpts[1][0]
+            for j in range(self._nb_ctrlpts[1]):
+                for i in range(self._nb_ctrlpts[0]):
+                    pos = j + i*self._nb_ctrlpts[1]
                     ctrlpts_temp = ctrlpts_old[pos]
                     ctrlpts_new.append(ctrlpts_temp)
 
-        elif self._dim[0] == 3: 
+        elif self._dim == 3: 
             ctrlpts_old = obj._control_points
             ctrlpts_new = []
-            for k in range(self._nb_ctrlpts[2][0]):
-                for j in range(self._nb_ctrlpts[1][0]):
-                    for i in range(self._nb_ctrlpts[0][0]):
-                        pos = j + i*self._nb_ctrlpts[1][0] + k*self._nb_ctrlpts[1][0]*self._nb_ctrlpts[0][0]
+            for k in range(self._nb_ctrlpts[2]):
+                for j in range(self._nb_ctrlpts[1]):
+                    for i in range(self._nb_ctrlpts[0]):
+                        pos = j + i*self._nb_ctrlpts[1] + k*self._nb_ctrlpts[1]*self._nb_ctrlpts[0]
                         ctrlpts_temp = ctrlpts_old[pos]
                         ctrlpts_new.append(ctrlpts_temp)
 
         # Update control points
-        self._ctrlpts = ctrlpts_new
+        self._ctrlpts = np.array(ctrlpts_new)
         stop = time.time()
         print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
 
@@ -230,8 +232,8 @@ class geomdlModel():
             f.write('\n')
             f.write('*Part, name=%s\n' %self._name)
             f.write('*USER ELEMENT, NODES=%d, TYPE=U1, COORDINATES=%d, INTEGRATION=%d\n' 
-                    %(self._nb_ctrlpts_total, self._dim[0], self._nb_ctrlpts_total))
-            f.write(array2txt(np.arange(self._dim[0])+1, format='%d'))
+                    %(self._nb_ctrlpts_total, self._dim, self._nb_ctrlpts_total))
+            f.write(array2txt(np.arange(self._dim)+1, format='%d'))
             f.write('\n*Node,nset=AllNode\n')
             for i, CP in enumerate(self._ctrlpts):
                 f.write('%d, %.15f, %.15f, %.15f\n' %(i+1, CP[0], CP[1], CP[2]))
@@ -273,22 +275,22 @@ class geomdlModel():
         with open(NBfile, 'w') as f:
             f.write('\n'.join(introduction))
             f.write('\n\n')
-            f.write('*Dimension\n%d\n' %(self._dim[0]))
+            f.write('*Dimension\n%d\n' %(self._dim))
             f.write('*Number of CP by element\n%d\n' %(self._nb_ctrlpts_total))
             f.write('*Number of patch\n%d\n' %(1))
             f.write('*Total number of element \n%d\n' %(1))
             f.write('*Number of element by patch\n%d\n' %(1))
             f.write('*Patch(1)\n')
-            for i in range(self._dim[0]):
-                kv = self._knotvector[0][i]
+            for i in range(self._dim):
+                kv = self._knotvector[i]
                 f.write('%d\n' %(len(kv)))
                 f.write(array2txt(kv))
                 f.write('\n')
             f.write('*Jpqr\n')
-            f.write(array2txt(self._degree[:self._dim[0]], format='%d'))
+            f.write(array2txt(self._degree[:self._dim], format='%d'))
             f.write('\n')
             f.write('*Nijk\n1,\t')
-            f.write(array2txt(self._nb_ctrlpts[:self._dim[0]], format='%d'))
+            f.write(array2txt(self._nb_ctrlpts[:self._dim], format='%d'))
             f.write('\n')
             f.write('*Weight\n1,\t')
             f.write(array2txt(np.ones(self._nb_ctrlpts_total)))
@@ -778,13 +780,13 @@ class geomdlModel():
 
         # Control points in 2d
         shape_ctrlpts = [1, 1]
-        for _ in range(self._dim[0]):
-            shape_ctrlpts[_] = self._nb_ctrlpts[_][0]
+        for _ in range(self._dim):
+            shape_ctrlpts[_] = self._nb_ctrlpts[_]
         shape_ctrlpts = tuple(shape_ctrlpts)
 
         # Set shape
         shape = [1, 1]
-        for _ in range(self._dim[0]):
+        for _ in range(self._dim):
             shape[_] = N
         shape = tuple(shape)
 
