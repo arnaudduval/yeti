@@ -172,12 +172,12 @@ def eval_basis_python(degree, knotvector, knots, multiplicity= 1):
 
     return B0, B1
 
-def eval_basis_fortran(degree, nbel, knots, multiplicity= 1):
+def eval_basis_fortran(degree, knotvector, knots):
     " Evaluates B-spline functions at given knots using fortran libraries "
 
     B0, B1, indi, indj = basis_weights.get_basis_generalized_csr(
-                            degree, nbel, len(knots), knots, multiplicity)
-
+                            degree, knotvector, knots)
+                            
     return B0, B1, indi, indj
 
 # ==========================
@@ -391,8 +391,11 @@ def iga_find_basis_weights_opt(degree, knotvector):
 
     return xwq, B0, B1, W
 
-def iga_find_basis_weights_fortran(degree, nb_el): 
+def iga_find_basis_weights_fortran(degree, knotvector): 
     " Computes basis and weights "
+
+    # Set number of elements
+    nb_el = len(np.unique(knotvector))
 
     # Set number of quadrature points
     nb_qp = (degree + 1) * nb_el
@@ -402,7 +405,7 @@ def iga_find_basis_weights_fortran(degree, nb_el):
 
     # Get basis and weights from fortran
     xg, wg, B0, B1, \
-    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, nb_el, nnz_B)
+    indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, knotvector, nb_qp, nnz_B)
  
     return nnz_I, xg, wg, B0, B1, indi, indj
 
@@ -774,16 +777,16 @@ def wq_find_basis_weights_opt(degree, knotvector, r):
 
     return xwq, B0, B1, W00, W01, W10, W11
 
-def wq_find_basis_weights_fortran(degree, nbel): 
+def wq_find_basis_weights_fortran(degree, knotvector): 
     " Computes basis and weights "
 
     # Set size guessed of data arrays
-    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, nbel)
+    nnz_B, size_qp = basis_weights.wq_get_size_data(degree, knotvector)
 
     # Get basis and weights from fortran
     qp_pos, B0, B1, \
     W00, W01, W10, W11, \
-    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, nbel, nnz_B, size_qp)
+    indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, knotvector, nnz_B, size_qp)
 
     return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
     

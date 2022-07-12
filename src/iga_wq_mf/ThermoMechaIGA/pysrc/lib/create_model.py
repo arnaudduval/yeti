@@ -569,7 +569,7 @@ class thermoMechaModel():
         DB, ind = [], []
         for _ in range(self._dim):  
             B0, B1, indi, indj = eval_basis_fortran(self._degree[_][0], 
-                                                self._nb_el[_][0], knots)
+                                                self._knotvector[_][0], knots)
             DB.append([B0, B1])
             ind.append([indi, indj])
 

@@ -366,7 +366,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         for dim in range(self._dim):  
             nnz_I, qp_pos, B0, B1, W00, W01, \
-            W10, W11, indi, indj = wq_find_basis_weights_fortran(self._degree[dim][0], self._nb_el[dim][0])
+            W10, W11, indi, indj = wq_find_basis_weights_fortran(self._degree[dim][0], self._knotvector[dim][0])
             
             self._nnz_I_dim.append(nnz_I)
             self._qp_wq_dim.append(qp_pos)

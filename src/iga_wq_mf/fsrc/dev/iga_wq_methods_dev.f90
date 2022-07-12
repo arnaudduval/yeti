@@ -415,8 +415,8 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     integer :: Bint_p0
     dimension ::  Bint_p0(nb_ctrlpts, nb_qp_cgg)
 
-    double precision :: nodes
-    dimension :: nodes(nb_el+1)
+    double precision :: nodes_p0
+    dimension :: nodes_p0(nb_el+1)
 
     ! For p continuity p-2
     integer :: degree_p1, nb_el_p1, multiplicity_p1
@@ -439,7 +439,7 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     integer, allocatable, dimension(:, :) :: MIint, B1shape
     
     ! Find knots non-repeated of knot-vector
-    call get_parametric_nodes(nb_el, nodes)
+    call get_parametric_nodes(nb_el, nodes_p0)
 
     ! Define degree of test functions
     degree_p1 = degree
@@ -460,23 +460,23 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
     ! --------------------------
 
     ! Find knot-vector in WQ approach
-    call get_knotvector(degree, nb_el, nodes, size_kv, knotvector, multiplicity)
+    call get_knotvector(degree, nb_el, nodes_p0, size_kv, knotvector, multiplicity)
 
     ! Find table of functions over span
     call set_table_functions_spans(degree, nb_el, multiplicity, table_functions_span_p0)
 
     ! Find positions and weights in IGA approach
-    call iga_get_qp_positions_weights(degree, nb_el, nodes, nb_qp_cgg, qp_cgg_pos, qp_cgg_weights)
+    call iga_get_qp_positions_weights(degree, nb_el, nodes_p0, nb_qp_cgg, qp_cgg_pos, qp_cgg_weights)
 
     ! Find basis at Gauss quadrature points
-    call get_basis(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, nb_qp_cgg, qp_cgg_pos, & 
+    call get_basis(degree, nb_el, nodes_p0, nb_ctrlpts, size_kv, knotvector, nb_qp_cgg, qp_cgg_pos, & 
                     table_functions_span_p0, B0cgg_p0, B1cgg_p0)
 
     ! Find quadrature points in WQ approach
-    call wq_get_qp_positions(degree, nb_el, maxrule, nodes, nb_qp_wq, qp_wq_pos) 
+    call wq_get_qp_positions(degree, nb_el, maxrule, nodes_p0, nb_qp_wq, qp_wq_pos) 
 
     ! Find basis at WQ quadrature points
-    call get_basis(degree, nb_el, nodes, nb_ctrlpts, size_kv, knotvector, nb_qp_wq, qp_wq_pos, & 
+    call get_basis(degree, nb_el, nodes_p0, nb_ctrlpts, size_kv, knotvector, nb_qp_wq, qp_wq_pos, & 
                     table_functions_span_p0, B0wq_p0, B1wq_p0) 
 
     ! ! --------------------------
@@ -485,20 +485,20 @@ subroutine wq_get_basis_weights_generalized(degree, nb_el, nb_ctrlpts, size_kv, 
 
     ! Find knot-vector in WQ approach
     allocate(knotvector_p1(nb_knots_p1))
-    call get_knotvector(degree_p1, nb_el_p1, nodes, nb_knots_p1, knotvector_p1, multiplicity_p1)
+    call get_knotvector(degree_p1, nb_el_p1, nodes_p0, nb_knots_p1, knotvector_p1, multiplicity_p1)
 
     ! Find table of functions on span
     call set_table_functions_spans(degree_p1, nb_el_p1, multiplicity_p1, table_functions_span_p1)
 
     ! Find basis function values at Gauss points
     allocate(B0cgg_p1(nb_ctrlpts_p1, nb_qp_cgg), B1cgg_p1(nb_ctrlpts_p1, nb_qp_cgg))
-    call get_basis(degree_p1, nb_el_p1, nodes, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
+    call get_basis(degree_p1, nb_el_p1, nodes_p0, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
                     nb_qp_cgg, qp_cgg_pos, table_functions_span_p1, B0cgg_p1, B1cgg_p1) 
     deallocate(B1cgg_p1)
 
     ! Find basis function values at WQ points
     allocate(B0wq_p1(nb_ctrlpts_p1, nb_qp_wq), B1wq_p1(nb_ctrlpts_p1, nb_qp_wq))
-    call get_basis(degree_p1, nb_el_p1, nodes, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
+    call get_basis(degree_p1, nb_el_p1, nodes_p0, nb_ctrlpts_p1, nb_knots_p1, knotvector_p1, &
                     nb_qp_wq, qp_wq_pos, table_functions_span_p1, B0wq_p1, B1wq_p1) 
     deallocate(B1wq_p1)
 

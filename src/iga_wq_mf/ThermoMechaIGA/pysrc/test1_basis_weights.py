@@ -41,8 +41,9 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             # ========================================
             # FORTRAN
             # ======================================== 
+            knotvector = create_knotvector(degree, nb_el)
             _, _, dB0, dB1, dW00, dW01, \
-            dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, nb_el)
+            dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
             nb_ctrlpts = degree + nb_el
             nb_qp_wq = np.max(indj)
             indi -= 1; indj -= 1
