@@ -227,7 +227,7 @@ subroutine interpolation_3d(nb_rows_u, nb_cols_u, &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(size_data_u), data_B_v(size_data_v), data_B_w(size_data_w)
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
     double precision, intent(in) :: u_ctrlpts
     dimension :: u_ctrlpts(nb_rows_u*nb_rows_v*nb_rows_w)
 
@@ -242,22 +242,22 @@ subroutine interpolation_3d(nb_rows_u, nb_cols_u, &
     integer :: indj_T_u, indj_T_v, indj_T_w
     dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
     double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(size_data_u), data_BT_v(size_data_v), data_BT_w(size_data_w)
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
 
     ! Initialize
-    call csr2csc(1, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
+    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
                 data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(1, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
+    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
                 data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(1, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, &
+    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, &
                 data_BT_w, indj_T_w, indi_T_w)
 
     ! Interpolation
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
                                 nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
-                                size_data_u, indi_T_u, indj_T_u, data_BT_u, &
-                                size_data_v, indi_T_v, indj_T_v, data_BT_v, &
-                                size_data_w, indi_T_w, indj_T_w, data_BT_w, &
+                                size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                                size_data_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
                                 u_ctrlpts, u_interp)
 
 end subroutine interpolation_3d
@@ -372,7 +372,7 @@ subroutine interpolation_2d(nb_rows_u, nb_cols_u, &
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v)
     double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(size_data_u), data_B_v(size_data_v)
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2)
     double precision, intent(in) :: u_ctrlpts
     dimension :: u_ctrlpts(nb_rows_u*nb_rows_v)
 
@@ -387,18 +387,18 @@ subroutine interpolation_2d(nb_rows_u, nb_cols_u, &
     integer :: indj_T_u, indj_T_v
     dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v)
     double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(size_data_u), data_BT_v(size_data_v)
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2)
 
     ! Initialize
-    call csr2csc(1, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
+    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
                 data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(1, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
+    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
                 data_BT_v, indj_T_v, indi_T_v)
 
     ! Interpolation
     call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, nb_cols_v, nb_rows_v, &
-                                size_data_u, indi_T_u, indj_T_u, data_BT_u, &
-                                size_data_v, indi_T_v, indj_T_v, data_BT_v, &
+                                size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                                 u_ctrlpts, u_interp)
 
 end subroutine interpolation_2d

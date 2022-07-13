@@ -326,7 +326,7 @@ subroutine wq_get_B0_B1_shape(degree, size_kv, nodes, knotvector, maxrule, B0sha
 
 end subroutine wq_get_B0_B1_shape
 
-subroutine get_I_csr(nbr, nbc, nnz_B, data_B, indi_B, indj_B, &
+subroutine get_I_csr(nbr, nbc, nnz_B, indi_B, indj_B, &
                     nnz_I, indi_I, indj_I)
     !! Gets non-zero positions for I = B1 * B1.T in WQ and IGA approach
     !! B and I in CSR format
@@ -336,8 +336,6 @@ subroutine get_I_csr(nbr, nbc, nnz_B, data_B, indi_B, indj_B, &
     ! Input / output data
     ! -------------------
     integer, intent(in):: nbr, nbc, nnz_B, nnz_I
-    double precision, intent(in) :: data_B
-    dimension :: data_B(nnz_B)
     integer, intent(in) :: indi_B, indj_B
     dimension :: indi_B(nbr+1), indj_B(nnz_B)
     
@@ -346,23 +344,18 @@ subroutine get_I_csr(nbr, nbc, nnz_B, data_B, indi_B, indj_B, &
 
     ! Local data
     ! -------------
-    double precision :: MB
-    dimension :: MB(nbr, nbc)
-    integer :: MIint, MBint
-    dimension :: MIint(nbr, nbr), MBint(nbr, nbc)
+    double precision :: MB, MI, ones
+    dimension :: MB(nbr, nbc), MI(nbr, nbr), ones(nnz_I)
 
     ! Initialize matrix B
-    call csr2dense(nnz_B, indi_B, indj_B, data_B, nbr, nbc, MB)
-    MBint = 0
-    where (abs(MB).gt.tol)
-        MBint = 1
-    end where
+    ones = 1.d0 
+    call csr2dense(nnz_B, indi_B, indj_B, ones, nbr, nbc, MB)
 
     ! Compute I = B * B.T
-    MIint = matmul(MBint, transpose(MBint))
+    MI = matmul(MB, transpose(MB))
     
     ! Get CSR format
-    call dense2csr(nbr, nbr, MIint, nnz_I, indi_I, indj_I)
+    call dense2csr(nbr, nbr, MI, nnz_I, indi_I, indj_I)
 
 end subroutine get_I_csr
 

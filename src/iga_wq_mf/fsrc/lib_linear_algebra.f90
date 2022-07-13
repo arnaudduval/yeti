@@ -542,11 +542,12 @@ subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     !! Returns CSR format from matrix but not the values
     !! Only for integers
 
+    use constants_iga_wq_mf
     implicit none 
     ! Input / output data
     ! --------------------
     integer, intent(in) :: nr, nc, nnz
-    integer, intent(in) :: A_in 
+    double precision, intent(in) :: A_in 
     dimension :: A_in(nr, nc)
 
     integer, intent(out) :: indi_csr, indj_csr
@@ -565,7 +566,7 @@ subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
         l = 0
         do j = 1, nc
             ! Save only values greater than zero
-            if (abs(A_in(i, j)).gt.0) then
+            if (abs(A_in(i, j)).gt.tol) then
                 indj_csr(k) = j
                 k = k + 1
                 l = l + 1

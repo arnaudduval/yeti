@@ -19,7 +19,7 @@ from iga_wq_mf import assembly
 
 class thermoMechaModel(): 
 
-    def __init__(self, modelIGA: IGAparametrization, material=None, Dirichlet=None):
+    def __init__(self, modelIGA: None, material=None, Dirichlet=None):
         
         print('\nInitializing thermo-mechanical model')
 
@@ -455,7 +455,7 @@ class thermoMechaModel():
             for dim in range(self._dim):
                 indices.append(ind[dim][0])
                 indices.append(ind[dim][1])
-                data.append(DB[dim][:, 0])
+                data.append(DB[dim])
             inputs = [*self._dim*[nnz], *indices, *data, u_ctrlpts]
 
             if self._dim == 2: u_interp = assembly.interpolation_2d(*inputs)    
