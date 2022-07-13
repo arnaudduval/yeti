@@ -38,9 +38,10 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran= True):
 
     # Copy some values
     for a_in in data_in: 
+        a_in = np.atleast_2d(a_in)
         a_out = []
         for _ in range(len(indi_outt)-1): 
-            a_out.extend(a_in[indi_outt[_]:indi_outt[_+1]])
+            a_out.extend(a_in[indi_outt[_]:indi_outt[_+1], :])
         a_out = np.array(a_out)
         data_out.append(a_out)
 

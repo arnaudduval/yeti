@@ -6,7 +6,7 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
                                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                         size_data_u, size_data_v, size_data_w, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
+                                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
                                         Kdiag)
     !! Find the diagonal of conductivity matrix
     !! Indices in CSR format
@@ -28,11 +28,8 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     dimension :: indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1)
     integer, intent(in) :: indj_u, indj_v, indj_w
     dimension :: indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B0_v, data_B0_w, &
-                                    data_B1_u, data_B1_v, data_B1_w
-    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
-                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
-                    data_B0_w(size_data_w), data_B1_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
     
     double precision, intent(out) :: Kdiag
     dimension :: Kdiag(nb_rows_u*nb_rows_v*nb_rows_w)
@@ -40,107 +37,42 @@ subroutine iga_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
     ! Local data
     ! ----------------------
     ! Find diagonal
-    integer :: i
-    double precision, allocatable, dimension(:) :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
+    integer :: i, j, alpha, beta
+    dimension :: alpha(3), beta(3)
+    double precision, allocatable, dimension(:, :) :: data_W_u, data_W_v, data_W_w
 
-    allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
+    allocate(data_W_u(size_data_u, 2))
     do i = 1, size_data_u
-        data_W00_u(i) = data_B0_u(i) * W_u(indj_u(i))
-        data_W11_u(i) = data_B1_u(i) * W_u(indj_u(i))
+        data_W_u(i, :) = data_B_u(i, :) * W_u(indj_u(i))
     end do
     
-    allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
+    allocate(data_W_v(size_data_v, 2))
     do i = 1, size_data_v
-        data_W00_v(i) = data_B0_v(i) * W_v(indj_v(i))
-        data_W11_v(i) = data_B1_v(i) * W_v(indj_v(i))
+        data_W_v(i, :) = data_B_v(i, :) * W_v(indj_v(i))
     end do
 
-    allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
+    allocate(data_W_w(size_data_w, 2))
     do i = 1, size_data_w
-        data_W00_w(i) = data_B0_w(i) * W_w(indj_w(i))
-        data_W11_w(i) = data_B1_w(i) * W_w(indj_w(i))
+        data_W_w(i, :) = data_B_w(i, :) * W_w(indj_w(i))
     end do
 
     ! Initialize
     Kdiag = 0.d0
     
-    ! ----------------------------------------
-    ! For c00, c10 and c20
-    ! ----------------------------------------
-    ! Get B = B0_w x B0_v x B1_u (Kronecker product)
-    ! ---------------------
-    ! Get W = W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 1, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, Kdiag)
+    do j = 1, 3
+        do i = 1, 3
+            beta = 1; beta(j) = 2
+            alpha = 1; alpha(i) = 2
 
-    ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 1, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, Kdiag)
+            call find_physical_diag_3d(cond_coefs(i, j, :), nb_rows_u, nb_cols_u, &
+            nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
+            size_data_u, size_data_v, size_data_w, &
+            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+            data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
+            data_W_u(:, alpha(1)), data_W_v(:, alpha(2)), data_W_w(:, alpha(3)), Kdiag)
 
-    ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 1, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B1_u, data_B0_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, Kdiag)
-
-    ! ----------------------------------------
-    ! For c01, c11 and c21
-    ! ----------------------------------------
-    ! Get B = B0_w x B1_v x B0_u (Kronecker product)
-    ! ---------------------
-    ! Get W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 2, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W11_u, data_W00_v, data_W00_w, Kdiag)
-
-    ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 2, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W11_v, data_W00_w, Kdiag)
-
-    ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 2, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B1_v, data_B0_w, data_W00_u, data_W00_v, data_W11_w, Kdiag)
-
-    ! ----------------------------------------
-    ! For c02, c12 and c22
-    ! ----------------------------------------
-    ! Get B = B1_w x B0_v x B0_u (Kronecker product)
-    ! ---------------------
-    ! Get W = W00_w x W00_v x W11_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(1, 3, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W11_u, data_W00_v, data_W00_w, Kdiag)
-
-    ! Get W = W00_w x W11_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(2, 3, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W11_v, data_W00_w, Kdiag)
-
-    ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    call find_physical_diag_3d(cond_coefs(3, 3, :), nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
-    size_data_u, size_data_v, size_data_w, &
-    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    data_B0_u, data_B0_v, data_B1_w, data_W00_u, data_W00_v, data_W11_w, Kdiag)
+        end do
+    end do
 
 end subroutine iga_find_conductivity_diagonal_3d
 
@@ -153,7 +85,7 @@ subroutine iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_
     implicit none 
     ! Input / output data
     ! --------------------
-    integer, intent(in) ::  nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
+    integer, intent(in) :: nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
     double precision, intent(in) :: coefs
@@ -192,9 +124,9 @@ subroutine mf_iga_get_cu_3d(nb_rows_total, nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_B0T_u, data_B0T_v, data_B0T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B0_u, data_B0_v, data_B0_w, &
+                            data_B_u, data_B_v, data_B_w, &
                             array_input, array_output)
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
@@ -213,25 +145,17 @@ subroutine mf_iga_get_cu_3d(nb_rows_total, nb_cols_total, capacity_coefs, &
 
     ! Csr format
     integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-    dimension ::    indi_T_u(nb_cols_u+1), &
-                    indi_T_v(nb_cols_v+1), &
-                    indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
     integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indj_T_u(size_data_u), &
-                    indj_T_v(size_data_v), &
-                    indj_T_w(size_data_w)
-    double precision, intent(in) :: data_B0T_u, data_B0T_v, data_B0T_w
-    dimension :: data_B0T_u(size_data_u), data_B0T_v(size_data_v), data_B0T_w(size_data_w)
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
     integer, intent(in) :: indi_u, indi_v, indi_w
-    dimension ::    indi_u(nb_rows_u+1), &
-                    indi_v(nb_rows_v+1), &
-                    indi_w(nb_rows_w+1)
+    dimension :: indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1)
     integer, intent(in) ::  indj_u, indj_v, indj_w
-    dimension ::    indj_u(size_data_u), &
-                    indj_v(size_data_v), &
-                    indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B0_v, data_B0_w
-    dimension :: data_B0_u(size_data_u), data_B0_v(size_data_v), data_B0_w(size_data_w)
+    dimension :: indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
 
     double precision, intent(in) :: array_input
     dimension :: array_input(nb_rows_total)
@@ -241,29 +165,29 @@ subroutine mf_iga_get_cu_3d(nb_rows_total, nb_cols_total, capacity_coefs, &
 
     ! Local data 
     ! ------------------
-    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1tt
+    double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t
 
     ! Initialize
     allocate(array_temp_1(nb_cols_total))
 
     ! Eval B.transpose * array_in
     call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-    nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
-    size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w, &
-    data_B0T_w, array_input, array_temp_1)
+    nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
+    size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), size_data_w, indi_T_w, indj_T_w, &
+    data_BT_w(:, 1), array_input, array_temp_1)
 
     ! Evaluate diag(coefs) * array_temp1
-    allocate(array_temp_1tt(nb_cols_total))
+    allocate(array_temp_1t(nb_cols_total))
     call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            capacity_coefs, array_temp_1, array_temp_1tt)
+                            capacity_coefs, array_temp_1, array_temp_1t)
     deallocate(array_temp_1)
 
     ! Eval W * array_temp1
     call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1tt, array_output)
-    deallocate(array_temp_1tt)
+    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B_u(:, 1), &
+    size_data_v, indi_v, indj_v, data_B_v(:, 1), size_data_w, indi_w, indj_w, & 
+    data_B_w(:, 1), array_temp_1t, array_output)
+    deallocate(array_temp_1t)
 
 end subroutine mf_iga_get_cu_3d
 
@@ -271,9 +195,9 @@ subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
+                            data_B_u, data_B_v, data_B_w, &
                             array_input, array_output)
     !! Computes K.u in 3D case
     !! Indices must be in CSR format
@@ -292,30 +216,18 @@ subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
 
     ! Csr format
     integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-    dimension ::    indi_T_u(nb_cols_u+1), &
-                    indi_T_v(nb_cols_v+1), &
-                    indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
     integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indj_T_u(size_data_u), &
-                    indj_T_v(size_data_v), &
-                    indj_T_w(size_data_w)
-    double precision :: data_B0T_u, data_B0T_v, data_B0T_w, &
-                        data_B1T_u, data_B1T_v, data_B1T_w
-    dimension ::    data_B0T_u(size_data_u), data_B0T_v(size_data_v), data_B0T_w(size_data_w), &
-                    data_B1T_u(size_data_u), data_B1T_v(size_data_v), data_B1T_w(size_data_w)
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
 
     integer, intent(in) :: indi_u, indi_v, indi_w
-    dimension ::    indi_u(nb_rows_u+1), &
-                    indi_v(nb_rows_v+1), &
-                    indi_w(nb_rows_w+1)
-    integer, intent(in) ::  indj_u, indj_v, indj_w
-    dimension ::    indj_u(size_data_u), &
-                    indj_v(size_data_v), &
-                    indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B0_v, data_B0_w, &
-                                    data_B1_u, data_B1_v, data_B1_w
-    dimension ::    data_B0_u(size_data_u), data_B0_v(size_data_v), data_B0_w(size_data_w), &
-                    data_B1_u(size_data_u), data_B1_v(size_data_v), data_B1_w(size_data_w)
+    dimension :: indi_u(nb_rows_u+1), indi_v(nb_rows_v+1), indi_w(nb_rows_w+1)
+    integer, intent(in) :: indj_u, indj_v, indj_w
+    dimension :: indj_u(size_data_u), indj_v(size_data_v), indj_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
     
     double precision, intent(in) :: array_input
     dimension :: array_input(nb_rows_total)
@@ -326,6 +238,8 @@ subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
     ! Local data 
     ! ------------------
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t, array_temp_1tt
+    integer :: i, j, alpha, beta
+    dimension :: alpha(3), beta(3)
 
     ! Initialize
     array_output = 0.d0
@@ -333,197 +247,26 @@ subroutine mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
     allocate(array_temp_1t(nb_cols_total))
     allocate(array_temp_1tt(nb_cols_total))
 
-    ! ----------------------------------------
-    ! For c00, c10 and c20
-    ! ----------------------------------------
-    ! Get B = B0_w x B0_v x B1_u (Kronecker product)
-    ! Eval B.transpose * array_in
-    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-    nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B1T_u, & 
-    size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
-    data_B0T_w, array_input, array_temp_1)
+    do j = 1, 3
+        beta = 1; beta(j) = 2
+        call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
+            nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
+            size_data_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), size_data_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
+            array_input, array_temp_1)
 
-    ! ---------------------
-    ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(1, 1, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B1_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
+        do i = 1, 3
+            alpha = 1; alpha(i) = 2
+            call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
+                            cond_coefs(i, j, :), array_temp_1, array_temp_1t)
 
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ---------------------
-    ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(2, 1, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B1_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ---------------------
-    ! Get W = B1_w x B0_v x B0_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(3, 1, :), array_temp_1, array_temp_1t)
-
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B1_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ----------------------------------------
-    ! For c01, c11 and c21
-    ! ----------------------------------------
-    ! Get B = B0_w x B1_v x B0_u (Kronecker product)
-    ! Eval B.transpose * array_in
-    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-    nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
-    size_data_v, indi_T_v, indj_T_v, data_B1T_v, size_data_w, indi_T_w, indj_T_w,  &
-    data_B0T_w, array_input, array_temp_1)
-    
-    ! ---------------------
-    ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(1, 2, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B1_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ---------------------
-    ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(2, 2, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B1_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-    
-    ! ---------------------
-    ! Get W = B1_w x B0_v x B0_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(3, 2, :), array_temp_1, array_temp_1t) 
-
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B1_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ----------------------------------------
-    ! For c02, c12 and c22
-    ! ----------------------------------------
-    ! Get B = B1_w x B0_v x B0_u (Kronecker product)
-    ! Eval B.transpose * array_in
-    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-    nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, size_data_u, indi_T_u, indj_T_u, data_B0T_u, & 
-    size_data_v, indi_T_v, indj_T_v, data_B0T_v, size_data_w, indi_T_w, indj_T_w,  &
-    data_B1T_w, array_input, array_temp_1)
-    
-    ! ---------------------
-    ! Get W = B0_w x B0_v x B1_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(1, 3, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B1_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ---------------------
-    ! Get W = B0_w x B1_v x B0_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(2, 3, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B1_v, size_data_w, indi_w, indj_w, & 
-    data_B0_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
-
-    ! ---------------------
-    ! Get W = W11_w x W00_v x W00_u (Kronecker produt)
-    ! Evaluate diag(coefs) * array_temp1
-    call iga_diagonal_dot_vector(nb_cols_total, nb_cols_u, nb_cols_v, nb_cols_w, W_u, W_v, W_w, &
-                            cond_coefs(3, 3, :), array_temp_1, array_temp_1t)
-    
-    ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
-    nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B0_u, &
-    size_data_v, indi_v, indj_v, data_B0_v, size_data_w, indi_w, indj_w, & 
-    data_B1_w, array_temp_1t, array_temp_1tt)
-
-    !$OMP PARALLEL
-    !$OMP WORKSHARE 
-    array_output = array_output + array_temp_1tt
-    !$OMP END WORKSHARE NOWAIT
-    !$OMP END PARALLEL 
+            call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
+                nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_B_u(:, alpha(1)), &
+                size_data_v, indi_v, indj_v, data_B_v(:, alpha(2)), size_data_w, indi_w, indj_w, data_B_w(:, alpha(3)), & 
+                array_temp_1t, array_temp_1tt)
+            
+            array_output = array_output + array_temp_1tt
+        end do
+    end do
 
     deallocate(array_temp_1tt)
     deallocate(array_temp_1t)
@@ -535,9 +278,7 @@ subroutine mf_iga_get_ku_3d_csr(nb_rows_total, nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B0_u, data_B1_u, W_u, &
-                                data_B0_v, data_B1_v, W_v, &
-                                data_B0_w, data_B1_w, W_w, &
+                                data_B_u, data_B_v, data_B_w, W_u,W_v,W_w, &
                                 array_input, array_output)
     
     !! Computes K.u in 3D case
@@ -554,10 +295,8 @@ subroutine mf_iga_get_ku_3d_csr(nb_rows_total, nb_cols_total, cond_coefs, &
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w
-    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
-                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
-                    data_B0_w(size_data_w), data_B1_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
     double precision, intent(in) :: array_input
@@ -570,46 +309,27 @@ subroutine mf_iga_get_ku_3d_csr(nb_rows_total, nb_cols_total, cond_coefs, &
     ! ------------------
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
-    dimension ::    indi_T_u(nb_cols_u+1), &
-                    indi_T_v(nb_cols_v+1), &
-                    indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indj_T_u(size_data_u), &
-                    indj_T_v(size_data_v), &
-                    indj_T_w(size_data_w)
-    double precision :: data_B0T_u, data_B0T_v, data_B0T_w
-    dimension ::    data_B0T_u(size_data_u), &
-                    data_B0T_v(size_data_v), &
-                    data_B0T_w(size_data_w)
-    double precision :: data_B1T_u, data_B1T_v, data_B1T_w
-    dimension ::    data_B1T_u(size_data_u), &
-                    data_B1T_v(size_data_v), &
-                    data_B1T_w(size_data_w)
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
 
-    ! ====================================================
     ! Initialize B transpose in CSR format
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u, &
+    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, data_BT_u, &
                     indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v, &
+    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, data_BT_v, &
                     indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w, &
+    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, data_BT_w, &
                     indj_T_w, indi_T_w)
-    
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u, &
-                    indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v, &
-                    indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w, &
-                    indj_T_w, indi_T_w)
-    ! ====================================================
 
     call mf_iga_get_ku_3d(nb_rows_total, nb_cols_total, cond_coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
+                        data_B_u, data_B_v, data_B_w, &
                         array_input, array_output)
     
 end subroutine mf_iga_get_ku_3d_csr
@@ -621,9 +341,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_B1_u, W_u, &
-                        data_B0_v, data_B1_v, W_v, &
-                        data_B0_w, data_B1_w, W_w, &
+                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
                         b, nbIterations, epsilon, & 
                         Method, size_cond, conductivity, &
                         Jacob, directsol, x, RelRes, RelError)
@@ -643,10 +361,8 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w
-    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
-                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
-                    data_B0_w(size_data_w), data_B1_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2) 
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
 
@@ -676,7 +392,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:), allocatable :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
+    double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w
     double precision, dimension(:), allocatable :: preconddiag, matrixdiag
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Deigen
@@ -693,41 +409,22 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
-    dimension ::    indi_T_u(nb_cols_u+1), &
-                    indi_T_v(nb_cols_v+1), &
-                    indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indj_T_u(size_data_u), &
-                    indj_T_v(size_data_v), &
-                    indj_T_w(size_data_w)
-    double precision :: data_B0T_u, data_B0T_v, data_B0T_w
-    dimension ::    data_B0T_u(size_data_u), &
-                    data_B0T_v(size_data_v), &
-                    data_B0T_w(size_data_w)
-    double precision :: data_B1T_u, data_B1T_v, data_B1T_w
-    dimension ::    data_B1T_u(size_data_u), &
-                    data_B1T_v(size_data_v), &
-                    data_B1T_w(size_data_w)
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
 
     double precision :: c_u, c_v, c_w
     double precision :: lambda1, lambda2, lambda3
 
-    ! ====================================================
     ! Initialize B transpose in CSR format
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u, &
+    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, data_BT_u, &
                     indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v, &
+    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, data_BT_v, &
                     indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w, &
+    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, data_BT_w, &
                     indj_T_w, indi_T_w)
-    
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u, &
-                    indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v, &
-                    indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w, &
-                    indj_T_w, indi_T_w)
-    ! ====================================================
 
     ! Initiate variables
     x = 0.d0
@@ -751,10 +448,9 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
-                            p, Ap)
+                            data_B_u, data_B_v, data_B_w, p, Ap)
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -815,38 +511,35 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
         allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
         allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
         
-        allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
+        allocate(data_W_u(size_data_u, 2))
         allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
         do i = 1, size_data_u
-            data_W00_u(i) = data_B0_u(i) * W_u(indj_u(i))
-            data_W11_u(i) = data_B1_u(i) * W_u(indj_u(i))
+            data_W_u(i, :) = data_B_u(i, :) * W_u(indj_u(i))
         end do
         call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
-                                indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                                data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
-        deallocate(data_W00_u, data_W11_u)
+                                indi_u, indj_u, data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                data_W_u(:, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+        deallocate(data_W_u)
         
-        allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
+        allocate(data_W_v(size_data_v, 2))
         allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
         do i = 1, size_data_v
-            data_W00_v(i) = data_B0_v(i) * W_v(indj_v(i))
-            data_W11_v(i) = data_B1_v(i) * W_v(indj_v(i))
+            data_W_v(i, :) = data_B_v(i, :) * W_v(indj_v(i))
         end do
         call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
-                                indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                                data_W11_v, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
-        deallocate(data_W00_v, data_W11_v)
+                                indi_v, indj_v, data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                data_W_v(:, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+        deallocate(data_W_v)
 
-        allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
+        allocate(data_W_w(size_data_w, 2))
         allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
         do i = 1, size_data_w
-            data_W00_w(i) = data_B0_w(i) * W_w(indj_w(i))
-            data_W11_w(i) = data_B1_w(i) * W_w(indj_w(i))
+            data_W_w(i, :) = data_B_w(i, :) * W_w(indj_w(i))
         end do
         call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
-                                indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                                data_W11_w, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
-        deallocate(data_W00_w, data_W11_w)
+                                indi_w, indj_w, data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                data_W_w(:, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+        deallocate(data_W_w)
 
         ! Find diagonal of eigen values
         allocate(I_u(nb_rows_u), I_v(nb_rows_v), I_w(nb_rows_w))
@@ -879,8 +572,7 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                                 nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B0_u, data_B1_u, W_u, data_B0_v, data_B1_v, W_v, data_B0_w, data_B1_w, W_w, &
-                                matrixdiag)
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, matrixdiag)
                     
             print*, minval(matrixdiag), maxval(matrixdiag)
         end if
@@ -910,10 +602,9 @@ subroutine iga_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                             nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_B0T_u, data_B1T_u, data_B0T_v, data_B1T_v, data_B0T_w, data_B1T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w, &
-                            p, Ap)
+                            data_B_u, data_B_v, data_B_w, p, Ap)
 
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
@@ -951,11 +642,8 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B0_u, data_B1_u, W_u, &
-                        data_B0_v, data_B1_v, W_v, &
-                        data_B0_w, data_B1_w, W_w, &
-                        b, nbIterations, epsilon, & 
-                        x, RelRes)
+                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
+                        b, nbIterations, epsilon, x, RelRes)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         
@@ -972,10 +660,8 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
     dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
                     indi_v(nb_rows_v+1), indj_v(size_data_v), &
                     indi_w(nb_rows_w+1), indj_w(size_data_w)
-    double precision, intent(in) :: data_B0_u, data_B1_u, data_B0_v, data_B1_v, data_B0_w, data_B1_w
-    dimension ::    data_B0_u(size_data_u), data_B1_u(size_data_u), &
-                    data_B0_v(size_data_v), data_B1_v(size_data_v), &
-                    data_B0_w(size_data_w), data_B1_w(size_data_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nb_cols_u), W_v(nb_cols_v), W_w(nb_cols_w)
 
@@ -998,7 +684,7 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:), allocatable :: data_W00_u, data_W11_u, data_W00_v, data_W11_v, data_W00_w, data_W11_w
+    double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     integer :: i
 
@@ -1011,38 +697,19 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w
-    dimension ::    indi_T_u(nb_cols_u+1), &
-                    indi_T_v(nb_cols_v+1), &
-                    indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indj_T_u(size_data_u), &
-                    indj_T_v(size_data_v), &
-                    indj_T_w(size_data_w)
-    double precision :: data_B0T_u, data_B0T_v, data_B0T_w
-    dimension ::    data_B0T_u(size_data_u), &
-                    data_B0T_v(size_data_v), &
-                    data_B0T_w(size_data_w)
-    double precision :: data_B1T_u, data_B1T_v, data_B1T_w
-    dimension ::    data_B1T_u(size_data_u), &
-                    data_B1T_v(size_data_v), &
-                    data_B1T_w(size_data_w)
+    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
 
-    ! ====================================================
     ! Initialize B transpose in CSR format
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B0_u, indj_u, indi_u, data_B0T_u, &
+    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, data_BT_u, &
                     indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B0_v, indj_v, indi_v, data_B0T_v, &
+    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, data_BT_v, &
                     indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B0_w, indj_w, indi_w, data_B0T_w, &
+    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, data_BT_w, &
                     indj_T_w, indi_T_w)
-    
-    call csr2csc(nb_rows_u, nb_cols_u, size_data_u, data_B1_u, indj_u, indi_u, data_B1T_u, &
-                    indj_T_u, indi_T_u)
-    call csr2csc(nb_rows_v, nb_cols_v, size_data_v, data_B1_v, indj_v, indi_v, data_B1T_v, &
-                    indj_T_v, indi_T_v)
-    call csr2csc(nb_rows_w, nb_cols_w, size_data_w, data_B1_w, indj_w, indi_w, data_B1T_w, &
-                    indj_T_w, indi_T_w)
-    ! ====================================================
 
     ! Initiate variables
     x = 0.d0
@@ -1055,38 +722,35 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
     allocate(U_v(nb_rows_v, nb_rows_v), D_v(nb_rows_v))
     allocate(U_w(nb_rows_w, nb_rows_w), D_w(nb_rows_w))
     
-    allocate(data_W00_u(size_data_u), data_W11_u(size_data_u))
+    allocate(data_W_u(size_data_u, 2))
     allocate(Kdiag_u(nb_rows_u), Mdiag_u(nb_rows_u))
     do i = 1, size_data_u
-        data_W00_u(i) = data_B0_u(i) * W_u(indj_u(i))
-        data_W11_u(i) = data_B1_u(i) * W_u(indj_u(i))
+        data_W_u(i, :) = data_B_u(i, :) * W_u(indj_u(i))
     end do
     call eigen_decomposition(nb_rows_u, nb_cols_u, Mcoef_u, Kcoef_u, size_data_u, &
-                            indi_u, indj_u, data_B0_u, data_W00_u, data_B1_u, &
-                            data_W11_u, Method, D_u, U_u, Kdiag_u, Mdiag_u)
-    deallocate(data_W00_u, data_W11_u)
+                            indi_u, indj_u, data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                            data_W_u(:, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+    deallocate(data_W_u)
     
-    allocate(data_W00_v(size_data_v), data_W11_v(size_data_v))
+    allocate(data_W_v(size_data_v, 2))
     allocate(Kdiag_v(nb_rows_v), Mdiag_v(nb_rows_v))
     do i = 1, size_data_v
-        data_W00_v(i) = data_B0_v(i) * W_v(indj_v(i))
-        data_W11_v(i) = data_B1_v(i) * W_v(indj_v(i))
+        data_W_v(i, :) = data_B_v(i, :) * W_v(indj_v(i))
     end do
     call eigen_decomposition(nb_rows_v, nb_cols_v, Mcoef_v, Kcoef_v, size_data_v, &
-                            indi_v, indj_v, data_B0_v, data_W00_v, data_B1_v, &
-                            data_W11_v, Method, D_v, U_v, Kdiag_v, Mdiag_v)    
-    deallocate(data_W00_v, data_W11_v)
+                            indi_v, indj_v, data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                            data_W_v(:, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+    deallocate(data_W_v)
 
-    allocate(data_W00_w(size_data_w), data_W11_w(size_data_w))
+    allocate(data_W_w(size_data_w, 2))
     allocate(Kdiag_w(nb_rows_w), Mdiag_w(nb_rows_w))
     do i = 1, size_data_w
-        data_W00_w(i) = data_B0_w(i) * W_w(indj_w(i))
-        data_W11_w(i) = data_B1_w(i) * W_w(indj_w(i))
+        data_W_w(i, :) = data_B_w(i, :) * W_w(indj_w(i))
     end do
     call eigen_decomposition(nb_rows_w, nb_cols_w, Mcoef_w, Kcoef_w, size_data_w, &
-                            indi_w, indj_w, data_B0_w, data_W00_w, data_B1_w, &
-                            data_W11_w, Method, D_w, U_w, Kdiag_w, Mdiag_w)  
-    deallocate(data_W00_w, data_W11_w)
+                            indi_w, indj_w, data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                            data_W_w(:, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+    deallocate(data_W_w)
 
     ! -------------------------------------------
     ! Preconditioned Conjugate Gradient algorithm
@@ -1105,9 +769,9 @@ subroutine iga_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
                     nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                     size_data_u, size_data_v, size_data_w, W_u, W_v, W_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_B0T_u, data_B0T_v, data_B0T_w, &
+                    data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_B0_u, data_B0_v, data_B0_w, &
+                    data_B_u, data_B_v, data_B_w, &
                     p, Ap)
 
         alpha = rsold/dot_product(p, Ap)

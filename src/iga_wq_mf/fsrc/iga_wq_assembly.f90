@@ -12,7 +12,7 @@ subroutine wq_get_capacity_3d(nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             nnz_I_u, nnz_I_v, nnz_I_w, & 
                             data_result, indi_result, indj_result)
     !! Computes a matrix in 3D case
@@ -83,7 +83,7 @@ subroutine wq_get_conductivity_3d(nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, & 
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 nnz_I_u, nnz_I_v, nnz_I_w, & 
                                 data_result, indi_result, indj_result)
     !! Computes conductivity matrix in 3D case
@@ -211,7 +211,7 @@ subroutine wq_get_capacity_2d(nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, &
                             size_data_u, size_data_v, &
                             indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
                             nnz_I_u, nnz_I_v, & 
                             data_result, indi_result, indj_result)
     !! Computes a matrix in 2D case
@@ -275,7 +275,7 @@ subroutine wq_get_conductivity_2d(nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, &
                                 size_data_u, size_data_v, &
                                 indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_W_u, data_B_v, data_W_v, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, &
                                 nnz_I_u, nnz_I_v, & 
                                 data_result, indi_result, indj_result)
     !! Computes conductivity matrix in 2D case
@@ -326,8 +326,8 @@ subroutine wq_get_conductivity_2d(nb_cols_total, cond_coefs, &
     ! Compute non zero data
     nnz_result = nnz_I_u*nnz_I_v
     data_result = 0.d0
-    do j = 1, 3
-        do i = 1, 3
+    do j = 1, 2
+        do i = 1, 2
             beta = 1; beta(j) = 2
             alpha = 1; alpha(i) = 2
             zeta = alpha + (beta - 1)*2

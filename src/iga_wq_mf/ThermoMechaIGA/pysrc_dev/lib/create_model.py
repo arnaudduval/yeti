@@ -38,8 +38,8 @@ class thermoMechaModel():
         self._set_material(material)
 
         # Initialize Dirichlet boundaries
-        self._thermal_dof, self._thermal_dod,\
-        self._mechanical_dof, self._mechanical_dod = self._set_blocked_boundaries(Dirichlet)
+        self._thermalDirichlet, self._thermal_dof, self._thermal_dod,\
+        self._MechanicalDirichlet, self._mechanical_dof, self._mechanical_dod = self._set_blocked_boundaries(Dirichlet)
 
         return
 
@@ -121,19 +121,19 @@ class thermoMechaModel():
         
         # Thermal 
         try: 
-            blockedboundaries = Dirichlet['thermal']
-            Tdof, Tdod = self.block_boundaries(table_dirichlet= blockedboundaries)
+            TTable = Dirichlet['thermal']
+            Tdof, Tdod = self.block_boundaries(table_dirichlet= TTable)
         except: 
-            Tdof, Tdod = None, None
+            TTable, Tdof, Tdod = None, None, None
 
         # Mechanical 
         try: 
-            blockedboundaries = Dirichlet['mecanical']
-            Mdof, Mdod = self.block_boundaries(table_dirichlet= blockedboundaries)
+            MTable = Dirichlet['mecanical']
+            Mdof, Mdod = self.block_boundaries(table_dirichlet= MTable)
         except: 
-            Mdof, Mdod = None, None
+            MTable, Mdof, Mdod = None, None, None
 
-        return Tdof, Tdod, Mdof, Mdod
+        return TTable, Tdof, Tdod, MTable, Mdof, Mdod
 
     # =======================
     # READ FILE

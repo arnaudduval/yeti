@@ -3,20 +3,20 @@
 ! author :: Joaquin Cornejo
 ! ==========================
 
-subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, Ccoef, info)
+subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
     !! Computes coefficient for K, C matrices and F vector
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! --------------------    
-    integer, intent(in) :: dime, nnz, nnz_K, nnz_C
-    double precision, intent(in) :: JJ, KK, CC
-    dimension :: JJ(dime, dime, nnz), KK(dime, dime, nnz_K), CC(nnz_C)
+    integer, intent(in) :: dime, nnz, nnz_K
+    double precision, intent(in) :: JJ, KK
+    dimension :: JJ(dime, dime, nnz), KK(dime, dime, nnz_K)
 
     integer, intent(out) :: info
-    double precision, intent(out) :: Kcoef, Ccoef
-    dimension :: Kcoef(dime, dime, nnz), Ccoef(nnz)
+    double precision, intent(out) :: Kcoef
+    dimension :: Kcoef(dime, dime, nnz)
 
     ! Local data
     ! -----------
@@ -69,6 +69,31 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
         print*, "Error computing thermal coefficient (Conductivity)"
     end if
 
+end subroutine eval_conductivity_coefficient
+
+subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
+    !! Computes coefficient for K, C matrices and F vector
+    
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! --------------------    
+    integer, intent(in) :: dime, nnz, nnz_C
+    double precision, intent(in) :: JJ, CC
+    dimension :: JJ(dime, dime, nnz), CC(nnz_C)
+
+    integer, intent(out) :: info
+    double precision, intent(out) :: Ccoef
+    dimension :: Ccoef(nnz)
+
+    ! Local data
+    ! -----------
+    integer :: i, nb_tasks
+    double precision :: Jt, detJt
+    dimension :: Jt(dime, dime)
+
+    info = 1
+
     if (nnz_C.eq.1) then 
         !$OMP PARALLEL PRIVATE(Jt, detJt)
         nb_tasks = omp_get_num_threads()
@@ -104,7 +129,7 @@ subroutine eval_thermal_coefficient(dime, nnz, JJ, nnz_K, KK, nnz_C, CC, Kcoef, 
         print*, "Error computing thermal coefficient (Capacity) "
     end if
 
-end subroutine eval_thermal_coefficient
+end subroutine eval_capacity_coefficient
 
 subroutine jacobien_physicalposition_3d(nb_rows_u, nb_cols_u, &
                                         nb_rows_v, nb_cols_v, &

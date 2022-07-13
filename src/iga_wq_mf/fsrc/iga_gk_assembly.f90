@@ -13,7 +13,7 @@ subroutine iga_get_capacity_3d(nb_cols_total, capacity_coefs, &
                                 nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, W_u, data_B_v, W_v, data_B_w, W_w, &
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
                                 nnz_I_u, nnz_I_v, nnz_I_w, & 
                                 data_result, indi_result, indj_result)
 
@@ -106,7 +106,7 @@ subroutine iga_get_conductivity_3d(nb_cols_total, cond_coefs, &
                                     nb_rows_w, nb_cols_w, &
                                     size_data_u, size_data_v, size_data_w, &
                                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, W_u, data_B_v, W_v, data_B_w, W_w, &
+                                    data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
                                     nnz_I_u, nnz_I_v, nnz_I_w, & 
                                     data_result, indi_result, indj_result)
     !! Computes conductivity matrix in 3D case
@@ -210,7 +210,7 @@ subroutine iga_get_source_3d(nb_cols_total, source_coefs, &
                             nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, W_u, data_B_v, W_v, data_B_w, W_w, &
+                            data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, &
                             source_vector)
     !! Computes source vector in 3D case
     !! IN CSR FORMAT
@@ -275,7 +275,7 @@ subroutine iga_get_capacity_2d(nb_cols_total, capacity_coefs, &
                                 nb_rows_v, nb_cols_v, &
                                 size_data_u, size_data_v, &
                                 indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, W_u, data_B_v, W_v, &
+                                data_B_u, data_B_v, W_u, W_v, &
                                 nnz_I_u, nnz_I_v, & 
                                 data_result, indi_result, indj_result)
 
@@ -356,7 +356,7 @@ subroutine iga_get_conductivity_2d(nb_cols_total, cond_coefs, &
                                     nb_rows_v, nb_cols_v, &
                                     size_data_u, size_data_v, &
                                     indi_u, indj_u, indi_v, indj_v, &
-                                    data_B_u, W_u, data_B_v, W_v, &
+                                    data_B_u, data_B_v, W_u, W_v, &
                                     nnz_I_u, nnz_I_v, & 
                                     data_result, indi_result, indj_result)
     !! Computes conductivity matrix in 2D case
@@ -448,7 +448,7 @@ subroutine iga_get_source_2d(nb_cols_total, source_coefs, &
                             nb_rows_v, nb_cols_v, &
                             size_data_u, size_data_v, &
                             indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, W_u, data_B_v, W_v, &
+                            data_B_u, data_B_v, W_u, W_v, &
                             source_vector)
     !! Computes source vector in 2D case
     !! IN CSR FORMAT

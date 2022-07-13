@@ -7,7 +7,7 @@ subroutine wq_find_conductivity_diagonal_3d(nb_cols_total, cond_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, Kdiag)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Kdiag)
     
     use omp_lib
     use tensor_methods
@@ -157,7 +157,7 @@ subroutine mf_wq_get_cu_3d_csr( nb_rows_total, nb_cols_total, capacity_coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             array_input, array_output)
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
@@ -289,7 +289,7 @@ subroutine mf_wq_get_ku_3d( nb_cols_total, cond_coefs, &
         do i = 1, 3
             alpha = 1; alpha(i) = 2
             zeta = alpha + (beta - 1)*2
-            call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(1, 1, :), array_temp_1, array_temp_1t)
+            call wq_diagonal_dot_vector(size(array_temp_1), cond_coefs(i, j, :), array_temp_1, array_temp_1t)
 
             call tensor3d_dot_vector_sp(nb_rows_u, nb_cols_u, &
                 nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -307,7 +307,7 @@ subroutine mf_wq_get_ku_3d_csr( nb_rows_total, nb_cols_total, cond_coefs, &
                                 nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                                 size_data_u, size_data_v, size_data_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 array_input, array_output)
     
     !! Computes K.u in 3D case
@@ -506,7 +506,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
                         nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                         size_data_u, size_data_v, size_data_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                         b, nbIterations, epsilon, & 
                         Method, size_cond, conductivity, &
                         Jacob, directsol, x, RelRes, RelError)
@@ -719,7 +719,7 @@ subroutine wq_mf_cg_3d(nb_rows_total, nb_cols_total, coefs, &
             call wq_find_conductivity_diagonal_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, nb_rows_v, &
             nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, size_data_v, size_data_w, &
             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, matrixdiag)
+            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, matrixdiag)
 
         end if
 
@@ -789,7 +789,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterations, epsilon, & 
                             Method, size_cond, conductivity, & 
                             Jacob, directsol, x, RelRes, RelError)
@@ -1015,7 +1015,7 @@ subroutine wq_mf_bicgstab_3d(nb_rows_total, nb_cols_total, coefs, &
             call wq_find_conductivity_diagonal_3D(nb_cols_total, coefs, nb_rows_u, nb_cols_u, nb_rows_v, &
             nb_cols_v, nb_rows_w, nb_cols_w, size_data_u, size_data_v, size_data_w, &
             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, matrixdiag)
+            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, matrixdiag)
 
         end if
 
@@ -1105,7 +1105,7 @@ subroutine wq_mf_interp_3d(nb_rows_total, nb_cols_total, coefs, &
                             nb_rows_u, nb_cols_u, nb_rows_v, nb_cols_v, nb_rows_w, nb_cols_w, &
                             size_data_u, size_data_v, size_data_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterations, epsilon, & 
                             x, RelRes)
     
