@@ -32,9 +32,11 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
     ! Local data
     ! ----------------------
     ! Find diagonal
-    integer :: i, j, alpha, beta
+    integer :: i, j, alpha, beta, nb_tasks
     dimension :: alpha(d), beta(d)
     double precision, allocatable, dimension(:, :) :: data_W_u, data_W_v, data_W_w
+    double precision :: Kdiag_temp
+    dimension :: Kdiag_temp(nr_u*nr_v*nr_w)
 
     allocate(data_W_u(nnz_u, 2))
     do i = 1, nnz_u
@@ -54,6 +56,9 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
     ! Initialize
     Kdiag = 0.d0
     
+    !$OMP PARALLEL PRIVATE(alpha, beta, Kdiag_temp) REDUCTION(+:Kdiag)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks)  
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
@@ -61,9 +66,12 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
             call find_physical_diag_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
-                                data_W_u(:, alpha(1)), data_W_v(:, alpha(2)), data_W_w(:, alpha(3)), Kdiag)
+                                data_W_u(:, alpha(1)), data_W_v(:, alpha(2)), data_W_w(:, alpha(3)), Kdiag_temp)
+            Kdiag = Kdiag + Kdiag_temp
         end do
     end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
 
 end subroutine iga_find_conductivity_diagonal_3d
 

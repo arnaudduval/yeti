@@ -1293,7 +1293,7 @@ module tensor_methods
         dimension ::    data_B_u(nnz_u), data_B_v(nnz_v), data_B_w(nnz_w), &
                         data_W_u(nnz_u), data_W_v(nnz_v), data_W_w(nnz_w)
 
-        double precision, intent(inout) :: diag
+        double precision, intent(out) :: diag
         dimension :: diag(nr_u*nr_v*nr_w)
 
         ! Local data
@@ -1362,7 +1362,7 @@ module tensor_methods
                     Ipos = iu + (iv-1)*nr_u + (iw-1)*nr_u*nr_w
                     
                     ! Update diagonal
-                    diag(Ipos) = diag(Ipos) + sum3
+                    diag(Ipos) = sum3
 
                     deallocate(indj_nnz_u, data_nnz_B_u, data_nnz_W_u)
                     deallocate(indj_nnz_v, data_nnz_B_v, data_nnz_W_v)

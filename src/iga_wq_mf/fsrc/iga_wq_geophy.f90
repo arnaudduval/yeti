@@ -182,6 +182,9 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Compute physical position
+    !$OMP PARALLEL PRIVATE(result)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, d/nb_tasks) 
     do i = 1, d
         call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
@@ -190,8 +193,13 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
                             ctrlpts(i, :), result)
         physical_pos(i, :) = result
     end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
 
     ! Compute jacobien matrix
+    !$OMP PARALLEL PRIVATE(beta, result)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             beta = 1; beta(j) = 2
@@ -203,7 +211,9 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
             jacob(i, j, :) = result
         end do
     end do
-
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+    
     ! For det J 
     !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
@@ -310,6 +320,9 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
     ! Compute physical position
+    !$OMP PARALLEL PRIVATE(result)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, d/nb_tasks) 
     do i = 1, d
         call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
@@ -317,8 +330,13 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             ctrlpts(i, :), result)
         physical_pos(i, :) = result
     end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
 
     ! Compute jacobien matrix
+    !$OMP PARALLEL PRIVATE(beta, result)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             beta = 1; beta(j) = 2
@@ -329,6 +347,8 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             jacob(i, j, :) = result
         end do
     end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
 
     ! ---------------------------------------------------
     ! For det J 
