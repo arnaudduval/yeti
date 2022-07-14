@@ -55,6 +55,54 @@ subroutine diff_vector(times, nnz, vector_in, vector_out)
     
 end subroutine diff_vector
 
+subroutine find_unique_vector(nnz, vec, vec_unique)
+    !! Returns the non-repreated values of a vector
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nnz 
+    double precision, intent(in) :: vec
+    dimension :: vec(nnz)
+
+    double precision, intent(out) :: vec_unique
+    dimension :: vec_unique(nnz+1)
+
+    ! Local data
+    ! --------------
+    integer :: i, num, nnz_nr
+    logical, dimension(nnz) :: mask
+
+    ! Initialize
+    vec_unique = 0.d0
+
+    ! Define mask 
+    mask = .false.
+
+    do i = 1, nnz
+
+        ! Count the number of occurrences of this element:  
+        num = count(vec(i).eq.vec)
+    
+        if (num.eq.1) then  
+            ! There is only one, flag it:  
+            mask(i) = .true.  
+        else  
+            !  Flag this value only if it hasn't already been flagged:  
+            if (.not. any(vec(i).eq.vec .and. mask)) then
+                mask(i) = .true.  
+            end if
+        end if
+    
+    end do
+
+    ! Return only flagged elements
+    nnz_nr = count(mask)
+    vec_unique(1:nnz_nr) = pack(vec, mask)
+    vec_unique(nnz+1) = dble(nnz_nr)
+
+end subroutine find_unique_vector
+
 subroutine linspace(x0, xf, n, array) 
     !! Evaluates N equidistant points given the first and last points 
 
@@ -743,7 +791,8 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, &
                     do j2 = indi_B(i2), indi_B(i2+1) - 1
                         do j3 = indi_C(i3), indi_C(i3+1) - 1
                             count = count + 1
-                            indj_D_temp(count) = (indj_A(j1)-1)*nc_B*nc_C + (indj_B(j2)-1)*nc_C + indj_C(j3)
+                            indj_D_temp(count) = (indj_A(j1)-1)*nc_B*nc_C &
+                                                + (indj_B(j2)-1)*nc_C + indj_C(j3)
                         end do
                     end do
                 end do

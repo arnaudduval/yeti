@@ -1,57 +1,7 @@
 ! ==========================
 ! module :: Bspline 
 ! author :: Joaquin Cornejo
-! modules :: algebra(coo2matrix), 
-!            dersbasisfuns.f90 
 ! ==========================
-
-subroutine find_unique_vector(nnz, vec, vec_unique)
-    !! It returns the non-repreated values of a vector
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nnz 
-    double precision, intent(in) :: vec
-    dimension :: vec(nnz)
-
-    double precision, intent(out) :: vec_unique
-    dimension :: vec_unique(nnz+1)
-
-    ! Local data
-    ! --------------
-    integer :: i, num, nnz_nr
-    logical, dimension(nnz) :: mask
-
-    ! Initialize
-    vec_unique = 0.d0
-
-    ! Define mask 
-    mask = .false.
-
-    do i = 1, nnz
-
-        ! Count the number of occurrences of this element:  
-        num = count(vec(i).eq.vec)
-    
-        if (num.eq.1) then  
-            ! There is only one, flag it:  
-            mask(i) = .true.  
-        else  
-            !  Flag this value only if it hasn't already been flagged:  
-            if (.not. any(vec(i).eq.vec .and. mask)) then
-                mask(i) = .true.  
-            end if
-        end if
-    
-    end do
-
-    ! Return only flagged elements
-    nnz_nr = count(mask)
-    vec_unique(1:nnz_nr) = pack(vec, mask)
-    vec_unique(nnz+1) = dble(nnz_nr)
-
-end subroutine find_unique_vector
 
 subroutine find_knotvector_span(degree, size_kv, knotvector, x, span)
     !! Finds the span of a given knot within the knot-vector
@@ -160,10 +110,11 @@ subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table)
 
     ! Local data
     ! -------------
-    integer :: i, j, multiplicity
+    integer :: i, j, nbel, multiplicity
 
     ! Initialize 
     table = 0
+    nbel = int(nodes(size_kv+1)) - 1
 
     ! Fist line of the table
     do j = 1, degree+1
@@ -171,7 +122,7 @@ subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table)
     end do
 
     ! Set table of functions on span 
-    do i = 2, int(nodes(size_kv+1))-1
+    do i = 2, nbel
         call find_multiplicity(size_kv, knotvector, nodes(i), multiplicity)
         table(i, 1) = table(i-1, 1) + multiplicity
         do j = 2, degree+1
@@ -204,8 +155,8 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
     dimension :: B0temp(degree+1), B1temp(degree+1)
     double precision :: data_B0, data_B1
     dimension :: data_B0((degree+1)*nb_knots), data_B1((degree+1)*nb_knots)
-    integer :: ind
-    dimension :: ind((degree+1)*nb_knots, 2)
+    integer :: indices
+    dimension :: indices((degree+1)*nb_knots, 2)
 
     ! Set number of control points
     nb_ctrlpts = size_kv - degree - 1
@@ -234,30 +185,30 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
             k = (i - 1)*(degree + 1) + j
             data_B0(k) = B0temp(j)
             data_B1(k) = B1temp(j)
-            ind(k, :) = [functions_span(j), i]                                
+            indices(k, :) = [functions_span(j), i]                                
         end do
     end do
 
     ! Matrix construction
-    call coo2dense(size(data_B0), ind(:, 1), ind(:, 2), data_B0, nb_ctrlpts, nb_knots, B0)
-    call coo2dense(size(data_B1), ind(:, 1), ind(:, 2), data_B1, nb_ctrlpts, nb_knots, B1)
+    call coo2dense(size(data_B0), indices(:, 1), indices(:, 2), data_B0, nb_ctrlpts, nb_knots, B0)
+    call coo2dense(size(data_B1), indices(:, 1), indices(:, 2), data_B1, nb_ctrlpts, nb_knots, B1)
 
 end subroutine get_basis
 
-subroutine create_knotvector(degree, nbel, multiplicity, nodes, knotvector)
+subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
     !! Gets an open uniform maximum regularity knot-vector
 
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in):: degree, nbel, multiplicity
+    integer, intent(in):: degree, nbel
 
     double precision, intent(out) :: nodes, knotvector 
     dimension :: knotvector(nbel+2*degree+1), nodes(nbel+2*degree+2)
 
     ! Local data
     ! -------------
-    integer ::  i, j, c
+    integer ::  i, c
 
     ! Create nodes
     ! =============
@@ -282,10 +233,8 @@ subroutine create_knotvector(degree, nbel, multiplicity, nodes, knotvector)
     end do
 
     do i = 2, nbel
-        do j = 1, multiplicity
-            knotvector(c) = nodes(i)
-            c = c + 1
-        end do
+        knotvector(c) = nodes(i)
+        c = c + 1
     end do
 
     ! Set p+1 last values of knot vector 
@@ -294,4 +243,4 @@ subroutine create_knotvector(degree, nbel, multiplicity, nodes, knotvector)
         c = c + 1
     end do
         
-end subroutine create_knotvector
+end subroutine create_uniform_knotvector

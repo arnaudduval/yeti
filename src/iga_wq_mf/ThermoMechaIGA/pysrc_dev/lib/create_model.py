@@ -321,18 +321,16 @@ class thermoMechaModel():
         
         return J, PPS, detJ
 
-    def eval_thermal_coefficient(self, nnz, JJ, KK, CC): 
+    def eval_conductivity_coefficient(self, JJ, KK): 
         " Computes coefficients at points P in parametric space "
 
         print('Getting conductivity and capacity coefficients')
         start = time.time()
-
-        Kcoef = np.zeros(np.shape(JJ))
-        Ccoef = np.zeros(nnz)
-
+        
         # Transform Kprop and Cprop
         KK = np.atleast_3d(KK)
-        CC = np.atleast_1d(CC)
+        nnz = np.shape(JJ)[2]
+        Kcoef = np.zeros(np.shape(JJ))
 
         if np.shape(KK)[2] == 1:
             for i in range(nnz): 
@@ -359,6 +357,22 @@ class thermoMechaModel():
         else: 
             raise Warning('Something happen, it is not possible to compute coefficients')
 
+        stop = time.time()
+        print('\tConductivity coefficients in : %.5f s' %(stop-start))
+
+        return Kcoef
+
+    def eval_capacity_coefficient(self, JJ, CC): 
+        " Computes coefficients at points P in parametric space "
+
+        print('Getting conductivity and capacity coefficients')
+        start = time.time()
+
+        # Transform Kprop and Cprop
+        CC = np.atleast_1d(CC)
+        nnz = np.shape(JJ)[2]
+        Ccoef = np.zeros(nnz)
+        
         if len(CC) == 1:
             for i in range(nnz): 
                 # Find determinant of Jacobien 
@@ -379,9 +393,9 @@ class thermoMechaModel():
             raise Warning('Something happen, it is not possible to compute coefficients')
 
         stop = time.time()
-        print('\tConductivity and capacity coefficients in : %.5f s' %(stop-start))
+        print('\tCapacity coefficients in : %.5f s' %(stop-start))
 
-        return Kcoef, Ccoef
+        return Ccoef
 
     def eval_source_coefficient(self, fun, qp, det): 
         " Computes coefficients at points P in parametric space "
