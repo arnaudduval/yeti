@@ -4,7 +4,7 @@
 ! ==========================
 
 subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
-    !! Computes coefficient for K, C matrices and F vector
+    !! Computes coefficient for K
     
     use omp_lib
     implicit none 
@@ -28,8 +28,8 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 
     info = 1
 
-    ! Verifiy nnz_KK value
     if (nnz_K.eq.1) then 
+
         !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
@@ -46,7 +46,9 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
+
     else if (nnz_K.eq.nnz) then 
+
         !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
@@ -60,7 +62,6 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
             ! For K = invJ * prop * detJ * transpose(invJ) 
             Kt = detJt * matmul(invJt, KK(:, :, i)) 
             Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
-
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
@@ -72,7 +73,7 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 end subroutine eval_conductivity_coefficient
 
 subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
-    !! Computes coefficient for K, C matrices and F vector
+    !! Computes coefficient for C 
     
     use omp_lib
     implicit none 
@@ -95,6 +96,7 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
     info = 1
 
     if (nnz_C.eq.1) then 
+
         !$OMP PARALLEL PRIVATE(Jt, detJt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
@@ -110,6 +112,7 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
         !$OMP END PARALLEL 
 
     else if (nnz_C.eq.nnz) then
+
         !$OMP PARALLEL PRIVATE(Jt, detJt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
@@ -131,14 +134,11 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
 
 end subroutine eval_capacity_coefficient
 
-subroutine jacobien_physicalposition_3d(nb_rows_u, nb_cols_u, &
-                                        nb_rows_v, nb_cols_v, &
-                                        nb_rows_w, nb_cols_w, &
-                                        size_data_u, size_data_v, size_data_w, &
+subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B_u, data_B_v, data_B_w, &
-                                        ctrlpts, jacob, physical_pos, detJ)
-    !! Computes jacobien in 3D case
+                                        data_B_u, data_B_v, data_B_w, ctrlpts, &
+                                        jacob, physical_pos, detJ)
+    !! Computes jacobien matrix and physical position in 3D case
     !! IN CSR FORMAT
     
     use omp_lib
@@ -146,84 +146,71 @@ subroutine jacobien_physicalposition_3d(nb_rows_u, nb_cols_u, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
-                            nb_cols_u, nb_cols_v, nb_cols_w, &
-                            size_data_u, size_data_v, size_data_w
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
-                    indi_v(nb_rows_v+1), indj_v(size_data_v), &
-                    indi_w(nb_rows_w+1), indj_w(size_data_w)
+    integer, parameter :: d = 3
+    integer, intent(in) :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: ctrlpts
-    dimension :: ctrlpts(3, nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: ctrlpts(3, nr_u*nr_v*nr_w)
 
-    double precision, intent(out) :: jacob
-    dimension :: jacob(3, 3, nb_cols_u*nb_cols_v*nb_cols_w)
-    double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(3, nb_cols_u*nb_cols_v*nb_cols_w)
-    double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_u*nb_cols_v*nb_cols_w)
+    double precision, intent(out) :: jacob, physical_pos, detJ
+    dimension ::    jacob(3, 3, nc_u*nc_v*nc_w), &
+                    physical_pos(3, nc_u*nc_v*nc_w), &
+                    detJ(nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------------
-    integer :: i, j, k, nb_tasks, alpha
-    dimension :: alpha(3)
-    double precision :: result_temp, detJt
-    dimension ::  result_temp(nb_cols_u*nb_cols_v*nb_cols_w)
+    integer :: i, j, k, nb_tasks, beta
+    dimension :: beta(d)
+    double precision :: result, detJt
+    dimension :: result(nc_u*nc_v*nc_w)
 
-    ! Csr format (Transpose)
     integer :: indi_T_u, indi_T_v, indi_T_w
-    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
-    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
     double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
     ! Initialize
-    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
-                data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
-                data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, &
-                data_BT_w, indj_T_w, indi_T_w)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Compute physical position
-    do i = 1, 3
-        call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-                            nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
-                            size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            size_data_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
-                            ctrlpts(i, :), result_temp)
-        physical_pos(i, :) = result_temp
+    do i = 1, d
+        call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
+                            ctrlpts(i, :), result)
+        physical_pos(i, :) = result
     end do
 
     ! Compute jacobien matrix
-    do j = 1, 3
-        do i = 1, 3
-            alpha = 1; alpha(j) = 2
-            call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-                            nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
-                            size_data_u, indi_T_u, indj_T_u, data_BT_u(:, alpha(1)), &
-                            size_data_v, indi_T_v, indj_T_v, data_BT_v(:, alpha(2)), &
-                            size_data_w, indi_T_w, indj_T_w, data_BT_w(:, alpha(3)), &
-                            ctrlpts(i, :), result_temp)
-            jacob(i, j, :) = result_temp
+    do j = 1, d
+        do i = 1, d
+            beta = 1; beta(j) = 2
+            call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
+                            ctrlpts(i, :), result)
+            jacob(i, j, :) = result
         end do
     end do
 
-    ! ---------------------------------------------------
     ! For det J 
-    ! ---------------------------------------------------
     !$OMP PARALLEL PRIVATE(detJt)
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, size(detJ)/nb_tasks) 
     do k = 1, size(detJ)
         ! Evaluate determinant
         call MatrixDet(jacob(:, :, k), detJt, 3)
-
-        ! Assign values
         detJ(k) = detJt
     end do
     !$OMP END DO NOWAIT
@@ -231,10 +218,7 @@ subroutine jacobien_physicalposition_3d(nb_rows_u, nb_cols_u, &
 
 end subroutine jacobien_physicalposition_3d
 
-subroutine interpolation_3d(nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            nb_rows_w, nb_cols_w, &
-                            size_data_u, size_data_v, size_data_w, &
+subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
@@ -243,56 +227,47 @@ subroutine interpolation_3d(nb_rows_u, nb_cols_u, &
     use tensor_methods
     implicit none 
     ! Input/ output
-    ! --------------------   
-    integer, intent(in) ::  nb_rows_u, nb_rows_v, nb_rows_w, &
-                            nb_cols_u, nb_cols_v, nb_cols_w, &
-                            size_data_u, size_data_v, size_data_w
+    ! --------------------  
+    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
-                    indi_v(nb_rows_v+1), indj_v(size_data_v), &
-                    indi_w(nb_rows_w+1), indj_w(size_data_w)
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2), data_B_w(size_data_w, 2)
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nb_rows_u*nb_rows_v*nb_rows_w)
+    dimension :: u_ctrlpts(nr_u*nr_v*nr_w)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nb_cols_u*nb_cols_v*nb_cols_w)
+    dimension :: u_interp(nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------------
-    ! Csr format (Transpose)
     integer :: indi_T_u, indi_T_v, indi_T_w
-    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1), indi_T_w(nb_cols_w+1)
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
-    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v), indj_T_w(size_data_w)
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
     double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2), data_BT_w(size_data_w, 2)
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
     ! Initialize
-    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
-                data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
-                data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nb_rows_w, nb_cols_w, size_data_w, data_B_w, indj_w, indi_w, &
-                data_BT_w, indj_T_w, indi_T_w)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Interpolation
-    call tensor3d_dot_vector_sp(nb_cols_u, nb_rows_u, &
-                                nb_cols_v, nb_rows_v, nb_cols_w, nb_rows_w, &
-                                size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                                size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                                size_data_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
+    call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
                                 u_ctrlpts, u_interp)
 
 end subroutine interpolation_3d
 
-subroutine jacobien_physicalposition_2d(nb_rows_u, nb_cols_u, &
-                                        nb_rows_v, nb_cols_v, &
-                                        size_data_u, size_data_v, &
+subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                         indi_u, indj_u, indi_v, indj_v, &
-                                        data_B_u, data_B_v, &
-                                        ctrlpts, jacob, physical_pos, detJ)
+                                        data_B_u, data_B_v, ctrlpts, &
+                                        jacob, physical_pos, detJ)
     !! Computes jacobien in 2D case
     !! IN CSR FORMAT
     
@@ -301,62 +276,57 @@ subroutine jacobien_physicalposition_2d(nb_rows_u, nb_cols_u, &
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) :: nb_rows_u, nb_rows_v, nb_cols_u, nb_cols_v, size_data_u, size_data_v
+    integer, parameter :: d = 2
+    integer, intent(in) :: nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
-                    indi_v(nb_rows_v+1), indj_v(size_data_v)
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2)
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: ctrlpts
-    dimension :: ctrlpts(2, nb_rows_u*nb_rows_v)
+    dimension :: ctrlpts(2, nr_u*nr_v)
 
-    double precision, intent(out) :: jacob
-    dimension :: jacob(2, 2, nb_cols_u*nb_cols_v)
-    double precision, intent(out) :: physical_pos
-    dimension :: physical_pos(2, nb_cols_u*nb_cols_v)
-    double precision, intent(out) :: detJ
-    dimension :: detJ(nb_cols_u*nb_cols_v)
+    double precision, intent(out) :: jacob, physical_pos, detJ
+    dimension ::    jacob(2, 2, nc_u*nc_v), &
+                    physical_pos(2, nc_u*nc_v), &
+                    detJ(nc_u*nc_v)
 
     ! Local data
     !-----------------
-    integer :: i, j, k, nb_tasks, alpha
-    dimension :: alpha(2)
-    double precision :: result_temp
-    dimension ::  result_temp(nb_cols_u*nb_cols_v)
-    double precision :: detJt
+    integer :: i, j, k, nb_tasks, beta
+    dimension :: beta(2)
+    double precision :: result, detJt
+    dimension ::  result(nc_u*nc_v)
 
-    ! Csr format (Transpose)
     integer :: indi_T_u, indi_T_v
-    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1)
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
     integer ::  indj_T_u, indj_T_v
-    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v)
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
     double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2)
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
 
     ! Initialize
-    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
-                data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
-                data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
     ! Compute physical position
-    do i = 1, 3
-        call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, nb_cols_v, nb_rows_v, &
-                            size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            ctrlpts(i, :), result_temp)
-        physical_pos(i, :) = result_temp
+    do i = 1, d
+        call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            ctrlpts(i, :), result)
+        physical_pos(i, :) = result
     end do
 
     ! Compute jacobien matrix
-    do j = 1, 2
-        do i = 1, 2
-            alpha = 1; alpha(j) = 2
-            call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, nb_cols_v, nb_rows_v, &
-                            size_data_u, indi_T_u, indj_T_u, data_BT_u(:, alpha(1)), &
-                            size_data_v, indi_T_v, indj_T_v, data_BT_v(:, alpha(2)), &
-                            ctrlpts(i, :), result_temp)
-            jacob(i, j, :) = result_temp
+    do j = 1, d
+        do i = 1, d
+            beta = 1; beta(j) = 2
+            call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
+                            ctrlpts(i, :), result)
+            jacob(i, j, :) = result
         end do
     end do
 
@@ -369,8 +339,6 @@ subroutine jacobien_physicalposition_2d(nb_rows_u, nb_cols_u, &
     do k = 1, size(detJ)
         ! Evaluate determinant
         call MatrixDet(jacob(:, :, k), detJt, 2)
-
-        ! Assign values
         detJ(k) = detJt
     end do
     !$OMP END DO NOWAIT
@@ -378,9 +346,7 @@ subroutine jacobien_physicalposition_2d(nb_rows_u, nb_cols_u, &
 
 end subroutine jacobien_physicalposition_2d
 
-subroutine interpolation_2d(nb_rows_u, nb_cols_u, &
-                            nb_rows_v, nb_cols_v, &
-                            size_data_u, size_data_v, &
+subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
@@ -390,40 +356,35 @@ subroutine interpolation_2d(nb_rows_u, nb_cols_u, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) ::  nb_rows_u, nb_rows_v, &
-                            nb_cols_u, nb_cols_v, &
-                            size_data_u, size_data_v
+    integer, intent(in) ::  nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nb_rows_u+1), indj_u(size_data_u), &
-                    indi_v(nb_rows_v+1), indj_v(size_data_v)
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(size_data_u, 2), data_B_v(size_data_v, 2)
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nb_rows_u*nb_rows_v)
+    dimension :: u_ctrlpts(nr_u*nr_v)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nb_cols_u*nb_cols_v)
+    dimension :: u_interp(nc_u*nc_v)
 
     ! Local data
     !-----------------
-    ! Csr format (Transpose)
     integer :: indi_T_u, indi_T_v
-    dimension :: indi_T_u(nb_cols_u+1), indi_T_v(nb_cols_v+1)
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
     integer :: indj_T_u, indj_T_v
-    dimension :: indj_T_u(size_data_u), indj_T_v(size_data_v)
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
     double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(size_data_u, 2), data_BT_v(size_data_v, 2)
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
 
     ! Initialize
-    call csr2csc(2, nb_rows_u, nb_cols_u, size_data_u, data_B_u, indj_u, indi_u, &
-                data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nb_rows_v, nb_cols_v, size_data_v, data_B_v, indj_v, indi_v, &
-                data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
     ! Interpolation
-    call tensor2d_dot_vector_sp(nb_cols_u, nb_rows_u, nb_cols_v, nb_rows_v, &
-                                size_data_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                                size_data_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+    call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
+                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                                 u_ctrlpts, u_interp)
 
 end subroutine interpolation_2d

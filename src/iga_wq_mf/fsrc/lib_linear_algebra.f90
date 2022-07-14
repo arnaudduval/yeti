@@ -17,6 +17,35 @@ end module constants_iga_wq_mf
 ! -------------------
 ! Vector and matrices
 ! -------------------
+subroutine scale_vector(nnz, factor_up, factor_down, vector)
+    !! Scaling in fast diagonalization
+
+    use omp_lib
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: factor_up, factor_down
+    dimension :: factor_up(nnz), factor_down(nnz)
+
+    double precision, intent(inout) :: vector
+    dimension :: vector(nnz)
+
+    ! Local data
+    ! -------------
+    integer :: i, nb_tasks
+
+    !$OMP PARALLEL 
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+    do i = 1, nnz
+        vector(i) = sqrt(factor_up(i)/factor_down(i)) * vector(i) 
+    end do  
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+
+end subroutine scale_vector
+
 subroutine diff_vector(times, nnz, vector_in, vector_out)
     !! Returns the difference between elements of array
 
