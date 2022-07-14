@@ -9,9 +9,7 @@ from geomdl import (
     BSpline, 
     operations,
 )
-import matplotlib.pyplot as plt
-import math, numpy as np
-import copy, time
+import os, copy, time, math, numpy as np
 
 # My libraries
 from .base_functions import create_knotvector
@@ -21,20 +19,20 @@ from preprocessing.igaparametrization import IGAparametrization
 
 class geomdlModel(): 
 
-    def __init__(self, filename= None, **geometry: None): 
+    def __init__(self, name= None, **geometry: None): 
 
-        if filename is None:
-            raise Warning('Insert filename')
+        if name is None:
+            raise Warning('Insert the name of the part')
         else : 
             # Set name of object
-            self._name = filename
+            self._name = name
 
         # Set number of samples
         self._sample_size = 101
 
-        print('\nCreating geometry: ' + filename + '...')
+        print('\nCreating geometry: ' + name + '...')
         start = time.time()
-        if filename == 'quarter_annulus' or filename == 'QA':
+        if name == 'quarter_annulus' or name == 'QA':
             # Set number of dimension 
             self._dim = 2
 
@@ -44,7 +42,7 @@ class geomdlModel():
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 3, 2])
             self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
 
-        elif filename == 'quadrilateral' or filename == 'SQ':
+        elif name == 'quadrilateral' or name == 'SQ':
             # Set number of dimension
             self._dim = 2
             
@@ -53,7 +51,7 @@ class geomdlModel():
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
 
-        elif filename == 'parallelepiped' or filename == 'CB': 
+        elif name == 'parallelepiped' or name == 'CB': 
             # Set number of dimension
             self._dim = 3
             
@@ -64,7 +62,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'thick_ring' or filename == 'TR':
+        elif name == 'thick_ring' or name == 'TR':
             # Set number of dimension 
             self._dim = 3
 
@@ -75,7 +73,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
             self._geometry = self.create_thick_ring(Rin, Rout, Height, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'rotated_quarter_annulus' or filename == 'RQA':
+        elif name == 'rotated_quarter_annulus' or name == 'RQA':
             # Set number of dimension 
             self._dim = 3
 
@@ -86,7 +84,7 @@ class geomdlModel():
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
             self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
 
-        elif filename == 'prism' or filename == 'VB':
+        elif name == 'prism' or name == 'VB':
             # Set number of dimension
             self._dim = 3
             
@@ -103,37 +101,6 @@ class geomdlModel():
         print('\tBasic geometry created in: %.3e s' %(stop-start))
 
         # Update data
-        self.update_geometry()
-
-        return
-
-    def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
-        "Refine geometry following each direction. It is slow because it uses python methods"
-
-        start = time.time()
-        # Copy geometry
-        geometry = copy.deepcopy(self._geometry)
-
-        # Set new number of elements
-        cuts = nb_refinementByDirection
-        nbel = [2**cuts[dim]*self._nb_el[dim] for dim in range(self._dim)]
-
-        # Create knots to be inserted
-        knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
-
-        # Insert knots
-        for dim in range(self._dim):
-            multiplicity = np.zeros(self._dim, dtype= int)
-            multiplicity[dim] = 1
-            for knot in knotvector_insert[dim]: 
-                knot_insert = np.zeros(self._dim)
-                knot_insert[dim] = knot
-                operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
-        self._geometry = geometry
-        stop = time.time()
-        print('Knot refinement in: %.3e s' %(stop-start))
-
-        # Update values
         self.update_geometry()
 
         return
@@ -173,26 +140,30 @@ class geomdlModel():
         self._nb_ctrlpts_total = np.product(self._nb_ctrlpts)
 
         if self._dim == 2: 
+            c = 0
             ctrlpts_old = obj._control_points
-            ctrlpts_new = []
+            ctrlpts_new = np.zeros((self._dim, self._nb_ctrlpts_total))
             for j in range(self._nb_ctrlpts[1]):
                 for i in range(self._nb_ctrlpts[0]):
                     pos = j + i*self._nb_ctrlpts[1]
                     ctrlpts_temp = ctrlpts_old[pos]
-                    ctrlpts_new.append(ctrlpts_temp)
+                    ctrlpts_new[:, c] = ctrlpts_temp
+                    c += 1 
 
         elif self._dim == 3: 
+            c =  0
             ctrlpts_old = obj._control_points
-            ctrlpts_new = []
+            ctrlpts_new = np.zeros((self._dim, self._nb_ctrlpts_total))
             for k in range(self._nb_ctrlpts[2]):
                 for j in range(self._nb_ctrlpts[1]):
                     for i in range(self._nb_ctrlpts[0]):
                         pos = j + i*self._nb_ctrlpts[1] + k*self._nb_ctrlpts[1]*self._nb_ctrlpts[0]
                         ctrlpts_temp = ctrlpts_old[pos]
-                        ctrlpts_new.append(ctrlpts_temp)
+                        ctrlpts_new[:, c] = ctrlpts_temp
+                        c += 1 
 
         # Update control points
-        self._ctrlpts = np.array(ctrlpts_new)
+        self._ctrlpts = ctrlpts_new
         stop = time.time()
         print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
 
@@ -235,7 +206,8 @@ class geomdlModel():
                     %(self._nb_ctrlpts_total, self._dim, self._nb_ctrlpts_total))
             f.write(array2txt(np.arange(self._dim)+1, format='%d'))
             f.write('\n*Node,nset=AllNode\n')
-            for i, CP in enumerate(self._ctrlpts):
+            for i in range(self._nb_ctrlpts_total):
+                CP = self._ctrlpts[:, i]
                 f.write('%d, %.15f, %.15f, %.15f\n' %(i+1, CP[0], CP[1], CP[2]))
             f.write('*Element,type=U1,elset=AllEls\n1,\t')
             f.write(array2txt(np.arange(self._nb_ctrlpts_total, 0, -1), format='%d'))
@@ -247,7 +219,7 @@ class geomdlModel():
             f.write('*Instance, name=I1, part=%s\n' %self._name)
             f.write('*End Instance\n*End Assembly\n')
             f.write('**MATERIAL\n*MATERIAL,NAME=Mat\n*Elastic\n')
-            f.write('%f, %f\n' %(3e3, 0.3))
+            f.write('%f, %f\n' %(3e3, 0.3)) 
             f.write('*STEP,extrapolation=NO,NLGEOM=NO\n*Static\n')
             f.write('** OUTPUT REQUESTS\n*node file,frequency=1\nU,RF,CF\n*el file,frequency=1\nSDV\n*End Step')
 
@@ -296,6 +268,54 @@ class geomdlModel():
             f.write(array2txt(np.ones(self._nb_ctrlpts_total)))
             
         return
+
+    def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
+        "Refine geometry following each direction. It is slow because it uses python methods"
+
+        start = time.time()
+        # Copy geometry
+        geometry = copy.deepcopy(self._geometry)
+
+        # Set new number of elements
+        cuts = nb_refinementByDirection
+        nbel = [2**cuts[dim]*self._nb_el[dim] for dim in range(self._dim)]
+
+        # Create knots to be inserted
+        knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
+
+        # Insert knots
+        for dim in range(self._dim):
+            multiplicity = np.zeros(self._dim, dtype= int)
+            multiplicity[dim] = 1
+            for knot in knotvector_insert[dim]: 
+                knot_insert = np.zeros(self._dim)
+                knot_insert[dim] = knot
+                operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
+        self._geometry = geometry
+        stop = time.time()
+        print('Knot refinement in: %.3e s' %(stop-start))
+
+        # Update values
+        self.update_geometry()
+
+        return
+
+    def export_IGAparametrization(self, nb_refinementByDirection= np.array([0,0,0])):
+        "Refine geometry following each direction. It is very fast"
+
+        # Write file abaqus
+        self.write_abaqus_file(filename=self._name)
+
+        # Discretisize the part
+        modelIGA = IGAparametrization(filename= self._name)
+        modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
+
+        # Clean files created
+        os.remove(self._name+'.inp')
+        os.remove(self._name+'.NB')
+        os.remove(self._name+'.save')
+
+        return modelIGA
 
     # -----------------------------------
     # CREATE GEOMETRY
@@ -735,112 +755,3 @@ class geomdlModel():
 
         return vol
 
-    # -----------------------------------
-    # PLOT 2D GEOMETRY
-    # -----------------------------------
-    def plot_2D_geometry(self):
-
-        def plot_mesh(pts, shape, ax):
-
-            if pts.shape[1] == 3:
-                pts = pts[:, :2]
-
-            pts2D = []
-            for j in range(shape[1]):
-                pts_temp = []
-                for i in range(shape[0]):
-                    pos = i + j*shape[0]
-                    pts_temp.append(pts[pos, :].tolist())
-                pts2D.append(pts_temp)
-            pts2D = np.asarray(pts2D)
-
-            # In the first direction
-            for _ in range(shape[1]): 
-                x = pts2D[_, :, 0]
-                y = pts2D[_, :, 1]
-                ax.plot(x, y, 'k--')
-
-            # In the second direction
-            for _ in range(shape[0]):
-                x = pts2D[:, _, 0]
-                y = pts2D[:, _, 1]
-                ax.plot(x, y, 'k--')
-
-            return
-
-        if self._dim[0] != 2:
-            raise Warning('Only can plot 2D parts')
-
-        # Get geometry
-        geometry = self._geometry
-        N = geometry.sample_size[0]
-
-        # Control points
-        ctrlpts = np.asarray(self._ctrlpts)
-
-        # Control points in 2d
-        shape_ctrlpts = [1, 1]
-        for _ in range(self._dim):
-            shape_ctrlpts[_] = self._nb_ctrlpts[_]
-        shape_ctrlpts = tuple(shape_ctrlpts)
-
-        # Set shape
-        shape = [1, 1]
-        for _ in range(self._dim):
-            shape[_] = N
-        shape = tuple(shape)
-
-        # Get eval points
-        evalpts_old = np.array(geometry.evalpts)
-        evalpts_new = []
-        for j in range(N):
-            for i in range(N):
-                pos = j + i*N
-                evalpts_temp = evalpts_old[pos, :]
-                evalpts_new.append(evalpts_temp.tolist())
-
-        # Set values
-        evalpts_new = np.asarray(evalpts_new) 
-        X = np.asarray(evalpts_new[:,0].reshape(shape).tolist())
-        Y = np.asarray(evalpts_new[:,1].reshape(shape).tolist())
-        Z = np.zeros(X.shape)
-
-        # Plot
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o', markersize=10, label= 'Control points')
-        ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading = 'gouraud', label='B-spline surface')
-        plot_mesh(ctrlpts, shape_ctrlpts, ax)
-        ax.set_xticks(np.arange(0, max(evalpts_new[:,0])+1, 1.0))
-        ax.set_yticks(np.arange(0, max(evalpts_new[:,1])+1, 1.0))
-
-        # Set parameters
-        ax.axis('equal')
-        ax.legend(prop={'size': 14})
-        ax.tick_params(axis='both', which='major', labelsize=16)
-        ax.set_xlabel('X', fontsize=16)
-        ax.set_ylabel('Y', fontsize=16)
-        fig.tight_layout()
-        
-        return fig
-
-def create_geometry(degree, cuts, geoName, folder= None):
-
-    if folder == None: 
-        import os
-        full_path = os.path.realpath(__file__)
-        dirname = os.path.dirname
-        folder = dirname(dirname(full_path)) + '/results/geometry/'
-        if not os.path.isdir(folder): os.mkdir(folder)
-
-    # Create basic model (only one element)
-    geoProp = {'degree': [degree, degree, degree]}
-    modelGeo = geomdlModel(filename= geoName, **geoProp)
-    modelGeo.write_abaqus_file(filename= folder + geoName)
-    del modelGeo
-
-    # Discretisize the part
-    modelIGA = IGAparametrization(filename= folder + geoName)
-    modelIGA.refine(nb_refinementByDirection=np.array([cuts, cuts, cuts]))
-
-    return modelIGA

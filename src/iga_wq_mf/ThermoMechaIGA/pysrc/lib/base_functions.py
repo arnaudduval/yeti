@@ -38,9 +38,10 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran= True):
 
     # Copy some values
     for a_in in data_in: 
+        a_in = np.atleast_2d(a_in)
         a_out = []
         for _ in range(len(indi_outt)-1): 
-            a_out.extend(a_in[indi_outt[_]:indi_outt[_+1]])
+            a_out.extend(a_in[indi_outt[_]:indi_outt[_+1], :])
         a_out = np.array(a_out)
         data_out.append(a_out)
 
@@ -176,10 +177,10 @@ def eval_basis_python(degree, knotvector, knots, multiplicity= 1):
 def eval_basis_fortran(degree, knotvector, knots):
     " Evaluates B-spline functions at given knots using fortran libraries "
 
-    B0, B1, indi, indj = basis_weights.get_basis_generalized_csr(
+    B, indi, indj = basis_weights.get_basis_generalized_csr(
                             degree, knotvector, knots)
                             
-    return B0, B1, indi, indj
+    return B, indi, indj
 
 # ==========================
 # IGA FUNCTIONS
@@ -405,10 +406,10 @@ def iga_find_basis_weights_fortran(degree, knotvector):
     nnz_B = (degree + 1) * nnz_qp
 
     # Get basis and weights from fortran
-    qp_pos, weights, B0, B1, \
+    qp_pos, weights, B, \
     indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, knotvector, nnz_qp, nnz_B)
  
-    return nnz_I, qp_pos, weights, B0, B1, indi, indj
+    return nnz_I, qp_pos, weights, B, indi, indj
 
 # =========================
 # WQ FUNCTIONS
@@ -785,11 +786,10 @@ def wq_find_basis_weights_fortran(degree, knotvector):
     nnz_B, nnz_qp = basis_weights.wq_get_size_data(degree, knotvector)
 
     # Get basis and weights from fortran
-    qp_pos, B0, B1, \
-    W00, W01, W10, W11, \
+    qp_pos, B, W,\
     indi, indj, nnz_I = basis_weights.wq_get_data_csr(degree, knotvector, nnz_B, nnz_qp)
 
-    return nnz_I, qp_pos, B0, B1, W00, W01, W10, W11, indi, indj
+    return nnz_I, qp_pos, B, W, indi, indj
     
 # =========================
 # MF FUNCTIONS
