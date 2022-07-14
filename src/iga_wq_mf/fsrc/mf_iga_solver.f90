@@ -247,8 +247,8 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
 end subroutine mf_iga_get_ku_3d
 
 subroutine mf_iga_get_ku_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                W_u, W_v, W_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, array_input, array_output)
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, array_input, array_output)
     !! Computes K.u in 3D case
     !! Indices must be in CSR format
 
@@ -300,8 +300,8 @@ end subroutine mf_iga_get_ku_3d_csr
 ! ----------------------------------------
 
 subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        W_u, W_v, W_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, b, nbIter, epsilon, & 
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, & 
                         Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
@@ -546,8 +546,8 @@ subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 end subroutine iga_mf_cg_3d
 
 subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        W_u, W_v, W_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, b, nbIter, epsilon, x, RelRes)
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, x, RelRes)
     !! Conjugate gradient with ot without preconditioner 
     !! CSR FORMAT
                         

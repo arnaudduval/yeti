@@ -64,8 +64,6 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._ctrlpts]
         
-        if self._dim < 2 and self._dim > 3:
-            raise Warning('Until now not done')
         if self._dim == 2:
             self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
         if self._dim == 3:
@@ -187,7 +185,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         # Get source coefficients
         self._source_coef = self.eval_source_coefficient(fun)
-        inputs = self.get_input4Assembly_source()   
+        inputs = [self._source_coef, *self._nb_qp_wq, *self._indices, *self._DW]
 
         start = time.time()
         if self._dim == 2: F = assembly.wq_get_source_2d(*inputs)[indi]
@@ -241,18 +239,17 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsolver(self, u, nbIterations, epsilon, method, directsol, isCG): 
+    def MFsolver(self, u, nbIterations, epsilon, method, directsol): 
 
         # Get inputs 
         self._verify_conductivity()
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         inputs_tmp = self.get_input4MatrixFree(self._thermalDirichlet)
-        inputs = [self._conductivity, *inputs_tmp, u, nbIterations, epsilon, method, 
+        inputs = [self._conductivity_coef, *inputs_tmp, u, nbIterations, epsilon, method, 
                 self._conductivity, self._Jqp, directsol]
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3:
-            if isCG: sol, residue, error = solver.wq_mf_cg_3d(*inputs)
-            else: sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs)
+            sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs)
 
         return sol, residue, error
 
