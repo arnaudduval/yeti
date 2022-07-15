@@ -6,11 +6,10 @@
 """
 
 # Python libraries
-import os
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
 from mpltools import annotation
-import time
+import os, time
 
 # My libraries
 from lib.base_functions import erase_rows_csr, create_knotvector, wq_find_basis_weights_fortran

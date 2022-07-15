@@ -5,16 +5,17 @@
 """
 
 # Python libraries
-import os
-import numpy as np
+import os, numpy as np
 
 # My libraries
-from lib.base_functions import generate_rand_positive_matrix
 from lib.physics import (powden_cube, 
                         powden_prism,
                         powden_thickring, 
 )
-from lib.post_treat_methods import ThermalSimulation, SimulationData, plot_iterative_solver
+from lib.post_treat_methods import (ThermalSimulation, 
+                                    SimulationData, 
+                                    plot_iterative_solver
+)
 
 # Choose folder
 full_path = os.path.realpath(__file__)
@@ -23,20 +24,19 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
 FileExist = True
-DEGREE, CUTS = 7, 5
-IS_IGA = False
-IS_CG = False
+degree, cuts = 4, 5
+is_iga = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for GEOMETRY_CASE in ['VB']:  
+for geometryName in ['VB']:  
     
     # Get file name
-    if GEOMETRY_CASE == 'CB':   funpow, funtemp = powden_cube, None 
-    elif GEOMETRY_CASE == 'VB': funpow, funtemp = powden_prism, None 
-    elif GEOMETRY_CASE == 'TR': funpow, funtemp = powden_thickring, None 
+    if geometryName == 'CB':   funpow, funtemp = powden_cube, None 
+    elif geometryName == 'VB': funpow, funtemp = powden_prism, None 
+    elif geometryName == 'TR': funpow, funtemp = powden_thickring, None 
 
     # Run simulation
-    thermalinputs = {'degree': DEGREE, 'cuts': CUTS, 'case': GEOMETRY_CASE, 'isIGA': IS_IGA, 'isCG': IS_CG, 
+    thermalinputs = {'degree': degree, 'cuts': cuts, 'case': geometryName, 'isIGA': is_iga, 
                 'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
     Simulation = ThermalSimulation(thermalinputs, folder)  
     filename = Simulation._filename
@@ -44,11 +44,9 @@ for GEOMETRY_CASE in ['VB']:
     # Run simulation
     if not FileExist:
         conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-        # if IS_IGA: nnz = Simulation._nb_qp_cgg_total
-        # else: nnz = Simulation._nb_qp_wq_total
-        # conductivity = generate_rand_positive_matrix(3, nnz)
-        properties = {"conductivity": conductivity}
-        Simulation.run_simulation(**properties)
+        Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+        material = {"conductivity": conductivity}
+        Simulation.run_simulation(material=material, Dirichlet=Dirichlet)
 
     else :
         Data = SimulationData(filename)
