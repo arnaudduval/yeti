@@ -13,8 +13,7 @@ from mpltools import annotation
 import time
 
 # My libraries
-from lib.base_functions import erase_rows_csr
-from lib.fortran_mf_wq import wq_find_basis_weights_fortran
+from lib.base_functions import erase_rows_csr, create_knotvector, wq_find_basis_weights_fortran
 from iga_wq_mf import solver
 
 # Chosee folder
@@ -23,37 +22,34 @@ folder_file = os.path.dirname(full_path) + '/data/'
 folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
-dataExist = True
+dataExist = False
 
 if not dataExist:
     # Set global variables
-    DEGREE = 5
-    for NBEL in range(120, 550, 50): 
-
-        start = time.time()
-        # Define basis (the same for all directions)
-        _, qp_wq, dB0, dB1, dW00, dW01, \
-        dW10, dW11, indi, indj = wq_find_basis_weights_fortran(DEGREE, NBEL)
-        stop = time.time()
-        # print('Time computing basis: %.3e s' %(stop-start,))
+    degree = 5
+    for nbel in range(60, 80, 50):         
+        # Define basis 
+        knotvector = create_knotvector(degree, nbel)
+        _, qp_wq, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
 
         # Erase data
         rows2erase = [0, -1]
-        indi_t, indj_t, data_t = erase_rows_csr(rows2erase, indi, indj, 
-                                [dB0, dB1, dW00, dW01, dW10, dW11])
-        [dB0_t, dB1_t, dW00_t, _, _, dW11_t] = data_t
+        indi_t, indj_t, data_t = erase_rows_csr(rows2erase, indi, indj, [B, W])
+        [B_t, W_t] = data_t
 
         # Initialize
-        shape_matrices, indices, data = [], [], []
+        shape_matrices, indices, data_B, data_W = [], [], [], []
         for dim in range(3):
             shape_matrices.append(len(qp_wq))
             indices.append(indi_t); indices.append(indj_t) 
-            data.append(dB0_t); data.append(dB1_t)
-            data.append(dW00_t); data.append(dW11_t)
+            data_B.append(B_t); data_W.append(W_t)
 
         # Solve sylvester equation P s = r
-        inputs = [*shape_matrices, *indices, *data]
+        inputs = [*shape_matrices, *indices, *data_B, *data_W]
+        start = time.time()
         solver.test_precondfd(*inputs)
+        stop = time.time()
+        print(stop-start)
 
 else:
     # Plot CPU time vs. total DOF
