@@ -132,7 +132,7 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1), indi_I_w(nr_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
     double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w
-    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, nb_tasks
+    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta
     dimension :: alpha(d), beta(d)
 
     ! Get indices of I in each dimension
@@ -142,9 +142,9 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     call get_I_csr(nr_w, nc_w, nnz_w, indi_w, indj_w, nnz_I_w, indi_I_w, indj_I_w)
 
     call get_indexes_kron3_product(nr_w, nr_w, nnz_I_w, indi_I_w, indj_I_w, &
-            nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
-            nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
-            dummy1, dummy2, dummy3, indi_result, indj_result)
+                                nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
+                                nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
+                                dummy1, dummy2, dummy3, indi_result, indj_result)
 
     ! Initialize 
     nnz_result = nnz_I_u*nnz_I_v*nnz_I_w
@@ -166,9 +166,6 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
 
     ! Compute non zero data
     data_result = 0.d0
-    !$OMP PARALLEL PRIVATE(alpha, beta, data_result_temp) REDUCTION(+:data_result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
@@ -182,8 +179,6 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
             data_result = data_result + data_result_temp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
     deallocate(indj_I_u, indj_I_v, indj_I_w)
     deallocate(data_W_u, data_W_v, data_W_w)
 
@@ -363,7 +358,7 @@ subroutine iga_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v
     double precision, dimension(:, :), allocatable :: data_W_u, data_W_v
-    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, nb_tasks
+    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta
     dimension :: alpha(d), beta(d)
 
     ! Get indices of I in each dimension
@@ -390,9 +385,6 @@ subroutine iga_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_
 
     ! Compute non zero data
     data_result = 0.d0
-    !$OMP PARALLEL PRIVATE(alpha, beta, data_result_temp) REDUCTION(+:data_result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
@@ -406,8 +398,6 @@ subroutine iga_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_
             data_result = data_result + data_result_temp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
     deallocate(indj_I_u, indj_I_v)
     deallocate(data_W_u, data_W_v)
 

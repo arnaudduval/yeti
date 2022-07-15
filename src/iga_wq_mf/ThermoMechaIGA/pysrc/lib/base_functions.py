@@ -397,10 +397,10 @@ def iga_find_basis_weights_fortran(degree, knotvector):
     " Computes basis and weights "
 
     # Set number of elements
-    nb_el = len(np.unique(knotvector))
+    nbel = len(np.unique(knotvector)) - 1
 
     # Set number of quadrature points
-    nnz_qp = (degree + 1) * nb_el
+    nnz_qp = (degree + 1) * nbel
 
     # Set size guessed of data arrays
     nnz_B = (degree + 1) * nnz_qp

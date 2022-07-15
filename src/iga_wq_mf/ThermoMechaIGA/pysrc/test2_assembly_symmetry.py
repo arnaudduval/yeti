@@ -41,11 +41,11 @@ else:
 # =========================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for geoName in ['VB', 'TR', 'RQA', 'CB']:
-        for varName in ['C', 'K', 'F', 'J', 'QP']:
-            for degree in range(3, 6):
+    for geoName in ['VB', 'TR', 'CB']:
+        for varName in ['K', 'C', 'F', 'J', 'QP']:
+            for degree in range(5, 6):
                 norm = []; ddl =[]
-                for cuts in range(1, 4): 
+                for cuts in range(3, 4): 
                     print(degree, cuts, varName)
 
                     blockPrint()

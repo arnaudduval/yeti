@@ -107,7 +107,7 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     integer :: indi_I_u, indi_I_v, indi_I_w
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1), indi_I_w(nr_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
-    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, zeta, nb_tasks
+    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, zeta
     dimension :: alpha(d), beta(d), zeta(d)
 
     ! Get indices of I in each dimension
@@ -124,14 +124,11 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! Compute non zero data
     nnz_result = nnz_I_u*nnz_I_v*nnz_I_w
     data_result = 0.d0
-    !$OMP PARALLEL PRIVATE(alpha, beta, zeta, data_result_temp) REDUCTION(+:data_result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
             beta = 1; beta(j) = 2
-            zeta = alpha + (beta - 1)*2
+            zeta = beta + (alpha - 1)*2
             call csr_get_matrix_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
@@ -141,8 +138,6 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             data_result = data_result + data_result_temp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
     deallocate(indj_I_u, indj_I_v, indj_I_w)
 
     ! Fortran to python 
@@ -283,7 +278,7 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     integer :: indi_I_u, indi_I_v
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v
-    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, zeta, nb_tasks
+    integer :: nnz_result, dummy1, dummy2, dummy3, i, j, alpha, beta, zeta
     dimension :: alpha(d), beta(d), zeta(d)
 
     ! Get indices of I in each dimension
@@ -298,14 +293,11 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     ! Compute non zero data
     nnz_result = nnz_I_u*nnz_I_v
     data_result = 0.d0
-    !$OMP PARALLEL PRIVATE(alpha, beta, zeta, data_result_temp) REDUCTION(+:data_result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
             beta = 1; beta(j) = 2
-            zeta = alpha + (beta - 1)*2
+            zeta = beta + (alpha - 1)*2
             call csr_get_matrix_2d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, &
                         data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_W_u(:, zeta(1)), data_W_v(:, zeta(2)), &
@@ -314,8 +306,6 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
             data_result = data_result + data_result_temp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
     deallocate(indj_I_u, indj_I_v)   
 
     ! Fortran to python 

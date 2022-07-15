@@ -29,22 +29,18 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
 
     ! Local data
     ! ---------------
-    integer :: i, j, alpha, beta, zeta, nb_tasks
+    integer :: i, j, alpha, beta, zeta
     dimension :: alpha(d), beta(d), zeta(d)
     double precision :: Kdiag_temp
     dimension :: Kdiag_temp(nr_u*nr_v*nr_w)
 
     ! Initialize
     Kdiag = 0.d0
-
-    !$OMP PARALLEL PRIVATE(alpha, beta, zeta, Kdiag_temp) REDUCTION(+:Kdiag)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
             beta = 1; beta(j) = 2
-            zeta = alpha + (beta - 1)*2
+            zeta = beta + (alpha - 1)*2
             call find_physical_diag_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
@@ -52,8 +48,6 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
             Kdiag = Kdiag + Kdiag_temp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine wq_find_conductivity_diagonal_3d
 
@@ -228,7 +222,7 @@ subroutine mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
                                     array_input, array_temp_1)
         do i = 1, d
             alpha = 1; alpha(i) = 2
-            zeta = alpha + (beta - 1)*2
+            zeta = beta + (alpha - 1)*2
             array_temp_1t = array_temp_1 * coefs(i, j, :)
             call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
