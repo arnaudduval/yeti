@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from mpltools import annotation
 
 # My libraries
-from lib.fortran_mf_wq import wq_find_basis_weights_fortran
+from lib.base_functions import wq_find_basis_weights_fortran, create_knotvector
 from iga_wq_mf import assembly
 
 # Choose folder
@@ -20,15 +20,15 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test3/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist = True
-nbel = 40
+dataExist = False
+nbel = 64
 
 # Set filename
 filename_WQ = 'setup_time_WQ_'  + 'nbel_' + str(nbel) 
 filename_WQ = folder + filename_WQ
 
 # Define inputs
-degree_list = np.arange(9, 11)
+degree_list = np.arange(2, 11)
 
 # Output
 time_matrix = np.zeros((len(degree_list), 3))
@@ -37,47 +37,36 @@ time_matrix[:, 0] = degree_list
 if not dataExist:
     for i, degree in enumerate(degree_list):
         # Define basis (the same for all directions)
-        nnz_I, qp_wq, dB0, dB1, dW00, dW01, \
-        dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, nbel)
-
-        # Some other inputs
-        nb_rows = nb_cols = (degree+nbel)**3
-        
-        # ------------
-        capacity_coefs = np.ones(len(qp_wq)**3)
-        shape_matrices, indices, data_C, size_I = [], [], [], []
+        knotvector = create_knotvector(degree, nbel)
+        nnz_I, qp_wq, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
+        shape_matrices, indices, dB, dW, size_I = [], [], [], [], []
         for dim in range(3):
             shape_matrices.append(len(qp_wq))
             indices.append(indi); indices.append(indj) 
-            data_C.append(dB0); data_C.append(dW00)
-            size_I.append(nnz_I)
+            dB.append(B); dW.append(W); size_I.append(nnz_I)
 
-        inputs_C = [capacity_coefs, *shape_matrices, *indices, *data_C, *size_I]
+        # ------------
+        coefs = np.ones(len(qp_wq)**3)
+        inputs_C = [coefs, *shape_matrices, *indices, *dB, *dW, *size_I]
         
         start = time.time()
         assembly.wq_get_capacity_3d(*inputs_C)
         stop = time.time()
         time_matrix[i, 1] = stop - start 
-        del inputs_C, capacity_coefs
+        del inputs_C, coefs
 
         # ------------
-        conductivity_coefs = np.ones((3, 3, len(qp_wq)**3))
-        data_K = []
-        for dim in range(3):
-            data_K.append(dW00); data_K.append(dW01)
-            data_K.append(dW10); data_K.append(dW11)
-            data_K.append(dB0); data_K.append(dB1)
-
-        inputs_K = [conductivity_coefs, *shape_matrices, *indices, *data_K, *size_I]
+        coefs = np.ones((3, 3, len(qp_wq)**3))
+        inputs_K = [coefs, *shape_matrices, *indices, *dB, *dW, *size_I]
 
         start = time.time()
         assembly.wq_get_conductivity_3d(*inputs_K)
         stop = time.time()
         time_matrix[i, 2] = stop - start 
-        del inputs_K, conductivity_coefs
+        del inputs_K, coefs
 
         print(time_matrix[i, :])
-        # np.savetxt(filename_WQ, time_matrix)
+        np.savetxt(filename_WQ, time_matrix)
 
 else :
 

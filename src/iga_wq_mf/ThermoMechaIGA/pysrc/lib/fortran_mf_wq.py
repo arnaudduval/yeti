@@ -219,7 +219,7 @@ class fortran_mf_wq(thermoMechaModel):
         " Returns necessary inputs to compute the product between a matrix and a vector"
 
         # Initialize
-        indices, data = [], []
+        indices, data_B, data_W = [], [], []
         if table is None: table = np.asarray([[0, 0], [0, 0], [0, 0]])
         for dim in range(self._dim):
             # Select data
@@ -227,15 +227,16 @@ class fortran_mf_wq(thermoMechaModel):
             if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
             if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
             if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]
-            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, *self._indices[dim], 
+            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, 
+                                    self._indices[2*dim], self._indices[2*dim+1],  
                                     [self._DB[dim], self._DW[dim]])
             
             # Extract data and append to list
             [dB, dW] = data_t
             indices.append(indi_t); indices.append(indj_t) 
-            data.append(dB); data.append(dW)
+            data_B.append(dB); data_W.append(dW)
 
-        inputs = [*self._nb_qp_wq, *indices, *data]
+        inputs = [*self._nb_qp_wq, *indices, *data_B, *data_W]
 
         return inputs
 
@@ -247,16 +248,16 @@ class fortran_mf_wq(thermoMechaModel):
         inputs_tmp = self.get_input4MatrixFree(self._thermalDirichlet)
         inputs = [self._conductivity_coef, *inputs_tmp, u, nbIterations, epsilon, method, 
                 self._conductivity, self._Jqp, directsol]
+
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3:
-            sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs)
+        if self._dim == 3: sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs)
 
         return sol, residue, error
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         
         # Get temperature coeficients 
-        coef_F = fun(self._qp_PS)  * self._detJ
+        coef_F = fun(self._qp_PS) * self._detJ
 
         # Get inputs
         inputs = [coef_F, *self._nb_qp_wq, *self._indices, *self._DW]

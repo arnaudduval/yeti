@@ -25,8 +25,7 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran= True):
         indj_int -= 1 
 
     indi_outt = np.copy(indi_int)
-    indj_out = []
-    data_out = []
+    indj_out, data_out = [], []
 
     # Delete indices
     indi_outt = np.delete(indi_outt, rows2er)

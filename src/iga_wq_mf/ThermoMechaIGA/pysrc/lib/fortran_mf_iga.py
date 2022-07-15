@@ -200,15 +200,15 @@ class fortran_mf_iga(thermoMechaModel):
             if np.array_equal(table[dim, :], [0, 1]): rows2erase = [-1]
             if np.array_equal(table[dim, :], [1, 0]): rows2erase = [0]
             if np.array_equal(table[dim, :], [1, 1]): rows2erase = [0, -1]
-            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, *self._indices[dim], 
-                                    [self._DB[dim], self._DW[dim]])
+            indi_t, indj_t, data_t = erase_rows_csr(rows2erase, 
+                                    self._indices[2*dim], self._indices[2*dim+1],  
+                                    [self._DB[dim]])
             
             # Extract data and append to list
-            [dB, dW] = data_t
             indices.append(indi_t); indices.append(indj_t) 
-            data.append(dB); data.append(dW)
+            data.append(*data_t)
 
-        inputs = [*indices, *data]
+        inputs = [*indices, *data, *self._DW]
 
         return inputs
 
@@ -222,8 +222,7 @@ class fortran_mf_iga(thermoMechaModel):
                 self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: 
-            sol, residue, error = solver.iga_mf_cg_3d(*inputs, self._conductivity, self._Jqp, directsol)
+        if self._dim == 3: sol, residue, error = solver.iga_mf_cg_3d(*inputs)
 
         return sol, residue, error
         
@@ -233,7 +232,7 @@ class fortran_mf_iga(thermoMechaModel):
         coef_F = fun(self._qp_PS)  * self._detJ
 
         # Define inputs 
-        inputs = [coef_F *self._indices, *self._DB, *self._DW]
+        inputs = [coef_F, *self._indices, *self._DB, *self._DW]
 
         # Calculate capacity matrix and temperature vector
         if self._dim == 2: raise Warning('Until now not done')
@@ -242,7 +241,7 @@ class fortran_mf_iga(thermoMechaModel):
         # Solve linear system with fortran
         inputs = [self._detJ, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
         start = time.time()
-        u_interp, relres = solver.wq_mf_interp_3d(*inputs)
+        u_interp, relres = solver.iga_mf_interp_3d(*inputs)
         stop = time.time()
         res_end = relres[np.nonzero(relres)][-1]
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
