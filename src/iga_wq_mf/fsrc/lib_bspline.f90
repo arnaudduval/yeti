@@ -210,6 +210,9 @@ subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
     ! -------------
     integer ::  i, c
 
+    ! Initialize
+    nodes = 0.d0; knotvector = 0.d0
+
     ! Create nodes
     ! =============
     ! Assign first and last values
@@ -227,13 +230,13 @@ subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
     ! =================
     ! Set p+1 first values of knot vector 
     c = 1
-    do i = 1, nbel+1
+    do i = 1, degree+1
         knotvector(c) = 0.d0
         c = c + 1
     end do
 
     do i = 2, nbel
-        knotvector(c) = nodes(i)
+        knotvector(c) = dble(i - 1)/dble(nbel) 
         c = c + 1
     end do
 

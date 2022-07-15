@@ -31,6 +31,49 @@ subroutine wq_set_properties(degree, size_kv, maxrule, &
 
 end subroutine wq_set_properties
 
+subroutine verify_max_regularity(degree, size_kv, knotvector, is_not_maxregular)
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer, intent(in) :: degree, size_kv
+    double precision, intent(in) :: knotvector
+    dimension :: knotvector(size_kv)
+
+    logical, intent(out) :: is_not_maxregular
+    
+    ! Local data
+    ! --------------------
+    integer :: nbel, nb_ctrlpts, i
+    double precision :: nodes
+    dimension :: nodes(size_kv+1)
+    double precision, dimension(:), allocatable :: newnodes, diffknot 
+
+    ! Compute nodes
+    call find_unique_vector(size_kv, knotvector, nodes)
+    nbel = int(nodes(size_kv+1)) - 1
+    nb_ctrlpts = size_kv - degree - 1
+
+    ! Verify
+    is_not_maxregular = .false.
+    if (nbel+degree.ne.nb_ctrlpts) then 
+        is_not_maxregular = .true.
+    end if
+
+    ! Verify if there is maximum regularity
+    allocate(diffknot(nbel+1), newnodes(nbel+1))
+    newnodes = nodes(1:nbel+1)
+
+    call diff_vector(2, size(newnodes), newnodes, diffknot)
+    do i = 1, size(newnodes)
+        if (abs(diffknot(i)).gt.1.d-8) then
+            is_not_maxregular = .true.
+            exit
+        end if
+    end do
+
+end subroutine verify_max_regularity
+
 subroutine wq_get_qp_positions(degree, size_kv, nodes, maxrule, nb_qp, qp_pos)
     !! Gets quadrature points' positions (QP) in WQ approach 
 
@@ -330,7 +373,7 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     ! Local data
     ! -------------
     double precision :: MB, MI, ones
-    dimension :: MB(nr, nc), MI(nr, nr), ones(nnz_I)
+    dimension :: MB(nr, nc), MI(nr, nr), ones(nnz_B)
 
     ! Initialize matrix B
     ones = 1.d0 
@@ -727,6 +770,7 @@ module wq_basis_weights
         
         ! Local data
         ! ----------
+        logical :: is_not_maxregular
         integer :: i, j, count
         integer :: nbel, nbel_m, nb_ctrlpts_m, nb_qp_wq_m, size_kv_m, dummy1, dummy2
         double precision, allocatable, dimension(:) :: knotvector_m, nodes_m
@@ -735,23 +779,10 @@ module wq_basis_weights
         double precision, allocatable, dimension(:,:) :: B0_m, B1_m, W00_m, W01_m, W10_m, W11_m
         integer, allocatable, dimension(:,:) :: Bshape_m, dummy
 
-        logical :: is_not_maxregular
-        double precision :: diffknot
-        dimension :: diffknot(size_kv)
-
         ! Create object
         call wq_initialize(object, degree, size_kv, knotvector)
         nbel = object%size_nodes - 1
-
-        ! Verify if there is maximum regularity
-        is_not_maxregular = .false.
-        call diff_vector(2, size_kv, knotvector, diffknot)
-        do i = 1, size_kv
-            if (abs(diffknot(i)).gt.1.d-8) then
-                is_not_maxregular = .true.
-                exit
-            end if
-        end do
+        call verify_max_regularity(degree, size_kv, knotvector, is_not_maxregular)
 
         if ((nbel.le.degree+3).or.(is_not_maxregular)) then 
 

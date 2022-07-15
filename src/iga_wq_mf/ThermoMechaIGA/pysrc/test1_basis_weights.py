@@ -25,8 +25,8 @@ folder = os.path.dirname(full_path) + '/results/test1/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set number of elements
-CUTS = np.arange(1, 6)
-NBEL = [2**_ for _ in CUTS]
+cuts = np.arange(1, 6)
+nbel = [2**i for i in cuts]
 
 for varName in ['I00', 'I01', 'I10', 'I11']:
     plt.figure(1)
@@ -36,25 +36,24 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
         norm_fortran = []; norm_python = []; ddl =[]
         color = next(ax._get_lines.prop_cycler)['color']
 
-        for nb_el in NBEL: 
+        for nb_el in nbel: 
 
             # ========================================
             # FORTRAN
             # ======================================== 
             knotvector = create_knotvector(degree, nb_el)
-            _, _, dB0, dB1, dW00, dW01, \
-            dW10, dW11, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
+            _, _, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
             nb_ctrlpts = degree + nb_el
             nb_qp_wq = np.max(indj)
             indi -= 1; indj -= 1
 
             # Create basis and weights from fortran
-            B0f = sp.csr_matrix((dB0, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
-            B1f = sp.csr_matrix((dB1, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
-            W00f = sp.csr_matrix((dW00, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
-            W01f = sp.csr_matrix((dW01, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
-            W10f = sp.csr_matrix((dW10, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
-            W11f = sp.csr_matrix((dW11, indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            B0f = sp.csr_matrix((B[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            B1f = sp.csr_matrix((B[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W00f = sp.csr_matrix((W[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W01f = sp.csr_matrix((W[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W10f = sp.csr_matrix((W[:, 2], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
+            W11f = sp.csr_matrix((W[:, 3], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
 
             # Calculate I
             I00f = W00f @ B0f.T
@@ -108,7 +107,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
         # Change type 
         norm_fortran = np.asarray(norm_fortran)
         norm_python = np.asarray(norm_python)
-        ddl = np.asarray(NBEL)
+        ddl = np.asarray(nbel)
 
         # Figure 
         plt.figure(1)

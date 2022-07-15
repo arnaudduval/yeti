@@ -637,6 +637,7 @@ subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     ! Initialize
     k = 1
     indi_csr(1) = 1
+    indj_csr = 0
 
     ! Update CSR format
     do i = 1, nr

@@ -530,10 +530,10 @@ def wq_find_positions(degree, knotvector, r, maxrule= 1):
             xt = np.linspace(kvUnique[i], kvUnique[i+1], 2 + maxrule)[1:-1]
         
         # Assemble vector
-        xwq.append(xt)
+        xwq.extend(xt)
     
     #  Include knots of knot-vector
-    xwq.append(kvUnique)
+    xwq.extend(list(kvUnique))
 
     # Sort vector
     xwq.sort()

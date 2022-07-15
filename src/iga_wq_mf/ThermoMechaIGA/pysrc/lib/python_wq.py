@@ -26,7 +26,7 @@ class WQ(thermoMechaModel):
 
         # Get jacobian and physical position
         self._Jqp, self._qp_PS, self._detJ = super().eval_jacobien_physicalPosition(self._dim, 
-                                                        self._nb_qp_cgg_total, self._ctrlpts, self._DB)
+                                                        self._nb_qp_wq_total, self._ctrlpts, self._DB)
 
         # Initialize thermal properties
         self._conductivity_coef = None
@@ -41,7 +41,7 @@ class WQ(thermoMechaModel):
         start = time.time()
 
         # Initalize storage vectors
-        self._qp_wq, self._DB, self._DW = []
+        self._qp_wq, self._DB, self._DW = [], [], []
 
         for dim in range(self._dim): 
             # Find basis and weights 
@@ -65,9 +65,8 @@ class WQ(thermoMechaModel):
         if self._conductivity_coef is None:
             print('Getting conductivity coefficients')
             start = time.time()
-            coef, info = super().eval_conductivity_coefficient(self._Jqp, self._conductivity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._conductivity_coef = coef
+            coef = super().eval_conductivity_coefficient(self._Jqp, self._conductivity)
+            self._conductivity_coef = coef
             stop = time.time()
             print('\tConductivity coefficients in : %.5f s' %(stop-start))
         return
@@ -79,9 +78,8 @@ class WQ(thermoMechaModel):
         if self._capacity_coef is None:
             print('Getting capacity coefficients')
             start = time.time()
-            coef, info = super().eval_capacity_coefficient(self._Jqp, self._capacity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._capacity_coef = coef
+            coef = super().eval_capacity_coefficient(self._Jqp, self._capacity)
+            self._capacity_coef = coef
             stop = time.time()
             print('\tCapacity coefficients in : %.5f s' %(stop-start))
         return

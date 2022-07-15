@@ -61,9 +61,8 @@ class IGA(thermoMechaModel):
         if self._conductivity_coef is None:
             print('Getting conductivity coefficients')
             start = time.time()
-            coef, info = super().eval_conductivity_coefficient(self._Jqp, self._conductivity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._conductivity_coef = coef
+            coef = super().eval_conductivity_coefficient(self._Jqp, self._conductivity)
+            self._conductivity_coef = coef
             stop = time.time()
             print('\tConductivity coefficients in : %.5f s' %(stop-start))
         return
@@ -75,9 +74,8 @@ class IGA(thermoMechaModel):
         if self._capacity_coef is None:
             print('Getting capacity coefficients')
             start = time.time()
-            coef, info = super().eval_capacity_coefficient(self._Jqp, self._capacity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._capacity_coef = coef
+            coef = super().eval_capacity_coefficient(self._Jqp, self._capacity)
+            self._capacity_coef = coef
             stop = time.time()
             print('\tCapacity coefficients in : %.5f s' %(stop-start))
         return

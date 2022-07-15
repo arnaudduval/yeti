@@ -121,11 +121,11 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [self._capacity_coef, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
-        if self._dim == 2: val, indi, indj = assembly.wq_get_capacity_2d(*inputs)
-        if self._dim == 3: val, indi, indj = assembly.wq_get_capacity_3d(*inputs)
+        if self._dim == 2: val_, indi_, indj_ = assembly.wq_get_capacity_2d(*inputs)
+        if self._dim == 3: val_, indi_, indj_ = assembly.wq_get_capacity_3d(*inputs)
 
         # Convert results in csr sparse matrix
-        C = super().array2csr_matrix(val, indi, indj).tocsc()[indi, :][:, indj]
+        C = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
@@ -143,11 +143,11 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [self._conductivity_coef, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
-        if self._dim == 2: val, indi, indj = assembly.wq_get_conductivity_2d(*inputs)
-        if self._dim == 3: val, indi, indj = assembly.wq_get_conductivity_3d(*inputs)
+        if self._dim == 2: val_, indi_, indj_ = assembly.wq_get_conductivity_2d(*inputs)
+        if self._dim == 3: val_, indi_, indj_ = assembly.wq_get_conductivity_3d(*inputs)
                 
         # Convert results in csr sparse matrix
-        K = super().array2csr_matrix(val, indi, indj).tocsc()[indi, :][:, indj]
+        K = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
 
         stop = time.time()
         print('Conductivity matrix assembled in : %5f s' %(stop-start))

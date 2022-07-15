@@ -12,12 +12,12 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 
 # My libraries
-from lib import enablePrint, blockPrint
-from lib.create_geomdl import create_geometry
+from lib.__init__ import blockPrint, enablePrint
+from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
-from lib.methods_wq import WQ
+from lib.python_wq import WQ
 from lib.fortran_mf_iga import fortran_mf_iga
-from lib.methods_iga import IGA
+from lib.python_iga import IGA
 from lib.physics import power_density
 
 # Choose folder
@@ -36,28 +36,36 @@ else:
     classfortran = fortran_mf_wq
     classpython = WQ
 
-# ====================================================================
+# =========================
 # TEST ERROR CONSTRUCTION
-# ====================================================================
+# =========================
 if CONSTRUCTION: 
     # Set degree and number of divisions
-    for GEOMETRY_CASE in ['SQ', 'VB', 'TR', 'RQA', 'CB']:
-        for varName in ['K', 'C', 'F', 'J', 'QP']:
-            for DEGREE in range(3, 6):
+    for geoName in ['VB', 'TR', 'RQA', 'CB']:
+        for varName in ['C', 'K', 'F', 'J', 'QP']:
+            for degree in range(3, 6):
                 norm = []; ddl =[]
-                for CUTS in range(1, 4): 
-                    print(DEGREE, CUTS, varName)
+                for cuts in range(1, 4): 
+                    print(degree, cuts, varName)
 
                     blockPrint()
                     # Get file name
                     funpow = power_density 
 
                     # Define geometry 
-                    modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
+                    geometry = {'degree':[degree, degree, degree]}
+                    modelGeo = geomdlModel(geoName, **geometry)
+                    modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
+                                                                np.array([cuts, cuts, cuts]))
                 
                     # Creation of thermal model object
-                    modelPhy1 = classfortran(modelGeo)
-                    modelPhy2 = classpython(modelGeo)
+                    modelPhy1 = classfortran(modelIGA)
+                    modelPhy2 = classpython(modelIGA)
+
+                    # Set physical properties
+                    material = {'capacity':1, 'conductivity':np.eye(3)}
+                    modelPhy1._set_material(material)
+                    modelPhy2._set_material(material)
 
                     if varName == "K": 
                         var1 = modelPhy1.eval_conductivity_matrix()
@@ -90,7 +98,7 @@ if CONSTRUCTION:
                     norm.append(norm_temp)
 
                     # Set number of elements
-                    nbel = 2 ** CUTS
+                    nbel = 2 ** cuts
                     ddl.append(nbel)
 
                 # Change type 
@@ -99,7 +107,7 @@ if CONSTRUCTION:
 
                 # Figure 
                 plt.figure(1)
-                plt.plot(ddl, norm*100, label='degree p = ' + str(DEGREE))
+                plt.plot(ddl, norm*100, label='degree p = ' + str(degree))
 
             # Properties
             plt.grid()
@@ -112,30 +120,33 @@ if CONSTRUCTION:
             plt.xlim(1, 100)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(folder + 'Error_constructionI_' + GEOMETRY_CASE + '_' + varName + '.png')
+            plt.savefig(folder + 'Error_constructionI_' + geoName + '_' + varName + '.png')
             plt.figure(1).clear()
         print('----')
 
-# ====================================================================
+# =========================
 # TEST ERROR SYMMETRY
-# ====================================================================
+# =========================
 if SYMMETRY:
     # Set degree and number of divisions
-    for GEOMETRY_CASE in ['CB', 'VB', 'TR', 'RQA']:
+    for geoName in ['CB', 'VB', 'TR', 'RQA']:
         for varName in ['K', 'C']:
-            for DEGREE in range(3, 6):
+            for degree in range(3, 6):
                 norm = []; ddl =[]
-                for CUTS in range(1, 5): 
-                    print(DEGREE, CUTS)
+                for cuts in range(1, 5): 
+                    print(degree, cuts)
                     
                     blockPrint()
 
                     # Define geometry 
-                    modelGeo = create_geometry(DEGREE, CUTS, GEOMETRY_CASE)
+                    geometry = {'degree', [degree, degree, degree]}
+                    modelGeo = geomdlModel(geoName, **geometry)
+                    modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
+                                                                np.array([cuts, cuts, cuts]))
 
                     # Creation of thermal model object
-                    modelPhy1 = classfortran(modelGeo)
-                    del modelGeo
+                    modelPhy1 = classfortran(modelIGA)
+                    del modelGeo, modelIGA
 
                     if varName == "K": var1 = modelPhy1.eval_conductivity_matrix()
                     elif varName == "C": var1 = modelPhy1.eval_capacity_matrix()
@@ -148,8 +159,8 @@ if SYMMETRY:
                     norm.append(norm_temp)
 
                     # Set number of elements
-                    nbel = 2 ** CUTS
-                    ddl.append(nbel/(DEGREE+1))
+                    nbel = 2 ** cuts
+                    ddl.append(nbel/(degree+1))
 
                 # Change type 
                 norm = np.asarray(norm)
@@ -157,7 +168,7 @@ if SYMMETRY:
 
                 # Figure 
                 plt.figure(1)
-                plt.plot(ddl, norm*100, label='p = ' + str(DEGREE))
+                plt.plot(ddl, norm*100, label='p = ' + str(degree))
 
             # Properties
             plt.grid()
@@ -170,6 +181,6 @@ if SYMMETRY:
             plt.xlim(0.1, 100)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(folder + 'Error_symmetry_' + GEOMETRY_CASE + '_' + varName + '.png')
+            plt.savefig(folder + 'Error_symmetry_' + geoName + '_' + varName + '.png')
             plt.figure(1).clear()
         print('----')

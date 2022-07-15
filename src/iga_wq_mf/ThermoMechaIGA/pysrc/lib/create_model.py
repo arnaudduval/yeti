@@ -38,8 +38,7 @@ class thermoMechaModel():
         self._set_material(material)
 
         # Initialize Dirichlet boundaries
-        self._thermalDirichlet, self._thermal_dof, self._thermal_dod,\
-        self._MechanicalDirichlet, self._mechanical_dof, self._mechanical_dod = self._set_blocked_boundaries(Dirichlet)
+        self._set_blocked_boundaries(Dirichlet)
 
         return
 
@@ -125,6 +124,9 @@ class thermoMechaModel():
             Tdof, Tdod = self.block_boundaries(table_dirichlet= TTable)
         except: 
             TTable, Tdof, Tdod = None, None, None
+        self._thermalDirichlet = TTable
+        self._thermal_dof = Tdof
+        self._thermal_dod = Tdod
 
         # Mechanical 
         try: 
@@ -132,9 +134,31 @@ class thermoMechaModel():
             Mdof, Mdod = self.block_boundaries(table_dirichlet= MTable)
         except: 
             MTable, Mdof, Mdod = None, None, None
+        self._MechanicalDirichlet = MTable
+        self._mechanical_dof = Mdof
+        self._mechanical_dod = Mdod
 
         return TTable, Tdof, Tdod, MTable, Mdof, Mdod
 
+    def _clear_material(self): 
+        " Clears material"
+        self._conductivity = None
+        self._capacity = None
+        self._poissonCoef = None
+        self._youngModule = None
+
+        return
+
+    def _clear_Dirichlet(self):
+        " Clears blocked boundaries "
+        self._thermalDirichlet = None
+        self._thermal_dof = None
+        self._thermal_dod = None
+        self._MechanicalDirichlet = None
+        self._mechanical_dof = None
+        self._mechanical_dod = None
+        return
+    
     # =======================
     # READ FILE
     # =======================
@@ -251,18 +275,6 @@ class thermoMechaModel():
 
         return dof, dod
 
-    def array2coo_matrix(self, data, indi, indj):
-        " Computes coo sparse matrix "
-
-        # Computes number of rows and cols
-        nb_rows = len(indi) - 1
-        nb_cols = max(indj) + 1
-
-        # Set sparse coo matrix
-        sparse_matrix = sp.coo_matrix((data, (indi, indj)), 
-                                        shape=(nb_rows, nb_cols))
-        return sparse_matrix
-
     def array2csr_matrix(self, data, indi, indj):
         " Computes csr sparse matrix "
 
@@ -297,9 +309,9 @@ class thermoMechaModel():
             alpha = np.zeros(dim, dtype = int); alpha[j] = 1
 
             B = 1
-            for dim in range(dim):
-                at = alpha[dim] 
-                B = sp.kron(DB[dim][at], B)
+            for d in range(dim):
+                at = alpha[d] 
+                B = sp.kron(DB[d][at], B)
 
             for i in range(dim):
                 J[i, j, :] = sp.coo_matrix.dot(B.T, ctrlpts[i, :])
@@ -307,8 +319,8 @@ class thermoMechaModel():
         # Evaluate position in physical space
         for i in range(dim):
             B = 1
-            for dim in range(dim):
-                B = sp.kron(DB[dim][0], B)
+            for d in range(dim):
+                B = sp.kron(DB[d][0], B)
 
             PPS[i, :] = sp.coo_matrix.dot(B.T, ctrlpts[i, :])
 
