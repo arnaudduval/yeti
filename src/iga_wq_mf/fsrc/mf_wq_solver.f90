@@ -7,7 +7,6 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Kdiag)
     
-    use omp_lib
     use tensor_methods
     implicit none
     ! Input / output 
@@ -35,7 +34,7 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
     dimension :: Kdiag_temp(nr_u*nr_v*nr_w)
 
     ! Initialize
-    Kdiag = 0.d0
+    Kdiag = 0.d0 
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
@@ -45,7 +44,7 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
                                     data_W_u(:, zeta(1)), data_W_v(:, zeta(2)), data_W_w(:, zeta(3)), Kdiag_temp)
-            Kdiag = Kdiag + Kdiag_temp
+            Kdiag = Kdiag + Kdiag_temp        
         end do
     end do
 
@@ -316,7 +315,7 @@ subroutine test_precondfd(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
     double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    double precision :: start, finish
+    ! double precision :: start, finish
 
     ! Initialize
     s = 1.d0
@@ -361,16 +360,25 @@ subroutine test_precondfd(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_
     ! call cpu_time(finish)
     ! print *, finish-start
 
-    ! =============================
+    ! ! =============================
+    ! allocate(cond_coefs(3, 3, nc_total))
+    ! cond_coefs = 1.d0
+
+    ! call cpu_time(start)
+    ! call mf_wq_get_ku_3d_csr(cond_coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    !                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+    !                     data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, s, r1)
+    ! call cpu_time(finish)
+    ! ! print*, finish-start
+
+    ! ============================
     allocate(cond_coefs(3, 3, nc_total))
     cond_coefs = 1.d0
+    call wq_find_conductivity_diagonal_3D(cond_coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, r1)
 
-    call cpu_time(start)
-    call mf_wq_get_ku_3d_csr(cond_coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, s, r1)
-    call cpu_time(finish)
-    ! print*, finish-start
+    print*, r1(1:10)
 
 end subroutine test_precondfd
 

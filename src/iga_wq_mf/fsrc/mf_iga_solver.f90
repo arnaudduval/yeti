@@ -8,7 +8,6 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
     !! Find the diagonal of conductivity matrix
     !! Indices in CSR format
     
-    use omp_lib
     use tensor_methods
     implicit none 
     ! Input / output 

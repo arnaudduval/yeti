@@ -76,7 +76,6 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     !! Computes conductivity matrix in 3D case
     !! IN CSR FORMAT
 
-    use omp_lib
     use tensor_methods
     implicit none 
     ! Input / output data

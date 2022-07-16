@@ -1146,6 +1146,7 @@ module tensor_methods
         ! --------------
         integer :: i, j, k, nb_tasks, pos, nb_pts, nb_pts_temp
         double precision, dimension(3,3) :: dist, MatrixT, Q
+        double precision, dimension(3) :: dummy
         double precision :: sq
 
         ! Define step
@@ -1175,7 +1176,7 @@ module tensor_methods
         !--------------------------
         L1 = 0.d0; L2 = 0.d0; L3 = 0.d0
     
-        !$OMP PARALLEL PRIVATE(pos, MatrixT, dist) REDUCTION(+:L1, L2, L3)
+        !$OMP PARALLEL PRIVATE(pos, MatrixT, dist, dummy) REDUCTION(+:L1, L2, L3)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_J/(nb_tasks*step*step*step))
         do k = 1, nc_w, step
@@ -1183,7 +1184,7 @@ module tensor_methods
                 do i = 1, nc_u, step
                     pos = i + (j-1)*nc_u + (k-1)*nc_u*nc_v
                     MatrixT = JJ(:, :, pos)
-                    call polar_decomposition(MatrixT, Q, dist, 1, 1)
+                    call polar_decomposition(MatrixT, Q, dist, dummy, 1, 1)
     
                     ! Find mean of diagonal of jacobien
                     L1 = L1 + dist(1, 1)/nb_pts

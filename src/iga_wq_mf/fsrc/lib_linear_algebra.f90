@@ -408,7 +408,7 @@ subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
 
 end subroutine kron_product_3vec
 
-subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
+subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
     !! Polar decompoition of 3-by-3 matrix A = Q*H, where Q is orthogonal
     !! and H is symmetric positive semidefinite.
     !! It uses SDV: A = U S VT = U VT . V S VT then Q = U VT and H = V S VT
@@ -420,13 +420,13 @@ subroutine polar_decomposition(A, Q, H, onlyH, onlyDiag)
     integer, intent(in) :: onlyH, onlyDiag 
     dimension :: A(3, 3)
 
-    double precision, intent(out) :: Q, H
-    dimension :: Q(3, 3), H(3, 3)
+    double precision, intent(out) :: Q, H, Sigma
+    dimension :: Q(3, 3), H(3, 3), Sigma(3)
 
     ! Local data
     ! --------------
-    double precision :: U, VT, Sigma, work
-    dimension :: Sigma(3), work(15), U(3, 3), VT(3, 3)
+    double precision :: U, VT, work
+    dimension :: work(15), U(3, 3), VT(3, 3)
     integer :: info
 
     ! Compute Singular value decomposition

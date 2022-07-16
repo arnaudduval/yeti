@@ -23,7 +23,7 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = True
+FileExist = False
 degree, cuts = 4, 5
 is_iga = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
