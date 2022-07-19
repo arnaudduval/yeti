@@ -922,7 +922,7 @@ module tensor_methods
 
     end subroutine eigen_decomposition
 
-    subroutine fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
+    subroutine fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
                                         diagonal, array_in, array_out)
         
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -969,9 +969,9 @@ module tensor_methods
         ! ----------------------------------
         call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
         
-    end subroutine fast_diag_K_3d
+    end subroutine fast_diag_steady_3d
 
-    subroutine fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+    subroutine fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! by G. Sanaglli and M. Tani
         
@@ -1002,7 +1002,61 @@ module tensor_methods
         ! ----------------------------------
         call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
 
-    end subroutine fast_diag_C_3d
+    end subroutine fast_diag_interp_3d
+
+    subroutine fast_diag_transient_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
+                                        diagonal, array_in, dt, nu, array_out)
+        
+        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+        !! by G. Sanaglli and M. Tani
+        
+        use omp_lib
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
+        double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
+        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
+                        diagonal(nr_total), array_in(nr_total)
+        double precision :: dt, nu
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data
+        ! -------------
+        integer :: i, nb_tasks
+        double precision :: array_temp, diagonal_new
+        dimension :: array_temp(nr_total), diagonal_new(nr_total)
+
+        ! ---------------------------------
+        ! First part 
+        ! ---------------------------------
+        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
+
+        ! ---------------------------------
+        ! Second part 
+        ! ---------------------------------
+        diagonal_new = 1.d0/dt
+        if (nu.gt.0.d0) then 
+            diagonal_new = diagonal_new + nu*diagonal
+        end if
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
+        do i = 1, nr_total
+            array_temp(i) = array_temp(i)/diagonal_new(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+
+        ! ----------------------------------
+        ! Third part
+        ! ----------------------------------
+        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
+    
+    end subroutine fast_diag_transient_3d
 
     ! For improving fast diagonalisation (TD, TDS, JM and JMS)
 

@@ -250,7 +250,7 @@ class fortran_mf_wq(thermoMechaModel):
                 self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue, error = solver.wq_mf_bicgstab_3d(*inputs)
+        if self._dim == 3: sol, residue, error = solver.wq_mf_steady_3d(*inputs)
 
         return sol, residue, error
 

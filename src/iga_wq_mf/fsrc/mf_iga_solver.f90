@@ -300,7 +300,7 @@ end subroutine mf_iga_get_ku_3d_csr
 ! Conjugate gradient
 ! ----------------------------------------
 
-subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, & 
                         Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
@@ -500,7 +500,7 @@ subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
             end if
-            call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
+            call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, z) 
             end if
@@ -532,7 +532,7 @@ subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
                 end if
-                call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
+                call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, z) 
                 end if
@@ -544,7 +544,7 @@ subroutine iga_mf_cg_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         end if
     end if
 
-end subroutine iga_mf_cg_3d
+end subroutine iga_mf_steady_3d
 
 subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -643,7 +643,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
     r = b; dummy = r 
-    call fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
+    call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
     p = z
     rsold = dot_product(r, z)
     RelRes(1) = 1.d0
@@ -667,7 +667,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         if (RelRes(iter+1).le.epsilon) exit
         
         dummy = r
-        call fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
+        call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
         rsnew = dot_product(r, z)
                         
         p = z + rsnew/rsold * p

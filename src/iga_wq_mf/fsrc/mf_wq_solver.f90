@@ -55,8 +55,7 @@ end subroutine wq_find_conductivity_diagonal_3d
 ! ----------------------------------------
 subroutine mf_wq_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_input, array_output)
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
@@ -168,8 +167,7 @@ end subroutine mf_wq_get_cu_3d_csr
 
 subroutine mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_input, array_output)
     !! Computes K.u in 3D case
     !! Indices must be in CSR format
@@ -315,7 +313,7 @@ subroutine test_precondfd(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w
     double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    ! double precision :: start, finish
+    double precision :: start, finish
 
     ! Initialize
     s = 1.d0
@@ -360,33 +358,24 @@ subroutine test_precondfd(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_
     ! call cpu_time(finish)
     ! print *, finish-start
 
-    ! ! =============================
-    ! allocate(cond_coefs(3, 3, nc_total))
-    ! cond_coefs = 1.d0
-
-    ! call cpu_time(start)
-    ! call mf_wq_get_ku_3d_csr(cond_coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-    !                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                     data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, s, r1)
-    ! call cpu_time(finish)
-    ! ! print*, finish-start
-
-    ! ============================
+    ! =============================
     allocate(cond_coefs(3, 3, nc_total))
     cond_coefs = 1.d0
-    call wq_find_conductivity_diagonal_3D(cond_coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, r1)
 
-    print*, r1(1:10)
+    call cpu_time(start)
+    call mf_wq_get_ku_3d_csr(cond_coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, s, r1)
+    call cpu_time(finish)
+    ! print*, finish-start
 
 end subroutine test_precondfd
 
 ! ----------------------------------------
-! Conjugate gradient
+! Conjugate gradient for steady problems
 ! ----------------------------------------
 
-subroutine wq_mf_bicgstab_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine wq_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIter, epsilon, Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
@@ -583,7 +572,7 @@ subroutine wq_mf_bicgstab_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
             end if 
-            call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
+            call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, ptilde)  
             end if
@@ -605,7 +594,7 @@ subroutine wq_mf_bicgstab_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, dummy)  
                 end if
-                call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
+                call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, stilde) 
                 end if
@@ -632,7 +621,7 @@ subroutine wq_mf_bicgstab_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
                 end if
-                call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
+                call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, ptilde) 
                 end if
@@ -642,7 +631,7 @@ subroutine wq_mf_bicgstab_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         end if
     end if
 
-end subroutine wq_mf_bicgstab_3d
+end subroutine wq_mf_steady_3d
 
 subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -729,7 +718,7 @@ subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
     r = b; rhat = r; p = r; dummy = p
-    call fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
+    call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
     rsold = dot_product(r, rhat)
     RelRes(1) = 1.d0
 
@@ -743,7 +732,7 @@ subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         s = r - alpha*Aptilde
 
         dummy = s
-        call fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, stilde)
+        call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, stilde)
 
         call mf_wq_get_cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -763,7 +752,7 @@ subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         p = r + beta*(p - omega*Aptilde)
         
         dummy = p
-        call fast_diag_C_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
+        call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
         rsold = rsnew
     end do
 
