@@ -820,7 +820,7 @@ module tensor_methods
     ! "Fast Diagonalization" 
 
     subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                                    data_B0, data_W0, data_B1, data_W1, Method, &
+                                    data_B0, data_W0, data_B1, data_W1, Method, dorobin, &
                                     eigenvalues, eigenvectors, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -839,6 +839,8 @@ module tensor_methods
         double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
         dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
         character(len=10), intent(in) :: Method
+        integer, intent(in) :: dorobin
+        dimension :: dorobin(2)
                 
         double precision, intent(out) :: eigenvalues, eigenvectors
         dimension :: eigenvalues(nr), eigenvectors(nr, nr)
@@ -899,6 +901,15 @@ module tensor_methods
             Kdiag(j) = KK(j, j)
             Mdiag(j) = MM(j, j)
         end do
+
+        ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
+        if (dorobin(1).eq.1) then 
+            KK(1, 1) = 100 * KK(1,1)
+        end if
+
+        if (dorobin(2).eq.1) then 
+            KK(nr,nr) = 100 * KK(nr, nr)
+        end if
 
         ! -----------------------------------
         ! Eigen decomposition KK U = MM U DD
@@ -1057,6 +1068,39 @@ module tensor_methods
         call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
     
     end subroutine fast_diag_transient_3d
+
+    subroutine fast_diag_static_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
+                                        diagonal, array_in, array_out)
+        
+        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+        !! by G. Sanaglli and M. Tani
+        
+        use omp_lib
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        integer, parameter :: d = 3
+        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
+        double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
+        dimension ::    U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), &
+                        diagonal(nr_total, d), array_in(nr_total*d)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total*d)
+
+        ! Local data
+        ! -------------
+        integer :: i
+        double precision :: array_temp
+        dimension :: array_temp(nr_total)
+
+        do i = 1, d 
+            call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
+                                    diagonal(:, i), array_in((i-1)*nr_total+1:i*nr_total), array_temp)
+            array_out((i-1)*nr_total+1:i*nr_total) = array_temp
+        end do
+        
+    end subroutine fast_diag_static_3d
 
     ! For improving fast diagonalisation (TD, TDS, JM and JMS)
 

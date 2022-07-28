@@ -340,7 +340,7 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap, dummy, z
     dimension :: r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total)
-    integer :: iter, i
+    integer :: iter, i, dorobin(2)
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -435,6 +435,7 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         ! --------------------------------------------
         ! EIGEN DECOMPOSITION
         ! -------------------------------------------- 
+        dorobin = (/0, 0/)
         allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
         allocate(data_W_u(nnz_u, 2), Kdiag_u(nr_u), Mdiag_u(nr_u))
         do i = 1, nnz_u
@@ -442,7 +443,7 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         end do
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 2), Method, dorobin, D_u, U_u, Kdiag_u, Mdiag_u)
         deallocate(data_W_u)
         
         allocate(data_W_v(nnz_v, 2), Kdiag_v(nr_v), Mdiag_v(nr_v))
@@ -451,7 +452,7 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         end do
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 2), Method, dorobin, D_v, U_v, Kdiag_v, Mdiag_v)    
         deallocate(data_W_v)
 
         allocate(data_W_w(nnz_w, 2), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -460,7 +461,7 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         end do
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W_w(:, 2), Method, dorobin, D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W_w)
 
         ! Find diagonal of eigen values
@@ -582,7 +583,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap, dummy, z
     dimension :: r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total)
-    integer :: iter, i
+    integer :: iter, i, dorobin(2)
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
@@ -610,6 +611,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
     ! -------------------------------------------- 
+    dorobin = (/0, 0/)
     allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
     
     allocate(data_W_u(nnz_u, 2), Kdiag_u(nr_u), Mdiag_u(nr_u))
@@ -618,7 +620,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     end do
     call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                             data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                            data_W_u(:, 2), Method, D_u, U_u, Kdiag_u, Mdiag_u)
+                            data_W_u(:, 2), Method, dorobin, D_u, U_u, Kdiag_u, Mdiag_u)
     deallocate(data_W_u)
     
     allocate(data_W_v(nnz_v, 2), Kdiag_v(nr_v), Mdiag_v(nr_v))
@@ -627,7 +629,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     end do
     call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                             data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                            data_W_v(:, 2), Method, D_v, U_v, Kdiag_v, Mdiag_v)    
+                            data_W_v(:, 2), Method, dorobin, D_v, U_v, Kdiag_v, Mdiag_v)    
     deallocate(data_W_v)
 
     allocate(data_W_w(nnz_w, 2), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -636,7 +638,7 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     end do
     call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                             data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                            data_W_w(:, 2), Method, D_w, U_w, Kdiag_w, Mdiag_w)  
+                            data_W_w(:, 2), Method, dorobin, D_w, U_w, Kdiag_w, Mdiag_w)  
     deallocate(data_W_w)
 
     ! -------------------------------------------

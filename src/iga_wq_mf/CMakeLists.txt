@@ -19,9 +19,9 @@
 # Add library
 add_library(iga_wq_mf 
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_linear_algebra.f90"
-            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_bspline.f90"
-            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_iga_wq.f90"
+            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_basis_weights.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"
+            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_plasticity.f90"
 )
 
 target_link_libraries(iga_wq_mf base OpenMP::OpenMP_Fortran ${LAPACK_lapack_LIBRARY})  
@@ -43,6 +43,7 @@ CreateF2PYModule(NAME assembly
 CreateF2PYModule(NAME solver
                  FILES  "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_iga_solver.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_solver.f90"  
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/plasticity.f90"
                  LINK_LIBRARIES iga_wq_mf base 
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )

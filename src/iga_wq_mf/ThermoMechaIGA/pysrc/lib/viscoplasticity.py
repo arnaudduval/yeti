@@ -86,7 +86,6 @@ def newton_raphson(L, E, K, H, sigma_Y, DB, W, d_n0, b, sigma_ext, dof,
         error = np.linalg.norm(Fint - Fext, np.inf)/np.linalg.norm(Fext, np.inf)
 
         if error < threshold: 
-            d_n1 = d_n0
             break
         else:
             # Compute coefs

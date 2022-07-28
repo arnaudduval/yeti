@@ -146,8 +146,7 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 end subroutine wq_get_conductivity_3d
 
 subroutine wq_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, result)
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes source vector in 3D case
     !! IN CSR FORMAT
 
