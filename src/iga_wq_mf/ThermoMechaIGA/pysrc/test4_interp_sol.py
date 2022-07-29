@@ -43,7 +43,7 @@ modelPhy._set_material(material)
 
 # Block boundaries
 Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-modelPhy._set_blocked_boundaries(Dirichlet)
+modelPhy._set_dirichlet_boundaries(Dirichlet)
 dof = modelPhy._thermal_dof
 dod = modelPhy._thermal_dod 
 

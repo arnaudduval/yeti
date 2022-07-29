@@ -273,7 +273,7 @@ module elastoplasticity
         ! Outputs
         ! -----------
         double precision :: lambda, mu, bulk
-        double precision, dimension(ddl, ddl) :: Ctensor, Stensor
+        double precision, dimension(:, :), allocatable :: Ctensor, Stensor
     
     end type material
 
@@ -291,7 +291,7 @@ module elastoplasticity
         ! ----------------
         double precision :: lambda, mu, bulk
         double precision :: identity, onekronone
-        dimension ::    identity(ddl, ddl), onekronone(ddl, ddl)
+        dimension :: identity(ddl, ddl), onekronone(ddl, ddl)
 
         ! Compute constants
         lambda = nu*E/((1+nu)*(1-2*nu))
@@ -303,11 +303,14 @@ module elastoplasticity
         call one_kron_one(dimen, ddl, onekronone)
 
         ! Save data 
+        allocate(object)
         object%young = E
         object%poisson = nu
         object%lambda = lambda
         object%mu = mu
         object%bulk = bulk
+
+        allocate(object%Ctensor(ddl, ddl), object%Stensor(ddl, ddl))
         object%Ctensor = lambda*onekronone + 2*mu*identity
         object%Stensor = 1.d0/(9.d0*bulk)*onekronone &
                         + 1.d0/(2.d0*mu)*(identity - 1.d0/3.d0*onekronone)

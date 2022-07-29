@@ -14,9 +14,9 @@ from iga_wq_mf import assembly, solver
 
 class fortran_mf_wq(thermoMechaModel):
 
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None):
+    def __init__(self, modelIGA: None, material=None, Dirichlet=None, Neumann=None):
 
-        super().__init__(modelIGA, material= material, Dirichlet= Dirichlet)
+        super().__init__(modelIGA, material= material, Dirichlet= Dirichlet, Neumann= Neumann)
 
         # Set basis and weights
         self.eval_basis_weigths()
@@ -110,6 +110,12 @@ class fortran_mf_wq(thermoMechaModel):
         source_coef = super().eval_source_coefficient(fun, self._qp_PS, self._detJ)
         return source_coef
 
+    def eval_bodyforce_coefficient(self, fun):
+        " Computes body force coefficient"
+        factor = self._detJ * self._density
+        bf_coef = super().eval_source_coefficient(fun, self._qp_PS, factor)
+        return bf_coef
+
     def eval_capacity_matrix(self, indi= None, indj= None): 
         " Computes capacity matrix "
 
@@ -178,6 +184,18 @@ class fortran_mf_wq(thermoMechaModel):
 
         return result
 
+    def eval_Su(self, u):
+        " Computes S u"
+
+        # Get inputs
+        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
+
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: result = solver.mf_wq_get_su_3d_csr(*inputs, u)
+
+        return result
+
     def eval_source_vector(self, fun, indi= None): 
         " Computes source vector Fn - Knd Td "
 
@@ -192,6 +210,93 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 3: F = assembly.wq_get_source_3d(*inputs)[indi]
         stop = time.time()
         print('Source vector assembled in : %.5f s' %(stop-start))
+
+        return F
+
+    def eval_force_surf(self):
+        "Returns force vector at the surface. In 3D: surface integrals and in 2D: line integrals"
+        ## For now, we only consider constants forces at the boundaries
+
+        if self._dim != 3: raise Warning('Method only for 3D geometries')
+        if self._MechanicalNeumann is None: raise Warning('Define Neumann boundaries')
+
+        def get_info(nb):
+            direction = int(np.floor(nb/2))
+            if nb%2 == 1: side = 1
+            else: side = 0
+            return direction, side
+
+        # Initialize temporal force 
+        Ftemp = np.zeros((self._nb_ctrlpts_total*self._dim, 2))
+
+        # Get INC of control points and INC of quadrature points
+        INC_CP = super().get_NURBScoordinates(self._nb_ctrlpts)
+        INC_QP = super().get_NURBScoordinates(self._nb_qp_wq)
+
+        # Set number of surfaces
+        nbSurf = self._dim * 2
+
+        for _ in range(nbSurf):
+            # Get direction 
+            direction, side = get_info(_)
+
+            # Get force
+            force = self._MechanicalNeumann[_]
+            if np.array_equal(force, np.zeros(self._dim)): 
+                continue
+            else:
+                # Get control points and quadrature points list
+                if side == 0: 
+                    CPList = np.where(INC_CP[:, direction] == 0)[0]
+                    QPList = np.where(INC_QP[:, direction] == 0)[0]
+
+                elif side == 1: 
+                    CPList = np.where(INC_CP[:, direction] == self._nb_ctrlpts[direction]-1)[0]
+                    QPList = np.where(INC_QP[:, direction] == self._nb_qp_wq[direction]-1)[0]
+                
+                # Order my list
+                CPList = list(np.sort(CPList))
+                QPList = list(np.sort(QPList))
+
+                # Get modified Jacobien matrix
+                valrange = [i for i in range(self._dim)]
+                valrange.pop(direction)
+                JJ = self._Jqp[:, :, QPList]
+                JJ = JJ[:, valrange, :]
+
+                # Get inputs to compute vector
+                nnz, indices, data_W = [], [], []
+                for _ in valrange:
+                    nnz.append(self._nb_qp_wq[_]); data_W.append(self._DW[_])
+                    indices.append(self._indices[2*_]); indices.append(self._indices[2*_+1]) 
+                
+                # Compute force surfacique
+                FSurf = solver.wq_get_forcesurf_3d(force, JJ, *nnz, *indices, *data_W)
+
+                for d in range(self._dim): 
+                    newCPList = CPList + d*self._nb_ctrlpts_total
+                    Ftemp[newCPList, 0] += FSurf[d, :] 
+                    Ftemp[newCPList, 1] += 1
+
+        # Final update of the vector (average)
+        F = Ftemp[:, 0]
+        FList = np.where(Ftemp[:, 1] >= 2)[0]
+        F[FList] /= Ftemp[FList, 1]
+
+        return F
+
+    def eval_force_body(self, fun):
+        " Computes source vector Fn - Knd Td "
+
+        # Get source coefficients
+        if self._dim != 3: raise Warning('Method only for 3D geometries')
+        self._bodyforce_coef = self.eval_bodyforce_coefficient(fun)
+        inputs = [self._bodyforce_coef, *self._nb_qp_wq, *self._indices, *self._DW]
+
+        start = time.time()
+        F = solver.wq_get_forcevol_3d(*inputs)
+        stop = time.time()
+        print('Body force vector assembled in : %.5f s' %(stop-start))
 
         return F
 
@@ -253,6 +358,18 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 3: sol, residue, error = solver.wq_mf_steady_3d(*inputs)
 
         return sol, residue, error
+
+    def MFplasticity(self, Fext):
+        " Solves a plasticity problem "
+
+        # Get inputs 
+        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet,
+                self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY, Fext]
+
+        result = solver.solver_plasticity(*inputs)
+
+        return result
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         

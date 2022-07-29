@@ -19,7 +19,7 @@ from iga_wq_mf import assembly
 
 class thermoMechaModel(): 
 
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None):
+    def __init__(self, modelIGA: None, material=None, Dirichlet=None, Neumann=None):
         
         print('\nInitializing thermo-mechanical model')
 
@@ -38,7 +38,10 @@ class thermoMechaModel():
         self._set_material(material)
 
         # Initialize Dirichlet boundaries
-        self._set_blocked_boundaries(Dirichlet)
+        self._set_dirichlet_boundaries(Dirichlet)
+
+        # Initialize Neumman boundaries
+        self._set_neumann_boundaries(Neumann)
 
         return
 
@@ -107,21 +110,27 @@ class thermoMechaModel():
         try: self._capacity = material["capacity"]
         except: self._capacity = None
 
+        try: self._density = material["density"]
+        except: self._density = None
+
         try: self._poissonCoef = material["poisson"]
         except: self._poissonCoef = None
 
         try: self._youngModule = material["young"]
         except: self._youngModule = None
 
+        try: self._sigmaY = material["sigmaY"]
+        except: self._sigmaY = None
+
         return
 
-    def _set_blocked_boundaries(self, Dirichlet):
+    def _set_dirichlet_boundaries(self, Dirichlet):
         " Gets free and blocked control points "
         
         # Thermal 
         try: 
             TTable = Dirichlet['thermal']
-            Tdof, Tdod = self.block_boundaries(table_dirichlet= TTable)
+            Tdof, Tdod = self.Dirichlet_boundaries(table= TTable)
         except: 
             TTable, Tdof, Tdod = None, None, None
         self._thermalDirichlet = TTable
@@ -130,8 +139,8 @@ class thermoMechaModel():
 
         # Mechanical 
         try: 
-            MTable = Dirichlet['mecanical']
-            Mdof, Mdod = self.block_boundaries(table_dirichlet= MTable)
+            MTable = Dirichlet['mechanical']
+            Mdof, Mdod = self.Dirichlet_boundaries(table= MTable)
         except: 
             MTable, Mdof, Mdod = None, None, None
         self._MechanicalDirichlet = MTable
@@ -139,6 +148,25 @@ class thermoMechaModel():
         self._mechanical_dod = Mdod
 
         return TTable, Tdof, Tdod, MTable, Mdof, Mdod
+
+    def _set_neumann_boundaries(self, Neumann):
+        " Gets Neumann control points and quadrature points"
+        
+        # Thermal 
+        try: 
+            TTable = Neumann['thermal']
+        except: 
+            TTable = None
+        self._thermalNeumann = TTable
+
+        # Mechanical 
+        try: 
+            MTable = Neumann['mechanical']
+        except: 
+            MTable = None
+        self._MechanicalNeumann = MTable
+
+        return TTable, MTable
 
     def _clear_material(self): 
         " Clears material"
@@ -158,7 +186,13 @@ class thermoMechaModel():
         self._mechanical_dof = None
         self._mechanical_dod = None
         return
-    
+
+    def _clear_Neumann(self):
+        " Clears Neumann boundaries "
+        self._thermalNeumann = None
+        self._MechanicalNeumann = None
+        return
+
     # =======================
     # READ FILE
     # =======================
@@ -207,59 +241,56 @@ class thermoMechaModel():
     # ========================
     # LOCAL FUNCTIONS
     # ========================
+    def get_NURBScoordinates(self, nnz_dim: list): 
+        """ Sets topology table: 
+        INC: NURBS coordinates
+        """
 
-    def block_boundaries(self, table_dirichlet): 
+        # Find total number of nnz
+        nnz_total = np.prod(nnz_dim)
 
-        def get_NURBScoordinates(): 
-            """ Sets topology table: 
-            INC: NURBS coordinates
-            """
+        # ----------------------
+        # INC: NURBS coordinates
+        # ----------------------
+        INC = np.zeros((nnz_total, 3), dtype= int)
 
-            # Get number of control points in each dimension
-            nb_ctrlpts = self._nb_ctrlpts
+        for i3 in range(nnz_dim[2]): 
+            for i2 in range(nnz_dim[1]): 
+                for i1 in range(nnz_dim[0]):
+                    genPos = i1 + i2*nnz_dim[0] + i3*nnz_dim[0]*nnz_dim[1]
+                    INC[genPos, :] = [i1, i2, i3]
 
-            # Find total number of control points 
-            nb_ctrlpts_total = self._nb_ctrlpts_total
+        return INC
 
-            # ----------------------
-            # INC: NURBS coordinates
-            # ----------------------
-            INC = np.zeros((nb_ctrlpts_total, 3), dtype= int)
-
-            for i3 in range(nb_ctrlpts[2]): 
-               for i2 in range(nb_ctrlpts[1]): 
-                   for i1 in range(nb_ctrlpts[0]):
-                       genPos = i1 + i2*nb_ctrlpts[0] + i3*nb_ctrlpts[0]*nb_ctrlpts[1]
-                       INC[genPos, :] = [i1, i2, i3]
-
-            return INC
+    def Dirichlet_boundaries(self, table): 
 
         # The table of dirichlet boundaries must be at least 3D
-        table_dirichlet = np.atleast_3d(table_dirichlet)
+        table = np.atleast_3d(table)
 
         # Get number of degree of freedom (DOF) per node
-        nbDOF = np.shape(table_dirichlet)[2]
-        if np.shape(table_dirichlet)[0] < self._dim or np.shape(table_dirichlet)[1] != 2:
+        nbDOF = np.shape(table)[2]
+        if np.shape(table)[0] < self._dim or np.shape(table)[1] != 2:
             raise Warning('Table is not well defined')
 
         # Get total number of control points
+        nb_ctrlpts = self._nb_ctrlpts
         nb_ctrlpts_total = self._nb_ctrlpts_total
 
         # Get topology 
-        INC = get_NURBScoordinates()
+        INC = self.get_NURBScoordinates(nb_ctrlpts)
 
-        # Find Dirichlet nodes
+        # Find nodes
         nodes_dir_total = []
         for dof in range(nbDOF):
             nodes_dir = []
             for dim in range(self._dim):
-                block_bound_dim = table_dirichlet[dim, :, dof]
+                block_bound_dim = table[dim, :, dof]
                 
                 if block_bound_dim[0]: 
                     nodes_dir.extend(np.where(INC[:, dim] == 0)[0])
 
                 if block_bound_dim[1]:
-                    nodes_dir.extend(np.where(INC[:, dim]  == self._nb_ctrlpts[dim]-1)[0])
+                    nodes_dir.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim]-1)[0])
 
             # Rearrange
             nodes_dir = np.unique(nodes_dir)
@@ -283,8 +314,7 @@ class thermoMechaModel():
         nb_cols = max(indj) + 1
 
         # Set sparse coo matrix
-        sparse_matrix = sp.csr_matrix((data, indj, indi), 
-                                        shape=(nb_rows, nb_cols))
+        sparse_matrix = sp.csr_matrix((data, indj, indi), shape=(nb_rows, nb_cols))
                                         
         return sparse_matrix
 
@@ -421,6 +451,67 @@ class thermoMechaModel():
         print('\tSource coefficients in : %.5f s' %(stop-start))
 
         return source_coef
+
+    def compute_stiffness_coefficient(self, JJ):
+        " Computes coefficients at points P in parametric space. This function only consider linear isotropic case"
+
+        def create_MM(d, ddl):
+
+            # Create MM
+            MM = np.zeros((ddl, d*d))
+
+            if d==3: 
+                MM[0, 0] = 1; MM[1, 4] = 1; MM[2, 8] = 1
+                MM[3, 1] = 0.5; MM[3, 3] = 0.5
+                MM[4, 5] = 0.5; MM[4, 7] = 0.5
+                MM[5, 2] = 0.5; MM[5, 6] = 0.5
+            elif d == 2: 
+                MM[0, 0] = 1; MM[1, 3] = 1
+                MM[2, 1] = 0.5; MM[2, 2] = 0.5
+
+            return MM
+
+        # Set shape
+        d = self._dim
+        ddl = int(d*(d+1)/2)
+        nnz = np.shape(JJ)[2]
+
+        # Create tensors
+        coefs = np.zeros((d*d, d*d, nnz))
+        Gamma = np.zeros((d*d, d*d))
+        MM = create_MM(d, ddl)
+        identity = np.eye(ddl)
+        onekronone = np.zeros((ddl, ddl))
+        for i in range(d):
+            for j in range(d): 
+                onekronone[i, j] = 1
+
+        # Get material properties
+        E = self._youngModule
+        nu = self._poissonCoef
+        lamb = nu*E/((1+nu)*(1-2*nu))
+        mu = E/(2*(1+nu))
+
+        # Create material tensor
+        C = lamb*onekronone + 2*mu*identity
+
+        # Compute M.T D M
+        MDM = MM.T @ C @ MM
+
+        for i in range(nnz):
+
+            # Compute inverse of JJ
+            invJJ = np.linalg.inv(JJ[:, :, i])
+
+            # Create extended version
+            for j in range(d):
+                Gamma[j*d:(j+1)*d, j*d:(j+1)*d] = invJJ
+
+            # Create coefs
+            coefs[:, :, i] = Gamma.T @ MDM @ Gamma 
+            coefs[:, :, i] *= np.linalg.det(JJ[:, :, i])
+
+        return coefs
 
     def solver_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
         "Solve system using conjugate gradient or Bi-conjugate gradient. Matrix A must be assembled"
