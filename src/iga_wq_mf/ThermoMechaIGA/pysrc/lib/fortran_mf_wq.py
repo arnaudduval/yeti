@@ -160,6 +160,26 @@ class fortran_mf_wq(thermoMechaModel):
         
         return K
 
+    def eval_stiffness_matrix(self): 
+        " Computes conductivity matrix "
+        
+        if self._dim != 3: raise Warning('Not yet')
+        
+        # Get inputs
+        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
+
+        start = time.time()
+        val_, indi_, indj_ = assembly.wq_get_stiffness_3d(*inputs)
+                
+        # Convert results in csr sparse matrix
+        K = super().array2coo_matrix(val_, indi_, indj_).tocsc()
+
+        stop = time.time()
+        print('Conductivity matrix assembled in : %5f s' %(stop-start))
+        
+        return K
+
     def eval_Ku(self, u, table= None): 
         " Computes K u "
 
@@ -227,7 +247,7 @@ class fortran_mf_wq(thermoMechaModel):
             return direction, side
 
         # Initialize temporal force 
-        Ftemp = np.zeros((self._nb_ctrlpts_total*self._dim, 2))
+        Ftemp = np.zeros((self._dim+1, self._nb_ctrlpts_total))
 
         # Get INC of control points and INC of quadrature points
         INC_CP = super().get_NURBScoordinates(self._nb_ctrlpts)
@@ -273,15 +293,13 @@ class fortran_mf_wq(thermoMechaModel):
                 # Compute force surfacique
                 FSurf = solver.wq_get_forcesurf_3d(force, JJ, *nnz, *indices, *data_W)
 
-                for d in range(self._dim): 
-                    newCPList = CPList + d*self._nb_ctrlpts_total
-                    Ftemp[newCPList, 0] += FSurf[d, :] 
-                    Ftemp[newCPList, 1] += 1
+                Ftemp[:-1, CPList] += FSurf
+                Ftemp[-1, CPList] += 1
 
         # Final update of the vector (average)
-        F = Ftemp[:, 0]
-        FList = np.where(Ftemp[:, 1] >= 2)[0]
-        F[FList] /= Ftemp[FList, 1]
+        F = Ftemp[:-1, :]
+        FList = np.where(Ftemp[-1, :] >= 2)[0]
+        F[:, FList] /= Ftemp[-1, FList]
 
         return F
 
@@ -359,15 +377,25 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFplasticity(self, Fext):
+    def MFelasticity(self, u):
+        " Solves a elastic problem "
+
+        # Get inputs 
+        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
+        result = solver.wq_mf_static_3d_csr(*inputs, u)
+
+        return result
+
+    def MFplasticity(self, u):
         " Solves a plasticity problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet,
-                self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY, Fext]
-
-        result = solver.solver_plasticity(*inputs)
+                self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
+        result = solver.solver_plasticity(*inputs, u)
 
         return result
 

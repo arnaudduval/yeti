@@ -3,6 +3,32 @@
 ! author :: Joaquin Cornejo
 ! ==========================
 
+subroutine dot_prod_plasticity(dimen, nnz, v1, v2, result)
+
+    implicit none
+    ! Input/ output
+    ! -----------------
+    integer, intent(in) :: dimen, nnz
+    double precision, intent(in) :: v1, v2
+    dimension :: v1(dimen, nnz), v2(dimen, nnz)
+
+    double precision :: result
+
+    ! Local data
+    ! ------------
+    integer :: i
+    double precision :: rtemp
+
+    ! Initialize
+    result = 0.d0
+
+    do i = 1, dimen 
+        rtemp = dot_product(v1(i, :), v2(i, :))
+        result = result + rtemp
+    end do
+
+end subroutine dot_prod_plasticity
+
 subroutine array_maps_tensor(dimen, p, i, j)
     !! Get the second-order tensor index from 1d array index
 
@@ -375,15 +401,15 @@ module elastoplasticity
         implicit none 
         ! Input/ output
         ! --------------------  
-        integer, intent(in) ::  nr_total, nc_total, nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+        integer, intent(in) :: nr_total, nc_total, nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
         dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                         indi_v(nr_v+1), indj_v(nnz_v), &
                         indi_w(nr_w+1), indj_w(nnz_w)
         double precision, intent(in) :: data_B_u, data_B_v, data_B_w
         dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
         double precision, intent(in) :: invJ, disp_ctrlpts
-        dimension :: invJ(dimen, dimen, nc_total), disp_ctrlpts(nr_total*dimen)
+        dimension :: invJ(dimen, dimen, nc_total), disp_ctrlpts(dimen, nr_total)
 
         double precision, intent(out) :: strain_interp
         dimension :: strain_interp(ddl, nc_total)
@@ -419,7 +445,7 @@ module elastoplasticity
                                 nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                                 nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                                 nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-                                disp_ctrlpts((j-1)*nr_total+1:j*nr_total), result(k, :))
+                                disp_ctrlpts(j, :), result(k, :))
             end do
         end do
 

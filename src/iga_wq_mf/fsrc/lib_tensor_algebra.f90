@@ -904,11 +904,11 @@ module tensor_methods
 
         ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
         if (dorobin(1).eq.1) then 
-            KK(1, 1) = 100 * KK(1,1)
+            KK(1, 1) = 1000 * KK(1,1)
         end if
 
         if (dorobin(2).eq.1) then 
-            KK(nr,nr) = 100 * KK(nr, nr)
+            KK(nr,nr) = 1000 * KK(nr, nr)
         end if
 
         ! -----------------------------------
@@ -1083,10 +1083,10 @@ module tensor_methods
         integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
         double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
         dimension ::    U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), &
-                        diagonal(nr_total, d), array_in(nr_total*d)
+                        diagonal(d, nr_total), array_in(d, nr_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total*d)
+        dimension :: array_out(d, nr_total)
 
         ! Local data
         ! -------------
@@ -1096,8 +1096,8 @@ module tensor_methods
 
         do i = 1, d 
             call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                    diagonal(:, i), array_in((i-1)*nr_total+1:i*nr_total), array_temp)
-            array_out((i-1)*nr_total+1:i*nr_total) = array_temp
+                                    diagonal(i, :), array_in(i, :), array_temp)
+            array_out(i, :) = array_temp
         end do
         
     end subroutine fast_diag_static_3d

@@ -177,6 +177,81 @@ subroutine wq_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
 
 end subroutine wq_get_source_3d
 
+subroutine wq_get_stiffness_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            nnz_I_u, nnz_I_v, nnz_I_w, data_result, indi_result, indj_result)
+    !! Computes stiffness matrix in 3D case
+
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision :: coefs
+    dimension :: coefs(d*d, d*d, nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    integer, intent(in) :: nnz_I_u, nnz_I_v, nnz_I_w 
+
+    double precision, intent(out) :: data_result(nnz_I_u*nnz_I_v*nnz_I_w*d*d)
+    integer, intent(out) :: indi_result, indj_result
+    dimension ::    indi_result(nnz_I_u*nnz_I_v*nnz_I_w*d*d), &
+                    indj_result(nnz_I_u*nnz_I_v*nnz_I_w*d*d)
+
+    ! Local data 
+    !-------------
+    integer :: size_data_result
+    double precision, allocatable, dimension(:) :: data_result_temp
+    integer, allocatable, dimension(:) :: indi_result_temp_csr, indj_result_temp, indi_result_temp_coo
+    integer :: i, j, k, l, nnz, count
+    integer :: init, fin
+
+    size_data_result = nnz_I_u*nnz_I_v*nnz_I_w
+    allocate(data_result_temp(size_data_result), indi_result_temp_csr(nr_u*nr_v*nr_w+1), &
+            indj_result_temp(size_data_result), indi_result_temp_coo(size_data_result))
+    
+    do i = 1, d
+        do j = 1, d
+            call wq_get_conductivity_3D(coefs((i-1)*d+1:i*d, (j-1)*d+1:j*d, :), nc_total, &
+                                    nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, nnz_I_u, nnz_I_v, nnz_I_w, &
+                                    data_result_temp, indi_result_temp_csr, indj_result_temp)
+
+            if ((i.eq.1).and.(j.eq.1)) then
+                count = 1
+                indi_result_temp_coo = 0
+                do k = 1, nr_u*nr_v*nr_w
+                    nnz = indi_result_temp_csr(k+1) - indi_result_temp_csr(k)
+                    do l = 1, nnz
+                        indi_result_temp_coo(count) = k-1
+                        count = count + 1
+                    end do
+                end do
+            end if
+
+            init = (j + (i-1)*d - 1)*size_data_result + 1
+            fin = (j + (i-1)*d)*size_data_result
+
+            data_result(init : fin) = data_result_temp    
+            indi_result(init : fin) = indi_result_temp_coo + (i-1)*nr_u*nr_v*nr_w
+            indj_result(init : fin) = indj_result_temp + (j-1)*nr_u*nr_v*nr_w
+
+        end do 
+    end do
+
+    deallocate(data_result_temp, indi_result_temp_csr, indi_result_temp_coo, indj_result_temp)
+
+end subroutine wq_get_stiffness_3d
+
 ! ----------------------------------------
 ! Assembly in 2D
 ! ----------------------------------------

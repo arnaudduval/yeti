@@ -1,6 +1,7 @@
 """
 .. Test of plasticity
 .. We test how plasticity module works
+.. Unities : GPa, mm2, kT
 .. Joaquin Cornejo 
 """
 
@@ -24,7 +25,7 @@ cuts = 2
 
 # Create geometry using geomdl
 geometry = {'degree':[degree, degree, degree]}
-modelGeo = geomdlModel('VB', **geometry)
+modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                             np.array([cuts, cuts, cuts]))
 
@@ -32,7 +33,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-6, 'young': 210, 'poisson': 0.3, 'sigmaY': 80}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 80e-3}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
@@ -42,23 +43,36 @@ Dirichlet = {'mechanical':table}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
 
 forces = [[0 for i in range(3)] for j in range(6)]
-forces[1] = [10, 20, 100]
+forces[1] = [0.05, 0.2, 0.1]
 Neumann = {'mechanical': forces}
 modelPhy._set_neumann_boundaries(Neumann)
 
 # Set external forces
 Fvol = modelPhy.eval_force_body(bodyforce)
 Fsurf = modelPhy.eval_force_surf()
+Fext = Fvol + Fsurf
 
+# Compute Stiffness matrix
+S = modelPhy.eval_stiffness_matrix()
+Fext_row = np.reshape(Fext, (-1, 1), order='F')
+R1 = S @ Fext_row
+R2 = modelPhy.eval_Su(Fext)
+R2 = np.reshape(R2, (-1, 1), order= 'F')
+diff = R1 - R2
+error = np.linalg.norm(diff)
+print(error)
+print(np.max(abs(R2)))
+
+# Solver elastic
+# result = modelPhy.MFelasticity(Fext)
+
+# ============================================
 # # Do ramp function (Fvol is constant, but Fsurf increase linearly)
 # nbStep = 100
 # dt = 1/nbStep
-# Fext = np.zeros((len(Fvol), nbStep+1))
+# Fext = np.zeros((*np.shape(Fvol), nbStep+1))
 # for i in range(nbStep+1): 
-#     Fext[:, i] = Fvol + dt*Fsurf
+#     Fext[:, :, i] = Fvol + dt*Fsurf
 
 # # Solve system
 # disp = modelPhy.MFplasticity(Fext)
-
-Fext = Fvol + Fsurf
-result = modelPhy.eval_Su(Fext)

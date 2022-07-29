@@ -306,6 +306,18 @@ class thermoMechaModel():
 
         return dof, dod
 
+    def array2coo_matrix(self, data, indi, indj):
+        " Computes csr sparse matrix "
+
+        # Computes number of rows and cols
+        nb_rows = max(indi) + 1
+        nb_cols = max(indj) + 1
+
+        # Set sparse coo matrix
+        sparse_matrix = sp.coo_matrix((data, (indi, indj)), shape=(nb_rows, nb_cols))
+                                        
+        return sparse_matrix
+
     def array2csr_matrix(self, data, indi, indj):
         " Computes csr sparse matrix "
 
@@ -313,7 +325,7 @@ class thermoMechaModel():
         nb_rows = len(indi) - 1
         nb_cols = max(indj) + 1
 
-        # Set sparse coo matrix
+        # Set sparse csr matrix
         sparse_matrix = sp.csr_matrix((data, indj, indi), shape=(nb_rows, nb_cols))
                                         
         return sparse_matrix
