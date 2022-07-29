@@ -17,6 +17,25 @@ end module constants_iga_wq_mf
 ! -------------------
 ! Vector and matrices
 ! -------------------
+subroutine update_dirichlet_3d(nc, array, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+    !! Update a array using dirichlet condition
+    implicit none
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nc, ndu, ndv, ndw
+    double precision, intent(inout) :: array
+    dimension :: array(3, nc)
+
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+
+    ! Update array
+    array(1, dod_u) = 0.d0 
+    array(2, dod_v) = 0.d0 
+    array(3, dod_w) = 0.d0 
+
+end subroutine update_dirichlet_3d
+
 subroutine scale_vector(nnz, factor_up, factor_down, vector)
     !! Scaling in fast diagonalization
 

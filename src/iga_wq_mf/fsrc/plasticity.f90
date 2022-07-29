@@ -235,7 +235,7 @@ subroutine mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_input(j, :), array_temp)
 
-            array_output(j, :) = array_output(j, :) + array_temp    
+            array_output(i, :) = array_output(i, :) + array_temp    
 
         end do 
     end do
@@ -291,12 +291,10 @@ subroutine mf_wq_get_su_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
 end subroutine mf_wq_get_su_3d_csr
 
-! ================================
-
-subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            U_u, U_v, U_w, Deigen, nbIter, b, x)
+                            U_u, U_v, U_w, Deigen, nbIter, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     
     use tensor_methods
     implicit none 
@@ -317,6 +315,10 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     double precision, intent(in) :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), Deigen(d, nr_total)
+    integer, intent(in) :: ndu, ndv, ndw
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+
     double precision, intent(in) :: b
     dimension :: b(d, nr_total)
     
@@ -355,19 +357,23 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     call dot_prod_plasticity(d, nr_total, r, rhat, rsold)
 
     do iter = 1, nbIter
+        call update_dirichlet_3d(nr_total, p, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         call mf_wq_get_su_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                 nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                 data_W_u, data_W_v, data_W_w, p, Ap)
+        call update_dirichlet_3d(nr_total, Ap, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
         call dot_prod_plasticity(d, nr_total, Ap, rhat, prod)
         alpha = rsold/prod
         s = r - alpha*Ap
-
+        call update_dirichlet_3d(nr_total, s, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         call mf_wq_get_su_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                 nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                 data_W_u, data_W_v, data_W_w, s, As)
+        call update_dirichlet_3d(nr_total, As, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+
         call dot_prod_plasticity(d, nr_total, As, s, prod)
         call dot_prod_plasticity(d, nr_total, As, As, prod2)
         omega = prod/prod2
@@ -375,7 +381,6 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         r = s - omega*As
 
         RelRes = maxval(abs(r))/maxval(abs(b))
-        print*, RelRes
 
         if (RelRes.le.epsilon) exit
 
@@ -385,6 +390,8 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         rsold = rsnew
     end do
 
+    print*, RelRes
+
     ! ! -------------------------------------------
     ! ! Preconditioned Conjugate Gradient algorithm
     ! ! -------------------------------------------
@@ -393,21 +400,27 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     ! call dot_prod_plasticity(d, nr_total, r, rhat, rsold)
 
     ! do iter = 1, nbIter
+    !     call update_dirichlet_3d(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     !     call mf_wq_get_su_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     !             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
     !             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
     !             data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
+    !     call update_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         
     !     call dot_prod_plasticity(d, nr_total, Aptilde, rhat, prod)
     !     alpha = rsold/prod
     !     s = r - alpha*Aptilde
-
+    !     call update_dirichlet_3d(nr_total, s, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+        
     !     call fast_diag_static_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
+    !     call update_dirichlet_3d(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
     !     call mf_wq_get_su_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     !             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
     !             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
     !             data_W_u, data_W_v, data_W_w, stilde, Astilde)
+    !     call update_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+
     !     call dot_prod_plasticity(d, nr_total, Astilde, s, prod)
     !     call dot_prod_plasticity(d, nr_total, Astilde, Astilde, prod2)
 
@@ -422,15 +435,18 @@ subroutine wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     !     call dot_prod_plasticity(d, nr_total, r, rhat, rsnew)
     !     beta = (alpha/omega)*(rsnew/rsold)
     !     p = r + beta*(p - omega*Aptilde)
+    !     call update_dirichlet_3d(nr_total, p, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+
     !     call fast_diag_static_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
     !     rsold = rsnew
     ! end do
 
-end subroutine wq_mf_static_3d
+end subroutine wq_mf_elasticity_3d
 
-subroutine wq_mf_static_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, b, x)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     
     use tensor_methods
     implicit none 
@@ -448,8 +464,9 @@ subroutine wq_mf_static_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    integer, intent(in) :: table
-    dimension :: table(d, 2, d)
+    integer, intent(in) :: ndu, ndv, ndw
+    integer, intent(in) :: table, dod_u, dod_v, dod_w
+    dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
     double precision, intent(in) :: b
     dimension :: b(d, nr_total)
     
@@ -496,167 +513,173 @@ subroutine wq_mf_static_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     end do
     deallocate(I_u, I_v, I_w, D_u, D_v, D_w, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
-    call wq_mf_static_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        U_u, U_v, U_w, Deigen, 100, b, x)
+                        U_u, U_v, U_w, Deigen, 100, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
 
-end subroutine wq_mf_static_3d_csr
+end subroutine wq_mf_elasticity_3d_csr
 
-! subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-!                         table, JJ, E, nu, sigma_Y, sizeF, Fext, disp)
+subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, E, nu, sigma_Y, sizeF, Fext, disp)
 
-!     use elastoplasticity
-!     use tensor_methods
-!     implicit none 
-!     ! Input / output data
-!     ! ---------------------
-!     ! Geometry
-!     integer, parameter :: d = 3, dof = d*(d+1)/2
-!     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
-!     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-!     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-!                     indi_v(nr_v+1), indj_v(nnz_v), &
-!                     indi_w(nr_w+1), indj_w(nnz_w)
-!     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-!     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-!                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-!                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-!     ! Physics
-!     double precision, intent(in) :: E, nu, sigma_Y
-!     integer, intent(in) :: table
-!     dimension :: table(d, 2, d)
-!     double precision, intent(in) :: JJ, Fext
-!     dimension :: JJ(d, d, nc_total), Fext(d, nr_total, sizeF+1)
+    use elastoplasticity
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! ---------------------
+    ! Geometry
+    integer, parameter :: d = 3, dof = d*(d+1)/2
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    ! Physics
+    double precision, intent(in) :: E, nu, sigma_Y
+    integer, intent(in) :: ndu, ndv, ndw
+    integer, intent(in) :: table, dod_u, dod_v, dod_w
+    dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
+    double precision, intent(in) :: JJ, Fext
+    dimension :: JJ(d, d, nc_total), Fext(d, nr_total, sizeF+1)
     
-!     double precision, intent(out) :: disp
-!     dimension :: disp(d, nr_total, sizeF+1)
+    double precision, intent(out) :: disp
+    dimension :: disp(d, nr_total, sizeF+1)
 
-!     ! Local data
-!     ! -----------
-!     double precision :: invJ, detJ, invJtemp, detJtemp
-!     dimension :: invJ(d, d, nc_total), detJ(nc_total), invJtemp(d, d)
+    ! Local data
+    ! -----------
+    double precision :: invJ, detJ, invJtemp, detJtemp
+    dimension :: invJ(d, d, nc_total), detJ(nc_total), invJtemp(d, d)
 
-!     character(len = 10) :: Method = 'FDC'
-!     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-!     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-!     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-!     double precision, dimension(:, :), allocatable :: Deigen
-!     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    character(len = 10) :: Method = 'FDC'
+    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
+    double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
+    double precision, dimension(:, :), allocatable :: Deigen
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
 
-!     type(material), pointer :: mat
-!     double precision :: ep_n1, ep_n0, e_n1, sigma_n1, dSdE
-!     dimension ::    ep_n1(dof, nc_total), ep_n0(dof, nc_total), e_n1(dof, nc_total), &
-!                     sigma_n1(dof, nc_total), dSdE(dof, dof, nc_total)
-!     double precision :: disp_temp, Fext_temp, coef_fint, coef_S, Fint, delta_disp
-!     dimension ::    disp_temp(d, nr_total), Fext_temp(d, nr_total), coef_fint(d*d, nc_total), &
-!                     coef_S(d*d, d*d, nc_total), Fint(d, nr_total), delta_disp(d, nr_total)
-!     double precision :: c_u, c_v, c_w, error
-!     integer :: i, j, k, nbIterRaphson, nbIterSolver, dorobin(2)
+    type(material), pointer :: mat
+    double precision :: ep_n1, ep_n0, e_n1, sigma_n1, dSdE
+    dimension ::    ep_n1(dof, nc_total), ep_n0(dof, nc_total), e_n1(dof, nc_total), &
+                    sigma_n1(dof, nc_total), dSdE(dof, dof, nc_total)
+    double precision :: disp_temp, Fext_temp, coef_fint, coef_S, Fint, delta_disp
+    dimension ::    disp_temp(d, nr_total), Fext_temp(d, nr_total), coef_fint(d*d, nc_total), &
+                    coef_S(d*d, d*d, nc_total), Fint(d, nr_total), delta_disp(d, nr_total)
+    double precision :: c_u, c_v, c_w, error
+    integer :: i, j, k, nbIterRaphson, nbIterSolver, dorobin(2)
 
-!     ! --------------------------------------------
-!     ! GEOMETRY
-!     ! -------------------------------------------- 
-!     do i = 1, nc_total
-!         call MatrixInv(invJtemp, JJ(:, :, i), detJtemp, d)
-!         invJ(:, :, i) = invJtemp
-!         detJ(i) = detJtemp
-!     end do
+    ! --------------------------------------------
+    ! GEOMETRY
+    ! -------------------------------------------- 
+    do i = 1, nc_total
+        call MatrixInv(invJtemp, JJ(:, :, i), detJtemp, d)
+        invJ(:, :, i) = invJtemp
+        detJ(i) = detJtemp
+    end do
 
-!     ! --------------------------------------------
-!     ! EIGEN DECOMPOSITION
-!     ! -------------------------------------------- 
-!     ! Initialize 
-!     dorobin = (/0, 0/)
-!     c_u = 1.d0; c_v = 1.d0; c_w = 1.d0
-!     allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), U_w(nr_w, nr_w, d), D_w(nr_w))
-!     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
-!     allocate(Deigen(d, nr_total))
+    ! --------------------------------------------
+    ! EIGEN DECOMPOSITION
+    ! -------------------------------------------- 
+    ! Initialize 
+    dorobin = (/0, 0/)
+    c_u = 1.d0; c_v = 1.d0; c_w = 1.d0
+    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), U_w(nr_w, nr_w, d), D_w(nr_w))
+    allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
+    allocate(Deigen(d, nr_total))
 
-!     ! Find diagonal of eigen values
-!     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-!     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+    ! Find diagonal of eigen values
+    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
+    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
 
-!     do i = 1, d
-!         dorobin = table(1, :, i)
-!         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-!                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-!                                 data_W_u(:, 4), method, dorobin, D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
+    do i = 1, d
+        dorobin = table(1, :, i)
+        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                data_W_u(:, 4), method, dorobin, D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
 
-!         dorobin = table(2, :, i)
-!         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-!                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-!                                 data_W_v(:, 4), method, dorobin, D_v, U_v(:, :, i), Kdiag_v, Mdiag_v)
+        dorobin = table(2, :, i)
+        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                data_W_v(:, 4), method, dorobin, D_v, U_v(:, :, i), Kdiag_v, Mdiag_v)
 
-!         dorobin = table(3, :, i)
-!         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-!                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-!                                 data_W_w(:, 4), method, dorobin, D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
+        dorobin = table(3, :, i)
+        call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                data_W_w(:, 4), method, dorobin, D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
 
-!         call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-!                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
-!     end do
-!     deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
-!     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
+                                I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
+    end do
+    deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
+    deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
-!     ! --------------------------------------------
-!     ! SOLVE
-!     ! -------------------------------------------- 
-!     ! Initialize
-!     call initialize_mat(mat, E, nu)
-!     disp = 0.d0; ep_n1 = 0.d0; ep_n0 = 0.d0
-!     nbIterRaphson = 20; nbIterSolver = 100
+    ! --------------------------------------------
+    ! SOLVE
+    ! -------------------------------------------- 
+    ! Initialize
+    call initialize_mat(mat, E, nu)
+    disp = 0.d0; ep_n1 = 0.d0; ep_n0 = 0.d0
+    nbIterRaphson = 20; nbIterSolver = 100
     
-!     do i = 2, sizeF+1
+    do i = 2, sizeF+1
 
-!         ! Initialize 
-!         disp_temp = disp(:, :, i-1)
-!         Fext_temp = Fext(:, :, i)
+        ! Initialize 
+        disp_temp = disp(:, :, i-1)
+        Fext_temp = Fext(:, :, i)
 
-!         ! Newton Raphson
-!         do j = 1, nbIterRaphson
-!             print*, 'Step: ', i, ', Iter: ', j
+        ! Newton Raphson
+        do j = 1, nbIterRaphson
 
-!             ! Compute strain as a function of displacement (at each quadrature point)
-!             call interpolate_strain(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-!                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                                 data_B_u, data_B_v, data_B_w, invJ, disp_temp, e_n1)
+            print*, 'Step: ', i, ' Iteration: ', j
 
-!             ! Closest point projection in perfect plasticity 
-!             do k = 1, nc_total
-!                 call cpp_perfplasticity(mat%Ctensor, mat%Stensor, sigma_Y, e_n1(:, k), ep_n0(:, k), &
-!                                         ep_n1(:, k), sigma_n1(:, k), dSdE(:, :, k))
-!             end do
+            ! Compute strain as a function of displacement (at each quadrature point)
+            call interpolate_strain(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, invJ, disp_temp, e_n1)
 
-!             ! Compute coefficients to compute Fint and Stiffness
-!             call compute_coefficients(nc_total, sigma_n1, dSdE, invJ, detJ, coef_fint, coef_S)
+            ! Closest point projection in perfect plasticity 
+            do k = 1, nc_total
+                call cpp_perfplasticity(mat%Ctensor, mat%Stensor, sigma_Y, e_n1(:, k), ep_n0(:, k), &
+                                        ep_n1(:, k), sigma_n1(:, k), dSdE(:, :, k))
+            end do
 
-!             ! Compute Fint
-!             call wq_get_forceInt_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-!                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
+            ! Compute coefficients to compute Fint and Stiffness
+            call compute_coefficients(nc_total, sigma_n1, dSdE, invJ, detJ, coef_fint, coef_S)
+
+            ! Compute Fint
+            call wq_get_forceInt_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
             
-!             ! Update F
-!             Fint = Fext_temp - Fint
-!             error = maxval(abs(Fint))/maxval(abs(Fext_temp))
+            ! Update F
+            Fint = Fext_temp - Fint
+            error = maxval(abs(Fint))/maxval(abs(Fext_temp))
+            print*, error
 
-!             ! Verify
-!             if (error.le.1e-6) then 
-!                 disp(:, :, i) = disp_temp
-!                 ep_n0 = ep_n1
-!                 exit
-!             else
-!                 ! Solve by iterations 
-!                 call wq_mf_static_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-!                                     U_u, U_v, U_w, Deigen, nbIterSolver, Fint, delta_disp)
+            ! Verify
+            if (error.le.1e-6) then 
+                disp(:, :, i) = disp_temp
+                ep_n0 = ep_n1
+                exit
 
-!                 ! Update displacement
-!                 disp_temp = disp_temp + delta_disp
-!             end if
-!         end do
-!     end do
+            else
+                ! Solve by iterations 
+                call wq_mf_elasticity_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                    U_u, U_v, U_w, Deigen, nbIterSolver, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
+                                    Fint, delta_disp)
 
-! end subroutine solver_plasticity
+                ! Update displacement
+                disp_temp = disp_temp + delta_disp
+            end if
+            
+        end do
+    end do
+
+end subroutine solver_plasticity

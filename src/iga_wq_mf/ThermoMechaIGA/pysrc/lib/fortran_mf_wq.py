@@ -173,12 +173,12 @@ class fortran_mf_wq(thermoMechaModel):
         val_, indi_, indj_ = assembly.wq_get_stiffness_3d(*inputs)
                 
         # Convert results in csr sparse matrix
-        K = super().array2coo_matrix(val_, indi_, indj_).tocsc()
+        S = super().array2coo_matrix(val_, indi_, indj_).tocsc()
 
         stop = time.time()
-        print('Conductivity matrix assembled in : %5f s' %(stop-start))
+        print('Stiffness matrix assembled in : %5f s' %(stop-start))
         
-        return K
+        return S
 
     def eval_Ku(self, u, table= None): 
         " Computes K u "
@@ -208,11 +208,10 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes S u"
 
         # Get inputs
+        if self._dim != 3: raise Warning('Until now not done')
         coefs = super().compute_stiffness_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
-
-        if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_wq_get_su_3d_csr(*inputs, u)
+        result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
         return result
 
@@ -377,23 +376,25 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFelasticity(self, u):
+    def MFelasticity(self, dod=None, u=None):
         " Solves a elastic problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if dod is None or u is None: raise Warning('Impossible')
         coefs = super().compute_stiffness_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
-        result = solver.wq_mf_static_3d_csr(*inputs, u)
+        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, u)
 
         return result
 
-    def MFplasticity(self, u):
+    def MFplasticity(self, dod, u):
         " Solves a plasticity problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet,
+        if dod is None or u is None: raise Warning('Impossible')
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
                 self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
         result = solver.solver_plasticity(*inputs, u)
 

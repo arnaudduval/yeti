@@ -131,6 +131,7 @@ class thermoMechaModel():
         try: 
             TTable = Dirichlet['thermal']
             Tdof, Tdod = self.Dirichlet_boundaries(table= TTable)
+            Tdof, Tdod = Tdof[0], Tdod[0]
         except: 
             TTable, Tdof, Tdod = None, None, None
         self._thermalDirichlet = TTable
@@ -280,31 +281,25 @@ class thermoMechaModel():
         INC = self.get_NURBScoordinates(nb_ctrlpts)
 
         # Find nodes
-        nodes_dir_total = []
-        for dof in range(nbDOF):
-            nodes_dir = []
+        dod_total = []; dof_total = []
+        for i in range(nbDOF):
+            dod = []
             for dim in range(self._dim):
-                block_bound_dim = table[dim, :, dof]
+                block_bound_dim = table[dim, :, i]
                 
                 if block_bound_dim[0]: 
-                    nodes_dir.extend(np.where(INC[:, dim] == 0)[0])
+                    dod.extend(np.where(INC[:, dim] == 0)[0])
 
                 if block_bound_dim[1]:
-                    nodes_dir.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim]-1)[0])
+                    dod.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim]-1)[0])
 
             # Rearrange
-            nodes_dir = np.unique(nodes_dir)
-            nodes_dir += dof*nb_ctrlpts_total*np.ones(len(nodes_dir), dtype= int)
-            nodes_dir_total.extend(list(nodes_dir))
+            dod = np.unique(dod)
+            dof = set(np.arange(nb_ctrlpts_total, dtype= int)) - set(dod)
+            dod_total.append(list(dod))
+            dof_total.append(list(dof))
 
-        # Find blocked nodes
-        dod = nodes_dir_total
-
-        # Find equations nodes
-        dof = set(np.arange(nb_ctrlpts_total, dtype= int)) - set(dod)
-        dof = list(dof)
-
-        return dof, dod
+        return dod_total, dof_total
 
     def array2coo_matrix(self, data, indi, indj):
         " Computes csr sparse matrix "

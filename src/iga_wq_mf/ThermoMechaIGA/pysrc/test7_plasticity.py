@@ -20,8 +20,8 @@ def bodyforce(P: list):
     return f
 
 # Set global variables
-degree = 4
-cuts = 2
+degree = 2
+cuts = 3
 
 # Create geometry using geomdl
 geometry = {'degree':[degree, degree, degree]}
@@ -40,7 +40,7 @@ modelPhy._set_material(material)
 table = np.zeros((3, 2, 3))
 table[0, :, :] = 1
 Dirichlet = {'mechanical':table}
-modelPhy._set_dirichlet_boundaries(Dirichlet)
+Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)[-1]
 
 forces = [[0 for i in range(3)] for j in range(6)]
 forces[1] = [0.05, 0.2, 0.1]
@@ -50,23 +50,27 @@ modelPhy._set_neumann_boundaries(Neumann)
 # Set external forces
 Fvol = modelPhy.eval_force_body(bodyforce)
 Fsurf = modelPhy.eval_force_surf()
-Fext = Fvol + Fsurf
 
-# Compute Stiffness matrix
-S = modelPhy.eval_stiffness_matrix()
-Fext_row = np.reshape(Fext, (-1, 1), order='F')
-R1 = S @ Fext_row
-R2 = modelPhy.eval_Su(Fext)
-R2 = np.reshape(R2, (-1, 1), order= 'F')
-diff = R1 - R2
-error = np.linalg.norm(diff)
-print(error)
-print(np.max(abs(R2)))
+# # ==========================================
+# # Compute Stiffness matrix
+# ones = Fsurf
+# S = modelPhy.eval_stiffness_matrix()
+# ones_row = np.reshape(ones, (-1, 1))
+# R1 = S @ ones_row
+# R2 = modelPhy.eval_Su(ones)
+# R2 = np.reshape(R2, (-1, 1))
+# diff = R1 - R2
+# error = np.linalg.norm(diff)
+# print(error)
+# # ==========================================
 
 # Solver elastic
-# result = modelPhy.MFelasticity(Fext)
+Fext = Fvol + Fsurf
+for i in range(3):
+    Fext[i, Mdod[i]] = 0.0
+result = modelPhy.MFelasticity(Mdod, Fext)
 
-# ============================================
+# # ============================================
 # # Do ramp function (Fvol is constant, but Fsurf increase linearly)
 # nbStep = 100
 # dt = 1/nbStep
@@ -74,5 +78,8 @@ print(np.max(abs(R2)))
 # for i in range(nbStep+1): 
 #     Fext[:, :, i] = Fvol + dt*Fsurf
 
+# for i in range(3):
+#     Fext[i, Mdod[i], :] = 0.0
+
 # # Solve system
-# disp = modelPhy.MFplasticity(Fext)
+# disp = modelPhy.MFplasticity(Mdod, Fext)

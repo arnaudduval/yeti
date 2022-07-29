@@ -208,28 +208,29 @@ subroutine wq_get_stiffness_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
 
     ! Local data 
     !-------------
-    integer :: size_data_result
+    integer :: size_data_result, nr_total
     double precision, allocatable, dimension(:) :: data_result_temp
     integer, allocatable, dimension(:) :: indi_result_temp_csr, indj_result_temp, indi_result_temp_coo
     integer :: i, j, k, l, nnz, count
     integer :: init, fin
 
     size_data_result = nnz_I_u*nnz_I_v*nnz_I_w
-    allocate(data_result_temp(size_data_result), indi_result_temp_csr(nr_u*nr_v*nr_w+1), &
+    nr_total = nr_u*nr_v*nr_w
+    allocate(data_result_temp(size_data_result), indi_result_temp_csr(nr_total+1), &
             indj_result_temp(size_data_result), indi_result_temp_coo(size_data_result))
     
     do i = 1, d
         do j = 1, d
             call wq_get_conductivity_3D(coefs((i-1)*d+1:i*d, (j-1)*d+1:j*d, :), nc_total, &
                                     nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, nnz_I_u, nnz_I_v, nnz_I_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                                    data_W_u, data_W_v, data_W_w, nnz_I_u, nnz_I_v, nnz_I_w, &
                                     data_result_temp, indi_result_temp_csr, indj_result_temp)
 
             if ((i.eq.1).and.(j.eq.1)) then
                 count = 1
                 indi_result_temp_coo = 0
-                do k = 1, nr_u*nr_v*nr_w
+                do k = 1, nr_total
                     nnz = indi_result_temp_csr(k+1) - indi_result_temp_csr(k)
                     do l = 1, nnz
                         indi_result_temp_coo(count) = k-1
@@ -238,12 +239,12 @@ subroutine wq_get_stiffness_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                 end do
             end if
 
-            init = (j + (i-1)*d - 1)*size_data_result + 1
-            fin = (j + (i-1)*d)*size_data_result
+            init = (j + (i - 1)*d - 1)*size_data_result + 1
+            fin = (j + (i - 1)*d)*size_data_result
 
             data_result(init : fin) = data_result_temp    
-            indi_result(init : fin) = indi_result_temp_coo + (i-1)*nr_u*nr_v*nr_w
-            indj_result(init : fin) = indj_result_temp + (j-1)*nr_u*nr_v*nr_w
+            indi_result(init : fin) = indi_result_temp_coo + (i - 1)*nr_total
+            indj_result(init : fin) = indj_result_temp + (j - 1)*nr_total
 
         end do 
     end do
