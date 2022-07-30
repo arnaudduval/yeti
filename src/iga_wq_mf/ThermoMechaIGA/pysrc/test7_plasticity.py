@@ -20,7 +20,7 @@ def bodyforce(P: list):
     return f
 
 # Set global variables
-degree = 2
+degree = 4
 cuts = 3
 
 # Create geometry using geomdl
@@ -75,8 +75,8 @@ result = modelPhy.MFelasticity(Mdod, Fext)
 # nbStep = 100
 # dt = 1/nbStep
 # Fext = np.zeros((*np.shape(Fvol), nbStep+1))
-# for i in range(nbStep+1): 
-#     Fext[:, :, i] = Fvol + dt*Fsurf
+# for i in range(1, nbStep+1): 
+#     Fext[:, :, i] = Fvol + i*dt*Fsurf
 
 # for i in range(3):
 #     Fext[i, Mdod[i], :] = 0.0

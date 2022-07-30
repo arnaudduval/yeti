@@ -1069,7 +1069,7 @@ module tensor_methods
     
     end subroutine fast_diag_transient_3d
 
-    subroutine fast_diag_static_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
+    subroutine fast_diag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
                                         diagonal, array_in, array_out)
         
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -1100,7 +1100,7 @@ module tensor_methods
             array_out(i, :) = array_temp
         end do
         
-    end subroutine fast_diag_static_3d
+    end subroutine fast_diag_elasticity_3d
 
     ! For improving fast diagonalisation (TD, TDS, JM and JMS)
 
