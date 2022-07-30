@@ -38,7 +38,7 @@ modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
 table = np.zeros((3, 2, 3))
-table[0, :, :] = 1
+table[0, 0, :] = 1
 Dirichlet = {'mechanical':table}
 Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)[-1]
 

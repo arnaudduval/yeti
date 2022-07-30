@@ -300,7 +300,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     implicit none 
     ! Input / output data
     ! ---------------------
-    logical :: isPrecond = .true.
+    logical :: isPrecond = .True.
     double precision, parameter :: epsilon = 1e-10
     integer, parameter :: d = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
@@ -323,7 +323,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     double precision, intent(in) :: b
     dimension :: b(d, nr_total)
     
-    double precision, intent(out) :: x
+    double precision, intent(out) :: x 
     dimension :: x(d, nr_total)
 
     ! Local data
@@ -351,7 +351,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! Initiate variables
     x = 0.d0
 
-    if (isPrecond) then
+    if (.not.isPrecond) then
         ! -------------------------------------------
         ! Conjugate gradient algorithm
         ! -------------------------------------------
@@ -433,7 +433,6 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
             
             RelRes = maxval(abs(r))/maxval(abs(b))
-            print*, RelRes
             if (RelRes.le.epsilon) exit
             call dot_prod_plasticity(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -442,6 +441,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         end do
     end if
 
+    print*, 'Number of iterations', iter, ' with error: ', RelRes
 end subroutine wq_mf_elasticity_3d
 
 subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -497,6 +497,7 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
 
     do i = 1, d
+
         call eigen_decomposition(nr_u, nc_u, Mcoef, Kcoef, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
                                 data_W_u(:, 4), method, table(1, :, i), D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
@@ -511,6 +512,7 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
 
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, 1.d0, 1.d0, 1.d0, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
+
     end do
     deallocate(I_u, I_v, I_w, D_u, D_v, D_w, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 

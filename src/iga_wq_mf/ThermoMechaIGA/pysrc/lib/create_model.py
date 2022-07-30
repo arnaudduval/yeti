@@ -299,7 +299,7 @@ class thermoMechaModel():
             dod_total.append(list(dod))
             dof_total.append(list(dof))
 
-        return dod_total, dof_total
+        return dof_total, dod_total
 
     def array2coo_matrix(self, data, indi, indj):
         " Computes csr sparse matrix "

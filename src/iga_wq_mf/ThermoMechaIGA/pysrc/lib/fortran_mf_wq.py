@@ -383,6 +383,12 @@ class fortran_mf_wq(thermoMechaModel):
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if dod is None or u is None: raise Warning('Impossible')
         coefs = super().compute_stiffness_coefficient(self._Jqp)
+
+        for _ in range(len(dod)):
+            newdod = np.array(dod[_])
+            newdod += 1
+            dod[_] = list(newdod)
+
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
         result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, u)
 
@@ -394,6 +400,12 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if dod is None or u is None: raise Warning('Impossible')
+
+        for _ in range(len(dod)):
+            newdod = np.array(dod[_])
+            newdod += 1
+            dod[_] = list(newdod)
+            
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
                 self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
         result = solver.solver_plasticity(*inputs, u)
