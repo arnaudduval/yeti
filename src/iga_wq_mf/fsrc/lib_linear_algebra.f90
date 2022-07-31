@@ -17,24 +17,6 @@ end module constants_iga_wq_mf
 ! -------------------
 ! Vector and matrices
 ! -------------------
-subroutine update_dirichlet_3d(nc, array, ndu, ndv, ndw, dod_u, dod_v, dod_w)
-    !! Update a array using dirichlet condition
-    implicit none
-    ! Input / output data
-    ! ---------------------
-    integer, intent(in) :: nc, ndu, ndv, ndw
-    double precision, intent(inout) :: array
-    dimension :: array(3, nc)
-
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
-
-    ! Update array
-    array(1, dod_u) = 0.d0 
-    array(2, dod_v) = 0.d0 
-    array(3, dod_w) = 0.d0 
-
-end subroutine update_dirichlet_3d
 
 subroutine scale_vector(nnz, factor_up, factor_down, vector)
     !! Scaling in fast diagonalization
@@ -342,6 +324,30 @@ subroutine solve_linear_system(nr, nc, A, b, x)
     end if
 
 end subroutine solve_linear_system
+
+subroutine inverse_matrix(nnz, A)
+    ! Computes the inverse of a matrix
+    
+    implicit none
+    ! Input / output data
+    ! ------------------- 
+    integer, intent(in) :: nnz
+    double precision, intent(inout) :: A
+    dimension :: A(nnz, nnz)
+
+    ! Local data
+    ! ----------
+    double precision :: work
+    integer :: ipiv, info
+    dimension :: work(nnz), ipiv(nnz)
+
+    ! Compute LU decomposition
+    call dgetrf(nnz, nnz, A, nnz, ipiv, info)
+
+    ! Compute inverse of A with LU decomposition
+    call dgetri(nnz, A, nnz, ipiv, work, nnz, info)
+
+end subroutine inverse_matrix
 
 subroutine crossproduct(v1, v2, v3)
     !! Computes cross product in a 3D Euclidean space

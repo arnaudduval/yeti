@@ -390,7 +390,7 @@ class fortran_mf_wq(thermoMechaModel):
             dod[_] = list(newdod)
 
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
-        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, u)
+        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, self._Jqp, u)
 
         return result
 

@@ -192,9 +192,10 @@ subroutine stdcst(dimen, ddl, tensor1, tensor2, result)
     call array2st(dimen, ddl, tensor2, t2)
 
     ! Compute double contracted result
+    result = 0.d0
     do j = 1, dimen
         do i = 1, dimen
-            result = t1(i, j)*t2(i, j)
+            result = result + t1(i, j)*t2(i, j)
         end do
     end do
 
@@ -224,6 +225,25 @@ subroutine stkronst(ddl, tensor1, tensor2, result)
     end do
 
 end subroutine stkronst
+
+subroutine update_dirichlet_3d(nc, array, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+    !! Update a array using dirichlet condition
+    implicit none
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nc, ndu, ndv, ndw
+    double precision, intent(inout) :: array
+    dimension :: array(3, nc)
+
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+
+    ! Update array
+    array(1, dod_u) = 0.d0 
+    array(2, dod_v) = 0.d0 
+    array(3, dod_w) = 0.d0 
+
+end subroutine update_dirichlet_3d
 
 subroutine compute_deviatoric(dimen, ddl, tensor, dev_tensor)
     !! Returns deviatoric tensor 
@@ -468,29 +488,6 @@ module elastoplasticity
     end subroutine interpolate_strain
 
     ! =========================
-    ! LINEAR ELASTICITY 
-    ! =========================
-    subroutine cpp_elasticity(Ctensor, e_n1, sigma_n1, dSdE)
-        !! Return closest point proyection (cpp) in perfect elasticity (It is the simplest way)
-
-        implicit none
-        ! Input / output
-        ! ---------------
-        double precision, intent(in) :: Ctensor, e_n1
-        dimension :: Ctensor(ddl, ddl), e_n1(ddl)
-
-        double precision, intent(out) :: sigma_n1, dSdE
-        dimension :: sigma_n1(ddl), dSdE(ddl, ddl)
-                       
-        ! Compute elastic predictor
-        sigma_n1 = matmul(Ctensor, e_n1)
-
-        ! Elastic point
-        dSdE = Ctensor
-
-    end subroutine cpp_elasticity
-
-    ! =========================
     ! PERFECT PLASTICITY
     ! =========================
 
@@ -507,9 +504,8 @@ module elastoplasticity
 
         ! Local data
         ! ----------------
-        double precision ::  norm, dev_sigma, identity, onekronone, devdev
-        dimension ::    dev_sigma(ddl), devdev(ddl, ddl), &
-                        identity(ddl, ddl), onekronone(ddl, ddl)
+        double precision ::  norm, dev_sigma, identity, devdev
+        dimension ::    dev_sigma(ddl), devdev(ddl, ddl), identity(ddl, ddl)
 
         ! Compute deviatoric of sigma tensor
         call compute_deviatoric(dimen, ddl, sigma, dev_sigma)
@@ -517,16 +513,15 @@ module elastoplasticity
         ! Compute the norm sqrt(sigma : sigma)
         call stdcst(dimen, ddl, dev_sigma, dev_sigma, norm)
         norm = sqrt(norm)
-        f = norm - sqrt(2.d0/3.d0) * sigma_Y
+        f = norm - sqrt(2.d0/3.d0) * sigma_Y     
 
         ! Compute gradient of f
         grad_f = dev_sigma/norm
 
         ! Compute gradient of the gradient of f
         call fourth_order_identity(ddl, identity)
-        call one_kron_one(dimen, ddl, onekronone)
         call stkronst(ddl, dev_sigma, dev_sigma, devdev)
-        grad2_f = 1.d0/norm*(identity - 1.d0/3.d0*onekronone) - 1.d0/(norm**3) * devdev
+        grad2_f = 1.d0/norm*identity - 1.d0/(norm**3) * devdev
 
     end subroutine condition_perfplasticity
 
@@ -536,7 +531,7 @@ module elastoplasticity
         implicit none
         ! Input / output
         ! ---------------
-        integer, parameter :: nbiter = 50
+        integer, parameter :: nbiter = 10
         double precision, intent(in) :: Ctensor, Stensor, sigma_Y
         dimension :: Ctensor(ddl, ddl), Stensor(ddl, ddl)
         double precision, intent(in) :: e_n1, ep_n0
@@ -548,7 +543,7 @@ module elastoplasticity
         ! Local data
         ! ------------
         integer :: iter
-        double precision :: f, dgamma, d2gamma, norm
+        double precision :: f, dgamma, d2gamma, norm, prod1, prod2
         double precision :: diff_e_ep, grad_f, grad2_f, ep_k, r_k
         dimension :: diff_e_ep(ddl),  grad_f(ddl), grad2_f(ddl, ddl), ep_k(ddl), r_k(ddl)
                        
@@ -556,9 +551,6 @@ module elastoplasticity
         dimension ::    xi(ddl, ddl), xi_r(ddl), xi_grad(ddl), & 
                         xi_diff(ddl), d_ep(ddl), diff_grad(ddl), N(ddl), NNT(ddl, ddl)
 
-        integer :: ipiv(ddl), info
-        double precision :: work(ddl)
-        
         ! Compute elastic predictor
         diff_e_ep = e_n1 - ep_n0
         sigma_n1 = matmul(Ctensor, diff_e_ep)
@@ -582,6 +574,7 @@ module elastoplasticity
                 diff_e_ep = e_n1 - ep_k
                 sigma_n1 = matmul(Ctensor, diff_e_ep)
                 call condition_perfplasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
+
                 r_k = ep_k - ep_n0 - dgamma*grad_f
 
                 ! Check convergence
@@ -594,11 +587,12 @@ module elastoplasticity
                     ! Compute tangent moduli
                     xi = Stensor + dgamma*grad2_f   ! Actually xi is the inverse of this relation
                                                     ! but inverse is expensive. We may solve a linear system
-
                     ! Compute delta2 gamma
                     call solve_linear_system(ddl, ddl, xi, r_k, xi_r) 
                     call solve_linear_system(ddl, ddl, xi, grad_f, xi_grad)  
-                    d2gamma = f + dot_product(grad_f, xi_r)/dot_product(grad_f, xi_grad)
+                    call stdcst(dimen, ddl, grad_f, xi_r, prod1)!!!!!!!!!!! matmul or stdcst
+                    call stdcst(dimen, ddl, grad_f, xi_grad, prod2)
+                    d2gamma = (f + prod1)/prod2
 
                     ! Compute increment
                     diff_grad = d2gamma*grad_f - r_k
@@ -613,11 +607,12 @@ module elastoplasticity
 
             ! Compute dSdE
             dSdE = Stensor + dgamma*grad2_f 
-            call dgetri(ddl, dSdE, ddl, ipiv, work, ddl, info)
+            call inverse_matrix(ddl, dSdE)
             
             ! Compute N
             xi_grad = matmul(dSdE, grad_f)
-            N = xi_grad/sqrt(dot_product(grad_f, xi_grad))
+            call stdcst(dimen, ddl, grad_f, xi_grad, prod2)
+            N = xi_grad/sqrt(prod2)
             call stkronst(ddl, N, N, NNT)
 
             ! Update dSdE

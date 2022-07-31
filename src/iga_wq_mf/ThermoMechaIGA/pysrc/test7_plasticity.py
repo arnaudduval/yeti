@@ -33,7 +33,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 80e-3}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.01}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
@@ -43,7 +43,7 @@ Dirichlet = {'mechanical':table}
 Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)[-1]
 
 forces = [[0 for i in range(3)] for j in range(6)]
-forces[1] = [0.05, 0.2, 0.1]
+forces[1] = [0.1, 0.0, 0.0]
 Neumann = {'mechanical': forces}
 modelPhy._set_neumann_boundaries(Neumann)
 
@@ -64,22 +64,25 @@ Fsurf = modelPhy.eval_force_surf()
 # print(error)
 # # ==========================================
 
-# Solver elastic
-Fext = Fvol + Fsurf
-for i in range(3):
-    Fext[i, Mdod[i]] = 0.0
-result = modelPhy.MFelasticity(Mdod, Fext)
-
-# # ============================================
-# # Do ramp function (Fvol is constant, but Fsurf increase linearly)
-# nbStep = 100
-# dt = 1/nbStep
-# Fext = np.zeros((*np.shape(Fvol), nbStep+1))
-# for i in range(1, nbStep+1): 
-#     Fext[:, :, i] = Fvol + i*dt*Fsurf
-
+# # Solver elastic
+# Fext = Fvol + Fsurf
 # for i in range(3):
-#     Fext[i, Mdod[i], :] = 0.0
+#     Fext[i, Mdod[i]] = 0.0
+# result = modelPhy.MFelasticity(Mdod, Fext)
 
-# # Solve system
-# disp = modelPhy.MFplasticity(Mdod, Fext)
+# # Export results
+# modelPhy.export_results(result)
+
+# ============================================
+# Do ramp function (Fvol is constant, but Fsurf increase linearly)
+nbStep = 5
+dt = 1/nbStep
+Fext = np.zeros((*np.shape(Fvol), nbStep+1))
+for i in range(1, nbStep+1): 
+    Fext[:, :, i] = Fvol + i*dt*Fsurf
+
+for i in range(3):
+    Fext[i, Mdod[i], :] = 0.0
+
+# Solve system
+disp = modelPhy.MFplasticity(Mdod, Fext)

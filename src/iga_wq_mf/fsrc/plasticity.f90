@@ -441,13 +441,12 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         end do
     end if
 
-    print*, 'Number of iterations', iter, ' with error: ', RelRes
 end subroutine wq_mf_elasticity_3d
 
 subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, b, x)
     
     use tensor_methods
     implicit none 
@@ -468,8 +467,8 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     integer, intent(in) :: ndu, ndv, ndw
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
-    double precision, intent(in) :: b
-    dimension :: b(d, nr_total)
+    double precision, intent(in) :: JJ, b
+    dimension :: JJ(3, 3, nc_total), b(d, nr_total)
     
     double precision, intent(out) :: x
     dimension :: x(d, nr_total)
@@ -483,6 +482,18 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:, :), allocatable :: Deigen
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision :: dum1, dum2, dum3, dum
+    dimension :: dum(3, 3, 1)
+    double precision :: c_u, c_v, c_w, Lu, Lv, Lw
+
+    ! Jacobian Mean
+    dum = reshape((/1, 0, 0, 0, 1, 0, 0, 0, 1/), (/3, 3, 1/))
+    call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, &
+                            1, dum, Lu, Lv, Lw, dum1, dum2, dum3)
+                                
+    c_u = Lv*Lw/Lu
+    c_v = Lw*Lu/Lv
+    c_w = Lu*Lv/Lw
 
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
@@ -510,7 +521,7 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
                                 data_W_w(:, 4), method, table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
 
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, 1.d0, 1.d0, 1.d0, &
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
                                 I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
 
     end do
@@ -628,7 +639,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     ! Initialize
     call initialize_mat(mat, E, nu)
     disp = 0.d0; ep_n1 = 0.d0; ep_n0 = 0.d0
-    nbIterRaphson = 20; nbIterSolver = 100
+    nbIterRaphson = 30; nbIterSolver = 100
     
     do i = 2, sizeF+1
 
@@ -639,6 +650,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
 
         ! Newton Raphson
         do j = 1, nbIterRaphson
+            print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point)
             call interpolate_strain(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -663,10 +675,10 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
             call update_dirichlet_3d(nr_total, delta_F, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call dot_prod_plasticity(d, nr_total, delta_F, delta_F, prod1)
             error = sqrt(prod1/prod2)
-            print*, 'Step: ', i, ' Iteration: ', j-1, ' error: ', error
+            print*, "with error: ", error
 
             ! Verify
-            if (error.le.1e-6) then 
+            if ((error.le.1e-6).or.(j.eq.nbIterRaphson)) then 
                 disp(:, :, i) = disp_t
                 ep_n0 = ep_n1
                 exit

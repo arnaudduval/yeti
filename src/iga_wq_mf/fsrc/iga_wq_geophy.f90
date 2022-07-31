@@ -230,7 +230,7 @@ end subroutine jacobien_physicalposition_3d
 
 subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, u_ctrlpts, u_interp)
+                            data_B_u, data_B_v, data_B_w, dof_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -238,7 +238,7 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, dof_u
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -246,13 +246,14 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nr_u*nr_v*nr_w)
+    dimension :: u_ctrlpts(dof_u, nr_u*nr_v*nr_w)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nc_u*nc_v*nc_w)
+    dimension :: u_interp(dof_u, nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------------
+    integer :: i
     integer :: indi_T_u, indi_T_v, indi_T_w
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
@@ -266,11 +267,13 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Interpolation
-    call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
-                                u_ctrlpts, u_interp)
+    do i = 1, dof_u
+        call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                                    nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                    nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                                    nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
+                                    u_ctrlpts(i, :), u_interp(i, :))
+    end do
 
 end subroutine interpolation_3d
 
@@ -368,7 +371,7 @@ end subroutine jacobien_physicalposition_2d
 
 subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, u_ctrlpts, u_interp)
+                            data_B_u, data_B_v, dof_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -376,20 +379,21 @@ subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     implicit none 
     ! Input/ output
     ! --------------------   
-    integer, intent(in) ::  nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
+    integer, intent(in) ::  nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v, dof_u
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_B_u, data_B_v
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nr_u*nr_v)
+    dimension :: u_ctrlpts(dof_u, nr_u*nr_v)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nc_u*nc_v)
+    dimension :: u_interp(dof_u, nc_u*nc_v)
 
     ! Local data
     !-----------------
+    integer :: i
     integer :: indi_T_u, indi_T_v
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
     integer :: indj_T_u, indj_T_v
@@ -402,9 +406,11 @@ subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
     ! Interpolation
-    call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                                u_ctrlpts, u_interp)
+    do i = 1, dof_u
+        call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
+                                    nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                                    nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                                    u_ctrlpts(i, :), u_interp(i, :))
+    end do
 
 end subroutine interpolation_2d

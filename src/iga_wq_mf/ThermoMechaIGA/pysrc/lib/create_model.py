@@ -601,7 +601,9 @@ class thermoMechaModel():
 
         if u_ctrlpts is None: pass
         elif isinstance(u_ctrlpts, np.ndarray): 
-            if len(u_ctrlpts) == self._nb_ctrlpts_total: pass
+            u_ctrlpts = np.atleast_2d(u_ctrlpts)
+            if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: 
+                ndof =  len(u_ctrlpts)
             else: raise Warning('Not enough control points')
         else: raise Warning('Solution must be ndarray type')
 
@@ -624,7 +626,7 @@ class thermoMechaModel():
         X1 = np.zeros(shape_pts)
         X2 = np.zeros(shape_pts)
         X3 = np.zeros(shape_pts)
-        U = np.zeros(shape_pts)
+        U = np.zeros((ndof, *shape_pts))
         DET = np.zeros(shape_pts)
 
         for k in range(shape_pts[2]):
@@ -635,10 +637,19 @@ class thermoMechaModel():
                     X2[i,j,k] = qp_PS[1, pos]
                     DET[i,j,k] = detJ[pos]
                     if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
-                    if u_interp is not None: U[i,j,k] = u_interp[pos]
-                    
+                    if u_interp is not None: 
+                        for l in range(ndof):
+                            U[l,i,j,k] = u_interp[l, pos]
+        
+        # Create point data 
+        pointData= {"detJ" : DET}
+
+        for l in range(ndof):
+            varname = 'U' + str(l+1)
+            pointData[varname] = U[l,:,:,:]
+
         # Export geometry
         name = folder + self._name
-        gridToVTK(name, X1, X2, X3, pointData= {"U1" : U, 
-                                                "detJ" : DET,})
+        gridToVTK(name, X1, X2, X3, pointData= pointData)
+        
         return
