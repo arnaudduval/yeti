@@ -6,6 +6,7 @@
 
 # Python libraries
 import time, numpy as np
+from copy import deepcopy
 
 # My libraries
 from .base_functions import erase_rows_csr, wq_find_basis_weights_fortran
@@ -160,13 +161,14 @@ class fortran_mf_wq(thermoMechaModel):
         
         return K
 
-    def eval_stiffness_matrix(self): 
+    def eval_stiffness_matrix(self, coefs=None): 
         " Computes conductivity matrix "
         
         if self._dim != 3: raise Warning('Not yet')
         
         # Get inputs
-        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        if coefs is None:
+            coefs = super().compute_stiffness_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
@@ -376,21 +378,23 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFelasticity(self, dod=None, u=None):
+    def MFelasticity(self, coefs=None, dod=None, u=None):
         " Solves a elastic problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if dod is None or u is None: raise Warning('Impossible')
-        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        if coefs is None:
+            coefs = super().compute_stiffness_coefficient(self._Jqp)
 
-        for _ in range(len(dod)):
-            newdod = np.array(dod[_])
+        dodd = deepcopy(dod)
+        for _ in range(len(dodd)):
+            newdod = np.array(dodd[_])
             newdod += 1
-            dod[_] = list(newdod)
+            dodd[_] = list(newdod)
 
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
-        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, self._Jqp, u)
+        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dodd, self._Jqp, u)
 
         return result
 
@@ -401,12 +405,13 @@ class fortran_mf_wq(thermoMechaModel):
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if dod is None or u is None: raise Warning('Impossible')
 
-        for _ in range(len(dod)):
-            newdod = np.array(dod[_])
+        dodd = deepcopy(dod)
+        for _ in range(len(dodd)):
+            newdod = np.array(dodd[_])
             newdod += 1
-            dod[_] = list(newdod)
+            dodd[_] = list(newdod)
             
-        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dodd,
                 self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
         result = solver.solver_plasticity(*inputs, u)
 

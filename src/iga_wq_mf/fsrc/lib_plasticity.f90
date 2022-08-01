@@ -551,7 +551,7 @@ module elastoplasticity
             ! Compute dSdE
             dSdE = SS + dgamma*grad2_f 
             call inverse_matrix(ddl, dSdE)
-            
+                        
             ! Compute N
             xi_grad = matmul(dSdE, grad_f)
             call stdcst(dimen, ddl, grad_f, xi_grad, prod2)

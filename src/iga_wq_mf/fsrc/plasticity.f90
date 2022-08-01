@@ -330,13 +330,13 @@ end subroutine mf_wq_get_su_3d_csr
 subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            U_u, U_v, U_w, Deigen, nbIter, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            U_u, U_v, U_w, Deigen, nbIter, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, isPrecond)
     
     use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
-    logical :: isPrecond = .true.
+    logical, intent(in) :: isPrecond 
     double precision, parameter :: epsilon = 1e-10
     integer, parameter :: d = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
@@ -421,6 +421,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             r = s - omega*As ! Normally r is alrady Dirichlet updated
 
             RelRes = maxval(abs(r))/maxval(abs(b))
+            print*, RelRes
             if (RelRes.le.epsilon) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -468,6 +469,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
             
             RelRes = maxval(abs(r))/maxval(abs(b))
+            print*, RelRes
             if (RelRes.le.epsilon) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -475,7 +477,7 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             rsold = rsnew
         end do
     end if
-    print*, 'Bi CGstab with error: ', RelRes
+    print*, 'Bi CGstab with error: ', RelRes, 'after iterations', iter
 end subroutine wq_mf_elasticity_3d
 
 subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -530,6 +532,10 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     c_v = Lw*Lu/Lv
     c_w = Lu*Lv/Lw
 
+    ! c_u = 1.d0
+    ! c_v = 1.d0
+    ! c_w = 1.d0
+
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
     ! -------------------------------------------- 
@@ -565,14 +571,14 @@ subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     call wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        U_u, U_v, U_w, Deigen, 100, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                        U_u, U_v, U_w, Deigen, 400, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, .true.)
 
 end subroutine wq_mf_elasticity_3d_csr
 
 subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, E, nu, sigma_Y, sizeF, Fext, disp)
+                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, E, nu, sigma_Y, sizeF, Fext, disp, delta_F, coef_S)
 
     use elastoplasticity
     use tensor_methods
@@ -580,7 +586,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     ! Input / output data
     ! ---------------------
     ! Geometry
-    integer, parameter :: nbIterRaphson = 30, nbIterSolver = 150
+    integer, parameter :: nbIterRaphson = 30, nbIterSolver = 100
     integer, parameter :: d = 3, dof = d*(d+1)/2
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -602,6 +608,9 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     double precision, intent(out) :: disp
     dimension :: disp(d, nr_total, sizeF+1)
 
+    double precision, intent(out) :: coef_S, delta_F
+    dimension :: coef_S(d*d, d*d, nc_total), delta_F(d, nr_total)
+
     ! Local data
     ! -----------
     double precision :: invJ, detJ
@@ -618,9 +627,14 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     double precision :: ep_n1, ep_n0, e_n1, sigma_n1, dSdE
     dimension ::    ep_n1(dof, nc_total), ep_n0(dof, nc_total), e_n1(dof, nc_total), &
                     sigma_n1(dof, nc_total), dSdE(dof, dof, nc_total)
-    double precision :: disp_t, Fext_t, coef_fint, coef_S, Fint, delta_F, delta_disp
+    ! double precision :: disp_t, Fext_t, coef_fint, coef_S, Fint, delta_F, delta_disp
+    ! dimension ::    disp_t(d, nr_total), Fext_t(d, nr_total), coef_fint(d*d, nc_total), &
+    !                 coef_S(d*d, d*d, nc_total), Fint(d, nr_total), delta_F(d, nr_total), delta_disp(d, nr_total)
+    
+    double precision :: disp_t, Fext_t, coef_fint, Fint, delta_disp
     dimension ::    disp_t(d, nr_total), Fext_t(d, nr_total), coef_fint(d*d, nc_total), &
-                    coef_S(d*d, d*d, nc_total), Fint(d, nr_total), delta_F(d, nr_total), delta_disp(d, nr_total)
+                    Fint(d, nr_total), delta_disp(d, nr_total)
+    
     double precision :: c_u, c_v, c_w, error, prod1, prod2
     integer :: i, j, k
 
@@ -678,7 +692,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
         call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
         ! Newton Raphson
-        do j = 1, nbIterRaphson
+        do j = 1, 2
             print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point)
@@ -715,7 +729,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                     U_u, U_v, U_w, Deigen, nbIterSolver, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-                                    delta_F, delta_disp)
+                                    delta_F, delta_disp, .true.)
 
                 call clean_dirichlet_3d(nr_total, delta_disp, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
                 

@@ -7,7 +7,7 @@ from lib.base_functions import (eval_basis_python,
                                 iga_find_positions_weights,
                                 create_knotvector
 )
-from lib.viscoplasticity import interpolate_CP, newton_raphson, return_mapping_point
+from lib.D1viscoplasticity import interpolate_CP, newton_raphson, return_mapping_point
 
 # Define mechanical properties
 E, K, H, sigma_Y = 210e3, 100e3, 50e3, 80

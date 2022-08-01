@@ -7,6 +7,7 @@
 
 # Python libraries
 import numpy as np
+from scipy import sparse as sp
 
 # My libraries
 from lib.create_geomdl import geomdlModel
@@ -33,14 +34,14 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.01}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.2}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
 table = np.zeros((3, 2, 3))
 table[0, 0, :] = 1
 Dirichlet = {'mechanical':table}
-Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)[-1]
+_, _, _, _, Mdof, Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)
 
 forces = [[0 for i in range(3)] for j in range(6)]
 forces[1] = [0.1, 0.0, 0.0]
@@ -65,10 +66,26 @@ Fsurf = modelPhy.eval_force_surf()
 # # ==========================================
 
 # # Solver elastic
-# Fext = Fvol + Fsurf
+# Fext = Fsurf
 # for i in range(3):
 #     Fext[i, Mdod[i]] = 0.0
-# result = modelPhy.MFelasticity(Mdod, Fext)
+# itersol = modelPhy.MFelasticity(dod=Mdod, u=Fext)
+
+# dof_extended = []
+# for i in range(3):
+#     dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
+#     dof_extended.extend(list(dof))
+
+# # Compute Stiffness matrix
+# S = modelPhy.eval_stiffness_matrix()[dof_extended, :][:, dof_extended]
+# F2solve = np.reshape(Fext, (-1, 1))[dof_extended]
+# dirsol = sp.linalg.spsolve(S, F2solve)
+# dirsol = np.atleast_2d(dirsol)
+
+# itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
+# error = dirsol.T - itersol2
+# norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
+# print(norm_error)
 
 # # Export results
 # modelPhy.export_results(result)
@@ -85,4 +102,27 @@ for i in range(3):
     Fext[i, Mdod[i], :] = 0.0 # Is zero but to be sure
 
 # Solve system
-disp = modelPhy.MFplasticity(Mdod, Fext[:,:,:2])
+_, delta_F, coef_S= modelPhy.MFplasticity(Mdod, Fext[:,:,:2])
+
+# Solve with iterative method
+itersol = modelPhy.MFelasticity(coefs = coef_S, dod= Mdod, u = delta_F)
+print(np.max(itersol), np.min(itersol))
+
+# -----------------
+print('=========================')
+dof_extended = []
+for i in range(3):
+    dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
+    dof_extended.extend(list(dof))
+
+# Compute Stiffness matrix
+S = modelPhy.eval_stiffness_matrix(coefs = coef_S)[dof_extended, :][:, dof_extended]
+F2solve = np.reshape(delta_F, (-1, 1))[dof_extended]
+dirsol = sp.linalg.spsolve(S, F2solve)
+dirsol = np.atleast_2d(dirsol)
+print(np.max(dirsol), np.min(dirsol))
+
+itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
+error = dirsol.T - itersol2
+norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
+print(norm_error)
