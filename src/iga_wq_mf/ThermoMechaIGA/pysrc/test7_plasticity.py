@@ -79,10 +79,10 @@ nbStep = 5
 dt = 1/nbStep
 Fext = np.zeros((*np.shape(Fvol), nbStep+1))
 for i in range(1, nbStep+1): 
-    Fext[:, :, i] = Fvol + i*dt*Fsurf
+    Fext[:, :, i] = i*dt*Fsurf
 
 for i in range(3):
-    Fext[i, Mdod[i], :] = 0.0
+    Fext[i, Mdod[i], :] = 0.0 # Is zero but to be sure
 
 # Solve system
-disp = modelPhy.MFplasticity(Mdod, Fext)
+disp = modelPhy.MFplasticity(Mdod, Fext[:,:,:2])

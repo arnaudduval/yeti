@@ -326,7 +326,7 @@ subroutine solve_linear_system(nr, nc, A, b, x)
 end subroutine solve_linear_system
 
 subroutine inverse_matrix(nnz, A)
-    ! Computes the inverse of a matrix
+    ! Computes the inverse of a matrix using LU decomposition
     
     implicit none
     ! Input / output data
@@ -862,45 +862,3 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, &
     !$OMP END PARALLEL 
     
 end subroutine get_indexes_kron3_product
-
-! ------------------------------------
-subroutine solve_quartic(a, b, c, d, gamma)
-
-    use constants_iga_wq_mf
-    implicit none
-    ! Input / output data
-    ! ----------------------
-    double precision, intent(in) :: a, b, c, d
-    double precision, intent(out) :: gamma
-
-    ! Local data
-    ! ---------------
-    double precision :: p, q, y, delta, temp, SS, QQ, TT
-
-    p = (b/3)**2.d0 - (a*c - 4.d0*d)/3.d0
-    q = (b/3)**3.d0 - b*(a*c - 4.d0*d)/6.d0 + (d*(a**2.d0) - 4.d0*b*d + c**2.d0)/2.d0
-    delta = q**2 - p**3
-
-    if (delta.ge.0.d0) then 
-        y = b/3.d0 + (q + sqrt(delta))**(1.d0/3.d0) + (q - sqrt(delta))**(1.d0/3.d0)
-    else
-        temp = acos(q/(p*sqrt(p)))/3.d0
-        y = b/3.d0 + 2*sqrt(p)*cos(temp) 
-    end if
-
-    QQ = sqrt(0.25*a**2.d0 - b + y)
-    SS = 3.d0/4.d0*a**2.d0 - 2.d0*b - QQ**2.d0
-
-    if (QQ**2.d0.gt.tol) then 
-        TT = (4.d0*a*b - 8.d0*c - a**3.d0)/(4.d0*QQ)
-    else
-        TT = 2.d0*sqrt(y**2.d0 - 4.d0*d)
-    end if
-
-    if (TT + SS .gt. 0) then 
-        gamma = -a/4.d0 + Q/2.d0 + sqrt(SS + TT)/2.d0
-    else
-        gamma = -a/4.d0 - Q/2.d0 + sqrt(SS - TT)/2.d0
-    end if
-
-end subroutine solve_quartic

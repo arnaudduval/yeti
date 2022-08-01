@@ -230,7 +230,7 @@ end subroutine jacobien_physicalposition_3d
 
 subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, dof_u, u_ctrlpts, u_interp)
+                            data_B_u, data_B_v, data_B_w, ddl_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -238,7 +238,7 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     implicit none 
     ! Input/ output
     ! --------------------  
-    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, dof_u
+    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, ddl_u
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -246,10 +246,10 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(dof_u, nr_u*nr_v*nr_w)
+    dimension :: u_ctrlpts(ddl_u, nr_u*nr_v*nr_w)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(dof_u, nc_u*nc_v*nc_w)
+    dimension :: u_interp(ddl_u, nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------------
@@ -267,7 +267,7 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Interpolation
-    do i = 1, dof_u
+    do i = 1, ddl_u
         call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                                     nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                                     nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
