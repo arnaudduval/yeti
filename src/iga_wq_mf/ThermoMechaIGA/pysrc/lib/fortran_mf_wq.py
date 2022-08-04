@@ -12,6 +12,7 @@ from copy import deepcopy
 from .base_functions import erase_rows_csr, wq_find_basis_weights_fortran
 from .create_model import thermoMechaModel
 from iga_wq_mf import assembly, solver
+from .D3viscoplasticity import *
 
 class fortran_mf_wq(thermoMechaModel):
 
@@ -66,9 +67,9 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._ctrlpts]
         
         if self._dim == 2:
-            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_2d(*inputs)
+            self._Jqp, self._qp_PS, self._detJ, self_invJ = assembly.jacobien_physicalposition_2d(*inputs)
         if self._dim == 3:
-            self._Jqp, self._qp_PS, self._detJ = assembly.jacobien_physicalposition_3d(*inputs)
+            self._Jqp, self._qp_PS, self._detJ, self._invJ = assembly.jacobien_physicalposition_3d(*inputs)
         stop = time.time()
         print('\t Time jacobien: %.5f s' %(stop-start))
 
@@ -206,12 +207,13 @@ class fortran_mf_wq(thermoMechaModel):
 
         return result
 
-    def eval_Su(self, u):
+    def eval_Su(self, u, coefs=None):
         " Computes S u"
 
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
-        coefs = super().compute_stiffness_coefficient(self._Jqp)
+        if coefs is None:
+            coefs = super().compute_stiffness_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
@@ -335,9 +337,9 @@ class fortran_mf_wq(thermoMechaModel):
         
         return kdiag
 
-    # =============================
-    # MATRIX FREE SOLUTION
-    # =============================   
+    # ==================================
+    # MATRIX FREE SOLUTION (IN FORTRAN)
+    # ==================================   
      
     def get_input4MatrixFree(self, table= None):
         " Returns necessary inputs to compute the product between a matrix and a vector"
@@ -378,40 +380,40 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFelasticity(self, coefs=None, dod=None, u=None):
+    def MFelasticity(self, u=None, indi=None, coefs=None):
         " Solves a elastic problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if dod is None or u is None: raise Warning('Impossible')
+        if indi is None or u is None: raise Warning('Impossible')
         if coefs is None:
             coefs = super().compute_stiffness_coefficient(self._Jqp)
 
-        dodd = deepcopy(dod)
-        for _ in range(len(dodd)):
-            newdod = np.array(dodd[_])
+        dod = deepcopy(indi)
+        for _ in range(len(dod)):
+            newdod = np.array(dod[_])
             newdod += 1
-            dodd[_] = list(newdod)
+            dod[_] = list(newdod)
 
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
-        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dodd, self._Jqp, u)
+        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, self._Jqp, u)
 
         return result
 
-    def MFplasticity(self, dod, u):
+    def MFplasticity(self, u=None, indi=None):
         " Solves a plasticity problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if dod is None or u is None: raise Warning('Impossible')
+        if indi is None or u is None: raise Warning('Impossible')
 
-        dodd = deepcopy(dod)
-        for _ in range(len(dodd)):
-            newdod = np.array(dodd[_])
+        dod = deepcopy(indi)
+        for _ in range(len(dod)):
+            newdod = np.array(dod[_])
             newdod += 1
-            dodd[_] = list(newdod)
+            dod[_] = list(newdod)
             
-        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dodd,
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
                 self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
         result = solver.solver_plasticity(*inputs, u)
 
@@ -439,3 +441,88 @@ class fortran_mf_wq(thermoMechaModel):
 
         return u_interp
         
+    # ==================================
+    # MATRIX FREE SOLUTION (IN PYTHON)
+    # ================================== 
+    def compute_strain(self, u=None):
+        " Compute strain from displacement "
+
+        if self._dim != 3: raise Warning('Not yet')
+        if u is None: raise Warning('Insert displacement')
+        
+        # Get inputs
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._invJ, u]
+
+        # Compute strains
+        eps = assembly. interpolate_strain_3d(*inputs)
+
+        return eps
+
+    def compute_internal_force(self, coefs=None):
+        "Compute internal force using sigma coefficients "
+
+        if self._dim != 3: raise Warning('Not yet')
+        if coefs is None: raise Warning('Insert coefficients')
+
+        # Get inputs
+        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DW]
+
+        # Compute inertnal force vector
+        Fint = solver.wq_get_forceint_3d(*inputs)
+
+        return Fint
+
+    def BiCGstab_elasticity(self, indi=None, coefs=None, b=None, nbIterations=100, epsilon=1e-10, isPrecond=True):
+        "Solve linear system using Bi-CG Stab algorithm"
+
+        # Initialze
+        if self._dim != 3: raise Warning('Not yet')
+        d = self._dim
+        x = np.zeros(np.shape(b))
+
+        if not isPrecond: # Without preconditioner 
+            
+            # Initialize
+            r = b
+            clean_dirichlet_3d(r, indi)
+            rhat, p = r, r
+            rsold = block_dot_product(d, r, rhat)
+
+            for i in range(nbIterations):
+                Ap = self.eval_Su(p, coefs=coefs)
+                clean_dirichlet_3d(Ap, indi)
+
+                alpha = rsold/block_dot_product(d, Ap, rhat)
+                s = r -alpha*Ap
+
+                As = self.eval_Su(s, coefs=coefs)
+                clean_dirichlet_3d(As, indi)
+
+                omega = block_dot_product(d, As, s)/block_dot_product(d, As, As)
+                x += alpha*p + omega*s
+                r = s - omega*As
+
+                relerror = np.max(abs(r))/np.max(abs(b))
+                if relerror <= epsilon: break
+
+                rsnew = block_dot_product(d, r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Ap)
+                rsold = rsnew
+
+        # else: # With preconditioner
+            
+        #     # Initialize
+        #     r = b
+        #     clean_dirichlet_3d(r, dod)
+        #     rhat, p = r, r
+        #     rsold = block_dot_product(d, r, rhat)
+
+        #     for i in range(nbIterations):
+
+
+        return
+
+
+
+

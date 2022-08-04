@@ -7,12 +7,13 @@
 import statistics, time
 import numpy as np
 from scipy import sparse as sp
-from pyevtk.hl import gridToVTK 
+from pyevtk.hl import gridToVTK
 
 # Yeti libraries
 from preprocessing.igaparametrization import IGAparametrization
 
 # My libraries
+from .D3viscoplasticity import create_der2sym, fourth_order_identity, one_kron_one 
 from .base_functions import eval_basis_fortran
 from .create_geomdl import geomdlModel
 from iga_wq_mf import assembly
@@ -121,6 +122,39 @@ class thermoMechaModel():
 
         try: self._sigmaY = material["sigmaY"]
         except: self._sigmaY = None
+
+        return
+    
+    def _set_extra_mechanical_properties(self):
+        " Compute mechanical properties from E and nu"
+
+        # Initialize
+        d = self._dim
+        self._Ctensor = None
+        self._Stensor = None
+
+        if self._youngModule is None or self._poissonCoef is None:
+            pass
+        else:
+            
+            # Create tensor
+            identity = fourth_order_identity(d)
+            onekronone = one_kron_one(d)
+
+            # Get material properties
+            E = self._youngModule
+            nu = self._poissonCoef
+            lamb = nu*E/((1+nu)*(1-2*nu))
+            mu = E/(2*(1+nu))
+            bulk = lamb + 2.0/3.0*mu
+
+            # Create material tensor
+            C = lamb*onekronone + 2*mu*identity
+            S = 1.0/(9.0*bulk)*onekronone + 1.0/(2.0*mu)*(identity - 1.0/3.0*onekronone)
+
+            # Update
+            self._Ctensor = C
+            self._Stensor = S
 
         return
 
@@ -462,45 +496,18 @@ class thermoMechaModel():
     def compute_stiffness_coefficient(self, JJ):
         " Computes coefficients at points P in parametric space. This function only consider linear isotropic case"
 
-        def create_MM(d, ddl):
-
-            # Create MM
-            MM = np.zeros((ddl, d*d))
-
-            if d==3: 
-                MM[0, 0] = 1; MM[1, 4] = 1; MM[2, 8] = 1
-                MM[3, 1] = 0.5; MM[3, 3] = 0.5
-                MM[4, 5] = 0.5; MM[4, 7] = 0.5
-                MM[5, 2] = 0.5; MM[5, 6] = 0.5
-            elif d == 2: 
-                MM[0, 0] = 1; MM[1, 3] = 1
-                MM[2, 1] = 0.5; MM[2, 2] = 0.5
-
-            return MM
-
         # Set shape
         d = self._dim
-        ddl = int(d*(d+1)/2)
         nnz = np.shape(JJ)[2]
 
         # Create tensors
+        MM = create_der2sym(d)
         coefs = np.zeros((d*d, d*d, nnz))
         Gamma = np.zeros((d*d, d*d))
-        MM = create_MM(d, ddl)
-        identity = np.eye(ddl)
-        onekronone = np.zeros((ddl, ddl))
-        for i in range(d):
-            for j in range(d): 
-                onekronone[i, j] = 1
-
-        # Get material properties
-        E = self._youngModule
-        nu = self._poissonCoef
-        lamb = nu*E/((1+nu)*(1-2*nu))
-        mu = E/(2*(1+nu))
-
+        
         # Create material tensor
-        C = lamb*onekronone + 2*mu*identity
+        C = self._Ctensor
+        if C is None: raise Warning('C tensor not define')
 
         # Compute M.T D M
         MDM = MM.T @ C @ MM
@@ -568,8 +575,8 @@ class thermoMechaModel():
             data.append(DB[dim])
         inputs = [*self._dim*[nnz], *indices, *data, self._ctrlpts]
         
-        if self._dim == 2: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_2d(*inputs)    
-        elif self._dim == 3: jacobien_PS, qp_PS, detJ = assembly.jacobien_physicalposition_3d(*inputs)
+        if self._dim == 2: jacobien_PS, qp_PS, detJ, _ = assembly.jacobien_physicalposition_2d(*inputs)    
+        elif self._dim == 3: jacobien_PS, qp_PS, detJ, _ = assembly.jacobien_physicalposition_3d(*inputs)
 
         # ==============================
         # Get interpolation

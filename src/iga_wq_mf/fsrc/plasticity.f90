@@ -5,7 +5,7 @@
 
 subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, invJ, disp_ctrlpts, strain_interp)
+                                data_B_u, data_B_v, data_B_w, invJ, u, eps)
     !! Computes strain in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -21,11 +21,11 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
                     indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-    double precision, intent(in) :: invJ, disp_ctrlpts
-    dimension :: invJ(d, d, nc_total), disp_ctrlpts(d, nr_total)
+    double precision, intent(in) :: invJ, u
+    dimension :: invJ(d, d, nc_total), u(d, nr_total)
 
-    double precision, intent(out) :: strain_interp
-    dimension :: strain_interp(ddl, nc_total)
+    double precision, intent(out) :: eps
+    dimension :: eps(ddl, nc_total)
 
     ! Local data
     !-----------------
@@ -58,7 +58,7 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-                            disp_ctrlpts(j, :), result(k, :))
+                            u(j, :), result(k, :))
         end do
     end do
 
@@ -75,7 +75,7 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
         temp = matmul(invJext, result(:, i)) 
 
         ! Evaluate MM dot temp
-        strain_interp(:, i) = matmul(MM, temp)
+        eps(:, i) = matmul(MM, temp)
 
     end do
 
