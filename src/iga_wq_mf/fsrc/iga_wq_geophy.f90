@@ -134,10 +134,9 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
 
 end subroutine eval_capacity_coefficient
 
-subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B_u, data_B_v, data_B_w, ctrlpts, &
-                                        jacob, physical_pos, detJ, invJ)
+subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, ctrlpts, jacob, detJ, invJ)
     !! Computes jacobien matrix and physical position in 3D case
     !! IN CSR FORMAT
     
@@ -157,10 +156,8 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
     double precision, intent(in) :: ctrlpts
     dimension :: ctrlpts(3, nr_u*nr_v*nr_w)
 
-    double precision, intent(out) :: jacob, physical_pos, detJ, invJ
-    dimension ::    jacob(3, 3, nc_u*nc_v*nc_w), &
-                    physical_pos(3, nc_u*nc_v*nc_w), &
-                    detJ(nc_u*nc_v*nc_w), invJ(3, 3, nc_u*nc_v*nc_w)
+    double precision, intent(out) :: jacob, detJ, invJ
+    dimension :: jacob(3, 3, nc_u*nc_v*nc_w), detJ(nc_u*nc_v*nc_w), invJ(3, 3, nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------------
@@ -181,21 +178,6 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    ! Compute physical position
-    !$OMP PARALLEL PRIVATE(result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, d/nb_tasks) 
-    do i = 1, d
-        call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
-                            ctrlpts(i, :), result)
-        physical_pos(i, :) = result
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
-
     ! Compute jacobien matrix
     !$OMP PARALLEL PRIVATE(beta, result)
     nb_tasks = omp_get_num_threads()
@@ -215,7 +197,7 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
     !$OMP END PARALLEL 
     
     ! For det J 
-    !$OMP PARALLEL PRIVATE(detJt)
+    !$OMP PARALLEL
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, size(detJ)/nb_tasks) 
     do k = 1, size(detJ)
@@ -225,9 +207,9 @@ subroutine jacobien_physicalposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
-end subroutine jacobien_physicalposition_3d
+end subroutine eval_jacobien_3d
 
-subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine interpolation_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, ddl_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
@@ -274,12 +256,12 @@ subroutine interpolation_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
                                     u_ctrlpts(i, :), u_interp(i, :))
     end do
 
-end subroutine interpolation_3d
+end subroutine interpolation_fieldphy_3d
 
-subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                                        indi_u, indj_u, indi_v, indj_v, &
-                                        data_B_u, data_B_v, ctrlpts, &
-                                        jacob, physical_pos, detJ, invJ)
+subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, ctrlpts, &
+                            jacob, detJ, invJ)
     !! Computes jacobien in 2D case
     !! IN CSR FORMAT
     
@@ -298,10 +280,8 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     double precision, intent(in) :: ctrlpts
     dimension :: ctrlpts(2, nr_u*nr_v)
 
-    double precision, intent(out) :: jacob, physical_pos, detJ, invJ
-    dimension ::    jacob(2, 2, nc_u*nc_v), &
-                    physical_pos(2, nc_u*nc_v), &
-                    detJ(nc_u*nc_v), invJ(2, 2, nc_u*nc_v)
+    double precision, intent(out) :: jacob, detJ, invJ
+    dimension :: jacob(2, 2, nc_u*nc_v), detJ(nc_u*nc_v), invJ(2, 2, nc_u*nc_v)
 
     ! Local data
     !-----------------
@@ -321,20 +301,6 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
-    ! Compute physical position
-    !$OMP PARALLEL PRIVATE(result)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, d/nb_tasks) 
-    do i = 1, d
-        call tensor2d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            ctrlpts(i, :), result)
-        physical_pos(i, :) = result
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
     ! Compute jacobien matrix
     !$OMP PARALLEL PRIVATE(beta, result)
     nb_tasks = omp_get_num_threads()
@@ -353,7 +319,7 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !$OMP END PARALLEL 
 
     ! For det J 
-    !$OMP PARALLEL PRIVATE(detJt)
+    !$OMP PARALLEL 
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, size(detJ)/nb_tasks) 
     do k = 1, size(detJ)
@@ -363,9 +329,9 @@ subroutine jacobien_physicalposition_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
-end subroutine jacobien_physicalposition_2d
+end subroutine eval_jacobien_2d
 
-subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine interpolation_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, dof_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
@@ -409,4 +375,4 @@ subroutine interpolation_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                     u_ctrlpts(i, :), u_interp(i, :))
     end do
 
-end subroutine interpolation_2d
+end subroutine interpolation_fieldphy_2d

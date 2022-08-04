@@ -194,6 +194,7 @@ def cpp_perfect_plasticity(inputs, deps, sigma_n, ep_n, d=3):
     CC = inputs[0]
     sigma_Y = inputs[1]
     mu = inputs[2]
+    Idev = inputs[3]
 
     # Compute trial sigma 
     sigma_trial = sigma_n + CC @ deps
@@ -216,9 +217,6 @@ def cpp_perfect_plasticity(inputs, deps, sigma_n, ep_n, d=3):
 
         # Compute consistent tangent matrix
         NNT = stkronst(N, N)
-        I = fourth_order_identity(d)
-        onekronone = one_kron_one(d)
-        Idev = I - 1.0/3.0*onekronone
         Dalg = CC - 2*mu*((1-theta)*NNT + theta*Idev)
 
     return sigma_n1, ep_n1, Dalg
@@ -249,6 +247,7 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
     mu = inputs[2]
     beta = inputs[3]
     H = inputs[4]
+    Idev = inputs[5]
 
     # Compute trial sigma 
     sigma_trial = sigma_n + CC @ deps
@@ -280,9 +279,6 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
         c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
         c2 = 4.0*mu**2.0*dgamma/norm
         NNT = stkronst(N, N)
-        I = fourth_order_identity(d)
-        onekronone = one_kron_one(d)
-        Idev = I - 1.0/3.0*onekronone
         Dalg = CC - (c1 - c2)*NNT - c2*Idev
 
     return sigma_n1, ep_n1, alpha_n1, Dalg

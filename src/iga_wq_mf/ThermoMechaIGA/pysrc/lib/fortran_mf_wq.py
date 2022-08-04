@@ -67,9 +67,11 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._ctrlpts]
         
         if self._dim == 2:
-            self._Jqp, self._qp_PS, self._detJ, self_invJ = assembly.jacobien_physicalposition_2d(*inputs)
+            self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
+            self._qp_PS = assembly. interpolation_fieldphy_2d(*inputs)
         if self._dim == 3:
-            self._Jqp, self._qp_PS, self._detJ, self._invJ = assembly.jacobien_physicalposition_3d(*inputs)
+            self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
+            self._qp_PS = assembly. interpolation_fieldphy_3d(*inputs)
         stop = time.time()
         print('\t Time jacobien: %.5f s' %(stop-start))
 
@@ -456,7 +458,7 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._invJ, u]
 
         # Compute strains
-        eps = assembly. interpolate_strain_3d(*inputs)
+        eps = assembly.interpolate_strain_3d(*inputs)
 
         return eps
 
