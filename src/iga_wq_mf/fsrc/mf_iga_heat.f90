@@ -2,6 +2,7 @@
 ! module :: IGA - Matrix free methods 
 ! author :: Joaquin Cornejo
 ! ====================================================
+
 subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, Kdiag)
@@ -336,11 +337,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     ! Local data
     ! ------------------
     ! Pre / Conjugate gradient algoritm
-    double precision :: Lu, Lv, Lw, lambda1, lambda2, lambda3, c_u, c_v, c_w
+    double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w, c_u, c_v, c_w
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap, dummy, z
     dimension :: r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total)
-    integer :: iter, i, dorobin(2)
+    integer :: iter, i, t_robin(2)
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -423,19 +424,19 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! MY METHOD
             ! -------------------------------------------- 
             ! Find dimensions and conductivity
-            call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, &
-                                nnz_cond, cond, Lu, Lv, Lw, lambda1, lambda2, lambda3)
+            call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
+            call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
                     
-            c_u = lambda1*Lv*Lw/Lu
-            c_v = lambda2*Lw*Lu/Lv
-            c_w = lambda3*Lu*Lv/Lw
+            c_u = lamb_u*Lv*Lw/Lu
+            c_v = lamb_v*Lw*Lu/Lv
+            c_w = lamb_w*Lu*Lv/Lw
 
         end if
 
         ! --------------------------------------------
         ! EIGEN DECOMPOSITION
         ! -------------------------------------------- 
-        dorobin = (/0, 0/)
+        t_robin = (/0, 0/)
         allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
         allocate(data_W_u(nnz_u, 2), Kdiag_u(nr_u), Mdiag_u(nr_u))
         do i = 1, nnz_u
@@ -443,7 +444,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 2), Method, dorobin, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 2), Method, t_robin, D_u, U_u, Kdiag_u, Mdiag_u)
         deallocate(data_W_u)
         
         allocate(data_W_v(nnz_v, 2), Kdiag_v(nr_v), Mdiag_v(nr_v))
@@ -452,7 +453,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 2), Method, dorobin, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 2), Method, t_robin, D_v, U_v, Kdiag_v, Mdiag_v)    
         deallocate(data_W_v)
 
         allocate(data_W_w(nnz_w, 2), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -461,7 +462,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 2), Method, dorobin, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W_w(:, 2), Method, t_robin, D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W_w)
 
         ! Find diagonal of eigen values
@@ -501,7 +502,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
             end if
-            call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
+            call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                 call scale_vector(nr_total, Dparametric, Dphysical, z) 
             end if
@@ -533,7 +534,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
                 end if
-                call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
+                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
                     call scale_vector(nr_total, Dparametric, Dphysical, z) 
                 end if
@@ -645,7 +646,7 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v,
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
     r = b; dummy = r 
-    call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
+    call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
     p = z
     rsold = dot_product(r, z)
     RelRes(1) = 1.d0
@@ -669,7 +670,7 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v,
         if (RelRes(iter+1).le.epsilon) exit
         
         dummy = r
-        call fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
+        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, z)
         rsnew = dot_product(r, z)
                         
         p = z + rsnew/rsold * p

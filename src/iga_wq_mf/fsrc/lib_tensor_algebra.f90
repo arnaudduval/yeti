@@ -820,7 +820,7 @@ module tensor_methods
     ! "Fast Diagonalization" 
 
     subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                                    data_B0, data_W0, data_B1, data_W1, Method, dorobin, &
+                                    data_B0, data_W0, data_B1, data_W1, Method, t_robin, &
                                     eigenvalues, eigenvectors, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -839,8 +839,8 @@ module tensor_methods
         double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
         dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
         character(len=10), intent(in) :: Method
-        integer, intent(in) :: dorobin
-        dimension :: dorobin(2)
+        integer, intent(in) :: t_robin
+        dimension :: t_robin(2)
                 
         double precision, intent(out) :: eigenvalues, eigenvectors
         dimension :: eigenvalues(nr), eigenvectors(nr, nr)
@@ -849,12 +849,11 @@ module tensor_methods
 
         ! Local data
         ! ----------------
-        integer :: i, j, info, lwork, liwork
+        integer :: i, j, info, lwork, liwork, idum(1)
         double precision, allocatable, dimension(:) :: data_B0n, data_B1n
         double precision, allocatable, dimension(:,:) :: BB0, WW0, MM, BB1, WW1, KK
-        double precision, allocatable, dimension(:) :: W, work, iwork
+        double precision, allocatable, dimension(:) :: work, iwork
         double precision :: dummy(1)
-        integer :: idum(1)
         
         ! Initialize Masse matrix
         allocate(data_B0n(nnz))
@@ -896,27 +895,26 @@ module tensor_methods
         KK = matmul(WW1, transpose(BB1))
         deallocate(BB1, WW1)
 
+        ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
+        if (t_robin(1).eq.1) then 
+            KK(1, 1) = 1000 * KK(1,1)
+        end if
+
+        if (t_robin(2).eq.1) then 
+            KK(nr,nr) = 1000 * KK(nr, nr)
+        end if
+
         ! Select diagonal of M and K
         do j = 1, nr
             Kdiag(j) = KK(j, j)
             Mdiag(j) = MM(j, j)
         end do
 
-        ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
-        if (dorobin(1).eq.1) then 
-            KK(1, 1) = 1000 * KK(1,1)
-        end if
-
-        if (dorobin(2).eq.1) then 
-            KK(nr,nr) = 1000 * KK(nr, nr)
-        end if
-
         ! -----------------------------------
         ! Eigen decomposition KK U = MM U DD
         ! -----------------------------------
         ! Use routine workspace query to get optimal workspace.
-        allocate(W(nr))
-        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, W, dummy, -1, idum, -1, info)
+        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
 
         ! Make sure that there is enough workspace 
         lwork = max(1+(6+2*nr)*nr, nint(dummy(1)))
@@ -924,183 +922,13 @@ module tensor_methods
         allocate (work(lwork), iwork(liwork))
 
         ! Solve
-        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, W, work, lwork, iwork, liwork, info)
+        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, eigenvalues, work, lwork, iwork, liwork, info)
 
         ! Get values
         eigenvectors = KK
-        eigenvalues = W
-        deallocate(KK, MM, W, work, iwork)
+        deallocate(KK, MM, work, iwork)
 
     end subroutine eigen_decomposition
-
-    subroutine fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                        diagonal, array_in, array_out)
-        
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! by G. Sanaglli and M. Tani
-        
-        use omp_lib
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-        double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
-        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                        diagonal(nr_total), array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data
-        ! -------------
-        integer :: i, nb_tasks
-        double precision :: array_temp
-        dimension :: array_temp(nr_total)
-
-        ! ---------------------------------
-        ! First part 
-        ! ---------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
-
-        ! ---------------------------------
-        ! Second part 
-        ! ---------------------------------
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-        do i = 1, nr_total
-            array_temp(i) = array_temp(i)/diagonal(i)
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-        ! ----------------------------------
-        ! Third part
-        ! ----------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
-        
-    end subroutine fast_diag_steady_3d
-
-    subroutine fast_diag_interp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! by G. Sanaglli and M. Tani
-        
-        use omp_lib
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-        double precision, intent(in) :: U_u, U_v, U_w, array_in
-        dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data
-        ! -------------
-        double precision :: array_temp
-        dimension :: array_temp(nr_total)
-
-        ! ---------------------------------
-        ! First part 
-        ! ---------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
-
-        ! ----------------------------------
-        ! Second part
-        ! ----------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
-
-    end subroutine fast_diag_interp_3d
-
-    subroutine fast_diag_transient_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                        diagonal, array_in, dt, nu, array_out)
-        
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! by G. Sanaglli and M. Tani
-        
-        use omp_lib
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-        double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
-        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                        diagonal(nr_total), array_in(nr_total)
-        double precision :: dt, nu
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data
-        ! -------------
-        integer :: i, nb_tasks
-        double precision :: array_temp, diagonal_new
-        dimension :: array_temp(nr_total), diagonal_new(nr_total)
-
-        ! ---------------------------------
-        ! First part 
-        ! ---------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
-
-        ! ---------------------------------
-        ! Second part 
-        ! ---------------------------------
-        diagonal_new = 1.d0/dt
-        if (nu.gt.0.d0) then 
-            diagonal_new = diagonal_new + nu*diagonal
-        end if
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-        do i = 1, nr_total
-            array_temp(i) = array_temp(i)/diagonal_new(i)
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-        ! ----------------------------------
-        ! Third part
-        ! ----------------------------------
-        call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
-    
-    end subroutine fast_diag_transient_3d
-
-    subroutine fast_diag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                        diagonal, array_in, array_out)
-        
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! by G. Sanaglli and M. Tani
-        
-        use omp_lib
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        integer, parameter :: d = 3
-        integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-        double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
-        dimension ::    U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), &
-                        diagonal(d, nr_total), array_in(d, nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(d, nr_total)
-
-        ! Local data
-        ! -------------
-        integer :: i
-        double precision :: array_temp
-        dimension :: array_temp(nr_total)
-
-        do i = 1, d 
-            call fast_diag_steady_3d(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                    diagonal(i, :), array_in(i, :), array_temp)
-            array_out(i, :) = array_temp
-        end do
-        
-    end subroutine fast_diag_elasticity_3d
 
     ! For improving fast diagonalisation (TD, TDS, JM and JMS)
 
@@ -1226,19 +1054,18 @@ module tensor_methods
 
     end subroutine tensor_decomposition_3d
 
-    subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz_J, JJ, nnz_K, KK, &
-                                L1, L2, L3, lambda1, lambda2, lambda3)
+    subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
         
         use omp_lib
         implicit none
         ! Input /  output data
         ! -----------------------
         integer :: step
-        integer, intent(in) :: nc_u, nc_v, nc_w, nnz_J, nnz_K
-        double precision, intent(in) :: JJ, KK
-        dimension :: JJ(3, 3, nnz_J), KK(3, 3, nnz_K)
+        integer, intent(in) :: nc_u, nc_v, nc_w, nnz
+        double precision, intent(in) :: JJ
+        dimension :: JJ(3, 3, nnz)
     
-        double precision, intent(out) :: L1, L2, L3, lambda1, lambda2, lambda3
+        double precision, intent(out) :: Lu, Lv, Lw
         
         ! Local data
         ! --------------
@@ -1272,11 +1099,11 @@ module tensor_methods
     
         ! Compute distance
         !--------------------------
-        L1 = 0.d0; L2 = 0.d0; L3 = 0.d0
+        Lu = 0.d0; Lv = 0.d0; Lw = 0.d0
     
-        !$OMP PARALLEL PRIVATE(pos, MatrixT, dist, dummy) REDUCTION(+:L1, L2, L3)
+        !$OMP PARALLEL PRIVATE(pos, MatrixT, dist, dummy) REDUCTION(+:Lu, Lv, Lw)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_J/(nb_tasks*step*step*step))
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz/(nb_tasks*step*step*step))
         do k = 1, nc_w, step
             do j = 1, nc_v, step
                 do i = 1, nc_u, step
@@ -1285,9 +1112,9 @@ module tensor_methods
                     call polar_decomposition(MatrixT, Q, dist, dummy, 1, 1)
     
                     ! Find mean of diagonal of jacobien
-                    L1 = L1 + dist(1, 1)/nb_pts
-                    L2 = L2 + dist(2, 2)/nb_pts
-                    L3 = L3 + dist(3, 3)/nb_pts
+                    Lu = Lu + dist(1, 1)/nb_pts
+                    Lv = Lv + dist(2, 2)/nb_pts
+                    Lw = Lw + dist(3, 3)/nb_pts
                 end do
             end do
         end do
@@ -1295,48 +1122,85 @@ module tensor_methods
         !$OMP END PARALLEL 
 
         ! Dimension normalized
-        sq = sqrt(L1**2 + L2**2 + L3**2)
-        L1 = L1/sq; L2 = L2/sq; L3 = L3/sq
+        sq = sqrt(Lu**2 + Lv**2 + Lw**2)
+        Lu = Lu/sq; Lv = Lv/sq; Lw = Lw/sq
+        
+    end subroutine jacobien_mean_3d
+
+    subroutine conductivity_mean_3d(nc_u, nc_v, nc_w, nnz, KK, lamb_u, lamb_v, lamb_w)
+        
+        implicit none
+        ! Input /  output data
+        ! -----------------------
+        integer :: step
+        integer, intent(in) :: nc_u, nc_v, nc_w, nnz
+        double precision, intent(in) :: KK
+        dimension :: KK(3, 3, nnz)
+    
+        double precision, intent(out) :: lamb_u, lamb_v, lamb_w
+        
+        ! Local data
+        ! --------------
+        integer :: i, j, k, pos, nb_pts, nb_pts_temp
+        double precision :: sq
+
+        ! Define step
+        step = min((nc_u-1)/2, (nc_v-1)/2, (nc_w-1)/2)
+        
+        ! Count number of quadrature points
+        nb_pts = 1
+        nb_pts_temp = 0
+        do i = 1, nc_u, step
+            nb_pts_temp = nb_pts_temp + 1
+        end do
+        nb_pts = nb_pts * nb_pts_temp
+        nb_pts_temp = 0
+
+        do j = 1, nc_v, step
+            nb_pts_temp = nb_pts_temp + 1
+        end do
+        nb_pts = nb_pts * nb_pts_temp
+        nb_pts_temp = 0
+
+        do k = 1, nc_w, step
+            nb_pts_temp = nb_pts_temp + 1
+        end do
+        nb_pts = nb_pts * nb_pts_temp
 
         ! Compute conductivity
         !--------------------------
-        if (nnz_K.eq.1) then
+        if (nnz.eq.1) then
 
-            lambda1 = KK(1, 1, 1)
-            lambda2 = KK(2, 2, 1)
-            lambda3 = KK(3, 3, 1)
+            lamb_u = KK(1, 1, 1)
+            lamb_v = KK(2, 2, 1)
+            lamb_w = KK(3, 3, 1)
 
-        else if (nnz_K.eq.nnz_J) then
+        else 
 
-            lambda1 = 0.d0; lambda2 = 0.d0; lambda3 = 0.d0
+            lamb_u = 0.d0; lamb_v = 0.d0; lamb_w = 0.d0
 
-            !$OMP PARALLEL PRIVATE(pos) REDUCTION(+:lambda1, lambda2, lambda3)
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_J/(nb_tasks*step*step*step))
             do k = 1, nc_w, step
                 do j = 1, nc_v, step
                     do i = 1, nc_u, step
                         pos = i + (j-1)*nc_u + (k-1)*nc_u*nc_v
         
                         ! Find mean of diagonal 
-                        lambda1 = lambda1 + KK(1, 1, pos)/nb_pts
-                        lambda2 = lambda2 + KK(2, 2, pos)/nb_pts
-                        lambda3 = lambda3 + KK(3, 3, pos)/nb_pts
+                        lamb_u = lamb_u + KK(1, 1, pos)/nb_pts
+                        lamb_v = lamb_v + KK(2, 2, pos)/nb_pts
+                        lamb_w = lamb_w + KK(3, 3, pos)/nb_pts
                     end do
                 end do
             end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
             
         end if
 
         ! Conductivity normalized
-        sq = sqrt(lambda1**2 + lambda2**2 + lambda3**2)
-        lambda1 = lambda1/sq; lambda2 = lambda2/sq; lambda3 = lambda3/sq
+        sq = sqrt(lamb_u**2 + lamb_v**2 + lamb_w**2)
+        lamb_u = lamb_u/sq; lamb_v = lamb_v/sq; lamb_w = lamb_w/sq
         
-    end subroutine jacobien_mean_3d
+    end subroutine conductivity_mean_3d
 
-    ! For scaling (TDS and JMS)
+    ! For computing diagonals
     
     subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
                                         Mdiag_u, Mdiag_v, Mdiag_w, &
