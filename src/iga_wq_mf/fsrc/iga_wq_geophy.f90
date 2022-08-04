@@ -209,7 +209,7 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
 
 end subroutine eval_jacobien_3d
 
-subroutine interpolation_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine interpolate_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, ddl_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
@@ -256,7 +256,7 @@ subroutine interpolation_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
                                     u_ctrlpts(i, :), u_interp(i, :))
     end do
 
-end subroutine interpolation_fieldphy_3d
+end subroutine interpolate_fieldphy_3d
 
 subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &

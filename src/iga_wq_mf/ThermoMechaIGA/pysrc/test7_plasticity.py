@@ -34,7 +34,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.1}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.11}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
@@ -99,28 +99,33 @@ for i in range(3):
     u[i, Mdod[i], :] = 0.0 # Is zero but to be sure
 
 # Solve system in fortran
-_, delta_F, coef_S= modelPhy.MFplasticity(u=u[:,:,:2], indi=Mdod)
+_, delta_F, coef_S = modelPhy.MFplasticity(u=u[:,:,:2], indi=Mdod)
+modelPhy._set_extra_mechanical_properties()
+coef_S_el = modelPhy.compute_elastic_coefficient(modelPhy._Jqp)
+print(coef_S[:, :, 100])
+print(coef_S_el[:, :, 100])
+
 
 print('=========================')
 
-# Solve with iterative method in fortran
-itersol = modelPhy.MFelasticity(u=delta_F, indi=Mdod, coefs=coef_S)
-print(np.max(itersol), np.min(itersol))
+# # Solve with iterative method in fortran
+# itersol = modelPhy.MFelasticity(u=delta_F, indi=Mdod, coefs=coef_S)
+# print(np.max(itersol), np.min(itersol))
 
-# Solve with direct method
-dof_extended = []
-for i in range(3):
-    dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
-    dof_extended.extend(list(dof))
+# # Solve with direct method
+# dof_extended = []
+# for i in range(3):
+#     dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
+#     dof_extended.extend(list(dof))
 
-# Compute Stiffness matrix
-S2solve = modelPhy.eval_stiffness_matrix(coefs = coef_S)[dof_extended, :][:, dof_extended]
-delta_F_dir = np.reshape(delta_F, (-1, 1))[dof_extended]
-dirsol = sp.linalg.spsolve(S2solve, delta_F_dir)
-dirsol = np.atleast_2d(dirsol)
-print(np.max(dirsol), np.min(dirsol))
+# # Compute Stiffness matrix
+# S2solve = modelPhy.eval_stiffness_matrix(coefs = coef_S)[dof_extended, :][:, dof_extended]
+# delta_F_dir = np.reshape(delta_F, (-1, 1))[dof_extended]
+# dirsol = sp.linalg.spsolve(S2solve, delta_F_dir)
+# dirsol = np.atleast_2d(dirsol)
+# print(np.max(dirsol), np.min(dirsol))
 
-itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
-error = dirsol.T - itersol2
-norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
-print(norm_error)
+# itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
+# error = dirsol.T - itersol2
+# norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
+# print(norm_error)

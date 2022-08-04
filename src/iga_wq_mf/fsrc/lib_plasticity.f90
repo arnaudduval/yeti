@@ -332,6 +332,10 @@ module elastoplasticity
         ! -----------
         double precision :: lambda, mu, bulk
         double precision, dimension(:, :), allocatable :: Ctensor, Stensor
+
+        ! Local
+        ! ---------
+        double precision, dimension(:, :), allocatable :: Idev
     
     end type material
 
@@ -374,21 +378,22 @@ module elastoplasticity
         object%mu = mu
         object%bulk = bulk
 
-        allocate(object%Ctensor(ddl, ddl), object%Stensor(ddl, ddl))
+        allocate(object%Ctensor(ddl, ddl), object%Stensor(ddl, ddl), object%Idev(ddl, ddl))
         object%Ctensor = CC
         object%Stensor = SS
+        object%Idev = identity - 1.d0/3.d0*onekronone
 
     end subroutine initialize_mat
 
-    subroutine compute_coefficients(nc_total, sigma, dSdE, invJ, detJ, coef_Fint, coef_Stiff)
+    subroutine compute_coefficients(nc_total, sigma, Dalg, invJ, detJ, coef_Fint, coef_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
 
         implicit none 
         ! Input / output 
         ! --------------------
         integer, intent(in) :: nc_total
-        double precision, intent(in) :: sigma, dSdE, invJ, detJ
-        dimension :: sigma(ddl, nc_total), dSdE(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
+        double precision, intent(in) :: sigma, Dalg, invJ, detJ
+        dimension :: sigma(ddl, nc_total), Dalg(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
 
         double precision, intent(out) :: coef_Fint, coef_Stiff
         dimension :: coef_Fint(dimen*dimen, nc_total), coef_Stiff(dimen*dimen, dimen*dimen, nc_total)
@@ -416,7 +421,7 @@ module elastoplasticity
             coef_Fint(:, i) = matmul(transpose(invJext), MM_S) * detJ(i)
 
             ! Compute the coefficients to use in Stiffness matrix
-            MM_dSdE = matmul(transpose(MM), dSdE(:, :, i))
+            MM_dSdE = matmul(transpose(MM), Dalg(:, :, i))
             MDM = matmul(MM_dSdE, MM)
             coef_temp = matmul(transpose(invJext), MDM)
             coef_Stiff(:, :, i) = matmul(coef_temp, invJext) * detJ(i)
@@ -429,7 +434,7 @@ module elastoplasticity
     ! PERFECT PLASTICITY
     ! =========================
 
-    subroutine yield_perfect_plasticity(sigma_Y, sigma, f, grad_f, grad2_f)
+    subroutine yield_perfect_plasticity(sigma_Y, sigma, f, norm, N)
         !! Computes the value of f (consistency condition) and its derivatives in perfect plasticity criteria
         
         implicit none
@@ -437,129 +442,71 @@ module elastoplasticity
         ! ---------------
         double precision, intent(in) ::  sigma_Y, sigma
         dimension :: sigma(ddl)
-        double precision, intent(out) :: f, grad_f, grad2_f
-        dimension :: grad_f(ddl), grad2_f(ddl, ddl)
+        double precision, intent(out) :: f, norm, N
+        dimension :: N(ddl)
 
         ! Local data
         ! ----------------
-        double precision :: norm, dev, devdev, identity
-        dimension :: dev(ddl), devdev(ddl, ddl), identity(ddl, ddl)
+        double precision :: eta
+        dimension :: eta(ddl)
 
-        ! Compute deviatoric of sigma tensor
-        call compute_deviatoric(dimen, ddl, sigma, dev)
+        ! Compute deviatoric of sigma tensor: nu_trial
+        call compute_deviatoric(dimen, ddl, sigma, eta)
 
-        ! Compute the norm sqrt(dev : dev)
-        call stdcst(dimen, ddl, dev, dev, norm)
+        ! Compute the norm sqrt(nu_trial : nu_trial)
+        call stdcst(dimen, ddl, eta, eta, norm)
         norm = sqrt(norm)
         f = norm - sqrt(2.d0/3.d0) * sigma_Y     
 
-        ! Compute gradient of f
-        grad_f = dev/norm
-
         ! Compute gradient of the gradient of f
-        call stkronst(ddl, dev, dev, devdev)
-        call fourth_order_identity(ddl, identity)
-        grad2_f = 1.d0/norm*identity - 1.d0/(norm**3)*devdev
+        N = 1.d0/norm*eta
 
     end subroutine yield_perfect_plasticity
 
-    subroutine cpp_perfect_plasticity(CC, SS, sigma_Y, e_n1, ep_n0, ep_n1, sigma_n1, dSdE)
+    subroutine cpp_perfect_plasticity(CC, Idev, mu, sigma_Y, deps, ep_n0, sigma_n0, ep_n1, sigma_n1, Dalg)
         !! Return closest point proyection (cpp) in perfect plasticity criteria
 
         implicit none
         ! Input / output
         ! ---------------
-        integer, parameter :: nbIter = 20 ! Ideally it takes 5 iterations to converge
-        double precision, intent(in) :: CC, SS, sigma_Y
-        dimension :: CC(ddl, ddl), SS(ddl, ddl)
-        double precision, intent(in) :: e_n1, ep_n0
-        dimension :: e_n1(ddl), ep_n0(ddl)
+        double precision, intent(in) :: CC, Idev, mu, sigma_Y
+        dimension :: CC(ddl, ddl), Idev(ddl, ddl)
+        double precision, intent(in) :: deps, ep_n0, sigma_n0
+        dimension :: deps(ddl), sigma_n0(ddl)
 
-        double precision, intent(out) :: ep_n1, sigma_n1, dSdE
-        dimension :: ep_n1(ddl), sigma_n1(ddl), dSdE(ddl, ddl)
+        double precision, intent(out) :: ep_n1, sigma_n1, Dalg
+        dimension :: sigma_n1(ddl), Dalg(ddl, ddl)
         
         ! Local data
         ! ------------
-        integer :: iter
-        double precision :: f, dgamma, d2gamma, norm, prod1, prod2
-        double precision :: diff_e_ep, grad_f, grad2_f, r_n1
-        dimension :: diff_e_ep(ddl),  grad_f(ddl), grad2_f(ddl, ddl), r_n1(ddl)
+        double precision :: f, norm
+        double precision :: sigma_trial, N, NNT
+        dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
                        
-        double precision :: xi_inv, xi_r, xi_grad, xi_diff, diff_grad, d_ep, N, NNT
-        dimension ::    xi_inv(ddl, ddl), xi_r(ddl), xi_grad(ddl), & 
-                        xi_diff(ddl), d_ep(ddl), diff_grad(ddl), N(ddl), NNT(ddl, ddl)
-
         ! Compute elastic predictor
-        diff_e_ep = e_n1 - ep_n0
-        sigma_n1 = matmul(CC, diff_e_ep)
+        sigma_trial = sigma_n0 + matmul(CC, deps)
         
         ! Review condition
-        call yield_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
+        call yield_perfect_plasticity(sigma_Y, sigma_trial, f, norm, N)
 
         if (f.le.0.d0) then ! Elastic point
 
             ! Send back values
+            sigma_n1 = sigma_trial
             ep_n1 = ep_n0
-            dSdE = CC
+            Dalg = CC
 
         else ! Plastic point
 
-            ! Initialize
-            dgamma = 0.d0
-            ep_n1 = ep_n0
+            ! Update stress
+            sigma_n1 = sigma_trial - f*N
 
-            ! Return-mapping iterative algorithm
-            do iter = 1, nbIter
+            ! Update effective plastic strain 
+            ep_n1 = ep_n0 + f/(mu*sqrt(6.d0))
 
-                ! Compute stress 
-                diff_e_ep = e_n1 - ep_n1
-                sigma_n1 = matmul(CC, diff_e_ep)
-                
-                ! Review condition
-                call yield_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
-                
-                ! Compute residual
-                r_n1 = ep_n1 - ep_n0 - dgamma*grad_f
-
-                ! Check convergence
-                call stdcst(dimen, ddl, r_n1, r_n1, norm)
-                norm = sqrt(norm)
-                if ((norm.lt.tol1).and.(f.lt.tol2)) then
-                    exit
-                else
-                    ! Compute tangent moduli
-                    xi_inv = SS + dgamma*grad2_f   ! Actually xi is the inverse of this relation
-                                                    ! but inverse is expensive. We may solve a linear system instead
-                    ! Compute delta(delta gamma)
-                    call solve_linear_system(ddl, ddl, xi_inv, r_n1, xi_r) 
-                    call solve_linear_system(ddl, ddl, xi_inv, grad_f, xi_grad)  
-                    call stdcst(dimen, ddl, grad_f, xi_r, prod1)
-                    call stdcst(dimen, ddl, grad_f, xi_grad, prod2)
-                    d2gamma = (f + prod1)/prod2
-
-                    ! Compute increment
-                    diff_grad = d2gamma*grad_f - r_n1
-                    call solve_linear_system(ddl, ddl, xi_inv, diff_grad, xi_diff) 
-                    d_ep = matmul(SS, xi_diff)
-                    
-                    ! Update plastic strains and consistency
-                    dgamma = dgamma + d2gamma
-                    ep_n1 = ep_n1 + d_ep
-                end if
-            end do
-
-            ! Compute dSdE
-            dSdE = SS + dgamma*grad2_f 
-            call inverse_matrix(ddl, dSdE)
-                        
-            ! Compute N
-            xi_grad = matmul(dSdE, grad_f)
-            call stdcst(dimen, ddl, grad_f, xi_grad, prod2)
-            N = xi_grad/sqrt(prod2)
+            ! Compute consistent tangent matrix
             call stkronst(ddl, N, N, NNT)
-
-            ! Update dSdE
-            dSdE = dSdE - NNT
+            Dalg = CC - 2*mu*((1-f/norm)*NNT + f/norm*Idev)
 
         end if
 

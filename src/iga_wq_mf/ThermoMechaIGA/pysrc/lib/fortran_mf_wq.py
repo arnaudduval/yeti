@@ -171,6 +171,7 @@ class fortran_mf_wq(thermoMechaModel):
         
         # Get inputs
         if coefs is None:
+            self._set_extra_mechanical_properties()
             coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
@@ -215,6 +216,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
         if coefs is None:
+            self._set_extra_mechanical_properties()
             coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
@@ -416,9 +418,11 @@ class fortran_mf_wq(thermoMechaModel):
             newdod = np.array(dod[_])
             newdod += 1
             dod[_] = list(newdod)
-            
-        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
-                self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
+
+        prop = np.array([self._youngModule, self._poissonCoef, self._sigmaY])       
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, prop, self._MechanicalDirichlet, 
+                *dod, self._invJ, self._detJ]
+
         result = solver.mf_wq_plasticity_3d(*inputs, u)
 
         return result
@@ -426,6 +430,7 @@ class fortran_mf_wq(thermoMechaModel):
     # ==================================
     # MATRIX FREE SOLUTION (IN PYTHON)
     # ================================== 
+
     def compute_strain(self, u=None):
         " Compute strain from displacement "
 
