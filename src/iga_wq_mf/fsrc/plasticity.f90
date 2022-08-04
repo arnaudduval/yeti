@@ -81,7 +81,7 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
 end subroutine interpolate_strain_3d
 
-subroutine wq_get_forceVol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes volumetric force vector in 3D case
 
@@ -115,9 +115,9 @@ subroutine wq_get_forceVol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                                     coefs(i, :), result(i, :))
     end do
 
-end subroutine wq_get_forceVol_3d
+end subroutine wq_get_forcevol_3d
 
-subroutine wq_get_forceSurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, result)
     !! Computes boundary force vector in 3D case
 
@@ -165,12 +165,12 @@ subroutine wq_get_forceSurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
                                 coefs(i, :), result(i, :))
     end do
     
-end subroutine wq_get_forceSurf_3d
+end subroutine wq_get_forcesurf_3d
 
-subroutine wq_get_forceInt_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes internal force vector in 3D case
-    !! ----------------------- IT IS NOT GOOD
+    !! --------- IT IS NOT GOOD
 
     use tensor_methods
     implicit none 
@@ -215,7 +215,7 @@ subroutine wq_get_forceInt_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
         end do
     end do
 
-end subroutine wq_get_forceInt_3d
+end subroutine wq_get_forceint_3d
 
 subroutine mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -327,10 +327,10 @@ end subroutine mf_wq_get_su_3d_csr
 
 ! ------------------------------
 
-subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            U_u, U_v, U_w, Deigen, nbIter, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, isPrecond)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIter, &
+                            U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     
     use tensor_methods
     implicit none 
@@ -478,107 +478,13 @@ subroutine wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         end do
     end if
     print*, 'Bi CGstab with error: ', RelRes, 'after iterations', iter
-end subroutine wq_mf_elasticity_3d
+end subroutine mf_wq_elasticity_3d
 
-subroutine wq_mf_elasticity_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, b, x)
-    !! ONLY TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    use tensor_methods
-    implicit none 
-    ! Input / output data
-    ! ---------------------
-    integer, parameter :: d = 3
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(d*d, d*d, nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    integer, intent(in) :: ndu, ndv, ndw
-    integer, intent(in) :: table, dod_u, dod_v, dod_w
-    dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
-    double precision, intent(in) :: JJ, b
-    dimension :: JJ(3, 3, nc_total), b(d, nr_total)
-    
-    double precision, intent(out) :: x
-    dimension :: x(d, nr_total)
-
-    ! Local data
-    ! ----------
-    integer :: i
-    character(len = 10) :: Method = 'FDC'
-    double precision, dimension(:), allocatable :: Mcoef, Kcoef
-    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: Deigen
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
-    double precision :: dum1, dum2, dum3, dum
-    dimension :: dum(3, 3, 1)
-    double precision :: c_u, c_v, c_w, Lu, Lv, Lw
-
-    ! Jacobian Mean
-    dum = reshape((/1, 0, 0, 0, 1, 0, 0, 0, 1/), (/3, 3, 1/))
-    call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, &
-                            1, dum, Lu, Lv, Lw, dum1, dum2, dum3)
-                                
-    c_u = Lv*Lw/Lu
-    c_v = Lw*Lu/Lv
-    c_w = Lu*Lv/Lw
-
-    ! c_u = 1.d0
-    ! c_v = 1.d0
-    ! c_w = 1.d0
-
-    ! --------------------------------------------
-    ! EIGEN DECOMPOSITION
-    ! -------------------------------------------- 
-    ! Initialize 
-    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), U_w(nr_w, nr_w, d), D_w(nr_w))
-    allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
-    allocate(Deigen(d, nr_total))
-
-    ! Find diagonal of eigen values
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-
-    do i = 1, d
-
-        call eigen_decomposition(nr_u, nc_u, Mcoef, Kcoef, nnz_u, indi_u, indj_u, &
-                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), method, table(1, :, i), D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
-
-        call eigen_decomposition(nr_v, nc_v, Mcoef, Kcoef, nnz_v, indi_v, indj_v, &
-                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), method, table(2, :, i), D_v, U_v(:, :, i), Kdiag_v, Mdiag_v)
-
-        call eigen_decomposition(nr_w, nc_w, Mcoef, Kcoef, nnz_w, indi_w, indj_w, &
-                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), method, table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
-
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
-
-    end do
-    deallocate(I_u, I_v, I_w, D_u, D_v, D_w, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-
-    call wq_mf_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        U_u, U_v, U_w, Deigen, 400, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, .true.)
-
-end subroutine wq_mf_elasticity_3d_csr
-
-subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, JJ, E, nu, sigma_Y, sizeF, Fext, disp, delta_F, coef_S)
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, properties, &
+                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, &
+                        disp, delta_F, coef_S)
 
     use elastoplasticity
     use tensor_methods
@@ -598,23 +504,22 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     ! Physics
-    double precision, intent(in) :: E, nu, sigma_Y
+    double precision, intent(in) :: properties(3)
     integer, intent(in) :: ndu, ndv, ndw
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
-    double precision, intent(in) :: JJ, Fext
-    dimension :: JJ(d, d, nc_total), Fext(d, nr_total, sizeF+1)
+    double precision, intent(in) :: invJ, detJ, Fext
+    dimension :: invJ(d, d, nc_total), detJ(nc_total), Fext(d, nr_total, sizeF+1)
     
     double precision, intent(out) :: disp
     dimension :: disp(d, nr_total, sizeF+1)
-
     double precision, intent(out) :: coef_S, delta_F
     dimension :: coef_S(d*d, d*d, nc_total), delta_F(d, nr_total)
 
     ! Local data
     ! -----------
-    double precision :: invJ, detJ
-    dimension :: invJ(d, d, nc_total), detJ(nc_total)
+    type(material), pointer :: mat
+    double precision :: E, nu, sigma_Y
 
     character(len = 10) :: Method = 'FDC'
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -623,7 +528,6 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     double precision, dimension(:, :), allocatable :: Deigen
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
 
-    type(material), pointer :: mat
     double precision :: ep_n1, ep_n0, e_n1, sigma_n1, dSdE
     dimension ::    ep_n1(dof, nc_total), ep_n0(dof, nc_total), e_n1(dof, nc_total), &
                     sigma_n1(dof, nc_total), dSdE(dof, dof, nc_total)
@@ -637,13 +541,6 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     
     double precision :: c_u, c_v, c_w, error, prod1, prod2
     integer :: i, j, k
-
-    ! --------------------------------------------
-    ! GEOMETRY
-    ! -------------------------------------------- 
-    do i = 1, nc_total
-        call MatrixInv(invJ(:, :, i), JJ(:, :, i), detJ(i), d)
-    end do
 
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
@@ -681,6 +578,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     ! SOLVE
     ! -------------------------------------------- 
     ! Initialize
+    E = properties(1); nu = properties(2); sigma_Y = properties(3)
     call initialize_mat(mat, E, nu)
     disp = 0.d0; ep_n1 = 0.d0; ep_n0 = 0.d0
     
@@ -709,7 +607,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
             call compute_coefficients(nc_total, sigma_n1, dSdE, invJ, detJ, coef_fint, coef_S)
 
             ! Compute Fint
-            call wq_get_forceInt_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
             ! Update F
@@ -725,11 +623,11 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                 exit
             else
                 ! Solve by iterations 
-                call wq_mf_elasticity_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                call mf_wq_elasticity_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    U_u, U_v, U_w, Deigen, nbIterSolver, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-                                    delta_F, delta_disp, .true.)
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
+                                    nbIterSolver, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
+                                    delta_F, delta_disp)
 
                 call clean_dirichlet_3d(nr_total, delta_disp, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
                 
@@ -744,6 +642,7 @@ subroutine solver_plasticity(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
         ep_n0 = ep_n1
         
         print*, "------------"
+        
     end do
 
-end subroutine solver_plasticity
+end subroutine mf_wq_plasticity_3d

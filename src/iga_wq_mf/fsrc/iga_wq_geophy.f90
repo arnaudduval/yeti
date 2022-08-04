@@ -331,7 +331,7 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine eval_jacobien_2d
 
-subroutine interpolation_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, dof_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
@@ -375,4 +375,4 @@ subroutine interpolation_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                     u_ctrlpts(i, :), u_interp(i, :))
     end do
 
-end subroutine interpolation_fieldphy_2d
+end subroutine interpolate_fieldphy_2d

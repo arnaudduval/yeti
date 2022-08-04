@@ -67,10 +67,10 @@ class fortran_mf_iga(thermoMechaModel):
 
         if self._dim == 2:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
-            self._qp_PS = assembly. interpolation_fieldphy_2d(*inputs)
+            self._qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
         if self._dim == 3:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
-            self._qp_PS = assembly. interpolation_fieldphy_3d(*inputs)
+            self._qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
         stop = time.time()
         print('\t Time jacobien: %.5f s' %(stop-start))
 
@@ -214,7 +214,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         return inputs
 
-    def MFsolver(self, u, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, u, nbIterations, epsilon, method, directsol): 
 
         # Get inputs
         self._verify_conductivity()
@@ -224,7 +224,7 @@ class fortran_mf_iga(thermoMechaModel):
                 self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue, error = solver.iga_mf_steady_3d(*inputs)
+        if self._dim == 3: sol, residue, error = solver.mf_iga_steady_heat_3d(*inputs)
 
         return sol, residue, error
         
@@ -243,7 +243,7 @@ class fortran_mf_iga(thermoMechaModel):
         # Solve linear system with fortran
         inputs = [self._detJ, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
         start = time.time()
-        u_interp, relres = solver.iga_mf_interp_3d(*inputs)
+        u_interp, relres = solver.mf_iga_interpolate_cp_3d(*inputs)
         stop = time.time()
         res_end = relres[np.nonzero(relres)][-1]
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))

@@ -376,7 +376,7 @@ end subroutine test_precondfd
 ! Conjugate gradient for steady problems
 ! ----------------------------------------
 
-subroutine wq_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIter, epsilon, Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
@@ -633,9 +633,9 @@ subroutine wq_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         end if
     end if
 
-end subroutine wq_mf_steady_3d
+end subroutine mf_wq_steady_heat_3d
 
-subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterations, epsilon, x, RelRes)
@@ -759,4 +759,4 @@ subroutine wq_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
         rsold = rsnew
     end do
 
-end subroutine wq_mf_interp_3d
+end subroutine mf_wq_interpolate_cp_3d

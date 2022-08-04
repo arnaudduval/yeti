@@ -300,7 +300,7 @@ end subroutine mf_iga_get_ku_3d_csr
 ! Conjugate gradient
 ! ----------------------------------------
 
-subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, & 
                         Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
@@ -545,9 +545,9 @@ subroutine iga_mf_steady_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         end if
     end if
 
-end subroutine iga_mf_steady_3d
+end subroutine mf_iga_steady_heat_3d
 
-subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, x, RelRes)
     !! Conjugate gradient with ot without preconditioner 
@@ -676,4 +676,4 @@ subroutine iga_mf_interp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         rsold = rsnew
     end do
 
-end subroutine iga_mf_interp_3d
+end subroutine mf_iga_interpolate_cp_3d

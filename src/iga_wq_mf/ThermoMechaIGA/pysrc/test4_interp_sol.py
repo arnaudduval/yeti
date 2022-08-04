@@ -74,7 +74,7 @@ epsilon = 1e-15
 method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
 for method_name in method_list: 
     inputs = [Fn, iterations, epsilon, method_name, un]   
-    un_t, _, _ = modelPhy.MFsolver(*inputs)
+    un_t, _, _ = modelPhy.MFsteadyHeat(*inputs)
     usolved_t = np.zeros(modelPhy._nb_ctrlpts_total)
     usolved_t[dof] = un_t
     usolved_t[dod] = ud

@@ -68,10 +68,10 @@ class fortran_mf_wq(thermoMechaModel):
         
         if self._dim == 2:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
-            self._qp_PS = assembly. interpolation_fieldphy_2d(*inputs)
+            self._qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
         if self._dim == 3:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
-            self._qp_PS = assembly. interpolation_fieldphy_3d(*inputs)
+            self._qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
         stop = time.time()
         print('\t Time jacobien: %.5f s' %(stop-start))
 
@@ -378,7 +378,7 @@ class fortran_mf_wq(thermoMechaModel):
                 self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue, error = solver.wq_mf_steady_3d(*inputs)
+        if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
 
         return sol, residue, error
 
@@ -397,34 +397,12 @@ class fortran_mf_wq(thermoMechaModel):
         # Solve linear system with fortran
         inputs = [self._detJ, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
         start = time.time()
-        u_interp, relres = solver.wq_mf_interp_3d(*inputs)
+        u_interp, relres = solver.mf_wq_interpolate_cp_3d(*inputs)
         stop = time.time()
         res_end = relres[np.nonzero(relres)][-1]
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 
         return u_interp
-
-    # --------!!!!!!!!!!!!!!!!!!!!!!!
-
-    def MFelasticity(self, u=None, indi=None, coefs=None):
-        " Solves a elastic problem "
-
-        # Get inputs 
-        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if indi is None or u is None: raise Warning('Impossible')
-        if coefs is None:
-            coefs = super().compute_elastic_coefficient(self._Jqp)
-
-        dod = deepcopy(indi)
-        for _ in range(len(dod)):
-            newdod = np.array(dod[_])
-            newdod += 1
-            dod[_] = list(newdod)
-
-        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet]
-        result = solver.wq_mf_elasticity_3d_csr(*inputs, *dod, self._Jqp, u)
-
-        return result
 
     def MFplasticity(self, u=None, indi=None):
         " Solves a plasticity problem "
@@ -441,7 +419,7 @@ class fortran_mf_wq(thermoMechaModel):
             
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, self._MechanicalDirichlet, *dod,
                 self._Jqp, self._youngModule, self._poissonCoef, self._sigmaY]
-        result = solver.solver_plasticity(*inputs, u)
+        result = solver.mf_wq_plasticity_3d(*inputs, u)
 
         return result
         

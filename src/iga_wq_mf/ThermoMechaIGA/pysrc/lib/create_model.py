@@ -577,10 +577,10 @@ class thermoMechaModel():
         
         if self._dim == 2:
             jacobien_PS, detJ, _ = assembly.eval_jacobien_2d(*inputs)
-            qp_PS = assembly. interpolation_fieldphy_2d(*inputs)
+            qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
         elif self._dim == 3: 
             jacobien_PS, detJ, _ = assembly.eval_jacobien_3d(*inputs)
-            qp_PS = assembly. interpolation_fieldphy_3d(*inputs)
+            qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
 
         # ==============================
         # Get interpolation
@@ -593,8 +593,8 @@ class thermoMechaModel():
                 data.append(DB[dim])
             inputs = [*self._dim*[nnz], *indices, *data, u_ctrlpts]
 
-            if self._dim == 2: u_interp = assembly.interpolation_fieldphy_2d(*inputs)    
-            elif self._dim == 3: u_interp = assembly.interpolation_fieldphy_3d(*inputs)
+            if self._dim == 2: u_interp = assembly.interpolate_fieldphy_2d(*inputs)    
+            elif self._dim == 3: u_interp = assembly.interpolate_fieldphy_3d(*inputs)
         else: 
             u_interp = None
 

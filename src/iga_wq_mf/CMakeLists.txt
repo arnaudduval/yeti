@@ -41,8 +41,8 @@ CreateF2PYModule(NAME assembly
 )
 
 CreateF2PYModule(NAME solver
-                 FILES  "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_iga_solver.f90"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_solver.f90"  
+                 FILES  "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_iga_heat.f90"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_heat.f90"  
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/plasticity.f90"
                  LINK_LIBRARIES iga_wq_mf base 
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf

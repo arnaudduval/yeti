@@ -429,7 +429,7 @@ module elastoplasticity
     ! PERFECT PLASTICITY
     ! =========================
 
-    subroutine consistency_perfect_plasticity(sigma_Y, sigma, f, grad_f, grad2_f)
+    subroutine yield_perfect_plasticity(sigma_Y, sigma, f, grad_f, grad2_f)
         !! Computes the value of f (consistency condition) and its derivatives in perfect plasticity criteria
         
         implicit none
@@ -461,7 +461,7 @@ module elastoplasticity
         call fourth_order_identity(ddl, identity)
         grad2_f = 1.d0/norm*identity - 1.d0/(norm**3)*devdev
 
-    end subroutine consistency_perfect_plasticity
+    end subroutine yield_perfect_plasticity
 
     subroutine cpp_perfect_plasticity(CC, SS, sigma_Y, e_n1, ep_n0, ep_n1, sigma_n1, dSdE)
         !! Return closest point proyection (cpp) in perfect plasticity criteria
@@ -494,7 +494,7 @@ module elastoplasticity
         sigma_n1 = matmul(CC, diff_e_ep)
         
         ! Review condition
-        call consistency_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
+        call yield_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
 
         if (f.le.0.d0) then ! Elastic point
 
@@ -516,7 +516,7 @@ module elastoplasticity
                 sigma_n1 = matmul(CC, diff_e_ep)
                 
                 ! Review condition
-                call consistency_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
+                call yield_perfect_plasticity(sigma_Y, sigma_n1, f, grad_f, grad2_f)
                 
                 ! Compute residual
                 r_n1 = ep_n1 - ep_n0 - dgamma*grad_f
