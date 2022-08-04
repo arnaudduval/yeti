@@ -493,7 +493,7 @@ class thermoMechaModel():
 
         return source_coef
 
-    def compute_stiffness_coefficient(self, JJ):
+    def compute_elastic_coefficient(self, JJ):
         " Computes coefficients at points P in parametric space. This function only consider linear isotropic case"
 
         # Set shape

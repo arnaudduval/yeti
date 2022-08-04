@@ -169,7 +169,7 @@ class fortran_mf_wq(thermoMechaModel):
         
         # Get inputs
         if coefs is None:
-            coefs = super().compute_stiffness_coefficient(self._Jqp)
+            coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
@@ -213,7 +213,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
         if coefs is None:
-            coefs = super().compute_stiffness_coefficient(self._Jqp)
+            coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
@@ -366,7 +366,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsolver(self, u, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, u, nbIterations, epsilon, method, directsol): 
 
         # Get inputs 
         self._verify_conductivity()
@@ -380,6 +380,30 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
+    def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
+        
+        # Get temperature coeficients 
+        coef_F = fun(self._qp_PS) * self._detJ
+
+        # Get inputs
+        inputs = [coef_F, *self._nb_qp_wq, *self._indices, *self._DW]
+
+        # Calculate temperature vector
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: F = assembly.wq_get_source_3d(*inputs)
+
+        # Solve linear system with fortran
+        inputs = [self._detJ, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
+        start = time.time()
+        u_interp, relres = solver.wq_mf_interp_3d(*inputs)
+        stop = time.time()
+        res_end = relres[np.nonzero(relres)][-1]
+        print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
+
+        return u_interp
+
+    # --------!!!!!!!!!!!!!!!!!!!!!!!
+
     def MFelasticity(self, u=None, indi=None, coefs=None):
         " Solves a elastic problem "
 
@@ -387,7 +411,7 @@ class fortran_mf_wq(thermoMechaModel):
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or u is None: raise Warning('Impossible')
         if coefs is None:
-            coefs = super().compute_stiffness_coefficient(self._Jqp)
+            coefs = super().compute_elastic_coefficient(self._Jqp)
 
         dod = deepcopy(indi)
         for _ in range(len(dod)):
@@ -418,28 +442,6 @@ class fortran_mf_wq(thermoMechaModel):
         result = solver.solver_plasticity(*inputs, u)
 
         return result
-
-    def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
-        
-        # Get temperature coeficients 
-        coef_F = fun(self._qp_PS) * self._detJ
-
-        # Get inputs
-        inputs = [coef_F, *self._nb_qp_wq, *self._indices, *self._DW]
-
-        # Calculate temperature vector
-        if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: F = assembly.wq_get_source_3d(*inputs)
-
-        # Solve linear system with fortran
-        inputs = [self._detJ, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
-        start = time.time()
-        u_interp, relres = solver.wq_mf_interp_3d(*inputs)
-        stop = time.time()
-        res_end = relres[np.nonzero(relres)][-1]
-        print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
-
-        return u_interp
         
     # ==================================
     # MATRIX FREE SOLUTION (IN PYTHON)

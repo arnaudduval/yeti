@@ -167,94 +167,127 @@ def create_der2sym(d=3):
 
     return MM
 
-def consistency_perfect_plasticity(sigma_Y, sigma, d=3):
-    "Computes the value of f (consistency condition) and its derivatives in perfect plasticity criteria"
-
-    # Compute deviatoric
-    dev = compute_deviatoric(d, sigma)
-
-    # Compute the norm of dev
-    norm = np.sqrt(stdcst(d, dev, dev))
-
-    # Compute f
-    f = norm - np.sqrt(2.0/3.0)*sigma_Y
-
-    # Compute gradient of f
-    grad = 1/norm * dev
-
-    # Compute gradient of the gradient
-    devdev = stkronst(dev, dev)
-    Iden = fourth_order_identity(d)
-
-    gradgrad = 1.0/norm*Iden - 1.0/(norm**3)*devdev
-
-    return f, grad, gradgrad
-
-def cpp_perfect_plasticity(CC, SS, sigma_Y, e_n1, ep_n0, nbIter=20, d=3):
+def cpp_perfect_plasticity(inputs, deps, sigma_n, ep_n, d=3):
     "Return closest point proyection (cpp) in perfect plasticity criteria"
 
-    # Compute elastic predictor
-    diff_e_ep = e_n1 - ep_n0
-    sigma_n1 = CC @ diff_e_ep
+    def yield_function(sigma_Y, sigma, d=3):
+        "Computes the value of f (consistency condition) in perfect plasticity criteria"
 
-    # Review condition
-    f, grad, grad2 = consistency_perfect_plasticity(sigma_Y, sigma_n1, d=d)
+        # Compute deviatoric
+        nu_trial = compute_deviatoric(d, sigma)
 
-    if f <= 0.0: # Elastic point
-        ep_n1 = ep_n0
-        dSdE = CC
+        # Compute the norm of dev
+        norm = np.sqrt(stdcst(d, nu_trial, nu_trial))
+
+        # Compute f
+        f = norm - np.sqrt(2.0/3.0)*sigma_Y
+
+        # Compute theta
+        theta = f/norm
+
+        # Compute unit deviatoric tensor
+        N = 1.0/norm*nu_trial
+
+        return f, N, theta
+
+    # Initialize
+    CC = inputs[0]
+    sigma_Y = inputs[1]
+    mu = inputs[2]
+
+    # Compute trial sigma 
+    sigma_trial = sigma_n + CC @ deps
+
+    # Compute yield function and unit deviatoric tensor
+    f, N, theta = yield_function(sigma_Y, sigma_trial)
+
+    # Check status
+    if f < 0:
+        # Copy old variables
+        sigma_n1 = sigma_trial
+        ep_n1 = ep_n
+        Dalg = CC
     else:
-        # Initialize
-        dgamma = 0.0
-        ep_n1 = ep_n0
+        # Update stress
+        sigma_n1 = sigma_trial - f*N
 
-        # Return mapping iterative algorithm
-        for i in range(nbIter):
-            # Compute stress
-            diff_e_ep = e_n1 - ep_n0
-            sigma_n1 = CC @ diff_e_ep
+        # Update effective plastic strain
+        ep_n1 = ep_n + f/(mu*np.sqrt(6.0))
 
-            # Review condition
-            f, grad, grad2 = consistency_perfect_plasticity(sigma_Y, sigma_n1)
-
-            # Compute residual
-            r_n1 = ep_n1 - ep_n0 - dgamma*grad
-
-            # Check convergence
-            norm = np.sqrt(stdcst(d, r_n1, r_n1))   
-            if (norm < 1e-10) & (f < 1e-10): break
-
-            # Compute tangent moduli
-            xi_inv = SS + dgamma*grad2
-
-            # Compute delta gamma
-            xi_r = np.linalg.solve(xi_inv, r_n1)
-            xi_grad = np.linalg.solve(xi_inv, grad)
-            d2gamma = (f + stdcst(d, grad, xi_r))/stdcst(d, grad, xi_grad)
-
-            # Compute increment
-            diff_grad = d2gamma*grad - r_n1
-            xi_diff = np.linalg.solve(xi_inv, diff_grad)
-            d_ep = SS @ xi_diff
-
-            # Update strains 
-            dgamma += d2gamma
-            ep_n1 += d_ep
-
-        # Compute dSdE
-        dSdE = np.linalg.inv(SS + dgamma*grad2)
-
-        # Compute N
-        xi_grad = dSdE @ grad
-        N = xi_grad/np.sqrt(stdcst(d, grad, xi_grad))
+        # Compute consistent tangent matrix
         NNT = stkronst(N, N)
+        I = fourth_order_identity(d)
+        onekronone = one_kron_one(d)
+        Idev = I - 1.0/3.0*onekronone
+        Dalg = CC - 2*mu*((1-theta)*NNT + theta*Idev)
 
-        # Update 
-        dSdE -= NNT
+    return sigma_n1, ep_n1, Dalg
 
-    return ep_n1, sigma_n1, dSdE
+def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
+    "Return closest point proyection (cpp) in combined hardening plasticity criteria"
 
-def compute_plasticity_coef(sigma, dSdE, invJ, detJ, d=3):
+    def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
+        "Computes the value of f (consistency condition) in perfect plasticity criteria"
+
+        # Compute deviatoric
+        nu_trial = compute_deviatoric(d, sigma) - alpha
+
+        # Compute the norm of dev
+        norm = np.sqrt(stdcst(d, nu_trial, nu_trial))
+
+        # Compute f
+        f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1-beta)*H*ep_n)
+
+        # Compute unit deviatoric tensor
+        N = 1.0/norm*nu_trial
+
+        return f, N, norm
+
+    # Initialize
+    CC = inputs[0]
+    sigma_Y = inputs[1]
+    mu = inputs[2]
+    beta = inputs[3]
+    H = inputs[4]
+
+    # Compute trial sigma 
+    sigma_trial = sigma_n + CC @ deps
+
+    # Compute yield function and unit deviatoric tensor
+    f, N, norm = yield_function(sigma_Y, sigma_trial)
+
+    # Check status
+    if f < 0:
+        # Copy old variables
+        sigma_n1 = sigma_trial
+        ep_n1 = ep_n
+        alpha_n1 = alpha_n
+        Dalg = CC
+    else:
+        # Consistency parameter
+        dgamma = f/(2.0*mu+2.0/3.0*H)
+
+        # Update stress
+        sigma_n1 = sigma_trial - 2*mu*dgamma*N
+
+        # Update back stress
+        alpha_n1 = alpha_n + 2.0/3.0*beta*H*dgamma*N
+
+        # Update effective plastic strain
+        ep_n1 = ep_n + np.sqrt(2.0/3.0)*dgamma
+
+        # Compute consistent tangent matrix
+        c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
+        c2 = 4.0*mu**2.0*dgamma/norm
+        NNT = stkronst(N, N)
+        I = fourth_order_identity(d)
+        onekronone = one_kron_one(d)
+        Idev = I - 1.0/3.0*onekronone
+        Dalg = CC - (c1 - c2)*NNT - c2*Idev
+
+    return sigma_n1, ep_n1, alpha_n1, Dalg
+
+def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
     "Computes the coefficients to use in internal force vector and stiffness matrix"
 
     # Computes passage matrix
@@ -273,7 +306,7 @@ def compute_plasticity_coef(sigma, dSdE, invJ, detJ, d=3):
         coef_Fint = invJext.T @ (MM.T @ sigma) * det
 
         # Computes the coefficients to use in Stiffness matrix
-        MDM = MM.T @ dSdE[:, :, i] @ MM
+        MDM = MM.T @ Dalg[:, :, i] @ MM
         coef_Stiff = invJext.T @ MDM @ invJext * det
 
     return coef_Fint, coef_Stiff

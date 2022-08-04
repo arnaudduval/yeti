@@ -155,7 +155,7 @@ class ThermalSimulation():
         start = time.process_time()
         if model._thermalDirichlet is None: 
             raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        u_n, residue, error = model.MFsolver(Fn, nbIter, eps, method, solDir)
+        u_n, residue, error = model.MFsteadyHeat(Fn, nbIter, eps, method, solDir)
         stop = time.process_time()
         time_solIter = stop - start 
 
