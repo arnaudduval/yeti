@@ -811,7 +811,7 @@ def solver_scipy(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True
 
     return x
 
-def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, isfortran=True):
+def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, method='FDC', isfortran=True):
     """ 
     Eigen decomposition generalized KU = MUD
     K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -820,44 +820,21 @@ def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, isfortran=
     D: diagonal of eigenvalues
     """
 
-    def convert2dense(indi, indj, data, isfortran=isfortran):
-
-        # Copy 
-        indit, indjt = deepcopy(indi), deepcopy(indj) 
-        if isfortran: indit -= 1; indjt -=1
-
-        # Computes number of rows and cols
-        nb_rows = len(indit) - 1
-        nb_cols = max(indjt) + 1
-
-        # Set sparse csr matrix
-        spM = sp.csr_matrix((data, indjt, indit), shape=(nb_rows, nb_cols)).toarray()
-
-        return spM                       
+    # Get values
+    nb_qp = np.max(indj)
 
     # Get B0, B1 and W00, W11
-    B0 = convert2dense(indi, indj, data[0])
-    B1 = convert2dense(indi, indj, data[1])
-    W0 = convert2dense(indi, indj, data[2])
-    W1 = convert2dense(indi, indj, data[3])
+    [B0, B1, W0, W1] = data
 
-    if coefs is not None:
-        B0 = B0 @ np.diag(coefs[0])
-        B1 = B1 @ np.diag(coefs[1])
+    if coefs is None:
+        mcoefs = np.ones(nb_qp)
+        kcoefs = np.ones(nb_qp)
 
-    # Compute mass and stiffness matrices
-    MM = W0 @ B0.T
-    KK = W1 @ B1.T
+    # Compute eigen values and vectors
+    eigenvalues, eigenvectors = solver.eigen_decomposition_py(indi, indj, B0, W0, 
+                                    B1, W1, method, mcoefs, kcoefs, t_robin)
 
-    # Modify K to avoid singular matrix
-    if t_robin[0] == 1: KK[0, 0] *= 100
-    if t_robin[1] == 1: KK[-1, -1] *= 100
-
-    # Compute eigen decomposition KK U = MM U DD
-    D, U = sclin.eig(KK, MM)
-    D = np.real(D)
-
-    return D, U
+    return eigenvalues, eigenvectors
 
 def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
 
@@ -989,9 +966,9 @@ def compute_eig_diag(eig_u, eig_v, eig_w, coefs=[1, 1, 1]):
 def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
     "Compute fast diagonalization"
     if fdtype == 'steady':
-        array_out = solver.fd_steady_heat_3d(U, V, W, D,array_in)
+        array_out = solver.fd_steady_heat_3d(U, V, W, D, array_in)
     elif fdtype == 'elastic':
-        array_out = solver.fd_steady_heat_3d(U, V, W, D,array_in)
+        array_out = solver.fd_elasticity_3d(U, V, W, D, array_in)
     return array_out
 
 # =========================

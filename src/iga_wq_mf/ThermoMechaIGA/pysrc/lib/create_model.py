@@ -123,6 +123,9 @@ class thermoMechaModel():
         try: self._sigmaY = material["sigmaY"]
         except: self._sigmaY = None
 
+        # Initialize others properties
+        self._Ctensor = None
+
         return
     
     def _set_extra_mechanical_properties(self):
@@ -130,8 +133,6 @@ class thermoMechaModel():
 
         # Initialize
         d = self._dim
-        self._Ctensor = None
-        self._Stensor = None
 
         if self._youngModule is None or self._poissonCoef is None:
             pass
@@ -157,7 +158,9 @@ class thermoMechaModel():
             self._Ctensor = C
             self._Stensor = S
             self._Idev = Idev
+            self._lame_lambda = lamb
             self._lame_mu = mu
+            self._lame_bulk = bulk
 
         return
 
@@ -231,6 +234,14 @@ class thermoMechaModel():
         self._MechanicalNeumann = None
         return
 
+    def _verify_mechanics(self): 
+        " Verifies if mechanical properties exits"
+
+        if self._youngModule is None or self._poissonCoef is None: raise Warning('Mechanics not well defined')
+        if self._Ctensor is None:
+            self._set_extra_mechanical_properties()
+        return
+    
     # =======================
     # READ FILE
     # =======================
@@ -496,11 +507,12 @@ class thermoMechaModel():
 
         return source_coef
 
-    def compute_elastic_coefficient(self, JJ):
+    def compute_elastic_coefficient(self, JJ, isnoised=False):
         " Computes coefficients at points P in parametric space. This function only consider linear isotropic case"
 
         # Set shape
         d = self._dim
+        ddl = int(d*(d+1)/2)
         nnz = np.shape(JJ)[2]
 
         # Create tensors
@@ -509,13 +521,70 @@ class thermoMechaModel():
         Gamma = np.zeros((d*d, d*d))
         
         # Create material tensor
-        C = self._Ctensor
-        if C is None: raise Warning('C tensor not define')
+        CC = self._Ctensor
+        if CC is None: raise Warning('C tensor not define')
 
-        # Compute M.T D M
-        MDM = MM.T @ C @ MM
+        # Initialize
+        C = np.zeros((ddl, ddl, nnz))
+        for i in range(nnz): 
+            C[:, :, i] = CC
+
+        if isnoised:
+            # Inset noise by hand
+            noise = np.random.normal(loc=-100, scale=13, size=(nnz))
+            C[0, 0, :] += noise
+
+            noise = np.random.normal(loc=-50, scale=8, size=(nnz))
+            C[1, 1, :] += noise
+            C[2, 2, :] += noise
+
+            noise = np.random.normal(loc=-60, scale=12, size=(nnz))
+            C[3, 3, :] += noise
+            C[4, 4, :] += noise
+            C[5, 5, :] += noise
+
+            noise = np.random.normal(loc=50, scale=7, size=(nnz))
+            C[0, 1, :] += noise
+            C[1, 0, :] += noise
+            C[0, 2, :] += noise
+            C[2, 0, :] += noise
+
+            noise = np.random.normal(loc=5, scale=5, size=(nnz))
+            C[1, 2, :] += noise
+            C[2, 1, :] += noise
+
+            # --------------
+            noise = np.random.normal(loc=0, scale=8, size=(nnz))
+            C[0, 3, :] += noise
+            C[0, 5, :] += noise
+            C[3, 0, :] += noise
+            C[5, 0, :] += noise
+
+            noise = np.random.normal(loc=0, scale=4, size=(nnz))
+            C[1, 3, :] += noise
+            C[3, 1, :] += noise
+            C[2, 5, :] += noise
+            C[5, 2, :] += noise
+
+            noise = np.random.normal(loc=0, scale=4, size=(nnz))
+            C[2, 3, :] += noise
+            C[3, 2, :] += noise
+            C[1, 5, :] += noise
+            C[5, 1, :] += noise
+
+            noise = np.random.normal(loc=0, scale=3, size=(nnz))
+            C[5, 3, :] += noise
+            C[3, 5, :] += noise
+
+        C_mean = np.mean(C, axis=2)
+        C_std = np.std(C, axis=2)
+        print(np.around(C_mean, decimals=3))
+        print(np.around(C_std, decimals=3))
 
         for i in range(nnz):
+
+            # Compute M.T D M
+            MDM = MM.T @ C[:, :, i] @ MM
 
             # Compute inverse of JJ
             invJJ = np.linalg.inv(JJ[:, :, i])

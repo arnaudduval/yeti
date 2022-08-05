@@ -173,11 +173,10 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes conductivity matrix "
         
         if self._dim != 3: raise Warning('Not yet')
+        super()._verify_mechanics()
         
         # Get inputs
-        if coefs is None:
-            self._set_extra_mechanical_properties()
-            coefs = super().compute_elastic_coefficient(self._Jqp)
+        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
@@ -220,9 +219,8 @@ class fortran_mf_wq(thermoMechaModel):
 
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
-        if coefs is None:
-            self._set_extra_mechanical_properties()
-            coefs = super().compute_elastic_coefficient(self._Jqp)
+        super()._verify_mechanics()
+        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
@@ -436,6 +434,40 @@ class fortran_mf_wq(thermoMechaModel):
     # MATRIX FREE SOLUTION (IN PYTHON)
     # ================================== 
 
+    def compute_eigen_all(self, table=None, ndof=3):
+        """
+        Computes the eigen values and vectors considering Robin condition
+        If Dirichlet condition is needed, then is better to try other function
+        """
+
+        # Initialize
+        Deig = np.zeros((3, self._nb_ctrlpts_total))
+        eigvec_U = np.zeros((self._nb_ctrlpts[0], self._nb_ctrlpts[0], 3))
+        eigvec_V = np.zeros((self._nb_ctrlpts[1], self._nb_ctrlpts[1], 3))
+        eigvec_W = np.zeros((self._nb_ctrlpts[2], self._nb_ctrlpts[2], 3))
+
+        for idof in range(ndof):
+            list_eig, list_vectors = [], []
+            for dim in range(self._dim):
+                indit = self._indices[2*dim]
+                indjt =  self._indices[2*dim+1]
+                B = self._DB[dim]
+                W = self._DW[dim]
+                datat = [B[:, 0], B[:, 1], W[:, 0], W[:, -1]]
+                t_robin = table[dim, :, idof]
+                eigt, Ut = eigen_decomposition(indit, indjt, datat, t_robin=t_robin)
+                list_eig.append(eigt)
+                list_vectors.append(Ut)
+
+            Deig[idof, :] = compute_eig_diag(*list_eig)
+            eigvec_U[:, :, idof] = list_vectors[0]
+            eigvec_V[:, :, idof] = list_vectors[1]
+            eigvec_W[:, :, idof] = list_vectors[2]
+        
+        DU = [eigvec_U, eigvec_V, eigvec_W, Deig]
+
+        return DU
+
     def compute_strain(self, u=None):
         " Compute strain from displacement "
 
@@ -446,7 +478,7 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, self._invJ, u]
 
         # Compute strains
-        eps = assembly.interpolate_strain_3d(*inputs)
+        eps = solver.interpolate_strain_3d(*inputs)
 
         return eps
 
@@ -464,11 +496,14 @@ class fortran_mf_wq(thermoMechaModel):
 
         return Fint
 
-    def MFWQ_solveElasticity(self, coefs=None, DU=None, indi=None, b=None, nbIterations=100, tol=1e-10, isPrecond=True):
+    def MFWQ_solveElasticity(self, coefs=None, DU=None, indi=None, b=None, 
+                            nbIterations=100, tol=1e-10, isPrecond=True, isnoised=False):
         "Solve linear system using Bi-CG Stab algorithm"
 
         # Initialze
         if self._dim != 3: raise Warning('Not yet')
+        super()._verify_mechanics()
+        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp, isnoised=isnoised)
         d = self._dim
         x = np.zeros(np.shape(b))
 
@@ -495,7 +530,7 @@ class fortran_mf_wq(thermoMechaModel):
                 x += alpha*p + omega*s
                 r = s - omega*As
 
-                relerror = np.linalg.norm(r)/norm2b
+                relerror = np.sqrt(np.linalg.norm(r)/norm2b)
                 if relerror <= tol: break
 
                 rsnew = block_dot_product(d, r, rhat)
@@ -504,7 +539,9 @@ class fortran_mf_wq(thermoMechaModel):
                 rsold = rsnew
 
         else: # With preconditioner
+            
             # Set values
+            if DU is None: DU = self.compute_eigen_all(table=self._MechanicalDirichlet)
             U, V, W, D = DU[0], DU[1], DU[2], DU[3]
             
             # Initialize
@@ -512,6 +549,7 @@ class fortran_mf_wq(thermoMechaModel):
             clean_dirichlet_3d(r, indi)
             rhat, p = r, r
             rsold = block_dot_product(d, r, rhat)
+            norm2b = np.linalg.norm(r)
 
             for i in range(nbIterations):
                 ptilde = fast_diagonalization(U, V, W, D, p, fdtype='elastic')
@@ -533,7 +571,7 @@ class fortran_mf_wq(thermoMechaModel):
                 x += alpha*ptilde + omega*stilde
                 r = s - omega*Astilde
 
-                relerror = np.linalg.norm(r)/norm2b
+                relerror = np.sqrt(np.linalg.norm(r)/norm2b)
                 if relerror <= tol: break
 
                 rsnew = block_dot_product(d, r, rhat)
@@ -541,57 +579,35 @@ class fortran_mf_wq(thermoMechaModel):
                 p = r + beta*(p - omega*Aptilde)
                 rsold = rsnew
 
+        print('After %d iteration, the relative residue is %f' %(i, relerror))
+
         return x
 
-    def MFWQ_solvePlasticity(self, sigma_Y, Fext=None, indi=None, tol=1e-6, d=3):
+    def MFWQ_solvePlasticity(self, Fext=None, indi=None, tol=1e-5, d=3):
         "Solves plasticity problem "
 
         if self._dim != 3: raise Warning('Only for 3D')
-
-        # Set properties
-        self._set_extra_mechanical_properties()
+        super()._verify_mechanics()
 
         # Initialize
         ddl = int(d*(d+1)/2)
         ep_n0 = np.zeros(self._nb_qp_wq_total)
-        sigma_n0 = np.zeros(ddl, self._nb_qp_wq_total)
+        sigma_n0 = np.zeros((ddl, self._nb_qp_wq_total))
         ep_n1 = np.zeros(self._nb_qp_wq_total)
-        sigma_n1 = np.zeros(ddl, self._nb_qp_wq_total)
-        Dalg = np.zeros(d*d, d*d, self._nb_qp_wq_total)
+        sigma_n1 = np.zeros((ddl, self._nb_qp_wq_total))
+        Dalg = np.zeros((ddl, ddl, self._nb_qp_wq_total))
         disp = np.zeros(np.shape(Fext))
-        inputs = [self._Ctensor, sigma_Y, self._lame_mu, self._Idev]
+        inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._Idev]
 
-        # Comute eigen values and vectors
-        Deig = np.zeros((3, self._nb_ctrlpts_total))
-        eigvec_U = np.zeros((self._nb_ctrlpts[0], self._nb_ctrlpts[0], 3))
-        eigvec_V = np.zeros((self._nb_ctrlpts[1], self._nb_ctrlpts[1], 3))
-        eigvec_W = np.zeros((self._nb_ctrlpts[2], self._nb_ctrlpts[2], 3))
-
-        for idof in range(3):
-            list_eig, list_vectors = [], []
-            for dim in range(self._dim):
-                indit = self._indices[2*dim]
-                indjt =  self._indices[2*dim+1]
-                B = self._DB[dim]
-                W = self._DW[dim]
-                datat = [B[:, 0], B[:, 1], W[:, 0], W[:, -1]]
-                table = self._MechanicalDirichlet[dim, :, idof]
-                eigt, Ut = eigen_decomposition(indit, indjt, datat, t_robin=table)
-                list_eig.append(eigt)
-                list_vectors.append(Ut)
-
-            Deig[idof, :] = compute_eig_diag(*list_eig)
-            eigvec_U[:, :, idof] = list_vectors[0]
-            eigvec_V[:, :, idof] = list_vectors[1]
-            eigvec_W[:, :, idof] = list_vectors[2]
-
-        DU = [eigvec_U, eigvec_V, eigvec_W, Deig]
+        # Compute eigen values and vectors
+        DU = self.compute_eigen_all(table=self._MechanicalDirichlet)
 
         # Solver
         for i in range(1, np.shape(Fext)[2]):
+
             # Initialize
-            disp_n0 = disp[:, :, i-1]
-            disp_n1k = disp_n0
+            disp_n0 = deepcopy(disp[:, :, i-1])
+            disp_n1k = disp[:, :, i-1]
             Fext_t = Fext[:, :, i]
             prod2 = block_dot_product(d, Fext_t, Fext_t)
 
@@ -603,11 +619,22 @@ class fortran_mf_wq(thermoMechaModel):
 
                 # Closest point projection in perfect plasticity
                 for k in range(self._nb_qp_wq_total):
-                    sigma_n1t, ep_n1t, Dalgt = cpp_perfect_plasticity(inputs, deps[k],sigma_n0[k], ep_n0[k])
-                    sigma_n1[k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, ep_n1t, Dalgt
+                    sigma_n1t, ep_n1t, Dalgt = cpp_perfect_plasticity(inputs, deps[:, k], sigma_n0[:, k], ep_n0[k])
+                    sigma_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, ep_n1t, Dalgt
+
+                # Dalg_mean = np.mean(Dalg, axis=2)
+                # Dalg_std = np.std(Dalg, axis=2)
+                # print(np.around(Dalg_mean, decimals=3))
+                # print(np.around(Dalg_std, decimals=3))
+                # print('-------------')
 
                 # Compute coefficients to compute Fint and Stiffness
                 coef_Fint, coef_Stiff = compute_plasticity_coef(sigma_n1, Dalg, self._invJ, self._detJ, d=d)
+                # coef_stiff_mean = np.mean(coef_Stiff, axis=2)
+                # coef_stiff_std = np.std(coef_Stiff, axis=2)
+                # print(coef_stiff_std)
+
+                np.save('CoefStiff', coef_Stiff)
 
                 # Compute Fint 
                 Fint = self.compute_internal_force(coef_Fint)

@@ -593,7 +593,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
         ! Newton Raphson
-        do j = 1, 2
+        do j = 1, 1
             print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 

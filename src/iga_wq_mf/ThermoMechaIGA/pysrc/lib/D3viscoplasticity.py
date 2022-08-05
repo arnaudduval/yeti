@@ -71,8 +71,8 @@ def stdcst(d, A, B):
 
     # Convert to tensor
     ddl = int(d*(d+1)/2)
-    At = array2st(d, ddl, A)
-    Bt = array2st(d, ddl, B)
+    At = array2st(d, A)
+    Bt = array2st(d, B)
 
     # Double contraction 
     result = np.einsum('ij, ij', At, Bt)
@@ -183,11 +183,13 @@ def cpp_perfect_plasticity(inputs, deps, sigma_n, ep_n, d=3):
         f = norm - np.sqrt(2.0/3.0)*sigma_Y
 
         # Compute theta
-        theta = f/norm
+        if norm > 0.0: theta = f/norm
+        else: theta = 0.0
 
         # Compute unit deviatoric tensor
-        N = 1.0/norm*nu_trial
-
+        if norm > 0.0: N = 1.0/norm*nu_trial
+        else: N = np.zeros(np.shape(nu_trial))
+        
         return f, N, theta
 
     # Initialize
@@ -291,6 +293,8 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 
     # Initialize
     invJext = np.zeros((d*d, d*d))
+    coef_Fint = np.zeros((d*d, len(detJ)))
+    coef_Stiff = np.zeros((d*d, d*d, len(detJ)))
 
     for i, det in enumerate(detJ):
 
@@ -299,11 +303,11 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
             invJext[j*d:(j+1)*d, j*d:(j+1)*d] = invJ[:, :, i]
 
         # Computes the coefficients to use in Fint vector
-        coef_Fint = invJext.T @ (MM.T @ sigma) * det
+        coef_Fint[:, i] = invJext.T @ (MM.T @ sigma[:, i]) * det
 
         # Computes the coefficients to use in Stiffness matrix
         MDM = MM.T @ Dalg[:, :, i] @ MM
-        coef_Stiff = invJext.T @ MDM @ invJext * det
+        coef_Stiff[:, :, i] = invJext.T @ MDM @ invJext * det
 
     return coef_Fint, coef_Stiff
 

@@ -3,6 +3,46 @@
 ! author :: Joaquin Cornejo
 ! ====================================================
 
+subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, &
+                                data_B0, data_W0, data_B1, data_W1, Method,  &
+                                Mcoef, Kcoef, t_robin, &
+                                eigenvalues, eigenvectors)
+    !! Eigen decomposition generalized KU = MUD
+    !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    !! M: mass matrix, M = int B0 B0 dx = W00 * B0
+    !! U: eigenvectors matrix
+    !! D: diagonal of eigenvalues
+    !! IN CSR FORMAT
+    
+    use tensor_methods
+    implicit none 
+    ! Input / output 
+    ! -------------------
+    integer, intent(in) :: nr, nc, nnz
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
+    dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
+    character(len=10), intent(in) :: Method
+    double precision, intent(in) :: Mcoef, Kcoef
+    dimension :: Mcoef(nc), Kcoef(nc)
+    integer, intent(in) :: t_robin
+    dimension :: t_robin(2)
+            
+    double precision, intent(out) :: eigenvalues, eigenvectors
+    dimension :: eigenvalues(nr), eigenvectors(nr, nr)
+
+    ! Local data
+    ! -----------------
+    double precision :: Kdiag, Mdiag
+    dimension :: Kdiag(nr), Mdiag(nr)
+
+    call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
+                            data_B0, data_W0, data_B1, data_W1, Method, t_robin, &
+                            eigenvalues, eigenvectors, Kdiag, Mdiag)
+
+end subroutine eigen_decomposition_py
+
 subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
                                 diagonal, array_in, array_out)
     

@@ -6,12 +6,17 @@
 """
 
 # Python libraries
+import os
 import numpy as np
 from scipy import sparse as sp
+from matplotlib import pyplot as plt
 
 # My libraries
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
+
+full_path = os.path.realpath(__file__)
+folder_file = os.path.dirname(full_path) + '/data/'
 
 def bodyforce(P: list):
     " Gravity "
@@ -34,11 +39,11 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.11}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.1}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
-table = np.zeros((3, 2, 3))
+table = np.zeros((3, 2, 3), dtype=int)
 table[0, 0, :] = 1
 Dirichlet = {'mechanical':table}
 _, _, _, _, Mdof, Mdod = modelPhy._set_dirichlet_boundaries(Dirichlet)
@@ -52,80 +57,70 @@ modelPhy._set_neumann_boundaries(Neumann)
 Fvol = modelPhy.eval_force_body(bodyforce)
 Fsurf = modelPhy.eval_force_surf()
 
-# # ==========================================
-# # Compute S.u
-# u = Fsurf
-# S = modelPhy.eval_stiffness_matrix()
-# urow = np.reshape(u, (-1, 1))
-# R1 = S @ urow
-# R2 = modelPhy.eval_Su(u)
-# R2 = np.reshape(R2, (-1, 1))
-# diff = R1 - R2
-# error = np.linalg.norm(diff)
-# print(error)
-# # ==========================================
-
-# # Solver elastic
-# u = Fsurf
+# # ==================================
+# # ELASTICITY
+# # ==================================
+# # Initialize
+# Fext = Fsurf
 # for i in range(3):
-#     u[i, Mdod[i]] = 0.0
-# itersol = modelPhy.MFelasticity(u=u, dod=Mdod)
+#     Fext[i, Mdod[i]] = 0.0
 
 # dof_extended = []
 # for i in range(3):
 #     dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
 #     dof_extended.extend(list(dof))
 
-# # Compute Stiffness matrix
+# # Compute iterative solution in python 
+# itersol = modelPhy.MFWQ_solveElasticity(indi=Mdod, b=Fext, isPrecond=True)
+
+# # Compute direct solution
 # S2solve = modelPhy.eval_stiffness_matrix()[dof_extended, :][:, dof_extended]
-# u2solve = np.reshape(u, (-1, 1))[dof_extended]
-# dirsol = sp.linalg.spsolve(S2solve, u2solve)
+# f2solve = np.reshape(Fext, (-1, 1))[dof_extended]
+# dirsol = sp.linalg.spsolve(S2solve, f2solve)
 # dirsol = np.atleast_2d(dirsol)
 
+# # Compare results
 # itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
 # error = dirsol.T - itersol2
-# norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
-# print(norm_error)
+# relerror = np.linalg.norm(error)/np.linalg.norm(dirsol)
+# print(relerror)
 
-# ============================================
-# Do ramp function (Fsurf increase linearly)
-nbStep = 5
-dt = 1/nbStep
-u = np.zeros((*np.shape(Fvol), nbStep+1))
-for i in range(1, nbStep+1): 
-    u[:, :, i] = i*dt*Fsurf
+# # ==================================
+# # PLASTICITY
+# # ==================================
+# # Do ramp function (Fsurf increase linearly)
+# nbStep = 5
+# dt = 1/nbStep
+# Fext = np.zeros((*np.shape(Fvol), nbStep+1))
+# for i in range(1, nbStep+1): 
+#     Fext[:, :, i] = i*dt*Fsurf
 
+# # Solve system in Python
+# modelPhy.MFWQ_solvePlasticity(Fext=Fext[:,:,:2], indi=Mdod)
+
+# # Solve system in fortran
+# modelPhy.MFplasticity(u=Fext[:,:,:2], indi=Mdod)
+
+# ==================================
+# RANDOMNESS
+# ==================================
+# Initialize
+Fext = Fsurf
 for i in range(3):
-    u[i, Mdod[i], :] = 0.0 # Is zero but to be sure
+    Fext[i, Mdod[i]] = 0.0
 
-# Solve system in fortran
-_, delta_F, coef_S = modelPhy.MFplasticity(u=u[:,:,:2], indi=Mdod)
-modelPhy._set_extra_mechanical_properties()
-coef_S_el = modelPhy.compute_elastic_coefficient(modelPhy._Jqp)
-print(coef_S[:, :, 100])
-print(coef_S_el[:, :, 100])
+# Compute iterative solution in python 
+coefs = np.load(folder_file+'CoefStiff.npy')
 
+fig, axs = plt.subplots(nrows=9, ncols=9)
+for j in range(9):
+    for i in range(9):
+        x = coefs[i, j, :]
+        ax = axs[i, j]
+        ax.hist(x)
+        ax.set_xticks([], [])
+        ax.set_yticks([], [])
+    
+plt.savefig(folder_file+'output.pdf')
 
-print('=========================')
-
-# # Solve with iterative method in fortran
-# itersol = modelPhy.MFelasticity(u=delta_F, indi=Mdod, coefs=coef_S)
-# print(np.max(itersol), np.min(itersol))
-
-# # Solve with direct method
-# dof_extended = []
-# for i in range(3):
-#     dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
-#     dof_extended.extend(list(dof))
-
-# # Compute Stiffness matrix
-# S2solve = modelPhy.eval_stiffness_matrix(coefs = coef_S)[dof_extended, :][:, dof_extended]
-# delta_F_dir = np.reshape(delta_F, (-1, 1))[dof_extended]
-# dirsol = sp.linalg.spsolve(S2solve, delta_F_dir)
-# dirsol = np.atleast_2d(dirsol)
-# print(np.max(dirsol), np.min(dirsol))
-
-# itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
-# error = dirsol.T - itersol2
-# norm_error = np.linalg.norm(error)/np.linalg.norm(dirsol)
-# print(norm_error)
+itersol = modelPhy.MFWQ_solveElasticity(coefs=coefs, indi=Mdod, b=Fext, isPrecond=True, isnoised=True)
