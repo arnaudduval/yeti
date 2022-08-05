@@ -4,12 +4,13 @@
 """
 
 # Python libraries
+from copy import deepcopy
 import numpy as np
 from geomdl import helpers
 from scipy import sparse as sp, linalg as sclin
 
 # My libraries
-from iga_wq_mf import basis_weights
+from iga_wq_mf import basis_weights, solver
 
 # ==========================
 # GENERAL FUNCTIONS
@@ -794,6 +795,70 @@ def wq_find_basis_weights_fortran(degree, knotvector):
 # MF FUNCTIONS
 # =========================
 
+def solver_scipy(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+    "Solve system using conjugate gradient or Bi-conjugate gradient. Matrix A must be assembled"
+
+    # Find preconditionner
+    if PreCond == 'ilu': 
+        B = sclin.spilu(A)
+        Mx = lambda x: B.solve(x)
+        M = sclin.LinearOperator(A.shape, Mx)
+    # ADD NEW METHODS ...
+
+    # Solve with iterative method
+    if isCG: x, info = sclin.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+    else: x, info = sclin.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+
+    return x
+
+def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, isfortran=True):
+    """ 
+    Eigen decomposition generalized KU = MUD
+    K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    M: mass matrix, M = int B0 B0 dx = W00 * B0
+    U: eigenvectors matrix
+    D: diagonal of eigenvalues
+    """
+
+    def convert2dense(indi, indj, data, isfortran=isfortran):
+
+        # Copy 
+        indit, indjt = deepcopy(indi), deepcopy(indj) 
+        if isfortran: indit -= 1; indjt -=1
+
+        # Computes number of rows and cols
+        nb_rows = len(indit) - 1
+        nb_cols = max(indjt) + 1
+
+        # Set sparse csr matrix
+        spM = sp.csr_matrix((data, indjt, indit), shape=(nb_rows, nb_cols)).toarray()
+
+        return spM                       
+
+    # Get B0, B1 and W00, W11
+    B0 = convert2dense(indi, indj, data[0])
+    B1 = convert2dense(indi, indj, data[1])
+    W0 = convert2dense(indi, indj, data[2])
+    W1 = convert2dense(indi, indj, data[3])
+
+    if coefs is not None:
+        B0 = B0 @ np.diag(coefs[0])
+        B1 = B1 @ np.diag(coefs[1])
+
+    # Compute mass and stiffness matrices
+    MM = W0 @ B0.T
+    KK = W1 @ B1.T
+
+    # Modify K to avoid singular matrix
+    if t_robin[0] == 1: KK[0, 0] *= 100
+    if t_robin[1] == 1: KK[-1, -1] *= 100
+
+    # Compute eigen decomposition KK U = MM U DD
+    D, U = sclin.eig(KK, MM)
+    D = np.real(D)
+
+    return D, U
+
 def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
 
     # We consider that coefs is a 3 x 3 x nbpts table   
@@ -900,6 +965,34 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
                     u3[j] = np.sqrt(m*M) 
 
     return u1, u2, u3, w1, w2, w3
+
+def compute_eig_diag(eig_u, eig_v, eig_w, coefs=[1, 1, 1]):
+    " Computes diagonal of eigen values"
+
+    def kron3vec(A, B, C):
+        "Computes kron product of 3 vectors: A x B x C"
+        result = np.kron(np.kron(A, B), C)
+        return result
+
+    # Define ones
+    one_u = np.ones(len(eig_u))
+    one_v = np.ones(len(eig_v))
+    one_w = np.ones(len(eig_w))
+
+    # Define eigen diag
+    eig_diag = coefs[0]*kron3vec(one_w, one_v, eig_u)
+    eig_diag += coefs[1]*kron3vec(one_w, eig_v, one_u)
+    eig_diag += coefs[2]*kron3vec(eig_w, one_v, one_u)
+    
+    return eig_diag
+
+def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
+    "Compute fast diagonalization"
+    if fdtype == 'steady':
+        array_out = solver.fd_steady_heat_3d(U, V, W, D,array_in)
+    elif fdtype == 'elastic':
+        array_out = solver.fd_steady_heat_3d(U, V, W, D,array_in)
+    return array_out
 
 # =========================
 # USING TENSOR ALGEBRA

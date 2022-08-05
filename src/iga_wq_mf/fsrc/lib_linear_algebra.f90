@@ -368,7 +368,7 @@ subroutine crossproduct(v1, v2, v3)
 end subroutine crossproduct
 
 subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
-    !! Evaluates kron product R = alpha*R + A1 x A2 (x : tensor product)
+    !! Evaluates kron product R = R + alpha*A1 x A2 (x : tensor product)
 
     use omp_lib
     implicit none
@@ -399,7 +399,7 @@ subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
 end subroutine kron_product_2vec 
 
 subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
-    !! Returns the result of R = alpha*R + A1 x A2 x A3, where x is kronecker product
+    !! Returns the result of R = R + alpha*A1 x A2 x A3, where x is kronecker product
 
     use omp_lib
     implicit none

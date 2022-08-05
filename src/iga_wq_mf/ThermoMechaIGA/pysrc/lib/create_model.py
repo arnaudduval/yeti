@@ -149,12 +149,15 @@ class thermoMechaModel():
             bulk = lamb + 2.0/3.0*mu
 
             # Create material tensor
+            Idev = identity - 1.0/3.0*onekronone
             C = lamb*onekronone + 2*mu*identity
-            S = 1.0/(9.0*bulk)*onekronone + 1.0/(2.0*mu)*(identity - 1.0/3.0*onekronone)
+            S = 1.0/(9.0*bulk)*onekronone + 1.0/(2.0*mu)*Idev
 
             # Update
             self._Ctensor = C
             self._Stensor = S
+            self._Idev = Idev
+            self._lame_mu = mu
 
         return
 
@@ -526,22 +529,6 @@ class thermoMechaModel():
             coefs[:, :, i] *= np.linalg.det(JJ[:, :, i])
 
         return coefs
-
-    def solver_scipy(self, A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
-        "Solve system using conjugate gradient or Bi-conjugate gradient. Matrix A must be assembled"
-
-        # Find preconditionner
-        if PreCond == 'ilu': 
-            B = sp.linalg.spilu(A)
-            Mx = lambda x: B.solve(x)
-            M = sp.linalg.LinearOperator(A.shape, Mx)
-        # ADD NEW METHODS ...
-
-        # Solve with iterative method
-        if isCG: x, info = sp.linalg.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
-        else: x, info = sp.linalg.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
-
-        return x
 
     # ===========================
     # POST-PROCESSING 

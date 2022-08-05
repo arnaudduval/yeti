@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 from lib.base_functions import (create_knotvector, 
                                 eval_basis_python,
                                 iga_find_positions_weights,
-                                wq_find_basis_weights_opt
+                                wq_find_basis_weights_opt, 
+                                wq_find_basis_weights_fortran
 )
-from lib.fortran_mf_wq import wq_find_basis_weights_fortran
 
 # Choose folder
 full_path = os.path.realpath(__file__)
