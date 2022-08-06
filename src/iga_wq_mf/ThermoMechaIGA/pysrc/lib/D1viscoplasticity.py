@@ -1,108 +1,136 @@
+from copy import deepcopy
 import numpy as np
 
-def return_mapping_point(E, K, H, sigma_Y, eps_n1, eps_pn0=None, alpha_n0=None, q_n0=None):
-    """Return mapping algorithm for one-dimensional, rate-independent plasticity. 
-    Combined Isotropic/Kinematic hardening"""
+def return_mapping_point(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
+    """Return mapping algorithm for one-dimensional rate-independent plasticity. 
+    Combined Isotropic/Kinematic hardening. For one quadrature point """
     
-    # Number of points 
-    nnz = len(eps_n1)
+    # Elastic predictor
+    sigma_trial = sigma_n0 + E*deps
+    eta_trial = sigma_trial - alpha_n0
 
-    if eps_pn0 is None: eps_pn0 = np.zeros(nnz)
-    if alpha_n0 is None: alpha_n0 = np.zeros(nnz)
-    if q_n0 is None: q_n0 = np.zeros(nnz)
+    # Check yield status
+    ftol = sigma_Y0*1e-6
+    f_trial = abs(eta_trial) - (sigma_Y0 +(1-beta)*H*ep_n0)
 
-    # Initialize output
-    coef, sigma_n1, eps_pn1, alpha_n1, q_n1 = np.zeros(nnz), np.zeros(nnz), eps_pn0, alpha_n0, q_n0
+    if f_trial <= ftol: # Elastic
+        sigma_n1 = sigma_trial
+        alpha_n1 = alpha_n0
+        ep_n1 = ep_n0
+        Dalg = E
+    else:
+        dep = f_trial/(E + H)
+        sigma_n1 = sigma_trial - np.sign(eta_trial)*E*dep
+        alpha_n1 = alpha_n0 + np.sign(eta_trial)*beta*H*dep
+        ep_n1 = ep_n0 + dep
+        Dalg = E*H/(E+H)
 
-    # Compute elastic trial stress and test for plastic loading
-    sigma_trial = E*(eps_n1 - eps_pn0)
-    xi_trial = sigma_trial - q_n0
-    f_trial = np.abs(xi_trial) - (sigma_Y + K*alpha_n0)
+    return [Dalg, sigma_n1, alpha_n1, ep_n1]
 
-    for i in range(nnz):
-        if f_trial[i] <= 0:
-            # Elastic step
-            sigma_n1[i] = sigma_trial[i]
-        else: 
-            # Plastic step
-            sign = np.sign(xi_trial[i])
-            delta_gamma = f_trial[i]/(E + K + H)
-            sigma_n1[i] = sigma_trial[i] - delta_gamma*E*sign
-            eps_pn1[i] = eps_pn0[i] + delta_gamma*sign
-            alpha_n1[i] = alpha_n0[i] + delta_gamma
-            q_n1[i] = q_n0[i] + delta_gamma*H*sign
-
-    for i in range(nnz):
-        if f_trial[i] <= 0: coef[i] = E
-        else: coef[i] = E*(K + H)/(E + K + H)
-    
-    return [coef, sigma_n1, eps_pn1, alpha_n1, q_n1]
-
-def compute_Fint(DB, W, sigma_n1):
-    "Returns vector F int "
+def compute_Fint(DB, W, sigma):
+    """Returns vector F int. 
+    Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
+    But in 1D: detJ times J^-1 get cancelled.
+    """
 
     # Compute F int
-    Fint = DB[1] @ np.diag(W) @ sigma_n1.T
+    Fint = DB[1] @ np.diag(W) @ sigma.T
 
     return Fint
 
-def compute_Fext(DB, W, b, sigma_ext): 
-    " Returns vector F ext"
+def compute_Fvol(DB, W, b): 
+    " Returns volumetric force"
+    F = DB[0] @ np.diag(W) @ b.T
+    return F
 
-    Fext = DB[0] @ np.diag(W) @ b.T
-    Fext += sigma_ext
-
-    return Fext
-
-def compute_K(L, DB, W, coefs):
-    " Returns matrix K "
+def compute_stiffness_matrix(JJ, DB, W, Scoefs):
+    """Returns stiffness matrix 
+    S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
+    But in 1D: detJ times J^-1 get cancelled.
+    """
 
     # Compute WC
-    WC = W * coefs
-    K = DB[1] @ np.diag(WC) @ DB[1].T / L
+    coefs = W * Scoefs * 1.0/JJ
+    S = DB[1] @ np.diag(coefs) @ DB[1].T 
 
-    return K
+    return S
 
-def newton_raphson(L, E, K, H, sigma_Y, DB, W, d_n0, b, sigma_ext, dof, 
-                    eps_pn0, alpha_n0, q_n0, nbIter=100, threshold=1e-6):
-    " Computes displacement at tn+1"
+def compute_strain(JJ, DB, disp):
+    " Computes strain given displacement field "
 
-    # Define the first candidate to be dn1
-    d_n1 = d_n0
+    # Compute strain
+    eps = DB[1].T @ disp 
+    eps *= 1.0/JJ
+    return eps
 
-    for _ in range(nbIter):
-        # Compute strain field at quadrature points
-        eps_n1 = DB[1].T @ d_n1/L
+def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6, nbIter=100):
+    " Solves plasticity problem in 1D "
 
-        # Compute variables using return maping for each quadrature point
-        coefs, sigma_n1, eps_pn1, alpha_n1, q_n1 = return_mapping_point(E, K, H, sigma_Y, eps_n1, eps_pn0, alpha_n0, q_n0)
+    # Initialize
+    JJ, E, H, beta, sigma_Y0, nnz = properties
+    sigma_n0, alpha_n0, ep_n0 = np.zeros(nnz), np.zeros(nnz), np.zeros(nnz)
+    sigma_n1, alpha_n1, ep_n1 = np.zeros(nnz), np.zeros(nnz), np.zeros(nnz)
+    Dalg = np.zeros(nnz)
 
-        # Update values
-        eps_pn0, alpha_n0, q_n0 = eps_pn1, alpha_n1, q_n1
+    # Set displacements
+    disp = np.zeros(np.shape(Fext))
+    disp_n0 = np.zeros(np.shape(Fext)[0])
+    disp_n1k = np.zeros(np.shape(Fext)[0])
 
-        # Compute Fint and Fext
-        Fint = compute_Fint(DB, W, sigma_n1)[dof]
-        Fext = compute_Fext(DB, W, b, sigma_ext)[dof]
-        error = np.linalg.norm(Fint - Fext, np.inf)/np.linalg.norm(Fext, np.inf)
+    # Set some variables to return
+    ep = np.zeros((nnz, np.shape(Fext)[1]))
+    sigma = np.zeros((nnz, np.shape(Fext)[1]))
 
-        if error < threshold: 
-            break
-        else:
-            # Compute coefs
-            KK = compute_K(L, DB, W, coefs)[np.ix_(dof, dof)]
-            diffF = Fint - Fext
-            delta_d_dof = -np.linalg.solve(KK, diffF)
-            d_n1[dof] = d_n0[dof] + delta_d_dof
-        
-    return d_n1, sigma_n1, eps_pn1, alpha_n1, q_n1
+    for i in range(1, np.shape(Fext)[1]):
 
-def interpolate_CP(DB, W, u_ref):
+        # Initialize
+        disp_n0[dof] = deepcopy(disp[:, i-1])[dof]
+        disp_n1k[dof] = disp[:, i-1][dof]
+        Fext_t = Fext[:, i]
+        prod2 = np.dot(Fext_t, Fext_t)
+
+        # Newton Raphson
+        for j in range(nbIter):            
+            # Compute strain as function of displacement
+            ddisp = disp_n1k - disp_n0
+            deps = compute_strain(JJ, DB, ddisp)
+
+            # Closest point projection in perfect plasticity
+            for k in range(nnz):
+                result = return_mapping_point(E, H, beta, sigma_Y0, 
+                            deps[k], sigma_n0[k], alpha_n0[k], ep_n0[k])
+                Dalg[k], sigma_n1[k], alpha_n1[k], ep_n1[k] = result
+
+            # Compute Fint
+            Fint = compute_Fint(DB, W, sigma_n1)
+            dF = Fext_t[dof] - Fint[dof]
+            prod1 = np.dot(dF, dF)
+            relerror = np.sqrt(prod1/prod2)
+
+            if relerror <= sigma_Y0*tol:
+                break
+            else:
+                # Compute stiffness
+                S = compute_stiffness_matrix(JJ, DB, W, Dalg)[np.ix_(dof, dof)]
+                ddisp[dof] = np.linalg.solve(S, dF)
+                disp_n1k += ddisp
+        print(j)
+        # Set values
+        disp[:, i] = disp_n1k    
+        ep[:, i] = ep_n1
+        sigma[:, i] = sigma_n1
+        ep_n0 = ep_n1
+        sigma_n0 = sigma_n1
+ 
+    return disp, ep, sigma
+
+def interpolate_controlPoints(DB, W, u_ref):
     " Returns the values computed at control points "
 
     M = DB[0] @ np.diag(W) @ DB[0].T
-    WU = W*u_ref
+    WU = np.diag(W) @ u_ref
     R = DB[0] @ WU
 
-    sol = np.linalg.solve(M, R)
+    u_ctrlpts = np.linalg.solve(M, R)
 
-    return sol
+    return u_ctrlpts
