@@ -71,7 +71,16 @@ Fsurf = modelPhy.eval_force_surf()
 #     dof_extended.extend(list(dof))
 
 # # Compute iterative solution in python 
-# itersol = modelPhy.MFWQ_solveElasticity(indi=Mdod, b=Fext, isPrecond=True)
+# itersol_py = modelPhy.MFWQ_solveElasticity(indi=Mdod, Fext=Fext, isPrecond=True)
+# itersol_py = np.reshape(itersol_py, (-1, 1))[dof_extended] 
+
+# # Compute iterative solution in fortran 
+# itersol_fr = modelPhy.MFelasticity(indi=Mdod, Fext=Fext, isPrecond=True)
+# itersol_fr = np.reshape(itersol_fr, (-1, 1))[dof_extended] 
+
+# error = itersol_py - itersol_fr
+# relerror = np.linalg.norm(error)/np.linalg.norm(itersol_py)
+# print(relerror)
 
 # # Compute direct solution
 # S2solve = modelPhy.eval_stiffness_matrix()[dof_extended, :][:, dof_extended]
@@ -85,42 +94,45 @@ Fsurf = modelPhy.eval_force_surf()
 # relerror = np.linalg.norm(error)/np.linalg.norm(dirsol)
 # print(relerror)
 
-# # ==================================
-# # PLASTICITY
-# # ==================================
-# # Do ramp function (Fsurf increase linearly)
-# nbStep = 5
-# dt = 1/nbStep
-# Fext = np.zeros((*np.shape(Fvol), nbStep+1))
-# for i in range(1, nbStep+1): 
-#     Fext[:, :, i] = i*dt*Fsurf
-
-# # Solve system in Python
-# modelPhy.MFWQ_solvePlasticity(Fext=Fext[:,:,:2], indi=Mdod)
-
-# # Solve system in fortran
-# modelPhy.MFplasticity(u=Fext[:,:,:2], indi=Mdod)
-
 # ==================================
-# RANDOMNESS
+# PLASTICITY
 # ==================================
-# Initialize
-Fext = Fsurf
-for i in range(3):
-    Fext[i, Mdod[i]] = 0.0
+# Do ramp function (Fsurf increase linearly)
+nbStep = 5
+dt = 1/nbStep
+Fext = np.zeros((*np.shape(Fvol), nbStep+1))
+for i in range(1, nbStep+1): 
+    Fext[:, :, i] = i*dt*Fsurf
 
-# Compute iterative solution in python 
-coefs = np.load(folder_file+'CoefStiff.npy')
+# Solve system in fortran
+_, dF, coef_S = modelPhy.MFplasticity(Fext=Fext[:,:,:2], indi=Mdod)
+# modelPhy.MFWQ_solveElasticity(coef_S, indi=Mdod, Fext=dF, isPrecond=False)
+# # !!!!!!!!!!!!!!!!! We have different result for same algorithm in fortran or python (elasticity) 
 
-fig, axs = plt.subplots(nrows=9, ncols=9)
-for j in range(9):
-    for i in range(9):
-        x = coefs[i, j, :]
-        ax = axs[i, j]
-        ax.hist(x)
-        ax.set_xticks([], [])
-        ax.set_yticks([], [])
+# Solve system in Python
+modelPhy.MFWQ_solvePlasticity(Fext=Fext[:,:,:2], indi=Mdod)
+# !!!!!!!!!!!!!!!!! Due to problem above, in python converges plasticity but in fortran it doesnt 
+
+# # ==================================
+# # RANDOMNESS
+# # ==================================
+# # Initialize
+# Fext = Fsurf
+# for i in range(3):
+#     Fext[i, Mdod[i]] = 0.0
+
+# # Compute iterative solution in python 
+# coefs = np.load(folder_file+'CoefStiff.npy')
+
+# fig, axs = plt.subplots(nrows=9, ncols=9)
+# for j in range(9):
+#     for i in range(9):
+#         x = coefs[i, j, :]
+#         ax = axs[i, j]
+#         ax.hist(x)
+#         ax.set_xticks([], [])
+#         ax.set_yticks([], [])
     
-plt.savefig(folder_file+'output.pdf')
+# plt.savefig(folder_file+'output.pdf')
 
-itersol = modelPhy.MFWQ_solveElasticity(coefs=coefs, indi=Mdod, b=Fext, isPrecond=True, isnoised=True)
+# itersol = modelPhy.MFWQ_solveElasticity(coefs=coefs, indi=Mdod, b=Fext, isPrecond=True, isnoised=True)

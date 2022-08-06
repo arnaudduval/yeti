@@ -576,11 +576,6 @@ class thermoMechaModel():
             C[5, 3, :] += noise
             C[3, 5, :] += noise
 
-        C_mean = np.mean(C, axis=2)
-        C_std = np.std(C, axis=2)
-        print(np.around(C_mean, decimals=3))
-        print(np.around(C_std, decimals=3))
-
         for i in range(nnz):
 
             # Compute M.T D M

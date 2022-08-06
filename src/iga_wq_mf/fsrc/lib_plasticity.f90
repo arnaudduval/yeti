@@ -153,8 +153,8 @@ subroutine stdcst(dimen, ddl, A, B, result)
 
     ! Compute double contracted result
     result = 0.d0
-    do j = 1, dimen
-        do i = 1, dimen
+    do j = 1, ddl
+        do i = 1, ddl
             result = result + At(i, j)*Bt(i, j)
         end do
     end do
@@ -456,10 +456,14 @@ module elastoplasticity
         ! Compute the norm sqrt(nu_trial : nu_trial)
         call stdcst(dimen, ddl, eta, eta, norm)
         norm = sqrt(norm)
-        f = norm - sqrt(2.d0/3.d0) * sigma_Y     
+        f = norm - sqrt(2.d0/3.d0) * sigma_Y   
 
         ! Compute gradient of the gradient of f
-        N = 1.d0/norm*eta
+        if (norm.gt.0.d0) then
+            N = 1.d0/norm*eta
+        else
+            N = 0.d0
+        end if
 
     end subroutine yield_perfect_plasticity
 

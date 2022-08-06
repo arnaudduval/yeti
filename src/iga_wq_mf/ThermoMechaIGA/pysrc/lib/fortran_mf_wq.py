@@ -409,12 +409,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return u_interp
 
-    def MFplasticity(self, u=None, indi=None):
+    def MFplasticity(self, Fext=None, indi=None):
         " Solves a plasticity problem "
 
         # Get inputs 
         if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if indi is None or u is None: raise Warning('Impossible')
+        if indi is None or Fext is None: raise Warning('Impossible')
 
         dod = deepcopy(indi)
         for _ in range(len(dod)):
@@ -426,10 +426,31 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, prop, self._MechanicalDirichlet, 
                 *dod, self._invJ, self._detJ]
 
-        result = solver.mf_wq_plasticity_3d(*inputs, u)
+        result = solver.mf_wq_plasticity_3d(*inputs, Fext)
 
         return result
-        
+    
+    def MFelasticity(self, coefs=None, Fext=None, indi=None, nbIterations=300, tol=1e-7, isPrecond=True, isnoised=False):
+
+        # Get inputs 
+        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if indi is None or Fext is None: raise Warning('Impossible')
+        super()._verify_mechanics()
+        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp, isnoised=isnoised)
+
+        dod = deepcopy(indi)
+        for _ in range(len(dod)):
+            newdod = np.array(dod[_])
+            newdod += 1
+            dod[_] = list(newdod)
+
+        inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, 
+                isPrecond, nbIterations, self._MechanicalDirichlet, *dod]
+
+        result = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
+
+        return result
+
     # ==================================
     # MATRIX FREE SOLUTION (IN PYTHON)
     # ================================== 
@@ -496,8 +517,8 @@ class fortran_mf_wq(thermoMechaModel):
 
         return Fint
 
-    def MFWQ_solveElasticity(self, coefs=None, DU=None, indi=None, b=None, 
-                            nbIterations=100, tol=1e-10, isPrecond=True, isnoised=False):
+    def MFWQ_solveElasticity(self, coefs=None, DU=None, Fext=None, indi=None, 
+                            nbIterations=300, tol=1e-7, isPrecond=True, isnoised=False):
         "Solve linear system using Bi-CG Stab algorithm"
 
         # Initialze
@@ -505,12 +526,12 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_mechanics()
         if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp, isnoised=isnoised)
         d = self._dim
-        x = np.zeros(np.shape(b))
+        x = np.zeros(np.shape(Fext))
 
         if not isPrecond: # Without preconditioner 
             
             # Initialize
-            r = b
+            r = Fext
             clean_dirichlet_3d(r, indi)
             rhat, p = r, r
             rsold = block_dot_product(d, r, rhat)
@@ -531,6 +552,7 @@ class fortran_mf_wq(thermoMechaModel):
                 r = s - omega*As
 
                 relerror = np.sqrt(np.linalg.norm(r)/norm2b)
+                print(relerror)
                 if relerror <= tol: break
 
                 rsnew = block_dot_product(d, r, rhat)
@@ -545,7 +567,7 @@ class fortran_mf_wq(thermoMechaModel):
             U, V, W, D = DU[0], DU[1], DU[2], DU[3]
             
             # Initialize
-            r = b
+            r = Fext
             clean_dirichlet_3d(r, indi)
             rhat, p = r, r
             rsold = block_dot_product(d, r, rhat)
@@ -572,6 +594,7 @@ class fortran_mf_wq(thermoMechaModel):
                 r = s - omega*Astilde
 
                 relerror = np.sqrt(np.linalg.norm(r)/norm2b)
+                print(relerror)
                 if relerror <= tol: break
 
                 rsnew = block_dot_product(d, r, rhat)
@@ -583,7 +606,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return x
 
-    def MFWQ_solvePlasticity(self, Fext=None, indi=None, tol=1e-5, d=3):
+    def MFWQ_solvePlasticity(self, Fext=None, indi=None, tol=1e-6, d=3):
         "Solves plasticity problem "
 
         if self._dim != 3: raise Warning('Only for 3D')
@@ -612,29 +635,20 @@ class fortran_mf_wq(thermoMechaModel):
             prod2 = block_dot_product(d, Fext_t, Fext_t)
 
             # Newton Raphson
-            for j in range(3):
+            for j in range(2):
+                print('Pas %d, iteration %d' %(i+1, j))
+
                 # Compute strain as function of displacement
                 ddisp = disp_n1k - disp_n0
                 deps = self.compute_strain(ddisp)
-
+    
                 # Closest point projection in perfect plasticity
                 for k in range(self._nb_qp_wq_total):
                     sigma_n1t, ep_n1t, Dalgt = cpp_perfect_plasticity(inputs, deps[:, k], sigma_n0[:, k], ep_n0[k])
                     sigma_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, ep_n1t, Dalgt
 
-                # Dalg_mean = np.mean(Dalg, axis=2)
-                # Dalg_std = np.std(Dalg, axis=2)
-                # print(np.around(Dalg_mean, decimals=3))
-                # print(np.around(Dalg_std, decimals=3))
-                # print('-------------')
-
                 # Compute coefficients to compute Fint and Stiffness
                 coef_Fint, coef_Stiff = compute_plasticity_coef(sigma_n1, Dalg, self._invJ, self._detJ, d=d)
-                # coef_stiff_mean = np.mean(coef_Stiff, axis=2)
-                # coef_stiff_std = np.std(coef_Stiff, axis=2)
-                # print(coef_stiff_std)
-
-                np.save('CoefStiff', coef_Stiff)
 
                 # Compute Fint 
                 Fint = self.compute_internal_force(coef_Fint)
@@ -644,11 +658,13 @@ class fortran_mf_wq(thermoMechaModel):
                 clean_dirichlet_3d(dF, indi)
                 prod1 = block_dot_product(d, dF, dF)
                 relerror = np.sqrt(prod1/prod2)
+                print('Relative error: %.5f' %relerror)
 
-                if relerror <= tol:
+                if relerror <= self._sigmaY*tol:
                     break
                 else:
-                    ddisp = self.MFWQ_solveElasticity(coef_Stiff, DU, indi, dF)
+                    # ddisp = self.MFWQ_solveElasticity(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+                    ddisp = self.MFelasticity(coefs=coef_Stiff, indi=indi, Fext=dF)
                     disp_n1k += ddisp
 
             # Set values
