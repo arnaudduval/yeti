@@ -435,7 +435,7 @@ module elastoplasticity
     ! =========================
 
     subroutine yield_perfect_plasticity(sigma_Y, sigma, f, norm, N)
-        !! Computes the value of f (consistency condition) and its derivatives in perfect plasticity criteria
+        !! Computes the value of f (consistency condition) in perfect plasticity criteria
         
         implicit none
         ! Input / output
@@ -515,5 +515,104 @@ module elastoplasticity
         end if
 
     end subroutine cpp_perfect_plasticity
+
+    ! =========================
+    ! COMBINED HARDENING
+    ! =========================
+
+    subroutine yield_combined_hardening(sigma_Y, H, beta, sigma, alpha, ep, f, norm, N)
+        !! Computes the value of f (consistency condition) in combined hardening criteria
+        
+        implicit none
+        ! Input / output
+        ! ---------------
+        double precision, intent(in) ::  sigma_Y, beta, H, sigma, alpha, ep
+        dimension :: sigma(ddl), alpha(ddl)
+        double precision, intent(out) :: f, norm, N
+        dimension :: N(ddl)
+
+        ! Local data
+        ! ----------------
+        double precision :: eta
+        dimension :: eta(ddl)
+
+        ! Compute deviatoric of sigma tensor
+        call compute_deviatoric(dimen, ddl, sigma, eta)
+
+        ! Compute eta
+        eta = eta - alpha
+
+        ! Compute the norm sqrt(nu_trial : nu_trial)
+        call stdcst(dimen, ddl, eta, eta, norm)
+        norm = sqrt(norm)
+        f = norm - sqrt(2.d0/3.d0) * (sigma_Y + (1-beta)*H*ep)   
+
+        ! Compute gradient of the gradient of f
+        if (norm.gt.0.d0) then
+            N = 1.d0/norm*eta
+        else
+            N = 0.d0
+        end if
+
+    end subroutine yield_combined_hardening
+
+    subroutine cpp_combined_hardening(CC, Idev, mu, sigma_Y, H, beta, deps, alpha_n0, ep_n0, sigma_n0, &
+                                    alpha_n1, ep_n1, sigma_n1, Dalg)
+        !! Return closest point proyection (cpp) in perfect plasticity criteria
+
+        implicit none
+        ! Input / output
+        ! ---------------
+        double precision, intent(in) :: CC, Idev, mu, sigma_Y, H, beta
+        dimension :: CC(ddl, ddl), Idev(ddl, ddl)
+        double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
+        dimension :: alpha_n0(ddl), deps(ddl), sigma_n0(ddl)
+
+        double precision, intent(out) ::alpha_n1, ep_n1, sigma_n1, Dalg
+        dimension :: alpha_n1(ddl), sigma_n1(ddl), Dalg(ddl, ddl)
+        
+        ! Local data
+        ! ------------
+        double precision :: f, norm, dgamma, c1, c2
+        double precision :: sigma_trial, N, NNT
+        dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
+                       
+        ! Compute elastic predictor
+        sigma_trial = sigma_n0 + matmul(CC, deps)
+        
+        ! Review condition
+        call yield_combined_hardening(sigma_Y, H, beta, sigma_trial, alpha_n0, ep_n0, f, norm, N)
+
+        if (f.le.0.d0) then ! Elastic point
+
+            ! Send back values
+            sigma_n1 = sigma_trial
+            ep_n1 = ep_n0
+            alpha_n1 = alpha_n0
+            Dalg = CC
+
+        else ! Plastic point
+
+            ! Consistency parameter
+            dgamma = f/(2.d0*mu+2.d0*H/3.d0)
+
+            ! Update stress
+            sigma_n1 = sigma_trial - 2.d0*mu*dgamma*N
+
+            ! Update back stress
+            alpha_n1 = alpha_n0 + 2.d0/3.d0*beta*H*dgamma*N
+
+            ! Update effective plastic strain 
+            ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
+
+            ! Compute consistent tangent matrix
+            c1 = 4.d0*mu**2.d0/(2.d0*mu+2.d0/3.d0*H)
+            c2 = 4.d0*mu**2.d0*dgamma/norm
+            call stkronst(ddl, N, N, NNT)
+            Dalg = CC - (c1-c2)*NNT - c2*Idev
+
+        end if
+
+    end subroutine cpp_combined_hardening
 
 end module elastoplasticity

@@ -239,7 +239,8 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
         f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1-beta)*H*ep_n)
 
         # Compute unit deviatoric tensor
-        N = 1.0/norm*nu_trial
+        if norm > 0.0: N = 1.0/norm*nu_trial
+        else: N = np.zeros(np.shape(nu_trial))
 
         return f, N, norm
 
@@ -255,7 +256,7 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
     sigma_trial = sigma_n + CC @ deps
 
     # Compute yield function and unit deviatoric tensor
-    f, N, norm = yield_function(sigma_Y, sigma_trial)
+    f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
 
     # Check status
     if f < 0:
