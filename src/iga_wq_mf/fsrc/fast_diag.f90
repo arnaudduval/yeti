@@ -3,10 +3,8 @@
 ! author :: Joaquin Cornejo
 ! ====================================================
 
-subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, &
-                                data_B0, data_W0, data_B1, data_W1, Method,  &
-                                Mcoef, Kcoef, t_robin, &
-                                eigenvalues, eigenvectors)
+subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
+                                Method, Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -45,8 +43,8 @@ end subroutine eigen_decomposition_py
 
 subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
                                 diagonal, array_in, array_out)
-    
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to steady heat equations
     !! by G. Sanaglli and M. Tani
     
     use tensor_methods
@@ -114,15 +112,13 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
     ! Second part
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                    U_u, U_v, U_w, array_temp, array_out)
+    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
 
 end subroutine fd_interpolation_3d
 
-subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                    diagonal, array_in, dt, theta, array_out)
-    
+subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, dt, theta, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to transient heat equations
     !! by G. Sanaglli and M. Tani
     
     use tensor_methods
@@ -168,10 +164,9 @@ subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
 
 end subroutine fd_transient_heat_3d
 
-subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                    diagonal, array_in, array_out)
-    
+subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
     
     use omp_lib

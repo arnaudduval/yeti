@@ -10,7 +10,7 @@ from lib.base_functions import (eval_basis_python,
 from lib.D1viscoplasticity import interpolate_controlPoints, solve_plasticity, compute_strain
 
 # Define mechanical properties
-E, H, sigma_Y, beta, JJ = 200e3, 25e3, 250, 0.5, 10
+E, H, sigma_Y, beta, JJ = 200e3, 25e3, 250, 0.5, 1
 
 # Define geometry
 degree, nbel = 5, 32
@@ -23,7 +23,7 @@ nnz = len(qp_cgg)
 properties = [JJ, E, H, beta, sigma_Y, nnz]
 
 # Define boundary and initial conditions
-N = 800
+N = 500
 t = np.linspace(0, 1, N)
 dof = np.arange(1, nb_ctrlpts, dtype=int)
 Fext = np.zeros((nb_ctrlpts, N))
@@ -72,7 +72,6 @@ for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
 
     # Properties
     ax.grid()
-    ax.set_title(name, fontsize=14)
     ax.set_ylabel('Stress (MPa)', fontsize=12)
     ax.set_xlabel('Strain (%)', fontsize=12)
     ax.tick_params(axis='x', labelsize=11)

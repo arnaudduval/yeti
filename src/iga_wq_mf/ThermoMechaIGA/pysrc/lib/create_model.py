@@ -120,6 +120,12 @@ class thermoMechaModel():
         try: self._youngModule = material["young"]
         except: self._youngModule = None
 
+        try: self._Hardening = material["hardening"]
+        except: self._Hardening = None
+
+        try: self._betaHard = material["betahard"]
+        except: self._betaHard = None
+
         try: self._sigmaY = material["sigmaY"]
         except: self._sigmaY = None
 
@@ -215,6 +221,9 @@ class thermoMechaModel():
         self._capacity = None
         self._poissonCoef = None
         self._youngModule = None
+        self._Hardening = None
+        self._betaHard = None
+        self._sigmaY = None
 
         return
 
@@ -236,8 +245,8 @@ class thermoMechaModel():
 
     def _verify_mechanics(self): 
         " Verifies if mechanical properties exits"
-
-        if self._youngModule is None or self._poissonCoef is None: raise Warning('Mechanics not well defined')
+        prop = [self._youngModule, self._Hardening, self._betaHard, self._poissonCoef, self._sigmaY]
+        if any([var is None for var in prop]): raise Warning('Mechanics not well defined')
         if self._Ctensor is None:
             self._set_extra_mechanical_properties()
         return

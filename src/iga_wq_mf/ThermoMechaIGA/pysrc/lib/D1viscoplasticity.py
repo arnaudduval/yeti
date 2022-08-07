@@ -6,7 +6,7 @@ def return_mapping_point(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
     Combined Isotropic/Kinematic hardening. For one quadrature point """
     
     # Elastic predictor
-    sigma_trial = sigma_n0 + E*deps
+    sigma_trial = sigma_n0 + E*deps 
     eta_trial = sigma_trial - alpha_n0
 
     # Check yield status
@@ -59,11 +59,10 @@ def compute_strain(JJ, DB, disp):
     " Computes strain given displacement field "
 
     # Compute strain
-    eps = DB[1].T @ disp 
-    eps *= 1.0/JJ
+    eps = DB[1].T @ disp / JJ
     return eps
 
-def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6, nbIter=100):
+def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6, nbIter=200):
     " Solves plasticity problem in 1D "
 
     # Initialize
@@ -71,11 +70,7 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
     sigma_n0, alpha_n0, ep_n0 = np.zeros(nnz), np.zeros(nnz), np.zeros(nnz)
     sigma_n1, alpha_n1, ep_n1 = np.zeros(nnz), np.zeros(nnz), np.zeros(nnz)
     Dalg = np.zeros(nnz)
-
-    # Set displacements
     disp = np.zeros(np.shape(Fext))
-    disp_n0 = np.zeros(np.shape(Fext)[0])
-    disp_n1k = np.zeros(np.shape(Fext)[0])
 
     # Set some variables to return
     ep = np.zeros((nnz, np.shape(Fext)[1]))
@@ -84,15 +79,14 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
     for i in range(1, np.shape(Fext)[1]):
 
         # Initialize
-        disp_n0[dof] = deepcopy(disp[:, i-1])[dof]
-        disp_n1k[dof] = disp[:, i-1][dof]
+        ddisp = np.zeros(np.shape(disp[:, i-1]))
         Fext_t = Fext[:, i]
         prod2 = np.dot(Fext_t, Fext_t)
 
         # Newton Raphson
-        for j in range(nbIter):            
+        for j in range(nbIter):
+
             # Compute strain as function of displacement
-            ddisp = disp_n1k - disp_n0
             deps = compute_strain(JJ, DB, ddisp)
 
             # Closest point projection in perfect plasticity
@@ -113,10 +107,10 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
                 # Compute stiffness
                 S = compute_stiffness_matrix(JJ, DB, W, Dalg)[np.ix_(dof, dof)]
                 ddisp[dof] = np.linalg.solve(S, dF)
-                disp_n1k += ddisp
-        print(j)
+                
+        print(i, j)
         # Set values
-        disp[:, i] = disp_n1k    
+        disp[:, i] = disp[:, i-1] + ddisp
         ep[:, i] = ep_n1
         sigma[:, i] = sigma_n1
         ep_n0 = ep_n1

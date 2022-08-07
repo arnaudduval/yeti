@@ -72,44 +72,6 @@ end subroutine iga_find_conductivity_diagonal_3d
 ! ----------------------------------------
 ! Assembly in 3D
 ! ----------------------------------------
-subroutine iga_diagonal_dot_vector(nc_total, nc_u, nc_v, nc_w, W_u, W_v, W_w, coefs, array_in, array_out)
-
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: nc_total, nc_u, nc_v, nc_w
-    double precision, intent(in) :: W_u, W_v, W_w
-    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
-    double precision, intent(in) :: coefs, array_in
-    dimension :: coefs(nc_total), array_in(nc_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nc_total)
-
-    ! Local data
-    ! ---------------
-    integer :: j1, j2, j3, nb_tasks, genPos
-
-    ! Initialize
-    array_out = 0.d0 
-
-    !$OMP PARALLEL PRIVATE(genPos)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_total/nb_tasks) 
-    ! Initialize coefficients
-    do j3 = 1, nc_w
-        do j2 = 1, nc_v
-            do j1 = 1, nc_u
-                genPos = j1 + (j2-1)*nc_u + (j3-1)*nc_u*nc_v
-                array_out(genPos) = array_in(genPos)*coefs(genPos)*W_u(j1)*W_v(j2)*W_w(j3)
-            end do
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
-
-end subroutine iga_diagonal_dot_vector
 
 subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, W_u, W_v, W_w, &
@@ -121,6 +83,7 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     !! Indices must be in CSR format
     
     use tensor_methods
+    use omp_lib
     implicit none 
     ! Input / output 
     ! -------------------
@@ -149,12 +112,29 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
 
     ! Local data 
     ! ------------------
+    integer :: ju, jv, jw, genPos, nb_tasks
+    double precision :: coefs_new
+    dimension :: coefs_new(nc_total)
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t
 
-    ! Initialize
-    allocate(array_temp_1(nc_total))
+    ! Get new coefficients 
+    !$OMP PARALLEL PRIVATE(genPos)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_total/nb_tasks) 
+    ! Initialize coefficients
+    do jw = 1, nc_w
+        do jv = 1, nc_v
+            do ju = 1, nc_u
+                genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                coefs_new(genPos) = coefs(genPos)*W_u(ju)*W_v(jv)*W_w(jw)
+            end do
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
 
     ! Eval B.transpose * array_in
+    allocate(array_temp_1(nc_total))
     call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), & 
@@ -163,7 +143,7 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
 
     ! Evaluate diag(coefs) * array_temp1
     allocate(array_temp_1t(nc_total))
-    call iga_diagonal_dot_vector(nc_total, nc_u, nc_v, nc_w, W_u, W_v, W_w, coefs, array_temp_1, array_temp_1t)
+    array_temp_1t = array_temp_1*coefs_new
     deallocate(array_temp_1)
 
     ! Eval W * array_temp1
@@ -186,6 +166,7 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     !! Indices must be in CSR format
 
     use tensor_methods
+    use omp_lib
     implicit none 
     ! Input / output 
     ! -------------------
@@ -217,9 +198,28 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
 
     ! Local data 
     ! ------------------
+    integer :: ju, jv, jw, genPos, nb_tasks
+    double precision :: coefs_new
+    dimension :: coefs_new(d, d, nc_total)
     double precision, allocatable, dimension(:) :: array_temp_1, array_temp_1t, array_temp_1tt
     integer :: i, j, alpha, beta
     dimension :: alpha(d), beta(d)
+
+    ! Get new coefficients 
+    !$OMP PARALLEL PRIVATE(genPos)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_total/nb_tasks) 
+    ! Initialize coefficients
+    do jw = 1, nc_w
+        do jv = 1, nc_v
+            do ju = 1, nc_u
+                genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                coefs_new(:, :, genPos) = coefs(:, :, genPos)*W_u(ju)*W_v(jv)*W_w(jw)
+            end do
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL
 
     ! Initialize
     array_output = 0.d0
@@ -233,9 +233,7 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
                             array_input, array_temp_1)
         do i = 1, d
             alpha = 1; alpha(i) = 2
-            call iga_diagonal_dot_vector(nc_total, nc_u, nc_v, nc_w, W_u, W_v, W_w, &
-                            coefs(i, j, :), array_temp_1, array_temp_1t)
-
+            array_temp_1t = array_temp_1*coefs_new(i, j, :)
             call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, indi_u, indj_u, data_B_u(:, alpha(1)), &
                                     nnz_v, indi_v, indj_v, data_B_v(:, alpha(2)), &

@@ -485,8 +485,7 @@ end subroutine mf_wq_elasticity_3d
 subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, properties, &
-                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, &
-                        disp, dF, coef_S)
+                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, disp)
 
     use elastoplasticity
     use tensor_methods
@@ -506,7 +505,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     ! Physics
-    double precision, intent(in) :: properties(3)
+    double precision, intent(in) :: properties(5)
     integer, intent(in) :: ndu, ndv, ndw
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
@@ -515,13 +514,11 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     
     double precision, intent(out) :: disp
     dimension :: disp(d, nr_total, sizeF+1)
-    double precision, intent(out) :: coef_S, dF
-    dimension :: coef_S(d*d, d*d, nc_total), dF(d, nr_total)
 
     ! Local data
     ! -----------
     type(material), pointer :: mat
-    double precision :: E, nu, sigma_Y
+    double precision :: E, H, beta, nu, sigma_Y
 
     character(len = 10) :: Method = 'FDC'
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -530,18 +527,15 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     double precision, dimension(:, :), allocatable :: Deigen
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
 
-    double precision :: ep_n1, ep_n0, deps, sigma_n0, sigma_n1, Dalg
-    dimension ::    ep_n0(nc_total), ep_n1(nc_total), deps(dof, nc_total), &
+    double precision :: alpha_n0, alpha_n1, ep_n1, ep_n0, deps, sigma_n0, sigma_n1, Dalg
+    dimension ::    alpha_n0(nc_total), alpha_n1(nc_total), ep_n0(nc_total), ep_n1(nc_total), deps(dof, nc_total), &
                     sigma_n0(dof, nc_total), sigma_n1(dof, nc_total), Dalg(dof, dof, nc_total)
-    ! double precision :: disp_t, Fext_t, coef_fint, coef_S, Fint, delta_F, delta_disp
-    ! dimension ::    disp_t(d, nr_total), Fext_t(d, nr_total), coef_fint(d*d, nc_total), &
-    !                 coef_S(d*d, d*d, nc_total), Fint(d, nr_total), delta_F(d, nr_total), delta_disp(d, nr_total)
     
-    double precision :: disp_n0, disp_n1k, Fext_t, coef_fint, Fint, ddisp
-    dimension ::    disp_n0(d, nr_total), disp_n1k(d, nr_total), Fext_t(d, nr_total), &
-                    Fint(d, nr_total), coef_fint(d*d, nc_total), ddisp(d, nr_total)
+    double precision :: coef_fint, coef_S, Fext_t, Fint, dF, ddisp
+    dimension ::    coef_fint(d*d, nc_total), coef_S(d*d, d*d, nc_total), &
+                    Fext_t(d, nr_total), Fint(d, nr_total), dF(d, nr_total), ddisp(d, nr_total)
     
-    double precision :: c_u, c_v, c_w, error, prod1, prod2
+    double precision :: c_u, c_v, c_w, relerror, prod1, prod2
     integer :: i, j, k
 
     ! --------------------------------------------
@@ -580,15 +574,15 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! SOLVE
     ! -------------------------------------------- 
     ! Initialize
-    E = properties(1); nu = properties(2); sigma_Y = properties(3)
-    call initialize_mat(mat, E, nu)
+    E = properties(1); H = properties(2);  beta = properties(3)
+    nu = properties(4); sigma_Y = properties(5)
+    call initialize_mat(mat, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0
     
     do i = 2, sizeF+1
 
         ! Initialize 
-        disp_n0 = disp(:, :, i-1)
-        disp_n1k = disp_n0
+        ddisp = 0.d0
         Fext_t = Fext(:, :, i)        
         call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
@@ -597,14 +591,13 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 
-            ddisp = disp_n1k - disp_n0
             call interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, invJ, ddisp, deps)
 
             ! Closest point projection in perfect plasticity 
             do k = 1, nc_total
-                call cpp_perfect_plasticity(mat%Ctensor, mat%Idev, mat%mu, sigma_Y, deps(:, k), ep_n0(k), &
-                                       sigma_n0(:, k), ep_n1(k), sigma_n1(:, k), Dalg(:, :, k))
+                call cpp_combined_hardening(mat, deps(:, k), alpha_n0(k), ep_n0(k), sigma_n0(:, k), &
+                                    alpha_n1(k), ep_n1(k), sigma_n1(:, k), Dalg(:, :, k))
             end do
 
             ! Compute coefficients to compute Fint and Stiffness
@@ -614,17 +607,15 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
-            ! Update F
             dF = Fext_t - Fint
             call clean_dirichlet_3d(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
             call block_dot_product(d, nr_total, dF, dF, prod1)
-            error = sqrt(prod1/prod2)
-            print*, "Raphson with error: ", error
-            if (isnan(error)) stop
+            relerror = sqrt(prod1/prod2)
+            print*, "Raphson with error: ", relerror
+            if (isnan(relerror)) stop
             
             ! Verify
-            if (error.le.sigma_Y*1e-6) then 
+            if (relerror.le.sigma_Y*1e-6) then 
                 exit
             else
 
@@ -634,20 +625,15 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
                 nbIterSolver, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
                 dF, ddisp)
-                    
-                ! Update displacement
-                disp_n1k = disp_n1k + ddisp
 
             end if            
         end do
         
         ! Set values
-        disp(:, :, i) = disp_n1k
+        disp(:, :, i) = disp(:, :, i-1) + ddisp
         ep_n0 = ep_n1
         sigma_n0 = sigma_n1
-        
-        print*, "------------"
-        
+                
     end do
 
 end subroutine mf_wq_plasticity_3d

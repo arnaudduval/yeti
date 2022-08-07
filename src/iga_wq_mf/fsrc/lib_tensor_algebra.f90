@@ -1167,8 +1167,6 @@ module tensor_methods
         end do
         nb_pts = nb_pts * nb_pts_temp
 
-        ! Compute conductivity
-        !--------------------------
         if (nnz.eq.1) then
 
             lamb_u = KK(1, 1, 1)

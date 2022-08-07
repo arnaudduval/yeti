@@ -11,7 +11,7 @@ subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             nnz_I_u, nnz_I_v, nnz_I_w, data_result, indi_result, indj_result)
-    !! Computes a matrix in 3D case
+    !! Computes a capacity matrix in 3D case
     !! IN CSR FORMAT
 
     use tensor_methods
@@ -262,7 +262,7 @@ subroutine wq_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             nnz_I_u, nnz_I_v, & 
                             data_result, indi_result, indj_result)
-    !! Computes a matrix in 2D case
+    !! Computes a capacity matrix in 2D case
     !! IN CSR FORMAT
 
     use tensor_methods

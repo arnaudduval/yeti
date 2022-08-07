@@ -330,6 +330,7 @@ module elastoplasticity
 
         ! Outputs
         ! -----------
+        double precision :: sigma_Y, hardening, beta
         double precision :: lambda, mu, bulk
         double precision, dimension(:, :), allocatable :: Ctensor, Stensor
 
@@ -341,13 +342,13 @@ module elastoplasticity
 
     contains
 
-    subroutine initialize_mat(object, E, nu)
+    subroutine initialize_mat(object, E, H, beta, nu, sigma_Y)
         !! Creates a material with isotropic properties only using Young's module and Poisson coefficient
 
         implicit none
         ! Input / output
         ! ---------------
-        double precision, intent(in) :: E, nu
+        double precision, intent(in) :: E, H, beta, nu, sigma_Y
         type(material), pointer :: object
 
         ! Local data
@@ -373,7 +374,10 @@ module elastoplasticity
         ! Save data computed
         allocate(object)
         object%young = E
+        object%hardening = H
+        object%beta = beta
         object%poisson = nu
+        object%sigma_Y = sigma_Y
         object%lambda = lambda
         object%mu = mu
         object%bulk = bulk
@@ -467,14 +471,13 @@ module elastoplasticity
 
     end subroutine yield_perfect_plasticity
 
-    subroutine cpp_perfect_plasticity(CC, Idev, mu, sigma_Y, deps, ep_n0, sigma_n0, ep_n1, sigma_n1, Dalg)
+    subroutine cpp_perfect_plasticity(mat, deps, ep_n0, sigma_n0, ep_n1, sigma_n1, Dalg)
         !! Return closest point proyection (cpp) in perfect plasticity criteria
 
         implicit none
         ! Input / output
         ! ---------------
-        double precision, intent(in) :: CC, Idev, mu, sigma_Y
-        dimension :: CC(ddl, ddl), Idev(ddl, ddl)
+        type(material), pointer :: mat
         double precision, intent(in) :: deps, ep_n0, sigma_n0
         dimension :: deps(ddl), sigma_n0(ddl)
 
@@ -488,17 +491,17 @@ module elastoplasticity
         dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
                        
         ! Compute elastic predictor
-        sigma_trial = sigma_n0 + matmul(CC, deps)
+        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
         
         ! Review condition
-        call yield_perfect_plasticity(sigma_Y, sigma_trial, f, norm, N)
+        call yield_perfect_plasticity(mat%sigma_Y, sigma_trial, f, norm, N)
 
         if (f.le.0.d0) then ! Elastic point
 
             ! Send back values
             sigma_n1 = sigma_trial
             ep_n1 = ep_n0
-            Dalg = CC
+            Dalg = mat%Ctensor
 
         else ! Plastic point
 
@@ -506,11 +509,11 @@ module elastoplasticity
             sigma_n1 = sigma_trial - f*N
 
             ! Update effective plastic strain 
-            ep_n1 = ep_n0 + f/(mu*sqrt(6.d0))
+            ep_n1 = ep_n0 + f/(mat%mu*sqrt(6.d0))
 
             ! Compute consistent tangent matrix
             call stkronst(ddl, N, N, NNT)
-            Dalg = CC - 2*mu*((1-f/norm)*NNT + f/norm*Idev)
+            Dalg = mat%Ctensor - 2*mat%mu*((1-f/norm)*NNT + f/norm*mat%Idev)
 
         end if
 
@@ -556,15 +559,14 @@ module elastoplasticity
 
     end subroutine yield_combined_hardening
 
-    subroutine cpp_combined_hardening(CC, Idev, mu, sigma_Y, H, beta, deps, alpha_n0, ep_n0, sigma_n0, &
+    subroutine cpp_combined_hardening(mat, deps, alpha_n0, ep_n0, sigma_n0, &
                                     alpha_n1, ep_n1, sigma_n1, Dalg)
         !! Return closest point proyection (cpp) in perfect plasticity criteria
 
         implicit none
         ! Input / output
         ! ---------------
-        double precision, intent(in) :: CC, Idev, mu, sigma_Y, H, beta
-        dimension :: CC(ddl, ddl), Idev(ddl, ddl)
+        type(material), pointer :: mat
         double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
         dimension :: alpha_n0(ddl), deps(ddl), sigma_n0(ddl)
 
@@ -578,10 +580,10 @@ module elastoplasticity
         dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
                        
         ! Compute elastic predictor
-        sigma_trial = sigma_n0 + matmul(CC, deps)
+        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
         
         ! Review condition
-        call yield_combined_hardening(sigma_Y, H, beta, sigma_trial, alpha_n0, ep_n0, f, norm, N)
+        call yield_combined_hardening(mat%sigma_Y, mat%hardening, mat%beta, sigma_trial, alpha_n0, ep_n0, f, norm, N)
 
         if (f.le.0.d0) then ! Elastic point
 
@@ -589,27 +591,27 @@ module elastoplasticity
             sigma_n1 = sigma_trial
             ep_n1 = ep_n0
             alpha_n1 = alpha_n0
-            Dalg = CC
+            Dalg = mat%Ctensor
 
         else ! Plastic point
 
             ! Consistency parameter
-            dgamma = f/(2.d0*mu+2.d0*H/3.d0)
+            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0)
 
             ! Update stress
-            sigma_n1 = sigma_trial - 2.d0*mu*dgamma*N
+            sigma_n1 = sigma_trial - 2.d0*mat%mu*dgamma*N
 
             ! Update back stress
-            alpha_n1 = alpha_n0 + 2.d0/3.d0*beta*H*dgamma*N
+            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
 
             ! Update effective plastic strain 
             ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
 
             ! Compute consistent tangent matrix
-            c1 = 4.d0*mu**2.d0/(2.d0*mu+2.d0/3.d0*H)
-            c2 = 4.d0*mu**2.d0*dgamma/norm
+            c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
+            c2 = 4.d0*mat%mu**2.d0*dgamma/norm
             call stkronst(ddl, N, N, NNT)
-            Dalg = CC - (c1-c2)*NNT - c2*Idev
+            Dalg = mat%Ctensor - (c1-c2)*NNT - c2*mat%Idev
 
         end if
 

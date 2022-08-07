@@ -39,7 +39,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.1}
+material = {'density': 7.8e-12, 'young': 210, 'poisson': 0.3, 'sigmaY': 0.1, 'hardening':50, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet and Neumann boundaries
