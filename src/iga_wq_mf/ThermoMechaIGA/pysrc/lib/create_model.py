@@ -13,7 +13,7 @@ from pyevtk.hl import gridToVTK
 from preprocessing.igaparametrization import IGAparametrization
 
 # My libraries
-from .D3viscoplasticity import create_der2sym, fourth_order_identity, one_kron_one 
+from .D3viscoplasticity import *
 from .base_functions import eval_basis_fortran
 from .create_geomdl import geomdlModel
 from iga_wq_mf import assembly
@@ -525,9 +525,8 @@ class thermoMechaModel():
         nnz = np.shape(JJ)[2]
 
         # Create tensors
-        MM = create_der2sym(d)
+        EE = create_incidence(d)
         coefs = np.zeros((d*d, d*d, nnz))
-        Gamma = np.zeros((d*d, d*d))
         
         # Create material tensor
         CC = self._Ctensor
@@ -535,8 +534,8 @@ class thermoMechaModel():
 
         # Initialize
         C = np.zeros((ddl, ddl, nnz))
-        for i in range(nnz): 
-            C[:, :, i] = CC
+        for k in range(nnz): 
+            C[:, :, k] = CC
 
         if isnoised:
             # Inset noise by hand
@@ -585,21 +584,16 @@ class thermoMechaModel():
             C[5, 3, :] += noise
             C[3, 5, :] += noise
 
-        for i in range(nnz):
+        for k in range(nnz):
+            # Compute inverse and determinant of JJ
+            invJJ = np.linalg.inv(JJ[:,:,k])
+            detJJ = np.linalg.det(JJ[:,:,k])
 
-            # Compute M.T D M
-            MDM = MM.T @ C[:, :, i] @ MM
-
-            # Compute inverse of JJ
-            invJJ = np.linalg.inv(JJ[:, :, i])
-
-            # Create extended version
-            for j in range(d):
-                Gamma[j*d:(j+1)*d, j*d:(j+1)*d] = invJJ
-
-            # Create coefs
-            coefs[:, :, i] = Gamma.T @ MDM @ Gamma 
-            coefs[:, :, i] *= np.linalg.det(JJ[:, :, i])
+            for i in range(d):
+                for j in range(d):
+                    ETCE = EE[:,:,i].T @ C[:,:,k] @ EE[:,:,j]
+                    Dij = invJJ.T @ ETCE @ invJJ
+                    coefs[j*d:(j+1)*d, j*d:(j+1)*d, k] = Dij*detJJ
 
         return coefs
 

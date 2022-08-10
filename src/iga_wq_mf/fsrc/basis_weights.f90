@@ -9,6 +9,7 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     implicit none 
     ! Input / output data
     ! -------------------
+    double precision, parameter :: span_tol = 1.d-8
     integer, intent(in) :: degree, size_kv, nb_knots
     double precision, intent(in) :: knotvector, knots
     dimension :: knotvector(size_kv), knots(nb_knots)
@@ -35,7 +36,7 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     call find_unique_vector(size_kv, knotvector, nodes)
     nbel = int(nodes(size_kv+1)) - 1
     allocate(table_functions_span(nbel, degree+1))
-    call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span)
+    call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
 
     ! Evaluate B-spline values for every knot 
     do i = 1, nb_knots
@@ -117,24 +118,24 @@ subroutine iga_get_data(degree, size_kv, knotvector, nnz_qp, qp_pos, qp_wq, &
 
     ! Local data
     ! -----------------
-    type(iga), pointer :: object
+    type(iga), pointer :: obj
 
     ! Evaluate basis and weights
-    call iga_get_basis_weights(object, degree, size_kv, knotvector)
+    call iga_basis_weights_dense2coo(obj, degree, size_kv, knotvector)
 
     ! Set quadrature points
-    qp_pos = object%qp_pos
-    qp_wq = object%qp_weights
+    qp_pos = obj%qp_pos
+    qp_wq = obj%qp_weights
 
     ! Set data 
-    data_B(:, 1) = object%data_B0
-    data_B(:, 2) = object%data_B1
+    data_B(:, 1) = obj%data_B0
+    data_B(:, 2) = obj%data_B1
 
     ! Set indices
-    data_ind = object%data_ind
+    data_ind = obj%data_ind
 
     ! Set number of non zeros of integral matrix
-    nnz_I = object%nnz_I
+    nnz_I = obj%nnz_I
 
 end subroutine iga_get_data
 
@@ -187,11 +188,16 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
 
     ! Local data
     ! -----------------
-    type(wq), pointer :: object
+    type(wq), pointer :: obj
+    integer, parameter :: method = 1
+    logical :: ismaxregular, isuniform
 
-    call wq_initialize(object, degree, size_kv, knotvector)
-    size_data = object%nnz_B
-    nb_qp = object%nb_qp_wq
+    call wq_initialize(obj, degree, size_kv, knotvector, method)
+    call verify_regularity_uniformity(degree, size_kv, knotvector, ismaxregular, isuniform, span_tol)
+    call wq_get_qp_positions(obj)
+    call wq_get_B0_B1_shape(obj)
+    size_data = obj%nnz_B
+    nb_qp = obj%nb_qp_wq
 
 end subroutine wq_get_size_data
 
@@ -215,27 +221,28 @@ subroutine wq_get_data( degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
 
     ! Local data
     ! -----------------
-    type(wq), pointer :: object
+    type(wq), pointer :: obj
+    integer, parameter :: method = 1
 
     ! Evaluate basis and weights
-    call wq_get_basis_weights(object, degree, size_kv, knotvector)
+    call wq_basis_weights_dense2coo(obj, degree, size_kv, knotvector, method)
 
     ! Set quadrature points
-    qp_pos = object%qp_pos
+    qp_pos = obj%qp_pos
 
     ! Set data 
-    data_B(:, 1) = object%data_B0
-    data_B(:, 2) = object%data_B1
-    data_W(:, 1) = object%data_W00
-    data_W(:, 2) = object%data_W01
-    data_W(:, 3) = object%data_W10
-    data_W(:, 4) = object%data_W11
+    data_B(:, 1) = obj%data_B0
+    data_B(:, 2) = obj%data_B1
+    data_W(:, 1) = obj%data_W00
+    data_W(:, 2) = obj%data_W01
+    data_W(:, 3) = obj%data_W10
+    data_W(:, 4) = obj%data_W11
 
     ! Set indices
-    data_ind = object%data_indices
+    data_ind = obj%data_indices
 
     ! Set number of non zeros of integral matrix
-    nnz_I = object%nnz_I
+    nnz_I = obj%nnz_I
 
 end subroutine wq_get_data
 

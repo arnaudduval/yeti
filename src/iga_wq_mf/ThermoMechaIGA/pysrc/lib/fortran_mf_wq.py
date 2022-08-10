@@ -51,12 +51,14 @@ class fortran_mf_wq(thermoMechaModel):
         for dim in range(self._dim):  
             nnz_I, qp_pos, B, W, indi, indj = wq_find_basis_weights_fortran(self._degree[dim], 
                                                                             self._knotvector[dim])
+            self._nb_qp_wq[dim] = len(qp_pos)
             self._nnz_I.append(nnz_I)
             self._qp_wq.append(qp_pos)
             self._DB.append(B)
             self._DW.append(W)
             self._indices.append(indi)
             self._indices.append(indj)
+        self._nb_qp_wq_total = np.prod(self._nb_qp_wq)
 
         stop = time.time()
         print('\tBasis and weights in : %.5f s' %(stop-start))

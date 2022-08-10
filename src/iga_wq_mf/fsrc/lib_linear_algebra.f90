@@ -3,16 +3,6 @@
 ! author :: Joaquin Cornejo
 ! modules :: ---------
 ! ==========================
-module constants_iga_wq_mf
-    
-    implicit none
-    ! Definition of some constants used in all this project
-
-    integer, parameter :: r = 2 ! For WQ analysis
-    double precision, parameter :: span_tol = 1.d-8 ! For spans precision
-    double precision, parameter :: tol = 1.d-15 ! For other kind of precision
-
-end module constants_iga_wq_mf
 
 ! -------------------
 ! Vector and matrices
@@ -644,10 +634,10 @@ subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
     !! Returns CSR format from matrix but not the values
     !! Only for integers
 
-    use constants_iga_wq_mf
     implicit none 
     ! Input / output data
     ! --------------------
+    double precision, parameter :: tol = 1.d-14
     integer, intent(in) :: nr, nc, nnz
     double precision, intent(in) :: A_in 
     dimension :: A_in(nr, nc)
