@@ -900,7 +900,7 @@ module wq_basis_weights
         ! Assign number of non zero values of B
         c = 0
         do i = 1, nb_ctrlpts
-            c = c + obj%B0shape(i, 2) - obj%B0shape(i, 1) + 1
+            c = c + obj%B1shape(i, 2) - obj%B1shape(i, 1) + 1
         end do
         obj%nnz_B = c
     
@@ -1151,10 +1151,9 @@ module wq_basis_weights
 
         ! Model
         type(wq), pointer :: obj_m
-        integer :: nbel_m, nb_ctrlpts_m, nb_qp_wq_m, size_kv_m
+        integer :: nbel_m, size_kv_m
         double precision, allocatable, dimension(:) :: knotvector_m, nodes_m
         double precision, allocatable, dimension(:,:) :: B0_m, B1_m, W00_m, W01_m, W10_m, W11_m
-        integer, allocatable, dimension(:,:) :: Bshape_m, dummy
 
         ! Create object
         call wq_initialize(obj, degree, size_kv, knotvector, method)
@@ -1200,17 +1199,16 @@ module wq_basis_weights
             ! --------------
             nbel_m = degree + 3
             size_kv_m = nbel_m + 2*degree +  1
-
+            
             allocate(nodes_m(size_kv_m+1), knotvector_m(size_kv_m))
             call create_uniform_knotvector(degree, nbel_m, nodes_m, knotvector_m)
             call wq_initialize(obj_m, degree, size_kv_m, knotvector_m, method)
             call wq_get_qp_positions(obj_m)
             call wq_get_B0_B1_shape(obj_m)
 
-            allocate(B0_m(nb_ctrlpts_m, nb_qp_wq_m), B1_m(nb_ctrlpts_m, nb_qp_wq_m), &
-                    W00_m(nb_ctrlpts_m, nb_qp_wq_m), W01_m(nb_ctrlpts_m, nb_qp_wq_m), &
-                    W10_m(nb_ctrlpts_m, nb_qp_wq_m), W11_m(nb_ctrlpts_m, nb_qp_wq_m))
-            allocate(Bshape_m(nb_ctrlpts_m, 2), dummy(nb_ctrlpts_m, 2))
+            allocate(B0_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), B1_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), &
+                    W00_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W01_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), &
+                    W10_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W11_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq))
 
             ! Compute model
             if (method.eq.1) then
@@ -1242,14 +1240,14 @@ module wq_basis_weights
 
             ! Set repeated functions 
             do i = degree+2, obj%nb_ctrlpts-degree-1
-                do j = 1, Bshape_m(degree+2, 2) - Bshape_m(degree+2, 1) + 1 
+                do j = 1, obj_m%B0shape(degree+2, 2) - obj_m%B0shape(degree+2, 1) + 1 
                     c = c + 1
-                    obj%data_B0(c) = B0_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
-                    obj%data_W00(c) = W00_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
-                    obj%data_W01(c) = W01_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
-                    obj%data_B1(c) = B1_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
-                    obj%data_W10(c) = W10_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
-                    obj%data_W11(c) = W11_m(degree+2, Bshape_m(degree+2, 1) + j - 1)
+                    obj%data_B0(c) = B0_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
+                    obj%data_W00(c) = W00_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
+                    obj%data_W01(c) = W01_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
+                    obj%data_B1(c) = B1_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
+                    obj%data_W10(c) = W10_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
+                    obj%data_W11(c) = W11_m(degree+2, obj_m%B0shape(degree+2, 1) + j - 1)
                     obj%data_indices(c, :) = [i, obj%B1shape(i, 1) + j - 1]
                 end do
             end do
