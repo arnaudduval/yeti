@@ -4,6 +4,18 @@
 
 import numpy as np
 
+def clean_dirichlet_3d(A, dod):
+
+    """
+    Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+    A is actually a vector arranged following each dimension [Au, Av, Aw]
+    """
+
+    for i in range(3):
+        A[i, dod[i]] = 0.0
+
+    return
+
 def block_dot_product(d, A, B):
     """ Computes dot product of A and B. 
     Both are actually vectors arranged following each dimension
@@ -18,82 +30,8 @@ def block_dot_product(d, A, B):
 
     return result
 
-def array_maps_tensor(d, p):
-    "Converts an array index into a symmetric second-order tensor index "
-
-    if d == 3:
-        if p < d:
-            i = p; j = p
-        else:
-            if p == 3:
-                i = 0; j = 1
-            elif p == 4:
-                i = 0; j = 2
-            elif p == 5:
-                i = 1; j = 2
-    elif d == 2:
-        if p < d:
-            i = p, j = p
-        elif p == 2:
-            i = 0; j = 1
-    else: 
-        raise Warning('Not possible')
-
-    return i, j
-
-def array2st(d, array): 
-    """Returns second-order tensor from array
-    i.e. from [t11, t22, t12], one gets [[t11, t12], [t21, t22]] (with t21 = t12)
-    """
-
-    # Initialize
-    ddl = int(d*(d+1)/2)
-    tensor = np.zeros((d, d))
-
-    for p in range(ddl):
-        i, j = array_maps_tensor(d, p)
-        tensor[i, j] = array[p]
-
-    # Set diagonal of tensor
-    diag = np.diag(np.diag(tensor))
-
-    # Send back tensor
-    tensor += tensor.T - diag
-
-    return tensor
-
-def stdcst(d, A, B):
-    """
-    Returns A double contracted with B
-    A and B are second order tensor in Voigt representation
-    With inditial notation : result = A_ij * B_ij
-    """
-
-    # Convert to tensor
-    ddl = int(d*(d+1)/2)
-    At = array2st(d, A)
-    Bt = array2st(d, B)
-
-    # Double contraction 
-    result = np.einsum('ij, ij', At, Bt)
-
-    return result 
-
-def stkronst(A, B):
-    """
-    Returns kron product of tensors A and B
-    A and B are second order tensor in Voigt representation
-    """
-
-    # Set kron product
-    At = np.atleast_2d(A)
-    Bt = np.atleast_2d(B)
-    result = np.kron(At.T, Bt)
-
-    return result
-
-def compute_deviatoric(d, tensor):
-    "Returns deviatoric of a second-order tensor "
+def compute_stress_deviatoric(d, tensor):
+    "Returns deviatoric of a second-order stress-like tensor "
 
     # Initialize
     ddl = int(d*(d+1)/2)
@@ -110,24 +48,29 @@ def compute_deviatoric(d, tensor):
 
     return dev
 
-def clean_dirichlet_3d(A, dod):
+def compute_stress_norm(d, tensor): 
+    "Returns frobenius norm of a second-order stress-like tensor "
 
-    """
-    Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
-    A is actually a vector arranged following each dimension [Au, Av, Aw]
-    """
+    # Initialize
+    ddl = int(d*(d+1)/2)
+    norm = 0.0
 
-    for i in range(3):
-        A[i, dod[i]] = 0.0
+    for i in range(d):
+        norm += tensor(i)**2
 
-    return
+    for i in range(d, ddl):
+        norm += 2.0*tensor(i)**2
+    
+    norm = np.sqrt(norm)
+
+    return norm
 
 def fourth_order_identity(d=3):
     " Creates a fourth-order identity (Voigt representation)"
     
     # Initialize 
     ddl = int(d*(d+1)/2)
-    I = np.eye(ddl)
+    I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
 
     return I
 
@@ -136,15 +79,28 @@ def one_kron_one(d=3):
 
     # Initialize
     ddl = int(d*(d+1)/2)
-    one = np.zeros(ddl)
-    one[:d] = 1.0
+    onekronone = np.zeros((ddl, ddl))
 
-    # Define 
-    onekronone = stkronst(one, one)
+    for i in range(d):
+        for j in range(d):
+            one_kron_one[i,j] = 1.0
 
     return onekronone
 
-def create_der2sym(d=3):
+def stkronst(A, B):
+    """
+    Returns kron product of tensors A and B
+    A and B are second order tensor in Voigt representation
+    """
+
+    # Set kron product
+    At = np.atleast_2d(A)
+    Bt = np.atleast_2d(B)
+    result = np.kron(At.T, Bt)
+
+    return result
+
+def create_incidence(d=3):
 
     """
     Creates M matrix. M is the passage matrix from derivative to actual symetric values. 
@@ -154,74 +110,17 @@ def create_der2sym(d=3):
 
     # Create MM
     ddl = int(d*(d+1)/2)
-    MM = np.zeros((ddl, d*d))
+    EE = np.zeros((ddl, d, d))
 
     if d==3: 
-        MM[0, 0] = 1; MM[1, 4] = 1; MM[2, 8] = 1
-        MM[3, 1] = 0.5; MM[3, 3] = 0.5
-        MM[4, 5] = 0.5; MM[4, 7] = 0.5
-        MM[5, 2] = 0.5; MM[5, 6] = 0.5
+        EE[0, 0, 0] = 1.0; EE[4, 2, 0] = 1.0; EE[5, 1, 0] = 1.0
+        EE[1, 1, 1] = 1.0; EE[3, 2, 1] = 1.0; EE[5, 0, 1] = 1.0
+        EE[2, 2, 2] = 1.0; EE[3, 1, 0] = 1.0; EE[4, 0, 0] = 1.0
     elif d == 2: 
-        MM[0, 0] = 1; MM[1, 3] = 1
-        MM[2, 1] = 0.5; MM[2, 2] = 0.5
+        EE[0, 0, 0] = 1.0; EE[2, 1, 0] = 1.0
+        EE[1, 1, 1] = 1.0; EE[2, 0, 1] = 1.0
 
-    return MM
-
-def cpp_perfect_plasticity(inputs, deps, sigma_n, ep_n, d=3):
-    "Return closest point proyection (cpp) in perfect plasticity criteria"
-
-    def yield_function(sigma_Y, sigma, d=3):
-        "Computes the value of f (consistency condition) in perfect plasticity criteria"
-
-        # Compute deviatoric
-        nu_trial = compute_deviatoric(d, sigma)
-
-        # Compute the norm of dev
-        norm = np.sqrt(stdcst(d, nu_trial, nu_trial))
-
-        # Compute f
-        f = norm - np.sqrt(2.0/3.0)*sigma_Y
-
-        # Compute theta
-        if norm > 0.0: theta = f/norm
-        else: theta = 0.0
-
-        # Compute unit deviatoric tensor
-        if norm > 0.0: N = 1.0/norm*nu_trial
-        else: N = np.zeros(np.shape(nu_trial))
-        
-        return f, N, theta
-
-    # Initialize
-    CC = inputs[0]
-    sigma_Y = inputs[1]
-    mu = inputs[2]
-    Idev = inputs[3]
-
-    # Compute trial sigma 
-    sigma_trial = sigma_n + CC @ deps
-
-    # Compute yield function and unit deviatoric tensor
-    f, N, theta = yield_function(sigma_Y, sigma_trial)
-
-    # Check status
-    if f < 0:
-        # Copy old variables
-        sigma_n1 = sigma_trial
-        ep_n1 = ep_n
-        Dalg = CC
-    else:
-        # Update stress
-        sigma_n1 = sigma_trial - f*N
-
-        # Update effective plastic strain
-        ep_n1 = ep_n + f/(mu*np.sqrt(6.0))
-
-        # Compute consistent tangent matrix
-        NNT = stkronst(N, N)
-        Dalg = CC - 2*mu*((1-theta)*NNT + theta*Idev)
-
-    return sigma_n1, ep_n1, Dalg
+    return EE
 
 def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
     "Return closest point proyection (cpp) in combined hardening plasticity criteria"
@@ -230,17 +129,17 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
         "Computes the value of f (consistency condition) in perfect plasticity criteria"
 
         # Compute deviatoric
-        nu_trial = compute_deviatoric(d, sigma) - alpha
+        eta = compute_stress_deviatoric(d, sigma) - alpha
 
         # Compute the norm of dev
-        norm = np.sqrt(stdcst(d, nu_trial, nu_trial))
+        norm = compute_stress_norm(d, eta)
 
         # Compute f
         f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1-beta)*H*ep_n)
 
         # Compute unit deviatoric tensor
-        if norm > 0.0: N = 1.0/norm*nu_trial
-        else: N = np.zeros(np.shape(nu_trial))
+        if norm > 0.0: N = 1.0/norm*eta
+        else: N = np.zeros(np.shape(eta))
 
         return f, N, norm
 
@@ -290,25 +189,21 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
     "Computes the coefficients to use in internal force vector and stiffness matrix"
 
     # Computes passage matrix
-    MM = create_der2sym(d)
+    EE = create_incidence(d)
 
     # Initialize
-    invJext = np.zeros((d*d, d*d))
     coef_Fint = np.zeros((d*d, len(detJ)))
     coef_Stiff = np.zeros((d*d, d*d, len(detJ)))
 
-    for i, det in enumerate(detJ):
+    for k, det in enumerate(detJ):
 
-        # Computes inverse of jacobian extended
-        for j in range(d):
-            invJext[j*d:(j+1)*d, j*d:(j+1)*d] = invJ[:, :, i]
+        for i in range(d):
+            for j in range(d):
+                Dij = invJ[:,:,k].T @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k]
+                coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d] = Dij*det
 
-        # Computes the coefficients to use in Fint vector
-        coef_Fint[:, i] = invJext.T @ (MM.T @ sigma[:, i]) * det
-
-        # Computes the coefficients to use in Stiffness matrix
-        MDM = MM.T @ Dalg[:, :, i] @ MM
-        coef_Stiff[:, :, i] = invJext.T @ MDM @ invJext * det
+            Si = invJ[:,:,k].T @ EE[:,:,i].T @ sigma[:,k]
+            coef_Fint[i*d:(i+1)*d] = Si*det
 
     return coef_Fint, coef_Stiff
 

@@ -38,44 +38,42 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
     integer :: i, j, k, beta
     dimension :: beta(d)
-    double precision :: MM, invJext, result, temp
-    dimension :: MM(ddl, d*d), invJext(d*d, d*d), result(d*d, nc_total), temp(d*d)
+    double precision :: EE, ders, eps_temp
+    dimension :: EE(ddl, d, d), ders(d*d, nc_total), eps_temp(ddl)
 
     ! Initialize
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    ! Construct MM
-    call create_der2sym(d, ddl, MM)
+    ! Construct passage matrix
+    call create_incidence(d, ddl, EE)
 
     ! Compute derivatives of the displacement in physical space
     do j = 1, d
         do i = 1, d
-            k = i + (j-1)*d
             beta = 1; beta(i) = 2
             call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-                            u(j, :), result(k, :))
+                            u(j, :), ders(i+(j-1)*d, :))
         end do
     end do
 
     ! Compute true strain 
-    do i = 1, nc_total
+    do k = 1, nc_total
 
-        ! Compute inverse of jacobian matrix extended
-        invJext = 0.d0
-        do j = 1, d
-            invJext((j-1)*d+1:j*d, (j-1)*d+1:j*d) = invJ(:, :, i)
+        ! Initialize 
+        eps_temp = 0.d0
+
+        ! Compute E invJ result
+        do i = 1, d
+            eps_temp = eps_temp + matmul(EE(:,:,i), matmul(invJ(:,:,k), ders((i-1)*d+1:i*d, k)))
         end do
-        
-        ! Compute invJext dot result
-        temp = matmul(invJext, result(:, i)) 
 
-        ! Evaluate MM dot temp
-        eps(:, i) = matmul(MM, temp)
+        ! Transfer data
+        eps(:, k) = eps_temp
 
     end do
 
@@ -170,7 +168,7 @@ end subroutine wq_get_forcesurf_3d
 subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes internal force vector in 3D case
-    !! --------- IT IS NOT GOOD
+    !! Probably correct (?)
 
     use tensor_methods
     implicit none 
@@ -204,7 +202,7 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
         do i = 1, d
         
             k = i + (j-1)*d
-            alpha = 1; alpha(i) = 3
+            alpha = 1; alpha(i) = 4
             call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, alpha(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, alpha(2)), &
@@ -214,7 +212,7 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
             
         end do
     end do
-
+    
 end subroutine wq_get_forceint_3d
 
 subroutine mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

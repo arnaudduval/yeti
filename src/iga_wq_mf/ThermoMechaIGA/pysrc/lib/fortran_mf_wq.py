@@ -16,8 +16,8 @@ from .base_functions import (compute_eig_diag,
                             wq_find_basis_weights_fortran
 )
 from .create_model import thermoMechaModel
-from iga_wq_mf import assembly, solver
 from .D3viscoplasticity import *
+from iga_wq_mf import assembly, solver
 
 class fortran_mf_wq(thermoMechaModel):
 
@@ -622,7 +622,7 @@ class fortran_mf_wq(thermoMechaModel):
         sigma_n1 = np.zeros((ddl, self._nb_qp_wq_total))
         Dalg = np.zeros((ddl, ddl, self._nb_qp_wq_total))
         disp = np.zeros(np.shape(Fext))
-        inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._Idev]
+        inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._betaHard, self._Hardening, self._Idev]
 
         # Compute eigen values and vectors
         DU = self.compute_eigen_all(table=self._MechanicalDirichlet)
@@ -644,7 +644,7 @@ class fortran_mf_wq(thermoMechaModel):
     
                 # Closest point projection in perfect plasticity
                 for k in range(self._nb_qp_wq_total):
-                    sigma_n1t, ep_n1t, Dalgt = cpp_perfect_plasticity(inputs, deps[:, k], sigma_n0[:, k], ep_n0[k])
+                    sigma_n1t, ep_n1t, Dalgt = cpp_combined_hardening(inputs, deps[:, k], sigma_n0[:, k], ep_n0[k])
                     sigma_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, ep_n1t, Dalgt
 
                 # Compute coefficients to compute Fint and Stiffness

@@ -1,7 +1,38 @@
 ! ==========================
 ! module :: Elasto-plasticity 
 ! author :: Joaquin Cornejo
+! Remarks :: Voigt notation is used. That is 
+! e = [e11, e22, e33, 2e12, 2e13, 2e23]^T
+! s = [s11, s22, s33, s12, s13, s23]^T
+! 1 = [1, 1, 1, 0, 0, 0]^T
+! I = diag(1, 1, 1, 0.5, 0.5, 0.5)
+! And then, some products are:
+! Double contraction st-st S:E = dot(s, e), this only works with stress and strains
+! In Voigt notation if one wants to compute E:E or S:S some scale factor need to be considered.
+! Double contraction C:E = matmul(C, E), this is true only with strains
+! Otherwise some scale factor need to be considered.
 ! ==========================
+
+subroutine clean_dirichlet_3d(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+    !! Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
+
+    implicit none
+    ! Input / output data
+    ! ---------------------
+    integer, intent(in) :: nc, ndu, ndv, ndw
+    double precision, intent(inout) :: A
+    dimension :: A(3, nc)
+
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+
+    ! Clean array
+    A(1, dod_u) = 0.d0 
+    A(2, dod_v) = 0.d0 
+    A(3, dod_w) = 0.d0 
+
+end subroutine clean_dirichlet_3d
 
 subroutine block_dot_product(dimen, nc, A, B, result)
     !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
@@ -32,162 +63,7 @@ subroutine block_dot_product(dimen, nc, A, B, result)
 
 end subroutine block_dot_product
 
-subroutine array_maps_tensor(dimen, p, i, j)
-    !! Converts an array index into a symmetric second-order tensor index
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: dimen, p 
-    integer, intent(out) :: i, j
-
-    if (dimen.eq.3) then 
-        if (p.le.dimen) then 
-            i = p; j = p;
-        else
-            if (p.eq.4) then
-                i = 1; j = 2
-            else if (p.eq.5) then
-                i = 1; j = 3;
-            else if (p.eq.6) then
-                i = 2; j = 3;
-            end if
-        end if
-    else if (dimen.eq.2) then 
-        if (p.le.dimen) then 
-            i = p; j = p;
-        else
-            if (p.eq.3) then
-                i = 1; j = 2
-            end if
-        end if
-    else
-        print*, "Error. Only 2d or 3d"
-    end if
-
-end subroutine array_maps_tensor
-
-subroutine tensor_maps_array(dimen, i, j, p)
-    !! Converts a symmetric second-order tensor index into an array index
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: dimen, i, j
-    integer, intent(out) :: p
-
-    if ((dimen.eq.3).or.(dimen.eq.2)) then 
-        if (i.eq.j) then
-            p = i
-        else 
-            p = i + j + dimen - 2
-        end if
-    else
-        print*, "Error. Only 2d or 3d"
-    end if
-
-end subroutine tensor_maps_array
-
-subroutine array2st(dimen, ddl, array, tensor)
-    !! Returns second-order tensor from array
-    !! i.e. from [t11, t22, t12], one gets [[t11, t12], [t21, t22]] (with t21 = t12)
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: dimen, ddl
-    double precision, intent(in) :: array
-    dimension :: array(ddl)
-
-    double precision, intent(out) :: tensor
-    dimension :: tensor(dimen, dimen)
-
-    ! Local data
-    ! -------------
-    integer :: i, j, p
-    double precision :: diag
-    dimension :: diag(dimen, dimen)
-
-    ! Initialize
-    tensor = 0.d0
-    diag = 0.d0
-
-    do p = 1, ddl
-        call array_maps_tensor(dimen, p, i, j)
-        tensor(i, j) = array(p) 
-    end do
-
-    ! Find diagonal of tensor
-    do i = 1, dimen
-        diag(i, i) = tensor(i, i)
-    end do
-
-    ! Compute real tensor
-    tensor = tensor + transpose(tensor) - diag
-
-end subroutine array2st
-
-subroutine stdcst(dimen, ddl, A, B, result)
-    !! Returns A double contracted with B
-    !! A and B are second order tensor in Voigt representation
-    !! With inditial notation : result = A_ij * B_ij
-    
-    implicit none
-    ! Input / output data
-    ! ----------------------
-    integer, intent(in) :: dimen, ddl
-    double precision, intent(in) :: A, B
-    dimension :: A(ddl), B(ddl)
-
-    double precision, intent(out) :: result
-
-    ! Local data
-    ! ---------------
-    integer :: i, j
-    double precision :: At, Bt
-    dimension :: At(ddl, ddl), Bt(ddl, ddl)
-
-    ! Convert array to tensor
-    call array2st(dimen, ddl, A, At)
-    call array2st(dimen, ddl, B, Bt)
-
-    ! Compute double contracted result
-    result = 0.d0
-    do j = 1, ddl
-        do i = 1, ddl
-            result = result + At(i, j)*Bt(i, j)
-        end do
-    end do
-
-end subroutine stdcst
-
-subroutine stkronst(ddl, A, B, result)
-    !! Returns kron product of tensors A and B
-    !! A and B are second order tensor in Voigt representation
-
-    implicit none
-    ! Input / output data
-    ! ----------------------
-    integer, intent(in) :: ddl
-    double precision, intent(in) :: A, B
-    dimension :: A(ddl), B(ddl)
-
-    double precision, intent(out) :: result
-    dimension :: result(ddl, ddl)
-
-    ! Local data
-    ! ---------------
-    integer :: i, j
-
-    do j = 1, ddl
-        do i = 1, ddl
-            result(i, j) = A(i)*B(j)
-        end do
-    end do
-
-end subroutine stkronst
-
-subroutine compute_deviatoric(dimen, ddl, tensor, dev)
+subroutine compute_stress_deviatoric(dimen, ddl, tensor, dev)
     !! Returns deviatoric of a second-order tensor 
 
     implicit none
@@ -221,36 +97,46 @@ subroutine compute_deviatoric(dimen, ddl, tensor, dev)
     ! Definition of deviatoric
     dev = tensor - 1.d0/3.d0*trace*one 
     
-end subroutine compute_deviatoric
+end subroutine compute_stress_deviatoric
 
-subroutine clean_dirichlet_3d(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
-    !! Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
-    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
+subroutine compute_stress_norm(dimen, ddl, tensor, norm)
+    !! Returns Frobenius norm of a second-order stress-like tensor 
 
     implicit none
     ! Input / output data
-    ! ---------------------
-    integer, intent(in) :: nc, ndu, ndv, ndw
-    double precision, intent(inout) :: A
-    dimension :: A(3, nc)
+    ! ----------------------
+    integer, intent(in) :: dimen, ddl
+    double precision, intent(in) :: tensor
+    dimension :: tensor(ddl)
 
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+    double precision, intent(out) :: norm
 
-    ! Clean array
-    A(1, dod_u) = 0.d0 
-    A(2, dod_v) = 0.d0 
-    A(3, dod_w) = 0.d0 
+    ! Local data
+    ! -----------
+    integer :: i
 
-end subroutine clean_dirichlet_3d
+    ! Initialize 
+    norm = 0.0d0
 
-subroutine fourth_order_identity(ddl, identity)
+    do i = 1, dimen
+        norm = norm + tensor(i)*tensor(i)
+    end do
+
+    do i = dimen+1, ddl
+        norm = norm + 2.d0*tensor(i)*tensor(i)
+    end do
+
+    norm = sqrt(norm)
+    
+end subroutine compute_stress_norm
+
+subroutine fourth_order_identity(dimen, ddl, identity)
     !! Creates a fourth-order identity (Voigt representation)
 
     implicit none
     ! Input / output data
     ! --------------------
-    integer, intent(in) :: ddl 
+    integer, intent(in) :: dimen, ddl 
     double precision, intent(out) :: identity
     dimension :: identity(ddl, ddl)
 
@@ -260,8 +146,12 @@ subroutine fourth_order_identity(ddl, identity)
 
     ! Create identity
     identity = 0.d0
-    do i = 1, ddl
+    do i = 1, dimen
         identity(i, i) = 1.d0
+    end do
+
+    do i = dimen+1, ddl
+        identity(i, i) = 0.5d0
     end do
 
 end subroutine fourth_order_identity
@@ -290,8 +180,8 @@ subroutine one_kron_one(dimen, ddl, onekronone)
 
 end subroutine one_kron_one
 
-subroutine create_der2sym(dimen, ddl, MM)
-    !! Creates M matrix. M is the passage matrix from derivative to actual symetric values. 
+subroutine create_incidence(dimen, ddl, EE)
+    !! Creates incidence matrix M. M is the passage matrix from derivative to actual symetric values. 
     !! If we multiply a vector of values u_(i, j) with M matrix, one obtains the vector: 
     !! us_ij = 0.5*(u_(i,j) + u_(j,i))  
 
@@ -299,22 +189,22 @@ subroutine create_der2sym(dimen, ddl, MM)
     ! Input / output 
     ! --------------------
     integer, intent(in) :: dimen, ddl
-    double precision, intent(out) :: MM
-    dimension :: MM(ddl, dimen*dimen)
+    double precision, intent(out) :: EE
+    dimension :: EE(ddl, dimen, dimen)
 
     if (dimen.eq.3) then 
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0; MM(2, 5) = 1.0d0; MM(3, 9) = 1.0d0
-        MM(4, 2) = 0.5d0; MM(4, 4) = 0.5d0
-        MM(5, 6) = 0.5d0; MM(5, 8) = 0.5d0
-        MM(6, 3) = 0.5d0; MM(6, 7) = 0.5d0
+        EE = 0.0d0
+        EE(1, 1, 1) = 1.0d0; EE(5, 3, 1) = 1.0d0; EE(6, 2, 1) = 1.0d0
+        EE(2, 2, 2) = 1.0d0; EE(4, 3, 2) = 1.0d0; EE(6, 1, 2) = 1.0d0
+        EE(3, 3, 3) = 1.0d0; EE(4, 2, 1) = 1.0d0; EE(5, 1, 1) = 1.0d0
+
     else if (dimen.eq.2) then
-        MM = 0.0d0
-        MM(1, 1) = 1.0d0; MM(2, 4) = 1.0d0
-        MM(3, 2) = 0.5d0; MM(3, 3) = 0.5d0
+        EE = 0.0d0
+        EE(1, 1, 1) = 1.0d0; EE(3, 2, 1) = 1.0d0
+        EE(2, 2, 2) = 1.0d0; EE(3, 1, 2) = 1.0d0
     end if
 
-end subroutine create_der2sym
+end subroutine create_incidence
 
 module elastoplasticity
 
@@ -354,8 +244,8 @@ module elastoplasticity
         ! Local data
         ! ----------------
         double precision :: lambda, mu, bulk
-        double precision :: identity, onekronone, CC, SS
-        dimension :: identity(ddl, ddl), onekronone(ddl, ddl), CC(ddl, ddl), SS(ddl, ddl)
+        double precision :: II, Idev, onekronone, CC, SS
+        dimension :: II(ddl, ddl), Idev(ddl, ddl), onekronone(ddl, ddl), CC(ddl, ddl), SS(ddl, ddl)
 
         ! Compute Lame coefficients
         lambda = nu*E/((1+nu)*(1-2*nu))
@@ -363,13 +253,13 @@ module elastoplasticity
         bulk = lambda + 2.d0/3.d0*mu
 
         ! Create special tensors in Voigt representation
-        call fourth_order_identity(ddl, identity)
+        call fourth_order_identity(dimen, ddl, II)
         call one_kron_one(dimen, ddl, onekronone)
+        Idev = II - 1.d0/3.d0*onekronone
 
         ! Computes C and S
-        CC = lambda*onekronone + 2*mu*identity
-        SS = 1.d0/(9.d0*bulk)*onekronone &
-            + 1.d0/(2.d0*mu)*(identity - 1.d0/3.d0*onekronone)
+        CC = lambda*onekronone + 2*mu*II
+        SS = 1.d0/(9.d0*bulk)*onekronone + 1.d0/(2.d0*mu)*(Idev)
 
         ! Save data computed
         allocate(object)
@@ -385,143 +275,63 @@ module elastoplasticity
         allocate(object%Ctensor(ddl, ddl), object%Stensor(ddl, ddl), object%Idev(ddl, ddl))
         object%Ctensor = CC
         object%Stensor = SS
-        object%Idev = identity - 1.d0/3.d0*onekronone
+        object%Idev = Idev
 
     end subroutine initialize_mat
 
-    subroutine compute_coefficients(nc_total, sigma, Dalg, invJ, detJ, coef_Fint, coef_Stiff)
+    subroutine compute_coefficients(nc_total, sigma, DD, invJ, detJ, coef_Fint, coef_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
 
         implicit none 
         ! Input / output 
         ! --------------------
         integer, intent(in) :: nc_total
-        double precision, intent(in) :: sigma, Dalg, invJ, detJ
-        dimension :: sigma(ddl, nc_total), Dalg(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
+        double precision, intent(in) :: sigma, DD, invJ, detJ
+        dimension :: sigma(ddl, nc_total), DD(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
 
         double precision, intent(out) :: coef_Fint, coef_Stiff
         dimension :: coef_Fint(dimen*dimen, nc_total), coef_Stiff(dimen*dimen, dimen*dimen, nc_total)
 
         ! Local data
         ! -------------
-        integer :: i, j
-        double precision :: MM, invJext, MM_S, MM_dSdE, MDM, coef_temp
-        dimension ::    MM(ddl, dimen*dimen), invJext(dimen*dimen, dimen*dimen), MM_S(dimen*dimen), &
-                        MM_dSdE(dimen*dimen, ddl), MDM(dimen*dimen, dimen*dimen), coef_temp(dimen*dimen, dimen*dimen)
+        integer :: i, j, k
+        double precision :: EE, ETCE, Dij, Si
+        dimension :: EE(ddl, dimen, dimen), ETCE(dimen, dimen), Dij(dimen, dimen), Si(dimen)
                     
         ! Construct passage matrix
-        call create_der2sym(dimen, ddl, MM)
+        call create_incidence(dimen, ddl, EE)
 
-        do i = 1, nc_total
+        do k = 1, nc_total
 
-            ! Compute inverse of Jacobian matrix extended
-            invJext = 0.d0
-            do j = 1, dimen
-                invJext((j-1)*dimen+1:j*dimen, (j-1)*dimen+1:j*dimen) = invJ(:, :, i)
+            ! For stiffness and stress coefficients
+            do i = 1, dimen
+                do j = 1, dimen
+                
+                    ! Compute E.T C E
+                    ETCE = matmul(transpose(EE(:,:,i)), matmul(DD(:,:,k), EE(:,:,j)))
+
+                    ! Compute Dij
+                    Dij = matmul(transpose(invJ(:,:,k)), matmul(ETCE, invJ(:,:,k)))
+
+                    ! Transfer data
+                    coef_Stiff((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, k) = Dij*detJ(k)
+                end do
+
+                ! Compute invJ.T E.T sigma
+                Si = matmul(transpose(invJ(:,:,k)), matmul(transpose(EE(:,:,i)), sigma(:,k)))
+
+                ! Transfer data
+                coef_Fint((i-1)*dimen+1:i*dimen, k) = Si*detJ(k)
+
             end do
 
-            ! Compute the coefficients to use in Fint
-            MM_S = matmul(transpose(MM), sigma(:, i))
-            coef_Fint(:, i) = matmul(transpose(invJext), MM_S) * detJ(i)
-
-            ! Compute the coefficients to use in Stiffness matrix
-            MM_dSdE = matmul(transpose(MM), Dalg(:, :, i))
-            MDM = matmul(MM_dSdE, MM)
-            coef_temp = matmul(transpose(invJext), MDM)
-            coef_Stiff(:, :, i) = matmul(coef_temp, invJext) * detJ(i)
-        
         end do
 
     end subroutine compute_coefficients
 
-    ! =========================
-    ! PERFECT PLASTICITY
-    ! =========================
-
-    subroutine yield_perfect_plasticity(sigma_Y, sigma, f, norm, N)
-        !! Computes the value of f (consistency condition) in perfect plasticity criteria
-        
-        implicit none
-        ! Input / output
-        ! ---------------
-        double precision, intent(in) ::  sigma_Y, sigma
-        dimension :: sigma(ddl)
-        double precision, intent(out) :: f, norm, N
-        dimension :: N(ddl)
-
-        ! Local data
-        ! ----------------
-        double precision :: eta
-        dimension :: eta(ddl)
-
-        ! Compute deviatoric of sigma tensor: nu_trial
-        call compute_deviatoric(dimen, ddl, sigma, eta)
-
-        ! Compute the norm sqrt(nu_trial : nu_trial)
-        call stdcst(dimen, ddl, eta, eta, norm)
-        norm = sqrt(norm)
-        f = norm - sqrt(2.d0/3.d0) * sigma_Y   
-
-        ! Compute gradient of the gradient of f
-        if (norm.gt.0.d0) then
-            N = 1.d0/norm*eta
-        else
-            N = 0.d0
-        end if
-
-    end subroutine yield_perfect_plasticity
-
-    subroutine cpp_perfect_plasticity(mat, deps, ep_n0, sigma_n0, ep_n1, sigma_n1, Dalg)
-        !! Return closest point proyection (cpp) in perfect plasticity criteria
-
-        implicit none
-        ! Input / output
-        ! ---------------
-        type(material), pointer :: mat
-        double precision, intent(in) :: deps, ep_n0, sigma_n0
-        dimension :: deps(ddl), sigma_n0(ddl)
-
-        double precision, intent(out) :: ep_n1, sigma_n1, Dalg
-        dimension :: sigma_n1(ddl), Dalg(ddl, ddl)
-        
-        ! Local data
-        ! ------------
-        double precision :: f, norm
-        double precision :: sigma_trial, N, NNT
-        dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
-                       
-        ! Compute elastic predictor
-        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
-        
-        ! Review condition
-        call yield_perfect_plasticity(mat%sigma_Y, sigma_trial, f, norm, N)
-
-        if (f.le.0.d0) then ! Elastic point
-
-            ! Send back values
-            sigma_n1 = sigma_trial
-            ep_n1 = ep_n0
-            Dalg = mat%Ctensor
-
-        else ! Plastic point
-
-            ! Update stress
-            sigma_n1 = sigma_trial - f*N
-
-            ! Update effective plastic strain 
-            ep_n1 = ep_n0 + f/(mat%mu*sqrt(6.d0))
-
-            ! Compute consistent tangent matrix
-            call stkronst(ddl, N, N, NNT)
-            Dalg = mat%Ctensor - 2*mat%mu*((1-f/norm)*NNT + f/norm*mat%Idev)
-
-        end if
-
-    end subroutine cpp_perfect_plasticity
-
-    ! =========================
-    ! COMBINED HARDENING
-    ! =========================
+    ! ======================================
+    ! COMBINED ISOTROPIC/KINEMATIC HARDENING
+    ! ======================================
 
     subroutine yield_combined_hardening(sigma_Y, H, beta, sigma, alpha, ep, f, norm, N)
         !! Computes the value of f (consistency condition) in combined hardening criteria
@@ -536,18 +346,17 @@ module elastoplasticity
 
         ! Local data
         ! ----------------
-        double precision :: eta
-        dimension :: eta(ddl)
+        double precision :: eta, dev_sigma
+        dimension :: eta(ddl), dev_sigma(ddl)
 
         ! Compute deviatoric of sigma tensor
-        call compute_deviatoric(dimen, ddl, sigma, eta)
+        call compute_stress_deviatoric(dimen, ddl, sigma, dev_sigma)
 
         ! Compute eta
-        eta = eta - alpha
+        eta = dev_sigma - alpha
 
         ! Compute the norm sqrt(nu_trial : nu_trial)
-        call stdcst(dimen, ddl, eta, eta, norm)
-        norm = sqrt(norm)
+        call compute_stress_norm(dimen, ddl, eta, norm)
         f = norm - sqrt(2.d0/3.d0) * (sigma_Y + (1-beta)*H*ep)   
 
         ! Compute gradient of the gradient of f
@@ -575,6 +384,7 @@ module elastoplasticity
         
         ! Local data
         ! ------------
+        integer :: i, j
         double precision :: f, norm, dgamma, c1, c2
         double precision :: sigma_trial, N, NNT
         dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
@@ -610,7 +420,11 @@ module elastoplasticity
             ! Compute consistent tangent matrix
             c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
             c2 = 4.d0*mat%mu**2.d0*dgamma/norm
-            call stkronst(ddl, N, N, NNT)
+            do i = 1, ddl
+                do j = 1, ddl
+                    NNT(i, j) = N(i)*N(j)
+                end do
+            end do
             Dalg = mat%Ctensor - (c1-c2)*NNT - c2*mat%Idev
 
         end if
