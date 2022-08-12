@@ -592,7 +592,7 @@ class thermoMechaModel():
             for i in range(d):
                 for j in range(d):
                     ETCE = EE[:,:,i].T @ C[:,:,k] @ EE[:,:,j]
-                    Dij = invJJ.T @ ETCE @ invJJ
+                    Dij = invJJ @ ETCE @ invJJ.T
                     coefs[j*d:(j+1)*d, j*d:(j+1)*d, k] = Dij*detJJ
 
         return coefs

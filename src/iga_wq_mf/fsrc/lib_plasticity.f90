@@ -311,14 +311,14 @@ module elastoplasticity
                     ETCE = matmul(transpose(EE(:,:,i)), matmul(DD(:,:,k), EE(:,:,j)))
 
                     ! Compute Dij
-                    Dij = matmul(transpose(invJ(:,:,k)), matmul(ETCE, invJ(:,:,k)))
+                    Dij = matmul(invJ(:,:,k), matmul(ETCE, transpose(invJ(:,:,k))))
 
                     ! Transfer data
                     coef_Stiff((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, k) = Dij*detJ(k)
                 end do
 
-                ! Compute invJ.T E.T sigma
-                Si = matmul(transpose(invJ(:,:,k)), matmul(transpose(EE(:,:,i)), sigma(:,k)))
+                ! Compute invJ E.T sigma
+                Si = matmul(invJ(:,:,k), matmul(transpose(EE(:,:,i)), sigma(:,k)))
 
                 ! Transfer data
                 coef_Fint((i-1)*dimen+1:i*dimen, k) = Si*detJ(k)

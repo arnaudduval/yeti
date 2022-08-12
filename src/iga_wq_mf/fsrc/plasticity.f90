@@ -69,7 +69,7 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
         ! Compute E invJ result
         do i = 1, d
-            eps_temp = eps_temp + matmul(EE(:,:,i), matmul(invJ(:,:,k), ders((i-1)*d+1:i*d, k)))
+            eps_temp = eps_temp + matmul(EE(:,:,i), matmul(transpose(invJ(:,:,k)), ders((i-1)*d+1:i*d, k)))
         end do
 
         ! Transfer data

@@ -897,11 +897,11 @@ module tensor_methods
 
         ! Modify K to avoid singular matrix (We consider a Robin boundary condition)
         if (t_robin(1).eq.1) then 
-            KK(1, 1) = 1000 * KK(1,1)
+            KK(1, 1) = 1001 * KK(1,1)
         end if
 
         if (t_robin(2).eq.1) then 
-            KK(nr,nr) = 1000 * KK(nr, nr)
+            KK(nr,nr) = 1001 * KK(nr, nr)
         end if
 
         ! Select diagonal of M and K
@@ -914,7 +914,7 @@ module tensor_methods
         ! Eigen decomposition KK U = MM U DD
         ! -----------------------------------
         ! Use routine workspace query to get optimal workspace.
-        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
+        call dsygvd(1, 'V', 'L', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
 
         ! Make sure that there is enough workspace 
         lwork = max(1+(6+2*nr)*nr, nint(dummy(1)))
@@ -922,7 +922,7 @@ module tensor_methods
         allocate (work(lwork), iwork(liwork))
 
         ! Solve
-        call dsygvd(1, 'V', 'U', nr, KK, nr, MM, nr, eigenvalues, work, lwork, iwork, liwork, info)
+        call dsygvd(1, 'V', 'L', nr, KK, nr, MM, nr, eigenvalues, work, lwork, iwork, liwork, info)
 
         ! Get values
         eigenvectors = KK

@@ -199,10 +199,10 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 
         for i in range(d):
             for j in range(d):
-                Dij = invJ[:,:,k].T @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k]
+                Dij = invJ[:,:,k] @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
                 coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d] = Dij*det
 
-            Si = invJ[:,:,k].T @ EE[:,:,i].T @ sigma[:,k]
+            Si = invJ[:,:,k] @ EE[:,:,i].T @ sigma[:,k]
             coef_Fint[i*d:(i+1)*d] = Si*det
 
     return coef_Fint, coef_Stiff
