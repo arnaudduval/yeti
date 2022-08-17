@@ -897,7 +897,7 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
                     M = Vscript[:, j, :].max()
                     w2[j] = np.sqrt(m*M)        
             elif k == 2: 
-                for j in range(n2):
+                for j in range(n3):
                     m = Vscript[:, :, j].min()
                     M = Vscript[:, :, j].max()
                     w3[j] = np.sqrt(m*M)
@@ -936,7 +936,7 @@ def tensor_decomposition_3D(n_list, coefs_matrix: np.ndarray):
                     M = Mscript[:, j, :].max()
                     u2[j] = np.sqrt(m*M)        
             elif k == 2: 
-                for j in range(n2):
+                for j in range(n3):
                     m = Nscript[:, :, j].min()
                     M = Mscript[:, :, j].max()
                     u3[j] = np.sqrt(m*M) 
