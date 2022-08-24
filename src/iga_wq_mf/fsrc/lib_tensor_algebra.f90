@@ -1,5 +1,5 @@
 ! =========================================
-! module :: sum product (Tensor operations)
+! module :: tensor algebra
 ! author :: Joaquin Cornejo
 ! =========================================
 module tensor_methods
@@ -913,7 +913,7 @@ module tensor_methods
         ! -----------------------------------
         ! Eigen decomposition KK U = MM U DD
         ! -----------------------------------
-        ! Use routine workspace query to get optimal workspace.
+        ! Use routine workspace query to get optimal workspace
         call dsygvd(1, 'V', 'L', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
 
         ! Make sure that there is enough workspace 
@@ -1109,7 +1109,7 @@ module tensor_methods
                 do i = 1, nc_u, step
                     pos = i + (j-1)*nc_u + (k-1)*nc_u*nc_v
                     MatrixT = JJ(:, :, pos)
-                    call polar_decomposition(MatrixT, Q, dist, dummy, 1, 1)
+                    call polar_decomposition(MatrixT, Q, dist, dummy, .true., .true.)
     
                     ! Find mean of diagonal of jacobien
                     Lu = Lu + dist(1, 1)/nb_pts

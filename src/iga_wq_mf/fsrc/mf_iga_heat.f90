@@ -303,7 +303,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, & 
                         Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
-    !! Conjugate gradient with ot without preconditioner 
+    !! Conjugate gradient with or without preconditioner 
     !! CSR FORMAT
                         
     use tensor_methods
@@ -498,11 +498,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! -------------------------------------------
             r = b; dummy = r 
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
+                call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
             end if
             call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
             if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scale_vector(nr_total, Dparametric, Dphysical, z) 
+                call fd_sqr_scaling(nr_total, Dparametric, Dphysical, z) 
             end if
             p = z
             rsold = dot_product(r, z)
@@ -530,11 +530,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
 
                 dummy = r
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
                 end if
                 call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, z) 
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, z) 
                 end if
                 rsnew = dot_product(r, z)
                                 
@@ -549,7 +549,7 @@ end subroutine mf_iga_steady_heat_3d
 subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, x, RelRes)
-    !! Conjugate gradient with ot without preconditioner 
+    !! Conjugate gradient with or without preconditioner 
     !! CSR FORMAT
                         
     use tensor_methods

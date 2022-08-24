@@ -4,7 +4,7 @@
 ! ====================================================
 
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
-                                Method, Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
+                                method, Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -21,7 +21,7 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
     dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
-    character(len=10), intent(in) :: Method
+    character(len=10), intent(in) :: method
     double precision, intent(in) :: Mcoef, Kcoef
     dimension :: Mcoef(nc), Kcoef(nc)
     integer, intent(in) :: t_robin
@@ -36,13 +36,41 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     dimension :: Kdiag(nr), Mdiag(nr)
 
     call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                            data_B0, data_W0, data_B1, data_W1, Method, t_robin, &
+                            data_B0, data_W0, data_B1, data_W1, method, t_robin, &
                             eigenvalues, eigenvectors, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py
 
-subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, &
-                                diagonal, array_in, array_out)
+subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector)
+    !! Square-root scaling in fast diagonalization
+
+    use omp_lib
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: factor_up, factor_down
+    dimension :: factor_up(nnz), factor_down(nnz)
+
+    double precision, intent(inout) :: vector
+    dimension :: vector(nnz)
+
+    ! Local data
+    ! -------------
+    integer :: i, nb_tasks
+
+    !$OMP PARALLEL 
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+    do i = 1, nnz
+        vector(i) = sqrt(factor_up(i)/factor_down(i)) * vector(i) 
+    end do  
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+
+end subroutine fd_sqr_scaling
+
+subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to steady heat equations
     !! by G. Sanaglli and M. Tani

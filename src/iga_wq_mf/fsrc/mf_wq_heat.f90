@@ -281,97 +281,6 @@ subroutine mf_wq_get_ku_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     
 end subroutine mf_wq_get_ku_3d_csr
 
-subroutine test_precondfd(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-    !! Solve Sylvester equation P s = r
-    
-    use tensor_methods
-    implicit none 
-    ! Input / output data
-    ! ---------------------
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    character(len=10) :: Method = 'C'
-
-    ! Local data
-    ! ------------------
-    integer :: nr_total, nc_total, dorobin(2)
-    double precision, dimension(:, :, :), allocatable :: cond_coefs
-    double precision :: s, r1
-    dimension :: s(nr_u*nr_v*nr_w), r1(nr_u*nr_v*nr_w)
-    
-    ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Kdiag_dummy, Mdiag_dummy, Mcoef_dummy, Kcoef_dummy
-    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w, Deigen
-    double precision :: start, finish
-
-    ! Initialize
-    s = 1.d0
-    nr_total = nr_u*nr_v*nr_w
-    nc_total = nc_u*nc_v*nc_w
-
-    ! --------------------------------------------
-    ! EIGEN DECOMPOSITION
-    ! -------------------------------------------- 
-    dorobin = (/0, 0/)
-    allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
-
-    allocate(Kdiag_dummy(nr_u), Mdiag_dummy(nr_u))
-    call eigen_decomposition(nr_u, nc_u, Mcoef_dummy, Kcoef_dummy, nnz_u, indi_u, indj_u, &
-                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), data_W_u(:, 4), &
-                            Method, dorobin, D_u, U_u, Kdiag_dummy, Mdiag_dummy)
-    deallocate(Kdiag_dummy, Mdiag_dummy)
-
-    allocate(Kdiag_dummy(nr_v), Mdiag_dummy(nr_v))
-    call eigen_decomposition(nr_v, nc_v, Mcoef_dummy, Kcoef_dummy, nnz_v, indi_v, indj_v, &
-                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), data_W_v(:, 4), &
-                            Method, dorobin, D_v, U_v, Kdiag_dummy, Mdiag_dummy)    
-    deallocate(Kdiag_dummy, Mdiag_dummy)
-
-    allocate(Kdiag_dummy(nr_w), Mdiag_dummy(nr_w))
-    call eigen_decomposition(nr_w, nc_w, Mcoef_dummy, Kcoef_dummy, nnz_w, indi_w, indj_w, &
-                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), data_W_w(:, 4), &
-                            Method, dorobin, D_w, U_w, Kdiag_dummy, Mdiag_dummy)  
-    deallocate(Kdiag_dummy, Mdiag_dummy)
-
-    ! Find diagonal of eigen values
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-    allocate(Deigen(nr_total))
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    call find_parametric_diag_3d(nr_u, nr_v, nr_w, 1.d0, 1.d0, 1.d0, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
-    deallocate(I_u, I_v, I_w)
-
-    ! ! =============================
-    ! ! It is already optimized
-    ! ! Do fast diagonalization direct method
-    ! call cpu_time(start)
-    ! call fast_diag_K_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, r1)
-    ! call cpu_time(finish)
-    ! print *, finish-start
-
-    ! =============================
-    allocate(cond_coefs(3, 3, nc_total))
-    cond_coefs = 1.d0
-
-    call cpu_time(start)
-    call mf_wq_get_ku_3d_csr(cond_coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, s, r1)
-    call cpu_time(finish)
-    ! print*, finish-start
-
-end subroutine test_precondfd
-
 ! ----------------------------------------
 ! Conjugate gradient for steady problems
 ! ----------------------------------------
@@ -569,22 +478,23 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! -------------------------------------------
             ! Preconditioned Conjugate Gradient algorithm
             ! -------------------------------------------
-            r = b; rhat = r; p = r; dummy = p
-
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
-            end if 
-            call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-            if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                call scale_vector(nr_total, Dparametric, Dphysical, ptilde)  
-            end if
-
+            r = b; rhat = r; p = r
             rsold = dot_product(r, rhat)
             RelRes(1) = 1.d0
             RelError(1) = 1.d0
 
             do iter = 1, nbIter
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+
+                dummy = p
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
+                end if 
+                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
+                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
+                end if
+
+                call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
@@ -594,11 +504,11 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
                 dummy = s
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, dummy)  
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
                 end if
                 call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
                 if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, stilde) 
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
                 end if
 
                 call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -618,16 +528,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 rsnew = dot_product(r, rhat)
                 beta = (alpha/omega)*(rsnew/rsold)
                 p = r + beta*(p - omega*Aptilde)
-                
-                dummy = p
-                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, dummy) 
-                end if
-                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-                if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
-                    call scale_vector(nr_total, Dparametric, Dphysical, ptilde) 
-                end if
-
                 rsold = rsnew
             end do
         end if
@@ -720,12 +620,14 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! -------------------------------------------
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
-    r = b; rhat = r; p = r; dummy = p
-    call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
+    r = b; rhat = r; p = r
     rsold = dot_product(r, rhat)
     RelRes(1) = 1.d0
 
     do iter = 1, nbIterations
+        dummy = p
+        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
+
         call mf_wq_get_cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -753,9 +655,6 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
         rsnew = dot_product(r, rhat)
         beta = (alpha/omega)*(rsnew/rsold)
         p = r + beta*(p - omega*Aptilde)
-        
-        dummy = p
-        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
         rsold = rsnew
     end do
 

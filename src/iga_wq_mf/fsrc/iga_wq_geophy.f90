@@ -1,10 +1,13 @@
 ! ==========================
-! module :: Assembly for IGA-WQ 
+! module :: geometrical properties and behavior of materials
 ! author :: Joaquin Cornejo
+! 
+! In this module, one could find functions to compute thermal properties and jacobian given the data at control points
+! For mechanical properties, we suggest to go to plasticity module
 ! ==========================
 
 subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
-    !! Computes coefficient for K
+    !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
     
     use omp_lib
     implicit none 
@@ -73,7 +76,7 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 end subroutine eval_conductivity_coefficient
 
 subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
-    !! Computes coefficient for C 
+    !! Computes capacity coefficient coef = sigma * detJ
     
     use omp_lib
     implicit none 
@@ -137,7 +140,7 @@ end subroutine eval_capacity_coefficient
 subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, ctrlpts, jacob, detJ, invJ)
-    !! Computes jacobien matrix and physical position in 3D case
+    !! Computes jacobien matrix in 3D case. Also its determinant and inverse
     !! IN CSR FORMAT
     
     use omp_lib
@@ -262,7 +265,7 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, ctrlpts, &
                             jacob, detJ, invJ)
-    !! Computes jacobien in 2D case
+    !! Computes jacobien matrix in 2D case. Also its determinant and inverse
     !! IN CSR FORMAT
     
     use omp_lib

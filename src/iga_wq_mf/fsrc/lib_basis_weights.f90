@@ -1,17 +1,34 @@
-! This module computes an accurate weighted quadrature rule
-! The input is the degree p and an open knot-vector of maximum regularity, that is, 
+! ==============================================
+! module: Basis and weights
+! author: Joaquin Cornejo
+! 
+! This module computes an accurate weighted quadrature rule using 2 methods
+! For both methods, the input is the degree p and an open knot-vector of maximum regularity, that is, 
 ! the test functions space is S^p_r, with r = p-1.
-! The ouput is 2 quadrature rules: 
+!
+! The ouput of the first method is 4 quadrature rules: 
+! - For integrals of the form int N(x) f(x) dx
+! - For integrals of the form int N(x) f'(x) dx
+! - For integrals of the form int N'(x) f(x) dx
+! - For integrals of the form int N'(x) f'(x) dx
+! For that we will use functions of the target space S^{p-1}_{r-1}. 
+!
+! The ouput of the second method is 2 quadrature rules: 
 ! - For integrals of the form int N(x) f(x) dx
 ! - For integrals of the form int N'(x) f(x) dx
 ! For that we will use functions of the target space S^p_{r-1}. 
+!
+! The first method uses half of quadrature points of the second one when number of elements is large.
+! The second method is more adapted to structural analysis.
+! ===============================================
 
 ! =================
 ! GLOBAL FUNCTIONS: expected to work with any knotvector
 ! =================
 
 subroutine find_knotvector_span(degree, size_kv, knotvector, x, span, span_tol)
-    !! Finds the span of a given knot within the knot-vector
+    !! Finds the knot-vector span of a given knot. 
+    !! Ex: Given the knot-vector {0, 0, 0, 0.5, 1, 1, 1} and x = 0.25, the knot-vector span is 3.
 
     implicit none 
     ! Input / output data
@@ -39,7 +56,8 @@ subroutine find_knotvector_span(degree, size_kv, knotvector, x, span, span_tol)
 end subroutine find_knotvector_span
 
 subroutine find_parametric_span(size_kv, nodes, x, span, span_tol)
-    !! Finds the span of the knot within the parametric space
+    !! Finds the parametric span of the given knot. 
+    !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the parametric span is 1
 
     implicit none 
     ! Input / output data
@@ -74,6 +92,8 @@ subroutine find_parametric_span(size_kv, nodes, x, span, span_tol)
 end subroutine find_parametric_span
 
 subroutine find_multiplicity(size_kv, knotvector, x, mult, span_tol)
+    !! Finds the multiplicity of a given knot.
+    !! Ex: Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} and x = 0.5, the multiplicity is 2.
 
     implicit none 
     ! Input / output data
@@ -88,7 +108,7 @@ subroutine find_multiplicity(size_kv, knotvector, x, mult, span_tol)
     ! ----------------
     integer :: i
 
-    ! Set up multiplicity
+    ! Initialize multiplicity
     mult = 0
 
     do i = 1, size_kv
@@ -100,7 +120,8 @@ subroutine find_multiplicity(size_kv, knotvector, x, mult, span_tol)
 end subroutine find_multiplicity
 
 subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_kv_out, knotvector_out, span_tol)
-    !! Do p refinement. Ex: kv_in = [0, 0, 0, 0.5, 1, 1, 1] and times = 1, then kv_out = [0, 0, 0, 0.5, 0.5, 1, 1, 1]
+    !! Computes a knot-vector in p-refinement 
+    !! Ex: Given the knot-vector = [0, 0, 0, 0.5, 1, 1, 1] and times = 1, then new knot vector = [0, 0, 0, 0.5, 0.5, 1, 1, 1]
 
     implicit none
     ! Input/output data
@@ -119,16 +140,16 @@ subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_
     double precision :: nodes
     dimension :: nodes(size_kv_in+1)
 
-    ! Get nodes
+    ! Get nodes of a given knot-vector
     call find_unique_vector(size_kv_in, knotvector_in, nodes)
     size_nodes = int(nodes(size_kv_in+1))
 
-    if (size_kv_out.lt.0) then 
-        ! Query
+    if (size_kv_out.le.0) then 
+        ! Find the size of the new knot-vector
         size_kv_out = size_kv_in + (size_nodes-2)*times
 
     else 
-        ! Initialize 
+        ! Get the (degree+1) first 0 of the knot-vector
         c = 1
         do i = 1, degree + 1
             knotvector_out(c) = 0.d0
@@ -146,6 +167,7 @@ subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_
             end do
         end do
 
+        ! Get the (degree+1) last 1 of the knot-vector
         do i = 1, degree+1
             knotvector_out(c) = 1.d0
             c = c + 1
@@ -156,6 +178,11 @@ subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_
 end subroutine increase_multiplicity
 
 subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, isuniform, span_tol)
+    !! Verifies if a knot-vector is uniform and if it has maximum regularity. 
+    !! This is important because all WQ methods works only with knot-vectors with rgeularity r = p-1. 
+    !! Ex: The given knot-vector {0, 0, 0, 0.5, 1, 1, 1} works for us but {0, 0, 0, 0.5, 0.5, 1, 1, 1} does not. 
+    !! Furthermore, if the knot-vector is uniform, it is possible to reduce computation time.
+    !! This is not mandatory for our algorithms. 
 
     implicit none
     ! Input / output data
@@ -178,7 +205,7 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
     nbel = int(nodes(size_kv+1)) - 1
     nb_ctrlpts = size_kv - degree - 1
 
-    ! Verify if it is a max regularity knot-vector
+    ! Verify if knot-vector has max regularity
     ismaxreg = .false.
     if (nbel+degree.eq.nb_ctrlpts) then 
         ismaxreg = .true.
@@ -200,7 +227,10 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
 end subroutine verify_regularity_uniformity
 
 subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table, span_tol)
-    !! Sets the table of functions on every span
+    !! Sets a table of functions on every span given a knot-vector.
+    !! Ex. Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} (degree 2), the unique nodes are {0, 0.5, 1}. 
+    !! On the first span [0, 0.5], there are the functions N1, N2, N3, and on the second span [0.5, 1], 
+    !! there are the functions N3, N4, N5
 
     implicit none 
     ! Input / output data
@@ -218,6 +248,8 @@ subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table, 
 
     ! Initialize 
     table = 0
+
+    ! Get the number of elements
     nbel = int(nodes(size_kv+1)) - 1
 
     ! Fist line of the table
@@ -237,7 +269,10 @@ subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table, 
 end subroutine set_table_functions_spans
 
 subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1, span_tol)
-    !! Finds the basis for every given knot 
+    !! Finds the basis B0 and B1 for every given knot. 
+    !! The algorithm computes by itself the knot-vector span of a given knot and 
+    !! returns the value of the basis B0 and B1 for that knot. 
+    !! Knowing that on each span, there are (degree+1) functions, it returns each time (degree+1) values.
 
     implicit none 
     ! Input / output data
@@ -296,23 +331,25 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
 end subroutine get_basis
 
 subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
-    !! Gets non-zero positions for I = B * B.T 
+    !! Gets the positions i and j of all non-zero values of I = B * B.T 
     !! B and I in CSR format
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in):: nr, nc, nnz_B, nnz_I
+    integer, intent(in):: nr, nc, nnz_B
     integer, intent(in) :: indi_B, indj_B
     dimension :: indi_B(nr+1), indj_B(nnz_B)
     
+    integer, intent(inout) :: nnz_I
     integer, intent(out) :: indi_I, indj_I
-    dimension :: indi_I(nr+1), indj_I(nnz_I)
+    dimension :: indi_I(nr+1), indj_I(*)
 
     ! Local data
     ! -------------
     double precision :: MB, MI, ones
     dimension :: MB(nr, nc), MI(nr, nr), ones(nnz_B)
+    double precision, allocatable, dimension(:) :: data_I
 
     ! Initialize matrix B
     ones = 1.d0 
@@ -322,9 +359,69 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     MI = matmul(MB, transpose(MB))
     
     ! Get CSR format
-    call dense2csr(nr, nr, MI, nnz_I, indi_I, indj_I)
+    if (nnz_I.le.0) then
+        call dense2csr(nr, nr, MI, nnz_I, indi_I, indj_I, data_I)
+    else
+        allocate(data_I(nnz_I))
+        call dense2csr(nr, nr, MI, nnz_I, indi_I, indj_I, data_I)
+        deallocate(data_I)
+    end if
 
 end subroutine get_I_csr
+
+subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
+    !! Gets an open uniform with maximum regularity knot-vector
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer, intent(in):: degree, nbel
+
+    double precision, intent(out) :: nodes, knotvector 
+    dimension :: knotvector(nbel+2*degree+1), nodes(nbel+2*degree+2)
+
+    ! Local data
+    ! -------------
+    integer ::  i, c
+
+    ! Initialize
+    nodes = 0.d0
+    knotvector = 0.d0
+
+    ! Create nodes
+    ! =============
+    ! Assign first and last values
+    nodes(1) = 0.d0
+    nodes(nbel+1) = 1.d0
+
+    ! Assign values
+    do i = 2, nbel 
+        nodes(i) = dble(i - 1)/dble(nbel) 
+    end do
+
+    nodes(nbel+2*degree+2) = nbel + 1
+
+    ! Create knotvector
+    ! =================
+    ! Set p+1 first values of knot vector 
+    c = 1
+    do i = 1, degree+1
+        knotvector(c) = 0.d0
+        c = c + 1
+    end do
+
+    do i = 2, nbel
+        knotvector(c) = dble(i - 1)/dble(nbel) 
+        c = c + 1
+    end do
+
+    ! Set p+1 last values of knot vector 
+    do i = 1, degree+1
+        knotvector(c) = 1.d0
+        c = c + 1
+    end do
+        
+end subroutine create_uniform_knotvector
 
 ! =================
 ! IGA FUNCTIONS: expected to work in IGA-Galerkin approach
@@ -345,11 +442,9 @@ subroutine iga_get_qp_positions_weights(degree, size_kv, nodes, nb_qp, qp_pos, q
 
     ! Local data 
     ! -------------
-    integer :: nbel
-    double precision :: GaussPdsCoord
-    dimension :: GaussPdsCoord(2, degree+1)
-    double precision :: xg(degree+1), wg(degree+1)
-    integer :: i, j, k
+    double precision :: GaussPdsCoord, xg, wg
+    dimension :: GaussPdsCoord(2, degree+1), xg(degree+1), wg(degree+1)
+    integer :: nbel, i, j, k
 
     ! Set number of elements
     nbel = int(nodes(size_kv+1)) - 1 
@@ -373,7 +468,7 @@ subroutine iga_get_qp_positions_weights(degree, size_kv, nodes, nb_qp, qp_pos, q
 end subroutine iga_get_qp_positions_weights 
 
 subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
-    !! Gets non zeros positions of B0 and B1 in IGA approach 
+    !! Gets non zeros positions of B0 and B1 in IGA-Galerkin approach 
     
     implicit none 
     ! Input / output data 
@@ -440,7 +535,6 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
         min_span = table_spans_function(i, 1)
         max_span = table_spans_function(i, 2)
 
-        ! For B0 and B1
         min_knot = table_points_span(min_span, 1)
         max_knot = table_points_span(max_span, 2)
 
@@ -453,61 +547,9 @@ end subroutine iga_get_B_shape
 ! WQ FUNCTIONS: expected to work in weighted-quadrature approach
 ! =================
 
-subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
-    !! Gets an open uniform maximum regularity knot-vector
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in):: degree, nbel
-
-    double precision, intent(out) :: nodes, knotvector 
-    dimension :: knotvector(nbel+2*degree+1), nodes(nbel+2*degree+2)
-
-    ! Local data
-    ! -------------
-    integer ::  i, c
-
-    ! Initialize
-    nodes = 0.d0; knotvector = 0.d0
-
-    ! Create nodes
-    ! =============
-    ! Assign first and last values
-    nodes(1) = 0.d0
-    nodes(nbel+1) = 1.d0
-
-    ! Assign values
-    do i = 2, nbel 
-        nodes(i) = dble(i - 1)/dble(nbel) 
-    end do
-
-    nodes(nbel+2*degree+2) = nbel + 1
-
-    ! Create knotvector
-    ! =================
-    ! Set p+1 first values of knot vector 
-    c = 1
-    do i = 1, degree+1
-        knotvector(c) = 0.d0
-        c = c + 1
-    end do
-
-    do i = 2, nbel
-        knotvector(c) = dble(i - 1)/dble(nbel) 
-        c = c + 1
-    end do
-
-    ! Set p+1 last values of knot vector 
-    do i = 1, degree+1
-        knotvector(c) = 1.d0
-        c = c + 1
-    end do
-        
-end subroutine create_uniform_knotvector
-
-subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape, weights)
-    !! Gets the quadrature rules
+subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape, weights_obj)
+    !! Gets the quadrature rules of objective (target) functions 
+    !! Integral II = int Btest Bobj from 0 to 1
     
     implicit none
     ! Input / output data
@@ -518,15 +560,15 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
     double precision, intent(in) ::  BBtest, II
     dimension :: BBtest(nr_test, nc), II(nr_test, nr_obj)
 
-    double precision, intent(out) :: weights
-    dimension :: weights(nr_obj, nc)
+    double precision, intent(out) :: weights_obj
+    dimension :: weights_obj(nr_obj, nc)
 
     ! Local data
     ! ----------------
     integer :: i, j, Pmin, Pmax, Fmin, Fmax
 
     ! Initialize
-    weights = 0.d0  
+    weights_obj = 0.d0  
 
     do i = 1, nr_obj
 
@@ -553,13 +595,14 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
         
         ! Solve linear system
         call solve_linear_system(Fmax-Fmin+1, Pmax-Pmin+1, BBtest(Fmin:Fmax, Pmin:Pmax), &
-                                II(Fmin:Fmax, i), weights(i, Pmin:Pmax))
+                                II(Fmin:Fmax, i), weights_obj(i, Pmin:Pmax))
     end do
 
 end subroutine wq_solve_weights
 
-! ===========================================================
-! ===========================================================
+! ========================================================================
+! MODULES: In order to have a class structure to compute basis and weights
+! ========================================================================
 module iga_basis_weights
 
     implicit none
@@ -587,7 +630,8 @@ module iga_basis_weights
     contains
 
     subroutine iga_initialize(obj, degree, size_kv, knotvector)
-            
+        !! Gets data in IGA-Galerkin approach
+
         implicit none
         ! Input / output
         ! ---------------
@@ -625,23 +669,18 @@ module iga_basis_weights
 
     end subroutine iga_initialize
 
-    subroutine iga_basis_weights_dense2coo(obj, degree, size_kv, knotvector)
+    subroutine iga_basis_weights_dense2coo(obj)
+        !! Computes the basis and the weights in IGA-Galerkin approach
             
         implicit none 
         ! Input / output data
         ! --------------------
-        integer, intent(in) :: degree, size_kv
-        double precision, intent(in) :: knotvector
-        dimension :: knotvector(size_kv)
         type(iga), pointer :: obj
         
         ! Local data
         ! ----------
         double precision, dimension(:,:), allocatable :: B0, B1
         integer :: i, j, count
-
-        ! Create object
-        call iga_initialize(obj, degree, size_kv, knotvector)
 
         ! Allocate variables
         allocate(B0(obj%nb_ctrlpts, obj%nb_qp), B1(obj%nb_ctrlpts, obj%nb_qp))
@@ -699,7 +738,7 @@ module wq_basis_weights
     contains
 
     subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
-        !! Gets data of degree and knotvector
+        !! Gets data in IGA-WQ approach
 
         implicit none
         ! Input / output
@@ -1156,7 +1195,6 @@ module wq_basis_weights
         double precision, allocatable, dimension(:,:) :: B0_m, B1_m, W00_m, W01_m, W10_m, W11_m
 
         ! Create object
-        call wq_initialize(obj, degree, size_kv, knotvector, method)
         nbel = obj%size_nodes - 1
         call verify_regularity_uniformity(degree, size_kv, knotvector, ismaxregular, isuniform, span_tol)
         call wq_get_qp_positions(obj)

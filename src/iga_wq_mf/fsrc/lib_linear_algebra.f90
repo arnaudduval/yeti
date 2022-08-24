@@ -1,44 +1,19 @@
 ! ==========================
-! module :: Algebra 
+! module :: Linear algebra 
 ! author :: Joaquin Cornejo
-! modules :: ---------
+! 
+! This modules is intended to have all the linear algebra functions necessary for the good
+! performance of the rest of files.
+! This file calls functions defined in YETI or LAPACK libraries.
 ! ==========================
 
 ! -------------------
 ! Vector and matrices
 ! -------------------
 
-subroutine scale_vector(nnz, factor_up, factor_down, vector)
-    !! Scaling in fast diagonalization
-
-    use omp_lib
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: factor_up, factor_down
-    dimension :: factor_up(nnz), factor_down(nnz)
-
-    double precision, intent(inout) :: vector
-    dimension :: vector(nnz)
-
-    ! Local data
-    ! -------------
-    integer :: i, nb_tasks
-
-    !$OMP PARALLEL 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
-    do i = 1, nnz
-        vector(i) = sqrt(factor_up(i)/factor_down(i)) * vector(i) 
-    end do  
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
-end subroutine scale_vector
-
 subroutine diff_vector(times, nnz, vector_in, vector_out)
-    !! Returns the difference between elements of array
+    !! Returns the difference between elements of array. 
+    !! Ex. given a vector [0, 1, 3, 10] and times = 1, the output is [1, 2, 7, 0]. 
 
     implicit none
     ! Input / output data
@@ -62,21 +37,26 @@ subroutine diff_vector(times, nnz, vector_in, vector_out)
 
     do j = 1, times
 
+        ! Get the difference
         do i = 1, nnz-j
             vector_out(i) = vector_temp(i+1) - vector_temp(i)
         end do
 
+        ! Extra data is set to 0
         do i = nnz-j+1, nnz
             vector_out(i) = 0.d0
         end do
 
+        ! Save temporal vector
         vector_temp = vector_out
     end do
     
 end subroutine diff_vector
 
 subroutine find_unique_vector(nnz, vec, vec_unique)
-    !! Returns the non-repreated values of a vector
+    !! Gets the non-repreated values of a vector
+    !! Ex: Given the vector [0, 1, 1, 2, 3, 3, 3], the unique vector is [0, 1, 2, 3, 0, 0, 0, 4]
+    !! The last value is the number of unique elements
 
     implicit none 
     ! Input / output data
@@ -124,7 +104,7 @@ subroutine find_unique_vector(nnz, vec, vec_unique)
 end subroutine find_unique_vector
 
 subroutine linspace(x0, xf, n, array) 
-    !! Evaluates N equidistant points given the first and last points 
+    !! Evaluates n equidistant points given the first and last points 
 
     implicit none
     ! Input / output data
@@ -155,13 +135,13 @@ subroutine linspace(x0, xf, n, array)
 end subroutine linspace
 
 subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
-    !! General matrix multiplication M1 Diag M2
+    !! General matrix multiplication of the kind A Diag(W) B
     !! 1: R = A.diag(W).BT
-    !! 2: R = A.diag(W).BT only diagonal
+    !! 2: R = A.diag(W).BT, returns only the diagonal
     !! 3: R = AT.diag(W).B
-    !! 4: R = AT.diag(W).B only diagonal
+    !! 4: R = AT.diag(W).B, returns only the diagonal
     !! Matrix A = (nb_rows_A, nb_columns_A)
-    !! Array W = (*) it depends 
+    !! Array W = (*) it depends on the mode-multiplication
     !! Matrix B = (nb_rows_B, nb_columns_B)
 
     implicit none 
@@ -234,7 +214,11 @@ subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
 end subroutine gemm_AWB
 
 subroutine solve_linear_system(nr, nc, A, b, x)
-    !! Solves equation system A.x = b
+    !! Solves linear equation system A.x = b
+    !! It was adapted to solve any kind of linear systems (under, well and over determined systems).
+    !! Determined system: LU decomposition with partial pivoting is used.
+    !! Under-determined system: minimum norm solution method is used.
+    !! Over-determined system: least squares solution method is used.
     !! Matrix A = (nb_rows, nb_columns)
     !! Vector b = (nb_rows)
     !! Vector x = (nb_cols)
@@ -315,15 +299,18 @@ subroutine solve_linear_system(nr, nc, A, b, x)
 
 end subroutine solve_linear_system
 
-subroutine inverse_matrix(nnz, A)
-    ! Computes the inverse of a matrix using LU decomposition
+subroutine inverse_matrix(nnz, A, invA)
+    !! Computes the inverse of a matrix using LU decomposition
     
     implicit none
     ! Input / output data
     ! ------------------- 
     integer, intent(in) :: nnz
-    double precision, intent(inout) :: A
+    double precision, intent(in) :: A
     dimension :: A(nnz, nnz)
+
+    double precision, intent(out) :: invA
+    dimension :: invA(nnz, nnz)
 
     ! Local data
     ! ----------
@@ -331,16 +318,19 @@ subroutine inverse_matrix(nnz, A)
     integer :: ipiv, info
     dimension :: work(nnz), ipiv(nnz)
 
+    ! Initialize
+    invA = A
+
     ! Compute LU decomposition
-    call dgetrf(nnz, nnz, A, nnz, ipiv, info)
+    call dgetrf(nnz, nnz, invA, nnz, ipiv, info)
 
     ! Compute inverse of A with LU decomposition
-    call dgetri(nnz, A, nnz, ipiv, work, nnz, info)
+    call dgetri(nnz, invA, nnz, ipiv, work, nnz, info)
 
 end subroutine inverse_matrix
 
 subroutine crossproduct(v1, v2, v3)
-    !! Computes cross product in a 3D Euclidean space
+    !! Computes cross product in a 3D Euclidean space, v3 =  v1 x v2 (x is cross product)
 
     ! Input / output data
     ! -------------------
@@ -358,7 +348,7 @@ subroutine crossproduct(v1, v2, v3)
 end subroutine crossproduct
 
 subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
-    !! Evaluates kron product R = R + alpha*A1 x A2 (x : tensor product)
+    !! Computes kron product of 2 vectors and returns R = R + alpha*A1 x A2 (x : tensor product)
 
     use omp_lib
     implicit none
@@ -389,7 +379,7 @@ subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
 end subroutine kron_product_2vec 
 
 subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
-    !! Returns the result of R = R + alpha*A1 x A2 x A3, where x is kronecker product
+    !! Computes the kron product of 3 vectors and returns R = R + alpha*A1 x A2 x A3 (x : tensor product)
 
     use omp_lib
     implicit none
@@ -424,15 +414,15 @@ subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
 end subroutine kron_product_3vec
 
 subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
-    !! Polar decompoition of 3-by-3 matrix A = Q*H, where Q is orthogonal
+    !! Computes the polar decomposition of 3-by-3 matrix A = Q*H, where Q is orthogonal
     !! and H is symmetric positive semidefinite.
-    !! It uses SDV: A = U S VT = U VT . V S VT then Q = U VT and H = V S VT
+    !! It uses SDV: A = U S VT = (U VT) . (V S VT) then Q = U VT and H = V S VT
 
     implicit none
     ! Input / output data
     ! --------------------
     double precision, intent(in) :: A
-    integer, intent(in) :: onlyH, onlyDiag 
+    logical, intent(in) :: onlyH, onlyDiag 
     dimension :: A(3, 3)
 
     double precision, intent(out) :: Q, H, Sigma
@@ -444,8 +434,8 @@ subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
     dimension :: work(15), U(3, 3), VT(3, 3)
     integer :: info
 
-    ! Compute Singular value decomposition
-    if (onlyH.eq.1) then
+    ! Compute singular value decomposition
+    if (onlyH) then
         ! We do not compute Q = U VT, then U = zeros
         call dgesvd('N', 'A', 3, 3, A, 3, Sigma, U, 3, VT, 3, work, 15, info)
         Q = 0.d0
@@ -455,7 +445,8 @@ subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
         Q = matmul(U, VT)
     end if
 
-    if (onlyDiag.eq.1) then
+    ! Computes H
+    if (onlyDiag) then
         call gemm_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
     else
         call gemm_AWB(3, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
@@ -526,7 +517,6 @@ end subroutine coo2csr
 
 subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, indi_csc)
     !! Gets CSC format from CSR format. 
-    !! (CSC format can be interpreted as the transpose)
 
     implicit none
     ! Input / output data 
@@ -548,7 +538,7 @@ subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, 
     dimension :: indi_coo(nnz)
     integer :: i, j, c
 
-    ! We assume that csr is close to coo format. The only thing that change is indi
+    ! We assume that csr is close to coo format. The only thing that change is the row indices (indi)
     c = 0
     do i = 1, nr
         do j = indi_csr(i), indi_csr(i+1) - 1
@@ -557,14 +547,14 @@ subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, 
         end do
     end do
 
-    ! Do COO to CSR format (inverting order to CSC)
+    ! Change COO format to CSR format (inverting order to CSC format)
     call coo2csr(nba, nc, nnz, a_in, indj_csr, indi_coo, a_out, indj_csc, indi_csc)
 
 end subroutine csr2csc
 
-subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
-    !! Gives a dense matrix from a COO format
-    !! Repeated positions are added
+subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, a_out)
+    !! Gets a dense matrix from a COO format
+    !! Repeated indices (i, j) are added
 
     implicit none 
     ! Input / output data 
@@ -575,27 +565,27 @@ subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, A_out)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
 
-    double precision, intent(out) :: A_out
-    dimension :: A_out(nr, nc)
+    double precision, intent(out) :: a_out
+    dimension :: a_out(nr, nc)
 
     ! Local data 
     ! -------------
     integer :: i, j, k
 
     ! Initialize matrix values
-    A_out = 0.d0
+    a_out = 0.d0
 
     ! Update values
     do k = 1, nnz 
         i = indi_coo(k)
         j = indj_coo(k)
-        A_out(i, j) = A_out(i, j) + a_in(k)
+        a_out(i, j) = a_out(i, j) + a_in(k)
     end do
 
 end subroutine coo2dense
 
-subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
-    !! Gives a dense matrix from a CSR format
+subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, a_out)
+    !! Gets a dense matrix from a CSR format
     !! Repeated positions are added
 
     implicit none 
@@ -607,8 +597,8 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz)
 
-    double precision, intent(out) :: A_out
-    dimension :: A_out(nr, nc)
+    double precision, intent(out) :: a_out
+    dimension :: a_out(nr, nc)
 
     ! Local data
     ! -------------
@@ -616,7 +606,7 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
     integer :: nnz_col, offset
 
     ! Initialize matrix values
-    A_out = 0.d0
+    a_out = 0.d0
     
     ! Update values
     do i = 1, nr
@@ -624,59 +614,77 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, A_out)
         offset = indi_csr(i)
         do k = 1, nnz_col
             j = indj_csr(k+offset-1)
-            A_out(i, j) = A_out(i, j) + a_in(k+offset-1)
+            a_out(i, j) = a_out(i, j) + a_in(k+offset-1)
         end do
     end do
     
 end subroutine csr2dense
 
-subroutine dense2csr(nr, nc, A_in, nnz, indi_csr, indj_csr)
-    !! Returns CSR format from matrix but not the values
-    !! Only for integers
+subroutine dense2csr(nr, nc, a_in, nnz, indi_csr, indj_csr, a_csr)
+    !! Gets CSR format from matrix 
+    !! If nnz < 0, the it only computes the number of non zero values
 
     implicit none 
     ! Input / output data
     ! --------------------
     double precision, parameter :: tol = 1.d-14
-    integer, intent(in) :: nr, nc, nnz
-    double precision, intent(in) :: A_in 
-    dimension :: A_in(nr, nc)
+    integer, intent(in) :: nr, nc
+    double precision, intent(in) :: a_in 
+    dimension :: a_in(nr, nc)
 
+    integer, intent(inout) :: nnz
     integer, intent(out) :: indi_csr, indj_csr
-    dimension :: indi_csr(nr+1), indj_csr(nnz)
+    dimension :: indi_csr(nr+1), indj_csr(*)
+    double precision, intent(out) :: a_csr
+    dimension :: a_csr(*)
 
     ! Local data
     ! -----------
     integer :: i, j, k, l
 
-    ! Initialize
-    k = 1
-    indi_csr(1) = 1
-    indj_csr = 0
-
-    ! Update CSR format
-    do i = 1, nr
-        l = 0
-        do j = 1, nc
-            ! Save only values greater than zero
-            if (abs(A_in(i, j)).gt.tol) then
-                indj_csr(k) = j
-                k = k + 1
-                l = l + 1
-            end if
+    if (nnz.le.0) then 
+        ! Gets the number of non zeros values of the matrix but it does not return CSR format
+        k = 0
+        do i = 1, nr
+            do j = 1, nc
+                ! Save only values greater than the threshold
+                if (abs(a_in(i, j)).gt.tol) then
+                    k = k + 1
+                end if
+            end do
         end do
-        indi_csr(i+1) = indi_csr(i) + l
-    end do
+
+        ! Change the value of non zero elements of the matrix
+        nnz = k
+
+    else
+        ! Initialize
+        k = 1
+        indi_csr(1) = 1
+
+        ! Update CSR format
+        do i = 1, nr
+            l = 0
+            do j = 1, nc
+                ! Save only values greater than the threshold
+                if (abs(a_in(i, j)).gt.tol) then
+                    a_csr(k) = a_in(i, j)
+                    indj_csr(k) = j
+                    k = k + 1
+                    l = l + 1
+                end if
+            end do
+            indi_csr(i+1) = indi_csr(i) + l
+        end do
+
+    end if
 
 end subroutine dense2csr
 
-subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, & 
-                                indi_A, indj_A, &
-                                nr_B, nc_B, nnz_B, &
-                                indi_B, indj_B, &  
-                                nr_C, nc_C, nnz_C, &
-                                indi_C, indj_C)
-    !! Returns indices of A x B = C (x : kronecker product)
+subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
+                                    nr_B, nc_B, nnz_B, indi_B, indj_B, &  
+                                    nr_C, nc_C, nnz_C, indi_C, indj_C)
+    !! Gets indices of A x B = C (x : kronecker product)
     !! Where A and B are sparse matrices in CSR format
 
     use omp_lib
@@ -755,14 +763,10 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, &
     
 end subroutine get_indexes_kron2_product
 
-subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, & 
-                            indi_A, indj_A, &
-                            nr_B, nc_B, nnz_B, &
-                            indi_B, indj_B, &  
-                            nr_C, nc_C, nnz_C, &
-                            indi_C, indj_C, &
-                            nr_D, nc_D, nnz_D, &
-                            indi_D, indj_D)
+subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
+                                    nr_B, nc_B, nnz_B, indi_B, indj_B, &  
+                                    nr_C, nc_C, nnz_C, indi_C, indj_C, &
+                                    nr_D, nc_D, nnz_D, indi_D, indj_D)
     !! Returns indices of A x B x C = D (x : kronecker product)
     !! Where A, B and C are sparse matrices in CSR format
 

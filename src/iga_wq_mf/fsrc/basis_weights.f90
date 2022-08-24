@@ -1,6 +1,9 @@
 ! ==========================
 ! module :: Basis and weights 
 ! author :: Joaquin Cornejo
+! 
+! In this module, one can find different kind of functions to compute basis and/or weights 
+! for IGA-Galerkin and IGA-WQ approaches.   
 ! ==========================
 
 subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B, indi, indj)
@@ -65,7 +68,7 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
 end subroutine get_basis_generalized
 
 subroutine get_basis_generalized_csr(degree, size_kv, knotvector, nb_knots, knots, data_B, indi, indj)
-    !! Gets in COO format the basis at given knots 
+    !! Gets in CSR format the basis at given knots 
 
     implicit none
     ! Input / output data
@@ -121,7 +124,8 @@ subroutine iga_get_data(degree, size_kv, knotvector, nnz_qp, qp_pos, qp_wq, &
     type(iga), pointer :: obj
 
     ! Evaluate basis and weights
-    call iga_basis_weights_dense2coo(obj, degree, size_kv, knotvector)
+    call iga_initialize(obj, degree, size_kv, knotvector)
+    call iga_basis_weights_dense2coo(obj)
 
     ! Set quadrature points
     qp_pos = obj%qp_pos
@@ -175,7 +179,7 @@ end subroutine iga_get_data_csr
 ! ==============================
 
 subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
-    !! Gets the size of non-zeros in Basis matrix to use in wq_get_data
+    !! Gets the size of non-zeros of matrices in wq_get_data
     
     use wq_basis_weights
     implicit none
@@ -201,7 +205,7 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
 
 end subroutine wq_get_size_data
 
-subroutine wq_get_data( degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
+subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
                         data_B, data_W, data_ind, nnz_I)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
@@ -225,6 +229,7 @@ subroutine wq_get_data( degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
     integer, parameter :: method = 1
 
     ! Evaluate basis and weights
+    call wq_initialize(obj, degree, size_kv, knotvector, method)
     call wq_basis_weights_dense2coo(obj, degree, size_kv, knotvector, method)
 
     ! Set quadrature points
@@ -246,7 +251,7 @@ subroutine wq_get_data( degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
 
 end subroutine wq_get_data
 
-subroutine wq_get_data_csr( degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
+subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, nb_qp, qp_pos, &
                             data_B, data_W, indi, indj, nnz_I)
     !! Gets in CSR format basis and weights in IGA-WQ approach
 
