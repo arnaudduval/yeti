@@ -319,7 +319,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! Local data
     ! ------------------
     ! Pre / Conjugate gradient algoritm
-    double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w, c_u, c_v, c_w
+    double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
     double precision :: rsold, rsnew, alpha, omega, beta
     double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde
     dimension ::    r(nr_total), rhat(nr_total), p(nr_total), & 
@@ -347,9 +347,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Initiate variables
-    x = 0.d0
-    RelRes = 0.d0
-    RelError = 0.d0
+    x = 0.d0; RelRes = 0.d0; RelError = 0.d0
 
     if (Method.eq.'WP') then 
         if (nbIter.gt.0) then
@@ -392,18 +390,15 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     else  
         ! Initialize
-        c_u = 1.d0; c_v = 1.d0; c_w = 1.d0
+        allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
         if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             ! --------------------------------------------
             ! DIAGONAL DECOMPOSITION
-            ! --------------------------------------------
-            ! Initialize coefficients 
-            allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-            Mcoef_u = 1.d0; Kcoef_u = 1.d0
-            Mcoef_v = 1.d0; Kcoef_v = 1.d0
-            Mcoef_w = 1.d0; Kcoef_w = 1.d0
-
+            ! --------------------------------------------            
             do iter = 1, 2
                 call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
@@ -416,10 +411,10 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! Find dimensions and conductivity
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
-                                
-            c_u = lamb_u*Lv*Lw/Lu
-            c_v = lamb_v*Lw*Lu/Lv
-            c_w = lamb_w*Lu*Lv/Lw
+            
+            Kcoef_u = lamb_u*Lv*Lw/Lu
+            Kcoef_v = lamb_v*Lw*Lu/Lv
+            Kcoef_w = lamb_w*Lu*Lv/Lw
 
         end if
 
@@ -432,29 +427,25 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), Method, t_robin, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 4), t_robin, D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), Method, t_robin, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 4), t_robin, D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), Method, t_robin, D_w, U_w, Kdiag_w, Mdiag_w)   
+                                data_W_w(:, 4), t_robin, D_w, U_w, Kdiag_w, Mdiag_w)   
+        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
         ! Find diagonal of eigen values
         allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
         allocate(Deigen(nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                    I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
-
-        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
-            deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-        end if
 
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
             ! --------------------------------------------
@@ -462,8 +453,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! --------------------------------------------
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                    Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
@@ -555,7 +546,6 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    character(len=10) :: Method = 'C'
     integer, intent(in) :: nbIterations
     double precision, intent(in) :: epsilon, b
     dimension :: b(nr_total)
@@ -592,8 +582,10 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Initiate variables
-    x = 0.d0
-    RelRes = 0.d0
+    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+    Mcoef_w = 1.d0; Kcoef_w = 1.d0
     
     ! --------------------------------------------
     ! EIGEN DECOMPOSITION
@@ -604,21 +596,22 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
     call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                             data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                            data_W_u(:, 4), Method, dorobin, D_u, U_u, Kdiag_u, Mdiag_u)
+                            data_W_u(:, 4), dorobin, D_u, U_u, Kdiag_u, Mdiag_u)
 
     allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
     call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                             data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                            data_W_v(:, 4), Method, dorobin, D_v, U_v, Kdiag_v, Mdiag_v)    
+                            data_W_v(:, 4), dorobin, D_v, U_v, Kdiag_v, Mdiag_v)    
 
     allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
     call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                             data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                            data_W_w(:, 4), Method, dorobin, D_w, U_w, Kdiag_w, Mdiag_w)  
+                            data_W_w(:, 4), dorobin, D_w, U_w, Kdiag_w, Mdiag_w)  
 
     ! -------------------------------------------
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
+    x = 0.d0; RelRes = 0.d0
     r = b; rhat = r; p = r
     rsold = dot_product(r, rhat)
     RelRes(1) = 1.d0

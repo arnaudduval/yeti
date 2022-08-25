@@ -811,7 +811,7 @@ def solver_scipy(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True
 
     return x
 
-def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, method='FDC', isfortran=True):
+def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None):
     """ 
     Eigen decomposition generalized KU = MUD
     K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -832,7 +832,7 @@ def eigen_decomposition(indi, indj, data, t_robin=[0, 0], coefs=None, method='FD
 
     # Compute eigen values and vectors
     eigenvalues, eigenvectors = solver.eigen_decomposition_py(indi, indj, B0, W0, 
-                                    B1, W1, method, mcoefs, kcoefs, t_robin)
+                                                B1, W1, mcoefs, kcoefs, t_robin)
 
     return eigenvalues, eigenvectors
 

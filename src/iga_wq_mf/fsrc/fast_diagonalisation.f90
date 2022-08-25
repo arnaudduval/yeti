@@ -4,7 +4,7 @@
 ! ====================================================
 
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
-                                method, Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
+                                Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -21,7 +21,6 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
     dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
-    character(len=10), intent(in) :: method
     double precision, intent(in) :: Mcoef, Kcoef
     dimension :: Mcoef(nc), Kcoef(nc)
     integer, intent(in) :: t_robin
@@ -36,7 +35,7 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     dimension :: Kdiag(nr), Mdiag(nr)
 
     call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                            data_B0, data_W0, data_B1, data_W1, method, t_robin, &
+                            data_B0, data_W0, data_B1, data_W1, t_robin, &
                             eigenvalues, eigenvectors, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py

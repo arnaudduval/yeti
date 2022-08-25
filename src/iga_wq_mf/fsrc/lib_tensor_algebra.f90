@@ -820,7 +820,7 @@ module tensor_methods
     ! "Fast Diagonalization" 
 
     subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                                    data_B0, data_W0, data_B1, data_W1, Method, t_robin, &
+                                    data_B0, data_W0, data_B1, data_W1, t_robin, &
                                     eigenvalues, eigenvectors, Kdiag, Mdiag)
         !! Eigen decomposition generalized KU = MUD
         !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -833,12 +833,12 @@ module tensor_methods
         ! Input / output 
         ! -------------------
         integer, intent(in) :: nr, nc, nnz
-        double precision, dimension(*), intent(in) :: Mcoef, Kcoef
+        double precision, intent(in) :: Mcoef, Kcoef
+        dimension :: Mcoef(nc), Kcoef(nc)
         integer, intent(in) :: indi, indj
         dimension :: indi(nr+1), indj(nnz)
         double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
         dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
-        character(len=10), intent(in) :: Method
         integer, intent(in) :: t_robin
         dimension :: t_robin(2)
                 
@@ -858,13 +858,11 @@ module tensor_methods
         ! Initialize Masse matrix
         allocate(data_B0n(nnz))
         data_B0n = data_B0
-        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
-            do i = 1, nr
-                do j = indi(i), indi(i+1)-1
-                    data_B0n(j) = data_B0n(j)*Mcoef(indj(j))
-                end do
+        do i = 1, nr
+            do j = indi(i), indi(i+1)-1
+                data_B0n(j) = data_B0n(j)*Mcoef(indj(j))
             end do
-        end if
+        end do
 
         allocate(BB0(nr, nc))
         call csr2dense(nnz, indi, indj, data_B0n, nr, nc, BB0)
@@ -878,13 +876,11 @@ module tensor_methods
         ! Initialize Stiffness matrix
         allocate(data_B1n(nnz))
         data_B1n = data_B1
-        if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then
-            do i = 1, nr
-                do j = indi(i), indi(i+1)-1
-                    data_B1n(j) = data_B1n(j)*Kcoef(indj(j))
-                end do
+        do i = 1, nr
+            do j = indi(i), indi(i+1)-1
+                data_B1n(j) = data_B1n(j)*Kcoef(indj(j))
             end do
-        end if
+        end do
 
         allocate(BB1(nr, nc))
         call csr2dense(nnz, indi, indj, data_B1n, nr, nc, BB1)
@@ -1200,16 +1196,13 @@ module tensor_methods
 
     ! For computing diagonals
     
-    subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                        Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, diag)
+    subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, diag)
         !! Find the diagonal of the preconditioner "fast diagonalization"
                             
         implicit none
         ! Input / output data
         ! -------------------------
         integer, intent(in) :: nr_u, nr_v, nr_w
-        double precision, intent(in) :: c_u, c_v, c_w
         double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
         dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), &
                     Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
@@ -1221,13 +1214,13 @@ module tensor_methods
         diag = 0.d0
 
         ! Find M3 M2 K1
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Kdiag_u, diag, c_u)
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Kdiag_u, diag, 1.d0)
 
         ! Find M3 K2 M1
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Kdiag_v, nr_u, Mdiag_u, diag, c_v)
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Kdiag_v, nr_u, Mdiag_u, diag, 1.d0)
 
         ! Find K3 M2 M1
-        call kron_product_3vec(nr_w, Kdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, diag, c_w)
+        call kron_product_3vec(nr_w, Kdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, diag, 1.d0)
         
     end subroutine find_parametric_diag_3d
 
