@@ -4,7 +4,6 @@
 """
 
 # Python libraries
-from copy import deepcopy
 import numpy as np
 from geomdl import helpers
 from scipy import sparse as sp, linalg as sclin

@@ -23,12 +23,12 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Some constants
-FileExist = True
+FileExist = False
 degree, cuts = 4, 5
 is_iga = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for geometryName in ['VB']:  
+for geometryName in ['CB']:  
     
     # Get file name
     if geometryName == 'CB':   funpow, funtemp = powden_cube, None 
@@ -43,8 +43,8 @@ for geometryName in ['VB']:
 
     # Run simulation
     if not FileExist:
-        # conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-        conductivity = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 1]])
+        conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+        # conductivity = np.array([[1.0, 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
         material = {"conductivity": conductivity}
         Simulation.run_simulation(material=material, Dirichlet=Dirichlet)

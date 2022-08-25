@@ -116,7 +116,7 @@ class ThermalSimulation():
         degree = self._degree
         cuts = self._cuts
         geometry = {'degree':[degree, degree, degree]}
-        modelGeo = geomdlModel('RQA', **geometry)
+        modelGeo = geomdlModel(self._geoCase, **geometry)
         modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                                     np.array([cuts, cuts, cuts]))
         return modelIGA
@@ -147,7 +147,7 @@ class ThermalSimulation():
     
     def run_iterative_solver(self, model:fortran_mf_wq, Fn, nbIter=100, eps=1e-15, method='WP', solDir=None):
 
-        if solDir == None: 
+        if solDir is None: 
             solDir = np.ones(len(Fn))
             print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
 
@@ -193,13 +193,11 @@ class ThermalSimulation():
         Fn = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)[0]
 
         # Define actions 
-        doDirect = True, True
+        doDirect = True
         if self._isOnlyIter: doDirect = False
 
-        if doDirect:
-            solDir, time_assembly, time_solDir = self.run_direct_solver(self._thermalModel, Fn)
-        else:
-            solDir = None
+        if doDirect: solDir, time_assembly, time_solDir = self.run_direct_solver(self._thermalModel, Fn)
+        else: solDir = None
 
         # Only compute time to prepare method before iterations
         time_noiter = []
