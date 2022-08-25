@@ -449,7 +449,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         allocate(Deigen(nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+                                    I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
         if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
@@ -463,8 +463,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, c_u, c_v, c_w, &
-                                    Mdiag_u, Mdiag_v, Mdiag_w, &
-                                    Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
+                                    Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)

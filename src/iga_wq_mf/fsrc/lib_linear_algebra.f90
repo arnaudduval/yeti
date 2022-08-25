@@ -454,6 +454,42 @@ subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
 
 end subroutine polar_decomposition
 
+subroutine spMdotdV(nr, nc, nnz, indi, indj, A, V_in, V_out)
+    !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
+    !! Sparse matrix is in CSR format
+
+    implicit none
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nnz, nr, nc 
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: A, V_in
+    dimension :: A(nnz), V_in(nc)
+
+    double precision, intent(out) :: V_out
+    dimension :: V_out(nr)
+
+    ! Local data
+    ! ------------------
+    integer :: i , j, k
+    double precision :: sum
+
+    ! Initialize
+    V_out = 0.d0
+
+    ! Compute the result at each row
+    do i = 1, nr
+        sum = 0.d0
+        do j = indi(i), indi(i+1)-1
+            k = indj(j)
+            sum = sum + A(j)*V_in(k)
+        end do
+        V_out(i) = sum
+    end do
+
+end subroutine spMdotdV
+
 ! -------------
 ! Indices
 ! -------------
