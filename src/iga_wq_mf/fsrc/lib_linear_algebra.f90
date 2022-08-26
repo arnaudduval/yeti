@@ -456,7 +456,7 @@ end subroutine polar_decomposition
 
 subroutine spMdotdV(nr, nc, nnz, indi, indj, A, V_in, V_out)
     !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
-    !! Sparse matrix is in CSR format
+    !! Sparse matrix in CSR format
 
     implicit none
     ! Input / output data 

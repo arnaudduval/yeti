@@ -1,5 +1,5 @@
 """
-.. Integrating elastoplasticity in python
+.. Integrating elastoplasticity 3D in python
 """
 
 import numpy as np

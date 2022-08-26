@@ -5,8 +5,7 @@
 """
 
 # Python libraries
-import time, numpy as np
-from copy import deepcopy
+from .__init__ import *
 
 # My libraries
 from .base_functions import (compute_eig_diag, 
@@ -17,7 +16,6 @@ from .base_functions import (compute_eig_diag,
 )
 from .create_model import thermoMechaModel
 from .D3viscoplasticity import *
-from iga_wq_mf import assembly, solver
 
 class fortran_mf_wq(thermoMechaModel):
 

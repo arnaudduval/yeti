@@ -28,7 +28,7 @@ degree, cuts = 4, 5
 is_iga = False
 method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 
-for geometryName in ['CB']:  
+for geometryName in ['VB']:  
     
     # Get file name
     if geometryName == 'CB':   funpow, funtemp = powden_cube, None 

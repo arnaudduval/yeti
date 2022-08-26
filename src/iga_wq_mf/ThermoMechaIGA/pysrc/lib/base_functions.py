@@ -2,14 +2,8 @@
 .. This module contains basis functions which use python or fortran
 .. Joaquin Cornejo
 """
-
-# Python libraries
-import numpy as np
-from geomdl import helpers
-from scipy import sparse as sp, linalg as sclin
-
-# My libraries
-from iga_wq_mf import basis_weights, solver
+ 
+from .__init__ import *
 
 # ==========================
 # GENERAL FUNCTIONS

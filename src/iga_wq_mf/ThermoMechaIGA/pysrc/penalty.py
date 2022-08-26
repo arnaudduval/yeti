@@ -3,6 +3,7 @@ Analysis of penalty method
 """
 
 # Python libraries
+from copy import deepcopy
 import numpy as np
 from matplotlib import pyplot as plt
 

@@ -5,10 +5,7 @@
 ..               and maybe it does not work as expected
 """
 
-# Python libraries
-import numpy as np
-from scipy import sparse as sp
-import time
+from .__init__ import *
 
 # My libraries
 from .base_functions import iga_find_basis_weights_opt

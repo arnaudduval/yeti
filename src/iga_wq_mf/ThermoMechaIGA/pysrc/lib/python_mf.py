@@ -5,9 +5,7 @@
 ..               and maybe it does not work as expected
 """
 
-# Python libraries
-import numpy as np
-from scipy import sparse as sp
+from .__init__ import *
 
 # My libraries
 from .python_wq import WQ

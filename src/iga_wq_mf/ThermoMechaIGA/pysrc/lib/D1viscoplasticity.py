@@ -1,5 +1,9 @@
-from copy import deepcopy
+"""
+.. Integrating elastoplasticity 1D in python
+"""
+
 import numpy as np
+from copy import deepcopy
 
 def return_mapping_point(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
     """Return mapping algorithm for one-dimensional rate-independent plasticity. 

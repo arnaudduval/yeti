@@ -6,10 +6,7 @@
 ..               Fortran functions to calculate basis are more efficient
 """
 
-# Python libraries
-import numpy as np
-from scipy import sparse as sp
-import time
+from .__init__ import *
 
 # My libraries
 from .base_functions import wq_find_basis_weights_opt

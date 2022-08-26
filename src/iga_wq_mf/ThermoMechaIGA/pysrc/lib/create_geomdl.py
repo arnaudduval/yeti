@@ -3,19 +3,8 @@
 .. Joaquin Cornejo
 """
 
-# Python libraries
-from geomdl import (
-    fitting, 
-    BSpline, 
-    operations,
-)
-import os, copy, time, math, numpy as np
-
-# My libraries
+from .__init__ import *
 from .base_functions import create_knotvector
-
-# YETI libraries 
-from preprocessing.igaparametrization import IGAparametrization
 
 class geomdlModel(): 
 
@@ -274,7 +263,7 @@ class geomdlModel():
 
         start = time.time()
         # Copy geometry
-        geometry = copy.deepcopy(self._geometry)
+        geometry = deepcopy(self._geometry)
 
         # Set new number of elements
         cuts = nb_refinementByDirection

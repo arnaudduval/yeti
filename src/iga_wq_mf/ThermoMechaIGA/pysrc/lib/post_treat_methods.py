@@ -4,13 +4,9 @@
 .. author :: Joaquin Cornejo
 """
 
-# Python libraries
-import matplotlib.pyplot as plt
-import scipy, numpy as np
-import os, time
+from .__init__ import *
 
 # My libraries
-from . import enablePrint, blockPrint
 from .create_geomdl import geomdlModel
 from .fortran_mf_iga import fortran_mf_iga
 from .fortran_mf_wq import fortran_mf_wq
@@ -173,7 +169,7 @@ class ThermalSimulation():
 
         # Solve system
         start = time.process_time()
-        u_n = scipy.sparse.linalg.spsolve(Knn, Fn)
+        u_n = sp.linalg.spsolve(Knn, Fn)
         stop = time.process_time()
         time_solDir = stop - start 
 

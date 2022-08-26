@@ -3,20 +3,12 @@
 .. Joaquin Cornejo
 """
 
-# Python libraries
-import statistics, time
-import numpy as np
-from scipy import sparse as sp
-from pyevtk.hl import gridToVTK
-
-# Yeti libraries
-from preprocessing.igaparametrization import IGAparametrization
+from .__init__ import *
 
 # My libraries
 from .D3viscoplasticity import *
 from .base_functions import eval_basis_fortran
 from .create_geomdl import geomdlModel
-from iga_wq_mf import assembly
 
 class thermoMechaModel(): 
 

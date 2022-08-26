@@ -4,14 +4,11 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
-import numpy as np
-import time
+from .__init__ import *
 
 # My libraries
 from .base_functions import erase_rows_csr, iga_find_basis_weights_fortran
 from .create_model import thermoMechaModel
-from iga_wq_mf import assembly, solver
     
 class fortran_mf_iga(thermoMechaModel):
     
