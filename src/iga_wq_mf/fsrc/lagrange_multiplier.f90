@@ -12,7 +12,7 @@
 ! P = [ MM  0
 !       0   SS]
 ! Where MM is an approximation of M and SS is an approximation of S 
-! S is the Schur complement, S = B' M^-1 B
+! S is the Schur complement, S = B M^-1 B'
 ! In practice, to compute MM we use fast diagonalisation and 
 ! to compute SS we use the inverse of the diagonal of MM (in Dirichlet nodes)
 ! ==========================
@@ -139,12 +139,12 @@ subroutine mf_wq_get_Au_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 end subroutine mf_wq_get_Au_shl_3d
 
 subroutine fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, ndod, dod, array_in, array_out)
-    !! Solves P.s = r in steady heat 3D case with lagrange multipliers, where 
+    !! Solves Z.s = r (Z is the preconditioner) in steady heat 3D case with lagrange multipliers, where 
     !!     [ MM  0    [s1  = [r1
     !!       0   SS ]  s2]    r2]
-    !! To keep it simple, we solve independently s1 = MM^-1 r1 and s2 = SS^-1 r2
+    !! To keep it simple, we solve independently s1 = MM^-1 r1 and we set s2 = 0
     !! MM is an approximation of M = K + B' P B and P a penalty diagonal matrix. To compute MM^-1 we use fast diagonalization
-    !! SS is an approximation of Schur complement S = B' MM^-1 B. With B a block matrix of 0 and 1, S is really a block matrix
+    !! SS is an approximation of Schur complement S = B MM^-1 B'. With B a block matrix of 0 and 1, S is really a block matrix
     !! of Dirichlet nodes. Then we approximate S as the inverse of diagonal of MM (in Dirichlet nodes)
     !! Indices must be in CSR format
 
@@ -178,7 +178,8 @@ subroutine fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardi
 
     ! Solve second block
     do i = 1, ndod
-        s2(i) = r2(i) * pardiag(dod(i)) 
+        ! s2(i) = r2(i)/pardiag(dod(i))
+        s2(i) = 0.d0
     end do
 
     ! Assign values
@@ -228,9 +229,9 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     ! ------------------
     ! Pre / Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, s, dummy, ptilde, Aptilde, stilde, Astilde
-    dimension ::    r(nr_total+ndod), rhat(nr_total+ndod), p(nr_total+ndod), s(nr_total+ndod), dummy(nr_total+ndod), &
-                    ptilde(nr_total+ndod), Aptilde(nr_total+ndod), Astilde(nr_total+ndod), stilde(nr_total+ndod)
+    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, xt
+    dimension ::    r(nr_total+ndod), rhat(nr_total+ndod), p(nr_total+ndod), s(nr_total+ndod), ptilde(nr_total+ndod), &
+                    Aptilde(nr_total+ndod), Astilde(nr_total+ndod), stilde(nr_total+ndod), xt(nr_total+ndod)
     integer :: iter
 
     ! Fast diagonalization
@@ -245,7 +246,7 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     dimension :: indi_B(ndod+1), indj_B(ndod), indi_BT(nr_total+1), indj_BT(ndod)
     double precision :: B, BT, BTPg
     dimension :: B(ndod), BT(ndod), BTPg(nr_total)
-    double precision :: penalty = 100
+    double precision :: penalty 
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -313,7 +314,7 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
 
     ! Define penalty
-    penalty = 100 * maxval(Dphysical)
+    penalty = max(100.d0, 100.d0*maxval(Dphysical))
 
     if (nbIter.gt.0) then
         ! -------------------------------------------
@@ -338,9 +339,7 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
 
         do iter = 1, nbIter
 
-            dummy = p
-            call fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, dummy, ptilde)
-
+            call fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, p, ptilde)
             call mf_wq_get_Au_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
@@ -349,16 +348,14 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
 
-            dummy = s
-            call fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, dummy, stilde)
-
+            call fd_shl_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, s, stilde)
             call mf_wq_get_Au_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
                                 indi_B, indj_B, indi_BT, indj_BT, B, BT, penalty, ndod, stilde, Astilde)
 
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-            x = x + alpha*ptilde + omega*stilde
+            xt = xt + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
             RelRes(iter+1) = maxval(abs(r))/maxval(abs(f))            
@@ -369,6 +366,10 @@ subroutine mf_wq_solve_shl_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
         end do
+
+        ! Save result
+        x = xt(1:nr_total)
+
     end if
 
 end subroutine mf_wq_solve_shl_3d

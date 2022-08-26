@@ -373,19 +373,38 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, u, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol): 
 
         # Get inputs 
         self._verify_conductivity()
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         inputs_tmp = self.get_input4MatrixFree(self._thermalDirichlet)
-        inputs = [self._conductivity_coef, *inputs_tmp, u, nbIterations, epsilon, method, 
+        inputs = [self._conductivity_coef, *inputs_tmp, f, nbIterations, epsilon, method, 
                 self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
 
         return sol, residue, error
+
+    def MFsteadyHeat_Lagrange(self, f, nbIterations, epsilon, ud=None, indi=None): 
+
+        # Get inputs 
+        self._verify_conductivity()
+        if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if indi is None: raise Warning('Impossible')
+        if ud is None: ud = np.zeros(len(self._thermal_dod)) 
+
+        # Convert Python to Fortran
+        dod = deepcopy(indi)
+        dod = np.array(dod) + 1
+        inputs = [self._conductivity_coef, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, 
+                    self._thermalDirichlet, dod, f, ud, nbIterations, epsilon]
+
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: sol, residue = solver.mf_wq_solve_shl_3d(*inputs)
+
+        return sol, residue
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         

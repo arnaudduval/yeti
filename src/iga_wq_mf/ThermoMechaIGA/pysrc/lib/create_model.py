@@ -18,7 +18,7 @@ class thermoMechaModel():
 
         # Initialize B-Spline properties
         print('Setting B-spline properties')
-        self._sample_size = 101
+        self._sample_size = 100
         self._r_ = 2
         self._name = self.read_name(modelIGA)
         self._dim = self.read_dimensions(modelIGA)
@@ -655,8 +655,9 @@ class thermoMechaModel():
             dirname = os.path.dirname
             folder = dirname(dirname(full_path)) + '/results/'
             if not os.path.isdir(folder): os.mkdir(folder)
+            print(folder)
 
-        if u_ctrlpts is None: pass
+        if u_ctrlpts is None: ndof = 1; pass
         elif isinstance(u_ctrlpts, np.ndarray): 
             u_ctrlpts = np.atleast_2d(u_ctrlpts)
             if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: 

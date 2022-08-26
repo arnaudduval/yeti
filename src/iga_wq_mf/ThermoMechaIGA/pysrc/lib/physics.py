@@ -21,15 +21,15 @@ def powden_cube(P: list):
     y = P[1, :]
     z = P[2, :]
 
-    # # Isotropy
-    # f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
+    # Isotropy
+    f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
 
-    # Anisotropy
-    f = (6*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
-    - (pi**2*cos(pi*x)*cos(pi*z)*sin(pi*y))/5 
-    - (pi**2*cos(pi*y)*cos(pi*z)*sin(pi*x))/2 
-    - pi**2*cos(pi*x)*cos(pi*y)*sin(pi*z)
-    )
+    # # Anisotropy
+    # f = (6*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
+    # - (pi**2*cos(pi*x)*cos(pi*z)*sin(pi*y))/5 
+    # - (pi**2*cos(pi*y)*cos(pi*z)*sin(pi*x))/2 
+    # - pi**2*cos(pi*x)*cos(pi*y)*sin(pi*z)
+    # )
 
     return f
 

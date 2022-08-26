@@ -6,7 +6,7 @@
 ! for IGA-Galerkin and IGA-WQ approaches.   
 ! ==========================
 
-subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B, indi, indj)
+subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B, indices)
     !! Gets in COO format the basis at given knots 
 
     implicit none 
@@ -19,24 +19,25 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     
     double precision, intent(out) :: data_B
     dimension :: data_B(nb_knots*(degree+1), 2)
-    integer, intent(out) :: indi, indj
-    dimension :: indi(nb_knots*(degree+1)), indj(nb_knots*(degree+1))
+    integer, intent(out) :: indices
+    dimension :: indices((degree+1)*nb_knots, 2)
 
     ! Local data
     ! -------------
-    integer :: i, j, k, nb_ctrlpts, para_span, kv_span, nbel
-    integer :: functions_span
-    dimension :: functions_span(degree+1)
+    integer :: i, j, k, nb_ctrlpts, nbel
+    integer :: functions_span, span
+    dimension :: functions_span(degree+1), span(2)
     integer, allocatable, dimension(:, :) :: table_functions_span
-    double precision :: B0temp, B1temp
-    dimension :: B0temp(degree+1), B1temp(degree+1)
-    double precision :: nodes(size_kv+1)
+    double precision :: nodes, B0t, B1t
+    dimension :: nodes(size_kv+1), B0t(degree+1), B1t(degree+1)
+
+    ! Get nodes 
+    call find_unique_vector(size_kv, knotvector, nodes)
 
     ! Set number of control points
     nb_ctrlpts = size_kv - degree - 1
 
     ! Get non repeated knot vector
-    call find_unique_vector(size_kv, knotvector, nodes)
     nbel = int(nodes(size_kv+1)) - 1
     allocate(table_functions_span(nbel, degree+1))
     call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
@@ -44,24 +45,23 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     ! Evaluate B-spline values for every knot 
     do i = 1, nb_knots
         ! Find knot-vector span
-        call find_knotvector_span(degree, size_kv, knotvector, knots(i), kv_span)
+        call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
 
         ! Find parametric span
-        call find_parametric_span(size_kv, nodes, knots(i), para_span)
+        call find_parametric_span(size_kv, nodes, knots(i), span(2), span_tol)
 
         ! Find functions over the span 
-        functions_span = table_functions_span(para_span, :)
+        functions_span = table_functions_span(span(2), :)
 
         ! Evaluate B0 and B1
-        call dersbasisfuns(kv_span, degree, nb_ctrlpts, knots(i), knotvector, B0temp, B1temp)
+        call dersbasisfuns(span(1), degree, nb_ctrlpts, knots(i), knotvector, B0t, B1t)
         
         ! Assign values
         do j = 1, degree+1
             k = (i - 1)*(degree + 1) + j
-            data_B(k, 1) = B0temp(j)
-            data_B(k, 2) = B1temp(j)
-            indi(k) = functions_span(j)
-            indj(k) = i                               
+            data_B(k, 1) = B0t(j)
+            data_B(k, 2) = B1t(j)
+            indices(k, :) = [functions_span(j), i]                                
         end do
     end do
 
@@ -85,16 +85,16 @@ subroutine get_basis_generalized_csr(degree, size_kv, knotvector, nb_knots, knot
     ! Local data
     ! ---------------
     integer :: size_data
-    integer, dimension(:), allocatable :: indi_coo, indj_coo
+    integer, dimension(:, :), allocatable :: indices
     double precision, dimension(:, :), allocatable :: data_B_coo
 
     ! Get results in coo format
     size_data = nb_knots*(degree+1)
-    allocate(data_B_coo(size_data, 2), indi_coo(size_data), indj_coo(size_data))
-    call get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B_coo, indi_coo, indj_coo)
+    allocate(data_B_coo(size_data, 2), indices(size_data, 2))
+    call get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B_coo, indices)
 
     ! Get CSR format
-    call coo2csr(2, size_kv-degree-1, size_data, data_B_coo, indi_coo, indj_coo, data_B, indj, indi)
+    call coo2csr(2, size_kv-degree-1, size_data, data_B_coo, indices(:, 1), indices(:, 2), data_B, indj, indi)
     deallocate(data_B_coo)
 
 end subroutine 
