@@ -53,38 +53,43 @@ F = modelPhy.eval_source_vector(powden_cube)
 Fn = F[dof]
 
 # Solution using conjugate gradient with preconditioner (Lagrange or penalty)
-iterations = 100; epsilon = 1e-3
+iterations = 20; epsilon = 1e-3
 inputs = [F, iterations, epsilon]   
-usol_0, relres = modelPhy.MFsteadyHeat_Lagrange(*inputs, indi=dod, lagrange=False)
+usol_0, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, indi=dod, lagrange=True)
 error = abs(u_interp - usol_0)/abs(u_interp).max()
 
+print(energy)
+
 from matplotlib import pyplot as plt
-plt.loglog(np.arange(1, len(relres)+1), relres*100)
+plt.plot(np.arange(1, len(energy)+1), energy)
 plt.xlabel('Number of iterations')
-plt.ylabel("Relative error (%)")
-plt.savefig('Residue.png')
+plt.ylabel("Energy")
+plt.tight_layout()
+plt.savefig('Energy.png')
 
-# Define residue R = F - KT (all variables)
-R0 = abs(F - modelPhy.eval_Ku(usol_0))
+# # Define residue R = F - KT (all variables)
+# KU0 = modelPhy.eval_Ku(usol_0)
+# R0 = abs(F - KU0)
+# E0 = 0.5*usol_0 @ KU0 - usol_0 @ F
 
-# Solution solving Knn un = Fn, in this example ud = 0
-inputs = [Fn, iterations, epsilon, "JM"]   
-un_1, _, _ = modelPhy.MFsteadyHeat(*inputs)
-usol_1 = np.zeros(modelPhy._nb_ctrlpts_total)
-usol_1[dof] = un_1
-error = abs(u_interp - usol_1)/abs(u_interp).max()
+# # Solution solving Knn un = Fn, in this example ud = 0
+# inputs = [Fn, iterations, epsilon, "JM"]   
+# un_1, _, _ = modelPhy.MFsteadyHeat(*inputs)
+# usol_1 = np.zeros(modelPhy._nb_ctrlpts_total)
+# usol_1[dof] = un_1
+# error = abs(u_interp - usol_1)/abs(u_interp).max()
 
-# Define residue R = F - KT (all variables)
-R1 = abs(F - modelPhy.eval_Ku(usol_1))
+# # Define residue R = F - KT (all variables)
+# KU1 = modelPhy.eval_Ku(usol_1)
+# R1 = abs(F - KU1)
+# E1 = 0.5* usol_1 @ KU1 - usol_1 @ F
 
-print("Residue : %.5f, %.5f" %(R0.max(), R1.max()))
+# print('Energy : %.5f, %.5f'  %(E0, E1))
+# print("Residue : %.5f, %.5f" %(R0.max(), R1.max()))
 
-
-# modelPhy.export_results(u_ctrlpts=usol)
+# modelPhy.export_results(u_ctrlpts=usol_0)
 
 # ==============================================================================
-
-
 
 
 # # Set global variables
@@ -119,17 +124,18 @@ print("Residue : %.5f, %.5f" %(R0.max(), R1.max()))
 # F = modelPhy.eval_source_vector(powden_rotring)
 
 # # Solution using conjugate gradient
-# iterations = 400
+# iterations = 200
 # epsilon = 1e-15
 
 # # With preconditioner
 # inputs = [F, iterations, epsilon]   
-# usol, relres = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=False)
+# usol, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=True)
 # error = abs(u_interp - usol)/abs(u_interp).max()
-# print(error.min(), error.max())
 
 # from matplotlib import pyplot as plt
-# plt.semilogy(relres*100)
+# plt.semilogy(np.arange(1, len(energy)+1), abs(energy))
 # plt.xlabel('Number of iterations')
-# plt.ylabel("Relative error (%)")
-# plt.savefig('Residue.png')
+# plt.ylabel("Energy")
+# plt.grid()
+# plt.tight_layout()
+# plt.savefig('Energy.png')

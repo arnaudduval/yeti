@@ -66,7 +66,7 @@ end subroutine create_block_B
 
 ! STEADY HEAT TRANSFER CASE: M = K + B' P B and F = f + B' P g
 ! -------------------------------------------------------------
-! With Lagrange
+! With Lagrange multipliers method
 
 subroutine mf_wq_get_Au_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -189,8 +189,7 @@ subroutine fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pard
 
     ! Solve second block
     do i = 1, ndod
-        s2(i) = r2(i)/pardiag(dod(i)) ! to review
-        s2(i) = 0.d0 !!!!!!!!!!!!!!!!!! to review
+        s2(i) = r2(i)*pardiag(dod(i)) ! to review
     end do
 
     ! Assign values
@@ -202,7 +201,7 @@ end subroutine fd_shlm_3d
 subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, ndod, dod, f, g, nbIter, epsilon, x, RelRes)
+                            table, ndod, dod, f, g, nbIter, epsilon, x, energy)
     !! Precontionned bi-conjugate gradient to solve steady heat problems
     !! We want to solve M x = F, with Bx = g (Dirichlet condition), where M = M = K + B' P B and P a penalty diagonal matrix
     !! and F = f + B' P g. Using Lagrange multipliers, the linear system is:
@@ -233,16 +232,17 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     double precision, intent(in) :: epsilon, f, g
     dimension :: f(nr_total), g(ndod)
     
-    double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_total), RelRes(nbIter+1)
+    double precision, intent(out) :: x, energy
+    dimension :: x(nr_total), energy(nbIter)
 
     ! Local data
     ! ------------------
+    double precision :: dummy_tol
     ! Pre / Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, xt
+    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, xt, Ax
     dimension ::    r(nr_total+ndod), rhat(nr_total+ndod), p(nr_total+ndod), s(nr_total+ndod), ptilde(nr_total+ndod), &
-                    Aptilde(nr_total+ndod), Astilde(nr_total+ndod), stilde(nr_total+ndod), xt(nr_total+ndod)
+                    Aptilde(nr_total+ndod), Astilde(nr_total+ndod), stilde(nr_total+ndod), xt(nr_total+ndod), Ax(nr_total)
     integer :: iter
 
     ! Fast diagonalization
@@ -275,6 +275,7 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! DIAGONAL DECOMPOSITION
     ! -------------------------------------------- 
     ! Initialize
+    dummy_tol = epsilon
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
@@ -346,7 +347,7 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
         rhat = r; p = r
         rsold = dot_product(r, rhat)
-        RelRes(1) = 1.d0
+        energy(1) = 0.d0 ! Energy : 0.5 u' A u - u' f  
 
         do iter = 1, nbIter
 
@@ -369,8 +370,15 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             xt = xt + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            RelRes(iter+1) = maxval(abs(r))/maxval(abs(f))            
-            if (RelRes(iter+1).le.epsilon) exit
+            ! Save result
+            x = xt(1:nr_total)
+
+            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
+            
+            energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f       
+            ! if (energy(iter+1).le.epsilon) exit
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -378,15 +386,12 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             rsold = rsnew
         end do
 
-        ! Save result
-        x = xt(1:nr_total)
-
     end if
 
 end subroutine mf_wq_solve_shlm_3d
 
+! With penalty method
 
-! With penalty
 subroutine mf_wq_get_Au_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -481,7 +486,7 @@ end subroutine fd_shp_3d
 subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, ndod, dod, f, g, nbIter, epsilon, x, RelRes)
+                            table, ndod, dod, f, g, nbIter, epsilon, x, energy)
     !! Precontionned bi-conjugate gradient to solve steady heat problems
     !! We want to solve M x = F, with Bx = g (Dirichlet condition), where M = M = K + B' P B and P a penalty diagonal matrix
     !! and F = f + B' P g. We use penalty method
@@ -510,16 +515,17 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     double precision, intent(in) :: epsilon, f, g
     dimension :: f(nr_total), g(ndod)
     
-    double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_total), RelRes(nbIter+1)
+    double precision, intent(out) :: x, energy
+    dimension :: x(nr_total), energy(nbIter)
 
     ! Local data
     ! ------------------
+    double precision :: dummy_tol
     ! Pre / Conjugate gradient algoritm
-    double precision :: rsold, rsnew, alpha, omega, beta, norm_b, norm_r
-    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, dummy
+    double precision :: rsold, rsnew, alpha, omega, beta
+    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, dummy, Ax
     dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), ptilde(nr_total), &
-                    Aptilde(nr_total), Astilde(nr_total), stilde(nr_total), dummy(nr_total)
+                    Aptilde(nr_total), Astilde(nr_total), stilde(nr_total), dummy(nr_total), Ax(nr_total)
     integer :: iter
 
     ! Fast diagonalization
@@ -552,6 +558,7 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     ! DIAGONAL DECOMPOSITION
     ! -------------------------------------------- 
     ! Initialize
+    dummy_tol = epsilon
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
@@ -622,8 +629,7 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
 
         rhat = r; p = r
         rsold = dot_product(r, rhat)
-        RelRes(1) = 1.d0
-        norm_b = rsold
+        energy(1) = 0.d0 ! Energy : 0.5 u' A u - u' f
 
         do iter = 1, nbIter
 
@@ -651,12 +657,15 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
                                 indi_B, indj_B, indi_BT, indj_BT, B, BT, penalty, ndod, stilde, Astilde)
 
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-            x = x + alpha*ptilde + omega*stilde
+            x = x + alpha*ptilde + omega*stilde 
             r = s - omega*Astilde   
-            norm_r = dot_product(r, r) - dot_product(r(dod), r(dod))
+
+            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
             
-            RelRes(iter+1) = norm_r/norm_b               
-            if (RelRes(iter+1).le.epsilon) exit
+            energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f       
+            ! if (RelRes(iter+1).le.epsilon) exit
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
