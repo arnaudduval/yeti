@@ -8,7 +8,7 @@ import numpy as np, scipy
 from copy import deepcopy
 
 # My libraries
-# from lib.physics import powden_rotring, temperature_rotring
+from lib.physics import powden_rotring, temperature_rotring
 from lib.physics import powden_cube
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
@@ -25,8 +25,18 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=np.array(
 # ===========================================
 # IGA WQ MF APPROACH
 # ===========================================
+def temperature_cube(P: list):
+    " T = sin(pi*x)*sin(pi*y)*sin(pi*z)"
+    x = P[0, :]
+    y = P[1, :]
+    z = P[2, :]
+    f = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)
+
+    return f
+
 # Interpolation of u
 modelPhy = fortran_mf_wq(modelIGA)
+u_interp = modelPhy.interpolate_ControlPoints(temperature_cube)
 
 # Add material 
 material = {'capacity':1, 'conductivity':np.eye(3)}
@@ -40,23 +50,37 @@ dod = deepcopy(modelPhy._thermal_dod)
 
 # Compute source vector
 F = modelPhy.eval_source_vector(powden_cube)
-F[dod] = 0
+Fn = F[dof]
 
-# Solution using conjugate gradient with preconditioner
-iterations = 100; epsilon = 1e-11
+# Solution using conjugate gradient with preconditioner (Lagrange or penalty)
+iterations = 100; epsilon = 1e-3
 inputs = [F, iterations, epsilon]   
-usol, relres = modelPhy.MFsteadyHeat_Lagrange(*inputs, indi=dod)
-print(relres)
+usol_0, relres = modelPhy.MFsteadyHeat_Lagrange(*inputs, indi=dod, lagrange=False)
+error = abs(u_interp - usol_0)/abs(u_interp).max()
 
 from matplotlib import pyplot as plt
-plt.semilogy(relres*100)
+plt.loglog(np.arange(1, len(relres)+1), relres*100)
 plt.xlabel('Number of iterations')
 plt.ylabel("Relative error (%)")
 plt.savefig('Residue.png')
 
+# Define residue R = F - KT (all variables)
+R0 = abs(F - modelPhy.eval_Ku(usol_0))
+
+# Solution solving Knn un = Fn, in this example ud = 0
+inputs = [Fn, iterations, epsilon, "JM"]   
+un_1, _, _ = modelPhy.MFsteadyHeat(*inputs)
+usol_1 = np.zeros(modelPhy._nb_ctrlpts_total)
+usol_1[dof] = un_1
+error = abs(u_interp - usol_1)/abs(u_interp).max()
+
+# Define residue R = F - KT (all variables)
+R1 = abs(F - modelPhy.eval_Ku(usol_1))
+
+print("Residue : %.5f, %.5f" %(R0.max(), R1.max()))
+
+
 # modelPhy.export_results(u_ctrlpts=usol)
-
-
 
 # ==============================================================================
 
@@ -65,7 +89,7 @@ plt.savefig('Residue.png')
 
 # # Set global variables
 # degree = 4
-# cuts = 3 
+# cuts = 4
 
 # # Create geometry using geomdl
 # geometry = {'degree':[degree, degree, degree]}
@@ -95,11 +119,17 @@ plt.savefig('Residue.png')
 # F = modelPhy.eval_source_vector(powden_rotring)
 
 # # Solution using conjugate gradient
-# iterations = 20
+# iterations = 400
 # epsilon = 1e-15
 
 # # With preconditioner
 # inputs = [F, iterations, epsilon]   
-# usol = modelPhy.MFsteadyHeat_Lagrange(*inputs, g=ud, indi=dod)[0]
-# print(u_interp)
-# print(usol)
+# usol, relres = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=False)
+# error = abs(u_interp - usol)/abs(u_interp).max()
+# print(error.min(), error.max())
+
+# from matplotlib import pyplot as plt
+# plt.semilogy(relres*100)
+# plt.xlabel('Number of iterations')
+# plt.ylabel("Relative error (%)")
+# plt.savefig('Residue.png')

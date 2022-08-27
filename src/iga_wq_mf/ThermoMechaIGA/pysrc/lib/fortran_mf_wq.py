@@ -373,11 +373,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol=None): 
 
         # Get inputs 
         self._verify_conductivity()
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if directsol is None: directsol = np.zeros(len(f))
         inputs_tmp = self.get_input4MatrixFree(self._thermalDirichlet)
         inputs = [self._conductivity_coef, *inputs_tmp, f, nbIterations, epsilon, method, 
                 self._conductivity, self._Jqp, directsol]
@@ -387,7 +388,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFsteadyHeat_Lagrange(self, f, nbIterations, epsilon, ud=None, indi=None): 
+    def MFsteadyHeat_Lagrange(self, f, nbIterations, epsilon, ud=None, indi=None, lagrange=True): 
 
         # Get inputs 
         self._verify_conductivity()
@@ -402,7 +403,9 @@ class fortran_mf_wq(thermoMechaModel):
                     self._thermalDirichlet, dod, f, ud, nbIterations, epsilon]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue = solver.mf_wq_solve_shl_3d(*inputs)
+        if self._dim == 3: 
+            if lagrange: sol, residue = solver.mf_wq_solve_shlm_3d(*inputs)
+            else: sol, residue = solver.mf_wq_solve_shp_3d(*inputs)
 
         return sol, residue
 
