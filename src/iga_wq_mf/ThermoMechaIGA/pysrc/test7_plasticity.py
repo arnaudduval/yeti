@@ -62,8 +62,6 @@ Fsurf = modelPhy.eval_force_surf()
 # # ==================================
 # # Initialize
 # Fext = Fsurf
-# for i in range(3):
-#     Fext[i, Mdod[i]] = 0.0
 
 # dof_extended = []
 # for i in range(3):
@@ -118,8 +116,6 @@ modelPhy.MFWQ_solvePlasticity(Fext=Fext[:,:,:2], indi=Mdod)
 # # ==================================
 # # Initialize
 # Fext = Fsurf
-# for i in range(3):
-#     Fext[i, Mdod[i]] = 0.0
 
 # # Compute iterative solution in python 
 # coefs = np.load(folder_file+'CoefStiff.npy')

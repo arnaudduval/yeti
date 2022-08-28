@@ -124,8 +124,8 @@ subroutine mf_wq_get_Au_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     dimension :: Kx(nr_total), Bx(ndod), L(ndod), BTL(nr_total)
 
     ! Assign blocks
-    x = array_in(1:nr_total)
-    y = array_in(nr_total+1:nr_total+ndod)
+    x = array_in(:nr_total)
+    y = array_in(nr_total+1:)
 
     ! Compute K.x
     call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -143,12 +143,12 @@ subroutine mf_wq_get_Au_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call spMdotdV(nr_total, ndod, ndod, indi_BT, indj_BT, BT, L, BTL)
 
     ! Set values
-    array_out(1:nr_total) = Kx + BTL
-    array_out(nr_total+1:nr_total+ndod) = Bx
+    array_out(:nr_total) = Kx + BTL
+    array_out(nr_total+1:) = Bx
 
 end subroutine mf_wq_get_Au_shlm_3d
 
-subroutine fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, ndod, dod, array_in, array_out)
+subroutine fd_shlm_3d(nr_total, ndod, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, phydiag, array_in, array_out)
     !! Solves Z.s = r (Z is the preconditioner) in steady heat 3D case with lagrange multipliers, where 
     !!     [ MM  0    [s1  = [r1
     !!       0   SS ]  s2]    r2]
@@ -162,12 +162,11 @@ subroutine fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pard
     implicit none
     ! Input / output  data 
     !---------------------
-    integer, intent(in) :: ndod, nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, eigendiag, pardiag
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), eigendiag(nr_total), pardiag(nr_total)
+    integer, intent(in) :: nr_total, ndod, nr_u, nr_v, nr_w
+    double precision, intent(in) :: U_u, U_v, U_w, eigendiag, pardiag, phydiag
+    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
+                    eigendiag(nr_total), pardiag(nr_total), phydiag(nr_total)
 
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total+ndod)
 
@@ -181,20 +180,24 @@ subroutine fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pard
     dimension :: r1(nr_total), r2(ndod), s1(nr_total), s2(ndod)
 
     ! Assign blocks 
-    r1 = array_in(1:nr_total)
-    r2 = array_in(nr_total+1:nr_total+ndod)
+    r1 = array_in(:nr_total)
+    r2 = array_in(nr_total+1:)
 
     ! Solve firts block
+    s1 = 0.d0
+    call fd_sqr_scaling(nr_total, pardiag, phydiag, r1)
     call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, r1, s1)
+    call fd_sqr_scaling(nr_total, pardiag, phydiag, s1)
 
     ! Solve second block
+    s2 = 0.d0
     do i = 1, ndod
-        s2(i) = r2(i)*pardiag(dod(i)) ! to review
+        s2(i) = r2(i) ! to review: Identity
     end do
 
     ! Assign values
-    array_out(1:nr_total) = s1
-    array_out(nr_total+1:nr_total+ndod) = s2
+    array_out(:nr_total) = s1
+    array_out(nr_total+1:) = s2
 
 end subroutine fd_shlm_3d
 
@@ -326,7 +329,8 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
 
     ! Define penalty
-    penalty = max(100.d0, 100.d0*maxval(Dphysical))
+    penalty = max(100.d0, 10000.d0*maxval(Dphysical))
+    Dphysical(dod) = Dphysical(dod) + penalty 
 
     if (nbIter.gt.0) then
         ! -------------------------------------------
@@ -342,16 +346,17 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
         ! Define r
         call spMdotdV(nr_total, ndod, ndod, indi_BT, indj_BT, BT, penalty*g, BTPg)
-        r(1:nr_total) = f + BTPg
-        r(nr_total+1:nr_total+ndod) = g
+        r(:nr_total) = f + BTPg
+        r(nr_total+1:) = g
 
         rhat = r; p = r
         rsold = dot_product(r, rhat)
         energy(1) = 0.d0 ! Energy : 0.5 u' A u - u' f  
+        xt = 0.d0
 
         do iter = 1, nbIter
 
-            call fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, p, ptilde)
+            call fd_shlm_3d(nr_total, ndod, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, p, ptilde)
             call mf_wq_get_Au_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
@@ -360,7 +365,7 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
 
-            call fd_shlm_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, ndod, dod, s, stilde)
+            call fd_shlm_3d(nr_total, ndod, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, s, stilde)
             call mf_wq_get_Au_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
@@ -371,12 +376,12 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             r = s - omega*Astilde    
             
             ! Save result
-            x = xt(1:nr_total)
+            x = xt(:nr_total)
 
             call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
-            
+
             energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f       
             ! if (energy(iter+1).le.epsilon) exit
 
@@ -384,6 +389,7 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
+            
         end do
 
     end if
@@ -459,7 +465,7 @@ subroutine mf_wq_get_Au_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
 end subroutine mf_wq_get_Au_shp_3d
 
-subroutine fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, array_in, array_out)
+subroutine fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, phydiag, array_in, array_out)
     !! Solves MM.s = r (MM is the preconditioner) in steady heat 3D case with lagrange multipliers, where 
     !! MM is an approximation of M = K + B' P B and P a penalty diagonal matrix. 
     !! With B a block matrix of 0 and 1. To compute MM^-1 we use fast diagonalization.
@@ -469,8 +475,9 @@ subroutine fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, array
     ! Input / output  data 
     !---------------------
     integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, eigendiag
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), eigendiag(nr_total)
+    double precision, intent(in) :: U_u, U_v, U_w, eigendiag, pardiag, phydiag
+    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
+                    eigendiag(nr_total), pardiag(nr_total), phydiag(nr_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total)
@@ -478,8 +485,21 @@ subroutine fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, array
     double precision, intent(out) :: array_out
     dimension :: array_out(nr_total)
 
+    ! Local data
+    ! -------------
+    double precision :: array_temp(nr_total)
+
+    ! Initialize
+    array_temp = array_in
+
+    ! Scaling
+    call fd_sqr_scaling(nr_total, pardiag, phydiag, array_temp)
+
     ! By now, we test this approximation. It could change later
-    call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, array_in, array_out)
+    call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, array_temp, array_out)
+
+    ! Scaling
+    call fd_sqr_scaling(nr_total, pardiag, phydiag, array_out)
 
 end subroutine fd_shp_3d
 
@@ -523,9 +543,9 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     double precision :: dummy_tol
     ! Pre / Conjugate gradient algoritm
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, dummy, Ax
+    double precision :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, Ax
     dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), ptilde(nr_total), &
-                    Aptilde(nr_total), Astilde(nr_total), stilde(nr_total), dummy(nr_total), Ax(nr_total)
+                    Aptilde(nr_total), Astilde(nr_total), stilde(nr_total), Ax(nr_total)
     integer :: iter
 
     ! Fast diagonalization
@@ -630,14 +650,11 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
         rhat = r; p = r
         rsold = dot_product(r, rhat)
         energy(1) = 0.d0 ! Energy : 0.5 u' A u - u' f
+        x = 0.d0
 
         do iter = 1, nbIter
 
-            dummy = p
-            call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
-            call fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-            call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
-
+            call fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, p, ptilde)
             call mf_wq_get_Au_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
@@ -646,11 +663,7 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
 
-            dummy = s
-            call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
-            call fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-            call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
-
+            call fd_shp_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, s, stilde)
             call mf_wq_get_Au_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &

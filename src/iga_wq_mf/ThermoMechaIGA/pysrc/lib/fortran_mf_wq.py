@@ -675,7 +675,8 @@ class fortran_mf_wq(thermoMechaModel):
                 # Compute Fint 
                 Fint = self.compute_internal_force(coef_Fint)
                 dF = Fext_t - Fint
-                clean_dirichlet_3d(dF, indi)
+                clean_dirichlet_3d(dF, indi) #!!!!!!!!!!!!!!!!!!!!!!
+                print("WARNING: FIND A NEW STOP CRITERION")
                 prod1 = block_dot_product(d, dF, dF)
                 relerror = np.sqrt(prod1/prod2)
                 print('Relative error: %.5f' %relerror)
