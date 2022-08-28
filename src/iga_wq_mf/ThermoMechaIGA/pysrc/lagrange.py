@@ -126,12 +126,12 @@ ud = u_interp[dod]
 F = modelPhy.eval_source_vector(powden_rotring)
 
 # Solution using conjugate gradient
-iterations = 100
+iterations = 200
 epsilon = 1e-15
 
 # With preconditioner
 inputs = [F, iterations, epsilon]   
-usol, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=False)
+usol, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=True)
 error = abs(u_interp - usol)/abs(u_interp).max()
 
 from matplotlib import pyplot as plt
@@ -141,4 +141,4 @@ plt.xlabel('Number of iterations')
 plt.ylabel("Energy")
 plt.grid()
 plt.tight_layout()
-plt.savefig('Energy_Penalty.png')
+plt.savefig('Energy_Lagrange.png')
