@@ -123,7 +123,7 @@ subroutine create_block_C(nr, ndod, dod, indi_C, indj_C, C, indi_CT, indj_CT, CT
 
 end subroutine create_block_C
 
-! STEADY HEAT TRANSFER CASE: M = K + B' P B and F = f + B' P g
+! STEADY HEAT TRANSFER CASE:
 ! -------------------------------------------------------------
 ! With Lagrange multipliers method
 
@@ -753,7 +753,7 @@ end subroutine mf_wq_solve_shp_3d
 
 ! With substitution method
 
-subroutine mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine mf_wq_get_Au_shs_3d(Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_W_u, data_W_v, data_W_w, indi_C, indj_C, indi_CT, indj_CT, C, CT, &
@@ -768,8 +768,8 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! -------------------
     integer, parameter :: d = 3 
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ndof
-    double precision, intent(in) :: coefs
-    dimension :: coefs(d, d, nc_total)
+    double precision, intent(in) :: Kcoefs
+    dimension :: Kcoefs(d, d, nc_total)
 
     integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
@@ -805,7 +805,7 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, array_in, BTu)
 
     ! Compute K.u
-    call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_wq_get_ku_3d(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, BTu, KBTu)
@@ -1141,3 +1141,127 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     end if
 
 end subroutine mf_wq_solve_shs_3d
+
+! TRANSIENT HEAT TRANSFER CASE: 
+! -------------------------------------------------------------
+subroutine mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_W_u, data_W_v, data_W_w, indi_C, indj_C, indi_CT, indj_CT, C, CT, &
+                                ndof, alpha, dt, array_in, array_out)
+    !! Computes Ann.u in steady heat 3D case with substitution method, where 
+    !! But A is given as [Ann, And; Adn, Add]. So Ann u =  C A C' u, where C is a zeros and ones matrix.
+    !! Indices must be in CSR format
+
+    use tensor_methods
+    implicit none 
+    ! Input / output 
+    ! -------------------
+    integer, parameter :: d = 3 
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ndof
+    double precision, intent(in) :: Kcoefs, Ccoefs
+    dimension :: Kcoefs(d, d, nc_total), Ccoefs(nc_total)
+
+    integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+    integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+    integer, intent(in) :: indi_u, indi_v, indi_w
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+    integer, intent(in) :: indj_u, indj_v, indj_w
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+    integer, intent(in) :: indi_C, indj_C, indi_CT, indj_CT
+    dimension :: indi_C(ndof+1), indj_C(ndof), indi_CT(nr_total+1), indj_CT(ndof)
+    double precision :: C, CT
+    dimension :: C(ndof), CT(ndof)
+
+    double precision, intent(in) :: alpha, dt, array_in
+    dimension :: array_in(ndof)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(ndof)
+
+    ! Local data 
+    ! ------------------   
+    double precision :: CBTu, KBTu, BTu
+    dimension :: CBTu(nr_total), KBTu(nr_total), BTu(nr_total)
+
+    ! Compute B'.u                   
+    call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, array_in, BTu)
+
+    ! Compute K.u
+    call mf_wq_get_ku_3d(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, BTu, KBTu)
+
+    ! Compute C.u
+    call mf_wq_get_cu_3d(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, BTu, CBTu)
+
+    ! Compute alpha dt Ku + Cu
+    CBTu = CBTu + alpha*dt*KBTu
+
+    ! Compute B.u                   
+    call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, CBTu, array_out)
+
+end subroutine mf_wq_get_Au_ths_3d
+
+subroutine fd_ths_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, phydiag, method, &
+                    ndof, indi_C, indj_C, indi_CT, indj_CT, C, CT, alpha, dt, array_in, array_out)
+    !! Solves MM.s = r (MM is the preconditioner) in steady heat 3D case with substitution method, where 
+    !! MM is an approximation of M = K + alpha dt C.
+    !! Indices must be in CSR format
+
+    implicit none
+    ! Input / output  data 
+    !---------------------
+    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w, ndof
+    double precision, intent(in) :: U_u, U_v, U_w, eigendiag, pardiag, phydiag
+    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
+                    eigendiag(nr_total), pardiag(nr_total), phydiag(nr_total)
+
+    integer, intent(in) :: indi_C, indj_C, indi_CT, indj_CT
+    dimension :: indi_C(ndof+1), indj_C(ndof), indi_CT(nr_total+1), indj_CT(ndof)
+    double precision :: C, CT
+    dimension :: C(ndof), CT(ndof)
+    character(len=10), intent(in) :: method
+
+    double precision, intent(in) :: alpha, dt, array_in
+    dimension :: array_in(ndof)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(ndof)
+
+    ! Local data
+    ! -------------
+    double precision :: BTu, KBTu
+    dimension :: BTu(nr_total), KBTu(nr_total)
+
+    ! Compute B'.u                   
+    call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, array_in, BTu)
+
+    ! Scaling
+    if ((method.eq.'JMS').or.(method.eq.'TDS')) then
+        call fd_sqr_scaling(nr_total, pardiag, phydiag, BTu)
+    end if
+
+    ! By now, we test this approximation. It could change later
+    call fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, dt, alpha, array_in, array_out)
+
+    ! Scaling
+    if ((method.eq.'JMS').or.(method.eq.'TDS')) then
+        call fd_sqr_scaling(nr_total, pardiag, phydiag, KBTu)
+    end if
+
+    ! Compute B.u                   
+    call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, KBTu, array_out)
+
+end subroutine fd_ths_3d

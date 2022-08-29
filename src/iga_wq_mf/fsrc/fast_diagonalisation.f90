@@ -143,7 +143,7 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
 
 end subroutine fd_interpolation_3d
 
-subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, dt, theta, array_out)
+subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, dt, alpha, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to transient heat equations
     !! by G. Sanaglli and M. Tani
@@ -157,7 +157,7 @@ subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diago
     double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
     dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
                     diagonal(nr_total), array_in(nr_total)
-    double precision, intent(in) :: dt, theta
+    double precision, intent(in) :: dt, alpha
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nr_total)
@@ -174,8 +174,8 @@ subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diago
 
     ! Second part 
     diagonal_new = 1.d0/dt
-    if (theta.gt.0.d0) then 
-        diagonal_new = diagonal_new + theta*diagonal
+    if (alpha.gt.0.d0) then 
+        diagonal_new = diagonal_new + alpha*diagonal
     end if
     !$OMP PARALLEL 
     nb_tasks = omp_get_num_threads()
