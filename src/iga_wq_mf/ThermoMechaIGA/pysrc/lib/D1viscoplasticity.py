@@ -3,9 +3,8 @@
 """
 
 import numpy as np
-from copy import deepcopy
 
-def return_mapping_point(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
+def return_mapping_point_1D(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
     """Return mapping algorithm for one-dimensional rate-independent plasticity. 
     Combined Isotropic/Kinematic hardening. For one quadrature point """
     
@@ -31,7 +30,7 @@ def return_mapping_point(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
 
     return [Dalg, sigma_n1, alpha_n1, ep_n1]
 
-def compute_Fint(DB, W, sigma):
+def compute_Fint_1D(DB, W, sigma):
     """Returns vector F int. 
     Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
     But in 1D: detJ times J^-1 get cancelled.
@@ -42,12 +41,12 @@ def compute_Fint(DB, W, sigma):
 
     return Fint
 
-def compute_Fvol(DB, W, b): 
+def compute_Fvol_1D(DB, W, b): 
     " Returns volumetric force"
     F = DB[0] @ np.diag(W) @ b.T
     return F
 
-def compute_stiffness_matrix(JJ, DB, W, Scoefs):
+def compute_tangent_static_matrix_1D(JJ, DB, W, Scoefs):
     """Returns stiffness matrix 
     S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
     But in 1D: detJ times J^-1 get cancelled.
@@ -59,14 +58,14 @@ def compute_stiffness_matrix(JJ, DB, W, Scoefs):
 
     return S
 
-def compute_strain(JJ, DB, disp):
+def compute_strain_1D(JJ, DB, disp):
     " Computes strain given displacement field "
 
     # Compute strain
     eps = DB[1].T @ disp / JJ
     return eps
 
-def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6, nbIter=200):
+def solve_plasticity_1D(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6, nbIter=200):
     " Solves plasticity problem in 1D "
 
     # Initialize
@@ -91,16 +90,16 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
         for j in range(nbIter):
 
             # Compute strain as function of displacement
-            deps = compute_strain(JJ, DB, ddisp)
+            deps = compute_strain_1D(JJ, DB, ddisp)
 
             # Closest point projection in perfect plasticity
             for k in range(nnz):
-                result = return_mapping_point(E, H, beta, sigma_Y0, 
+                result = return_mapping_point_1D(E, H, beta, sigma_Y0, 
                             deps[k], sigma_n0[k], alpha_n0[k], ep_n0[k])
                 Dalg[k], sigma_n1[k], alpha_n1[k], ep_n1[k] = result
 
             # Compute Fint
-            Fint = compute_Fint(DB, W, sigma_n1)
+            Fint = compute_Fint_1D(DB, W, sigma_n1)
             dF = Fext_t[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
             relerror = np.sqrt(prod1/prod2)
@@ -109,7 +108,7 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
                 break
             else:
                 # Compute stiffness
-                S = compute_stiffness_matrix(JJ, DB, W, Dalg)[np.ix_(dof, dof)]
+                S = compute_tangent_static_matrix_1D(JJ, DB, W, Dalg)[np.ix_(dof, dof)]
                 ddisp[dof] = np.linalg.solve(S, dF)
                 
         print(i, j)
@@ -122,7 +121,7 @@ def solve_plasticity(properties, DB=None, W =None, Fext=None, dof=None, tol=1e-6
  
     return disp, ep, sigma
 
-def interpolate_controlPoints(DB, W, u_ref):
+def interpolate_controlPoints_1D(DB, W, u_ref):
     " Returns the values computed at control points "
 
     M = DB[0] @ np.diag(W) @ DB[0].T

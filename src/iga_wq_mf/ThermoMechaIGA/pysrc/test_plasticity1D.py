@@ -7,7 +7,7 @@ from lib.base_functions import (eval_basis_python,
                                 iga_find_positions_weights,
                                 create_knotvector
 )
-from lib.D1viscoplasticity import interpolate_controlPoints, solve_plasticity, compute_strain
+from lib.D1viscoplasticity import interpolate_controlPoints_1D, solve_plasticity_1D, compute_strain_1D
 
 # Define mechanical properties
 E, H, sigma_Y, beta, JJ = 200e3, 25e3, 250, 0.5, 1
@@ -30,15 +30,15 @@ Fext = np.zeros((nb_ctrlpts, N))
 Fext[-1, :] = 400*t
 
 # Solve problem
-disp, epn, sigma = solve_plasticity(properties, DB=DB, W=W, Fext=Fext, dof=dof)
-epn_cp = interpolate_controlPoints(DB, W, epn)
-sigma_cp = interpolate_controlPoints(DB, W, sigma)
+disp, epn, sigma = solve_plasticity_1D(properties, DB=DB, W=W, Fext=Fext, dof=dof)
+epn_cp = interpolate_controlPoints_1D(DB, W, epn)
+sigma_cp = interpolate_controlPoints_1D(DB, W, sigma)
 
 # Post-treatement
 xi = np.linspace(0, 1, 101)
 B0, B1 = eval_basis_python(degree, knotvector, xi)
 disp_it = B0.T*disp
-ep_it = compute_strain(JJ, [B0, B1], disp) 
+ep_it = compute_strain_1D(JJ, [B0, B1], disp) 
 epn_it = B0.T*epn_cp
 sigma_it = B0.T*sigma_cp
 
