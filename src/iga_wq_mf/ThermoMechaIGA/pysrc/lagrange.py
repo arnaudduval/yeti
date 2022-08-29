@@ -13,59 +13,58 @@ from lib.physics import powden_cube
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
 
-# # Set global variables
-# degree = 4
-# cuts = 4
+# Set global variables
+degree = 4
+cuts = 4
 
-# # Create geometry using geomdl
-# geometry = {'degree':[degree, degree, degree]}
-# modelGeo = geomdlModel('CB', **geometry)
-# modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=np.array([cuts, cuts, cuts]))
+# Create geometry using geomdl
+geometry = {'degree':[degree, degree, degree]}
+modelGeo = geomdlModel('CB', **geometry)
+modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=np.array([cuts, cuts, cuts]))
 
-# # ===========================================
-# # IGA WQ MF APPROACH
-# # ===========================================
-# def temperature_cube(P: list):
-#     " T = sin(pi*x)*sin(pi*y)*sin(pi*z)"
-#     x = P[0, :]
-#     y = P[1, :]
-#     z = P[2, :]
-#     f = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)
+# ===========================================
+# IGA WQ MF APPROACH
+# ===========================================
+def temperature_cube(P: list):
+    " T = sin(pi*x)*sin(pi*y)*sin(pi*z)"
+    x = P[0, :]
+    y = P[1, :]
+    z = P[2, :]
+    f = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)
 
-#     return f
+    return f
 
-# # Interpolation of u
-# modelPhy = fortran_mf_wq(modelIGA)
-# u_interp = modelPhy.interpolate_ControlPoints(temperature_cube)
+# Interpolation of u
+modelPhy = fortran_mf_wq(modelIGA)
+u_interp = modelPhy.interpolate_ControlPoints(temperature_cube)
 
-# # Add material 
-# material = {'capacity':1, 'conductivity':np.eye(3)}
-# modelPhy._set_material(material)
+# Add material 
+material = {'capacity':1, 'conductivity':np.eye(3)}
+modelPhy._set_material(material)
 
-# # Block boundaries
-# Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-# modelPhy._set_dirichlet_boundaries(Dirichlet)
-# dof = modelPhy._thermal_dof
-# dod = deepcopy(modelPhy._thermal_dod)
+# Block boundaries
+Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+modelPhy._set_dirichlet_boundaries(Dirichlet)
+dof = modelPhy._thermal_dof
+dod = deepcopy(modelPhy._thermal_dod)
 
-# # Compute source vector
-# F = modelPhy.eval_source_vector(powden_cube)
-# Fn = F[dof]
+# Compute source vector
+F = modelPhy.eval_source_vector(powden_cube)
+Fn = F[dof]
 
-# # Solution using conjugate gradient with preconditioner (Lagrange or penalty)
-# iterations = 5; epsilon = 1e-3
-# inputs = [F, iterations, epsilon]   
-# usol_0, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, indi=dod, lagrange=False)
-# error = abs(u_interp - usol_0)/abs(u_interp).max()
-# print(energy)
+# Solution using conjugate gradient with preconditioner (Lagrange or penalty)
+iterations = 5; epsilon = 1e-3
+inputs = [F, iterations, epsilon]   
+usol_0, energy = modelPhy.MFsteadyHeat_PLS(*inputs, indi=dod, method_pls='S', method_precond='WP')
+error = abs(u_interp - usol_0)/abs(u_interp).max()
 
-# from matplotlib import pyplot as plt
-# plt.title('Energy last value: %.5f' %energy[-1])
-# plt.plot(np.arange(1, len(energy)+1), energy)
-# plt.xlabel('Number of iterations')
-# plt.ylabel("Energy")
-# plt.tight_layout()
-# plt.savefig('Energy.png')
+from matplotlib import pyplot as plt
+plt.title('Energy last value: %.5f' %energy[-1])
+plt.plot(np.arange(1, len(energy)+1), energy)
+plt.xlabel('Number of iterations')
+plt.ylabel("Energy")
+plt.tight_layout()
+plt.savefig('Energy_Substitution.png')
 
 # # Define residue R = F - KT (all variables)
 # KU0 = modelPhy.eval_Ku(usol_0)
@@ -91,54 +90,54 @@ from lib.fortran_mf_wq import fortran_mf_wq
 
 # # ==============================================================================
 
-from lib.__init__ import blockPrint
+# from lib.__init__ import blockPrint
 
-blockPrint()
-# Set global variables
-degree = 4
-cuts = 4
+# blockPrint()
+# # Set global variables
+# degree = 4
+# cuts = 4
 
-# Create geometry using geomdl
-geometry = {'degree':[degree, degree, degree]}
-modelGeo = geomdlModel('RQA', **geometry)
-modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-                                            np.array([cuts, cuts, cuts]))
+# # Create geometry using geomdl
+# geometry = {'degree':[degree, degree, degree]}
+# modelGeo = geomdlModel('RQA', **geometry)
+# modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
+#                                             np.array([cuts, cuts, cuts]))
 
-# ===========================================
-# IGA WQ MF APPROACH
-# ===========================================
-# Interpolation of u
-modelPhy = fortran_mf_wq(modelIGA)
-u_interp = modelPhy.interpolate_ControlPoints(temperature_rotring)
+# # ===========================================
+# # IGA WQ MF APPROACH
+# # ===========================================
+# # Interpolation of u
+# modelPhy = fortran_mf_wq(modelIGA)
+# u_interp = modelPhy.interpolate_ControlPoints(temperature_rotring)
 
-# Add material 
-material = {'capacity':1, 'conductivity':np.eye(3)}
-modelPhy._set_material(material)
+# # Add material 
+# material = {'capacity':1, 'conductivity':np.eye(3)}
+# modelPhy._set_material(material)
 
-# Block boundaries
-Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-modelPhy._set_dirichlet_boundaries(Dirichlet)
-dof = modelPhy._thermal_dof
-dod = modelPhy._thermal_dod 
+# # Block boundaries
+# Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+# modelPhy._set_dirichlet_boundaries(Dirichlet)
+# dof = modelPhy._thermal_dof
+# dod = modelPhy._thermal_dod 
 
-# Solve system
-ud = u_interp[dod]
-F = modelPhy.eval_source_vector(powden_rotring)
+# # Solve system
+# ud = u_interp[dod]
+# F = modelPhy.eval_source_vector(powden_rotring)
 
-# Solution using conjugate gradient
-iterations = 200
-epsilon = 1e-15
+# # Solution using conjugate gradient
+# iterations = 200
+# epsilon = 1e-15
 
-# With preconditioner
-inputs = [F, iterations, epsilon]   
-usol, energy = modelPhy.MFsteadyHeat_Lagrange(*inputs, ud=ud, indi=dod, lagrange=True)
-error = abs(u_interp - usol)/abs(u_interp).max()
+# # With preconditioner
+# inputs = [F, iterations, epsilon]   
+# usol, energy = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, method_pls=True)
+# error = abs(u_interp - usol)/abs(u_interp).max()
 
-from matplotlib import pyplot as plt
-plt.semilogy(np.arange(1, len(energy)+1), abs(energy))
-plt.title('Energy last value: %.5f' %energy[-1])
-plt.xlabel('Number of iterations')
-plt.ylabel("Energy")
-plt.grid()
-plt.tight_layout()
-plt.savefig('Energy_Lagrange.png')
+# from matplotlib import pyplot as plt
+# plt.semilogy(np.arange(1, len(energy)+1), abs(energy))
+# plt.title('Energy last value: %.5f' %energy[-1])
+# plt.xlabel('Number of iterations')
+# plt.ylabel("Energy")
+# plt.grid()
+# plt.tight_layout()
+# plt.savefig('Energy_Lagrange.png')

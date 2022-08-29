@@ -388,8 +388,8 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFsteadyHeat_Lagrange(self, f, nbIterations, epsilon, ud=None, indi=None, lagrange=True): 
-
+    def MFsteadyHeat_PLS(self, f, nbIterations, epsilon, ud=None, indi=None, method_pls='L', method_precond = 'TDC'): 
+        "Solves steady heat with penalty, Lagrange or substitution method"
         # Get inputs 
         self._verify_conductivity()
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -404,10 +404,14 @@ class fortran_mf_wq(thermoMechaModel):
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
-            if lagrange: sol, residue = solver.mf_wq_solve_shlm_3d(*inputs)
-            else: sol, residue = solver.mf_wq_solve_shp_3d(*inputs)
+            if method_pls == 'L': sol, energy = solver.mf_wq_solve_shlm_3d(*inputs)
+            elif method_pls == 'P': sol, energy = solver.mf_wq_solve_shp_3d(*inputs)
+            elif method_pls == 'S': 
+                sol, energy = solver. mf_wq_solve_shs_3d(*inputs, 
+                                method_precond, self._conductivity, self._Jqp)
+            else: raise Warning('Method is not defined')
 
-        return sol, residue
+        return sol, energy
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         

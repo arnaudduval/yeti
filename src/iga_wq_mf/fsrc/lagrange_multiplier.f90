@@ -24,84 +24,104 @@
 ! or  A           u  =  b
 ! ==========================
 
-subroutine create_block_B(nr, nc, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT)
+subroutine create_block_B(nc, ndod, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT)
     !! Creates B matrix of the new matrix. 
     !! where the new matrix is [A, BT; B, 0]. 
     !! The block B is a matrix of size nrxnc
     !! Returns B and BT in CSR format
-    !! In this special matrix, the number of non zero values is equal to the number of rows 
+    !! In this special matrix, the number of non zero values is equal to the number of rows (nr = ndod)
 
     implicit none
     ! Input/output data
     ! -----------------
-    integer, intent(in) :: nr, nc, dod
-    dimension :: dod(nr)
+    integer, intent(in) :: nc, ndod, dod
+    dimension :: dod(ndod)
 
     integer, intent(out) :: indi_B, indj_B, indi_BT, indj_BT
-    dimension :: indi_B(nr+1), indj_B(nr), indi_BT(nc+1), indj_BT(nr)
+    dimension :: indi_B(ndod+1), indj_B(ndod), indi_BT(nc+1), indj_BT(ndod)
     double precision, intent(out) :: B, BT
-    dimension :: B(nr), BT(nr)
+    dimension :: B(ndod), BT(ndod)
     
     ! Local data
     ! -----------------
-    integer :: i, indi_coo, indj_coo
-    dimension :: indi_coo(nr), indj_coo(nr)
+    integer :: i, nr, indi_coo, indj_coo
+    dimension :: indi_coo(ndod), indj_coo(ndod)
     double precision :: data_coo
-    dimension :: data_coo(nr, 1)
+    dimension :: data_coo(ndod, 1)
+
+    ! Initialize
+    nr = ndod
 
     ! Get COO format
-    do i = 1, nr
+    do i = 1, nr ! nr = ndod
         indi_coo(i) = i
         indj_coo(i) = dod(i)
         data_coo(i, 1) = 1.d0 
     end do
 
     ! Get B in CSR format
-    call coo2csr(1, nr, nr, data_coo, indi_coo, indj_coo, B, indj_B, indi_B)
+    call coo2csr(1, nr, ndod, data_coo, indi_coo, indj_coo, B, indj_B, indi_B)
 
     ! Get B transpose in CSR format
-    call coo2csr(1, nc, nr, data_coo, indj_coo, indi_coo, BT, indj_BT, indi_BT)
+    call coo2csr(1, nc, ndod, data_coo, indj_coo, indi_coo, BT, indj_BT, indi_BT)
 
 end subroutine create_block_B
 
-! subroutine create_block_C(nr, nc, ndod, dod, indi_C, indj_C, C, indi_CT, indj_CT, CT)
-!     !! Creates the block matrix C 
-!     !! The block C is a matrix of size nrxnc
-!     !! Returns B and BT in CSR format
-!     !! In this special matrix, the number of non zero values is equal to the number of rows 
+subroutine create_block_C(nr, ndod, dod, indi_C, indj_C, C, indi_CT, indj_CT, CT)
+    !! Creates the block matrix C, a matrix of size nrxnc. C M C' = Mnn
+    !! Returns C and CT in CSR format
+    !! In this special matrix, the number of non zero values is equal to the number of rows (nc = nr + ndod, nr = ndof)
 
-!     implicit none
-!     ! Input/output data
-!     ! -----------------
-!     integer, intent(in) :: nr, nc, ndod, dod
-!     dimension :: dod(ndod)
+    implicit none
+    ! Input/output data
+    ! -----------------
+    integer, intent(in) :: nr, ndod, dod
+    dimension :: dod(ndod)
 
-!     integer, intent(out) :: indi_C, indj_C, indi_CT, indj_CT
-!     dimension :: indi_C(nr+1), indj_C(nr), indi_CT(nc+1), indj_CT(nr)
-!     double precision, intent(out) :: C, CT
-!     dimension :: C(nr), CT(nr)
+    integer, intent(out) :: indi_C, indj_C, indi_CT, indj_CT
+    dimension :: indi_C(nr+1), indj_C(nr), indi_CT(nr+ndod+1), indj_CT(nr)
+    double precision, intent(out) :: C, CT
+    dimension :: C(nr), CT(nr)
     
-!     ! Local data
-!     ! -----------------
-!     integer :: i, indi_coo, indj_coo
-!     dimension :: indi_coo(nr), indj_coo(nr)
-!     double precision :: data_coo
-!     dimension :: data_coo(nr, 1)
+    ! Local data
+    ! -----------------
+    integer :: i, j, nc, indi_coo, indj_coo
+    dimension :: indi_coo(nr), indj_coo(nr)
+    integer, allocatable, dimension(:) :: dof
+    double precision :: data_coo
+    dimension :: data_coo(nr, 1)
 
-!     ! Get COO format
-!     do i = 1, nr
-!         indi_coo(i) = i
-!         indj_coo(i) = dod(i)
-!         data_coo(i, 1) = 1.d0 
-!     end do
+    ! Initialize 
+    nc = nr + ndod
+    if (any(dod.ge.nc+1)) stop 'Problem creating C'
+    
+    ! Get dof as complement of dod
+    allocate(dof(nr))
+    dof = 1; i = 1; j = 1
+    do while ((j.le.nc).and.(i.le.nr))
+        if (any(dod.eq.j)) then
+            continue
+        else
+            dof(i) = j
+            i = i + 1 
+        end if
+        j = j + 1
+    end do
 
-!     ! Get B in CSR format
-!     call coo2csr(1, nr, nr, data_coo, indi_coo, indj_coo, C, indj_C, indi_C)
+    ! Get COO format
+    do i = 1, nr ! ndof = nr
+        indi_coo(i) = i
+        indj_coo(i) = dof(i)
+        data_coo(i, 1) = 1.d0 
+    end do
 
-!     ! Get B transpose in CSR format
-!     call coo2csr(1, nc, nr, data_coo, indj_coo, indi_coo, CT, indj_CT, indi_CT)
+    ! Get C in CSR format
+    call coo2csr(1, nr, nr, data_coo, indi_coo, indj_coo, C, indj_C, indi_C)
 
-! end subroutine create_block_C
+    ! Get C transpose in CSR format
+    call coo2csr(1, nc, nr, data_coo, indj_coo, indi_coo, CT, indj_CT, indi_CT)
+
+end subroutine create_block_C
 
 ! STEADY HEAT TRANSFER CASE: M = K + B' P B and F = f + B' P g
 ! -------------------------------------------------------------
@@ -383,7 +403,7 @@ subroutine mf_wq_solve_shlm_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         ! So, to solve this system we initialize r = b - A u, if u = 0, r = b
 
         ! Create block B
-        call create_block_B(ndod, nr_total, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT) 
+        call create_block_B(nr_total, ndod, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT) 
 
         ! Define r
         call spMdotdV(nr_total, ndod, ndod, indi_BT, indj_BT, BT, penalty*g, BTPg)
@@ -682,7 +702,7 @@ subroutine mf_wq_solve_shp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
         ! So, to solve this system we initialize r = b - A u, if u = 0, r = b
 
         ! Create block B
-        call create_block_B(ndod, nr_total, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT) 
+        call create_block_B(nr_total, ndod, dod, indi_B, indj_B, B, indi_BT, indj_BT, BT) 
 
         ! Define r
         call spMdotdV(nr_total, ndod, ndod, indi_BT, indj_BT, BT, penalty*g, BTPg)
@@ -771,10 +791,10 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     dimension :: C(ndof), CT(ndof)
 
     double precision, intent(in) :: array_in
-    dimension :: array_in(nr_total)
+    dimension :: array_in(ndof)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
+    dimension :: array_out(ndof)
 
     ! Local data 
     ! ------------------   
@@ -788,263 +808,336 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, KBTu)
+                        data_W_u, data_W_v, data_W_w, BTu, KBTu)
 
     ! Compute B.u                   
     call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, KBTu, array_out)
 
 end subroutine mf_wq_get_Au_shs_3d
 
-! subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-!                             table, ndod, dod, f, g, nbIter, epsilon, method, nnz_cond, cond, JJ, x, energy)
-!     !! Precontionned bi-conjugate gradient to solve steady heat problems
-!     !! We want to solve M x = F, with Bx = g (Dirichlet condition). Then, we use substitution method, so
-!     !! Mnn xn = Fn - Mnd xd and xd = g 
-!     !! CSR FORMAT
+subroutine fd_shs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, phydiag, method, &
+                    ndof, indi_C, indj_C, indi_CT, indj_CT, C, CT, array_in, array_out)
+    !! Solves MM.s = r (MM is the preconditioner) in steady heat 3D case with substitution method, where 
+    !! MM is an approximation of M = K.
+    !! Indices must be in CSR format
 
-!     use tensor_methods
-!     implicit none 
-!     ! Input / output data
-!     ! ---------------------
-!     integer, parameter :: d = 3
-!     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ndod
-!     double precision, intent(in) :: coefs
-!     dimension :: coefs(d, d, nc_total)
-!     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-!     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-!                     indi_v(nr_v+1), indj_v(nnz_v), &
-!                     indi_w(nr_w+1), indj_w(nnz_w)
-!     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-!     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-!                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-!                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    implicit none
+    ! Input / output  data 
+    !---------------------
+    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w, ndof
+    double precision, intent(in) :: U_u, U_v, U_w, eigendiag, pardiag, phydiag
+    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
+                    eigendiag(nr_total), pardiag(nr_total), phydiag(nr_total)
 
-!     integer, intent(in) :: table, dod
-!     dimension :: table(d, 2), dod(ndod)
-!     character(len=10), intent(in) :: method
-!     integer, intent(in) :: nbIter, nnz_cond
-!     double precision, intent(in) :: cond
-!     dimension :: cond(3, 3, nnz_cond)
-!     double precision, intent(in) :: epsilon, f, g, JJ
-!     dimension :: f(nr_total), g(ndod), JJ(3, 3, nc_total)
+    integer, intent(in) :: indi_C, indj_C, indi_CT, indj_CT
+    dimension :: indi_C(ndof+1), indj_C(ndof), indi_CT(nr_total+1), indj_CT(ndof)
+    double precision :: C, CT
+    dimension :: C(ndof), CT(ndof)
+    character(len=10), intent(in) :: method
+
+    double precision, intent(in) :: array_in
+    dimension :: array_in(ndof)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(ndof)
+
+    ! Local data
+    ! -------------
+    double precision :: BTu, KBTu
+    dimension :: BTu(nr_total), KBTu(nr_total)
+
+    ! Compute B'.u                   
+    call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, array_in, BTu)
+
+    ! Scaling
+    if ((method.eq.'JMS').or.(method.eq.'TDS')) then
+        call fd_sqr_scaling(nr_total, pardiag, phydiag, BTu)
+    end if
+
+    ! By now, we test this approximation. It could change later
+    call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, BTu, KBTu)
+
+    ! Scaling
+    if ((method.eq.'JMS').or.(method.eq.'TDS')) then
+        call fd_sqr_scaling(nr_total, pardiag, phydiag, KBTu)
+    end if
+
+    ! Compute B.u                   
+    call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, KBTu, array_out)
+
+end subroutine fd_shs_3d
+
+subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            table, ndod, dod, f, g, nbIter, epsilon, method, nnz_cond, cond, JJ, x, energy)
+    !! Precontionned bi-conjugate gradient to solve steady heat problems
+    !! We want to solve M x = F, with Bx = g (Dirichlet condition). Then, we use substitution method, so
+    !! Mnn xn = Fn - Mnd xd and xd = g 
+    !! CSR FORMAT
+
+    use tensor_methods
+    implicit none 
+    ! Input / output data
+    ! ---------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ndod
+    double precision, intent(in) :: coefs
+    dimension :: coefs(d, d, nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    integer, intent(in) :: table, dod
+    dimension :: table(d, 2), dod(ndod)
+    character(len=10), intent(in) :: method
+    integer, intent(in) :: nbIter, nnz_cond
+    double precision, intent(in) :: cond
+    dimension :: cond(3, 3, nnz_cond)
+    double precision, intent(in) :: epsilon, f, g, JJ
+    dimension :: f(nr_total), g(ndod), JJ(3, 3, nc_total)
     
-!     double precision, intent(out) :: x, energy
-!     dimension :: x(nr_total), energy(nbIter)
+    double precision, intent(out) :: x, energy
+    dimension :: x(nr_total), energy(nbIter)
 
-!     ! Local data
-!     ! ------------------
-!     double precision :: dummy_tol
-!     ! Pre / Conjugate gradient algoritm
-!     double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
-!     double precision :: rsold, rsnew, alpha, omega, beta
-!     double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde, Ax, xn
-!     dimension ::    r(nr_total-ndod), rhat(nr_total-ndod), p(nr_total-ndod), Ap(nr_total-ndod), As(nr_total-ndod), &
-!                     s(nr_total-ndod), dummy(nr_total-ndod), ptilde(nr_total-ndod), Aptilde(nr_total-ndod), &
-!                     Astilde(nr_total-ndod), stilde(nr_total-ndod), Ax(nr_total-ndod), xn(nr_total-ndod)
-!     integer :: iter
+    ! Local data
+    ! ------------------
+    double precision :: dummy_tol
+    ! Pre / Conjugate gradient algoritm
+    double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
+    double precision :: rsold, rsnew, alpha, omega, beta
+    double precision :: r, rhat, p, Ap, s, As, ptilde, Aptilde, stilde, Astilde, xn, Ax, fAx
+    dimension ::    r(nr_total-ndod), rhat(nr_total-ndod), p(nr_total-ndod), Ap(nr_total-ndod), &
+                    As(nr_total-ndod), s(nr_total-ndod), ptilde(nr_total-ndod), Aptilde(nr_total-ndod), &
+                    Astilde(nr_total-ndod), stilde(nr_total-ndod), xn(nr_total-ndod), Ax(nr_total), fAx(nr_total)
+    integer :: iter
 
-!     ! Fast diagonalization
-!     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-!     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-!     double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
-!     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
-!     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
+    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
+    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
 
-!     ! Csr format
-!     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-!     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-!                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-!     double precision :: data_BT_u, data_BT_v, data_BT_w
-!     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-!     ! Initialize
-!     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-!     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-!     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    ! Block C
+    integer :: ndof
+    integer, allocatable, dimension(:) :: indi_C, indj_C, indi_CT, indj_CT
+    double precision, allocatable, dimension(:) :: C, CT
 
-!     ! Initiate variables
-!     x = 0.d0; xn = 0.d0; energy = 0.d0; dummy_tol = epsilon
-!     x(dod) = g
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-!     if (method.eq.'WP') then 
-!         if (nbIter.gt.0) then
-!             ! ----------------------------
-!             ! Conjugate Gradient algorithm
-!             ! ----------------------------
-!             ! The system to solve is Knn xn = bn
-!             ! Where bn = fn - Knd xd 
-!             ! So, to solve this system we initialize r = bn - Knn xn, if xn = 0, r = bn
-!             ! Initialize
-!             call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-!                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-!                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
+    ! Initialize
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-!             r = f(dod) - Ax(dod)
-!             rhat = r; p = r
-!             rsold = dot_product(r, rhat)
-!             energy(1) = 1.d0
+    ! Initiate variables
+    ndof = nr_total - ndod
+    x = 0.d0; xn = 0.d0; energy = 0.d0; dummy_tol = epsilon
+    x(dod) = g
 
-!             ! do iter = 1, nbIter
-!             !     call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!             !             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!             !             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!             !             data_W_u, data_W_v, data_W_w, p, Ap)
-!             !     alpha = rsold/dot_product(Ap, rhat)
-!             !     s = r - alpha*Ap
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
-!             !     call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!             !             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!             !             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!             !             data_W_u, data_W_v, data_W_w, s, As)
-!             !     omega = dot_product(As, s)/dot_product(As, As)
-!             !     xn = xn + alpha*p + omega*s
-!             !     r = s - omega*As
+    ! Create block C
+    allocate(indi_C(ndof+1), indj_C(ndof), indi_CT(nr_total+1), indj_CT(ndof), C(ndof), CT(ndof))
+    call create_block_C(ndof, ndod, dod, indi_C, indj_C, C, indi_CT, indj_CT, CT)     
 
-!             !     call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-!             !                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-!             !                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
+    if (method.eq.'WP') then 
+        if (nbIter.gt.0) then
+            ! ----------------------------
+            ! Conjugate Gradient algorithm
+            ! ----------------------------
+            ! The system to solve is Knn xn = bn
+            ! Where bn = fn - Knd xd 
+            ! So, to solve this system we initialize r = bn - Knn xn, if xn = 0, r = bn
+            ! Initialize
+            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
+
+            fAx = f - Ax 
+            call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, fAx, r)
+            rhat = r; p = r
+            rsold = dot_product(r, rhat)
+            energy(1) = 1.d0
+
+            do iter = 1, nbIter
+                call mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                                    indi_C, indj_C, indi_CT, indj_CT, C, CT, ndof, p, Ap)
+                alpha = rsold/dot_product(Ap, rhat)
+                s = r - alpha*Ap
+
+                call mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                                    indi_C, indj_C, indi_CT, indj_CT, C, CT, ndof, s, As)
+                omega = dot_product(As, s)/dot_product(As, As)
+                xn = xn + alpha*p + omega*s
+                r = s - omega*As
+
+                call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, xn, x)
+                x(dod) = g
+                call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
                 
-!             !     energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f          
-!             !     ! if (energy(iter+1).le.epsilon) exit
+                energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f          
+                ! if (energy(iter+1).le.epsilon) exit
 
-!             !     rsnew = dot_product(r, rhat)
-!             !     beta = (alpha/omega)*(rsnew/rsold)
-!             !     p = r + beta*(p - omega*Ap)
-!             !     rsold = rsnew
-!             ! end do
-!         end if
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Ap)
+                rsold = rsnew
+            end do
 
-!     ! else  
-!     !     ! Initialize
-!     !     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-!     !     Mcoef_u = 1.d0; Kcoef_u = 1.d0
-!     !     Mcoef_v = 1.d0; Kcoef_v = 1.d0
-!     !     Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        end if
 
-!     !     if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
-!     !         ! --------------------------------------------
-!     !         ! DIAGONAL DECOMPOSITION
-!     !         ! --------------------------------------------            
-!     !         do iter = 1, 2
-!     !             call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
-!     !                                         Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-!     !         end do
+    else  
+        ! Initialize
+        allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-!     !     else if ((method.eq.'JMS').or.(method.eq.'JMC')) then 
-!     !         ! --------------------------------------------
-!     !         ! MY METHOD
-!     !         ! --------------------------------------------
-!     !         ! Find dimensions and conductivity
-!     !         call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
-!     !         call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
+        if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
+            ! --------------------------------------------
+            ! DIAGONAL DECOMPOSITION
+            ! --------------------------------------------            
+            do iter = 1, 2
+                call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
+                                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+            end do
+
+        else if ((method.eq.'JMS').or.(method.eq.'JMC')) then 
+            ! --------------------------------------------
+            ! MY METHOD
+            ! --------------------------------------------
+            ! Find dimensions and conductivity
+            call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
+            call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
             
-!     !         Kcoef_u = lamb_u*Lv*Lw/Lu
-!     !         Kcoef_v = lamb_v*Lw*Lu/Lv
-!     !         Kcoef_w = lamb_w*Lu*Lv/Lw
+            Kcoef_u = lamb_u*Lv*Lw/Lu
+            Kcoef_v = lamb_v*Lw*Lu/Lv
+            Kcoef_w = lamb_w*Lu*Lv/Lw
 
-!     !     end if
+        end if
 
-!     !     ! --------------------------------------------
-!     !     ! EIGEN DECOMPOSITION
-!     !     ! -------------------------------------------- 
-!     !     allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
-!     !     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
-!     !     call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-!     !                             data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-!     !                             data_W_u(:, 4), table(1, :), D_u, U_u, Kdiag_u, Mdiag_u)
+        ! --------------------------------------------
+        ! EIGEN DECOMPOSITION
+        ! -------------------------------------------- 
+        allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
+        allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
+        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                data_W_u(:, 4), table(1, :), D_u, U_u, Kdiag_u, Mdiag_u)
 
-!     !     allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
-!     !     call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-!     !                             data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-!     !                             data_W_v(:, 4), table(2, :), D_v, U_v, Kdiag_v, Mdiag_v)    
+        allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
+        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                data_W_v(:, 4), table(2, :), D_v, U_v, Kdiag_v, Mdiag_v)    
 
-!     !     allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
-!     !     call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-!     !                             data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-!     !                             data_W_w(:, 4), table(3, :), D_w, U_w, Kdiag_w, Mdiag_w)   
-!     !     deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+        allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
+        call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                data_W_w(:, 4), table(3, :), D_w, U_w, Kdiag_w, Mdiag_w)   
+        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
-!     !     ! Find diagonal of eigen values
-!     !     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-!     !     allocate(Deigen(nr_total))
-!     !     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-!     !     call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
-!     !     deallocate(I_u, I_v, I_w)
+        ! Find diagonal of eigen values
+        allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
+        allocate(Deigen(nr_total))
+        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        deallocate(I_u, I_v, I_w)
 
-!     !     if ((method.eq.'TDS').or.(method.eq.'JMS')) then
-!     !         ! --------------------------------------------
-!     !         ! SCALING
-!     !         ! --------------------------------------------
-!     !         ! Find diagonal of preconditioner
-!     !         allocate(Dparametric(nr_total))
-!     !         call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-!     !                                     Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
-!     !         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+        if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+            ! --------------------------------------------
+            ! SCALING
+            ! --------------------------------------------
+            ! Find diagonal of preconditioner
+            allocate(Dparametric(nr_total))
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
+            deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
-!     !         ! Find diagonal of real matrix (K in this case)
-!     !         allocate(Dphysical(nr_total))
-!     !         call wq_find_conductivity_diagonal_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!     !                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!     !                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
-!     !     end if
+            ! Find diagonal of real matrix (K in this case)
+            allocate(Dphysical(nr_total))
+            call wq_find_conductivity_diagonal_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
+        end if
 
-!     !     if (nbIter.gt.0) then
-!     !         ! -------------------------------------------
-!     !         ! Preconditioned Conjugate Gradient algorithm
-!     !         ! -------------------------------------------
-!     !         r = f; rhat = r; p = r
-!     !         rsold = dot_product(r, rhat)
-!     !         energy(1) = 1.d0
+        if (nbIter.gt.0) then
+            ! -------------------------------------------
+            ! Preconditioned Conjugate Gradient algorithm
+            ! -------------------------------------------
+            ! The system to solve is Knn xn = bn
+            ! Where bn = fn - Knd xd 
+            ! So, to solve this system we initialize r = bn - Knn xn, if xn = 0, r = bn
+            ! Initialize
+            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
 
-!     !         do iter = 1, nbIter
+            fAx = f - Ax 
+            call spMdotdV(ndof, nr_total, ndof, indi_C, indj_C, C, fAx, r)
+            rhat = r; p = r
+            rsold = dot_product(r, rhat)
+            energy(1) = 1.d0
 
-!     !             dummy = p
-!     !             if ((method.eq.'TDS').or.(method.eq.'JMS')) then
-!     !                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
-!     !             end if 
-!     !             call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-!     !             if ((method.eq.'TDS').or.(method.eq.'JMS')) then
-!     !                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
-!     !             end if
+            do iter = 1, nbIter
 
-!     !             call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!     !                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!     !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!     !                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
+                call fd_shs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
+                                ndof, indi_C, indj_C, indi_CT, indj_CT, C, CT, p, ptilde)
 
-!     !             alpha = rsold/dot_product(Aptilde, rhat)
-!     !             s = r - alpha*Aptilde
+                call mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                                    indi_C, indj_C, indi_CT, indj_CT, C, CT, ndof, ptilde, Aptilde)
 
-!     !             dummy = s
-!     !             if ((method.eq.'TDS').or.(method.eq.'JMS')) then
-!     !                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
-!     !             end if
-!     !             call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-!     !             if ((method.eq.'TDS').or.(method.eq.'JMS')) then
-!     !                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
-!     !             end if
+                alpha = rsold/dot_product(Aptilde, rhat)
+                s = r - alpha*Aptilde
 
-!     !             call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-!     !                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!     !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!     !                     data_W_u, data_W_v, data_W_w, stilde, Astilde)
+                call fd_shs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
+                                ndof, indi_C, indj_C, indi_CT, indj_CT, C, CT, s, stilde)
 
-!     !             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-!     !             x = x + alpha*ptilde + omega*stilde
-!     !             r = s - omega*Astilde    
+                call mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                                    indi_C, indj_C, indi_CT, indj_CT, C, CT, ndof, stilde, Astilde)
+
+                omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+                xn = xn + alpha*ptilde + omega*stilde
+                r = s - omega*Astilde    
                 
-!     !             energy(iter+1) = maxval(abs(r))/maxval(abs(f))                
-!     !             if (energy(iter+1).le.epsilon) exit
+                call spMdotdV(nr_total, ndof, ndof, indi_CT, indj_CT, CT, xn, x)
+                x(dod) = g
+                call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Ax)
+                
+                energy(iter) = 0.5 * dot_product(x, Ax) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f          
+                ! if (energy(iter+1).le.epsilon) exit
 
-!     !             rsnew = dot_product(r, rhat)
-!     !             beta = (alpha/omega)*(rsnew/rsold)
-!     !             p = r + beta*(p - omega*Aptilde)
-!     !             rsold = rsnew
-!     !         end do
-!     !     end if
-!     ! end if
-!     end if
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Aptilde)
+                rsold = rsnew
 
-! end subroutine mf_wq_solve_shs_3d
+            end do
+
+        end if
+    end if
+
+end subroutine mf_wq_solve_shs_3d
