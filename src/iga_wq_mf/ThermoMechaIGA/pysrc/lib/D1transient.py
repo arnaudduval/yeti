@@ -2,6 +2,7 @@
 .. Integrating elastoplasticity 1D in python
 """
 
+from copy import deepcopy
 import numpy as np
 
 def compute_source_1D(JJ, DB, W, Fcoefs):
@@ -17,7 +18,7 @@ def compute_temperature_1D(DB, T_ctrlpts):
     T_qp = DB[0].T @ T_ctrlpts
     return T_qp
 
-def compute_transient_residue_1D(JJ, DB, W, Kcoefs, Ccoefs, T, dT, F):
+def compute_transient_Fint_1D(JJ, DB, W, Kcoefs, Ccoefs, T, dT):
     "Returns the residue in transient heat"
 
     # Compute conductivity matrix
@@ -29,9 +30,9 @@ def compute_transient_residue_1D(JJ, DB, W, Kcoefs, Ccoefs, T, dT, F):
     C = DB[0] @ np.diag(c_coefs) @ DB[0].T
 
     # Compute tangent matrix 
-    dF = F - C @ dT - K @ T
+    Fint = C @ dT + K @ T
 
-    return dF
+    return Fint
 
 def compute_tangent_transient_matrix_1D(JJ, DB, W, Kcoefs, Ccoefs, alpha=0.5, dt=0.1):
     """Returns tangent matrix in transient heat
@@ -50,37 +51,38 @@ def compute_tangent_transient_matrix_1D(JJ, DB, W, Kcoefs, Ccoefs, alpha=0.5, dt
     C = DB[0] @ np.diag(c_coefs) @ DB[0].T
 
     # Compute tangent matrix 
-    S = C + alpha*dt*K
+    M = C + alpha*dt*K
 
-    return S
+    return M
 
-def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, dof=None, tol=1e-6, nbIter=200):
+def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, dof=None, tol=1e-4, nbIter=100):
     " Solves transient heat problem in 1D. It only solves Dirichlet (g=0) boundary."
 
     # Initialize
     JJ, conductivity, capacity, alpha = properties
     TT = np.zeros(np.shape(Fext)) # Temperature
-    ddTT = np.zeros(np.shape(Fext)) # d Temperature/ d time
+    VV = np.zeros(np.shape(Fext)) # d Temperature/ d time
 
     for i in range(1, np.shape(Fext)[1]):
         # Get delta time
         delta_t = time_list[i] - time_list[i-1]
 
+        # Get values of last step
+        TTn0 = TT[:, i-1] 
+        VVn0 = VV[:, i-1]
+        ddVV = np.zeros(np.shape(TTn0))
+
+        # Predict values of new step
+        TTn1 = TTn0 + delta_t*(1-alpha)*VVn0
+        TTn1i0 = deepcopy(TTn1)
+        VVn1 = np.zeros(np.shape(TTn1))
+
         # Get "force" of new step
         F = Fext[:, i]
         prod2 = np.dot(F, F)
 
-        # Get values of last step
-        TTn0 = TT[:, i-1] 
-        ddTTn0 = ddTT[:, i-1]
-        d_dT = np.zeros(np.shape(TTn0))
-
-        # Predict values of new step
-        TTn1 = TTn0 + delta_t*(1-alpha)*ddTTn0
-        ddTTn1 = np.zeros(np.shape(TTn1))
-
         # Corrector (Newton-Raphson)
-        for i in range(nbIter):
+        for j in range(nbIter):
 
             # Interpolate temperature
             T_nq = compute_temperature_1D(DB, TTn1)
@@ -89,28 +91,31 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
             Kcoefs = conductivity(T_nq)
             Ccoefs = capacity(T_nq)
 
-            # Compute tangent matrix
-            SS = compute_tangent_transient_matrix_1D(JJ, DB, W, 
-                                    Kcoefs, Ccoefs, alpha=alpha, dt=delta_t)[np.ix_(dof, dof)]
-
             # Compute residue
-            dF = compute_transient_residue_1D(JJ, DB, W, Kcoefs, Ccoefs, TTn1, ddTTn1, F)[dof]
+            Fint = compute_transient_Fint_1D(JJ, DB, W, Kcoefs, Ccoefs, TTn1, VVn1)
+            dF = F[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
             relerror = np.sqrt(prod1/prod2)
 
             if relerror <= tol:
                 break
             else:
+                # Compute tangent matrix
+                MM = compute_tangent_transient_matrix_1D(JJ, DB, W, 
+                                        Kcoefs, Ccoefs, alpha=alpha, dt=delta_t)[np.ix_(dof, dof)]
+
                 # Compute delta dT 
-                d_dT[dof] = np.linalg.solve(SS, dF)
+                ddVV[dof] = np.linalg.solve(MM, dF)
 
                 # Update values
-                ddTTn1 += d_dT
-                TTn1 += alpha*delta_t*ddTTn1
+                VVn1 += ddVV
+                TTn1 = TTn1i0 + alpha*delta_t*VVn1
+        print(j+1, relerror)
 
         # Update values in output
+        VV[:, i] = VVn1
         TT[:, i] = TTn1
-        ddTT[:, i] = ddTTn1
+        
 
     return TT
 

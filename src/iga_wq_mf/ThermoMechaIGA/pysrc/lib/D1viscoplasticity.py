@@ -30,7 +30,7 @@ def return_mapping_point_1D(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n
 
     return [Dalg, sigma_n1, alpha_n1, ep_n1]
 
-def compute_Fint_1D(DB, W, sigma):
+def compute_static_Fint_1D(DB, W, sigma):
     """Returns vector F int. 
     Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
     But in 1D: detJ times J^-1 get cancelled.
@@ -83,8 +83,8 @@ def solve_plasticity_1D(properties, DB=None, W =None, Fext=None, dof=None, tol=1
 
         # Initialize
         ddisp = np.zeros(np.shape(disp[:, i-1]))
-        Fext_t = Fext[:, i]
-        prod2 = np.dot(Fext_t, Fext_t)
+        F = Fext[:, i]
+        prod2 = np.dot(F, F)
 
         # Newton Raphson
         for j in range(nbIter):
@@ -99,8 +99,8 @@ def solve_plasticity_1D(properties, DB=None, W =None, Fext=None, dof=None, tol=1
                 Dalg[k], sigma_n1[k], alpha_n1[k], ep_n1[k] = result
 
             # Compute Fint
-            Fint = compute_Fint_1D(DB, W, sigma_n1)
-            dF = Fext_t[dof] - Fint[dof]
+            Fint = compute_static_Fint_1D(DB, W, sigma_n1)
+            dF = F[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
             relerror = np.sqrt(prod1/prod2)
 
