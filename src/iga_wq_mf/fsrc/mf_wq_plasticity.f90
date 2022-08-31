@@ -391,7 +391,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         ! -------------------------------------------
         ! In this algorithm we assume that A = Snn and b = Fn
         r = b; 
-        call clean_dirichlet_3d(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+        call clean_dirichlet_3dim(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         rhat = r; p = r
         call block_dot_product(d, nr_total, r, rhat, rsold)
         norm2b = norm2(r)
@@ -401,7 +401,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Ap)
-            call clean_dirichlet_3d(nr_total, Ap, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, Ap, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(d, nr_total, Ap, rhat, prod)
             alpha = rsold/prod
@@ -411,7 +411,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, s, As)
-            call clean_dirichlet_3d(nr_total, As, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, As, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(d, nr_total, As, s, prod)
             call block_dot_product(d, nr_total, As, As, prod2)
@@ -433,33 +433,33 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         ! -------------------------------------------
         ! In this algorithm we assume that A = Snn and b = Fn
         r = b; 
-        call clean_dirichlet_3d(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+        call clean_dirichlet_3dim(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         rhat = r; p = r
         call block_dot_product(d, nr_total, r, rhat, rsold)
         norm2b = norm2(r)
 
         do iter = 1, nbIter
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
-            call clean_dirichlet_3d(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-            call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             
             call block_dot_product(d, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
             
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
-            call clean_dirichlet_3d(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call mf_wq_get_su_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, stilde, Astilde)
-            call clean_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(d, nr_total, Astilde, s, prod)
             call block_dot_product(d, nr_total, Astilde, Astilde, prod2)
@@ -515,7 +515,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     ! Local data
     ! -----------
-    type(material), pointer :: mat
+    type(mecamat), pointer :: mat
     double precision :: E, H, beta, nu, sigma_Y
 
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -584,7 +584,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
         ! Newton Raphson
-        do j = 1, 2
+        do j = 1, nbIterRaphson
             print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 
@@ -598,14 +598,14 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             end do
 
             ! Compute coefficients to compute Fint and Stiffness
-            call compute_coefficients(nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
+            call compute_meca_coefficients(nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
             
             ! Compute Fint
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
             dF = Fext_t - Fint
-            call clean_dirichlet_3d(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call clean_dirichlet_3dim(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(d, nr_total, dF, dF, prod1)
             relerror = sqrt(prod1/prod2)
             print*, "Raphson with error: ", relerror

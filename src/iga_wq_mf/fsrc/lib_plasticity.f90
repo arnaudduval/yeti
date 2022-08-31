@@ -13,7 +13,7 @@
 ! Otherwise some scale factor need to be considered.
 ! ==========================
 
-subroutine clean_dirichlet_3d(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+subroutine clean_dirichlet_3dim(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     !! Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
     !! A is actually a vector arranged following each dimension [Au, Av, Aw]
 
@@ -32,7 +32,7 @@ subroutine clean_dirichlet_3d(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     A(2, dod_v) = 0.d0 
     A(3, dod_w) = 0.d0 
 
-end subroutine clean_dirichlet_3d
+end subroutine clean_dirichlet_3dim
 
 subroutine block_dot_product(dimen, nc, A, B, result)
     !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
@@ -213,7 +213,7 @@ module elastoplasticity
     integer, parameter :: ddl = dimen*(dimen+1)/2
     double precision, parameter :: tol1 = 1e-6, tol2 = 1e-6
 
-    type :: material
+    type :: mecamat
         ! Inputs 
         ! ------------
         double precision :: young, poisson
@@ -228,7 +228,7 @@ module elastoplasticity
         ! ---------
         double precision, dimension(:, :), allocatable :: Idev
     
-    end type material
+    end type mecamat
 
     contains
 
@@ -239,7 +239,7 @@ module elastoplasticity
         ! Input / output
         ! ---------------
         double precision, intent(in) :: E, H, beta, nu, sigma_Y
-        type(material), pointer :: object
+        type(mecamat), pointer :: object
 
         ! Local data
         ! ----------------
@@ -279,7 +279,7 @@ module elastoplasticity
 
     end subroutine initialize_mat
 
-    subroutine compute_coefficients(nc_total, sigma, DD, invJ, detJ, coef_Fint, coef_Stiff)
+    subroutine compute_meca_coefficients(nc_total, sigma, DD, invJ, detJ, coef_Fint, coef_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
 
         implicit none 
@@ -327,7 +327,7 @@ module elastoplasticity
 
         end do
 
-    end subroutine compute_coefficients
+    end subroutine compute_meca_coefficients
 
     ! ======================================
     ! COMBINED ISOTROPIC/KINEMATIC HARDENING
@@ -375,7 +375,7 @@ module elastoplasticity
         implicit none
         ! Input / output
         ! ---------------
-        type(material), pointer :: mat
+        type(mecamat), pointer :: mat
         double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
         dimension :: alpha_n0(ddl), deps(ddl), sigma_n0(ddl)
 

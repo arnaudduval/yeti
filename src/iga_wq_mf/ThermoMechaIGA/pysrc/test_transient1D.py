@@ -11,7 +11,7 @@ from lib.D1transient import *
 
 def conductivity(T):
     # K = 1 + 2*np.exp(-abs(T))
-    K = 0.1*np.ones(np.shape(T))
+    K = 1*np.ones(np.shape(T))
     return K
 
 def capacity(T):
@@ -25,7 +25,7 @@ def source(qp):
 
 # Define geometry
 alpha, JJ = 0.5, 1
-degree, nbel = 5, 8
+degree, nbel = 5, 32
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
 knotvector = create_knotvector(degree, nbel)

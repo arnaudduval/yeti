@@ -3,6 +3,37 @@
 ! author :: Joaquin Cornejo
 ! ====================================================
 
+subroutine wq_find_capacity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Cdiag)
+    
+    use tensor_methods
+    implicit none
+    ! Input / output 
+    ! -------------------
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+    dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
+                    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    double precision, intent(out) :: Cdiag
+    dimension :: Cdiag(nr_u*nr_v*nr_w)
+
+    ! Initialize
+    Cdiag = 0.d0 
+    call find_physical_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u(:, 1), data_B_v(:, 1), data_B_w(:, 1), &
+                            data_W_u(:, 1), data_W_v(:, 1), data_W_w(:, 1), Cdiag)
+
+end subroutine wq_find_capacity_diagonal_3d
+
 subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Kdiag)
@@ -280,6 +311,61 @@ subroutine mf_wq_get_ku_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                         data_W_u, data_W_v, data_W_w, array_input, array_output)
     
 end subroutine mf_wq_get_ku_3d_csr
+
+subroutine mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, alpha, beta, array_input, array_output)
+    !! Computes (alpha*C+beta*K).u in 3D case
+    !! Indices must be in CSR format
+
+    use tensor_methods
+    implicit none 
+    ! Input / output 
+    ! -------------------
+    integer, parameter :: d = 3 
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: Kcoefs, Ccoefs, alpha, beta
+    dimension :: Kcoefs(d, d, nc_total), Ccoefs(nc_total)
+
+    integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+    integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+    integer, intent(in) :: indi_u, indi_v, indi_w
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+    integer, intent(in) :: indj_u, indj_v, indj_w
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+    double precision, intent(in) :: array_input
+    dimension :: array_input(nr_u*nr_v*nr_w)
+
+    double precision, intent(out) :: array_output
+    dimension :: array_output(nr_u*nr_v*nr_w)
+
+    ! Local data
+    ! ---------------
+    double precision :: array_temp_1, array_temp_2
+    dimension :: array_temp_1(nr_u*nr_v*nr_w), array_temp_2(nr_u*nr_v*nr_w)
+
+    call mf_wq_get_cu_3d(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                    data_W_u, data_W_v, data_W_w, array_input, array_temp_1)
+
+    call mf_wq_get_ku_3d(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                    data_W_u, data_W_v, data_W_w, array_input, array_temp_2)
+
+    array_output = alpha*array_temp_1 + beta*array_temp_2
+    
+end subroutine mf_wq_get_kcu_3d
 
 ! ----------------------------------------
 ! Conjugate gradient for steady problems

@@ -10,6 +10,79 @@
 ! -------------------
 ! Vector and matrices
 ! -------------------
+subroutine find_interpolation_span(size_array, array, x, span, tol)
+    !! Finds the interpolation span of the given knot. 
+    !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
+
+    implicit none 
+    ! Input / output data
+    ! ------------------- 
+    integer, intent(in) :: size_array
+    double precision, intent(in) :: array, x, tol
+    dimension :: array(size_array)
+
+    integer, intent(out) :: span 
+
+    ! Set first value of span
+    span = 2
+    
+    ! Find span
+    do while ((span.lt.size_array) &
+            .and.((array(span)-x).le.tol))
+
+        ! Update value 
+        span = span + 1
+    end do
+    
+    ! Set result
+    span = span - 1 
+
+end subroutine find_interpolation_span
+
+subroutine linear_interpolation(size, table, nnz, x, y, tol)
+
+    implicit none
+    ! Input / output data
+    ! ----------------------
+    integer, intent(in) :: size, nnz
+    double precision, intent(in) :: table, x, tol
+    dimension :: table(size, 2), x(nnz)
+
+    double precision, intent(out) :: y
+    dimension :: y(nnz)
+
+    ! Local data
+    ! -----------------
+    integer :: i, span
+    double precision :: x1, x2, y1, y2, xi, yi
+
+    ! Verify if table is well defined (values in ascending order)
+    do i = 1, size-1
+        if (table(i+1,1)-table(i,1).le.tol) stop 'Table is not well - defined'
+    end do
+
+    do i = 1, nnz
+        xi = x(i)
+        if (xi.le.table(1,1)) then
+            ! First case: x is less than the first point
+            yi = table(1, 2)
+        else if (xi.ge.table(size,1)) then
+            ! Second case: x is greatr than the last point
+            yi = table(size, 2)
+        else
+            ! Last case: x is within a knot from a table
+            ! Find the span of x from a table
+            call find_interpolation_span(size, table(:, 1), xi, span, tol)
+
+            ! Linear interpolation
+            x1 = table(span, 1); x2 = table(span+1, 1)
+            y1 = table(span, 2); y2 = table(span+1, 2)
+            yi = y1 + (xi-x1)*(y2-y1)/(x2-x1)
+        end if
+        y(i) = yi
+    end do
+
+end subroutine linear_interpolation
 
 subroutine diff_vector(times, nnz, vector_in, vector_out)
     !! Returns the difference between elements of array. 
