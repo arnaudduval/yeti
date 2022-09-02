@@ -21,6 +21,7 @@ add_library(iga_wq_mf
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_linear_algebra.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_basis_weights.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"
+            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_heat_transfer.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_plasticity.f90"
 )
 
@@ -44,7 +45,7 @@ CreateF2PYModule(NAME solver
                 FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/fast_diagonalisation.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_iga_heat.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_heat.f90"  
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lagrange_multiplier.f90"  
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_heat_other.f90"  
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_plasticity.f90"
                  LINK_LIBRARIES iga_wq_mf base 
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
