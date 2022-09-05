@@ -790,6 +790,96 @@ subroutine dense2csr(nr, nc, a_in, nnz, indi_csr, indj_csr, a_csr)
 
 end subroutine dense2csr
 
+subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
+                        nnz_in, indi_in, indj_in, a_in, &
+                        nnz_out, indi_out, indj_out, a_out)
+    !! Erase rows from CSR format
+
+    implicit none 
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nrows2er, nba, nnz_in, nr_in
+    integer, intent(inout) :: nnz_out
+    integer, intent(in) :: rows2er, indi_in, indj_in
+    dimension :: rows2er(nrows2er), indi_in(nr_in+1), indj_in(nnz_in)
+    double precision, intent(in) :: a_in
+    dimension :: a_in(nnz_in, nba)
+
+    integer, intent(out) :: indi_out, indj_out
+    dimension :: indi_out(nr_in+1-nrows2er), indj_out(nnz_out)
+    double precision, intent(out) :: a_out
+    dimension :: a_out(nnz_out, nba)
+
+    ! Local data
+    ! -------------------
+    integer :: i, j, k, c, nr_out, nnzrow
+    integer, allocatable, dimension(:) :: rows2save
+
+    ! Verify that rows to erase are consistant
+    do i = 1, nrows2er
+        k = rows2er(i)
+        if ((k.le.0).or.(k.gt.nr_in)) then 
+            stop 'Rows to erase are not well defined'
+        end if
+    end do
+
+    ! Verify that rows to erase are different 
+    do i = 1, nrows2er
+        c = 0
+        k = rows2er(i)
+        do j = 1, nrows2er
+            if (k.eq.rows2er(j)) then 
+                c = c + 1
+            end if
+        end do
+        if (c.ge.2) then 
+            stop 'Rows to erase are repeated'
+        end if
+    end do
+
+    if (nnz_out.le.0) then 
+        ! Gets the number of non zeros values of output
+        nnz_out = nnz_in
+
+        do i = 1, nrows2er
+            j = rows2er(i)
+            nnzrow = indi_in(j+1) - indi_in(j)
+            nnz_out = nnz_out - nnzrow
+        end do
+
+    else
+        ! Compute rows to save
+        nr_out = nr_in - nrows2er
+        allocate(rows2save(nr_out))
+        i = 1; j = 1
+        do while ((j.le.nr_in).and.(i.le.nr_out))
+            if (any(rows2er.eq.j)) then
+                continue
+            else
+                rows2save(i) = j
+                i = i + 1 
+            end if
+            j = j + 1
+        end do
+
+        ! Compute indi
+        c = 1
+        indi_out(1) = 1
+        do i = 1, nr_out
+            j = rows2save(i)
+            nnzrow = indi_in(j+1) - indi_in(j)
+            do k = indi_in(j), indi_in(j+1) - 1
+                indj_out(c) = indj_in(k)
+                a_out(c, :) = a_in(k, :)
+                c = c + 1
+            end do
+            indi_out(i+1) = indi_out(i) + nnzrow
+        end do
+
+    end if
+
+end subroutine erase_rows_csr
+
 subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                                     nr_B, nc_B, nnz_B, indi_B, indj_B, &  
                                     nr_C, nc_C, nnz_C, indi_C, indj_C)

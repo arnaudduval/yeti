@@ -93,8 +93,8 @@ from lib.__init__ import blockPrint
 
 blockPrint()
 # Set global variables
-degree = 5
-cuts = 5
+degree = 4
+cuts = 4
 
 # Create geometry using geomdl
 geometry = {'degree':[degree, degree, degree]}
@@ -124,12 +124,12 @@ ud = u_interp[dod]
 F = modelPhy.eval_source_vector(powden_rotring)
 
 # Solution using conjugate gradient
-iterations = 20
+iterations = 60
 epsilon = 1e-15
 
 # With preconditioner
 inputs = [F, iterations, epsilon]   
-usol, energy = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, method_pls='S', method_precond='TDC')
+usol, energy = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, method_pls='L', method_precond='TDC')
 error = abs(u_interp - usol)/abs(u_interp).max()
 
 from matplotlib import pyplot as plt
@@ -142,4 +142,4 @@ ax.set_ylabel("Energy")
 
 plt.grid()
 plt.tight_layout()
-plt.savefig('Energy_Substitution.png')
+plt.savefig('Energy_Lagrange.png')

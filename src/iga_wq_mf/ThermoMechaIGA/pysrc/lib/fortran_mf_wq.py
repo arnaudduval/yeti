@@ -405,6 +405,7 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
             if method_pls == 'L': sol, energy = solver.mf_wq_solve_shlm_3d(*inputs)
+            # raise Warning('Method is not well implemented') #
             elif method_pls == 'P': sol, energy = solver.mf_wq_solve_shp_3d(*inputs)
             elif method_pls == 'S': 
                 sol, energy = solver. mf_wq_solve_shs_3d(*inputs, 
@@ -679,7 +680,7 @@ class fortran_mf_wq(thermoMechaModel):
                 # Compute Fint 
                 Fint = self.compute_internal_force(coef_Fint)
                 dF = Fext_t - Fint
-                clean_dirichlet_3d(dF, indi) #!!!!!!!!!!!!!!!!!!!!!!
+                clean_dirichlet_3d(dF, indi) #!!!!!!!!!!!!!!!!!!!!!! CLEAN ?
                 print("WARNING: FIND A NEW STOP CRITERION")
                 prod1 = block_dot_product(d, dF, dF)
                 relerror = np.sqrt(prod1/prod2)
