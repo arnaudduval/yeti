@@ -339,7 +339,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     double precision :: rsold, rsnew, alpha
     double precision :: r, p, Ap, dummy, z
     dimension :: r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total)
-    integer :: iter, i, t_robin(2)
+    integer :: iter, i
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -347,6 +347,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision :: c_u, c_v, c_w, bdotb
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -370,9 +371,9 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! Conjugate Gradient algorithm
             ! ----------------------------
             r = b; p = r
-            rsold = dot_product(r, r)
-            RelRes(1) = 1.d0
-            RelError(1) = 1.d0
+            RelRes(1) = 1.d0; RelError(1) = 1.d0
+            rsold = dot_product(r, r); bdotb = rsold
+            if (bdotb.lt.epsilon) stop 'Fext is almost zero, then it is a trivial solution' 
 
             do iter = 1, nbIter
                 ! Calculate Ann xn 
@@ -387,7 +388,8 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 r = r - alpha * Ap
 
                 ! Set relative value of residual 
-                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
+                RelRes(iter+1) = dot_product(r, r)/bdotb
+                ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
 
                 if (RelRes(iter+1).le.epsilon) exit
@@ -400,9 +402,9 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     else 
         ! Initialize
         allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
-        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0; c_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0; c_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0; c_w = 1.d0
 
         if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             ! --------------------------------------------
@@ -421,16 +423,15 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
                     
-            Kcoef_u = lamb_u/Lu; Mcoef_u = Lu
-            Kcoef_v = lamb_v/Lv; Mcoef_v = Lv
-            Kcoef_w = lamb_w/Lw; Mcoef_w = Lw
+            c_u = lamb_u*Lv*Lw/Lu
+            c_v = lamb_v*Lu*Lw/Lv
+            c_w = lamb_w*Lu*Lv/Lw
 
         end if
 
         ! --------------------------------------------
         ! EIGEN DECOMPOSITION
         ! -------------------------------------------- 
-        t_robin = (/0, 0/)
         allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
         allocate(data_W_u(nnz_u, 2), Kdiag_u(nr_u), Mdiag_u(nr_u))
         do i = 1, nnz_u
@@ -438,7 +439,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 2), t_robin, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 2), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
         deallocate(data_W_u)
         
         allocate(data_W_v(nnz_v, 2), Kdiag_v(nr_v), Mdiag_v(nr_v))
@@ -447,7 +448,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 2), t_robin, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 2), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
         deallocate(data_W_v)
 
         allocate(data_W_w(nnz_w, 2), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -456,14 +457,14 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
         end do
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 2), t_robin, D_w, U_w, Kdiag_w, Mdiag_w)  
+                                data_W_w(:, 2), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)  
         deallocate(data_W_w)
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
         ! Find diagonal of eigen values
         allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, c_u, c_v, c_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
@@ -473,7 +474,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                    Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
+                                    Kdiag_u, Kdiag_v, Kdiag_w, c_u, c_v, c_w, Dparametric)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
@@ -497,9 +498,10 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, z) 
             end if
             p = z
+            RelRes(1) = 1.d0; RelError(1) = 1.d0
             rsold = dot_product(r, z)
-            RelRes(1) = 1.d0
-            RelError(1) = 1.d0
+            bdotb = dot_product(r, r)
+            if (bdotb.lt.epsilon) stop 'Fext is almost zero, then it is a trivial solution' 
 
             do iter = 1, nbIter
                 ! Calculate Ann xn 
@@ -515,7 +517,8 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 r = r - alpha * Ap
 
                 ! Set relative value of residual 
-                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
+                RelRes(iter+1) = dot_product(r, r)/bdotb
+                ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
 
                 if (RelRes(iter+1).le.epsilon) exit       

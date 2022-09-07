@@ -407,11 +407,11 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! Pre / Conjugate gradient algoritm
     double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde, Ax, FAx
-    dimension ::    r(nr_total), rhat(nr_total), p(nr_total), Ax(nr_total), FAx(nr_total), & 
+    double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde
+    dimension ::    r(nr_total), rhat(nr_total), p(nr_total), & 
                     Ap(nr_total), As(nr_total), s(nr_total), dummy(nr_total), &
                     ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-    integer :: iter, t_robin(2)
+    integer :: iter
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -419,6 +419,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision :: c_u, c_v, c_w, bdotb
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -433,19 +434,17 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Initiate variables
-    x = 0.d0; RelRes = 0.d0; RelError = 0.d0
+    x = 0.d0; r = b; rhat = r; p = r
+    rsold = dot_product(r, rhat); bdotb = rsold
+    RelRes = 0.d0; RelError = 0.d0
+    RelRes(1) = 1.d0; RelError(1) = 1.d0
+    if (bdotb.lt.epsilon) stop 'Fext is almost zero, then it is a trivial solution' 
 
     if (Method.eq.'WP') then 
         if (nbIter.gt.0) then
             ! ----------------------------
             ! Conjugate Gradient algorithm
             ! ----------------------------
-            r = b; rhat = r; p = r
-            rsold = dot_product(r, rhat)
-
-            RelRes(1) = 1.d0
-            RelError(1) = 1.d0
-
             do iter = 1, nbIter
                 call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -461,14 +460,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 omega = dot_product(As, s)/dot_product(As, As)
                 x = x + alpha*p + omega*s
                 r = s - omega*As
-                
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, x, Ax)
-                FAx = b - Ax              
-                RelRes(iter+1) = dot_product(FAx, Fax)
-
+                         
+                RelRes(iter+1) = dot_product(r, r)/bdotb
                 ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 
@@ -484,9 +477,9 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     else  
         ! Initialize
         allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
-        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0; c_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0; c_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0; c_w = 1.d0
 
         if ((Method.eq.'TDS').or.(Method.eq.'TDC')) then 
             ! --------------------------------------------
@@ -505,39 +498,38 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
 
-            Kcoef_u = lamb_u/Lu; Mcoef_u = Lu
-            Kcoef_v = lamb_v/Lv; Mcoef_v = Lv
-            Kcoef_w = lamb_w/Lw; Mcoef_w = Lw
+            c_u = lamb_u*Lv*Lw/Lu
+            c_v = lamb_v*Lu*Lw/Lv
+            c_w = lamb_w*Lu*Lv/Lw
 
         end if
 
         ! --------------------------------------------
         ! EIGEN DECOMPOSITION
         ! -------------------------------------------- 
-        t_robin = (/0, 0/)
         allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
 
         allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), t_robin, D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), t_robin, D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), t_robin, D_w, U_w, Kdiag_w, Mdiag_w)   
+                                data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
         ! Find diagonal of eigen values
         allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
         allocate(Deigen(nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, c_u, c_v, c_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
         if ((Method.eq.'TDS').or.(Method.eq.'JMS')) then
@@ -547,7 +539,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
+                                        Kdiag_u, Kdiag_v, Kdiag_w, c_u, c_v, c_w, Dparametric)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
@@ -561,11 +553,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! -------------------------------------------
             ! Preconditioned Conjugate Gradient algorithm
             ! -------------------------------------------
-            r = b; rhat = r; p = r
-            rsold = dot_product(r, rhat)
-            RelRes(1) = 1.d0
-            RelError(1) = 1.d0
-
             do iter = 1, nbIter
 
                 dummy = p
@@ -603,16 +590,9 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 x = x + alpha*ptilde + omega*stilde
                 r = s - omega*Astilde    
 
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, x, Ax)
-                FAx = b - Ax              
-                RelRes(iter+1) = dot_product(FAx, Fax)
-                
+                RelRes(iter+1) = dot_product(r, r)/bdotb
                 ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-                
                 if (RelRes(iter+1).le.epsilon) exit
 
                 rsnew = dot_product(r, rhat)
@@ -741,7 +721,6 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
         r = s - omega*Astilde    
         
         RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
-        
         if (RelRes(iter+1).le.epsilon) exit
 
         rsnew = dot_product(r, rhat)

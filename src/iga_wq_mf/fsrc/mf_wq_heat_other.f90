@@ -180,7 +180,7 @@ end subroutine fd_tshs_3d
 subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            ndod, dod, f, g, nbIter, epsilon, method, nnz_cond, cond, JJ, x, energy, residue)
+                            table, ndod, dod, f, g, nbIter, epsilon, method, nnz_cond, cond, JJ, x, residue)
     !! Precontionned bi-conjugate gradient to solve steady heat problems
     !! We want to solve M x = F, with Bx = g (Dirichlet condition). Then, we use substitution method, so
     !! Mnn xn = Fn - Mnd xd and xd = g 
@@ -203,8 +203,8 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
+    integer, intent(in) :: table, dod
+    dimension :: table(d, 2), dod(ndod)
     character(len=10), intent(in) :: method
     integer, intent(in) :: nbIter, nnz_cond
     double precision, intent(in) :: cond
@@ -212,12 +212,11 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     double precision, intent(in) :: epsilon, f, g, JJ
     dimension :: f(nr_total), g(ndod), JJ(3, 3, nc_total)
     
-    double precision, intent(out) :: x, energy, residue
-    dimension :: x(nr_total), energy(nbIter), residue(nbIter)
+    double precision, intent(out) :: x, residue
+    dimension :: x(nr_total), residue(nbIter+1)
 
     ! Local data
     ! ------------------
-    double precision :: dummy_tol
     ! Pre / Conjugate gradient algoritm
     double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
     double precision :: rsold, rsnew, alpha, omega, beta
@@ -230,10 +229,10 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:), allocatable :: Dparametric, Dtemp, Dphysical, Deigen
+    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
-    double precision, parameter :: zeta = 100.d0
+    double precision :: c_u, c_v, c_w, bdotb
 
     ! Block L
     integer :: ndof
@@ -255,8 +254,7 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     ! Initiate variables
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
     ndof = nr_total - ndod
-    x = 0.d0; x(dod) = g; xn = 0.d0; 
-    energy = 0.d0; dummy_tol = epsilon
+    x = 0.d0; x(dod) = g
 
     ! Create block L
     allocate(indi_L(ndof+1), indj_L(ndof), indi_LT(nr_total+1), indj_LT(ndof), L(ndof), LT(ndof))
@@ -269,17 +267,16 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     fAx = f - Kx ! This is the real b in Ax = b equation
     call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, fAx, r)
 
-    print*, r
-
+    ! Set variables
+    xn = 0.d0; rhat = r; p = r
+    rsold = dot_product(r, rhat); bdotb = rsold
+    residue = 0.d0; residue(1) = 1.d0
+    if (bdotb.lt.epsilon) stop 'Fext is almost zero, then it is a trivial solution' 
+    
     if (method.eq.'WP') then 
         ! ----------------------------
         ! Conjugate Gradient algorithm
         ! ----------------------------
-        ! Initialize
-        rhat = r; p = r
-        rsold = dot_product(r, rhat)
-        energy(1) = 1.d0
-
         do iter = 1, nbIter
             call mf_wq_get_Au_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
@@ -298,14 +295,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
 
             call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
             x(dod) = g
-            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Kx)
             
-            energy(iter) = 0.5 * dot_product(x, Kx) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f     
-            fAx = f - Kx       
-            residue(iter) = dot_product(fAx, fAx) - dot_product(fAx(dod), fAx(dod))
-            ! if (energy(iter+1).le.epsilon) exit
+            residue(iter+1) = dot_product(r, r)/bdotb
+            if (residue(iter+1).le.epsilon) exit
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -316,9 +308,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     else  
         ! Initialize
         allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
-        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0; c_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0; c_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0; c_w = 1.d0
 
         if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
             ! DIAGONAL DECOMPOSITION
@@ -333,9 +325,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
             
-            Kcoef_u = lamb_u/Lu; Mcoef_u = Lu
-            Kcoef_v = lamb_v/Lv; Mcoef_v = Lv
-            Kcoef_w = lamb_w/Lw; Mcoef_w = Lw
+            c_u = lamb_u*Lv*Lw/Lu
+            c_v = lamb_v*Lu*Lw/Lv
+            c_w = lamb_w*Lu*Lv/Lw
 
         end if
 
@@ -346,17 +338,17 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
         allocate(Kdiag_u(nr_u), Mdiag_u(nr_u))
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+                                data_W_u(:, 4), table(1, :), D_u, U_u, Kdiag_u, Mdiag_u)
 
         allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
+                                data_W_v(:, 4), table(2, :), D_v, U_v, Kdiag_v, Mdiag_v)    
 
         allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w) 
+                                data_W_w(:, 4), table(3, :), D_w, U_w, Kdiag_w, Mdiag_w) 
 
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
@@ -364,8 +356,7 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
         allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
         allocate(Deigen(nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen)
-        Deigen = Deigen + zeta
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, c_u, c_v, c_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
         if ((method.eq.'TDS').or.(method.eq.'JMS')) then
@@ -373,13 +364,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             ! SCALING
             ! --------------------------------------------
             ! Find diagonal of preconditioner
-            allocate(Dparametric(nr_total), Dtemp(nr_total))
-            Dtemp = 0.d0
-            call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, 1.d0)
+            allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, Dparametric)
-            ! Update diagonal
-            Dparametric = Dparametric + zeta*Dtemp 
+                                        Kdiag_u, Kdiag_v, Kdiag_w, c_u, c_v, c_w, Dparametric)
             deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
             ! Find diagonal of real matrix (K in this case)
@@ -392,11 +379,6 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
         ! -------------------------------------------
         ! Preconditioned Conjugate Gradient algorithm
         ! -------------------------------------------
-        ! Initialize
-        rhat = r; p = r
-        rsold = dot_product(r, rhat)
-        energy(1) = 1.d0
-
         do iter = 1, nbIter
 
             call fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
@@ -424,14 +406,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             
             call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
             x(dod) = g
-            call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Kx)
-            
-            energy(iter) = 0.5 * dot_product(x, Kx) - dot_product(x, f) ! Energy : 0.5 u' A u - u' f   
-            fAx = f - Kx       
-            residue(iter) = dot_product(fAx, fAx) - dot_product(fAx(dod), fAx(dod))
-            ! if (energy(iter+1).le.epsilon) exit
+               
+            residue(iter+1) = dot_product(r, r)/bdotb
+            if (residue(iter+1).le.epsilon) exit
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)

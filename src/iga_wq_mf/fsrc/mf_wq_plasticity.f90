@@ -562,7 +562,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
                                 data_W_w(:, 4), table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
 
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, 1.d0, 1.d0, 1.d0, Deigen(i, :))
     end do
     deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
@@ -705,7 +705,7 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
                                 data_W_w(:, 4), table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
 
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, Deigen(i, :))
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, 1.d0, 1.d0, 1.d0, Deigen(i, :))
     end do
     deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)

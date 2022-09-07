@@ -400,20 +400,20 @@ class fortran_mf_wq(thermoMechaModel):
         dod = deepcopy(indi)
         dod = np.array(dod) + 1
         inputs = [self._conductivity_coef, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, 
-                    dod, f, ud, nbIterations, epsilon]
+                    self._thermalDirichlet, dod, f, ud, nbIterations, epsilon]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
             if method_pls == 'L': raise Warning('Method is not well implemented') 
-            # sol, energy, residue = solver.mf_wq_solve_shlm_3d(*inputs)
+            # sol, residue = solver.mf_wq_solve_shlm_3d(*inputs)
             elif method_pls == 'P': raise Warning('Method is not well implemented')
-            # sol, energy, residue = solver.mf_wq_solve_shp_3d(*inputs)
+            # sol, residue = solver.mf_wq_solve_shp_3d(*inputs)
             elif method_pls == 'S': 
-                sol, energy, residue = solver. mf_wq_solve_shs_3d(*inputs, 
+                sol, residue = solver. mf_wq_solve_shs_3d(*inputs, 
                                 method_precond, self._conductivity, self._Jqp)
             else: raise Warning('Method is not defined')
 
-        return sol, energy, residue
+        return sol, residue
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         

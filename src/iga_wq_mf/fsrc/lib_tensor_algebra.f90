@@ -1196,7 +1196,8 @@ module tensor_methods
 
     ! For computing diagonals
     
-    subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, diag)
+    subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w, c_u, c_v, c_w, diag)
         !! Find the diagonal of the preconditioner "fast diagonalization"
                             
         implicit none
@@ -1206,6 +1207,7 @@ module tensor_methods
         double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
         dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), &
                     Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
+        double precision :: c_u, c_v, c_w
 
         double precision, intent(out) :: diag
         dimension :: diag(nr_u*nr_v*nr_w)
@@ -1214,13 +1216,13 @@ module tensor_methods
         diag = 0.d0
 
         ! Find M3 M2 K1
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Kdiag_u, diag, 1.d0)
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Kdiag_u, diag, c_u)
 
         ! Find M3 K2 M1
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Kdiag_v, nr_u, Mdiag_u, diag, 1.d0)
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Kdiag_v, nr_u, Mdiag_u, diag, c_v)
 
         ! Find K3 M2 M1
-        call kron_product_3vec(nr_w, Kdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, diag, 1.d0)
+        call kron_product_3vec(nr_w, Kdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, diag, c_w)
         
     end subroutine find_parametric_diag_3d
 
