@@ -633,11 +633,12 @@ class thermoMechaModel():
         # ==============================
         if u_ctrlpts is not None:
             indices, data = [], []
+            u_temp = np.atleast_2d(u_ctrlpts)
             for dim in range(self._dim):
                 indices.append(ind[dim][0])
                 indices.append(ind[dim][1])
                 data.append(DB[dim])
-            inputs = [*self._dim*[nnz], *indices, *data, u_ctrlpts]
+            inputs = [*self._dim*[nnz], *indices, *data, u_temp]
 
             if self._dim == 2: u_interp = assembly.interpolate_fieldphy_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolate_fieldphy_3d(*inputs)
@@ -661,7 +662,7 @@ class thermoMechaModel():
         elif isinstance(u_ctrlpts, np.ndarray): 
             u_ctrlpts = np.atleast_2d(u_ctrlpts)
             if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: 
-                ndof =  len(u_ctrlpts)
+                ndof = len(u_ctrlpts)
             else: raise Warning('Not enough control points')
         else: raise Warning('Solution must be ndarray type')
 
