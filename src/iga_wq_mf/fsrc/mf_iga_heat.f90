@@ -421,9 +421,9 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
                     
-            Kcoef_u = lamb_u*Lv*Lw/Lu
-            Kcoef_v = lamb_v*Lw*Lu/Lv
-            Kcoef_w = lamb_w*Lu*Lv/Lw
+            Kcoef_u = lamb_u/Lu; Mcoef_u = Lu
+            Kcoef_v = lamb_v/Lv; Mcoef_v = Lv
+            Kcoef_w = lamb_w/Lw; Mcoef_w = Lw
 
         end if
 

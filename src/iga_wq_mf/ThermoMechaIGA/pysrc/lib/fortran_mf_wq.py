@@ -388,7 +388,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFsteadyHeat_PLS(self, f, nbIterations, epsilon, ud=None, indi=None, method_pls='L', method_precond = 'TDC'): 
+    def MFsteadyHeat_PLS(self, f, nbIterations, epsilon, ud=None, indi=None, method_pls='S', method_precond = 'TDC'): 
         "Solves steady heat with penalty, Lagrange or substitution method"
         # Get inputs 
         self._verify_conductivity()
@@ -400,19 +400,20 @@ class fortran_mf_wq(thermoMechaModel):
         dod = deepcopy(indi)
         dod = np.array(dod) + 1
         inputs = [self._conductivity_coef, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, 
-                    self._thermalDirichlet, dod, f, ud, nbIterations, epsilon]
+                    dod, f, ud, nbIterations, epsilon]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
-            if method_pls == 'L': sol, energy = solver.mf_wq_solve_shlm_3d(*inputs)
-            # raise Warning('Method is not well implemented') #
-            elif method_pls == 'P': sol, energy = solver.mf_wq_solve_shp_3d(*inputs)
+            if method_pls == 'L': raise Warning('Method is not well implemented') 
+            # sol, energy, residue = solver.mf_wq_solve_shlm_3d(*inputs)
+            elif method_pls == 'P': raise Warning('Method is not well implemented')
+            # sol, energy, residue = solver.mf_wq_solve_shp_3d(*inputs)
             elif method_pls == 'S': 
-                sol, energy = solver. mf_wq_solve_shs_3d(*inputs, 
+                sol, energy, residue = solver. mf_wq_solve_shs_3d(*inputs, 
                                 method_precond, self._conductivity, self._Jqp)
             else: raise Warning('Method is not defined')
 
-        return sol, energy
+        return sol, energy, residue
 
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
         

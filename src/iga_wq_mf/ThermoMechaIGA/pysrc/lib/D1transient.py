@@ -55,12 +55,11 @@ def compute_tangent_transient_matrix_1D(JJ, DB, W, Kcoefs, Ccoefs, alpha=0.5, dt
 
     return M
 
-def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, dof=None, tol=1e-4, nbIter=100):
+def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, dof=None, Tin=None, tol=1e-4, nbIter=100):
     " Solves transient heat problem in 1D. It only solves Dirichlet (g=0) boundary."
 
     # Initialize
     JJ, conductivity, capacity, alpha = properties
-    TT = np.zeros(np.shape(Fext)) # Temperature
     VV = np.zeros(np.shape(Fext)) # d Temperature/ d time
 
     for i in range(1, np.shape(Fext)[1]):
@@ -68,12 +67,12 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
         delta_t = time_list[i] - time_list[i-1]
 
         # Get values of last step
-        TTn0 = TT[:, i-1] 
+        TTn0 = Tin[:, i-1] 
         VVn0 = VV[:, i-1]
-        ddVV = np.zeros(np.shape(TTn0))
 
         # Predict values of new step
         TTn1 = TTn0 + delta_t*(1-alpha)*VVn0
+        TTn1[0] = Tin[0, i]; TTn1[-1] = Tin[-1, i]
         TTn1i0 = deepcopy(TTn1)
         VVn1 = np.zeros(np.shape(TTn1))
 
@@ -85,11 +84,11 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
         for j in range(nbIter):
 
             # Interpolate temperature
-            T_nq = compute_temperature_1D(DB, TTn1)
+            T_qp = compute_temperature_1D(DB, TTn1)
 
             # Get capacity and conductivity coefficients
-            Kcoefs = conductivity(T_nq)
-            Ccoefs = capacity(T_nq)
+            Kcoefs = conductivity(T_qp)
+            Ccoefs = capacity(T_qp)
 
             # Compute residue
             Fint = compute_transient_Fint_1D(JJ, DB, W, Kcoefs, Ccoefs, TTn1, VVn1)
@@ -105,19 +104,16 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
                                         Kcoefs, Ccoefs, alpha=alpha, dt=delta_t)[np.ix_(dof, dof)]
 
                 # Compute delta dT 
-                ddVV[dof] = np.linalg.solve(MM, dF)
+                ddVV = np.linalg.solve(MM, dF)
 
                 # Update values
-                VVn1 += ddVV
-                TTn1 = TTn1i0 + alpha*delta_t*VVn1
+                VVn1[dof] += ddVV
+                TTn1[dof] = TTn1i0[dof] + alpha*delta_t*VVn1[dof]
+
         print(j+1, relerror)
 
         # Update values in output
         VV[:, i] = VVn1
-        TT[:, i] = TTn1
+        Tin[:, i] = TTn1
         
-
-    return TT
-
-
-
+    return 

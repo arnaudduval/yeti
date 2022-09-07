@@ -407,8 +407,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! Pre / Conjugate gradient algoritm
     double precision :: Lu, Lv, Lw, lamb_u, lamb_v, lamb_w
     double precision :: rsold, rsnew, alpha, omega, beta
-    double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde
-    dimension ::    r(nr_total), rhat(nr_total), p(nr_total), & 
+    double precision :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde, Ax, FAx
+    dimension ::    r(nr_total), rhat(nr_total), p(nr_total), Ax(nr_total), FAx(nr_total), & 
                     Ap(nr_total), As(nr_total), s(nr_total), dummy(nr_total), &
                     ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
     integer :: iter, t_robin(2)
@@ -461,8 +461,15 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 omega = dot_product(As, s)/dot_product(As, As)
                 x = x + alpha*p + omega*s
                 r = s - omega*As
+                
+                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, x, Ax)
+                FAx = b - Ax              
+                RelRes(iter+1) = dot_product(FAx, Fax)
 
-                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
+                ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 
                 if (RelRes(iter+1).le.epsilon) exit
@@ -497,10 +504,10 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! Find dimensions and conductivity
             call jacobien_mean_3d(nc_u, nc_v, nc_w, nc_total, JJ, Lu, Lv, Lw)
             call conductivity_mean_3d(nc_u, nc_v, nc_w, nnz_cond, cond, lamb_u, lamb_v, lamb_w)
-            
-            Kcoef_u = lamb_u*Lv*Lw/Lu
-            Kcoef_v = lamb_v*Lw*Lu/Lv
-            Kcoef_w = lamb_w*Lu*Lv/Lw
+
+            Kcoef_u = lamb_u/Lu; Mcoef_u = Lu
+            Kcoef_v = lamb_v/Lv; Mcoef_v = Lv
+            Kcoef_w = lamb_w/Lw; Mcoef_w = Lw
 
         end if
 
@@ -595,8 +602,15 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
                 x = x + alpha*ptilde + omega*stilde
                 r = s - omega*Astilde    
+
+                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, x, Ax)
+                FAx = b - Ax              
+                RelRes(iter+1) = dot_product(FAx, Fax)
                 
-                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
+                ! RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 
                 if (RelRes(iter+1).le.epsilon) exit
