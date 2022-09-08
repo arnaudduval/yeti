@@ -55,26 +55,40 @@ def compute_tangent_transient_matrix_1D(JJ, DB, W, Kcoefs, Ccoefs, alpha=0.5, dt
 
     return M
 
-def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, dof=None, Tin=None, tol=1e-4, nbIter=100):
+def solve_transient_1D(properties, DB=None, W=None, Fext=None, time_list=None, dof=None, dod=None, Tin=None, tol=1e-4, nbIter=100):
     " Solves transient heat problem in 1D. It only solves Dirichlet (g=0) boundary."
 
     # Initialize
     JJ, conductivity, capacity, alpha = properties
-    VV = np.zeros(np.shape(Fext)) # d Temperature/ d time
+    ddGG = np.zeros(len(dod)) # d Temperature/ d time
+    VVn0 = np.zeros(len(dof))
 
-    for i in range(1, np.shape(Fext)[1]):
+    # Compute initial velocity from boundry conditions (for i = 0)
+    if np.shape(Tin)[1] == 2:
+        delta_t = time_list[1] - time_list[0]
+        ddGG = (Tin[dod, 1] - Tin[dod, 0])/delta_t
+    elif np.shape(Tin)[1] >= 2:
+        delta_t1 = time_list[1] - time_list[0]
+        delta_t2 = time_list[2] - time_list[0]
+        factork = delta_t2/delta_t1
+        ddGG = (Tin[dod, 2] - (factork**2)*Tin[dod, 1] - (1-factork**2)*Tin[dod, 0])/(delta_t1*(factork-factork**2))
+    else:
+        raise Warning('We need more than 2 steps')
+
+    for i in range(1, np.shape(Tin)[1]):
         # Get delta time
         delta_t = time_list[i] - time_list[i-1]
 
         # Get values of last step
-        TTn0 = Tin[:, i-1] 
-        VVn0 = VV[:, i-1]
+        TTn0 = Tin[:, i-1]; TTn1 = TTn0
 
         # Predict values of new step
-        TTn1 = TTn0 + delta_t*(1-alpha)*VVn0
-        TTn1[0] = Tin[0, i]; TTn1[-1] = Tin[-1, i]
+        TTn1[dof] = TTn0[dof] + delta_t*(1-alpha)*VVn0
+        TTn1[dod] = Tin[dod, i]
         TTn1i0 = deepcopy(TTn1)
-        VVn1 = np.zeros(np.shape(TTn1))
+        ddTT = np.zeros(len(TTn1))
+        ddTT[dod] = 1.0/alpha*(1.0/delta_t*(Tin[dod, i] - Tin[dod, i-1]) - (1-alpha)*ddGG)
+        VVn1 = np.zeros(len(dof))
 
         # Get "force" of new step
         F = Fext[:, i]
@@ -91,7 +105,7 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
             Ccoefs = capacity(T_qp)
 
             # Compute residue
-            Fint = compute_transient_Fint_1D(JJ, DB, W, Kcoefs, Ccoefs, TTn1, VVn1)
+            Fint = compute_transient_Fint_1D(JJ, DB, W, Kcoefs, Ccoefs, TTn1, ddTT)
             dF = F[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
             relerror = np.sqrt(prod1/prod2)
@@ -107,13 +121,15 @@ def solve_transient_1D(properties, DB=None, W =None, Fext=None, time_list=None, 
                 ddVV = np.linalg.solve(MM, dF)
 
                 # Update values
-                VVn1[dof] += ddVV
-                TTn1[dof] = TTn1i0[dof] + alpha*delta_t*VVn1[dof]
+                VVn1 += ddVV
+                TTn1[dof] = TTn1i0[dof] + alpha*delta_t*VVn1
+                ddTT[dof] += VVn1 
 
         print(j+1, relerror)
 
         # Update values in output
-        VV[:, i] = VVn1
         Tin[:, i] = TTn1
+        VVn0 = VVn1
+        ddGG = ddTT[dod]
         
     return 

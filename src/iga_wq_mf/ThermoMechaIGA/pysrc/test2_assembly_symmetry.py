@@ -88,7 +88,6 @@ if CONSTRUCTION:
                         var2 = modelPhy2._qp_PS[:,:]
                 
                     enablePrint()
-
                     # Compare results 
                     error = var1 - var2
                     try: norm_temp = sparse.linalg.norm(error, np.inf)/sparse.linalg.norm(var1, np.inf)

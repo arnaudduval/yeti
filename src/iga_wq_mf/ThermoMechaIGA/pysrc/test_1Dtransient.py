@@ -23,7 +23,7 @@ def source(qp):
     return f
 
 # Define geometry and thermal properties
-alpha, JJ = 1, 1
+alpha, JJ = 0.5, 1
 degree, nbel = 5, 32
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
@@ -34,11 +34,11 @@ Fcoefs = source(qp)
 properties = [JJ, conductivity, capacity, alpha]
 
 # Define time discretisation
-N, n = 100, 20
+N, n = 100, 50
 t = np.linspace(0, 1, N)
 time_list = np.zeros(N+n)
 time_list[:N] = t
-time_list[N:] = [1 + 0.2*(i+1) for i in range(n)]
+time_list[N:] = [1 + 0.05*(i+1) for i in range(n)]
 
 # Define heat source 
 Fend = compute_source_1D(JJ, DB, W, Fcoefs)
@@ -49,12 +49,13 @@ for i in range(len(t), len(t)+n):
     Fext[:,i] = Fext[:,len(t)-1]
 
 # Define boundaries conditions
+dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
 TT = np.zeros(np.shape(Fext))
-# TT[0, :] = 0
-# TT[-1,:len(t)] = np.linspace(0, 1, len(t))
-# TT[-1,len(t):] = 1
-solve_transient_1D(properties, DB=DB, W =W, Fext=Fext, time_list=time_list, dof=dof, Tin=TT)
+TT[0, :] = 0
+TT[-1,:len(t)] = np.linspace(0, 1, len(t))
+TT[-1,len(t):] = 1
+solve_transient_1D(properties, DB=DB, W =W, Fext=Fext, time_list=time_list, dof=dof, dod=dod, Tin=TT)
 
 # Post-treatement
 # =========================

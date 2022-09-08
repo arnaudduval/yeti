@@ -21,7 +21,7 @@ folder_file = os.path.dirname(full_path) + '/data/'
 folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
-dataExist = False
+dataExist = True
 
 if not dataExist:
     # Set global variables
@@ -46,7 +46,7 @@ if not dataExist:
         # Solve sylvester equation P s = r
         inputs = [*shape_matrices, *indices, *data_B, *data_W]
         start = time.time()
-        solver.test_precondfd(*inputs)
+        solver.test_precondfd(*inputs) # !!!!!!!!!!!!!!!!!!!!!!!!!!! Maybe it not longuer used
         stop = time.time()
         print(stop-start)
 

@@ -596,29 +596,22 @@ class thermoMechaModel():
     def interpolate_field(self, nnz= None, u_ctrlpts= None):
         "Interpolates the input field. In all cases, it returns jacobien."
 
-        if nnz == None: nnz = self._sample_size
-
         # =====================
         # Get Basis
         # =====================
         # Define knots
+        if nnz == None: nnz = self._sample_size
         knots = np.linspace(0, 1, nnz)
 
         # Set basis and indices
-        DB, ind = [], []
+        data, indices = [], []
         for dim in range(self._dim):  
             B, indi, indj = eval_basis_fortran(self._degree[dim], self._knotvector[dim], knots)
-            DB.append(B)
-            ind.append([indi, indj])
+            data.append(B); indices.append(indi); indices.append(indj)
 
         # ==============================
-        # Get position and determinant
+        # Get position and determinant 
         # ==============================
-        indices, data = [], []
-        for dim in range(self._dim):
-            indices.append(ind[dim][0])
-            indices.append(ind[dim][1])
-            data.append(DB[dim])
         inputs = [*self._dim*[nnz], *indices, *data, self._ctrlpts]
         
         if self._dim == 2:
@@ -632,18 +625,15 @@ class thermoMechaModel():
         # Get interpolation
         # ==============================
         if u_ctrlpts is not None:
-            indices, data = [], []
             u_temp = np.atleast_2d(u_ctrlpts)
-            for dim in range(self._dim):
-                indices.append(ind[dim][0])
-                indices.append(ind[dim][1])
-                data.append(DB[dim])
+            ddl = np.shape(u_temp)[0]
             inputs = [*self._dim*[nnz], *indices, *data, u_temp]
 
             if self._dim == 2: u_interp = assembly.interpolate_fieldphy_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolate_fieldphy_3d(*inputs)
-        else: 
-            u_interp = None
+            if ddl == 1: u_interp = np.ravel(u_interp)
+    
+        else: u_interp = None
 
         return jacobien_PS, qp_PS, detJ, u_interp
     
@@ -651,18 +641,15 @@ class thermoMechaModel():
         " Returns solution using geometry basis "
 
         if folder == None: 
-            import os
             full_path = os.path.realpath(__file__)
             dirname = os.path.dirname
             folder = dirname(dirname(full_path)) + '/results/'
             if not os.path.isdir(folder): os.mkdir(folder)
-            print(folder)
+            print("File save in %s" %folder)
 
-        if u_ctrlpts is None: ndof = 1; pass
+        if u_ctrlpts is None: ddl = 1; pass
         elif isinstance(u_ctrlpts, np.ndarray): 
-            u_ctrlpts = np.atleast_2d(u_ctrlpts)
-            if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: 
-                ndof = len(u_ctrlpts)
+            if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: ddl = len(u_ctrlpts)
             else: raise Warning('Not enough control points')
         else: raise Warning('Solution must be ndarray type')
 
@@ -685,7 +672,7 @@ class thermoMechaModel():
         X1 = np.zeros(shape_pts)
         X2 = np.zeros(shape_pts)
         X3 = np.zeros(shape_pts)
-        U = np.zeros((ndof, *shape_pts))
+        U = np.zeros((ddl, *shape_pts))
         DET = np.zeros(shape_pts)
 
         for k in range(shape_pts[2]):
@@ -697,13 +684,12 @@ class thermoMechaModel():
                     DET[i,j,k] = detJ[pos]
                     if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
                     if u_interp is not None: 
-                        for l in range(ndof):
+                        for l in range(ddl):
                             U[l,i,j,k] = u_interp[l, pos]
         
         # Create point data 
         pointData= {"detJ" : DET}
-
-        for l in range(ndof):
+        for l in range(ddl):
             varname = 'U' + str(l+1)
             pointData[varname] = U[l,:,:,:]
 

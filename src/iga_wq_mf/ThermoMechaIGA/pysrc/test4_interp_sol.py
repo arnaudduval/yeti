@@ -14,7 +14,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
-isIGA = True
+isIGA = False
 degree = 4
 cuts = 3 # It can not exceed 5 
 

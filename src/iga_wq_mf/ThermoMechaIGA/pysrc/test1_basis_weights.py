@@ -6,8 +6,7 @@
 """
 
 # Python libraries
-import os
-import numpy as np
+import os, numpy as np
 from scipy import sparse as sp
 import matplotlib.pyplot as plt
 
