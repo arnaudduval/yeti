@@ -28,31 +28,31 @@ add_library(iga_wq_mf
 target_link_libraries(iga_wq_mf base OpenMP::OpenMP_Fortran ${LAPACK_lapack_LIBRARY})  
 
 CreateF2PYModule(NAME basis_weights
-                 FILES  "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/basis_weights.f90"
-                 LINK_LIBRARIES iga_wq_mf base 
-                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
+                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/basis_weights.f90"
+                LINK_LIBRARIES iga_wq_mf base 
+                DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
 CreateF2PYModule(NAME assembly
                 FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_geophy.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_gk_assembly.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_assembly.f90"
-                 LINK_LIBRARIES iga_wq_mf base 
-                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
+                LINK_LIBRARIES iga_wq_mf base 
+                DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
 CreateF2PYModule(NAME solver
                 FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/fast_diagonalisation.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_iga_heat.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_heat.f90"  
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_heat_other.f90"  
+                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_solver.f90"  
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_plasticity.f90"
-                 LINK_LIBRARIES iga_wq_mf base 
-                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
+                LINK_LIBRARIES iga_wq_mf base 
+                DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
 add_custom_target(copy_iga_wq_mf ALL)
-                 
+
 add_custom_command(TARGET copy_iga_wq_mf PRE_BUILD
-                   COMMAND  ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf/__init__.py
-                   DEPENDS iga_wq_mf)
+                COMMAND  ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf/__init__.py
+                DEPENDS iga_wq_mf)

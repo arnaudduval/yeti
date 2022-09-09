@@ -883,7 +883,7 @@ end subroutine erase_rows_csr
 
 subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                                     nr_B, nc_B, nnz_B, indi_B, indj_B, &  
-                                    nr_C, nc_C, nnz_C, indi_C, indj_C)
+                                    nnz_C, indi_C, indj_C)
     !! Gets indices of A x B = C (x : kronecker product)
     !! Where A and B are sparse matrices in CSR format
 
@@ -897,19 +897,17 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
                     indi_B(nr_B+1), indj_B(nnz_B)
 
-    integer, intent(out) :: nr_C, nc_C
     integer, intent(out) :: indi_C, indj_C
     dimension :: indi_C(nr_A*nr_B+1), indj_C(nnz_C)
 
     ! Loca data
     ! ---------
     integer :: iA, iB, genPos, jA, jB, c, nb_tasks
-    integer :: nnz_row_A, nnz_row_B, nnz_row_C
+    integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C
     integer, allocatable, dimension(:) :: indj_temp
 
-    ! Set new number of rows
-    nr_C = nr_A * nr_B
-    nc_C = nc_A * nc_B
+    ! Initialize
+    dummy = nc_A
 
     ! Set indices i in CSR format
     indi_C(1) = 1
@@ -965,7 +963,7 @@ end subroutine get_indexes_kron2_product
 subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                                     nr_B, nc_B, nnz_B, indi_B, indj_B, &  
                                     nr_C, nc_C, nnz_C, indi_C, indj_C, &
-                                    nr_D, nc_D, nnz_D, indi_D, indj_D)
+                                    nnz_D, indi_D, indj_D)
     !! Returns indices of A x B x C = D (x : kronecker product)
     !! Where A, B and C are sparse matrices in CSR format
 
@@ -981,19 +979,17 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                     indi_B(nr_B+1), indj_B(nnz_B), &
                     indi_C(nr_C+1), indj_C(nnz_C)
 
-    integer, intent(out) :: nr_D, nc_D
     integer, intent(out) :: indi_D, indj_D
     dimension :: indi_D(nr_A*nr_B*nr_C+1), indj_D(nnz_D)
 
     ! Loca data
     ! ---------
     integer :: iA, iB, iC, genPos, jA, jB, jC, c, nb_tasks
-    integer :: nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
+    integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
     integer, allocatable, dimension(:) :: indj_temp
-
-    ! Set new number of rows
-    nr_D = nr_A * nr_B * nr_C
-    nc_D = nc_A * nc_B * nc_D
+    
+    ! Initialize
+    dummy = nc_A
 
     ! Set indices i in CSR format
     indi_D(1) = 1
