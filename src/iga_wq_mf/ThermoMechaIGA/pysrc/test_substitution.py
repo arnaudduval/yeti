@@ -78,6 +78,7 @@ elif case == 2:
     usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, method_precond=method_precond)
 
 # Print results
+CARO = 2
 newres = residue[np.nonzero(residue)]
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5,4))
 ax.semilogy(np.arange(1, len(newres)+1), abs(newres))

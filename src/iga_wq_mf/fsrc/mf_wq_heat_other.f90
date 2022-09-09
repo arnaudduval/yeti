@@ -63,7 +63,7 @@ subroutine fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pard
                     ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, array_in, array_out)
     !! Solves MM.s = r (MM is the preconditioner) in steady heat 3D (or transient) case with substitution method, where 
     !! MM is an approximation of M = K.
-    !! Indices must be in CSR format
+    !! Indices must be in CSR format 
 
     implicit none
     ! Input / output  data 
@@ -405,7 +405,7 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
             
             call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
             x(dod) = g
-               
+
             residue(iter+1) = dot_product(r, r)/bdotb
             if (residue(iter+1).le.epsilon) exit
 

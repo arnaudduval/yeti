@@ -104,7 +104,7 @@ class geomdlModel():
         self._degree = np.ones(3, dtype= int)
         self._degree[:self._dim] = np.array(obj._degree)
         if any(p == 1 for p in self._degree[:self._dim]): 
-           raise Warning('Model must have at least degree p = 2')
+            raise Warning('Model must have at least degree p = 2')
 
         # Set knot vector
         self._knotvector = [np.array(obj._knot_vector[dim]) for dim in range(self._dim)]

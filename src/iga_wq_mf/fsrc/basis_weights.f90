@@ -97,7 +97,7 @@ subroutine get_basis_generalized_csr(degree, size_kv, knotvector, nb_knots, knot
     call coo2csr(2, size_kv-degree-1, size_data, data_B_coo, indices(:, 1), indices(:, 2), data_B, indj, indi)
     deallocate(data_B_coo)
 
-end subroutine 
+end subroutine get_basis_generalized_csr
 
 ! ==============================
 
