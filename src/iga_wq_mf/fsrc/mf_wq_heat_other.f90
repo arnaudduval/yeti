@@ -123,7 +123,6 @@ subroutine mf_wq_get_Au_shs_3d(Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! But A is given as [Ann, And; Adn, Add]. So Ann u =  L A L' u, where C is a zeros and ones matrix.
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! -------------------
@@ -185,7 +184,6 @@ subroutine mf_wq_solve_shs_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     !! Mnn xn = Fn - Mnd xd and xd = g 
     !! CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -432,7 +430,6 @@ subroutine mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, n
     !! But A is given as [Ann, And; Adn, Add]. So Ann u =  L A L' u, where L is a zeros and ones matrix.
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! -------------------
@@ -490,7 +487,6 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             newmarkdt, table, ndod, dod, f, g, nbIter, epsilon, x, residue)
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -677,9 +673,8 @@ subroutine mf_wq_ths_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, nbpts, table_cond, table_cap, &
                         newmark, table_dir, ndod, dod, invJ, detJ, sizeF, time_list, FF, GG, temperature)
-    use tensor_methods
+    
     use heat_transfer
-
     implicit none 
     ! Input / output data
     ! ---------------------

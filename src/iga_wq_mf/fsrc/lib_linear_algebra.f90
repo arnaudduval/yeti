@@ -3,13 +3,14 @@
 ! author :: Joaquin Cornejo
 ! 
 ! This modules is intended to have all the linear algebra functions necessary for the good
-! performance of the rest of files.
-! This file calls functions defined in YETI or LAPACK libraries.
+! performance of the rest of functions.
+! Some functions in this file calls functions defined in YETI or LAPACK libraries.
 ! ==========================
 
-! -------------------
+! --------------------
 ! Vector and matrices
-! -------------------
+! --------------------
+
 subroutine find_interpolation_span(size_array, array, x, span, tol)
     !! Finds the interpolation span of the given knot. 
     !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
@@ -39,25 +40,25 @@ subroutine find_interpolation_span(size_array, array, x, span, tol)
 
 end subroutine find_interpolation_span
 
-subroutine linear_interpolation(size, table, nnz, x, y, tol)
+subroutine linear_interpolation(nr, table, nnz, x, y, tol)
 
     implicit none
     ! Input / output data
-    ! ----------------------
-    integer, intent(in) :: size, nnz
+    ! -------------------
+    integer, intent(in) :: nr, nnz
     double precision, intent(in) :: table, x, tol
-    dimension :: table(size, 2), x(nnz)
+    dimension :: table(nr, 2), x(nnz)
 
     double precision, intent(out) :: y
     dimension :: y(nnz)
 
     ! Local data
-    ! -----------------
+    ! ----------
     integer :: i, span
     double precision :: x1, x2, y1, y2, xi, yi
 
     ! Verify if table is well defined (values in ascending order)
-    do i = 1, size-1
+    do i = 1, nr-1
         if (table(i+1,1)-table(i,1).le.tol) stop 'Table is not well - defined'
     end do
 
@@ -66,13 +67,13 @@ subroutine linear_interpolation(size, table, nnz, x, y, tol)
         if (xi.le.table(1,1)) then
             ! First case: x is less than the first point
             yi = table(1, 2)
-        else if (xi.ge.table(size,1)) then
+        else if (xi.ge.table(nr,1)) then
             ! Second case: x is greatr than the last point
-            yi = table(size, 2)
+            yi = table(nr, 2)
         else
-            ! Last case: x is within a knot from a table
-            ! Find the span of x from a table
-            call find_interpolation_span(size, table(:, 1), xi, span, tol)
+            ! Third case: x is within a knot defined in the table
+            ! Find the span of x 
+            call find_interpolation_span(nr, table(:, 1), xi, span, tol)
 
             ! Linear interpolation
             x1 = table(span, 1); x2 = table(span+1, 1)
@@ -87,10 +88,11 @@ end subroutine linear_interpolation
 subroutine diff_vector(times, nnz, vector_in, vector_out)
     !! Returns the difference between elements of array. 
     !! Ex. given a vector [0, 1, 3, 10] and times = 1, the output is [1, 2, 7, 0]. 
+    !! If times = 2, the output is [1, 5, 0, 0]
 
     implicit none
     ! Input / output data
-    ! --------------------
+    ! -------------------
     integer, intent(in) :: nnz, times
     double precision, intent(in) :: vector_in
     dimension :: vector_in(nnz)
@@ -99,16 +101,21 @@ subroutine diff_vector(times, nnz, vector_in, vector_out)
     dimension :: vector_out(nnz)
 
     ! Local data
-    ! -----------
+    ! ----------
     double precision :: vector_temp
     dimension :: vector_temp(nnz)
     integer :: i, j
 
+    if (times.ge.nnz) stop 'Times can not be greater than the vector size'
+    if (times.lt.0) stop 'Times can not be less than zero'
+
     ! Initialize
     vector_out = vector_in
-    vector_temp = vector_out
 
     do j = 1, times
+
+        ! Save temporal vector
+        vector_temp = vector_out
 
         ! Get the difference
         do i = 1, nnz-j
@@ -120,8 +127,6 @@ subroutine diff_vector(times, nnz, vector_in, vector_out)
             vector_out(i) = 0.d0
         end do
 
-        ! Save temporal vector
-        vector_temp = vector_out
     end do
     
 end subroutine diff_vector
@@ -142,7 +147,7 @@ subroutine find_unique_vector(nnz, vec, vec_unique)
     dimension :: vec_unique(nnz+1)
 
     ! Local data
-    ! --------------
+    ! ----------
     integer :: i, num, nnz_nr
     logical, dimension(nnz) :: mask
 
@@ -161,7 +166,7 @@ subroutine find_unique_vector(nnz, vec, vec_unique)
             ! There is only one, flag it:  
             mask(i) = .true.  
         else  
-            !  Flag this value only if it hasn't already been flagged:  
+            !  Flag this value only if it has not already been flagged
             if (.not. any(vec(i).eq.vec .and. mask)) then
                 mask(i) = .true.  
             end if
@@ -189,9 +194,11 @@ subroutine linspace(x0, xf, n, array)
     dimension :: array(n)
 
     ! Local data
-    ! -------------
+    ! ----------
     integer :: i
     double precision :: h 
+
+    if (n.le.1) stop 'Size of array can not be 0 or less'
 
     ! Define spacing 
     h = (xf - x0)/dble(n - 1)
@@ -207,8 +214,8 @@ subroutine linspace(x0, xf, n, array)
 
 end subroutine linspace
 
-subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
-    !! General matrix multiplication of the kind A Diag(W) B
+subroutine gemm_AWB(gemm_case, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
+    !! General matrix multiplication of the kind A diag(W) B
     !! 1: R = A.diag(W).BT
     !! 2: R = A.diag(W).BT, returns only the diagonal
     !! 3: R = AT.diag(W).B
@@ -220,7 +227,7 @@ subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: mode, nrA, ncA, nrB, ncB, nrR, ncR
+    integer, intent(in) :: gemm_case, nrA, ncA, nrB, ncB, nrR, ncR
     double precision, intent(in) :: A, B, W
     dimension :: A(nrA, ncA), B(nrB, ncB), W(*)
 
@@ -228,29 +235,31 @@ subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
     dimension :: R(nrR, ncR)
 
     ! Local data
-    ! -------------
-    double precision, allocatable, dimension(:, :) :: TT
+    ! ----------
     integer :: i, j, k
     double precision :: s
+    double precision, allocatable, dimension(:, :) :: MM
 
     ! Initiliaze 
     R = 0.d0
 
-    if (mode.eq.1) then 
+    if (gemm_case.eq.1) then 
         ! A diag(W) B.T
         ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
 
-        allocate(TT(nrA, ncA))
+        if (ncA.ne.ncB) stop 'Please verify size of matrices'
+        allocate(MM(nrA, ncA))
         forall (i = 1 : nrA, j = 1 : ncA) 
-            TT(i, j) = A(i, j) * W(j)
+            MM(i, j) = A(i, j) * W(j)
         end forall
-        R = matmul(TT, transpose(B))
+        R = matmul(MM, transpose(B))
 
-    else if (mode.eq.2) then 
+    else if (gemm_case.eq.2) then 
         ! A diag(W) B.T
         ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
         ! Only diagonal
 
+        if (ncA.ne.ncB) stop 'Please verify size of matrices'
         do i = 1, nrA
             s = 0.d0
             do k = 1, ncA
@@ -259,21 +268,23 @@ subroutine gemm_AWB(mode, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
             R(i, i) = s
         end do
 
-    else if (mode.eq.3) then 
+    else if (gemm_case.eq.3) then 
         ! A.T diag(W) B
         ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
 
-        allocate(TT(nrB, ncB))
+        if (nrA.ne.nrB) stop 'Please verify size of matrices'
+        allocate(MM(nrB, ncB))
         forall (i = 1 : nrB, j = 1 : ncB) 
-            TT(i, j) = W(i) * B(i, j) 
+            MM(i, j) = W(i) * B(i, j) 
         end forall
-        R = matmul(transpose(A), TT)
+        R = matmul(transpose(A), MM)
 
-    else if (mode.eq.4) then 
+    else if (gemm_case.eq.4) then 
         ! A.T diag(W) B
         ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
         ! Only diagonal
 
+        if (nrA.ne.nrB) stop 'Please verify size of matrices'
         do i = 1, ncA
             s = 0.d0
             do k = 1, nrA
@@ -307,26 +318,23 @@ subroutine solve_linear_system(nr, nc, A, b, x)
     dimension :: x(nc)
 
     ! Local data
-    ! ------------------
+    ! ----------
     double precision :: Atemp
     dimension :: Atemp(nr, nc)
     double precision, allocatable, dimension(:) :: xtemp
 
-    ! Lapack
-    integer :: ipiv
+    integer :: i, info, lwork, ipiv
     dimension :: ipiv(nr)
     double precision, allocatable, dimension(:) :: work
-    integer :: i, info, lwork
 
     ! Initialize 
-    Atemp = A
-    x = 0.d0
+    Atemp = A; x = 0.d0
     
-    if (nr.le.nc) then ! Case 1
+    if (nr.le.nc) then 
 
+        ! Initialize solution
         allocate(xtemp(nc))
         xtemp = 0.d0
-        
         do i = 1, nr
             xtemp(i) = b(i)
         end do
@@ -345,25 +353,21 @@ subroutine solve_linear_system(nr, nc, A, b, x)
                 
         end if
 
-        do i = 1, nc
-            x(i) = xtemp(i)
-        end do
+        ! Save solution
+        x = xtemp
 
-    else if (nr.gt.nc) then ! Case 2
-
+    else if (nr.gt.nc) then 
+        
+        ! Initialize solution
         allocate(xtemp(nr))
-        xtemp = 0.d0
-            
-        do i = 1, nr
-            xtemp(i) = b(i)
-        end do
+        xtemp = b
         
         ! Over-determined system: 
         lwork = 2*nc
         allocate(work(lwork))
-
         call dgels('N', nr, nc, 1, Atemp, nr, xtemp, nr, work, lwork, info)
 
+        ! Save solution
         do i = 1, nc
             x(i) = xtemp(i)
         end do
@@ -372,33 +376,33 @@ subroutine solve_linear_system(nr, nc, A, b, x)
 
 end subroutine solve_linear_system
 
-subroutine inverse_matrix(nnz, A, invA)
-    !! Computes the inverse of a matrix using LU decomposition
+subroutine inverse_matrix(nr, A, invA)
+    !! Computes the inverse of a square matrix using LU decomposition
     
     implicit none
     ! Input / output data
     ! ------------------- 
-    integer, intent(in) :: nnz
+    integer, intent(in) :: nr
     double precision, intent(in) :: A
-    dimension :: A(nnz, nnz)
+    dimension :: A(nr, nr)
 
     double precision, intent(out) :: invA
-    dimension :: invA(nnz, nnz)
+    dimension :: invA(nr, nr)
 
     ! Local data
     ! ----------
     double precision :: work
     integer :: ipiv, info
-    dimension :: work(nnz), ipiv(nnz)
+    dimension :: work(nr), ipiv(nr)
 
     ! Initialize
     invA = A
 
     ! Compute LU decomposition
-    call dgetrf(nnz, nnz, invA, nnz, ipiv, info)
+    call dgetrf(nr, nr, invA, nr, ipiv, info)
 
     ! Compute inverse of A with LU decomposition
-    call dgetri(nnz, invA, nnz, ipiv, work, nnz, info)
+    call dgetri(nr, invA, nr, ipiv, work, nr, info)
 
 end subroutine inverse_matrix
 
@@ -420,30 +424,30 @@ subroutine crossproduct(v1, v2, v3)
 
 end subroutine crossproduct
 
-subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
-    !! Computes kron product of 2 vectors and returns R = R + alpha*A1 x A2 (x : tensor product)
+subroutine kron_product_2vec(nnz_A, A, nnz_B, B, R, alpha)
+    !! Computes kron product of 2 vectors and returns R = R + alpha*(A x B) (x : tensor product)
 
     use omp_lib
     implicit none
-    ! Input / output
-    ! ---------------- 
-    integer, intent(in) :: nnz_A1, nnz_A2
-    double precision, intent(in) :: A1(nnz_A1), A2(nnz_A2)
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nnz_A, nnz_B
+    double precision, intent(in) :: A(nnz_A), B(nnz_B)
     double precision, intent(in) :: alpha
 
-    double precision, intent(inout) :: R(nnz_A1*nnz_A2)
+    double precision, intent(inout) :: R(nnz_A*nnz_B)
 
     ! Local data
-    ! ------------
-    integer :: i1, i2, j, nb_tasks
+    ! ----------
+    integer :: iA, iB, genPos, nb_tasks
 
-    !$OMP PARALLEL PRIVATE(j)
+    !$OMP PARALLEL PRIVATE(genPos)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nnz_A1*nnz_A2/nb_tasks)
-    do i1 = 1, nnz_A1
-        do i2 = 1, nnz_A2
-            j = i2 + (i1-1)*nnz_A2
-            R(j) = R(j) + alpha * A1(i1) * A2(i2)
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nnz_A*nnz_B/nb_tasks)
+    do iA = 1, nnz_A
+        do iB = 1, nnz_B
+            genPos = iB + (iA-1)*nnz_B
+            R(genPos) = R(genPos) + alpha * A(iA) * B(iB)
         end do 
     end do
     !$OMP END DO NOWAIT
@@ -451,33 +455,33 @@ subroutine kron_product_2vec(nnz_A1, A1, nnz_A2, A2, R, alpha)
 
 end subroutine kron_product_2vec 
 
-subroutine kron_product_3vec(nnz_A1, A1, nnz_A2, A2, nnz_A3, A3, R, alpha)
-    !! Computes the kron product of 3 vectors and returns R = R + alpha*A1 x A2 x A3 (x : tensor product)
+subroutine kron_product_3vec(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
+    !! Computes the kron product of 3 vectors and returns R = R + alpha*(Au x Av x Aw) (x : tensor product)
 
     use omp_lib
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nnz_A1,nnz_A2, nnz_A3
-    double precision, intent(in) :: A1, A2, A3
-    dimension :: A1(nnz_A1), A2(nnz_A2), A3(nnz_A3)
+    integer, intent(in) :: nnz_A, nnz_B, nnz_C
+    double precision, intent(in) :: A, B, C
+    dimension :: A(nnz_A), B(nnz_B), C(nnz_C)
     double precision, intent(in) :: alpha
 
     double precision, intent(inout) :: R
-    dimension :: R(nnz_A1*nnz_A2*nnz_A3)
+    dimension :: R(nnz_A*nnz_B*nnz_C)
 
     ! Local data
-    ! -------------
-    integer :: i1, i2, i3, j, nb_tasks
+    ! ----------
+    integer :: iA, iB, iC, genPos, nb_tasks
 
-    !$OMP PARALLEL PRIVATE(j)
+    !$OMP PARALLEL PRIVATE(genPos)
     nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_A1*nnz_A2*nnz_A3/nb_tasks)
-    do i1 = 1, nnz_A1
-        do i2 = 1, nnz_A2
-            do i3 = 1, nnz_A3
-                j = i3 + (i2-1)*nnz_A3 + (i1-1)*nnz_A3*nnz_A2
-                R(j) = R(j) + alpha * A1(i1) * A2(i2) * A3(i3)
+    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz_A*nnz_B*nnz_C/nb_tasks)
+    do iA = 1, nnz_A
+        do iB = 1, nnz_B
+            do iC = 1, nnz_C
+                genPos = iC + (iB-1)*nnz_C + (iA-1)*nnz_C*nnz_B
+                R(genPos) = R(genPos) + alpha * A(iA) * B(iB) * C(iC)
             end do
         end do 
     end do
@@ -493,41 +497,42 @@ subroutine polar_decomposition(A, Q, H, Sigma, onlyH, onlyDiag)
 
     implicit none
     ! Input / output data
-    ! --------------------
+    ! -------------------
+    integer, parameter :: d = 3
     double precision, intent(in) :: A
+    dimension :: A(d, d)
     logical, intent(in) :: onlyH, onlyDiag 
-    dimension :: A(3, 3)
 
     double precision, intent(out) :: Q, H, Sigma
-    dimension :: Q(3, 3), H(3, 3), Sigma(3)
+    dimension :: Q(d, d), H(d, d), Sigma(d)
 
     ! Local data
-    ! --------------
+    ! ----------
     double precision :: U, VT, work
-    dimension :: work(15), U(3, 3), VT(3, 3)
+    dimension :: U(d, d), VT(d, d), work(5*d)
     integer :: info
 
-    ! Compute singular value decomposition
+    ! Compute singular value decomposition (SVD)
     if (onlyH) then
         ! We do not compute Q = U VT, then U = zeros
-        call dgesvd('N', 'A', 3, 3, A, 3, Sigma, U, 3, VT, 3, work, 15, info)
+        call dgesvd('N', 'A', d, d, A, d, Sigma, U, d, VT, d, work, size(work), info)
         Q = 0.d0
     else 
         ! We do compute Q = U VT
-        call dgesvd('A', 'A', 3, 3, A, 3, Sigma, U, 3, VT, 3, work, 15, info)
+        call dgesvd('A', 'A', d, d, A, d, Sigma, U, d, VT, d, work, size(work), info)
         Q = matmul(U, VT)
     end if
 
     ! Computes H
     if (onlyDiag) then
-        call gemm_AWB(4, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+        call gemm_AWB(4, d, d, VT, d, d, VT, Sigma, d, d, H)
     else
-        call gemm_AWB(3, 3, 3, VT, 3, 3, VT, Sigma, 3, 3, H)
+        call gemm_AWB(3, d, d, VT, d, d, VT, Sigma, d, d, H)
     end if
 
 end subroutine polar_decomposition
 
-subroutine spMdotdV(nr, nc, nnz, indi, indj, A, V_in, V_out)
+subroutine spMdotdV(nr, nc, nnz, indi, indj, A, vin, vout)
     !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
     !! Sparse matrix in CSR format
 
@@ -537,35 +542,35 @@ subroutine spMdotdV(nr, nc, nnz, indi, indj, A, V_in, V_out)
     integer, intent(in) :: nnz, nr, nc 
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
-    double precision, intent(in) :: A, V_in
-    dimension :: A(nnz), V_in(nc)
+    double precision, intent(in) :: A, vin
+    dimension :: A(nnz), vin(nc)
 
-    double precision, intent(out) :: V_out
-    dimension :: V_out(nr)
+    double precision, intent(out) :: vout
+    dimension :: vout(nr)
 
     ! Local data
-    ! ------------------
+    ! ----------
     integer :: i , j, k
     double precision :: sum
 
     ! Initialize
-    V_out = 0.d0
+    vout = 0.d0
 
     ! Compute the result at each row
     do i = 1, nr
         sum = 0.d0
         do j = indi(i), indi(i+1)-1
             k = indj(j)
-            sum = sum + A(j)*V_in(k)
+            sum = sum + A(j)*vin(k)
         end do
-        V_out(i) = sum
+        vout(i) = sum
     end do
 
 end subroutine spMdotdV
 
-! -------------
+! --------
 ! Indices
-! -------------
+! --------
 subroutine coo2csr(nba, nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi_csr)
     !! Change COO format to CSR format
 
@@ -584,11 +589,11 @@ subroutine coo2csr(nba, nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
     dimension :: indj_csr(nnz), indi_csr(nr+1)
 
     ! Local data
-    ! -------------
+    ! ----------
+    integer :: i, j, k, c, iad
     double precision :: x
     dimension :: x(nba)
-    integer :: i, j, k, k0, iad
-
+    
     ! Initialize
     indi_csr = 0
 
@@ -600,9 +605,9 @@ subroutine coo2csr(nba, nr, nnz, a_in, indi_coo, indj_coo, a_out, indj_csr, indi
     ! Get CSR format for i-indices 
     k = 1
     do j = 1, nr+1
-        k0 = indi_csr(j)
+        c = indi_csr(j)
         indi_csr(j) = k
-        k = k + k0
+        k = k + c
     end do
 
     ! Sort COO non-zero values and update values of CSR j-indices
@@ -629,7 +634,7 @@ subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, 
 
     implicit none
     ! Input / output data 
-    ! ----------------------
+    ! -------------------
     integer, intent(in) :: nba, nnz, nr, nc
     integer, intent(in) :: indi_csr, indj_csr
     dimension :: indi_csr(nr+1), indj_csr(nnz)
@@ -642,7 +647,7 @@ subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, 
     dimension :: a_out(nnz, nba)
 
     ! Local data
-    ! --------------
+    ! ----------
     integer :: indi_coo 
     dimension :: indi_coo(nnz)
     integer :: i, j, c
@@ -662,7 +667,7 @@ subroutine csr2csc(nba, nr, nc, nnz, a_in, indj_csr, indi_csr, a_out, indj_csc, 
 end subroutine csr2csc
 
 subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, a_out)
-    !! Gets a dense matrix from a COO format
+    !! Gets a dense matrix from COO format
     !! Repeated indices (i, j) are added
 
     implicit none 
@@ -678,14 +683,14 @@ subroutine coo2dense(nnz, indi_coo, indj_coo, a_in, nr, nc, a_out)
     dimension :: a_out(nr, nc)
 
     ! Local data 
-    ! -------------
+    ! ----------
     integer :: i, j, k
 
-    ! Initialize matrix values
+    ! Initialize 
     a_out = 0.d0
 
     ! Update values
-    do k = 1, nnz 
+    do k = 1, nnz
         i = indi_coo(k)
         j = indj_coo(k)
         a_out(i, j) = a_out(i, j) + a_in(k)
@@ -729,42 +734,38 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_in, nr, nc, a_out)
     
 end subroutine csr2dense
 
-subroutine dense2csr(nr, nc, a_in, nnz, indi_csr, indj_csr, a_csr)
+subroutine dense2csr(nr, nc, MM, nnz, indi_csr, indj_csr, data_csr)
     !! Gets CSR format from matrix 
     !! If nnz < 0, the it only computes the number of non zero values
 
     implicit none 
     ! Input / output data
     ! --------------------
-    double precision, parameter :: tol = 1.d-14
+    double precision, parameter :: tol = 1.d-15
     integer, intent(in) :: nr, nc
-    double precision, intent(in) :: a_in 
-    dimension :: a_in(nr, nc)
+    double precision, intent(in) :: MM 
+    dimension :: MM(nr, nc)
 
     integer, intent(inout) :: nnz
     integer, intent(out) :: indi_csr, indj_csr
     dimension :: indi_csr(nr+1), indj_csr(*)
-    double precision, intent(out) :: a_csr
-    dimension :: a_csr(*)
+    double precision, intent(out) :: data_csr
+    dimension :: data_csr(*)
 
     ! Local data
-    ! -----------
+    ! ----------
     integer :: i, j, k, l
 
     if (nnz.le.0) then 
-        ! Gets the number of non zeros values of the matrix but it does not return CSR format
-        k = 0
+        ! Gets only the number of non zeros values of the matrix 
+        nnz = 0
         do i = 1, nr
             do j = 1, nc
-                ! Save only values greater than the threshold
-                if (abs(a_in(i, j)).gt.tol) then
-                    k = k + 1
+                if (abs(MM(i, j)).gt.tol) then
+                    nnz = nnz + 1
                 end if
             end do
         end do
-
-        ! Change the value of non zero elements of the matrix
-        nnz = k
 
     else
         ! Initialize
@@ -776,8 +777,8 @@ subroutine dense2csr(nr, nc, a_in, nnz, indi_csr, indj_csr, a_csr)
             l = 0
             do j = 1, nc
                 ! Save only values greater than the threshold
-                if (abs(a_in(i, j)).gt.tol) then
-                    a_csr(k) = a_in(i, j)
+                if (abs(MM(i, j)).gt.tol) then
+                    data_csr(k) = MM(i, j)
                     indj_csr(k) = j
                     k = k + 1
                     l = l + 1
@@ -790,7 +791,7 @@ subroutine dense2csr(nr, nc, a_in, nnz, indi_csr, indj_csr, a_csr)
 
 end subroutine dense2csr
 
-subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
+subroutine erase_rows_csr(nr2er, rows2er, nr_in, nba, &
                         nnz_in, indi_in, indj_in, a_in, &
                         nnz_out, indi_out, indj_out, a_out)
     !! Erase rows from CSR format
@@ -798,36 +799,36 @@ subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
     implicit none 
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: nrows2er, nba, nnz_in, nr_in
+    integer, intent(in) :: nr2er, nba, nnz_in, nr_in
     integer, intent(inout) :: nnz_out
     integer, intent(in) :: rows2er, indi_in, indj_in
-    dimension :: rows2er(nrows2er), indi_in(nr_in+1), indj_in(nnz_in)
+    dimension :: rows2er(nr2er), indi_in(nr_in+1), indj_in(nnz_in)
     double precision, intent(in) :: a_in
     dimension :: a_in(nnz_in, nba)
 
     integer, intent(out) :: indi_out, indj_out
-    dimension :: indi_out(nr_in+1-nrows2er), indj_out(nnz_out)
+    dimension :: indi_out(nr_in+1-nr2er), indj_out(nnz_out)
     double precision, intent(out) :: a_out
     dimension :: a_out(nnz_out, nba)
 
     ! Local data
-    ! -------------------
+    ! ----------
     integer :: i, j, k, c, nr_out, nnzrow
     integer, allocatable, dimension(:) :: rows2save
 
     ! Verify that rows to erase are consistant
-    do i = 1, nrows2er
+    do i = 1, nr2er
         k = rows2er(i)
-        if ((k.le.0).or.(k.gt.nr_in)) then 
+        if ((k.lt.1).or.(k.gt.nr_in)) then 
             stop 'Rows to erase are not well defined'
         end if
     end do
 
     ! Verify that rows to erase are different 
-    do i = 1, nrows2er
+    do i = 1, nr2er
         c = 0
         k = rows2er(i)
-        do j = 1, nrows2er
+        do j = 1, nr2er
             if (k.eq.rows2er(j)) then 
                 c = c + 1
             end if
@@ -841,7 +842,7 @@ subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
         ! Gets the number of non zeros values of output
         nnz_out = nnz_in
 
-        do i = 1, nrows2er
+        do i = 1, nr2er
             j = rows2er(i)
             nnzrow = indi_in(j+1) - indi_in(j)
             nnz_out = nnz_out - nnzrow
@@ -849,7 +850,7 @@ subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
 
     else
         ! Compute rows to save
-        nr_out = nr_in - nrows2er
+        nr_out = nr_in - nr2er
         allocate(rows2save(nr_out))
         i = 1; j = 1
         do while ((j.le.nr_in).and.(i.le.nr_out))
@@ -862,7 +863,7 @@ subroutine erase_rows_csr(nrows2er, rows2er, nr_in, nba, &
             j = j + 1
         end do
 
-        ! Compute indi
+        ! Compute indices
         c = 1
         indi_out(1) = 1
         do i = 1, nr_out
@@ -889,10 +890,9 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     use omp_lib
     implicit none 
     ! Input / output data
-    ! ----------------------
+    ! -------------------
     integer, intent(in) ::  nr_A, nc_A, nnz_A, &
-                            nr_B, nc_B, nnz_B, &
-                            nnz_C
+                            nr_B, nc_B, nnz_B, nnz_C
     integer, intent(in) :: indi_A, indj_A, indi_B, indj_B
     dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
                     indi_B(nr_B+1), indj_B(nnz_B)
@@ -902,11 +902,10 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     dimension :: indi_C(nr_A*nr_B+1), indj_C(nnz_C)
 
     ! Loca data
-    ! -----------
-    integer :: i1, i2, k, j1, j2, nb_tasks
+    ! ---------
+    integer :: iA, iB, genPos, jA, jB, c, nb_tasks
     integer :: nnz_row_A, nnz_row_B, nnz_row_C
-    integer :: count
-    integer, allocatable, dimension(:) :: indj_C_temp
+    integer, allocatable, dimension(:) :: indj_temp
 
     ! Set new number of rows
     nr_C = nr_A * nr_B
@@ -914,47 +913,48 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
 
     ! Set indices i in CSR format
     indi_C(1) = 1
-    do i1 = 1, nr_A
-        do i2 = 1, nr_B
+    do iA = 1, nr_A
+        do iB = 1, nr_B
             ! Find C's row position
-            k = i2 + (i1 - 1)*nr_B
+            genPos = iB + (iA - 1)*nr_B
 
             ! Set number of non-zero elements of A's i-row  
-            nnz_row_A = indi_A(i1+1) - indi_A(i1) 
+            nnz_row_A = indi_A(iA+1) - indi_A(iA) 
 
             ! Set number of non-zero elements of B's j-row  
-            nnz_row_B = indi_B(i2+1) - indi_B(i2)
+            nnz_row_B = indi_B(iB+1) - indi_B(iB)
 
             ! Set number of non-zero elements of C's k-row 
             nnz_row_C = nnz_row_A * nnz_row_B
 
             ! Update value 
-            indi_C(k+1) = indi_C(k) + nnz_row_C 
+            indi_C(genPos+1) = indi_C(genPos) + nnz_row_C 
         end do
     end do
 
-    !$OMP PARALLEL PRIVATE(count,k,j1,j2,indj_C_temp) 
+    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,indj_temp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nr_A*nr_B/nb_tasks)
     ! Set indices j in csr format
-    do i1 = 1, nr_A
-        do i2 = 1, nr_B
+    do iA = 1, nr_A
+        do iB = 1, nr_B
             ! Select row
-            k = (i1 - 1)*nr_B + i2
-            allocate(indj_C_temp(indi_C(k+1) - indi_C(k)))
+            genPos = (iA - 1)*nr_B + iB
+            nnz_row_C = indi_C(genPos+1) - indi_C(genPos)
+            allocate(indj_temp(nnz_row_C))
             
-            ! Get values of C's k-row
-            count = 0
-            do j1 = indi_A(i1), indi_A(i1+1) - 1        
-                do j2 = indi_B(i2), indi_B(i2+1) - 1
-                    count = count + 1
-                    indj_C_temp(count) = (indj_A(j1) - 1)*nc_B + indj_B(j2)
+            ! Get values of C's row
+            c = 0
+            do jA = indi_A(iA), indi_A(iA+1) - 1        
+                do jB = indi_B(iB), indi_B(iB+1) - 1
+                    c = c + 1
+                    indj_temp(c) = (indj_A(jA) - 1)*nc_B + indj_B(jB)
                 end do
             end do
 
             ! Update values
-            indj_C(indi_C(k): indi_C(k+1)-1) = indj_C_temp
-            deallocate(indj_C_temp)
+            indj_C(indi_C(genPos):indi_C(genPos+1)-1) = indj_temp
+            deallocate(indj_temp)
         end do
     end do
     !$OMP END DO NOWAIT
@@ -972,7 +972,7 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     use omp_lib
     implicit none 
     ! Input / output data
-    ! ----------------------
+    ! -------------------
     integer, intent(in) ::  nr_A, nc_A, nnz_A, &
                             nr_B, nc_B, nnz_B, &
                             nr_C, nc_C, nnz_C, nnz_D
@@ -986,11 +986,10 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     dimension :: indi_D(nr_A*nr_B*nr_C+1), indj_D(nnz_D)
 
     ! Loca data
-    ! -----------
-    integer :: i1, i2, i3, k, j1, j2, j3, nb_tasks
+    ! ---------
+    integer :: iA, iB, iC, genPos, jA, jB, jC, c, nb_tasks
     integer :: nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
-    integer :: count
-    integer, allocatable, dimension(:) :: indj_D_temp
+    integer, allocatable, dimension(:) :: indj_temp
 
     ! Set new number of rows
     nr_D = nr_A * nr_B * nr_C
@@ -998,56 +997,57 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
 
     ! Set indices i in CSR format
     indi_D(1) = 1
-    do i1 = 1, nr_A
-        do i2 = 1, nr_B
-            do i3 = 1, nr_C
+    do iA = 1, nr_A
+        do iB = 1, nr_B
+            do iC = 1, nr_C
                 ! Find D's row position
-                k = i3 + (i2-1)*nr_C + (i1 - 1)*nr_C*nr_B
+                genPos = iC + (iB-1)*nr_C + (iA - 1)*nr_C*nr_B
 
                 ! Set number of non-zero elements of A's i1-row  
-                nnz_row_A = indi_A(i1+1) - indi_A(i1) 
+                nnz_row_A = indi_A(iA+1) - indi_A(iA) 
 
                 ! Set number of non-zero elements of B's i2-row  
-                nnz_row_B = indi_B(i2+1) - indi_B(i2)
+                nnz_row_B = indi_B(iB+1) - indi_B(iB)
 
                 ! Set number of non-zero elements of C's i3-row  
-                nnz_row_C = indi_C(i3+1) - indi_C(i3)
+                nnz_row_C = indi_C(iC+1) - indi_C(iC)
 
                 ! Set number of non-zero elements of D's k-row 
                 nnz_row_D = nnz_row_A * nnz_row_B * nnz_row_C
 
                 ! Update value 
-                indi_D(k+1) = indi_D(k) + nnz_row_D
+                indi_D(genPos+1) = indi_D(genPos) + nnz_row_D
             end do
         end do
     end do
 
-    !$OMP PARALLEL PRIVATE(count,k,j1,j2,j3,indj_D_temp) 
+    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,jC,indj_temp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_A*nr_B*nr_C/nb_tasks)
     ! Set indices j in csr format
-    do i1 = 1, nr_A
-        do i2 = 1, nr_B
-            do i3 = 1, nr_C
+    do iA = 1, nr_A
+        do iB = 1, nr_B
+            do iC = 1, nr_C
                 ! Select row
-                k = i3 + (i2-1)*nr_C + (i1 - 1)*nr_C*nr_B
-                allocate(indj_D_temp(indi_D(k+1) - indi_D(k)))
+                genPos = iC + (iB-1)*nr_C + (iA - 1)*nr_C*nr_B
+                nnz_row_D = indi_D(genPos+1) - indi_D(genPos)
+                allocate(indj_temp(nnz_row_D))
                 
-                ! Get values of D's k-row
-                count = 0
-                do j1 = indi_A(i1), indi_A(i1+1) - 1        
-                    do j2 = indi_B(i2), indi_B(i2+1) - 1
-                        do j3 = indi_C(i3), indi_C(i3+1) - 1
-                            count = count + 1
-                            indj_D_temp(count) = (indj_A(j1)-1)*nc_B*nc_C &
-                                                + (indj_B(j2)-1)*nc_C + indj_C(j3)
+                ! Get values of D's row
+                c = 0
+                do jA = indi_A(iA), indi_A(iA+1) - 1        
+                    do jB = indi_B(iB), indi_B(iB+1) - 1
+                        do jC = indi_C(iC), indi_C(iC+1) - 1
+                            c = c + 1
+                            indj_temp(c) = (indj_A(jA)-1)*nc_B*nc_C &
+                                            + (indj_B(jB)-1)*nc_C + indj_C(jC)
                         end do
                     end do
                 end do
 
                 ! Update values
-                indj_D(indi_D(k): indi_D(k+1)-1) = indj_D_temp
-                deallocate(indj_D_temp)
+                indj_D(indi_D(genPos):indi_D(genPos+1)-1) = indj_temp
+                deallocate(indj_temp)
             end do
         end do
     end do

@@ -18,7 +18,6 @@ subroutine iga_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     !! Computes capacity matrix in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -111,7 +110,6 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     !! Computes conductivity matrix in 3D case
     !! IN CSR FORMAT
                 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! -------------------
@@ -215,7 +213,6 @@ subroutine iga_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     !! Computes source vector in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! --------------------
@@ -276,7 +273,6 @@ subroutine iga_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, n
     !! Computes capacity matrix in 2D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -357,7 +353,6 @@ subroutine iga_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_
     !! IN CSR FORMAT
                 
     use omp_lib
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! -------------------
@@ -449,7 +444,6 @@ subroutine iga_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz
     !! Computes source vector in 2D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! --------------------

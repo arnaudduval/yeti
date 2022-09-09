@@ -4,7 +4,7 @@
 ! ====================================================
 
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
-                                Mcoef, Kcoef, t_robin, eigenvalues, eigenvectors)
+                                Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -12,9 +12,8 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     !! D: diagonal of eigenvalues
     !! IN CSR FORMAT
     
-    use tensor_methods
     implicit none 
-    ! Input / output 
+    ! Input / output data
     ! -------------------
     integer, intent(in) :: nr, nc, nnz
     integer, intent(in) :: indi, indj
@@ -23,25 +22,25 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
     double precision, intent(in) :: Mcoef, Kcoef
     dimension :: Mcoef(nc), Kcoef(nc)
-    integer, intent(in) :: t_robin
-    dimension :: t_robin(2)
+    integer, intent(in) :: robin_condition
+    dimension :: robin_condition(2)
             
     double precision, intent(out) :: eigenvalues, eigenvectors
     dimension :: eigenvalues(nr), eigenvectors(nr, nr)
 
     ! Local data
-    ! -----------------
+    ! ----------
     double precision :: Kdiag, Mdiag
     dimension :: Kdiag(nr), Mdiag(nr)
 
     call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                            data_B0, data_W0, data_B1, data_W1, t_robin, &
+                            data_B0, data_W0, data_B1, data_W1, robin_condition, &
                             eigenvalues, eigenvectors, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py
 
-subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector)
-    !! Square-root scaling in fast diagonalization
+subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector_inout)
+    !! Square-root scaling in fast diagonalization method
 
     use omp_lib
     implicit none
@@ -51,63 +50,61 @@ subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector)
     double precision, intent(in) :: factor_up, factor_down
     dimension :: factor_up(nnz), factor_down(nnz)
 
-    double precision, intent(inout) :: vector
-    dimension :: vector(nnz)
+    double precision, intent(inout) :: vector_inout
+    dimension :: vector_inout(nnz)
 
     ! Local data
-    ! -------------
+    ! ----------
     integer :: i, nb_tasks
 
     !$OMP PARALLEL 
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
     do i = 1, nnz
-        vector(i) = sqrt(factor_up(i)/factor_down(i)) * vector(i) 
+        vector_inout(i) = sqrt(factor_up(i)/factor_down(i))*vector_inout(i) 
     end do  
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
 end subroutine fd_sqr_scaling
 
-subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, array_out)
+subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to steady heat equations
+    !! Applied to steady heat problems
     !! by G. Sanaglli and M. Tani
     
-    use tensor_methods
     use omp_lib
     implicit none
     ! Input / output  data 
     !---------------------
     integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
+    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
     dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                    diagonal(nr_total), array_in(nr_total)
+                    eigen_diag(nr_total), array_in(nr_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nr_total)
 
     ! Local data
-    ! -------------
+    ! ----------
     integer :: i, nb_tasks
     double precision :: array_temp
     dimension :: array_temp(nr_total)
 
-    ! First part 
+    ! Compute (Uw x Uv x Uu)'.array_in
     call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
-    ! Second part 
     !$OMP PARALLEL 
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
     do i = 1, nr_total
-        array_temp(i) = array_temp(i)/diagonal(i)
+        array_temp(i) = array_temp(i)/eigen_diag(i)
     end do
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL
 
-    ! Third part
+    ! Compute (Uw x Uv x Uu).array_temp
     call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     U_u, U_v, U_w, array_temp, array_out)
     
@@ -115,9 +112,9 @@ end subroutine fd_steady_heat_3d
 
 subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applieg in control points interpolation problems
     !! by G. Sanaglli and M. Tani
     
-    use tensor_methods
     use omp_lib
     implicit none
     ! Input / output  data 
@@ -130,68 +127,20 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
     dimension :: array_out(nr_total)
 
     ! Local data
-    ! -------------
+    ! ----------
     double precision :: array_temp
     dimension :: array_temp(nr_total)
 
-    ! First part 
+    ! Compute (Uw x Uv x Uu)'.array_in
     call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
-    ! Second part
+    ! Compute (Uw x Uv x Uu).array_temp
     call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
 
 end subroutine fd_interpolation_3d
 
-subroutine fd_transient_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, dt, alpha, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to transient heat equations
-    !! by G. Sanaglli and M. Tani
-    
-    use tensor_methods
-    use omp_lib
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
-    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                    diagonal(nr_total), array_in(nr_total)
-    double precision, intent(in) :: dt, alpha
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! -------------
-    integer :: i, nb_tasks
-    double precision :: array_temp, diagonal_new
-    dimension :: array_temp(nr_total), diagonal_new(nr_total)
-
-    ! First part 
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                        transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
-
-    ! Second part 
-    diagonal_new = 1.d0/dt
-    if (alpha.gt.0.d0) then 
-        diagonal_new = diagonal_new + alpha*diagonal
-    end if
-    !$OMP PARALLEL 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-    do i = 1, nr_total
-        array_temp(i) = array_temp(i)/diagonal_new(i)
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
-
-    ! Third part
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
-
-end subroutine fd_transient_heat_3d
-
-subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal, array_in, array_out)
+subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
@@ -202,22 +151,22 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diagonal,
     !---------------------
     integer, parameter :: d = 3
     integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, diagonal, array_in
+    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
     dimension ::    U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), &
-                    diagonal(d, nr_total), array_in(d, nr_total)
+                    eigen_diag(d, nr_total), array_in(d, nr_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(d, nr_total)
 
     ! Local data
-    ! -------------
+    ! ----------
     integer :: i
     double precision :: array_temp
     dimension :: array_temp(nr_total)
 
     do i = 1, d 
         call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                diagonal(i, :), array_in(i, :), array_temp)
+                                eigen_diag(i, :), array_in(i, :), array_temp)
         array_out(i, :) = array_temp
     end do
     

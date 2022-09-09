@@ -9,7 +9,6 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
     !! Find the diagonal of conductivity matrix
     !! Indices in CSR format
     
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! -------------------
@@ -82,7 +81,6 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
     
-    use tensor_methods
     use omp_lib
     implicit none 
     ! Input / output 
@@ -165,7 +163,6 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     !! Computes K.u in 3D case
     !! Indices must be in CSR format
 
-    use tensor_methods
     use omp_lib
     implicit none 
     ! Input / output 
@@ -306,7 +303,6 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     !! Conjugate gradient with or without preconditioner 
     !! CSR FORMAT
                         
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -547,7 +543,6 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v,
     !! Conjugate gradient with or without preconditioner 
     !! CSR FORMAT
                         
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------

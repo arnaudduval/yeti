@@ -7,7 +7,6 @@ subroutine wq_find_capacity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v,
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Cdiag)
     
-    use tensor_methods
     implicit none
     ! Input / output 
     ! -------------------
@@ -38,7 +37,6 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Kdiag)
     
-    use tensor_methods
     implicit none
     ! Input / output 
     ! -------------------
@@ -91,7 +89,6 @@ subroutine mf_wq_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -153,7 +150,6 @@ subroutine mf_wq_get_cu_3d_csr(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     !! Computes capacity matrix in 3D case
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -203,7 +199,6 @@ subroutine mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     !! Computes K.u in 3D case
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! -------------------
@@ -319,7 +314,6 @@ subroutine mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     !! Computes (alpha*C+beta*K).u in 3D case
     !! Indices must be in CSR format
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! -------------------
@@ -376,7 +370,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIter, epsilon, Method, nnz_cond, cond, JJ, directsol, x, RelRes, RelError)
     
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -610,7 +603,6 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterations, epsilon, x, RelRes)
     
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------

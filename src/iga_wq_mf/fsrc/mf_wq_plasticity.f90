@@ -9,7 +9,6 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     !! Computes strain in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input/ output
     ! --------------------  
@@ -83,7 +82,6 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes volumetric force vector in 3D case
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! --------------------
@@ -119,7 +117,6 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, result)
     !! Computes boundary force vector in 3D case
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! --------------------
@@ -170,7 +167,6 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     !! Computes internal force vector in 3D case
     !! Probably correct (?)
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! --------------------
@@ -330,7 +326,6 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIter, &
                             U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -486,7 +481,6 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                         table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, disp)
 
     use elastoplasticity
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------
@@ -641,7 +635,6 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
                             isPrecond, nbIter, table, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
 
     use elastoplasticity
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! ---------------------

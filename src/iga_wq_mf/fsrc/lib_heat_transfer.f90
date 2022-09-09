@@ -15,7 +15,6 @@ module heat_transfer
                                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                             data_B_u, data_B_v, data_B_w, Tin, Tout)
 
-        use tensor_methods
         implicit none 
         ! Input/ output
         ! --------------------  

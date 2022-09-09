@@ -17,7 +17,6 @@ subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     !! Computes capacity matrix in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -89,7 +88,6 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     !! Computes conductivity matrix in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! -------------------
@@ -173,7 +171,6 @@ subroutine wq_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     !! Computes source vector in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! --------------------
@@ -205,7 +202,6 @@ subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     !! Computes source vector in 3D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! --------------------
@@ -256,7 +252,6 @@ subroutine wq_get_stiffness_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                             nnz_I_u, nnz_I_v, nnz_I_w, data_result, indi_result, indj_result)
     !! Computes stiffness matrix in 3D case
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! -------------------
@@ -338,7 +333,6 @@ subroutine wq_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
     !! Computes a capacity matrix in 2D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output 
     ! ------------------
@@ -405,7 +399,6 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     !! IN CSR FORMAT
 
     use omp_lib
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! -------------------
@@ -483,7 +476,6 @@ subroutine wq_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_
     !! Computes source vector in 2D case
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input / output data
     ! --------------------

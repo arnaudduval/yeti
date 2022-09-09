@@ -144,7 +144,6 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     !! IN CSR FORMAT
     
     use omp_lib
-    use tensor_methods
     implicit none 
     ! Input/ output
     ! --------------------  
@@ -218,7 +217,6 @@ subroutine interpolate_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input/ output
     ! --------------------  
@@ -269,7 +267,6 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !! IN CSR FORMAT
     
     use omp_lib
-    use tensor_methods
     implicit none 
     ! Input/ output
     ! --------------------  
@@ -340,7 +337,6 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !! Computes interpolation in 2D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
-    use tensor_methods
     implicit none 
     ! Input/ output
     ! --------------------   
