@@ -58,7 +58,7 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
         do i = 1, d
             alpha = 1; alpha(i) = 2
             beta = 1; beta(j) = 2
-            call find_physical_diag_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call csr_get_diag_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
                                 data_W_u(:, alpha(1)), data_W_v(:, alpha(2)), data_W_w(:, alpha(3)), Kdiag_temp)
@@ -133,7 +133,7 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
 
     ! Eval B.transpose * array_in
     allocate(array_temp_1(nc_total))
-    call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+    call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), & 
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
@@ -145,7 +145,7 @@ subroutine mf_iga_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     deallocate(array_temp_1)
 
     ! Eval W * array_temp1
-    call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_B_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_B_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_B_w(:, 1), &
@@ -223,7 +223,7 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     allocate(array_temp_1(nc_total), array_temp_1t(nc_total), array_temp_1tt(nc_total))
     do j = 1, d
         beta = 1; beta(j) = 2
-        call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
@@ -231,7 +231,7 @@ subroutine mf_iga_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
         do i = 1, d
             alpha = 1; alpha(i) = 2
             array_temp_1t = array_temp_1*coefs_new(i, j, :)
-            call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, indi_u, indj_u, data_B_u(:, alpha(1)), &
                                     nnz_v, indi_v, indj_v, data_B_v(:, alpha(2)), &
                                     nnz_w, indi_w, indj_w, data_B_w(:, alpha(3)), & 

@@ -52,7 +52,7 @@ subroutine interpolate_strain_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     do j = 1, d
         do i = 1, d
             beta = 1; beta(i) = 2
-            call tensor3d_dot_vector_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+            call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
@@ -104,7 +104,7 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     integer :: i
 
     do i = 1, d
-        call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                                     nnz_w, indi_w, indj_w, data_W_w(:, 1), &
@@ -155,7 +155,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
 
     ! Compute force
     do i = 1, d
-        call tensor2d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
+        call sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
                                 data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                                 coefs(i, :), result(i, :))
     end do
@@ -199,7 +199,7 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
         
             k = i + (j-1)*d
             alpha = 1; alpha(i) = 4
-            call tensor3d_dot_vector_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, alpha(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, alpha(2)), &
                                 nnz_w, indi_w, indj_w, data_W_w(:, alpha(3)), &

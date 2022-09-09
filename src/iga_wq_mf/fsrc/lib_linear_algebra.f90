@@ -85,74 +85,74 @@ subroutine linear_interpolation(nr, table, nnz, x, y, tol)
 
 end subroutine linear_interpolation
 
-subroutine diff_vector(times, nnz, vector_in, vector_out)
+subroutine diff_array(times, nnz, array_in, array_out)
     !! Returns the difference between elements of array. 
-    !! Ex. given a vector [0, 1, 3, 10] and times = 1, the output is [1, 2, 7, 0]. 
+    !! Ex. given an array [0, 1, 3, 10] and times = 1, the output is [1, 2, 7, 0]. 
     !! If times = 2, the output is [1, 5, 0, 0]
 
     implicit none
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nnz, times
-    double precision, intent(in) :: vector_in
-    dimension :: vector_in(nnz)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nnz)
 
-    double precision, intent(out) :: vector_out
-    dimension :: vector_out(nnz)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nnz)
 
     ! Local data
     ! ----------
-    double precision :: vector_temp
-    dimension :: vector_temp(nnz)
+    double precision :: array_temp
+    dimension :: array_temp(nnz)
     integer :: i, j
 
-    if (times.ge.nnz) stop 'Times can not be greater than the vector size'
+    if (times.ge.nnz) stop 'Times can not be greater than the array size'
     if (times.lt.0) stop 'Times can not be less than zero'
 
     ! Initialize
-    vector_out = vector_in
+    array_out = array_in
 
     do j = 1, times
 
-        ! Save temporal vector
-        vector_temp = vector_out
+        ! Save temporal array
+        array_temp = array_out
 
         ! Get the difference
         do i = 1, nnz-j
-            vector_out(i) = vector_temp(i+1) - vector_temp(i)
+            array_out(i) = array_temp(i+1) - array_temp(i)
         end do
 
         ! Extra data is set to 0
         do i = nnz-j+1, nnz
-            vector_out(i) = 0.d0
+            array_out(i) = 0.d0
         end do
 
     end do
     
-end subroutine diff_vector
+end subroutine diff_array
 
-subroutine find_unique_vector(nnz, vec, vec_unique)
-    !! Gets the non-repreated values of a vector
-    !! Ex: Given the vector [0, 1, 1, 2, 3, 3, 3], the unique vector is [0, 1, 2, 3, 0, 0, 0, 4]
+subroutine find_unique_array(nnz, array, array_unique)
+    !! Gets the non-repreated values of an array
+    !! Ex: Given the array [0, 1, 1, 2, 3, 3, 3], the unique array is [0, 1, 2, 3, 0, 0, 0, 4]
     !! The last value is the number of unique elements
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nnz 
-    double precision, intent(in) :: vec
-    dimension :: vec(nnz)
+    double precision, intent(in) :: array
+    dimension :: array(nnz)
 
-    double precision, intent(out) :: vec_unique
-    dimension :: vec_unique(nnz+1)
+    double precision, intent(out) :: array_unique
+    dimension :: array_unique(nnz+1)
 
     ! Local data
     ! ----------
-    integer :: i, num, nnz_nr
+    integer :: i, c, nnz_nr
     logical, dimension(nnz) :: mask
 
     ! Initialize
-    vec_unique = 0.d0
+    array_unique = 0.d0
 
     ! Define mask 
     mask = .false.
@@ -160,14 +160,14 @@ subroutine find_unique_vector(nnz, vec, vec_unique)
     do i = 1, nnz
 
         ! Count the number of occurrences of this element:  
-        num = count(vec(i).eq.vec)
+        c = count(array(i).eq.array)
     
-        if (num.eq.1) then  
+        if (c.eq.1) then  
             ! There is only one, flag it:  
             mask(i) = .true.  
         else  
             !  Flag this value only if it has not already been flagged
-            if (.not. any(vec(i).eq.vec .and. mask)) then
+            if (.not. any(array(i).eq.array .and. mask)) then
                 mask(i) = .true.  
             end if
         end if
@@ -176,10 +176,10 @@ subroutine find_unique_vector(nnz, vec, vec_unique)
 
     ! Return only flagged elements
     nnz_nr = count(mask)
-    vec_unique(1:nnz_nr) = pack(vec, mask)
-    vec_unique(nnz+1) = dble(nnz_nr)
+    array_unique(1:nnz_nr) = pack(array, mask)
+    array_unique(nnz+1) = dble(nnz_nr)
 
-end subroutine find_unique_vector
+end subroutine find_unique_array
 
 subroutine linspace(x0, xf, n, array) 
     !! Evaluates n equidistant points given the first and last points 

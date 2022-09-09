@@ -39,7 +39,7 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
 
 end subroutine eigen_decomposition_py
 
-subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector_inout)
+subroutine fd_sqr_scaling(nnz, factor_up, factor_down, array_inout)
     !! Square-root scaling in fast diagonalization method
 
     use omp_lib
@@ -50,8 +50,8 @@ subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector_inout)
     double precision, intent(in) :: factor_up, factor_down
     dimension :: factor_up(nnz), factor_down(nnz)
 
-    double precision, intent(inout) :: vector_inout
-    dimension :: vector_inout(nnz)
+    double precision, intent(inout) :: array_inout
+    dimension :: array_inout(nnz)
 
     ! Local data
     ! ----------
@@ -61,7 +61,7 @@ subroutine fd_sqr_scaling(nnz, factor_up, factor_down, vector_inout)
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
     do i = 1, nnz
-        vector_inout(i) = sqrt(factor_up(i)/factor_down(i))*vector_inout(i) 
+        array_inout(i) = sqrt(factor_up(i)/factor_down(i))*array_inout(i) 
     end do  
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
@@ -92,7 +92,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     dimension :: array_temp(nr_total)
 
     ! Compute (Uw x Uv x Uu)'.array_in
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
     !$OMP PARALLEL 
@@ -105,7 +105,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     !$OMP END PARALLEL
 
     ! Compute (Uw x Uv x Uu).array_temp
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     U_u, U_v, U_w, array_temp, array_out)
     
 end subroutine fd_steady_heat_3d
@@ -132,11 +132,11 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
     dimension :: array_temp(nr_total)
 
     ! Compute (Uw x Uv x Uu)'.array_in
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
     ! Compute (Uw x Uv x Uu).array_temp
-    call tensor3d_dot_vector(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
+    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
 
 end subroutine fd_interpolation_3d
 

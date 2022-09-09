@@ -32,7 +32,7 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     dimension :: nodes(size_kv+1), B0t(degree+1), B1t(degree+1)
 
     ! Get nodes from knot-vector
-    call find_unique_vector(size_kv, knotvector, nodes)
+    call find_unique_array(size_kv, knotvector, nodes)
 
     ! Set number of control points
     nb_ctrlpts = size_kv - degree - 1
@@ -98,7 +98,7 @@ subroutine get_basis_generalized_csr(degree, size_kv, knotvector, nb_knots, knot
 
 end subroutine get_basis_generalized_csr
 
-subroutine iga_get_data(degree, size_kv, knotvector, qp_nnz, qp_position, qp_weight, &
+subroutine iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weight, &
                         size_data, data_basis, indices, nnz_I)
     !! Gets in COO format basis and weights in IGA approach
 
@@ -106,12 +106,12 @@ subroutine iga_get_data(degree, size_kv, knotvector, qp_nnz, qp_position, qp_wei
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, qp_nnz, size_data
+    integer, intent(in) :: degree, size_kv, nb_qp, size_data
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
 
     double precision, intent(out) :: qp_position, qp_weight, data_basis
-    dimension :: qp_position(qp_nnz), qp_weight(qp_nnz), data_basis(size_data, 2)
+    dimension :: qp_position(nb_qp), qp_weight(nb_qp), data_basis(size_data, 2)
     integer, intent(out) :: indices
     dimension :: indices(size_data, 2)
     integer, intent(out) :: nnz_I
@@ -125,34 +125,34 @@ subroutine iga_get_data(degree, size_kv, knotvector, qp_nnz, qp_position, qp_wei
     call iga_basis_weights_dense2coo(obj)
 
     ! Set quadrature points
-    qp_position = obj%qp_pos
-    qp_weight = obj%qp_weights
+    qp_position = obj%qp_position
+    qp_weight = obj%qp_weight
 
     ! Set data 
     data_basis(:, 1) = obj%data_B0
     data_basis(:, 2) = obj%data_B1
 
     ! Set indices
-    indices = obj%data_ind
+    indices = obj%indices
 
     ! Set number of non zeros of integral matrix 
     nnz_I = obj%nnz_I
 
 end subroutine iga_get_data
 
-subroutine iga_get_data_csr(degree, size_kv, knotvector, qp_nnz, qp_position, qp_weight, &
+subroutine iga_get_data_csr(degree, size_kv, knotvector, nb_qp, qp_position, qp_weight, &
                             size_data, data_basis, indi, indj, nnz_I)
     !! Gets in CSR format basis and weights in IGA approach
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, qp_nnz, size_data
+    integer, intent(in) :: degree, size_kv, nb_qp, size_data
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
 
     double precision, intent(out) :: qp_position, qp_weight, data_basis
-    dimension :: qp_position(qp_nnz), qp_weight(qp_nnz), data_basis(size_data, 2)
+    dimension :: qp_position(nb_qp), qp_weight(nb_qp), data_basis(size_data, 2)
     integer, intent(out) :: indi, indj
     dimension :: indi(size_kv-degree), indj(size_data)
     integer, intent(out) :: nnz_I
@@ -164,7 +164,7 @@ subroutine iga_get_data_csr(degree, size_kv, knotvector, qp_nnz, qp_position, qp
     double precision, dimension(:,:), allocatable :: data_dummy
     
     ! Get data in COO format
-    call iga_get_data(degree, size_kv, knotvector, qp_nnz, qp_position, qp_weight, size_data, data_basis, data_ind, nnz_I)
+    call iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weight, size_data, data_basis, data_ind, nnz_I)
 
     ! Convert COO to CSR format
     allocate(data_dummy(size_data, 2))
@@ -173,7 +173,7 @@ subroutine iga_get_data_csr(degree, size_kv, knotvector, qp_nnz, qp_position, qp
 
 end subroutine iga_get_data_csr
 
-subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, qp_nnz)
+subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
     !! Gets the size of non-zeros of matrices that will be used in wq_get_data
     
     use wq_basis_weights
@@ -183,7 +183,7 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, qp_nnz)
     integer, intent(in) :: degree, size_kv
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
-    integer, intent(out) :: size_data, qp_nnz
+    integer, intent(out) :: size_data, nb_qp
 
     ! Local data
     ! ----------
@@ -197,15 +197,15 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, qp_nnz)
 
     ! Compute quatrature points positions
     call wq_get_qp_positions(obj)
-    call wq_get_B0_B1_shape(obj)
+    call wq_get_B_shape(obj)
 
     ! Save data
     size_data = obj%nnz_B
-    qp_nnz = obj%nb_qp_wq
+    nb_qp = obj%nb_qp_wq
 
 end subroutine wq_get_size_data
 
-subroutine wq_get_data(degree, size_kv, knotvector, size_data, qp_nnz, qp_position, &
+subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, &
                         data_basis, data_weights, indices, nnz_I)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
@@ -213,12 +213,12 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, qp_nnz, qp_positi
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, qp_nnz
+    integer, intent(in) :: degree, size_kv, size_data, nb_qp
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
 
     double precision, intent(out) :: qp_position, data_basis, data_weights
-    dimension :: qp_position(qp_nnz), data_basis(size_data, 2), data_weights(size_data, 4)
+    dimension :: qp_position(nb_qp), data_basis(size_data, 2), data_weights(size_data, 4)
     integer, intent(out) :: indices
     dimension :: indices(size_data, 2)
     integer, intent(out) :: nnz_I
@@ -230,10 +230,10 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, qp_nnz, qp_positi
 
     ! Evaluate basis and weights
     call wq_initialize(obj, degree, size_kv, knotvector, method)
-    call wq_basis_weights_dense2coo(obj, degree, size_kv, knotvector, method)
+    call wq_basis_weights_dense2coo(obj)
 
     ! Save quadrature points
-    qp_position = obj%qp_pos
+    qp_position = obj%qp_position
 
     ! Save data 
     data_basis(:, 1) = obj%data_B0
@@ -244,26 +244,26 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, qp_nnz, qp_positi
     data_weights(:, 4) = obj%data_W11
 
     ! Save indices
-    indices = obj%data_indices
+    indices = obj%indices
 
     ! Set number of non zeros of integral matrix
     nnz_I = obj%nnz_I
 
 end subroutine wq_get_data
 
-subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, qp_nnz, qp_position, &
+subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, nb_qp, qp_position, &
                             data_basis, data_weights, indi, indj, nnz_I)
     !! Gets in CSR format basis and weights in IGA-WQ approach
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, qp_nnz
+    integer, intent(in) :: degree, size_kv, size_data, nb_qp
     double precision :: knotvector
     dimension :: knotvector(size_kv)
 
     double precision, intent(out) :: qp_position, data_basis, data_weights
-    dimension :: qp_position(qp_nnz), data_basis(size_data, 2), data_weights(size_data, 4)
+    dimension :: qp_position(nb_qp), data_basis(size_data, 2), data_weights(size_data, 4)
     integer, intent(out) :: indi, indj
     dimension :: indi(size_kv-degree), indj(size_data)
     integer, intent(out) :: nnz_I
@@ -275,7 +275,7 @@ subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, qp_nnz, qp_po
     double precision, dimension(:,:), allocatable :: data_dummy
     
     ! Get data in COO format
-    call wq_get_data(degree, size_kv, knotvector, size_data, qp_nnz, qp_position, data_basis, data_weights, data_ind, nnz_I)
+    call wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, data_basis, data_weights, data_ind, nnz_I)
 
     ! Convert COO to CSR format
     allocate(data_dummy(size_data, 2))
