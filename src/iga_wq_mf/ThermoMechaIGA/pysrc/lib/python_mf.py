@@ -12,8 +12,8 @@ from .python_wq import WQ
 
 class MF(WQ): 
     
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None):
-        super().__init__(modelIGA, material= material, Dirichlet= Dirichlet)
+    def __init__(self, modelIGA, material=None, Dirichlet=None):
+        super().__init__(modelIGA, material=material, Dirichlet=Dirichlet)
         return
 
     def eval_Ku(self, u, indi=None, indj=None):
@@ -21,11 +21,11 @@ class MF(WQ):
 
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
-        super()._verify_conductivity()
+        super()._verify_thermal()
+        coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
 
-        # Initialize conductivity matrix 
+        # Initialize
         Ku = np.zeros(len(indi))
-
         for j in range(self._dim):
             beta = np.zeros(self._dim, dtype = int); beta[j] = 1
             Bt = 1 
@@ -35,7 +35,7 @@ class MF(WQ):
             But = sp.csr.csr_matrix.dot(Bt.tocsr()[indj,:].T, u)
 
             for i in range(self._dim):
-                Cij = self._conductivity_coef[i, j, :]
+                Cij = coefs[i, j, :]
                 alpha = np.zeros(self._dim, dtype = int); alpha[i] = 1
                 
                 Wt = 1
@@ -55,11 +55,10 @@ class MF(WQ):
 
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
-        super()._verify_capacity()
-
-        # Initialize basis and weights
+        super()._verify_thermal()
+        coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
+        
         B = 1; W = 1
-
         for dim in range(self._dim): 
             # Find basis and weights
             B0 = self._DB[dim][0]
@@ -70,7 +69,7 @@ class MF(WQ):
             W = sp.kron(W00, W)
 
         # Assemble C
-        W = W * sp.diags(self._capacity_coef)
+        W = W * sp.diags(coefs)
         Bu = sp.csr_matrix.dot(B.tocsr()[indj,:].T, u)
         Cu = sp.csr_matrix.dot(W.tocsr()[indi,:], Bu)
 
@@ -82,11 +81,9 @@ class MF(WQ):
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get source coefficients
-        self._source_coef = super().eval_source_coefficient(fun)
+        coefs = super().eval_source_coefficient(fun)
 
-        # Initialize weights
         W = 1; 
-
         for dim in range(self._dim): 
             # Find weights
             W00 = self._DW[dim][0][0]
@@ -95,23 +92,23 @@ class MF(WQ):
             W = sp.kron(W, W00)
 
         # Assemble F
-        F = sp.csr_matrix.dot(W.tocsr()[indi,:], self._source_coef)
+        vector = sp.csr_matrix.dot(W.tocsr()[indi,:], coefs)
 
-        return F
+        return vector
     
-    def mf_wq_evaluate_Au(self, ui, dof):
+    def mf_wq_evaluate_Au(self, u, dof):
         "Return (A x)i"
         # Here x is all the vector 
         # In this fist case A = K
-        Axi = self.eval_Ku(ui, dof, dof)
-        return Axi
+        Au = self.eval_Ku(u, dof, dof)
+        return Au
 
     def conjugate_gradient(self, fun_Au, bi, dof, nbIterations=100, epsilon=1e-10):   
         " Evaluate K u at choosen equations "
 
-        # ------------------
+        # -----------------------------
         # Conjugate Gradient algorithm
-        # ------------------
+        # -----------------------------
         x = np.zeros(len(bi))
         r = bi
         p = r
@@ -125,9 +122,8 @@ class MF(WQ):
             x = x + alpha*p
             r = r - alpha*Ap
             RelRes[k+1] = (np.linalg.norm(r, np.inf)/np.linalg.norm(bi, np.inf))
-
-            if RelRes[k+1]<epsilon:
-                break
+            if RelRes[k+1]<epsilon: break
+            
             rsnew = np.dot(r, r)
             p = r + rsnew/rsold * p
             rsold = rsnew

@@ -103,12 +103,12 @@ for i in range(1, nbStep+1):
     Fext[:, :, i] = i*dt*Fsurf
 
 # Solve system in fortran
-_, dF, coef_S = modelPhy.MFplasticity(Fext=Fext[:,:,:2], indi=Mdod)
+_, dF, coef_S = modelPhy.MFplasticity_fortran(Fext=Fext[:,:,:2], indi=Mdod)
 # modelPhy.MFWQ_solveElasticity(coef_S, indi=Mdod, Fext=dF, isPrecond=False)
 # # !!!!!!!!!!!!!!!!! We have different result for same algorithm in fortran or python (elasticity) 
 
 # Solve system in Python
-modelPhy.MFWQ_solvePlasticity(Fext=Fext[:,:,:2], indi=Mdod)
+modelPhy.MFplasticity_py(Fext=Fext[:,:,:2], indi=Mdod)
 # !!!!!!!!!!!!!!!!! Due to problem above, in python converges plasticity but in fortran it doesnt 
 
 # # ==================================

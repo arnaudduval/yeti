@@ -13,41 +13,36 @@ from .create_model import thermoMechaModel
 class fortran_mf_iga(thermoMechaModel):
     
     def __init__(self, modelIGA: None, material=None, Dirichlet=None, Neumann=None):
-        super().__init__(modelIGA, material= material, Dirichlet= Dirichlet, Neumann= Neumann)
+        super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 
         # Set basis and weights
-        self.eval_positions_basis_weights()
+        self._nb_qp, self._nb_qp_total = np.ones(3), None
+        self.eval_basis_weights()
 
         # Get jacobian and physical position 
         self.eval_jacobien_physicalPosition()
 
-        # Initialize thermal properties
-        self._conductivity_coef = None
-        self._capacity_coef = None
-
         return
 
-    def eval_positions_basis_weights(self):
+    def eval_basis_weights(self):
         " Computes basis and weights "
 
         print('Evaluating basis and weights')
         start = time.time()
 
-        # Set number of non-zeros values of I
-        self._nnz_I = []
-
-        # Set basis and weights 
-        self._qp_cgg, self._DB, self._DW, self._indices = [], [], [], []
+        # Initialize
+        self._nnz_I, self._qp_dim, self._DB, self._DW, self._indices = [], [], [], [], []
 
         for dim in range(self._dim):  
-            nnz_I, qp_pos, W, B, indi, indj  = iga_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim])
-            
-            self._nnz_I.append(nnz_I)
-            self._qp_cgg.append(qp_pos)
-            self._DB.append(B)
-            self._DW.append(W)
-            self._indices.append(indi)
-            self._indices.append(indj)
+            nnz_I, qp_position, \
+            weights, basis, indi, indj = iga_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim])
+            self._nb_qp[dim] = len(qp_position)
+            self._nnz_I.append(nnz_I); self._qp_dim.append(qp_position)
+            self._DB.append(basis); self._DW.append(weights)
+            self._indices.append(indi); self._indices.append(indj)
+
+        # Update number of quadrature points
+        self._nb_qp_total = np.prod(self._nb_qp)
 
         stop = time.time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
@@ -59,9 +54,9 @@ class fortran_mf_iga(thermoMechaModel):
 
         print('Evaluating jacobien and physical position')
         start = time.time()
-        # Get inputs
-        inputs = [*self._nb_qp_cgg, *self._indices, *self._DB, self._ctrlpts]
 
+        # Get inputs
+        inputs = [*self._nb_qp, *self._indices, *self._DB, self._ctrlpts]
         if self._dim == 2:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
             self._qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
@@ -73,42 +68,14 @@ class fortran_mf_iga(thermoMechaModel):
 
         return
 
-    def _verify_conductivity(self): 
-        " Verifies if conductivity exits"
-
-        if self._conductivity is None: raise Warning('Conductivity not defined')
-        if self._conductivity_coef is None:
-            print('Getting conductivity coefficients')
-            start = time.time()
-            coef, info = assembly.eval_conductivity_coefficient(self._Jqp, self._conductivity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._conductivity_coef = coef
-            stop = time.time()
-            print('\tConductivity coefficients in : %.5f s' %(stop-start))
-        return
-
-    def _verify_capacity(self): 
-        " Verifies if capacity exits"
-
-        if self._capacity is None: raise Warning('Capacity not defined')
-        if self._capacity_coef is None:
-            print('Getting capacity coefficients')
-            start = time.time()
-            coef, info = assembly.eval_capacity_coefficient(self._Jqp, self._capacity)
-            if info == 0: raise Warning('Something happen computing coefficients')
-            else: self._capacity_coef = coef
-            stop = time.time()
-            print('\tCapacity coefficients in : %.5f s' %(stop-start))
-        return
-
-    # ===========================
+    # ----------------------
     # ISOGEOMETRIC ANALYSIS
-    # ===========================
+    # ----------------------
 
     def eval_source_coefficient(self, fun): 
         " Computes source coefficients "
-        source_coef = super().eval_source_coefficient(fun, self._qp_PS, self._detJ)
-        return source_coef
+        coefs = super().eval_source_coefficient(fun, self._qp_PS, self._detJ)
+        return coefs
 
     def eval_capacity_matrix(self, indi=None, indj=None): 
         " Computes capacity matrix "
@@ -117,20 +84,19 @@ class fortran_mf_iga(thermoMechaModel):
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
         
         # Get inputs
-        self._verify_capacity()
-        inputs = [self._capacity_coef, *self._indices, *self._DB, *self._DW, *self._nnz_I]
+        super()._verify_thermal()
+        coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
+        inputs = [coefs, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
         if self._dim == 2: val_, indi_, indj_ = assembly.iga_get_capacity_2d(*inputs)
         if self._dim == 3: val_, indi_, indj_ = assembly.iga_get_capacity_3d(*inputs)
-                
-        # Convert results in csr sparse matrix
-        C = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
-
+        matrix = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
         stop = time.time()
-        print('Capacity matrix assembled in : %.5f s' %(stop-start))
         
-        return  C
+        print('Capacity matrix assembled in : %.5f s' %(stop-start))
+
+        return  matrix
 
     def eval_conductivity_matrix(self, indi=None, indj=None): 
         " Computes conductivity matrix "
@@ -139,30 +105,30 @@ class fortran_mf_iga(thermoMechaModel):
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get inputs
-        self._verify_conductivity()
-        inputs = [self._conductivity_coef, *self._indices, *self._DB, *self._DW, *self._nnz_I]
+        super()._verify_thermal()
+        coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
+        inputs = [coefs, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
         if self._dim == 2: val_, indi_, indj_ = assembly.iga_get_conductivity_2d(*inputs)
         if self._dim == 3: val_, indi_, indj_ = assembly.iga_get_conductivity_3d(*inputs)
-                
-        # Convert results in csr sparse matrix
-        K = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
-
+        matrix = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
         stop = time.time()
+
         print('Conductivity matrix assembled in : %5f s' %(stop-start))
         
-        return K
+        return matrix
 
-    def eval_Ku(self, u): 
-        " Computes K u "
+    def eval_Ku(self, u, table=None): 
+        " Computes K u where K is conductivity matrix "
 
         # Get inputs
-        self._verify_conductivity()
-        inputs = self.get_input4MatrixFree(u)
+        super()._verify_thermal()
+        coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
+        inputs = self.get_input4MatrixFree(table=table)
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_iga_get_ku_3d_csr(*inputs)
+        if self._dim == 3: result = solver.mf_iga_get_ku_3d_csr(coefs, *inputs, u)  
 
         return result
     
@@ -172,22 +138,22 @@ class fortran_mf_iga(thermoMechaModel):
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
 
         # Get source coefficients
-        self._source_coef = self.eval_source_coefficient(fun)
-        inputs = [self._source_coef, *self._indices, *self._DB, *self._DW]
-
+        coefs = self.eval_source_coefficient(fun)
+        inputs = [coefs, *self._indices, *self._DB, *self._DW]
         start = time.time()
-        if self._dim == 2: F = assembly.iga_get_source_2d(*inputs)
-        if self._dim == 3: F = assembly.iga_get_source_3d(*inputs)
+        if self._dim == 2: vector = assembly.iga_get_source_2d(*inputs)[indi]
+        if self._dim == 3: vector = assembly.iga_get_source_3d(*inputs)[indi]
         stop = time.time()
+
         print('Source vector assembled in : %.5f s' %(stop-start))
 
-        return F[indi]
+        return vector
 
-    # =============================
+    # ----------------------
     # MATRIX FREE SOLUTION
-    # =============================
+    # ----------------------
 
-    def get_input4MatrixFree(self, table= None):
+    def get_input4MatrixFree(self, table=None):
         " Returns necessary inputs to compute the product between a matrix and a vector"
 
         # Initialize
@@ -211,14 +177,18 @@ class fortran_mf_iga(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, u, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol): 
+        " Solves steady heat problems using directly substitution method "
+
+        if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if directsol is None: directsol = np.ones(len(f))
 
         # Get inputs
-        self._verify_conductivity()
-        if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        inputs_tmp = self.get_input4MatrixFree(self._thermalDirichlet)
-        inputs = [self._conductivity_coef, *inputs_tmp, u, nbIterations, epsilon, method, 
-                self._conductivity, self._Jqp, directsol]
+        super()._verify_thermal()
+        coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
+        inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
+        inputs = [coefs, *inputs_tmp, f, nbIterations, epsilon, method, 
+                    self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue, error = solver.mf_iga_steady_heat_3d(*inputs)
@@ -226,14 +196,15 @@ class fortran_mf_iga(thermoMechaModel):
         return sol, residue, error
         
     def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
+        " Interpolation from parametric space to physical space "
         
-        # Get temperature coeficients 
-        coef_F = fun(self._qp_PS)  * self._detJ
+        # Get coeficients 
+        coefs = fun(self._qp_PS)  * self._detJ
 
-        # Define inputs 
-        inputs = [coef_F, *self._indices, *self._DB, *self._DW]
+        # Get inputs 
+        inputs = [coefs, *self._indices, *self._DB, *self._DW]
 
-        # Calculate capacity matrix and temperature vector
+        # Calculate vector
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: F = assembly.iga_get_source_3d(*inputs)
 

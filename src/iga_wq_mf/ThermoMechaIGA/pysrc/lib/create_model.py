@@ -221,6 +221,12 @@ class thermoMechaModel():
         if any([prop is None for prop in proplist]): raise Warning('Mechanics not well defined')
         if self._Ctensor is None: self._set_extra_mechanical_properties()
         return
+
+    def _verify_thermal(self): 
+        " Verifies if thermal properties exits "
+        if self._conductivity is None: raise Warning('Conductivity not defined')
+        if self._capacity is None: raise Warning('Capacity not defined')
+        return
     
     # =======================
     # READ FILE
@@ -366,6 +372,7 @@ class thermoMechaModel():
         # Initialize 
         J = np.zeros((dim, dim, nnz))
         PPS = np.zeros((dim, nnz))
+        invJ = np.zeros((dim, dim, nnz))
         detJ = np.zeros(nnz)
 
         # Evaluate jacobien
@@ -388,16 +395,17 @@ class thermoMechaModel():
 
             PPS[i, :] = sp.coo_matrix.dot(B.T, ctrlpts[i, :])
 
-        # Evaluate determinant
+        # Evaluate inverse and determinant
         for i in range(nnz):
+            invJ[:, :, i] = np.linalg.inv(J[:, :, i])
             detJ[i] = np.linalg.det(J[:, :, i])
         
         stop = time.time()
         print('\t Time jacobien: %.5f s' %(stop-start))
         
-        return J, PPS, detJ
+        return J, detJ, invJ, PPS
 
-    def eval_conductivity_coefficient(self, JJ, Kprop): 
+    def eval_conductivity_coefficient(self, invJ, detJ, Kprop): 
         " Computes conductivity coefficients "
 
         print('Getting conductivity coefficients')
@@ -405,40 +413,35 @@ class thermoMechaModel():
         
         # Initialize
         Kprop = np.atleast_3d(Kprop)
-        nnz = np.shape(JJ)[2]
-        coefs = np.zeros(np.shape(JJ))
+        nnz = len(detJ)
+        coefs = np.zeros(np.shape(invJ))
 
         if np.shape(Kprop)[2] == 1:
             for i in range(nnz): 
-                # Find determinant of Jacobien 
-                det_J = np.linalg.det(JJ[:, :, i])
 
                 # Find inverse of Jacobien 
-                inv_J = np.linalg.inv(JJ[:, :, i])
+                inv_J = invJ[:,:,i]
 
                 # Find coefficient of conductivity matrix
-                coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * det_J
+                coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * detJ[i]
 
         elif np.shape(Kprop)[2] == nnz:
             for i in range(nnz): 
-                # Find determinant of Jacobien 
-                det_J = np.linalg.det(JJ[:, :, i])
 
                 # Find inverse of Jacobien 
-                inv_J = np.linalg.inv(JJ[:, :, i])
+                inv_J = invJ[:,:,i]
 
                 # Find coefficient of conductivity matrix
-                coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * det_J
+                coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * detJ[i]
 
-        else: 
-            raise Warning('Something happen, it is not possible to compute coefficients')
+        else: raise Warning('It is not possible to compute coefficients')
 
         stop = time.time()
         print('\tConductivity coefficients in : %.5f s' %(stop-start))
 
         return coefs
 
-    def eval_capacity_coefficient(self, JJ, Cprop): 
+    def eval_capacity_coefficient(self, detJ, Cprop): 
         " Computes capacity coefficients "
 
         print('Getting capacity coefficients')
@@ -446,27 +449,18 @@ class thermoMechaModel():
 
         # Initialize
         Cprop = np.atleast_1d(Cprop)
-        nnz = np.shape(JJ)[2]
+        nnz = np.size(detJ)
         coefs = np.zeros(nnz)
         
         if len(Cprop) == 1:
             for i in range(nnz): 
-                # Find determinant of Jacobien 
-                det_J = np.linalg.det(JJ[:, :, i])
-
-                # Find coefficient of capacity matrix or heat vector
-                coefs[i] = Cprop[0] * det_J
+                coefs[i] = Cprop[0] * detJ[i]
 
         elif len(Cprop) == nnz:
             for i in range(nnz): 
-                # Find determinant of Jacobien 
-                det_J = np.linalg.det(JJ[:, :, i])
+                coefs[i] = Cprop[i] * detJ[i]
 
-                # Find coefficient of capacity matrix or heat vector
-                coefs[i] = Cprop[i] * det_J
-
-        else: 
-            raise Warning('Something happen, it is not possible to compute coefficients')
+        else: raise Warning('It is not possible to compute coefficients')
 
         stop = time.time()
         print('\tCapacity coefficients in : %.5f s' %(stop-start))

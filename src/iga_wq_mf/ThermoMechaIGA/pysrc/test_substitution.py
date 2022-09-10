@@ -45,7 +45,7 @@ if case == 1:
 
     # With preconditioner
     inputs = [F, iterations, epsilon]   
-    usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, indi=dod, method_precond=method_precond)
+    usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, indi=dod, methodPCG=method_precond)
 
 elif case == 2:
 
@@ -75,10 +75,9 @@ elif case == 2:
 
     # With preconditioner
     inputs = [F, iterations, epsilon]   
-    usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, method_precond=method_precond)
+    usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, indi=dod, methodPCG=method_precond)
 
 # Print results
-CARO = 2
 newres = residue[np.nonzero(residue)]
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5,4))
 ax.semilogy(np.arange(1, len(newres)+1), abs(newres))
