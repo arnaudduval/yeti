@@ -176,7 +176,6 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     !! Probably correct (?)
     !! IN CSR FORMAT
 
-
     implicit none 
     ! Input / output data
     ! -------------------

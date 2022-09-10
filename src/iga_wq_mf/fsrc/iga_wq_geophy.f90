@@ -8,6 +8,82 @@
 ! these functions are deprecated
 ! ==========================
 
+subroutine tensor_n_mode_product_py(ncols, ncX, X, &
+                                    nrU, nnzU, dataU, indi, indj, &
+                                    mode, isdense, istransp, nrR, R)
+    !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+    !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+    !! Tensor X = (nc_u, nc_v, nc_w)
+    !! Matrix U = (nr, nc). Since U is in CSR format, nc is not necessary to be declared
+    !! Tensor R = (nu, nv, nw) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw
+    !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
+    !! This function is adapted to python
+
+    implicit none
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: ncols, ncX, nrU, nnzU, mode, nrR
+    dimension :: ncols(3)
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nrU+1), indj(nnzU)
+    double precision, intent(in) :: X, dataU
+    dimension :: X(ncX), dataU(nnzU)
+    logical, intent(in) :: isdense, istransp
+
+    double precision, intent(out) :: R
+    dimension :: R(nrR)
+
+    ! Local data
+    ! ----------
+    integer :: nrows(3)
+    double precision, allocatable, dimension(:, :) :: UU
+    integer, allocatable, dimension(:) :: indi_T, indj_T
+    double precision, allocatable, dimension(:, :) :: dataUt, dataU_T
+
+    ! Set conditions
+    if (any(indi.le.0)) stop 'Indices in Fortran format are needed'
+    if (any(indj.le.0)) stop 'Indices in Fortran format are needed'
+    if ((mode.lt.1).or.(mode.gt.3)) stop 'Mode must be greater than 0 and less than 4'
+    if (product(ncols).ne.ncX) stop 'Wrong dimensions'
+    nrows = ncols; nrows(mode) = nrU
+    if (product(nrows).ne.nrR) stop 'Wrong dimensions'
+
+    if (isdense) then
+        ! Create dense matrix
+        allocate(UU(nrU, ncols(mode)))
+        call csr2dense(nnzU, indi, indj, dataU, nrU, ncols(mode), UU)
+
+        if (istransp) then
+            ! Compute tensor n mode product of transpose matrix
+            call tensor_n_mode_product(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
+                                    nrU, transpose(UU), mode, nrR, R)
+        else
+            ! Compute tensor n mode product
+            call tensor_n_mode_product(ncols(1), ncols(2), ncols(3), X, nrU, &
+                                    ncols(mode), UU, mode, nrR, R)
+        end if
+
+    else
+        if (istransp) then
+            ! Convert CSR to CSC
+            allocate(indi_T(ncols(mode)+1), indj_T(nnzU), dataUt(nnzU, 1), dataU_T(nnzU, 1))
+            dataUt(:, 1) = dataU
+            call csr2csc(1, nrU, ncols(mode), nnzU, dataUt, indj, indi, dataU_T, indj_T, indi_T)
+
+            ! Compute tensor n mode product
+            call tensor_n_mode_product_sp(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
+                                        nnzU, dataU_T(:, 1), indi_T, indj_T, mode, nrR, R)
+        
+        else
+            ! Compute tensor n mode product
+            call tensor_n_mode_product_sp(ncols(1), ncols(2), ncols(3), X, nrU, &
+                                        nnzU, dataU, indi, indj, mode, nrR, R)
+        end if
+
+    end if
+
+end subroutine tensor_n_mode_product_py
+
 subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, ctrlpts, jacob, detJ, invJ)

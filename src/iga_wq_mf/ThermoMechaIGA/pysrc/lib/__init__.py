@@ -1,6 +1,6 @@
 """
 Author: Joaquin Cornejo
-This files contains the libraries we use for the other files in this module.
+This files contains the libraries used in other files.
 """
 
 # Python libraries
@@ -17,7 +17,7 @@ from geomdl import (
 from pyevtk.hl import gridToVTK
 import matplotlib.pyplot as plt
 
-# My YETI libraries
+# YETI libraries
 from iga_wq_mf import basis_weights, assembly, solver
 from preprocessing.igaparametrization import IGAparametrization
 

@@ -506,7 +506,7 @@ class fortran_mf_wq(thermoMechaModel):
                 W = self._DW[dim]
                 datat = [B[:, 0], B[:, 1], W[:, 0], W[:, -1]]
                 t_robin = table[dim, :, idof]
-                eigt, Ut = eigen_decomposition(indit, indjt, datat, t_robin=t_robin)
+                eigt, Ut = eigen_decomposition(indit, indjt, datat, robin_condition=t_robin)
                 list_eig.append(eigt)
                 list_vectors.append(Ut)
 
