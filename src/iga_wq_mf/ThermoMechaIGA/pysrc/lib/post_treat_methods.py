@@ -1,7 +1,6 @@
 """
-.. module :: Post - treatment
-    :synopsis: Provides functions used to plot our results
-.. author :: Joaquin Cornejo
+.. This module contains functions used to run a simulation and plot the results
+.. Joaquin Cornejo
 """
 
 from .__init__ import *
@@ -75,7 +74,7 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
 
 class ThermalSimulation():
 
-    def __init__(self, inputs: dict, folder):
+    def __init__(self, inputs:dict, folder=None):
 
         # Get data to run simulation
         self._degree = inputs.get('degree', 2)
@@ -96,7 +95,7 @@ class ThermalSimulation():
         return
 
     def _get_filename(self):
-
+        " Set filename using input information "
         # Get text file name
         filename = (self._geoCase 
                     + '_p_' + str(self._degree) 
@@ -109,122 +108,138 @@ class ThermalSimulation():
         return filename
 
     def create_geometryModel(self):
+        " Create model using YETI refinement "
+        # Set properties
         degree = self._degree
         cuts = self._cuts
-        geometry = {'degree':[degree, degree, degree]}
+        geometry = {'degree':degree*np.ones(3)}
+
+        # Create geometry using geomdl
         modelGeo = geomdlModel(self._geoCase, **geometry)
-        modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-                                                    np.array([cuts, cuts, cuts]))
+
+        # Refine mesh using YETI function
+        modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=cuts*np.ones(3))
+
         return modelIGA
 
     def create_thermalModel(self, material=None, Dirichlet=None):
+        " Creates thermal model in IGA-G or IGA-WQ approach "
+
+        # Creates geometry
         modelIGA = self.create_geometryModel()
+
+        # Create thermal model
         if self._isIGA: thermalModel = fortran_mf_iga(modelIGA, material=material, Dirichlet=Dirichlet)
         else: thermalModel = fortran_mf_wq(modelIGA, material=material, Dirichlet=Dirichlet)
+
         return thermalModel
 
-    def compute_source(self, model:fortran_mf_wq, funPowDen, funTemp=None):
-        # Get data
+    def compute_Fn_SM(self, model:fortran_mf_wq, funPowDen=None, funTemp=None):
+        """ Compute vector b = Fn - Knd.ud where F is source vector and K is conductivity matrix. 
+            This equation is used in substitution method (SM)
+        """
+        
+        # Initialize
         dof = model._thermal_dof
         dod = model._thermal_dod
 
-        # Assemble source vector F
         if funTemp is not None:  
-            u = np.zeros(len(dof)+len(dod))
-            ud = model.interpolate_ControlPoints(funTemp)[dod]; u[dod] = ud
+            ud = model.interpolate_ControlPoints(funTemp)[dod]
+            u = np.zeros(model._nb_ctrlpts_total); u[dod] = ud
             Fn = model.eval_source_vector(funPowDen, indi=dof) 
-            kndTd = model.eval_Ku(u)
-            Fn -= kndTd
+            Knd_ud = model.eval_Ku(u)
+            Fn -= Knd_ud
         else:
             ud = None
             Fn = model.eval_source_vector(funPowDen, indi=dof)
             
         return Fn, ud
     
-    def run_iterative_solver(self, model:fortran_mf_wq, Fn, nbIter=100, eps=1e-15, method='WP', solDir=None):
-
+    def run_iterative_solver(self, model:fortran_mf_wq, Fn=None, nbIterPCG=100, 
+                            threshold=1e-15, method='WP', solDir=None):
+        " Solve steady heat problems using iterative solver "
+        
         if solDir is None: 
             solDir = np.ones(len(Fn))
-            print("Direct solution unknown. Default: ones chosen. Be aware of residue results")
+            print("Direct solution unknown. Default: ones chosen. Be aware of error results")
 
-        # Run matrix free solver
+        # Run solver
         start = time.process_time()
-        if model._thermalDirichlet is None: 
-            raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        u_n, residue, error = model.MFsteadyHeat(Fn, nbIter, eps, method, solDir)
+        if model._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        un, residue, error = model.MFsteadyHeat(Fn, nbIterPCG, threshold, method, solDir)
         stop = time.process_time()
-        time_solIter = stop - start 
+        time_itersolver = stop - start 
 
-        return u_n, residue, error, time_solIter
+        return un, residue, error, time_itersolver
 
-    def run_direct_solver(self, model:fortran_mf_wq, Fn):
-       
-        # Assemble conductivity matrix K
+    def run_direct_solver(self, model:fortran_mf_wq, Fn=None):
+        " Solve steady heat problems using direct solver "
+
+        # Assemble conductivity matrix 
         start = time.process_time()
-        if model._thermalDirichlet is None: 
-            raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if model._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         Knn = model.eval_conductivity_matrix(indi=model._thermal_dof, indj=model._thermal_dof)
         stop = time.process_time()
         time_assembly = stop - start 
 
         # Solve system
         start = time.process_time()
-        u_n = sp.linalg.spsolve(Knn, Fn)
+        un = sp.linalg.spsolve(Knn, Fn)
         stop = time.process_time()
-        time_solDir = stop - start 
+        time_dirsolver = stop - start 
 
-        return u_n, time_assembly, time_solDir
+        return un, time_assembly, time_dirsolver
 
     def run_simulation(self, material=None, Dirichlet=None):
+        " Runs simulation using given input information "
 
         # Initialize
-        time_assembly, time_solDir = 0.0, 0.0
-        time_noiter, time_iter = 0.0, 0.0
+        doDirect = True
+        if self._isOnlyIter: doDirect = False
+        time_assembly, time_dirsolver = 0.0, 0.0
+        time_noiter, time_itersolver = 0.0, 0.0
         residue, error = np.zeros(self._nbIter+1), np.zeros(self._nbIter+1)
 
         # Create thermal model
         self._thermalModel = self.create_thermalModel(material=material, Dirichlet=Dirichlet)
 
-        # Create source vector 
-        Fn = self.compute_source(self._thermalModel, self._funPowDen, self._funTemp)[0]
+        # Create force vector F = Fn - Knd ud 
+        Fn = self.compute_Fn_SM(self._thermalModel, self._funPowDen, self._funTemp)[0]
 
-        # Define actions 
-        doDirect = True
-        if self._isOnlyIter: doDirect = False
-
-        if doDirect: solDir, time_assembly, time_solDir = self.run_direct_solver(self._thermalModel, Fn)
+        # Run direct solver 
+        if doDirect: solDir, time_assembly, time_dirsolver = self.run_direct_solver(self._thermalModel, Fn)
         else: solDir = None
 
-        # Only compute time to prepare method before iterations
+        # Compute time to prepare method before iterations
         time_noiter = []
-        for method in self._iterMethods:
-            time_t = self.run_iterative_solver(self._thermalModel, Fn, nbIter=0, method=method, solDir=solDir)[3]
-            time_noiter.append(time_t)
+        for itmethod in self._iterMethods:
+            time_temp = self.run_iterative_solver(self._thermalModel, Fn=Fn, nbIterPCG=0, method=itmethod, solDir=solDir)[3]
+            time_noiter.append(time_temp)
 
-        # With and without preconditioner
-        time_iter, residue, error = [], [], []
-        for method in self._iterMethods:
-            _, residue_t, error_t, time_t = self.run_iterative_solver(self._thermalModel, Fn, method=method, solDir=solDir)
-            time_iter.append(time_t)
-            residue.append(residue_t)
-            error.append(error_t)
+        # Run iterative methods
+        time_itersolver, residue, error = [], [], []
+        for itmethod in self._iterMethods:
+            _, residue_t, error_t, time_temp = self.run_iterative_solver(self._thermalModel, Fn=Fn, 
+                                                                        method=itmethod, solDir=solDir)
+            time_itersolver.append(time_temp)
+            residue.append(residue_t); error.append(error_t)
                 
         # Write file
-        output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, "TimeDirect": time_solDir, 
-                "TimeNoIter":time_noiter, "TimeIter": time_iter, "Res": residue, "Error": error}
-
+        output = {"Methods": self._iterMethods, "TimeAssembly": time_assembly, "TimeDirect": time_dirsolver, 
+                "TimeNoIter":time_noiter, "TimeIter": time_itersolver, "Res": residue, "Error": error}
         self.write_text_file(output)
 
         return 
 
-    def write_text_file(self, inputs: dict): 
-
+    def write_text_file(self, inputs:dict): 
+        " Writes and exports simulation data in txt file "
+        
         # Define inputs
-        time_assembly = inputs['TimeAssembly']
-        time_direct = inputs['TimeDirect']
         iterMethods = inputs['Methods']
+        time_assembly = inputs['TimeAssembly']
+        time_dirsolver = inputs['TimeDirect']
+        time_itersolver = inputs['TimeIter']
         time_noiter = inputs['TimeNoIter']
-        time_iter = inputs['TimeIter']
         residue = inputs['Res']
         error = inputs['Error']
         
@@ -235,7 +250,7 @@ class ThermalSimulation():
             f.write('*Time assembly\n')
             f.write('{:E}\n'.format(time_assembly))
             f.write('*Time direct\n')
-            f.write('{:E}\n'.format(time_direct))
+            f.write('{:E}\n'.format(time_dirsolver))
             f.write('** Iterative solver ' + ','.join([item for item in iterMethods]) + '\n')
             f.write('** Number of iterations ' + '{:d}\n'.format(self._nbIter))
 
@@ -244,7 +259,7 @@ class ThermalSimulation():
                 f.write('*Time prepare ' + method +'\n')
                 f.write('{:E}\n'.format(time_noiter[i]))
                 f.write('*Time iter ' + method +'\n')
-                f.write('{:E}\n'.format(time_iter[i]))
+                f.write('{:E}\n'.format(time_itersolver[i]))
                 f.write('*Residue ' + method + '\n')
                 f.writelines(['{:E}'.format(res) + ',' + '{:E}'.format(err) + '\n'
                                 for res, err in zip(residue[i], error[i])]) 
@@ -252,7 +267,7 @@ class ThermalSimulation():
 
 class SimulationData(): 
 
-    def __init__(self, filename): 
+    def __init__(self, filename=None): 
 
         # Set filename
         self._filename = filename
@@ -263,16 +278,17 @@ class SimulationData():
         self._interpret_title(name)
 
         # Get data from file
-        self._dataIter = self.getInfosIter()
+        self._dataSimulation = self.get_infos_simulation()
     
         return
 
     # Read data
 
-    def _interpret_title(self, filename):
+    def _interpret_title(self, name):
+        " Gets important information from title "
 
         # Split string
-        ls = filename.split('_')
+        ls = name.split('_')
 
         # Get data
         self._geoCase = ls[0]
@@ -284,26 +300,28 @@ class SimulationData():
 
         return
 
-    def getInfosIter(self):
+    def get_infos_simulation(self):
+        " Gets the information of the simulation "
+
         lines = self._get_cleanLines()
         iterMethods, nbIter = self._read_iter_methods(lines)
 
-        time_noiter, time_iter, residue, error = [], [], [], []
-        for method in iterMethods:
-            tni = self._read_time_preparation(lines, method)
-            ti = self._read_time_iterations(lines, method)
-            res, err = self._read_residue_error(lines, method, nbIter)
+        time_noiter, time_itersolver, residue, error = [], [], [], []
+        for itmethod in iterMethods:
+            tp = self._read_time_preparation(lines, itmethod)
+            ti = self._read_time_iterations(lines, itmethod)
+            res, err = self._read_residue_error(lines, itmethod, nbIter)
 
-            time_noiter.append(tni)
-            time_iter.append(ti)
-            residue.append(res)
-            error.append(err)
+            time_noiter.append(tp); time_itersolver.append(ti)
+            residue.append(res); error.append(err)
 
-        output = {"Methods": iterMethods, "TimeNoIter":time_noiter, "TimeIter": time_iter, 
+        output = {"Methods": iterMethods, "TimeNoIter":time_noiter, "TimeIter": time_itersolver, 
                     "Res": residue, "Error": error}
         return output
 
     def _get_cleanLines(self):
+        " Gets the lines from the file that could have important information "
+
         inputFile  = open(self._filename, 'r')
         lines      = inputFile.readlines()
         linesClean = []
@@ -323,6 +341,7 @@ class SimulationData():
                 linesClean.append(theLine.rstrip())
                 theLine = ''
         inputFile.close()
+
         return linesClean
 
     def _get_num_line(self, lines, str2find):

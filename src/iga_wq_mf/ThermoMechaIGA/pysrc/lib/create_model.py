@@ -1,5 +1,6 @@
 """
-.. This module helps to read information from geometries (YETI format)
+.. This module helps to read information from a given geometry (YETI format)
+.. and to create thermo-mechanical model (material, boundary conditions, etc.)
 .. Joaquin Cornejo
 """
 
@@ -12,13 +13,13 @@ from .create_geomdl import geomdlModel
 
 class thermoMechaModel(): 
 
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None, Neumann=None):
+    def __init__(self, modelIGA, material=None, Dirichlet=None, Neumann=None):
         
         print('\nInitializing thermo-mechanical model')
 
         # Initialize B-Spline properties
         print('Setting B-spline properties')
-        self._sample_size = 100
+        self._sample_size = 101
         self._r_ = 2
         self._name = self.read_name(modelIGA)
         self._dim = self.read_dimensions(modelIGA)
@@ -39,10 +40,10 @@ class thermoMechaModel():
         return
 
     def _set_parametric_properties(self):
-        " Sets some B-spline properties "
+        " Sets B-spline properties "
 
         # Number of elements in each dimension
-        self._nb_el = np.ones(3, dtype= int)  
+        self._nb_el = np.ones(3, dtype=int)  
         for dim in range(self._dim):
             self._nb_el[dim] = len(np.unique(self._knotvector[dim])) - 1
         
@@ -54,18 +55,18 @@ class thermoMechaModel():
         self._nb_el_total = np.product(self._nb_el)
 
         # Set number of control points in each dimension
-        self._nb_ctrlpts = np.ones(3, dtype= int)  
+        self._nb_ctrlpts = np.ones(3, dtype=int)  
         for dim in range(self._dim):
             self._nb_ctrlpts[dim] = self._size_kv[dim] - self._degree[dim] - 1
 
-        # Total number of control points
+        # Total number of control points  
         self._nb_ctrlpts_total = np.product(self._nb_ctrlpts)
 
         # Set number of quadrature points
         # In WQ approach
-        self._nb_qp_wq = np.ones(3, dtype= int) 
+        self._nb_qp_wq = np.ones(3, dtype=int) 
         self._nb_qp_wq[:self._dim] = 2*(self._degree[:self._dim] 
-                                        + self._nb_el[:self._dim] + self._r_) - 5 
+                                        + self._nb_el[:self._dim] + self._r_) - 5 #!! Eventually it can change
         # In IGA approach
         self._nb_qp_cgg = np.ones(3, dtype= int)
         self._nb_qp_cgg[:self._dim] = (self._degree[:self._dim] + 1)*self._nb_el[:self._dim]
@@ -94,32 +95,20 @@ class thermoMechaModel():
 
         return
 
-    def _set_material(self, material): 
+    def _set_material(self, material:dict): 
         " Define material properties (thermal and mechanical) "
 
-        try: self._conductivity = material["conductivity"]
-        except: self._conductivity = None
+        # Set thermal properties
+        self._conductivity = material.get('conductivity', None)
+        self._capacity = material.get('capacity', None)
 
-        try: self._capacity = material["capacity"]
-        except: self._capacity = None
-
-        try: self._density = material["density"]
-        except: self._density = None
-
-        try: self._poissonCoef = material["poisson"]
-        except: self._poissonCoef = None
-
-        try: self._youngModule = material["young"]
-        except: self._youngModule = None
-
-        try: self._Hardening = material["hardening"]
-        except: self._Hardening = None
-
-        try: self._betaHard = material["betahard"]
-        except: self._betaHard = None
-
-        try: self._sigmaY = material["sigmaY"]
-        except: self._sigmaY = None
+        # Set mechanical properties
+        self._density = material.get('density', None)
+        self._poissonCoef = material.get('poisson', None)
+        self._youngModule = material.get('young', None)
+        self._hardening = material.get('hardening', None)
+        self._betaHard = material.get('betahard', None)
+        self._sigmaY = material.get('sigmaY', None)
 
         # Initialize others properties
         self._Ctensor = None
@@ -129,16 +118,11 @@ class thermoMechaModel():
     def _set_extra_mechanical_properties(self):
         " Compute mechanical properties from E and nu"
 
-        # Initialize
-        d = self._dim
-
-        if self._youngModule is None or self._poissonCoef is None:
-            pass
+        if self._youngModule is None or self._poissonCoef is None: pass
         else:
-            
             # Create tensor
-            identity = fourth_order_identity(d)
-            onekronone = one_kron_one(d)
+            identity = create_fourth_order_identity(self._dim)
+            onekronone = create_one_kron_one(self._dim)
 
             # Get material properties
             E = self._youngModule
@@ -162,13 +146,13 @@ class thermoMechaModel():
 
         return
 
-    def _set_dirichlet_boundaries(self, Dirichlet):
+    def _set_dirichlet_boundaries(self, Dirichlet:dict):
         " Gets free and blocked control points "
         
         # Thermal 
         try: 
             TTable = Dirichlet['thermal']
-            Tdof, Tdod = self.Dirichlet_boundaries(table= TTable)
+            Tdof, Tdod = self.Dirichlet_boundaries(table=TTable)
             Tdof, Tdod = Tdof[0], Tdod[0]
         except: 
             TTable, Tdof, Tdod = None, None, None
@@ -179,41 +163,37 @@ class thermoMechaModel():
         # Mechanical 
         try: 
             MTable = Dirichlet['mechanical']
-            Mdof, Mdod = self.Dirichlet_boundaries(table= MTable)
+            Mdof, Mdod = self.Dirichlet_boundaries(table=MTable)
         except: 
             MTable, Mdof, Mdod = None, None, None
-        self._MechanicalDirichlet = MTable
+        self._mechanicalDirichlet = MTable
         self._mechanical_dof = Mdof
         self._mechanical_dod = Mdod
 
-        return TTable, Tdof, Tdod, MTable, Mdof, Mdod
+        return 
 
-    def _set_neumann_boundaries(self, Neumann):
+    def _set_neumann_boundaries(self, Neumann:dict):
         " Gets Neumann control points and quadrature points"
         
         # Thermal 
-        try: 
-            TTable = Neumann['thermal']
-        except: 
-            TTable = None
+        try: TTable = Neumann['thermal']
+        except: TTable = None
         self._thermalNeumann = TTable
 
         # Mechanical 
-        try: 
-            MTable = Neumann['mechanical']
-        except: 
-            MTable = None
-        self._MechanicalNeumann = MTable
+        try: MTable = Neumann['mechanical']
+        except: MTable = None
+        self._mechanicalNeumann = MTable
 
-        return TTable, MTable
+        return 
 
     def _clear_material(self): 
-        " Clears material"
+        " Clears material "
         self._conductivity = None
         self._capacity = None
         self._poissonCoef = None
         self._youngModule = None
-        self._Hardening = None
+        self._hardening = None
         self._betaHard = None
         self._sigmaY = None
 
@@ -224,7 +204,7 @@ class thermoMechaModel():
         self._thermalDirichlet = None
         self._thermal_dof = None
         self._thermal_dod = None
-        self._MechanicalDirichlet = None
+        self._mechanicalDirichlet = None
         self._mechanical_dof = None
         self._mechanical_dod = None
         return
@@ -232,15 +212,14 @@ class thermoMechaModel():
     def _clear_Neumann(self):
         " Clears Neumann boundaries "
         self._thermalNeumann = None
-        self._MechanicalNeumann = None
+        self._mechanicalNeumann = None
         return
 
     def _verify_mechanics(self): 
-        " Verifies if mechanical properties exits"
-        prop = [self._youngModule, self._Hardening, self._betaHard, self._poissonCoef, self._sigmaY]
-        if any([var is None for var in prop]): raise Warning('Mechanics not well defined')
-        if self._Ctensor is None:
-            self._set_extra_mechanical_properties()
+        " Verifies if mechanical properties exits "
+        proplist = [self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY]
+        if any([prop is None for prop in proplist]): raise Warning('Mechanics not well defined')
+        if self._Ctensor is None: self._set_extra_mechanical_properties()
         return
     
     # =======================
@@ -264,14 +243,14 @@ class thermoMechaModel():
         return degree
 
     def read_dimensions(self, modelIGA):
-        " Reads dimensions from model"
+        " Reads dimensions from model "
         if isinstance(modelIGA, IGAparametrization): dim = modelIGA._dim[0]
         elif isinstance(modelIGA, geomdlModel): dim = modelIGA._dim
         if dim != 3: raise Warning('Model must be 3D')
         return dim
 
     def read_knotvector(self, modelIGA):
-        " Reads knot-vector from model"
+        " Reads knot-vector from model "
         if isinstance(modelIGA, IGAparametrization): 
             knotvector = modelIGA._Ukv[0]
             size_kv = modelIGA._Nkv.flatten()
@@ -281,7 +260,7 @@ class thermoMechaModel():
         return knotvector, size_kv
 
     def read_ControlPoints(self, modelIGA): 
-        " Reads control points from model"
+        " Reads control points from model "
         if isinstance(modelIGA, IGAparametrization): 
             ctrlpts = modelIGA._COORDS[:self._dim, :]
         elif isinstance(modelIGA, geomdlModel): 
@@ -291,17 +270,15 @@ class thermoMechaModel():
     # ========================
     # LOCAL FUNCTIONS
     # ========================
-    def get_NURBScoordinates(self, nnz_dim: list): 
-        """ Sets topology table: 
-        INC: NURBS coordinates
+
+    def get_NURBScoordinates(self, nnz_dim): 
+        """ Sets topology table, also known as INC: NURBS coordinates
         """
 
         # Find total number of nnz
         nnz_total = np.prod(nnz_dim)
 
-        # ----------------------
-        # INC: NURBS coordinates
-        # ----------------------
+        # Create INC: NURBS coordinates
         INC = np.zeros((nnz_total, 3), dtype= int)
 
         for i3 in range(nnz_dim[2]): 
@@ -313,6 +290,7 @@ class thermoMechaModel():
         return INC
 
     def Dirichlet_boundaries(self, table): 
+        " Gets the indices of the blocked (Dirichlet) and free control points "
 
         # The table of dirichlet boundaries must be at least 3D
         table = np.atleast_3d(table)
@@ -340,7 +318,7 @@ class thermoMechaModel():
                     dod.extend(np.where(INC[:, dim] == 0)[0])
 
                 if block_bound_dim[1]:
-                    dod.extend(np.where(INC[:, dim]  == nb_ctrlpts[dim]-1)[0])
+                    dod.extend(np.where(INC[:, dim] == nb_ctrlpts[dim]-1)[0])
 
             # Rearrange
             dod = np.unique(dod)
@@ -351,7 +329,7 @@ class thermoMechaModel():
         return dof_total, dod_total
 
     def array2coo_matrix(self, data, indi, indj):
-        " Computes csr sparse matrix "
+        " Computes coo sparse matrix  "
 
         # Computes number of rows and cols
         nb_rows = max(indi) + 1
@@ -379,8 +357,8 @@ class thermoMechaModel():
     # ===========================
 
     def eval_jacobien_physicalPosition(self, dim, nnz, ctrlpts, DB): 
-        """ Computes Jacobien matrix and find the position in physical space 
-        of P (in pts list) in parametric space
+        """ Computes jacobien matrix and find the position in physical space 
+            of points defined in parametric space
         """
         print('Evaluating jacobien and physical position')
         start = time.time()
@@ -415,22 +393,22 @@ class thermoMechaModel():
             detJ[i] = np.linalg.det(J[:, :, i])
         
         stop = time.time()
-        print('\tJacobian in : %.5f s' %(stop-start))
+        print('\t Time jacobien: %.5f s' %(stop-start))
         
         return J, PPS, detJ
 
-    def eval_conductivity_coefficient(self, JJ, KK): 
-        " Computes coefficients at points P in parametric space "
+    def eval_conductivity_coefficient(self, JJ, Kprop): 
+        " Computes conductivity coefficients "
 
-        print('Getting conductivity and capacity coefficients')
+        print('Getting conductivity coefficients')
         start = time.time()
         
-        # Transform Kprop and Cprop
-        KK = np.atleast_3d(KK)
+        # Initialize
+        Kprop = np.atleast_3d(Kprop)
         nnz = np.shape(JJ)[2]
-        Kcoef = np.zeros(np.shape(JJ))
+        coefs = np.zeros(np.shape(JJ))
 
-        if np.shape(KK)[2] == 1:
+        if np.shape(Kprop)[2] == 1:
             for i in range(nnz): 
                 # Find determinant of Jacobien 
                 det_J = np.linalg.det(JJ[:, :, i])
@@ -439,9 +417,9 @@ class thermoMechaModel():
                 inv_J = np.linalg.inv(JJ[:, :, i])
 
                 # Find coefficient of conductivity matrix
-                Kcoef[:, :, i] = inv_J @ KK[:, :, 0] @ inv_J.T * det_J
+                coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * det_J
 
-        elif np.shape(KK)[2] == nnz:
+        elif np.shape(Kprop)[2] == nnz:
             for i in range(nnz): 
                 # Find determinant of Jacobien 
                 det_J = np.linalg.det(JJ[:, :, i])
@@ -450,7 +428,7 @@ class thermoMechaModel():
                 inv_J = np.linalg.inv(JJ[:, :, i])
 
                 # Find coefficient of conductivity matrix
-                Kcoef[:, :, i] = inv_J @ KK[:, :, i] @ inv_J.T * det_J
+                coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * det_J
 
         else: 
             raise Warning('Something happen, it is not possible to compute coefficients')
@@ -458,34 +436,34 @@ class thermoMechaModel():
         stop = time.time()
         print('\tConductivity coefficients in : %.5f s' %(stop-start))
 
-        return Kcoef
+        return coefs
 
-    def eval_capacity_coefficient(self, JJ, CC): 
-        " Computes coefficients at points P in parametric space "
+    def eval_capacity_coefficient(self, JJ, Cprop): 
+        " Computes capacity coefficients "
 
-        print('Getting conductivity and capacity coefficients')
+        print('Getting capacity coefficients')
         start = time.time()
 
-        # Transform Kprop and Cprop
-        CC = np.atleast_1d(CC)
+        # Initialize
+        Cprop = np.atleast_1d(Cprop)
         nnz = np.shape(JJ)[2]
-        Ccoef = np.zeros(nnz)
+        coefs = np.zeros(nnz)
         
-        if len(CC) == 1:
+        if len(Cprop) == 1:
             for i in range(nnz): 
                 # Find determinant of Jacobien 
                 det_J = np.linalg.det(JJ[:, :, i])
 
                 # Find coefficient of capacity matrix or heat vector
-                Ccoef[i] = CC[0] * det_J
+                coefs[i] = Cprop[0] * det_J
 
-        elif len(CC) == nnz:
+        elif len(Cprop) == nnz:
             for i in range(nnz): 
                 # Find determinant of Jacobien 
                 det_J = np.linalg.det(JJ[:, :, i])
 
                 # Find coefficient of capacity matrix or heat vector
-                Ccoef[i] = CC[i] * det_J
+                coefs[i] = Cprop[i] * det_J
 
         else: 
             raise Warning('Something happen, it is not possible to compute coefficients')
@@ -493,23 +471,25 @@ class thermoMechaModel():
         stop = time.time()
         print('\tCapacity coefficients in : %.5f s' %(stop-start))
 
-        return Ccoef
+        return coefs
 
-    def eval_source_coefficient(self, fun, qp, det): 
-        " Computes coefficients at points P in parametric space "
+    def eval_source_coefficient(self, fun, qp, detJ): 
+        " Computes source coefficients "
 
         print('Getting source coefficients')
         start = time.time()
         # Get source coefficient
         qp = np.atleast_2d(qp)
-        source_coef = fun(qp) * det
+        coefs = fun(qp)*detJ
         stop = time.time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 
-        return source_coef
+        return coefs
 
-    def compute_elastic_coefficient(self, JJ, isnoised=False):
-        " Computes coefficients at points P in parametric space. This function only consider linear isotropic case"
+    def eval_elastic_coefficient(self, JJ, isnoised=False):
+        """ Computes elasto-plastic coefficients.
+            This function only consider linear isotropic case 
+        """
 
         # Set shape
         d = self._dim
@@ -517,7 +497,7 @@ class thermoMechaModel():
         nnz = np.shape(JJ)[2]
 
         # Create tensors
-        EE = create_incidence(d)
+        EE = create_incidence_matrix(d)
         coefs = np.zeros((d*d, d*d, nnz))
         
         # Create material tensor
@@ -526,8 +506,7 @@ class thermoMechaModel():
 
         # Initialize
         C = np.zeros((ddl, ddl, nnz))
-        for k in range(nnz): 
-            C[:, :, k] = CC
+        for k in range(nnz): C[:, :, k] = CC
 
         if isnoised:
             # Inset noise by hand
@@ -535,46 +514,32 @@ class thermoMechaModel():
             C[0, 0, :] += noise
 
             noise = np.random.normal(loc=-50, scale=8, size=(nnz))
-            C[1, 1, :] += noise
-            C[2, 2, :] += noise
+            C[1, 1, :] += noise; C[2, 2, :] += noise
 
             noise = np.random.normal(loc=-60, scale=12, size=(nnz))
-            C[3, 3, :] += noise
-            C[4, 4, :] += noise
-            C[5, 5, :] += noise
+            C[3, 3, :] += noise; C[4, 4, :] += noise; C[5, 5, :] += noise
 
             noise = np.random.normal(loc=50, scale=7, size=(nnz))
-            C[0, 1, :] += noise
-            C[1, 0, :] += noise
-            C[0, 2, :] += noise
-            C[2, 0, :] += noise
+            C[0, 1, :] += noise; C[1, 0, :] += noise
+            C[0, 2, :] += noise; C[2, 0, :] += noise
 
             noise = np.random.normal(loc=5, scale=5, size=(nnz))
-            C[1, 2, :] += noise
-            C[2, 1, :] += noise
+            C[1, 2, :] += noise; C[2, 1, :] += noise
 
-            # --------------
             noise = np.random.normal(loc=0, scale=8, size=(nnz))
-            C[0, 3, :] += noise
-            C[0, 5, :] += noise
-            C[3, 0, :] += noise
-            C[5, 0, :] += noise
+            C[0, 3, :] += noise; C[0, 5, :] += noise
+            C[3, 0, :] += noise; C[5, 0, :] += noise
 
             noise = np.random.normal(loc=0, scale=4, size=(nnz))
-            C[1, 3, :] += noise
-            C[3, 1, :] += noise
-            C[2, 5, :] += noise
-            C[5, 2, :] += noise
+            C[1, 3, :] += noise; C[3, 1, :] += noise
+            C[2, 5, :] += noise; C[5, 2, :] += noise
 
             noise = np.random.normal(loc=0, scale=4, size=(nnz))
-            C[2, 3, :] += noise
-            C[3, 2, :] += noise
-            C[1, 5, :] += noise
-            C[5, 1, :] += noise
+            C[2, 3, :] += noise; C[3, 2, :] += noise
+            C[1, 5, :] += noise; C[5, 1, :] += noise
 
             noise = np.random.normal(loc=0, scale=3, size=(nnz))
-            C[5, 3, :] += noise
-            C[3, 5, :] += noise
+            C[5, 3, :] += noise; C[3, 5, :] += noise
 
         for k in range(nnz):
             # Compute inverse and determinant of JJ
@@ -593,12 +558,12 @@ class thermoMechaModel():
     # POST-PROCESSING 
     # ===========================
 
-    def interpolate_field(self, nnz= None, u_ctrlpts= None):
-        "Interpolates the input field. In all cases, it returns jacobien."
+    def interpolate_field(self, nnz=None, u_ctrlpts=None, nbDOF=3):
+        " Interpolates the input field. It also returns the jacobien "
 
-        # =====================
-        # Get Basis
-        # =====================
+        # -------------------------
+        # Get basis using fortran
+        # -------------------------
         # Define knots
         if nnz == None: nnz = self._sample_size
         knots = np.linspace(0, 1, nnz)
@@ -609,48 +574,48 @@ class thermoMechaModel():
             B, indi, indj = eval_basis_fortran(self._degree[dim], self._knotvector[dim], knots)
             data.append(B); indices.append(indi); indices.append(indj)
 
-        # ==============================
+        # -----------------------------
         # Get position and determinant 
-        # ==============================
+        # -----------------------------
         inputs = [*self._dim*[nnz], *indices, *data, self._ctrlpts]
-        
         if self._dim == 2:
-            jacobien_PS, detJ, _ = assembly.eval_jacobien_2d(*inputs)
-            qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
+            JJ_interp, detJJ_interp, _ = assembly.eval_jacobien_2d(*inputs)
+            position_interp = assembly.interpolate_fieldphy_2d(*inputs)
         elif self._dim == 3: 
-            jacobien_PS, detJ, _ = assembly.eval_jacobien_3d(*inputs)
-            qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
+            JJ_interp, detJJ_interp, _ = assembly.eval_jacobien_3d(*inputs)
+            position_interp = assembly.interpolate_fieldphy_3d(*inputs)
 
-        # ==============================
+        # -------------------
         # Get interpolation
-        # ==============================
+        # -------------------
         if u_ctrlpts is not None:
             u_temp = np.atleast_2d(u_ctrlpts)
-            ddl = np.shape(u_temp)[0]
             inputs = [*self._dim*[nnz], *indices, *data, u_temp]
 
             if self._dim == 2: u_interp = assembly.interpolate_fieldphy_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolate_fieldphy_3d(*inputs)
-            if ddl == 1: u_interp = np.ravel(u_interp)
+            if nbDOF == 1: u_interp = np.ravel(u_interp)
     
         else: u_interp = None
 
-        return jacobien_PS, qp_PS, detJ, u_interp
+        return JJ_interp, position_interp, detJJ_interp, u_interp
     
-    def export_results(self, u_ctrlpts= None, folder=None): 
-        " Returns solution using geometry basis "
+    def export_results(self, u_ctrlpts=None, folder=None, nbDOF=3): 
+        """ Export solution in VTK format. 
+            It is possible to use Paraview to visualize data
+        """
 
         if folder == None: 
             full_path = os.path.realpath(__file__)
             dirname = os.path.dirname
             folder = dirname(dirname(full_path)) + '/results/'
             if not os.path.isdir(folder): os.mkdir(folder)
-            print("File save in %s" %folder)
+            print("File saved in %s" %folder)
 
-        if u_ctrlpts is None: ddl = 1; pass
+        if u_ctrlpts is None: pass
         elif isinstance(u_ctrlpts, np.ndarray): 
-            if np.size(u_ctrlpts)%self._nb_ctrlpts_total == 0: ddl = len(u_ctrlpts)
-            else: raise Warning('Not enough control points')
+            if np.size(u_ctrlpts)%self._nb_ctrlpts_total != 0: 
+                raise Warning('Not enough control points')
         else: raise Warning('Solution must be ndarray type')
 
         # Set shape
@@ -658,21 +623,21 @@ class thermoMechaModel():
         for dim in range(self._dim): shape_pts[dim] = self._sample_size
         shape_pts = tuple(shape_pts)
 
-        # ==============================
+        # ------------------
         # Get interpolation
-        # ==============================
+        # ------------------
         # Interpolate 
-        _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts=u_ctrlpts)
+        _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts=u_ctrlpts, nbDOF=nbDOF)
         mean_detJ = statistics.mean(detJ)
         detJ /= mean_detJ
 
-        # ==============================
+        # ------------------
         # Export results
-        # ==============================
+        # ------------------
         X1 = np.zeros(shape_pts)
         X2 = np.zeros(shape_pts)
         X3 = np.zeros(shape_pts)
-        U = np.zeros((ddl, *shape_pts))
+        U = np.zeros((nbDOF, *shape_pts))
         DET = np.zeros(shape_pts)
 
         for k in range(shape_pts[2]):
@@ -684,17 +649,17 @@ class thermoMechaModel():
                     DET[i,j,k] = detJ[pos]
                     if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
                     if u_interp is not None: 
-                        for l in range(ddl):
+                        for l in range(nbDOF):
                             U[l,i,j,k] = u_interp[l, pos]
         
         # Create point data 
         pointData= {"detJ" : DET}
-        for l in range(ddl):
+        for l in range(nbDOF):
             varname = 'U' + str(l+1)
             pointData[varname] = U[l,:,:,:]
 
         # Export geometry
         name = folder + self._name
-        gridToVTK(name, X1, X2, X3, pointData= pointData)
+        gridToVTK(name, X1, X2, X3, pointData=pointData)
         
         return

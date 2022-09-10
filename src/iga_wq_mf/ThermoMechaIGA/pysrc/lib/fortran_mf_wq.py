@@ -176,7 +176,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_mechanics()
         
         # Get inputs
-        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
         start = time.time()
@@ -190,7 +190,7 @@ class fortran_mf_wq(thermoMechaModel):
         
         return S
 
-    def eval_Ku(self, u, table= None): 
+    def eval_Ku(self, u, table=None): 
         " Computes K u "
 
         # Get inputs
@@ -220,7 +220,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp)
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
@@ -248,7 +248,7 @@ class fortran_mf_wq(thermoMechaModel):
         ## For now, we only consider constants forces at the boundaries
 
         if self._dim != 3: raise Warning('Method only for 3D geometries')
-        if self._MechanicalNeumann is None: raise Warning('Define Neumann boundaries')
+        if self._mechanicalNeumann is None: raise Warning('Define Neumann boundaries')
 
         def get_info(nb):
             direction = int(np.floor(nb/2))
@@ -271,7 +271,7 @@ class fortran_mf_wq(thermoMechaModel):
             direction, side = get_info(_)
 
             # Get force
-            force = self._MechanicalNeumann[_]
+            force = self._mechanicalNeumann[_]
             if np.array_equal(force, np.zeros(self._dim)): 
                 continue
             else:
@@ -347,7 +347,7 @@ class fortran_mf_wq(thermoMechaModel):
     # ==================================
     # MATRIX FREE SOLUTION (IN FORTRAN)
     # ==================================   
-     
+
     def get_input4MatrixFree(self, table= None):
         " Returns necessary inputs to compute the product between a matrix and a vector"
 
@@ -443,7 +443,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs 
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
-        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
 
         dod = deepcopy(indi)
@@ -452,8 +452,8 @@ class fortran_mf_wq(thermoMechaModel):
             newdod += 1
             dod[_] = list(newdod)
 
-        prop = np.array([self._youngModule, self._Hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
-        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, prop, self._MechanicalDirichlet, 
+        prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
+        inputs = [*self._nb_qp_wq, *self._indices, *self._DB, *self._DW, prop, self._mechanicalDirichlet, 
                 *dod, self._invJ, self._detJ]
 
         result = solver.mf_wq_plasticity_3d(*inputs, Fext)
@@ -463,10 +463,10 @@ class fortran_mf_wq(thermoMechaModel):
     def MFelasticity(self, coefs=None, Fext=None, indi=None, nbIterations=300, tol=1e-7, isPrecond=True, isnoised=False):
 
         # Get inputs 
-        if self._MechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp, isnoised=isnoised)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp, isnoised=isnoised)
 
         dod = deepcopy(indi)
         for _ in range(len(dod)):
@@ -475,7 +475,7 @@ class fortran_mf_wq(thermoMechaModel):
             dod[_] = list(newdod)
 
         inputs = [coefs, *self._nb_qp_wq, *self._indices, *self._DB, *self._DW, 
-                isPrecond, nbIterations, self._MechanicalDirichlet, *dod]
+                isPrecond, nbIterations, self._mechanicalDirichlet, *dod]
 
         result = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
 
@@ -554,7 +554,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Initialze
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().compute_elastic_coefficient(self._Jqp, isnoised=isnoised)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp, isnoised=isnoised)
         d = self._dim
         x = np.zeros(np.shape(Fext))
 
@@ -593,7 +593,7 @@ class fortran_mf_wq(thermoMechaModel):
         else: # With preconditioner
             
             # Set values
-            if DU is None: DU = self.compute_eigen_all(table=self._MechanicalDirichlet)
+            if DU is None: DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
             U, V, W, D = DU[0], DU[1], DU[2], DU[3]
             
             # Initialize
@@ -650,10 +650,10 @@ class fortran_mf_wq(thermoMechaModel):
         sigma_n1 = np.zeros((ddl, self._nb_qp_wq_total))
         Dalg = np.zeros((ddl, ddl, self._nb_qp_wq_total))
         disp = np.zeros(np.shape(Fext))
-        inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._betaHard, self._Hardening, self._Idev]
+        inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._betaHard, self._hardening, self._Idev]
 
         # Compute eigen values and vectors
-        DU = self.compute_eigen_all(table=self._MechanicalDirichlet)
+        DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
 
         # Solver
         for i in range(1, np.shape(Fext)[2]):

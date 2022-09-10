@@ -1,16 +1,13 @@
 """
-.. module :: Physics - Heat transfer
-    :synopsis: Provides functions used in heat transfer equation
+.. module :: Physics
 .. author :: Joaquin Cornejo
+.. This module provides functions used in heat transfer equation
 """
 import numpy as np
-from numpy import sin, cos, pi
 
 def power_density(P: list):
     " Compute power density at point P in physical space"
-
     f = 1 
-
     return f
 
 def powden_cube(P: list):
@@ -22,13 +19,13 @@ def powden_cube(P: list):
     z = P[2, :]
 
     # Isotropy
-    f = 3*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
+    f = 3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
 
     # # Anisotropy
-    # f = (6*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z) 
-    # - (pi**2*cos(pi*x)*cos(pi*z)*sin(pi*y))/5 
-    # - (pi**2*cos(pi*y)*cos(pi*z)*sin(pi*x))/2 
-    # - pi**2*cos(pi*x)*cos(pi*y)*sin(pi*z)
+    # f = (6*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
+    # - (np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*z)*np.sin(np.pi*y))/5 
+    # - (np.pi**2*np.cos(np.pi*y)*np.cos(np.pi*z)*np.sin(np.pi*x))/2 
+    # - np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*z)
     # )
 
     return f
@@ -42,24 +39,24 @@ def powden_prism(P: list):
     z = P[2, :]
 
     # # Isotropy
-    # f = (10*x*sin(pi*z)*(5*x + 6*y - 45) - 22*x*sin(pi*z)*(x - 6) 
-    #     - 10*x*sin(pi*z)*(6*y - 5*x + 45) - 2*sin(pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-    #     - 10*sin(pi*z)*(x - 6)*(6*y - 5*x + 45) + 10*sin(pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    #     + x*pi**2*sin(pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+    # f = (10*x*np.sin(np.pi*z)*(5*x + 6*y - 45) - 22*x*np.sin(np.pi*z)*(x - 6) 
+    #     - 10*x*np.sin(np.pi*z)*(6*y - 5*x + 45) - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+    #     - 10*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) + 10*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+    #     + x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
     # )
 
     # Anisotropy
-    f = (4*x*sin(pi*z)*(5*x + 6*y - 45) 
-    - 94*x*sin(pi*z)*(x - 6) 
-    - 16*x*sin(pi*z)*(6*y - 5*x + 45) 
-    - 2*sin(pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-    - 16*sin(pi*z)*(x - 6)*(6*y - 5*x + 45) 
-    + 4*sin(pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    - (pi*cos(pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
-    - 4*x*pi*cos(pi*z)*(x - 6)*(6*y - 5*x + 45) 
-    - 2*x*pi*cos(pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    - (x*pi*cos(pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
-    + 3*x*pi**2*sin(pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+    f = (4*x*np.sin(np.pi*z)*(5*x + 6*y - 45) 
+    - 94*x*np.sin(np.pi*z)*(x - 6) 
+    - 16*x*np.sin(np.pi*z)*(6*y - 5*x + 45) 
+    - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+    - 16*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
+    + 4*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+    - (np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
+    - 4*x*np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
+    - 2*x*np.pi*np.cos(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+    - (x*np.pi*np.cos(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
+    + 3*x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
     )
     
     return f
@@ -73,39 +70,39 @@ def powden_thickring(P: list):
     z = P[2, :] 
 
     # # Isotropy
-    # f = (75*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    #     - 8*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 4*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    #     - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    #     - 20*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4)
+    # f = (75*np.pi**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    #     - 8*y**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
+    #     - 4*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    #     - 4*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    #     - 8*x**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
+    #     - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    #     - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    #     - 20*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    #     - 20*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4)
     # )
 
     # Anisotropy
-    f = (150*pi**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    - 16*y**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    - 6*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    - 6*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    - 8*x*y*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    - 8*x**2*sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z) 
-    - 25*pi**2*cos(5*pi*x)*cos(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    - 5*pi**2*cos(5*pi*x)*cos(5*pi*z)*sin(5*pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    - (25*pi**2*cos(5*pi*y)*cos(5*pi*z)*sin(5*pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/2 
-    - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    - 10*x*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    - 2*x*pi*cos(5*pi*z)*sin(5*pi*x)*sin(5*pi*y)*(x**2 + y**2 - 1) 
-    - 20*x*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    - 10*x*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    - 2*x*pi*cos(5*pi*z)*sin(5*pi*x)*sin(5*pi*y)*(x**2 + y**2 - 4) 
-    - 10*y*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    - 40*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 1) 
-    - 5*y*pi*cos(5*pi*z)*sin(5*pi*x)*sin(5*pi*y)*(x**2 + y**2 - 1) 
-    - 10*y*pi*cos(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    - 40*y*pi*cos(5*pi*y)*sin(5*pi*x)*sin(5*pi*z)*(x**2 + y**2 - 4) 
-    - 5*y*pi*cos(5*pi*z)*sin(5*pi*x)*sin(5*pi*y)*(x**2 + y**2 - 4)
+    f = (150*np.pi**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    - 16*y**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
+    - 6*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    - 6*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    - 8*x*y*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
+    - 8*x**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
+    - 25*np.pi**2*np.cos(5*np.pi*x)*np.cos(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    - 5*np.pi**2*np.cos(5*np.pi*x)*np.cos(5*np.pi*z)*np.sin(5*np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    - (25*np.pi**2*np.cos(5*np.pi*y)*np.cos(5*np.pi*z)*np.sin(5*np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/2 
+    - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    - 10*x*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    - 2*x*np.pi*np.cos(5*np.pi*z)*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*(x**2 + y**2 - 1) 
+    - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    - 10*x*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    - 2*x*np.pi*np.cos(5*np.pi*z)*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*(x**2 + y**2 - 4) 
+    - 10*y*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    - 40*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
+    - 5*y*np.pi*np.cos(5*np.pi*z)*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*(x**2 + y**2 - 1) 
+    - 10*y*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    - 40*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
+    - 5*y*np.pi*np.cos(5*np.pi*z)*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*(x**2 + y**2 - 4)
     )
 
     return f
@@ -144,27 +141,27 @@ def powden_annulus(P: list):
     y = P[1, :]
 
     # # Isotropy
-    # f = (2*pi**2*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-    #     - 8*y**2*sin(pi*x)*sin(pi*y) 
-    #     - 4*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
-    #     - 4*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
-    #     - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
-    #     - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
-    #     - 4*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 1) 
-    #     - 4*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 4) 
-    #     - 8*x**2*sin(pi*x)*sin(pi*y)
+    # f = (2*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    #     - 8*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
+    #     - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+    #     - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+    #     - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+    #     - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+    #     - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+    #     - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.np.pi*x)*(x**2 + y**2 - 4) 
+    #     - 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
     # )
 
     # Anisotropy lambda = [1, 0; 0, 0.1]
-    f = ((11*pi**2*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/10 
-        - (4*y**2*sin(pi*x)*sin(pi*y))/5 
-        - (11*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 1))/5 
-        - (11*sin(pi*x)*sin(pi*y)*(x**2 + y**2 - 4))/5 
-        - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 1) 
-        - 4*x*pi*cos(pi*x)*sin(pi*y)*(x**2 + y**2 - 4) 
-        - (2*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 1))/5 
-        - (2*y*pi*cos(pi*y)*sin(pi*x)*(x**2 + y**2 - 4))/5 
-        - 8*x**2*sin(pi*x)*sin(pi*y)
+    f = ((11*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/10 
+        - (4*y**2*np.sin(np.pi*x)*np.sin(np.pi*y))/5 
+        - (11*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1))/5 
+        - (11*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4))/5 
+        - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+        - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+        - (2*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1))/5 
+        - (2*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4))/5 
+        - 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
     )
     
     return f

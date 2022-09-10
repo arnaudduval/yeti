@@ -1,43 +1,46 @@
 """
-.. Integrating elastoplasticity 3D in python
+.. This module contains functions to treat elastoplasticity problems in 3D. 
+.. Joaquin Cornejo
+.. 
+.. Remarks :: Voigt notation is used. That is 
+.. Strain e = [e11, e22, e33, 2e12, 2e13, 2e23]^T
+.. Stress s = [s11, s22, s33, s12, s13, s23]^T
+.. 1 = [1, 1, 1, 0, 0, 0]^T
+.. I = diag(1, 1, 1, 0.5, 0.5, 0.5)
+.. And then, some products are:
+.. Double contraction st-st s:e = dot(s, e), this only works with stress and strains
+.. In Voigt notation if one wants to compute e:e or s:s some scale factor need to be considered.
+.. Double contraction C:e = matmul(C, e), this is true only with strains
+.. Otherwise some scale factor need to be considered.
 """
 
 import numpy as np
 
 def clean_dirichlet_3d(A, dod):
-
+    """ Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+        A is actually a vector arranged following each dimension [Au, Av, Aw]
     """
-    Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
-    A is actually a vector arranged following each dimension [Au, Av, Aw]
-    """
-
-    for i in range(3):
-        A[i, dod[i]] = 0.0
-
+    for i in range(3): A[i, dod[i]] = 0.0
     return
 
 def block_dot_product(d, A, B):
     """ Computes dot product of A and B. 
-    Both are actually vectors arranged following each dimension
-    A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
+        Both are actually vectors arranged following each dimension
+        A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
     """
-
-    # Initialize
+    # Compute result
     result = 0.0
-
-    for i in range(d):
-        result += A[i, :] @ B[i, :]
-
+    for i in range(d): result += A[i, :] @ B[i, :]
     return result
 
 def compute_stress_deviatoric(d, tensor):
-    "Returns deviatoric of a second-order stress-like tensor "
+    " Computes deviatoric of a second-order stress-like tensor "
 
     # Initialize
     ddl = int(d*(d+1)/2)
     one = np.zeros(ddl)
 
-    # Compute trace of tensor and one 
+    # Compute trace of tensor and one tensor
     trace = 0.0
     for i in range(d):
         trace += tensor[i]
@@ -49,33 +52,32 @@ def compute_stress_deviatoric(d, tensor):
     return dev
 
 def compute_stress_norm(d, tensor): 
-    "Returns frobenius norm of a second-order stress-like tensor "
+    " Returns frobenius norm of a second-order stress-like tensor "
 
     # Initialize
     ddl = int(d*(d+1)/2)
     norm = 0.0
 
-    for i in range(d):
-        norm += tensor(i)**2
-
-    for i in range(d, ddl):
-        norm += 2.0*tensor(i)**2
-    
+    # Compute norm
+    for i in range(d): norm += tensor(i)**2
+    for i in range(d, ddl): norm += 2.0*tensor(i)**2
     norm = np.sqrt(norm)
 
     return norm
 
-def fourth_order_identity(d=3):
-    " Creates a fourth-order identity (Voigt representation)"
+def create_fourth_order_identity(d=3):
+    " Creates a fourth-order identity (Voigt notation) "
     
-    # Initialize 
-    ddl = int(d*(d+1)/2)
-    I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
+    if  d == 2:
+        I = np.diag(np.array([1.0, 1.0, 0.5]))
+    elif d == 3:    
+        I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
+    else: raise Warning('Only 2d or 3d')
 
     return I
 
-def one_kron_one(d=3): 
-    "Creates a one kron one tensor (Voigt representation)"
+def create_one_kron_one(d=3): 
+    " Creates a one kron one tensor (Voigt notation) "
 
     # Initialize
     ddl = int(d*(d+1)/2)
@@ -83,14 +85,13 @@ def one_kron_one(d=3):
 
     for i in range(d):
         for j in range(d):
-            one_kron_one[i,j] = 1.0
+            onekronone[i,j] = 1.0
 
     return onekronone
 
 def stkronst(A, B):
-    """
-    Returns kron product of tensors A and B
-    A and B are second order tensor in Voigt representation
+    """ Computes kron product of tensors A and B
+        A and B are second order stress-like tensor in Voigt notation
     """
 
     # Set kron product
@@ -100,15 +101,13 @@ def stkronst(A, B):
 
     return result
 
-def create_incidence(d=3):
-
-    """
-    Creates M matrix. M is the passage matrix from derivative to actual symetric values. 
-    If we multiply a vector of values u_(i, j) with M matrix, one obtains the vector: 
-    us_ij = 0.5*(u_(i,j) + u_(j,i))  
+def create_incidence_matrix(d=3):
+    """ Creates M matrix. E is the passage matrix from derivative to actual symetric values. 
+        If we multiply a vector of values u_(i, j) with E matrix, one obtains the vector: 
+        us_ij = 0.5*(u_(i,j) + u_(j,i))  
     """
 
-    # Create MM
+    # Create EE
     ddl = int(d*(d+1)/2)
     EE = np.zeros((ddl, d, d))
 
@@ -123,19 +122,19 @@ def create_incidence(d=3):
     return EE
 
 def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
-    "Return closest point proyection (cpp) in combined hardening plasticity criteria"
+    " Returns closest point proyection (cpp) in combined hardening plasticity criteria"
 
     def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
-        "Computes the value of f (consistency condition) in perfect plasticity criteria"
+        " Computes the value of f (consistency condition) in plasticity criteria"
 
-        # Compute deviatoric
+        # Compute deviatoric 
         eta = compute_stress_deviatoric(d, sigma) - alpha
 
         # Compute the norm of dev
         norm = compute_stress_norm(d, eta)
 
         # Compute f
-        f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1-beta)*H*ep_n)
+        f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*ep_n)
 
         # Compute unit deviatoric tensor
         if norm > 0.0: N = 1.0/norm*eta
@@ -144,15 +143,10 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
         return f, N, norm
 
     # Initialize
-    CC = inputs[0]
-    sigma_Y = inputs[1]
-    mu = inputs[2]
-    beta = inputs[3]
-    H = inputs[4]
-    Idev = inputs[5]
+    CC, sigma_Y, mu, beta, H, Idev = inputs
 
     # Compute trial sigma 
-    sigma_trial = sigma_n + CC @ deps
+    sigma_trial = sigma_n + CC@deps
 
     # Compute yield function and unit deviatoric tensor
     f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
@@ -186,10 +180,10 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
     return sigma_n1, ep_n1, alpha_n1, Dalg
 
 def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
-    "Computes the coefficients to use in internal force vector and stiffness matrix"
+    " Computes the coefficients to use in internal force vector and stiffness matrix"
 
     # Computes passage matrix
-    EE = create_incidence(d)
+    EE = create_incidence_matrix(d)
 
     # Initialize
     coef_Fint = np.zeros((d*d, len(detJ)))

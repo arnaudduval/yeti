@@ -51,6 +51,6 @@ for geometryName in ['VB']:
 
     else :
         Data = SimulationData(filename)
-        output = Data._dataIter
+        output = Data._dataSimulation
         plot_iterative_solver(filename, output)
 
