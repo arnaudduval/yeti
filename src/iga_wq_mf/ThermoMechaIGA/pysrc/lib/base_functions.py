@@ -966,152 +966,27 @@ def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
 # USING TENSOR ALGEBRA
 # =========================
 
-def get_indices_3D(DI):
-    "Returns the indices of I1 x I2 x I3, where x is kronecker product"
-
-    def get_indices_kron_product(indi_A, indj_A, indi_B, indj_B):
-
-        # Defines some values
-        nb_rows_A = len(indi_A) - 1
-        nb_rows_B = len(indi_B) - 1
-        nb_rows_C = nb_rows_A * nb_rows_B
-        nb_cols_B = max(indj_B)
-
-        # Initialize
-        indi_C = np.zeros(nb_rows_C+1, dtype=int)
-        indi_C[0] = 1
-        
-        # Set indices i in CSR
-        for i in range(nb_rows_A):
-            for j in range(nb_rows_B):
-                k = i*nb_rows_B + j
-                nnz_A = indi_A[i+1] - indi_A[i]
-                nnz_B = indi_B[j+1] - indi_B[j]
-                nnz_C = nnz_A*nnz_B
-                indi_C[k+1] = indi_C[k] + nnz_C
-
-        # Set indices j in CSR
-        indj_C = []
-        for i in range(nb_rows_A):
-            for j in range(nb_rows_B):
-                k = i*nb_rows_B + j
-                
-                indj_C_temp = []
-                for m in range(indi_A[i], indi_A[i+1]):
-                    for n in range(indi_B[j], indi_B[j+1]):
-                        indj_C_temp.append(indj_A[m]*nb_cols_B + indj_B[n])
-
-                # Update values
-                indj_C.extend(indj_C_temp)
-        
-        indj_C = np.array(indj_C, dtype=int)
-
-        return indi_C, indj_C
-
-    # We assume DI has 3 dimensions 
-    I1, I2, I3 = DI[0], DI[1], DI[2]
-    indi_I1, indi_I2, indi_I3 = I1.indptr, I2.indptr,I3.indptr
-    indj_I1, indj_I2, indj_I3 = I1.indices, I2.indices, I3.indices
-    
-    # Find indices of I1 x I2
-    indi_temp, indj_temp = get_indices_kron_product(indi_I1, indj_I1, indi_I2, indj_I2)
-
-    # Find indices of I1 x I2 x I3
-    indi, indj = get_indices_kron_product(indi_temp, indj_temp, indi_I3, indj_I3)
-
-    return indi, indj
-
-def tensor_n_mode_product(X, U, n): 
-    " Evaluates tensor n-mode product with a matrix R = X xn U. We assume 3D geometries or inferior"
-
-    # Find shape of the tensor and the matrix
-    I1, I2, I3 = np.shape(X)
-    J, In = np.shape(U)
-
-    if n == 0: # In = I1
-        R = np.zeros((J, I2, I3))
-        for ii3 in range(I3):
-            for ii2 in range(I2): 
-                for jj in range(J):
-                    s = 0.0
-                    for ii1 in range(I1): 
-                        s += X[ii1, ii2, ii3]*U[jj, ii1] 
-                    R[jj, ii2, ii3] = s
-
-    elif n == 1: # In = I2
-        R = np.zeros((I1, J, I3))
-        for ii3 in range(I3):
-            for jj in range(J):
-                for ii1 in range(I1): 
-                    s = 0.0
-                    for ii2 in range(I2): 
-                        s += X[ii1, ii2, ii3]*U[jj, ii2] 
-                    R[ii1, jj, ii3] = s
-
-    elif n == 2: # In = I3
-        R = np.zeros((I1, I2, J))
-        for jj in range(J):
-            for ii2 in range(I2):
-                for ii1 in range(I1): 
-                    s = 0.0
-                    for ii3 in range(I3): 
-                        s += X[ii1, ii2, ii3]*U[jj, ii3] 
-                    R[ii1, ii2, jj] = s
-
-    return R
-
-def get_matrix_3D(coef, DB, DW, DI): 
-    """Returns non-zero values of matrix given by W.diag(coef).B, where W and B are n-rank tensors.
-    DB, DW, DI contains B, W and I matrices for each dimension. 
-    The functions is built to 3D cases but it may be generalized for other dimensions
+def tensor_n_mode_product(x, cols, Ucsr=None, mode=1, isdense=False, istransp=False): 
+    """ Computes tensor n-mode product with a matrix R = X xn U,
+        where X = vec(x). It uses fortran functions. 
+        WARNING : It has not been tested.
     """
+    # Verify if input are well defined
+    nc_total = np.prod(cols)
+    if nc_total != len(x): raise Warning('Shape of X is not well defined') 
+    if mode not in [1, 2, 3]: raise Warning('n-mode product can only be 1, 2 or 3')
 
-    # Initialize
-    nonzerovalues = []
-    nbrows = np.ones(3, dtype=int)
-    nbcols = np.ones(3, dtype=int)
+    # Unpack data of matrix
+    [indi, indj, data] = Ucsr
 
-    for dim in range(3): # 3D figures
-        nrow, ncol = np.shape(DB[dim])
-        nbrows[dim] = nrow
-        nbcols[dim] = ncol
+    # Get number of rows of U
+    nrU = len(indi) - 1 
 
-    for i3 in range(nbrows[2]):
-        for i2 in range(nbrows[1]): 
-            for i1 in range(nbrows[0]):
-                ii = [i1, i2, i3]
-                nnz_indi = []
-                nnz_indj = []
+    # Get size of R
+    rows = cols; rows[mode-1] = nrU
+    nrR = np.prod(rows)
 
-                for dim in range(3):
-                    F = np.nonzero(DI[dim][:, ii[dim]])[0]
-                    P = np.nonzero(DW[dim][ii[dim], :])[1]
-                    nnz_indi.append(F)
-                    nnz_indj.append(P)
-
-                # Create tensor from coefficients
-                X = np.zeros((len(nnz_indj[0]), len(nnz_indj[1]), len(nnz_indj[2])))
-                for j3 in range(len(nnz_indj[2])):
-                    for j2 in range(len(nnz_indj[1])):
-                        for j1 in range(len(nnz_indj[0])):
-                            genPosCoef = (nnz_indj[0][j1] + nnz_indj[1][j2]*nbcols[0]
-                                        + nnz_indj[2][j3]*nbcols[0]*nbcols[1])
-                            X[j1, j2, j3] = coef[genPosCoef]
-
-                Xnew = X
-                for dim in range(2, -1, -1):
-                    F = nnz_indi[dim]
-                    P = nnz_indj[dim]
-
-                    Bt = DB[dim][np.ix_(F,P)].toarray()
-                    Wt = DW[dim][np.ix_([ii[dim]],P)].toarray()
-                    Ut = Bt @ np.diag(Wt[0])
-                    R = tensor_n_mode_product(Xnew, Ut, dim) 
-                    Xnew = R
-
-                for j3 in range(len(nnz_indi[2])):
-                    for j2 in range(len(nnz_indi[1])):
-                        for j1 in range(len(nnz_indi[0])):
-                            nonzerovalues.append(R[j1, j2, j3])
-
-    return nonzerovalues
+    # Compute tensor n-mode product
+    R = assembly.tensor_n_mode_product_py(cols, x, data, indi, indj, mode, isdense, istransp, nrR)
+    
+    return R

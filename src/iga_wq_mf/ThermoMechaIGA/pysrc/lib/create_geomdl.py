@@ -1,5 +1,5 @@
 """
-.. This module helps to construct some geometries using only B-splines
+.. This module contains functions to construct specific geometries using only B-splines
 .. Joaquin Cornejo
 """
 
@@ -8,16 +8,14 @@ from .base_functions import create_knotvector
 
 class geomdlModel(): 
 
-    def __init__(self, name= None, **geometry: None): 
+    def __init__(self, name=None, **geometry): 
 
-        if name is None:
-            raise Warning('Insert the name of the part')
-        else : 
-            # Set name of object
-            self._name = name
+        if name is None: raise Warning('Insert the name of the part')
+        else : self._name = name
 
-        # Set number of samples
+        # Initialize
         self._sample_size = 101
+        self._geometry = None
 
         print('\nCreating geometry: ' + name + '...')
         start = time.time()
@@ -35,7 +33,7 @@ class geomdlModel():
             # Set number of dimension
             self._dim = 2
             
-            # Create parallelepiped
+            # Create quadrilateral
             XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
@@ -55,7 +53,7 @@ class geomdlModel():
             # Set number of dimension 
             self._dim = 3
 
-            # Create quarter annulus
+            # Create thick ring
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
             Height = geometry.get('Height', 1.0)
@@ -66,10 +64,10 @@ class geomdlModel():
             # Set number of dimension 
             self._dim = 3
 
-            # Create quarter annulus
+            # Create rotated quarter annulus
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
-            exc = geometry.get('Rout', 1.0) # excentricity
+            exc = geometry.get('Rout', 1.0) 
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
             self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
 
@@ -77,14 +75,13 @@ class geomdlModel():
             # Set number of dimension
             self._dim = 3
             
-            # Create parallelepiped
+            # Create prism
             XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
             Height = geometry.get('Height', 2)
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
-            self._geometry = self.create_prisme(XY, Height, degree_xi, degree_nu, degree_eta) 
+            self._geometry = self.create_prism(XY, Height, degree_xi, degree_nu, degree_eta) 
 
-        else: 
-            raise Warning("Not a shape in this library")
+        else: raise Warning("It is not a shape in this library")
         
         stop = time.time()
         print('\tBasic geometry created in: %.3e s' %(stop-start))
@@ -95,6 +92,8 @@ class geomdlModel():
         return
 
     def update_geometry(self): 
+        " Updates and saves important properties of the geometry created "
+
         start = time.time()
         # Set geometry object
         obj = self._geometry
@@ -115,14 +114,14 @@ class geomdlModel():
             self._size_kv[dim] = np.size(self._knotvector[dim])
 
         # Set number of elements in each dimension
-        self._nb_el = np.ones(3, dtype= int)  
+        self._nbel = np.ones(3, dtype= int)  
         for dim in range(self._dim):
-            self._nb_el[dim] = len(np.unique(self._knotvector[dim])) - 1
+            self._nbel[dim] = len(np.unique(self._knotvector[dim])) - 1
 
         # Set total number of elements
-        self._nb_el_total = np.product(self._nb_el)
+        self._nb_el_total = np.product(self._nbel)
 
-        # Set number of quadrature points/functions in each dimension
+        # Set number of quadrature points in each dimension
         self._nb_ctrlpts = np.ones(3, dtype= int)  
         for dim in range(self._dim):
             self._nb_ctrlpts[dim] = self._size_kv[dim] - self._degree[dim] - 1
@@ -159,14 +158,14 @@ class geomdlModel():
         return
 
     def write_abaqus_file(self, filename):
-        "Returns the inp and NB file. It only works with one patch"
+        " Writes an inp and NB file. By the moment, it only works with one patch"
 
         def array2txt(array: np.array, format= '%.2f'):
             return ','.join([format %(i) for i in array])
 
-        # ------------
+        # --------------
         # With inp file
-        # ------------
+        # --------------
         inpfile = filename + '.inp'
         introduction =  [
             '** Copyright 2020 Thibaut Hirschler',
@@ -232,7 +231,6 @@ class geomdlModel():
             '** You should have received a copy of the GNU Lesser General Public License along',
             '** with Yeti. If not, see <https://www.gnu.org/licenses/>'
             ]
-
         with open(NBfile, 'w') as f:
             f.write('\n'.join(introduction))
             f.write('\n\n')
@@ -258,8 +256,11 @@ class geomdlModel():
             
         return
 
-    def knot_refinement(self, nb_refinementByDirection= np.array([0,0,0])):
-        "Refine geometry following each direction. It is slow because it uses python methods"
+    def knot_refinement(self, nb_refinementByDirection=np.array([0,0,0])):
+        """ Refine geometry following each dimension. 
+            It is slow because it uses python methods. 
+            This functions is deprecated. Instead use YETI functions. 
+        """
 
         start = time.time()
         # Copy geometry
@@ -267,7 +268,7 @@ class geomdlModel():
 
         # Set new number of elements
         cuts = nb_refinementByDirection
-        nbel = [2**cuts[dim]*self._nb_el[dim] for dim in range(self._dim)]
+        nbel = [2**cuts[dim]*self._nbel[dim] for dim in range(self._dim)]
 
         # Create knots to be inserted
         knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
@@ -289,34 +290,36 @@ class geomdlModel():
 
         return
 
-    def export_IGAparametrization(self, nb_refinementByDirection= np.array([0,0,0])):
-        "Refine geometry following each direction. It is very fast"
+    def export_IGAparametrization(self, nb_refinementByDirection=np.array([0,0,0])):
+        """ Refine geometry following each dimension. 
+            It has a better performance than knot-refinement function
+        """
 
         # Write file abaqus
         self.write_abaqus_file(filename=self._name)
 
         # Discretisize the part
-        modelIGA = IGAparametrization(filename= self._name)
+        modelIGA = IGAparametrization(filename=self._name)
         modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
 
         # Clean files created
-        os.remove(self._name+'.inp')
-        os.remove(self._name+'.NB')
-        os.remove(self._name+'.save')
+        os.remove(self._name + '.inp')
+        os.remove(self._name + '.NB')
+        os.remove(self._name + '.save')
 
         return modelIGA
 
-    # -----------------------------------
+    # ----------------
     # CREATE GEOMETRY
-    # -----------------------------------
+    # ----------------
     # 2D
     def create_quarter_annulus(self, Rin, Rout, degree_xi, degree_nu):
-        " Creates a quarter of a ring "
+        " Creates a quarter of a ring (or annulus) "
 
         # -------------------------------------
         # First part : construction of the arc
         # -------------------------------------
-        # Set knot-vector characteristics
+        # Set knot-vector 
         nb_ctrlpts_nu = degree_nu + 1 
         knot_vector_nu = create_knotvector(degree_nu, 1)
 
@@ -328,7 +331,6 @@ class geomdlModel():
             x = radius * np.cos(angle)
             y = radius * np.sin(angle)
             pts_interp.append([x, y])
-
         pts_interp.append([0.0, radius])
 
         # Do interpolation
@@ -396,14 +398,14 @@ class geomdlModel():
         T = []
         for i in range(4): 
             T.append([x0[i], y0[i], x0[i] * y0[i], 1])
-
         ax = np.linalg.solve(T, x1)
         ay = np.linalg.solve(T, y1)
 
-        # Control points
+        # Set number of control points
         nb_ctrlpts_xi = degree_xi + 1 
         nb_ctrlpts_nu = degree_nu + 1 
         
+        # Create uniform control points
         ctrlpts_xi = np.linspace(0, 1, nb_ctrlpts_xi)
         ctrlpts_nu = np.linspace(0, 1, nb_ctrlpts_nu)
         
@@ -444,16 +446,15 @@ class geomdlModel():
         return srf
 
     # 3D
-    def create_parallelepiped(self, Lx, Ly, Lz, 
-                                degree_xi, degree_nu, degree_eta):
-        " Creates a brick "
+    def create_parallelepiped(self, Lx, Ly, Lz, degree_xi, degree_nu, degree_eta):
+        " Creates a brick (or parallelepiped) "
 
-        # Get control points
+        # Set number of control points
         nb_ctrlpts_xi = degree_xi + 1 
         nb_ctrlpts_nu = degree_nu + 1 
         nb_ctrlpts_eta = degree_eta + 1 
 
-        # Get control points
+        # Get uniform control points
         ctrlpts_u = np.linspace(0.0, Lx, nb_ctrlpts_xi)
         ctrlpts_v = np.linspace(0.0, Ly, nb_ctrlpts_nu)
         ctrlpts_w = np.linspace(0.0, Lz, nb_ctrlpts_eta)
@@ -496,10 +497,12 @@ class geomdlModel():
         return vol
 
     def create_thick_ring(self, Rin, Rout, Height, degree_xi, degree_nu, degree_eta):
+        " Creates a thick ring (quarter of annulus extruded) "
+
         # -------------------------------------
         # First part : construction of the arc
         # -------------------------------------
-        # Set knot-vector characteristics
+        # Set knot-vector 
         nb_ctrlpts_nu = degree_nu + 1 
         knot_vector_nu = create_knotvector(degree_nu, 1)
 
@@ -511,7 +514,6 @@ class geomdlModel():
             x = radius * np.cos(angle)
             y = radius * np.sin(angle)
             pts_interp.append([x, y])
-
         pts_interp.append([0.0, radius])
 
         # Do interpolation
@@ -573,7 +575,7 @@ class geomdlModel():
         return vol
 
     def create_rotated_quarter_annulus(self, Rin, Rout, exc, degree_xi, degree_nu, degree_eta):
-        " Creates a quarter of a ring "
+        " Creates a quarter of a ring rotated (or revolted) "
 
         # -------------------------------------
         # First part : construction of the arc 1
@@ -590,7 +592,6 @@ class geomdlModel():
             x = radius * np.cos(angle)
             y = radius * np.sin(angle)
             pts_interp.append([x, y])
-
         pts_interp.append([0.0, radius])
 
         # Do interpolation
@@ -622,7 +623,6 @@ class geomdlModel():
             x = radius * np.cos(angle)
             y = radius * np.sin(angle)
             pts_interp.append([x, y])
-
         pts_interp.append([0.0, radius])
 
         # Do interpolation
@@ -671,8 +671,8 @@ class geomdlModel():
 
         return vol
 
-    def create_prisme(self, XY, Height, degree_xi, degree_nu, degree_eta):
-        """ Creates a prisme using a quadrilateral as a base.
+    def create_prism(self, XY, Height, degree_xi, degree_nu, degree_eta):
+        """ Creates a prism using a quadrilateral as a base.
         The quadrilateral coordinates are given in counterclockwise direction """
 
         # Position of reference

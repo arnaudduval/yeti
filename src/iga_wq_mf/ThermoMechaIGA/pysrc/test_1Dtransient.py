@@ -7,7 +7,7 @@ from lib.base_functions import (eval_basis_python,
                                 iga_find_positions_weights,
                                 create_knotvector
 )
-from lib.D1transient import *
+from lib.D1transientheat import *
 
 def conductivity(T):
     K = 1*np.ones(np.shape(T))
@@ -22,63 +22,70 @@ def source(qp):
     f = 1*np.sin(np.pi*qp)
     return f
 
-# Define geometry and thermal properties
+# Define some properties to solver
 alpha, JJ = 0.5, 1
+properties = [JJ, conductivity, capacity, alpha]
+
+# Create geometry
 degree, nbel = 5, 32
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
 knotvector = create_knotvector(degree, nbel)
-qp, W = iga_find_positions_weights(degree, knotvector)
-DB = eval_basis_python(degree, knotvector, qp)
-Fcoefs = source(qp)
-properties = [JJ, conductivity, capacity, alpha]
+
+# Get basis and weights in IGA analysis
+qp_cgg, weight_cgg = iga_find_positions_weights(degree, knotvector)
+basis_cgg = eval_basis_python(degree, knotvector, qp_cgg)
 
 # Define time discretisation
 N, n = 100, 50
-t = np.linspace(0, 1, N)
+tt = np.linspace(0, 1, N)
 time_list = np.zeros(N+n)
-time_list[:N] = t
+time_list[:N] = tt
 time_list[N:] = [1 + 0.05*(i+1) for i in range(n)]
 
-# Define heat source 
-Fend = compute_source_1D(JJ, DB, W, Fcoefs)
-Fend = np.atleast_2d(Fend).reshape(-1, 1)
-Fext = np.zeros((len(Fend), len(t)+n))
-Fext[:,:len(t)] = np.kron(Fend, t)
-for i in range(len(t), len(t)+n):
-    Fext[:,i] = Fext[:,len(t)-1]
+# Compute volumetric heat source and external force
+Fprop = source(qp_cgg)
+FFend = compute_volsource_1D(JJ, basis_cgg, weight_cgg, Fprop)
+FFend = np.atleast_2d(FFend).reshape(-1, 1)
+Fext = np.zeros((len(FFend), len(tt)+n))
+Fext[:,:len(tt)] = np.kron(FFend, tt)
+for i in range(len(tt), len(tt)+n): Fext[:,i] = Fext[:,len(tt)-1]
 
 # Define boundaries conditions
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
-TT = np.zeros(np.shape(Fext))
-TT[0, :] = 0
-TT[-1,:len(t)] = np.linspace(0, 1, len(t))
-TT[-1,len(t):] = 1
-solve_transient_1D(properties, DB=DB, W =W, Fext=Fext, time_list=time_list, dof=dof, dod=dod, Tin=TT)
+temperature = np.zeros(np.shape(Fext))
+temperature[0, :] = 0
+temperature[-1,:len(tt)] = np.linspace(0, 1, len(tt))
+temperature[-1,len(tt):] = 1
 
+# Solve transient heat problem
+solve_transient_heat_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, 
+                        time_list=time_list, dof=dof, dod=dod, Tinout=temperature)
+
+# ------------------
 # Post-treatement
-# =========================
-xi = np.linspace(0, 1, 101)
-B0, B1 = eval_basis_python(degree, knotvector, xi)
-TT_it = B0.T*TT
+# ------------------
+# Create eval points
+knots = np.linspace(0, 1, 101)
+DB = eval_basis_python(degree, knotvector, knots)
+temperature_interp = DB[0].T @ temperature
+
+# Create mesh space-time
+XX, TIME = np.meshgrid(knots*JJ, time_list)
 
 # Plot figure
-names = ['Temperature field']
-XX, TT = np.meshgrid(xi*JJ, time_list)
-fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(14,4))
-for ax, variable, name in zip([ax1], [TT_it], names):
-    # Plot
-    im = ax.contourf(XX, TT, variable.T, 20)
+fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
+for ax, variable in zip([ax1], [temperature_interp]):
+    im = ax.contourf(XX, TIME, variable.T, 20)
+    cbar = plt.colorbar(im)
+    cbar.set_label('Temperature', fontsize=11)
 
-    # Properties
-    plt.colorbar(im)
-    ax.set_title(name, fontsize=14)
-    ax.set_ylabel('Time (s)', fontsize=12)
-    ax.set_xlabel('Position (m)', fontsize=12)
+    ax.set_ylabel('Time (s)', fontsize=11)
+    ax.set_xlabel('Position (m)', fontsize=11)
     ax.tick_params(axis='x', labelsize=11)
     ax.tick_params(axis='y', labelsize=11)
 
-plt.tight_layout()
-plt.savefig('Transient.png')
+fig.tight_layout()
+plt.savefig('Transient_heat_1D.png')
 
