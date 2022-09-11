@@ -97,7 +97,6 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
         ax.loglog(nbel_list, norm_python, '--P', color=color)
 
     # Plot configurations
-    ax.grid()
     ax.set_xlabel("Number of elements $nb_{el}$")
     ax.set_ylabel("Relative error (%)")
     ax.legend(bbox_to_anchor= (1.05, 1.0), loc='upper left')

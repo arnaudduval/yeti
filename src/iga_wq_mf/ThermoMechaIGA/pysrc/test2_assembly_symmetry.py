@@ -157,7 +157,6 @@ if doSymetry:
                 ax.loglog(nbel_list, norm, label=strlabel)
 
             # Properties
-            ax.grid()
             ax.set_xlabel("(Parametric support width)" + r"$^{-1}$", fontsize= 16)
             ax.set_ylabel("Relative error (%)", fontsize= 16)
             ax.legend()

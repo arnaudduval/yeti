@@ -6,7 +6,7 @@ This files contains the libraries used in other files.
 # Python libraries
 import os, sys, time
 from copy import deepcopy
-import numpy as np, math, statistics
+import numpy as np, math, statistics, pandas as pd
 from scipy import sparse as sp, linalg as sclin
 from geomdl import (
     helpers,
@@ -15,14 +15,16 @@ from geomdl import (
     operations,
 )
 from pyevtk.hl import gridToVTK
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import pyplot as plt
+from mpltools import annotation
 
 # Default properties 
 mpl.rcParams['figure.figsize'] = (5.0, 4.0)    
 mpl.rcParams['axes.unicode_minus'] = False
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
+mpl.rcParams["axes.grid"] =True
 
 # Define size
 SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE = 14, 16, 18

@@ -4,31 +4,22 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
-import os, time
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from mpltools import annotation
-
-# My libraries
+from lib.__init__ import *
 from lib.base_functions import wq_find_basis_weights_fortran, create_knotvector
 from iga_wq_mf import assembly
 
-# Choose folder
+# Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test3/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+# Simulation setup
 dataExist = False
 nbel = 64
+degree_list = np.arange(2, 11)
 
 # Set filename
-filename_WQ = 'setup_time_WQ_'  + 'nbel_' + str(nbel) 
-filename_WQ = folder + filename_WQ
-
-# Define inputs
-degree_list = np.arange(2, 11)
+filename_WQ = folder + 'setup_time_WQ_'  + 'nbel_' + str(nbel) 
 
 # Output
 time_matrix = np.zeros((len(degree_list), 3))
@@ -36,90 +27,90 @@ time_matrix[:, 0] = degree_list
 
 if not dataExist:
     for i, degree in enumerate(degree_list):
-        # Define basis (the same for all directions)
+
+        # Define basis (the same for all dimensions)
         knotvector = create_knotvector(degree, nbel)
-        nnz_I, qp_wq, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
-        shape_matrices, indices, dB, dW, size_I = [], [], [], [], []
+        nnz_I, qp_position, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)
+        nb_qp_list, indices, dB, dW, size_I = [], [], [], [], []
         for dim in range(3):
-            shape_matrices.append(len(qp_wq))
+            nb_qp_list.append(len(qp_position))
             indices.append(indi); indices.append(indj) 
             dB.append(B); dW.append(W); size_I.append(nnz_I)
 
-        # ------------
-        coefs = np.ones(len(qp_wq)**3)
-        inputs_C = [coefs, *shape_matrices, *indices, *dB, *dW, *size_I]
+        # ----------------
+        # Capacity matrix
+        # ----------------
+        coefs = np.ones(len(qp_position)**3)
+        inputs = [coefs, *nb_qp_list, *indices, *dB, *dW, *size_I]
         
         start = time.time()
-        assembly.wq_get_capacity_3d(*inputs_C)
+        assembly.wq_get_capacity_3d(*inputs)
         stop = time.time()
         time_matrix[i, 1] = stop - start 
-        del inputs_C, coefs
+        del inputs, coefs
 
-        # ------------
-        coefs = np.ones((3, 3, len(qp_wq)**3))
-        inputs_K = [coefs, *shape_matrices, *indices, *dB, *dW, *size_I]
+        # --------------------
+        # Conductivity matrix
+        # --------------------
+        coefs = np.ones((3, 3, len(qp_position)**3))
+        inputs = [coefs, *nb_qp_list, *indices, *dB, *dW, *size_I]
 
         start = time.time()
-        assembly.wq_get_conductivity_3d(*inputs_K)
+        assembly.wq_get_conductivity_3d(*inputs)
         stop = time.time()
         time_matrix[i, 2] = stop - start 
-        del inputs_K, coefs
+        del inputs, coefs
 
-        print(time_matrix[i, :])
         np.savetxt(filename_WQ, time_matrix)
 
 else :
 
     if nbel == 40:
         # Load data
-        setup_WQ = np.loadtxt(filename_WQ)
+        mydata = np.loadtxt(filename_WQ)
         litterature = pd.read_table(folder + 'lit_WQ.dat', sep='\t', names=['degree', 'time'])
 
-        # Plot
+        # Plot data
         fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
         ax1.loglog(litterature.degree, litterature.time, 'o--', label='Litterature')
-        ax1.loglog(setup_WQ[:,0], setup_WQ[:,1], 'x--', label='My algo')
+        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='My algorithm')
 
-        # Slope
-        slope, _ = np.polyfit(np.log10(setup_WQ[:,0]),np.log10(setup_WQ[:,1]), 1)
+        # Compute slope
+        slope = np.polyfit(np.log10(mydata[:,0]), np.log10(mydata[:,1]), 1)[0]
         slope = round(slope, 3)
-        annotation.slope_marker((setup_WQ[2,0], setup_WQ[2,1]), slope, 
+        annotation.slope_marker((mydata[2,0], mydata[2,1]), slope, 
                                 text_kwargs={'fontsize': 14},
                                 poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
         # Plot reference
-        c1, c2 = 0.125, 0.125
+        c1 = 0.125
         xx = litterature.degree
         yy = c1*xx**3
         ax1.loglog(xx, yy, '-', label=r'$O(C p^3)$')
 
         # Properties
         for ax in [ax1]:
-            ax.grid()
             ax.legend()
             ax.set_xlim([2, 10])
             ax.set_ylim([1e-1, 1e3])
-            ax.set_ylabel('CPU setup time (s)', fontsize=16)
-            ax.set_xlabel('Polynomial degree p', fontsize=16)
-            ax.tick_params(axis='x', labelsize=16)
-            ax.tick_params(axis='y', labelsize=16)
+            ax.set_ylabel('CPU setup time (s)')
+            ax.set_xlabel('Polynomial degree p')
 
-        plt.tight_layout()
-        plt.savefig(filename_WQ)
+        fig.tight_layout()
+        fig.savefig(filename_WQ)
 
     if nbel == 64:
         # Load data
-        setup_WQ = np.loadtxt(filename_WQ)
+        mydata = np.loadtxt(filename_WQ)
         litterature = pd.read_table(folder + 'lit_MF.dat', sep='\t', names=['degree', 'C', 'K'])
 
-        # Plot
+        # Plot data
         fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,4))
         ax1.loglog(litterature.degree, litterature.C, 'o--', label='Litterature')
-        ax1.loglog(setup_WQ[:,0], setup_WQ[:,1], 'x--', label='My algo')
+        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='My algorithm')
 
         ax2.loglog(litterature.degree, litterature.K, 'o--', label='Litterature')
-        ax2.loglog(setup_WQ[:,0], setup_WQ[:,2], 'x--', label='My algo')
-
+        ax2.loglog(mydata[:,0], mydata[:,2], 'x--', label='My algorithm')
 
         # Plot reference
         c1, c2 = 0.125, 0.125
@@ -131,17 +122,14 @@ else :
 
         # Properties
         for ax in [ax1, ax2]:
-            ax.grid()
             ax.legend()
             ax.set_xlim([2, 10])
             ax.set_ylim([1, 1e4])
-            ax.set_ylabel('CPU setup time (s)', fontsize=16)
-            ax.set_xlabel('Polynomial degree p', fontsize=16)
-            ax.tick_params(axis='x', labelsize=16)
-            ax.tick_params(axis='y', labelsize=16)
+            ax.set_ylabel('CPU setup time (s)')
+            ax.set_xlabel('Polynomial degree p')
 
-        plt.tight_layout()
-        plt.savefig(filename_WQ)
+        fig.tight_layout()
+        fig.savefig(filename_WQ)
 
         
 
