@@ -19,7 +19,7 @@ class WQ(thermoMechaModel):
         super().__init__(modelIGA, material= material, Dirichlet= Dirichlet)
 
         # Evaluate basis and weights
-        self._nb_qp, self._nb_qp_total = np.ones(3, dtype=int), None
+        self._nb_qp, self._nb_qp_total = np.ones(self._dim, dtype=int), None
         self.eval_basis_weights()
 
         # Get jacobian and physical position

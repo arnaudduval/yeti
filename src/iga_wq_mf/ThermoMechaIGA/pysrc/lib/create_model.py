@@ -252,7 +252,8 @@ class thermoMechaModel():
         " Reads dimensions from model "
         if isinstance(modelIGA, IGAparametrization): dim = modelIGA._dim[0]
         elif isinstance(modelIGA, geomdlModel): dim = modelIGA._dim
-        if dim != 3: raise Warning('Model must be 3D')
+        # if dim != 3: raise Warning('Model must be 3D')
+        if dim != 3: print("WARNING: Some functions have not been well-implemented for 2D geometries")
         return dim
 
     def read_knotvector(self, modelIGA):
@@ -270,7 +271,7 @@ class thermoMechaModel():
         if isinstance(modelIGA, IGAparametrization): 
             ctrlpts = modelIGA._COORDS[:self._dim, :]
         elif isinstance(modelIGA, geomdlModel): 
-            ctrlpts = modelIGA._ctrlpts
+            ctrlpts = modelIGA._ctrlpts[:self._dim, :]
         return ctrlpts
 
     # ========================
