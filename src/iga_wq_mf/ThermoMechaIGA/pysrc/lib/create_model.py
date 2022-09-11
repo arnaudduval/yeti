@@ -364,7 +364,8 @@ class thermoMechaModel():
 
     def eval_jacobien_physicalPosition(self, dim, nnz, ctrlpts, DB): 
         """ Computes jacobien matrix and find the position in physical space 
-            of points defined in parametric space
+            of points defined in parametric space. 
+            This functions is deprecated. Please use Fortran for faster computations 
         """
         print('Evaluating jacobien and physical position')
         start = time.time()
@@ -405,7 +406,7 @@ class thermoMechaModel():
         
         return J, detJ, invJ, PPS
 
-    def eval_conductivity_coefficient(self, invJ, detJ, Kprop): 
+    def eval_conductivity_coefficient(self, invJ, detJ, Kprop, isFortran=True): 
         " Computes conductivity coefficients "
 
         print('Getting conductivity coefficients')
@@ -416,32 +417,36 @@ class thermoMechaModel():
         nnz = len(detJ)
         coefs = np.zeros(np.shape(invJ))
 
-        if np.shape(Kprop)[2] == 1:
-            for i in range(nnz): 
+        if isFortran:
+            coefs, info = assembly.eval_conductivity_coefficient(invJ, detJ, Kprop)
+            if info == 0: raise Warning('It is not possible to compute coefficients')
+        else:
+            if np.shape(Kprop)[2] == 1:
+                for i in range(nnz): 
 
-                # Find inverse of Jacobien 
-                inv_J = invJ[:,:,i]
+                    # Find inverse of Jacobien 
+                    inv_J = invJ[:,:,i]
 
-                # Find coefficient of conductivity matrix
-                coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * detJ[i]
+                    # Find coefficient of conductivity matrix
+                    coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * detJ[i]
 
-        elif np.shape(Kprop)[2] == nnz:
-            for i in range(nnz): 
+            elif np.shape(Kprop)[2] == nnz:
+                for i in range(nnz): 
 
-                # Find inverse of Jacobien 
-                inv_J = invJ[:,:,i]
+                    # Find inverse of Jacobien 
+                    inv_J = invJ[:,:,i]
 
-                # Find coefficient of conductivity matrix
-                coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * detJ[i]
+                    # Find coefficient of conductivity matrix
+                    coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * detJ[i]
 
-        else: raise Warning('It is not possible to compute coefficients')
+            else: raise Warning('It is not possible to compute coefficients')
 
         stop = time.time()
         print('\tConductivity coefficients in : %.5f s' %(stop-start))
 
         return coefs
 
-    def eval_capacity_coefficient(self, detJ, Cprop): 
+    def eval_capacity_coefficient(self, detJ, Cprop, isFortran=True): 
         " Computes capacity coefficients "
 
         print('Getting capacity coefficients')
@@ -451,16 +456,20 @@ class thermoMechaModel():
         Cprop = np.atleast_1d(Cprop)
         nnz = np.size(detJ)
         coefs = np.zeros(nnz)
-        
-        if len(Cprop) == 1:
-            for i in range(nnz): 
-                coefs[i] = Cprop[0] * detJ[i]
 
-        elif len(Cprop) == nnz:
-            for i in range(nnz): 
-                coefs[i] = Cprop[i] * detJ[i]
+        if isFortran:
+            coefs, info = assembly.eval_capacity_coefficient(detJ, Cprop)
+            if info == 0: raise Warning('It is not possible to compute coefficients')
+        else:
+            if len(Cprop) == 1:
+                for i in range(nnz): 
+                    coefs[i] = Cprop[0] * detJ[i]
 
-        else: raise Warning('It is not possible to compute coefficients')
+            elif len(Cprop) == nnz:
+                for i in range(nnz): 
+                    coefs[i] = Cprop[i] * detJ[i]
+
+            else: raise Warning('It is not possible to compute coefficients')
 
         stop = time.time()
         print('\tCapacity coefficients in : %.5f s' %(stop-start))

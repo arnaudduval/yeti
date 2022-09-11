@@ -31,7 +31,7 @@ else: cfortran = fortran_mf_wq; cpython = WQ
 # ------------------------
 if doConstruction: 
     for geoName in ['VB', 'TR', 'CB']:
-        for varName in ['K', 'C', 'F', 'J', 'QP']:
+        for varName in ['C', 'K', 'F', 'J', 'QP']:
 
             # Create plot
             fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))

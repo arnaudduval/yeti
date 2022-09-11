@@ -111,9 +111,6 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     ! Local data
     !-----------
     integer :: i, j, k, nb_tasks, beta(d)
-    double precision :: temp
-    dimension :: temp(nc_u*nc_v*nc_w)
-
     integer :: indi_T_u, indi_T_v, indi_T_w
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
@@ -127,7 +124,7 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta, temp)
+    !$OMP PARALLEL PRIVATE(beta)
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
@@ -137,8 +134,7 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-                            ctrlpts(i, :), temp)
-            jacob(i, j, :) = temp
+                            ctrlpts(i, :), jacob(i, j, :))
         end do
     end do
     !$OMP END DO NOWAIT
@@ -319,7 +315,7 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine interpolate_fieldphy_2d
 
-subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
+subroutine eval_conductivity_coefficient(dime, nnz, invJJ, detJJ, nnz_K, KK, Kcoef, info)
     !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
     
     use omp_lib
@@ -327,8 +323,8 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
     ! Input / output data
     ! -------------------
     integer, intent(in) :: dime, nnz, nnz_K
-    double precision, intent(in) :: JJ, KK
-    dimension :: JJ(dime, dime, nnz), KK(dime, dime, nnz_K)
+    double precision, intent(in) :: invJJ, detJJ, KK
+    dimension :: invJJ(dime, dime, nnz), detJJ(nnz), KK(dime, dime, nnz_K)
 
     integer, intent(out) :: info
     double precision, intent(out) :: Kcoef
@@ -337,8 +333,8 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
     ! Local data
     ! ----------
     integer :: i, nb_tasks
-    double precision :: Jt, detJt, invJt
-    dimension :: Jt(dime, dime), invJt(dime, dime)
+    double precision :: invJt, detJt
+    dimension :: invJt(dime, dime)
     double precision :: Kt
     dimension :: Kt(dime, dime)  
 
@@ -346,17 +342,12 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 
     if (nnz_K.eq.1) then 
 
-        !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
+        !$OMP PARALLEL PRIVATE(invJt, detJt, Kt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
         do i = 1, nnz
-            ! Get jacobien
-            Jt = JJ(:, :, i)
-
-            ! Evaluate inverse
-            call MatrixInv(invJt, Jt, detJt, dime)
-
             ! Compute K = invJ * prop * detJ * invJ'
+            invJt = invJJ(:, :, i); detJt = detJJ(i)
             Kt = detJt * matmul(invJt, KK(:, :, 1)) 
             Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
         end do
@@ -365,17 +356,12 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 
     else if (nnz_K.eq.nnz) then 
 
-        !$OMP PARALLEL PRIVATE(Jt, invJt, detJt, Kt)
+        !$OMP PARALLEL PRIVATE(invJt, detJt, Kt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
         do i = 1, nnz
-            ! Get jacobien
-            Jt = JJ(:, :, i)
-
-            ! Evaluate inverse
-            call MatrixInv(invJt, Jt, detJt, dime)
-
             ! Compute K = invJ * prop * detJ * invJ'
+            invJt = invJJ(:, :, i); detJt = detJJ(i)
             Kt = detJt * matmul(invJt, KK(:, :, i)) 
             Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
         end do
@@ -388,16 +374,16 @@ subroutine eval_conductivity_coefficient(dime, nnz, JJ, nnz_K, KK, Kcoef, info)
 
 end subroutine eval_conductivity_coefficient
 
-subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
+subroutine eval_capacity_coefficient(nnz, detJJ, nnz_C, CC, Ccoef, info)
     !! Computes capacity coefficient coef = sigma * detJ
     
     use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------  
-    integer, intent(in) :: dime, nnz, nnz_C
-    double precision, intent(in) :: JJ, CC
-    dimension :: JJ(dime, dime, nnz), CC(nnz_C)
+    integer, intent(in) :: nnz, nnz_C
+    double precision, intent(in) :: detJJ, CC
+    dimension :: detJJ(nnz), CC(nnz_C)
 
     integer, intent(out) :: info
     double precision, intent(out) :: Ccoef
@@ -406,22 +392,18 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
     ! Local data
     ! ----------
     integer :: i, nb_tasks
-    double precision :: Jt, detJt
-    dimension :: Jt(dime, dime)
+    double precision :: detJt
 
     info = 1
 
     if (nnz_C.eq.1) then 
 
-        !$OMP PARALLEL PRIVATE(Jt, detJt)
+        !$OMP PARALLEL PRIVATE(detJt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
         do i = 1, nnz
-            ! Get jacobien
-            Jt = JJ(:, :, i)
-
             ! Compute C = detJ  * prop
-            call MatrixDet(Jt, detJt, dime)
+            detJt = detJJ(i)
             Ccoef(i) = detJt * CC(1)
         end do
         !$OMP END DO NOWAIT
@@ -429,15 +411,12 @@ subroutine eval_capacity_coefficient(dime, nnz, JJ, nnz_C, CC, Ccoef, info)
 
     else if (nnz_C.eq.nnz) then
 
-        !$OMP PARALLEL PRIVATE(Jt, detJt)
+        !$OMP PARALLEL PRIVATE(detJt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
         do i = 1, nnz
-            ! Get jacobien
-            Jt = JJ(:, :, i)
-
             ! Compute C = detJ  * prop
-            call MatrixDet(Jt, detJt, dime)
+            detJt = detJJ(i)
             Ccoef(i) = detJt * CC(i)
         end do
         !$OMP END DO NOWAIT
