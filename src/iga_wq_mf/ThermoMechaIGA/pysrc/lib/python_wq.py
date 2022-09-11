@@ -14,7 +14,7 @@ from .create_model import thermoMechaModel
 
 class WQ(thermoMechaModel): 
 
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None):
+    def __init__(self, modelIGA: None, material={}, Dirichlet={}):
         
         super().__init__(modelIGA, material= material, Dirichlet= Dirichlet)
 

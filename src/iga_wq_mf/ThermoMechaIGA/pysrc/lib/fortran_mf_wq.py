@@ -19,7 +19,7 @@ from .D3viscoplasticity import *
 
 class fortran_mf_wq(thermoMechaModel):
 
-    def __init__(self, modelIGA, material=None, Dirichlet=None, Neumann=None):
+    def __init__(self, modelIGA, material={}, Dirichlet={}, Neumann={}):
 
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 

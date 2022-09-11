@@ -13,7 +13,7 @@ from .create_geomdl import geomdlModel
 
 class thermoMechaModel(): 
 
-    def __init__(self, modelIGA, material=None, Dirichlet=None, Neumann=None):
+    def __init__(self, modelIGA, material={}, Dirichlet={}, Neumann={}):
         
         print('\nInitializing thermo-mechanical model')
 

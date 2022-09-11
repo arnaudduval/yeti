@@ -5,46 +5,42 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
-import os
-import numpy as np
-from scipy import sparse
-import matplotlib.pyplot as plt
-
-# My libraries
-from lib.__init__ import blockPrint, enablePrint
+from lib.__init__ import *
 from lib.create_geomdl import geomdlModel
-from lib.fortran_mf_wq import fortran_mf_wq
-from lib.python_wq import WQ
 from lib.fortran_mf_iga import fortran_mf_iga
+from lib.fortran_mf_wq import fortran_mf_wq
 from lib.python_iga import IGA
+from lib.python_wq import WQ
 from lib.physics import power_density
 
-# Choose folder
+# Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+# Set global variables
 isIGA = False
-CONSTRUCTION = True
-SYMMETRY = False
+doConstruction = True
+doSymetry = False
 
-if isIGA: 
-    classfortran = fortran_mf_iga
-    classpython = IGA
-else: 
-    classfortran = fortran_mf_wq
-    classpython = WQ
+if isIGA: cfortran = fortran_mf_iga; cpython = IGA
+else: cfortran = fortran_mf_wq; cpython = WQ
 
-# =========================
+# ------------------------
 # TEST ERROR CONSTRUCTION
-# =========================
-if CONSTRUCTION: 
-    # Set degree and number of divisions
+# ------------------------
+if doConstruction: 
     for geoName in ['VB', 'TR', 'CB']:
         for varName in ['K', 'C', 'F', 'J', 'QP']:
+
+            # Create plot
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+
             for degree in range(3, 6):
-                norm = []; ddl =[]
+
+                # Initialize
+                norm = []; nbel_list =[]
+
                 for cuts in range(1, 4): 
                     print(degree, cuts, varName)
 
@@ -59,8 +55,8 @@ if CONSTRUCTION:
                                                                 np.array([cuts, cuts, cuts]))
                 
                     # Creation of thermal model object
-                    modelPhy1 = classfortran(modelIGA)
-                    modelPhy2 = classpython(modelIGA)
+                    modelPhy1 = cfortran(modelIGA)
+                    modelPhy2 = cpython(modelIGA)
 
                     # Set physical properties
                     material = {'capacity':1, 'conductivity':np.eye(3)}
@@ -86,100 +82,84 @@ if CONSTRUCTION:
                     elif varName == 'QP':
                         var1 = modelPhy1._qp_PS[:,:]
                         var2 = modelPhy2._qp_PS[:,:]
-                
                     enablePrint()
+
                     # Compare results 
                     error = var1 - var2
-                    try: norm_temp = sparse.linalg.norm(error, np.inf)/sparse.linalg.norm(var1, np.inf)
-                    except: norm_temp = np.linalg.norm(error, np.inf)/np.linalg.norm(var1, np.inf)
-                    if norm_temp > 1e-5:
-                        raise Warning("Something happend. Fortran and Python give different results")
+                    try: norm_temp = sp.linalg.norm(error, np.inf)/sp.linalg.norm(var1, np.inf)*100
+                    except: norm_temp = np.linalg.norm(error, np.inf)/np.linalg.norm(var1, np.inf)*100
+                    if norm_temp > 1e-5: raise Warning("Fortran and Python give different results")
                     norm.append(norm_temp)
 
                     # Set number of elements
-                    nbel = 2 ** cuts
-                    ddl.append(nbel)
-
-                # Change type 
-                norm = np.asarray(norm)
-                ddl = np.asarray(ddl)
-
-                # Figure 
-                plt.figure(1)
-                plt.plot(ddl, norm*100, label='degree p = ' + str(degree))
+                    nbel_list.append(2**cuts)
+                
+                # Plot 
+                strlabel = 'Degree p = ' + str(degree)
+                ax.loglog(nbel_list, norm, label=strlabel)
 
             # Properties
-            plt.grid()
-            plt.xscale("log")
-            plt.xlabel("Number of elements $nb_{el}$", fontsize= 16)
-            plt.yscale("log")
-            plt.ylabel("Relative error (%)", fontsize= 16)
-            plt.xticks(fontsize=16)
-            plt.yticks(fontsize=16)
-            plt.xlim(1, 100)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(folder + 'Error_constructionI_' + geoName + '_' + varName + '.png')
-            plt.figure(1).clear()
-        print('----')
+            ax.grid()
+            ax.set_xlabel("Number of elements $nb_{el}$")
+            ax.set_ylabel("Relative error (%)")
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig(folder + 'Error_constructionI_' + geoName + '_' + varName + '.png')
 
-# =========================
+
+# ------------------------
 # TEST ERROR SYMMETRY
-# =========================
-if SYMMETRY:
-    # Set degree and number of divisions
-    for geoName in ['CB', 'VB', 'TR', 'RQA']:
+# ------------------------
+if doSymetry:
+    for geoName in ['VB', 'CB', 'TR', 'RQA']:
         for varName in ['K', 'C']:
+
+            # Create plot
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+
+
             for degree in range(3, 6):
-                norm = []; ddl =[]
+                
+                # Initialize
+                norm = []; nbel_list =[]
+                
                 for cuts in range(1, 5): 
                     print(degree, cuts)
                     
-                    blockPrint()
-
+                    # blockPrint()
                     # Define geometry 
-                    geometry = {'degree', [degree, degree, degree]}
+                    geometry = {'degree':[degree, degree, degree]}
                     modelGeo = geomdlModel(geoName, **geometry)
                     modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                                                 np.array([cuts, cuts, cuts]))
-
+                
                     # Creation of thermal model object
-                    modelPhy1 = classfortran(modelIGA)
-                    del modelGeo, modelIGA
+                    modelPhy1 = cfortran(modelIGA)
+
+                    # Set physical properties
+                    material = {'capacity':1, 'conductivity':np.eye(3)}
+                    modelPhy1._set_material(material)
 
                     if varName == "K": var1 = modelPhy1.eval_conductivity_matrix()
                     elif varName == "C": var1 = modelPhy1.eval_capacity_matrix()
-                    del modelPhy1
-                    enablePrint()
+                    # enablePrint()
 
                     # Compare results 
-                    error = var1.transpose() - var1
-                    norm_temp = sparse.linalg.norm(error, np.inf)/sparse.linalg.norm(var1, np.inf)
+                    error = var1.T - var1
+                    norm_temp = sp.linalg.norm(error, np.inf)/sp.linalg.norm(var1, np.inf)*100
                     norm.append(norm_temp)
 
                     # Set number of elements
-                    nbel = 2 ** cuts
-                    ddl.append(nbel/(degree+1))
+                    nbel_list.append(2**cuts/(degree+1))
 
-                # Change type 
-                norm = np.asarray(norm)
-                ddl = np.asarray(ddl)
-
-                # Figure 
-                plt.figure(1)
-                plt.plot(ddl, norm*100, label='p = ' + str(degree))
+                # Plot 
+                strlabel = 'Degree p = ' + str(degree)
+                ax.loglog(nbel_list, norm, label=strlabel)
 
             # Properties
-            plt.grid()
-            plt.xscale("log")
-            plt.xlabel("(Parametric support width)" + r"$^{-1}$", fontsize= 16)
-            plt.yscale("log")
-            plt.ylabel("Relative error (%)", fontsize= 16)
-            plt.xticks(fontsize=16)
-            plt.yticks(fontsize=16)
-            plt.xlim(0.1, 100)
-            plt.legend()
-            plt.tight_layout()
-            plt.savefig(folder + 'Error_symmetry_' + geoName + '_' + varName + '.png')
-            plt.figure(1).clear()
-        print('----')
+            ax.grid()
+            ax.set_xlabel("(Parametric support width)" + r"$^{-1}$", fontsize= 16)
+            ax.set_ylabel("Relative error (%)", fontsize= 16)
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig(folder + 'Error_symmetry_' + geoName + '_' + varName + '.png')

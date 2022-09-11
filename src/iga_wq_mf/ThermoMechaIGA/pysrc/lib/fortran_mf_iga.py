@@ -12,7 +12,7 @@ from .create_model import thermoMechaModel
     
 class fortran_mf_iga(thermoMechaModel):
     
-    def __init__(self, modelIGA: None, material=None, Dirichlet=None, Neumann=None):
+    def __init__(self, modelIGA: None, material={}, Dirichlet={}, Neumann={}):
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 
         # Set basis and weights

@@ -16,6 +16,23 @@ from geomdl import (
 )
 from pyevtk.hl import gridToVTK
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+# Default properties 
+mpl.rcParams['figure.figsize'] = (5.0, 4.0)    
+mpl.rcParams['axes.unicode_minus'] = False
+mpl.rcParams['mathtext.fontset'] = 'stix'
+mpl.rcParams['font.family'] = 'STIXGeneral'
+
+# Define size
+SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE = 14, 16, 18
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # YETI libraries
 from iga_wq_mf import basis_weights, assembly, solver

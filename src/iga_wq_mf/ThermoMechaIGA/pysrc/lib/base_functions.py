@@ -405,7 +405,7 @@ def iga_find_basis_weights_fortran(degree, knotvector):
     # Get basis and weights from fortran
     qp_position, qp_weight, basis, \
     indi, indj, nnz_I = basis_weights.iga_get_data_csr(degree, knotvector, nb_qp, nnz_B)
- 
+
     return nnz_I, qp_position, qp_weight, basis, indi, indj
 
 # =========================

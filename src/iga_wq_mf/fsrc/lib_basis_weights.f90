@@ -634,7 +634,6 @@ module iga_basis_weights
         obj%degree = degree
         obj%size_kv = size_kv
         obj%nb_ctrlpts = size_kv - degree - 1 
-        obj%nnz_B = obj%nb_qp*(obj%degree + 1) 
         obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1)
         obj%knotvector = knotvector
 
@@ -643,6 +642,7 @@ module iga_basis_weights
         call find_unique_array(obj%size_kv, obj%knotvector, obj%nodes)
         obj%size_nodes = int(obj%nodes(size_kv+1))
         obj%nb_qp = (degree + 1)*(obj%size_nodes - 1)
+        obj%nnz_B = obj%nb_qp*(obj%degree + 1) 
         
         ! Get quadrature points position
         allocate(obj%qp_position(obj%nb_qp), obj%qp_weight(obj%nb_qp))

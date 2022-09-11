@@ -13,7 +13,7 @@ from .create_model import thermoMechaModel
 
 class IGA(thermoMechaModel):
 
-    def __init__(self, modelIGA, material=None, Dirichlet=None):
+    def __init__(self, modelIGA, material={}, Dirichlet={}):
 
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet)
 

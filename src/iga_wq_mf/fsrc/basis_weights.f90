@@ -121,7 +121,7 @@ subroutine iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weig
     type(iga), pointer :: obj
 
     ! Evaluate basis and weights
-    call iga_initialize(obj, degree, size_kv, knotvector)
+    call iga_initialize(obj, degree, size_kv, knotvector)    
     call iga_basis_weights_dense2coo(obj)
 
     ! Set quadrature points

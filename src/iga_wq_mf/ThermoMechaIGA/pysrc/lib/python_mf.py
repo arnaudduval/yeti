@@ -12,7 +12,7 @@ from .python_wq import WQ
 
 class MF(WQ): 
     
-    def __init__(self, modelIGA, material=None, Dirichlet=None):
+    def __init__(self, modelIGA, material={}, Dirichlet={}):
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet)
         return
 
