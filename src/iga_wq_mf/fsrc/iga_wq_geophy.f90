@@ -227,9 +227,6 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     ! Local data
     !-----------
     integer :: i, j, k, nb_tasks, beta(2)
-    double precision :: temp
-    dimension :: temp(nc_u*nc_v)
-
     integer :: indi_T_u, indi_T_v
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
     integer ::  indj_T_u, indj_T_v
@@ -242,7 +239,7 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
     ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta, temp)
+    !$OMP PARALLEL PRIVATE(beta)
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, d*d/nb_tasks) 
     do j = 1, d
@@ -251,8 +248,7 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             call sumproduct2d_sp(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-                            ctrlpts(i, :), temp)
-            jacob(i, j, :) = temp
+                            ctrlpts(i, :), jacob(i, j, :))
         end do
     end do
     !$OMP END DO NOWAIT

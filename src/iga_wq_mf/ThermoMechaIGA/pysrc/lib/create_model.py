@@ -176,14 +176,14 @@ class thermoMechaModel():
         " Gets Neumann control points and quadrature points"
         
         # Thermal 
-        try: TTable = Neumann['thermal']
-        except: TTable = None
-        self._thermalNeumann = TTable
+        try: ForcesTable = Neumann['thermal']
+        except: ForcesTable = None
+        self._thermalNeumann = ForcesTable
 
         # Mechanical 
-        try: MTable = Neumann['mechanical']
-        except: MTable = None
-        self._mechanicalNeumann = MTable
+        try: ForcesTable = Neumann['mechanical']
+        except: ForcesTable = None
+        self._mechanicalNeumann = ForcesTable
 
         return 
 

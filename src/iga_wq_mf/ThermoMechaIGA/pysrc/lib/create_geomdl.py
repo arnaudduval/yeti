@@ -130,7 +130,7 @@ class geomdlModel():
         if self._dim == 2: 
             c = 0
             ctrlpts_old = obj._control_points
-            ctrlpts_new = np.zeros((self._dim, self._nb_ctrlpts_total))
+            ctrlpts_new = np.zeros((3, self._nb_ctrlpts_total))
             for j in range(self._nb_ctrlpts[1]):
                 for i in range(self._nb_ctrlpts[0]):
                     pos = j + i*self._nb_ctrlpts[1]
@@ -141,7 +141,7 @@ class geomdlModel():
         elif self._dim == 3: 
             c =  0
             ctrlpts_old = obj._control_points
-            ctrlpts_new = np.zeros((self._dim, self._nb_ctrlpts_total))
+            ctrlpts_new = np.zeros((3, self._nb_ctrlpts_total))
             for k in range(self._nb_ctrlpts[2]):
                 for j in range(self._nb_ctrlpts[1]):
                     for i in range(self._nb_ctrlpts[0]):

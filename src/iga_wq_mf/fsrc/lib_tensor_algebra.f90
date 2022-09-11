@@ -554,7 +554,7 @@ subroutine csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             end do
 
             ! Get data of row
-            nnz_gen_row = nnz_row_u * nnz_row_v 
+            nnz_gen_row = nnz_row_u*nnz_row_v 
             allocate(data_row(nnz_gen_row))
             call csr_get_row_2d(coefs, nr_u, nc_u, nr_v, nc_v, iu, iv, &
                             nnz_row_u, nnz_row_v, i_nnz_u, i_nnz_v, &
@@ -563,7 +563,7 @@ subroutine csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             deallocate(i_nnz_u, i_nnz_v, j_nnz_u, j_nnz_v)
 
             ! Get offset in result 
-            genPos = iu + (iv-1)*nr_u 
+            genPos = iu + (iv - 1)*nr_u 
             offset = indi_result(genPos)
         
             ! Get result
@@ -769,7 +769,7 @@ subroutine csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, n
                 end do
 
                 ! Get data of row
-                nnz_gen_row = nnz_row_u * nnz_row_v * nnz_row_w
+                nnz_gen_row = nnz_row_u*nnz_row_v*nnz_row_w
                 allocate(data_row(nnz_gen_row))
                 call csr_get_row_3d(coefs, nr_u, nc_u,  nr_v, nc_v, nr_w, nc_w, iu, iv, iw, &
                                 nnz_row_u, nnz_row_v, nnz_row_w, i_nnz_u, i_nnz_v, i_nnz_w, &
@@ -778,7 +778,7 @@ subroutine csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, n
                 deallocate(i_nnz_u, i_nnz_v, i_nnz_w, j_nnz_u, j_nnz_v, j_nnz_w)
 
                 ! Get offset in result 
-                genPos = iu + (iv-1)*nr_u + (iw-1)*nr_u*nr_v
+                genPos = iu + (iv - 1)*nr_u + (iw - 1)*nr_u*nr_v
                 offset = indi_result(genPos)
             
                 ! Get result
@@ -883,7 +883,7 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
                 end do 
 
                 ! Update diagonal
-                genPos = iu + (iv-1)*nr_u + (iw-1)*nr_u*nr_w
+                genPos = iu + (iv - 1)*nr_u + (iw - 1)*nr_u*nr_w
                 diag(genPos) = sum_w
 
                 deallocate(j_nnz_u, B_nnz_u, W_nnz_u)
@@ -1166,7 +1166,6 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
     !! We suppose that this transformation is a composition of a rotation and a stretching, then 
     !! one can apply polar decomposition to the jacobian matrix of F.
     
-    use omp_lib
     implicit none
     ! Input /  output data
     ! --------------------
@@ -1179,7 +1178,7 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
     
     ! Local data
     ! ----------
-    integer :: i, j, k, nb_tasks, l, nb_pts, nb_pts_temp
+    integer :: i, j, k, l, nb_pts, nb_pts_temp
     double precision, dimension(3,3) :: dist, JJtemp, Q
     double precision, dimension(3) :: dummy
     double precision :: sq
@@ -1209,10 +1208,6 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
 
     ! Initialize    
     Lu = 0.d0; Lv = 0.d0; Lw = 0.d0
-
-    !$OMP PARALLEL PRIVATE(l, JJtemp, dist, dummy) REDUCTION(+:Lu, Lv, Lw)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nnz/(nb_tasks*step*step*step))
     do k = 1, nc_w, step
         do j = 1, nc_v, step
             do i = 1, nc_u, step
@@ -1227,8 +1222,6 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
             end do
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
     ! Update data
     sq = sqrt(Lu*Lu + Lv*Lv + Lw*Lw)
