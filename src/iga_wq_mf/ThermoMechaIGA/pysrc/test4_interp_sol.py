@@ -12,7 +12,7 @@ from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
 isIGA = True
-degree, cuts = 4, 3
+degree, cuts = 4, 5
 
 if isIGA: cfortran = fortran_mf_iga
 else: cfortran = fortran_mf_wq
@@ -29,7 +29,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 # Interpolation of u
 modelPhy = cfortran(modelIGA)
 u_interp = modelPhy.interpolate_ControlPoints(temperature_rotring)
-output = modelPhy.interpolate_field(u_ctrlpts=u_interp)
+output = modelPhy.interpolate_field(u_ctrlpts=u_interp, nbDOF=1)
 qp_sample, u_interp_sample = output[1], output[-1]
 
 # Compare results
@@ -37,15 +37,15 @@ u_exact_sample = temperature_rotring(qp_sample)
 error_1 = np.linalg.norm(u_exact_sample-u_interp_sample, np.inf)/np.linalg.norm(u_exact_sample, np.inf)*100
 print("Error using interpolation : %.3e %%" %(error_1,))
 
-# # Add material 
-# material = {'capacity':1, 'conductivity':np.eye(3)}
-# modelPhy._set_material(material)
+# Add material 
+material = {'capacity':1, 'conductivity':np.eye(3)}
+modelPhy._set_material(material)
 
-# # Block boundaries
-# Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-# modelPhy._set_dirichlet_boundaries(Dirichlet)
-# dof = modelPhy._thermal_dof
-# dod = modelPhy._thermal_dod 
+# Block boundaries
+Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+modelPhy._set_dirichlet_boundaries(Dirichlet)
+dof = modelPhy._thermal_dof
+dod = modelPhy._thermal_dod 
 
 # # ----------------------
 # # By direct method
@@ -60,19 +60,18 @@ print("Error using interpolation : %.3e %%" %(error_1,))
 # usol[dof] = un; usol[dod] = ud
 
 # # Compare solutions 
-# u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol)[-1]
+# u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol, nbDOF=1)[-1]
 # error_2 = np.linalg.norm(u_interp_sample-u_interp_sample2, np.inf)/np.linalg.norm(u_interp_sample, np.inf)*100
 # print("Error interpolation/direct solution : %.3e %%" %(error_2,))
 
 # # ----------------------
 # # By iterative solver
 # # ----------------------
-# method_list = ["WP", "C", "TDS", "JM", "TD", "JMS"]
+# method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
 # for method_name in method_list: 
 #     inputs = [Fn, 80, 1e-15, method_name, un]   
-#     un_t, _, _ = modelPhy.MFsteadyHeat(*inputs)
-#     usolved_t = np.zeros(modelPhy._nb_ctrlpts_total)
-#     usolved_t[dof] = un_t
-#     usolved_t[dod] = ud
-#     error_3 = np.linalg.norm(usol-usolved_t, np.inf)/np.linalg.norm(usol, np.inf)*100
+#     un_t = modelPhy.MFsteadyHeat(*inputs)[0]
+#     usol_t = np.zeros(modelPhy._nb_ctrlpts_total)
+#     usol_t[dof] = un_t; usol_t[dod] = ud
+#     error_3 = np.linalg.norm(usol-usol_t, np.inf)/np.linalg.norm(usol, np.inf)*100
 #     print("Error direct/iterative solution : %.3e %%" %(error_3,))

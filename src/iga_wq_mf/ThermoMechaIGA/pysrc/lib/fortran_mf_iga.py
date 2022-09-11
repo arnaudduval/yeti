@@ -16,7 +16,7 @@ class fortran_mf_iga(thermoMechaModel):
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 
         # Set basis and weights
-        self._nb_qp, self._nb_qp_total = np.ones(3), None
+        self._nb_qp, self._nb_qp_total = np.ones(3, dtype=int), None
         self.eval_basis_weights()
 
         # Get jacobian and physical position 
@@ -177,17 +177,17 @@ class fortran_mf_iga(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol): 
+    def MFsteadyHeat(self, f, nbIterPCG, threshold, method, directsol): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if directsol is None: directsol = np.ones(len(f))
-
+        # epsilon,method,cond,jj,directsol
         # Get inputs
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterations, epsilon, method, 
+        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, 
                     self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
@@ -195,7 +195,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
-    def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
+    def interpolate_ControlPoints(self, fun, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "
         
         # Get coeficients 
@@ -209,7 +209,7 @@ class fortran_mf_iga(thermoMechaModel):
         if self._dim == 3: F = assembly.iga_get_source_3d(*inputs)
 
         # Solve linear system with fortran
-        inputs = [self._detJ, *self._indices, *self._DB, *self._DW, F, nbIter, eps]
+        inputs = [self._detJ, *self._indices, *self._DB, *self._DW, F, nbIterPCG, threshold]
         start = time.time()
         u_interp, relres = solver.mf_iga_interpolate_cp_3d(*inputs)
         stop = time.time()

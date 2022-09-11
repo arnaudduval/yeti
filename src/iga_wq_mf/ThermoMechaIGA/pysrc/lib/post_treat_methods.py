@@ -10,17 +10,11 @@ from .create_geomdl import geomdlModel
 from .fortran_mf_iga import fortran_mf_iga
 from .fortran_mf_wq import fortran_mf_wq
 
-def plot_iterative_solver(filename, inputs, extension ='.png'):
+def plot_iterative_solver(filename, inputs:dict, extension='.png', threshold=1.e-16):
     
     # Get new name
     savename = filename.split('.')[0] + extension
     
-    # Define colors and makers
-    colors = ['#377eb8', '#ff7f00', '#4daf4a',
-            '#f781bf', '#a65628', '#984ea3',
-            '#999999', '#e41a1c', '#dede00']
-    makers = ['o', 'v', 'X', 's', '+', 'p']
-
     # Define inputs
     residue = inputs["Res"]
     error = inputs["Error"]
@@ -35,40 +29,29 @@ def plot_iterative_solver(filename, inputs, extension ='.png'):
         elif pcgmethod == "JMC": new_method_list.append('FD + jacobien mean')  
         elif pcgmethod == "TDC": new_method_list.append('FD + tensor decomp.') 
         elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
-
-    # Select important values
-    tol = 1.e-16
     
     # Set figure parameters
     fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(15,6))
-
+    makers = ['o', 'v', 'X', 's', '+', 'p']
     for i, pcgmethod in enumerate(new_method_list):
         error_method = np.asarray(error[i])
         residue_method = np.asarray(residue[i])
 
-        error_method = error_method[residue_method>tol]
-        residue_method = residue_method[residue_method>tol]
+        error_method = error_method[residue_method>threshold]
+        residue_method = residue_method[residue_method>threshold]
         
         ax1.semilogy(np.arange(len(error_method)), error_method*100, '--',
-                    label=pcgmethod, color=colors[i], marker=makers[i])
+                    label=pcgmethod, marker=makers[i])
         ax2.semilogy(np.arange(len(residue_method)), residue_method*100, '--',
-                    label=pcgmethod, color=colors[i], marker=makers[i])
+                    label=pcgmethod, marker=makers[i])
 
     # Set properties
-    for ax in [ax1, ax2]:
-        ax.set_xlabel('Number of iterations', fontsize=16)
-        ax.tick_params(axis='x', labelsize=16)
-        ax.tick_params(axis='y', labelsize=16)
-        ax.grid()
-
-    ax1.set_ylabel('Relative error (%)', fontsize=16)
-    ax2.set_ylabel('Relative residue (%)', fontsize=16)
-    ax2.legend(loc='center left', fontsize=12, bbox_to_anchor=(1, 0.5))
-    
-    # Save figure
-    plt.tight_layout()
-    plt.savefig(savename)
-    plt.close(fig)
+    for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations')
+    ax1.set_ylabel('Relative error (%)')
+    ax2.set_ylabel('Relative residue (%)')
+    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    fig.tight_layout()
+    fig.savefig(savename)
 
     return
 
@@ -112,13 +95,13 @@ class ThermalSimulation():
         # Set properties
         degree = self._degree
         cuts = self._cuts
-        geometry = {'degree':degree*np.ones(3)}
+        geometry = {'degree':degree*np.ones(3, dtype=int)}
 
         # Create geometry using geomdl
         modelGeo = geomdlModel(self._geoCase, **geometry)
 
         # Refine mesh using YETI function
-        modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=cuts*np.ones(3))
+        modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=cuts*np.ones(3, dtype=int))
 
         return modelIGA
 

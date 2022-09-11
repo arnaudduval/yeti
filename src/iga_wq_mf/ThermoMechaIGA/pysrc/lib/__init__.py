@@ -18,6 +18,7 @@ from pyevtk.hl import gridToVTK
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from mpltools import annotation
+from cycler import cycler
 
 # Default properties 
 mpl.rcParams['figure.figsize'] = (5.0, 4.0)    
@@ -25,6 +26,9 @@ mpl.rcParams['axes.unicode_minus'] = False
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 mpl.rcParams["axes.grid"] =True
+mpl.rcParams['axes.prop_cycle'] = cycler('color', ['#377eb8', '#ff7f00', '#4daf4a',
+                                                    '#f781bf', '#a65628', '#984ea3',
+                                                    '#999999', '#e41a1c', '#dede00'])
 
 # Define size
 SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE = 14, 16, 18

@@ -81,12 +81,13 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
             rsold = dot_product(r, r)
             
             do iter = 1, nbIter
-                call mf_iga_get_Ku_3D(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                call mf_iga_get_ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, W_u, W_v, W_w, &
                                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                                     data_BT_u, data_BT_v, data_BT_w, &
                                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, p, Ap)
+                
                 alpha = rsold/dot_product(p, Ap)
                 x = x + alpha * p
                 r = r - alpha * Ap
@@ -100,6 +101,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                 rsold = rsnew
             end do
         end if
+
     else 
         ! Initialize
         allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
@@ -194,7 +196,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
             rsold = dot_product(r, z)
 
             do iter = 1, nbIter
-                call mf_iga_get_Ku_3D(coefs, nr_total, nc_total, nr_u, nc_u, &
+                call mf_iga_get_ku_3D(coefs, nc_total, nr_u, nc_u, &
                             nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, &

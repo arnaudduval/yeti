@@ -331,7 +331,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterations, epsilon, method, directsol=None): 
+    def MFsteadyHeat(self, f, nbIterPCG, threshold, method, directsol=None): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -341,7 +341,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterations, epsilon, method, 
+        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, 
                     self._conductivity, self._Jqp, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
@@ -349,7 +349,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFsteadyHeat_PLS(self, f, nbIterations, epsilon, ud=None, method_pls='S', methodPCG='TDC'): 
+    def MFsteadyHeat_PLS(self, f, nbIterPCG, threshold, ud=None, method_pls='S', methodPCG='TDC'): 
         " Solves steady heat with penalty, Lagrange or substitution method "
 
         # Get inputs 
@@ -361,7 +361,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Convert Python to Fortran
         dod = np.copy(self._thermal_dod); dod += 1
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                    self._thermalDirichlet, dod, f, ud, nbIterations, epsilon]
+                    self._thermalDirichlet, dod, f, ud, nbIterPCG, threshold]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
@@ -372,7 +372,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue
 
-    def interpolate_ControlPoints(self, fun, nbIter=100, eps=1e-14):
+    def interpolate_ControlPoints(self, fun, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "
 
         # Get coeficients 
@@ -386,7 +386,7 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 3: vector = assembly.wq_get_source_3d(*inputs)
 
         # Solve linear system with fortran
-        inputs = [self._detJ, *self._nb_qp, *self._indices, *self._DB, *self._DW, vector, nbIter, eps]
+        inputs = [self._detJ, *self._nb_qp, *self._indices, *self._DB, *self._DW, vector, nbIterPCG, threshold]
         start = time.time()
         u_interp, relres = solver.mf_wq_interpolate_cp_3d(*inputs)
         stop = time.time()
@@ -417,7 +417,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return result
     
-    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterations=300, isPrecond=True, isnoised=False):
+    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=300, isPrecond=True, isnoised=False):
         " Solves a elasticity problem "
         
         # Get inputs 
@@ -433,7 +433,7 @@ class fortran_mf_wq(thermoMechaModel):
             dod[_] = list(newdod)
 
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                isPrecond, nbIterations, self._mechanicalDirichlet, *dod]
+                isPrecond, nbIterPCG, self._mechanicalDirichlet, *dod]
         result = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
 
         return result
@@ -499,7 +499,7 @@ class fortran_mf_wq(thermoMechaModel):
         return Fint
 
     def MFelasticity_py(self, coefs=None, DU=None, Fext=None, indi=None, 
-                            nbIterations=200, tol=1e-7, isPrecond=True, isnoised=False):
+                            nbIterPCG=200, threshold=1e-7, isPrecond=True, isnoised=False):
         " Solve linear system using Bi-CG Stab algorithm for elasticity problems "
 
         # Initialize
@@ -515,7 +515,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         if not isPrecond: # Without preconditioner 
             
-            for i in range(nbIterations):
+            for i in range(nbIterPCG):
                 Ap = self.eval_Su(p, coefs=coefs)
                 clean_dirichlet_3d(Ap, indi)
 
@@ -531,7 +531,7 @@ class fortran_mf_wq(thermoMechaModel):
 
                 relerror = np.sqrt(np.linalg.norm(r)/norm2b)
                 print(relerror)
-                if relerror <= tol: break
+                if relerror <= threshold: break
 
                 rsnew = block_dot_product(self._dim, r, rhat)
                 beta = (alpha/omega)*(rsnew/rsold)
@@ -544,7 +544,7 @@ class fortran_mf_wq(thermoMechaModel):
             if DU is None: DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
             U, V, W, D = DU[0], DU[1], DU[2], DU[3]
             
-            for i in range(nbIterations):
+            for i in range(nbIterPCG):
                 ptilde = fast_diagonalization(U, V, W, D, p, fdtype='elastic')
                 clean_dirichlet_3d(ptilde, indi)
 
@@ -566,7 +566,7 @@ class fortran_mf_wq(thermoMechaModel):
 
                 relerror = np.sqrt(np.linalg.norm(r)/norm2b)
                 print(relerror)
-                if relerror <= tol: break
+                if relerror <= threshold: break
 
                 rsnew = block_dot_product(self._dim, r, rhat)
                 beta = (alpha/omega)*(rsnew/rsold)
@@ -577,7 +577,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return x
 
-    def MFplasticity_py(self, Fext=None, indi=None, tol=1e-6, d=3):
+    def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-6, d=3):
         " Solves plasticity problem "
 
         if self._dim != 3: raise Warning('Only for 3D')
@@ -628,7 +628,7 @@ class fortran_mf_wq(thermoMechaModel):
                 relerror = np.sqrt(prod1/prod2)
                 print('Relative error: %.5f' %relerror)
 
-                if relerror <= self._sigmaY*tol:
+                if relerror <= self._sigmaY*threshold:
                     break
                 else:
                     ddisp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)

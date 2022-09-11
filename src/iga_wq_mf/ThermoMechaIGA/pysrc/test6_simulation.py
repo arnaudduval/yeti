@@ -17,40 +17,38 @@ from lib.post_treat_methods import (ThermalSimulation,
                                     plot_iterative_solver
 )
 
-# Choose folder
+# Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# Some constants
-FileExist = True
+# Set global variables
+FileExist = False
+isIGA = True
 degree, cuts = 4, 5
-is_iga = False
-method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
+method_list = ["WP", "C", "TDS", "TDC", "JMS", "JMC"]
 
 for geometryName in ['VB']:  
     
     # Get file name
-    if geometryName == 'CB':   funpow, funtemp = powden_cube, None 
+    if geometryName   == 'CB': funpow, funtemp = powden_cube, None 
     elif geometryName == 'VB': funpow, funtemp = powden_prism, None 
     elif geometryName == 'TR': funpow, funtemp = powden_thickring, None 
 
     # Run simulation
-    thermalinputs = {'degree': degree, 'cuts': cuts, 'case': geometryName, 'isIGA': is_iga, 
-                'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
+    thermalinputs = {'degree': degree, 'cuts': cuts, 'case': geometryName, 'isIGA': isIGA, 
+                    'funPowDen': funpow, 'funTemp': funtemp, 'IterMethods': method_list}
     Simulation = ThermalSimulation(thermalinputs, folder)  
     filename = Simulation._filename
 
-    # Run simulation
     if not FileExist:
         conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
         # conductivity = np.array([[1.0, 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-        material = {"conductivity": conductivity}
+        material = {'capacity':1.0, 'conductivity': conductivity}
         Simulation.run_simulation(material=material, Dirichlet=Dirichlet)
 
     else :
-        Data = SimulationData(filename)
-        output = Data._dataSimulation
-        plot_iterative_solver(filename, output)
+        inputs = SimulationData(filename)._dataSimulation
+        plot_iterative_solver(filename, inputs)
 

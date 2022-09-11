@@ -1,13 +1,14 @@
-# Python libraries
-import numpy as np
-from matplotlib import pyplot as plt
-
-# My libraries
+from lib.__init__ import *
 from lib.base_functions import (eval_basis_python,
                                 iga_find_positions_weights,
                                 create_knotvector
 )
 from lib.D1viscoplasticity import *
+
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 # Define mechanical properties
 E, H, sigma_Y, beta, JJ = 200e3, 25e3, 250, 0.5, 1
@@ -56,24 +57,21 @@ fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
 for ax, variable, name in zip([ax1, ax2, ax3], [displacement, plastic_strain, stress], names):
     ax.contourf(XX, STEPS, variable.T, 20)
 
-    ax.set_title(name, fontsize=14)
-    ax.set_ylabel('Step', fontsize=12)
-    ax.set_xlabel('Position (m)', fontsize=12)
-    ax.tick_params(axis='x', labelsize=11)
-    ax.tick_params(axis='y', labelsize=11)
+    ax.grid(None)
+    ax.set_title(name)
+    ax.set_ylabel('Step')
+    ax.set_xlabel('Position (m)')
 
 fig.tight_layout()
-plt.savefig('ElastoPlasticity.png')
+fig.savefig(folder + 'ElastoPlasticity.png')
 
 # Plot figure
 fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
 for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
     ax.plot(strain[pos, :]*100, stress[pos, :])
 
-    ax.set_ylabel('Stress (MPa)', fontsize=12)
-    ax.set_xlabel('Strain (%)', fontsize=12)
-    ax.tick_params(axis='x', labelsize=11)
-    ax.tick_params(axis='y', labelsize=11)
+    ax.set_ylabel('Stress (MPa)')
+    ax.set_xlabel('Strain (%)')
 
-plt.tight_layout()
-plt.savefig('TractionCurve.png')
+fig.tight_layout()
+fig.savefig(folder + 'TractionCurve.png')

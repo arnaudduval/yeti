@@ -1,13 +1,14 @@
-# Python libraries
-import numpy as np
-from matplotlib import pyplot as plt
-
-# My libraries
+from lib.__init__ import *
 from lib.base_functions import (eval_basis_python,
                                 iga_find_positions_weights,
                                 create_knotvector
 )
 from lib.D1transientheat import *
+
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivity(T):
     K = 1*np.ones(np.shape(T))
@@ -79,13 +80,12 @@ fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
 for ax, variable in zip([ax1], [temperature_interp]):
     im = ax.contourf(XX, TIME, variable.T, 20)
     cbar = plt.colorbar(im)
-    cbar.set_label('Temperature', fontsize=11)
+    cbar.set_label('Temperature')
 
-    ax.set_ylabel('Time (s)', fontsize=11)
-    ax.set_xlabel('Position (m)', fontsize=11)
-    ax.tick_params(axis='x', labelsize=11)
-    ax.tick_params(axis='y', labelsize=11)
+    ax.grid(None)
+    ax.set_ylabel('Time (s)')
+    ax.set_xlabel('Position (m)')
 
 fig.tight_layout()
-plt.savefig('Transient_heat_1D.png')
+fig.savefig(folder + 'Transient_heat_1D.png')
 
