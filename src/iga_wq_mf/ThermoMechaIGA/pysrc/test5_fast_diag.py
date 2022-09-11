@@ -10,7 +10,7 @@ from iga_wq_mf import solver
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder_file = os.path.dirname(full_path) + '/data/'
+folder_data = os.path.dirname(full_path) + '/data/'
 folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
@@ -50,9 +50,9 @@ else:
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
 
     # Import data
-    file1 = pd.read_table(folder_file + 'TenP_new.dat', sep='\t', names=['nbel', 'time'])
-    file2 = pd.read_table(folder_file + 'TenP_former.dat', sep='\t', names=['nbel', 'time'])
-    file3 = pd.read_table(folder_file + 'TenP_lit.dat', sep='\t', names=['nbel', 'time'])
+    file1 = pd.read_table(folder_data + 'TenP_new.dat', sep='\t', names=['nbel', 'time'])
+    file2 = pd.read_table(folder_data + 'TenP_former.dat', sep='\t', names=['nbel', 'time'])
+    file3 = pd.read_table(folder_data + 'TenP_lit.dat', sep='\t', names=['nbel', 'time'])
 
     # Post treatment
     files = [file1, file2, file3]
@@ -88,8 +88,8 @@ else:
     colors = ['#377eb8', '#ff7f00']
 
     # Import data
-    file1 = pd.read_table(folder_file + 'MFProd.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
-    file2 = pd.read_table(folder_file + 'MFProd_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
+    file1 = pd.read_table(folder_data + 'MFProd.dat', sep='\t', names=['degree', 'Cu64', 'Cu128', 'Ku64', 'Ku128'])
+    file2 = pd.read_table(folder_data + 'MFProd_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
 
     # Litterature
     degree = file2.degree

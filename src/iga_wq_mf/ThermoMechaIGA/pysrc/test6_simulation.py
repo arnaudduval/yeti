@@ -25,7 +25,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 FileExist = True
 isIGA = False
-degree, cuts = 4, 4
+degree, cuts = 4, 5
 method_list = ["WP", "C", "TDS", "TDC", "JMS", "JMC"]
 
 for geometryName in ['VB']:  
