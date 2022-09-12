@@ -319,7 +319,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                 x = x + alpha*p + omega*s
                 r = s - omega*As
     
-                RelRes(iter+1) = norm2(r)/norm2b
+                ! RelRes(iter+1) = norm2(r)/norm2b
+                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 if (RelRes(iter+1).le.epsilon) exit
 
@@ -436,7 +437,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                 x = x + alpha*ptilde + omega*stilde
                 r = s - omega*Astilde    
 
-                RelRes(iter+1) = norm2(r)/norm2b
+                ! RelRes(iter+1) = norm2(r)/norm2b
+                RelRes(iter+1) = maxval(abs(r))/maxval(abs(b))
                 RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 if (RelRes(iter+1).le.epsilon) exit
 

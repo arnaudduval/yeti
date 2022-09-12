@@ -639,4 +639,4 @@ class fortran_mf_wq(thermoMechaModel):
             ep_n0 = ep_n1
             sigma_n0 = sigma_n1
 
-        return
+        return disp

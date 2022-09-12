@@ -11,7 +11,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 
 # Set global variables
 degree, cuts = 4, 3
-isPlascticity = True
+isPlascticity = False
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
@@ -31,6 +31,7 @@ table_Dir = np.zeros((3, 2, 3), dtype=int)
 table_Dir[0, 0, :] = 1
 Dirichlet = {'mechanical':table_Dir}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
+Mdod = modelPhy._mechanical_dod
 
 # Set Neumann boundaries
 forces = [[0 for i in range(3)] for j in range(6)]
@@ -41,28 +42,28 @@ modelPhy._set_neumann_boundaries(Neumann)
 # Set external forces
 Fext = modelPhy.eval_force_surf()
 
-# ============================ TO UPDATE ==========================
 if not isPlascticity:
     pass
-    # # -------------
-    # # ELASTICITY
-    # # -------------
-    # dof_extended = []
-    # for i in range(3):
-    #     dof = np.array(Mdof[i]) + i*modelPhy._nb_ctrlpts_total
-    #     dof_extended.extend(list(dof))
+    # -------------
+    # ELASTICITY
+    # -------------
+    dof_extended = []
+    for i in range(3):
+        dof = (np.array(modelPhy._mechanical_dof[i]) 
+                + i*modelPhy._nb_ctrlpts_total)
+        dof_extended.extend(list(dof))
 
-    # # Compute iterative solution in python 
-    # itersol_py = modelPhy.MFWQ_solveElasticity(indi=Mdod, Fext=Fext, isPrecond=True)
-    # itersol_py = np.reshape(itersol_py, (-1, 1))[dof_extended] 
+    # Compute iterative solution in python 
+    itersol_py = modelPhy.MFelasticity_py(indi=Mdod, Fext=Fext)
+    itersol_py = np.reshape(itersol_py, (-1, 1))[dof_extended] 
 
-    # # Compute iterative solution in fortran 
-    # itersol_fr = modelPhy.MFelasticity(indi=Mdod, Fext=Fext, isPrecond=True)
-    # itersol_fr = np.reshape(itersol_fr, (-1, 1))[dof_extended] 
+    # Compute iterative solution in fortran 
+    itersol_fr = modelPhy.MFelasticity_fortran(indi=Mdod, Fext=Fext)
+    itersol_fr = np.reshape(itersol_fr, (-1, 1))[dof_extended] 
 
-    # error = itersol_py - itersol_fr
-    # relerror = np.linalg.norm(error)/np.linalg.norm(itersol_py)
-    # print(relerror)
+    error = itersol_py - itersol_fr
+    relerror = np.linalg.norm(error)/np.linalg.norm(itersol_py)
+    print('Error between python and fortran' %relerror)
 
     # # Compute direct solution
     # S2solve = modelPhy.eval_stiffness_matrix()[dof_extended, :][:, dof_extended]
@@ -71,28 +72,22 @@ if not isPlascticity:
     # dirsol = np.atleast_2d(dirsol)
 
     # # Compare results
-    # itersol2 = np.reshape(itersol, (-1, 1))[dof_extended]
-    # error = dirsol.T - itersol2
+    # error = dirsol.T - itersol_fr
     # relerror = np.linalg.norm(error)/np.linalg.norm(dirsol)
     # print(relerror)
 
 else:
     pass
-    # # --------------
-    # # PLASTICITY
-    # # --------------
-    # # Do ramp function (Fsurf increase linearly)
-    # nbStep = 5
-    # dt = 1/nbStep
-    # Fext = np.zeros((*np.shape(Fsurf), nbStep+1))
-    # for i in range(1, nbStep+1): 
-    #     Fext[:, :, i] = i*dt*Fsurf
+    # --------------
+    # PLASTICITY
+    # --------------
+    # Do ramp function (Fext increases linearly)
+    nbStep = 5; dt = 1/nbStep
+    Fext = np.zeros((*np.shape(Fext), nbStep+1))
+    for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fext
 
-    # # Solve system in fortran
-    # _, dF, coef_S = modelPhy.MFplasticity_fortran(Fext=Fext[:,:,:2], indi=Mdod)
-    # # modelPhy.MFWQ_solveElasticity(coef_S, indi=Mdod, Fext=dF, isPrecond=False)
-    # # # !!!!!!!!!!!!!!!!! We have different result for same algorithm in fortran or python (elasticity) 
+    # Solve system in fortran
+    itersol_fr = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
 
-    # # Solve system in Python
-    # modelPhy.MFplasticity_py(Fext=Fext[:,:,:2], indi=Mdod)
-    # # !!!!!!!!!!!!!!!!! Due to problem above, in python converges plasticity but in fortran it doesnt 
+    # Solve system in Python
+    itersol_py = modelPhy.MFplasticity_py(Fext=Fext, indi=Mdod)

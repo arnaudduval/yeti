@@ -98,7 +98,7 @@ def plot_geometry2D(geo:geomdlModel):
     return fig
 
 # Set global variables
-CASE = 7
+CASE = 1
 extension = '.png'
 
 if CASE == 0: # B-spline curve
