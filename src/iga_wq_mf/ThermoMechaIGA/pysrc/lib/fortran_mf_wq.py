@@ -373,7 +373,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol
 
-    def MF_THL(self, F=None, G=None, newmark=0.5, delta_time=0.2, nbIterPCG=100, threshold=1.e-7):
+    def MF_THL(self, F=None, G=None, newmark=0.5, delta_time=0.2, nbIterPCG=100, threshold=1.e-12, method='FDC'):
         "This function only is used to verify convergence of transient heat solver "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -388,11 +388,12 @@ class fortran_mf_wq(thermoMechaModel):
         newmarkdt = newmark*delta_time
         Kcoefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         Ccoefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
-        inputs = [Ccoefs, Kcoefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, newmarkdt, 
-                self._thermalDirichlet, dod, F, G, nbIterPCG, threshold]
+        inputs = [Ccoefs, Kcoefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
+                self._Jqp, newmarkdt, self._thermalDirichlet, dod, 
+                F, G, nbIterPCG, threshold, method]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue = solver.mf_wq_solve_ths_linear_3d(*inputs)
+        if self._dim == 3: sol, residue = solver.mf_wq_solve_ths_linear_3d_test(*inputs)
 
         return sol, residue
 

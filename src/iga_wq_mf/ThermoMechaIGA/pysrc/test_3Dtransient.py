@@ -14,7 +14,7 @@ folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 3
+degree, cuts = 4, 4
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
@@ -26,7 +26,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'capacity':1, 'conductivity':np.eye(3)}
+material = {'capacity':3, 'conductivity':np.eye(3)}
 modelPhy._set_material(material)
 
 # Block boundaries
@@ -36,15 +36,16 @@ modelPhy._set_dirichlet_boundaries(Dirichlet)
 # Create source
 Fext = modelPhy.eval_source_vector(powden_prism)
 
-# Solve linear transient problem
-sol, residue = modelPhy.MF_THL(F=Fext)
-newresidue = residue[residue>0]*100
-
-# Plot residue 
 fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.semilogy(np.arange(len(newresidue )), newresidue)
+
+for itmethod in ['FDC', 'JMC']:
+    # Solve linear transient problem
+    sol, residue = modelPhy.MF_THL(F=Fext, method=itmethod)
+    newresidue = residue[residue>0]*100
+    ax.semilogy(np.arange(len(newresidue )), newresidue, label=itmethod)
 
 # Set properties
+ax.legend()
 ax.set_xlabel('Number of iterations')
 ax.set_ylabel('Relative error (%)')
 ax.set_ylabel('Relative residue (%)')
