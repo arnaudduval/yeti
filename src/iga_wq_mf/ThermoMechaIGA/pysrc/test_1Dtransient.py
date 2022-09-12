@@ -7,7 +7,7 @@ from lib.D1transientheat import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivity(T):
@@ -80,7 +80,7 @@ fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
 for ax, variable in zip([ax1], [temperature_interp]):
     im = ax.contourf(XX, TIME, variable.T, 20)
     cbar = plt.colorbar(im)
-    cbar.set_label('Temperature')
+    cbar.set_label('Temperature (K)')
 
     ax.grid(None)
     ax.set_ylabel('Time (s)')

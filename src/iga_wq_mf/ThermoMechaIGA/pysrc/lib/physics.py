@@ -38,26 +38,26 @@ def powden_prism(P: list):
     y = P[1, :]
     z = P[2, :]
 
-    # # Isotropy
-    # f = (10*x*np.sin(np.pi*z)*(5*x + 6*y - 45) - 22*x*np.sin(np.pi*z)*(x - 6) 
-    #     - 10*x*np.sin(np.pi*z)*(6*y - 5*x + 45) - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-    #     - 10*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) + 10*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    #     + x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-    # )
+    # Isotropy
+    f = (10*x*np.sin(np.pi*z)*(5*x + 6*y - 45) - 22*x*np.sin(np.pi*z)*(x - 6) 
+        - 10*x*np.sin(np.pi*z)*(6*y - 5*x + 45) - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+        - 10*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) + 10*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+        + x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+    )/1000
 
-    # Anisotropy
-    f = (4*x*np.sin(np.pi*z)*(5*x + 6*y - 45) 
-    - 94*x*np.sin(np.pi*z)*(x - 6) 
-    - 16*x*np.sin(np.pi*z)*(6*y - 5*x + 45) 
-    - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-    - 16*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
-    + 4*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    - (np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
-    - 4*x*np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
-    - 2*x*np.pi*np.cos(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
-    - (x*np.pi*np.cos(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
-    + 3*x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-    )
+    # # Anisotropy
+    # f = (4*x*np.sin(np.pi*z)*(5*x + 6*y - 45) 
+    # - 94*x*np.sin(np.pi*z)*(x - 6) 
+    # - 16*x*np.sin(np.pi*z)*(6*y - 5*x + 45) 
+    # - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+    # - 16*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
+    # + 4*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+    # - (np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
+    # - 4*x*np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
+    # - 2*x*np.pi*np.cos(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+    # - (x*np.pi*np.cos(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45))/5 
+    # + 3*x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+    # )
     
     return f
 

@@ -7,7 +7,7 @@ from lib.D1viscoplasticity import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Define mechanical properties

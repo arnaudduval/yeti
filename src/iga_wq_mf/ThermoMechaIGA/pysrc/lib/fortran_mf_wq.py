@@ -331,7 +331,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterPCG, threshold, method, directsol=None): 
+    def MFsteadyHeat(self, f, nbIterPCG=100, threshold=1.e-7, method='FDC', directsol=None): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -348,6 +348,53 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
 
         return sol, residue, error
+
+    def MFtransientHeatNL(self, F=None, G=None, time_list=None, newmark=1, table_Kprop=None, table_Cprop=None):
+        " Solves transient heat problems using substitution method "
+
+        if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if F is None or G is None or time_list is None: raise Warning('Important information missing')
+
+        # Convert Python to Fortran
+        dod = np.copy(self._thermal_dod); dod += 1
+
+        # Get inputs 
+        if table_Kprop is None: 
+            table_Kprop = np.array([[0, 1]])
+            print('WARNING: Default conductivity = 1.0')
+        if table_Cprop is None: 
+            table_Cprop = np.array([[0, 1]])
+            print('WARNING: Default capacity = 1.0')
+        inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, table_Kprop, table_Cprop, newmark, 
+                    self._thermalDirichlet, dod, self._invJ, self._detJ, time_list, F, G]
+
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: sol = solver.mf_wq_ths_nonlinear_3d(*inputs)
+
+        return sol
+
+    def MF_THL(self, F=None, G=None, newmark=0.5, delta_time=0.2, nbIterPCG=100, threshold=1.e-7):
+        "This function only is used to verify convergence of transient heat solver "
+
+        if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+        if F is None : raise Warning('Important information missing')
+        if G is None: G = np.zeros(len(self._thermal_dod))
+
+        # Convert Python to Fortran
+        dod = np.copy(self._thermal_dod); dod += 1
+
+        # Get inputs
+        super()._verify_thermal()
+        newmarkdt = newmark*delta_time
+        Kcoefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
+        Ccoefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
+        inputs = [Ccoefs, Kcoefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, newmarkdt, 
+                self._thermalDirichlet, dod, F, G, nbIterPCG, threshold]
+
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: sol, residue = solver.mf_wq_solve_ths_linear_3d(*inputs)
+
+        return sol, residue
 
     def MFsteadyHeat_PLS(self, f, nbIterPCG, threshold, ud=None, method_pls='S', methodPCG='TDC'): 
         " Solves steady heat with penalty, Lagrange or substitution method "

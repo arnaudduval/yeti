@@ -554,7 +554,7 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     integer :: nr_total
     double precision, allocatable, dimension(:) :: array_temp_0, array_temp_1
 
-    ! Set number of rows
+    ! Set total number of rows
     nr_total = nr_u*nr_v*nr_w
 
     ! Compute L'.u    
@@ -861,6 +861,9 @@ subroutine mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v,
     integer :: nr_total
     double precision, allocatable, dimension(:) :: array_temp_0, array_temp_1
 
+    ! Set total number of rows
+    nr_total = nr_u*nr_v*nr_w
+
     ! Compute L'.array   
     allocate(array_temp_0(nr_total))                
     call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, array_in, array_temp_0)
@@ -881,13 +884,12 @@ end subroutine mf_wq_get_Au_ths_3d
 subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            newmarkdt, table, ndod, dod, f, g, nbIter, epsilon, x, residue)
+                            newmarkdt, table, ndod, dod, f, g, nbIter, epsilon, method, x, residue)
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, parameter :: d = 3
-    character (len=10) :: method = 'FDC'
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ndod
     double precision, intent(in) :: Kcoefs, Ccoefs
     dimension :: Kcoefs(d, d, nc_total), Ccoefs(nc_total)
@@ -899,7 +901,7 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
+    character(len=10), intent(in) :: method
     double precision, intent(in) :: newmarkdt
     integer, intent(in) :: table, dod
     dimension :: table(d, 2), dod(ndod)
@@ -954,7 +956,7 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
 
     ! Compute A.x where x = [0, xd] and A = (C + alpha dt K)
     x = 0.d0; x(dod) = g
-    call mf_wq_get_kcu_3d(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, 1.d0, newmarkdt, x, Ax)
 
@@ -1002,49 +1004,45 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     allocate(Dparametric(nr_total), Dphysical(nr_total))
     Dparametric = 1.d0; Dphysical = 1.d0
 
-    if (nbIter.gt.0) then
-        ! -------------------------------------------
-        ! Preconditioned Conjugate Gradient algorithm
-        ! -------------------------------------------
-        do iter = 1, nbIter
+    ! -------------------------------------------
+    ! Preconditioned Conjugate Gradient algorithm
+    ! -------------------------------------------
+    do iter = 1, nbIter
 
-            call fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
-                            ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, p, ptilde)
+        call fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
+                        ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, p, ptilde)
 
-            call mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                                indi_L, indj_L, indi_LT, indj_LT, L, LT, ndof, newmarkdt, ptilde, Aptilde)
+        call mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            indi_L, indj_L, indi_LT, indj_LT, L, LT, ndof, newmarkdt, ptilde, Aptilde)
 
-            alpha = rsold/dot_product(Aptilde, rhat)
-            s = r - alpha*Aptilde
+        alpha = rsold/dot_product(Aptilde, rhat)
+        s = r - alpha*Aptilde
 
-            call fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
-                            ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, s, stilde)
+        call fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, Dparametric, Dphysical, method, &
+                        ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, s, stilde)
 
-            call mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                                indi_L, indj_L, indi_LT, indj_LT, L, LT, ndof, newmarkdt, stilde, Astilde)
+        call mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            indi_L, indj_L, indi_LT, indj_LT, L, LT, ndof, newmarkdt, stilde, Astilde)
 
-            omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-            xn = xn + alpha*ptilde + omega*stilde
-            r = s - omega*Astilde    
-            
-            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
-            x(dod) = g
-            
-            residue(iter+1) = norm2(r)/norm2b
-            if (residue(iter+1).le.epsilon) exit
+        omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+        xn = xn + alpha*ptilde + omega*stilde
+        r = s - omega*Astilde    
+        
+        call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
+        x(dod) = g
+        residue(iter+1) = norm2(r)/norm2b
+        if (residue(iter+1).le.epsilon) exit
 
-            rsnew = dot_product(r, rhat)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Aptilde)
-            rsold = rsnew
+        rsnew = dot_product(r, rhat)
+        beta = (alpha/omega)*(rsnew/rsold)
+        p = r + beta*(p - omega*Aptilde)
+        rsold = rsnew
 
-        end do
-
-    end if
+    end do
 
 end subroutine mf_wq_solve_ths_linear_3d
 
@@ -1057,8 +1055,9 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     implicit none 
     ! Input / output data
     ! -------------------
+    character(len=10) :: method = 'FDC'
     double precision, parameter :: tol = 1.d-8
-    integer, parameter :: nbIterNL = 30, nbIterPCG = 100, d = 3
+    integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF, nbpts
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -1094,6 +1093,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     dimension :: KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), Ccoefs(nc_total)
 
     ! Set initial values
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
     nr_total = nr_u*nr_v*nr_w
     ndof = nr_total - ndod
     allocate(GGtmp(ndod), ddGG(ndod))
@@ -1129,7 +1129,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             KTCdT(nr_total), ddFF(nr_total), ddVV(nr_total), TTn1(nr_total), TTinterp(nc_total))
     temperature = 0.d0; 
     
-    do i = 2, sizeF+1
+    do i = 2, sizeF
         ! Get delta time
         dt = time_list(i) - time_list(i-1)
 
@@ -1144,10 +1144,10 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
         ! Get force of new step
         Fstep = FF(:, i)
         prod2 = dot_product(Fstep, Fstep)
-
+        
         ! Solver Newton-Raphson
+        print*, 'Step: ', i - 1
         do j = 1, nbIterNL
-            print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute temperature (at each quadrature point) 
             call interpolate_temperature_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -1161,32 +1161,33 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             call compute_heat_coefficients(nc_total, KK, CC, invJ, detJ, Kcoefs, Ccoefs)
             
             ! Compute Fint = C dT + K T 
-            call mf_wq_get_cu_3d_csr(Ccoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_wq_get_cu_3d_csr(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, VVn1, CdT)
 
-            call mf_wq_get_ku_3d_csr(Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_wq_get_ku_3d_csr(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, TTn1, KT)
             KTCdT = KT + CdT
 
             ! Compute residue
             ddFF = Fstep - KTCdT
+            call clean_dirichlet_1dim(nr_total, ddFF, ndod, dod)
             prod1 = dot_product(ddFF, ddFF)
             resNL = sqrt(prod1/prod2)
-            print*, "Raphson with error: ", resNL
-            if (isnan(resNL)) stop
+            print*, " with Raphson error: ", resNL
+            if (isnan(resNL)) stop 'Error is NAN'
             if (resNL.le.1e-6) exit
 
             ! Solve by iterations 
             call mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    newmark*dt, table_dir, ndod, dod, ddFF, GGtmp, nbIterPCG, tol, ddVV, resPCG)
+                                    newmark*dt, table_dir, ndod, dod, ddFF, GGtmp, nbIterPCG, tol, method, ddVV, resPCG)
 
             ! Update values
             VVn1 = VVn1 + ddVV
-            TTn1 = TTn1i0 + newmark*dt*ddVV
+            TTn1 = TTn1i0 + newmark*dt*VVn1
                 
         end do
         

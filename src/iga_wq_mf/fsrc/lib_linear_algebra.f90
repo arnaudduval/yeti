@@ -41,6 +41,8 @@ subroutine find_interpolation_span(size_array, array, x, span, tol)
 end subroutine find_interpolation_span
 
 subroutine linear_interpolation(nr, table, nnz, x, y, tol)
+    !! Find the linear interpolation from input data
+    !! The first column of the table contains X and the second contains Y
 
     implicit none
     ! Input / output data

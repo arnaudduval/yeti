@@ -10,7 +10,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables

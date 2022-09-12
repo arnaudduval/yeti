@@ -14,16 +14,16 @@
 ! Otherwise some scale factor need to be considered.
 ! ==========================
 
-subroutine clean_dirichlet_3dim(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+subroutine clean_dirichlet_3dim(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
     !! A is actually a vector arranged following each dimension [Au, Av, Aw]
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nc, ndu, ndv, ndw
+    integer, intent(in) :: nr, ndu, ndv, ndw
     double precision, intent(inout) :: A
-    dimension :: A(3, nc)
+    dimension :: A(3, nr)
 
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
@@ -35,7 +35,7 @@ subroutine clean_dirichlet_3dim(nc, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
 
 end subroutine clean_dirichlet_3dim
 
-subroutine block_dot_product(dimen, nc, A, B, result)
+subroutine block_dot_product(dimen, nr, A, B, result)
     !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
     !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
     !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
@@ -43,9 +43,9 @@ subroutine block_dot_product(dimen, nc, A, B, result)
     implicit none
     ! Input/ output data
     ! ------------------
-    integer, intent(in) :: dimen, nc
+    integer, intent(in) :: dimen, nr
     double precision, intent(in) :: A, B
-    dimension :: A(dimen, nc), B(dimen, nc)
+    dimension :: A(dimen, nr), B(dimen, nr)
 
     double precision :: result
 
