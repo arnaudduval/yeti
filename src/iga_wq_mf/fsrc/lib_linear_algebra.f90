@@ -570,6 +570,103 @@ subroutine spMdotdV(nr, nc, nnz, indi, indj, A, vin, vout)
 
 end subroutine spMdotdV
 
+subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
+    !! Computes an integral inside a cube of side 1 using trapezoidal rule.
+    !! It supposes that points are equidistant
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer :: nru, nrv, nrw
+    double precision, intent(in) :: C
+    dimension :: C(nru, nrv, nrw)
+
+    double precision, intent(out) :: integral
+    
+    ! Local data
+    ! ----------
+    integer :: iu, iv, iw
+    integer :: indu, indv, indw
+    dimension :: indu(2), indv(2), indw(2)
+    double precision :: vol
+
+    ! Initialize 
+    indu = (/1, nru/); indv = (/1, nrv/); indw = (/1, nrw/)
+    integral = 0.d0; vol = (nru - 1)*(nrv - 1)*(nrw - 1)
+
+    ! Get internal points
+    do iw = 2, nrw-1
+        do iv = 2, nrv-1
+            do iu = 2, nru-1
+                integral = integral + C(iu, iv, iw)
+            end do
+        end do
+    end do
+
+    ! Get bounding surface internal points
+    do iw = 2, nrw-1
+        do iv = 2, nrv-1
+            do iu = 1, 2
+                integral = integral + C(indu(iu), iv, iw)/2.d0
+            end do
+        end do
+    end do
+
+    do iw = 2, nrw-1
+        do iv = 1, 2
+            do iu = 2, nru-1
+                integral = integral + C(iu, indv(iv), iw)/2.d0
+            end do
+        end do
+    end do
+
+    do iw = 1, 2
+        do iv = 2, nrv-1
+            do iu = 2, nru-1
+                integral = integral + C(iu, iv, indw(iw))/2.d0
+            end do
+        end do
+    end do
+
+    ! Get boundary edges
+    do iw = 1, 2
+        do iv = 1, 2
+            do iu = 2, nru-1
+                integral = integral + C(iu, indv(iv), indw(iw))/4.d0
+            end do
+        end do
+    end do
+
+    do iw = 1, 2
+        do iv = 2, nrv-1
+            do iu = 1, 2
+                integral = integral + C(indu(iu), iv, indw(iw))/4.d0
+            end do
+        end do
+    end do
+
+    do iw = 2, nrw-1
+        do iv = 1, 2
+            do iu = 1, 2
+                integral = integral + C(indu(iu), indv(iv), iw)/4.d0
+            end do
+        end do
+    end do
+
+    ! Get corner points
+    do iw = 1, 2
+        do iv = 1, 2
+            do iu = 1, 2
+                integral = integral + C(indu(iu), indv(iv), indw(iw))/8.d0
+            end do
+        end do
+    end do
+
+    ! Update integral
+    integral = integral/vol
+
+end subroutine trapezoidal_rule_3d
+
 ! --------
 ! Indices
 ! --------

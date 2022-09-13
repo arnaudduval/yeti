@@ -301,7 +301,7 @@ end subroutine mf_iga_get_ku_3d_csr
 
 subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIter, epsilon, x, RelRes)
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, x, RelRes)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
                         
@@ -320,17 +320,17 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
 
-    integer, intent(in) :: nbIter
-    double precision, intent(in) :: epsilon, b
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
     dimension :: b(nr_u*nr_v*nr_w)
     
     double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIter+1)
+    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
 
     ! Local data
     ! -----------
     ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, bdotb
+    double precision :: rsold, rsnew, alpha, normb
     double precision, allocatable, dimension(:) :: r, p, Ap, z
     integer :: nr_total, iter, i
 
@@ -396,10 +396,10 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     x = 0.d0; r = b
     call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
     p = z
-    rsold = dot_product(r, z); bdotb = dot_product(r, r)
+    rsold = dot_product(r, z); normb = maxval(abs(r))
     RelRes = 0.d0; RelRes(1) = 1.d0
 
-    do iter = 1, nbIter
+    do iter = 1, nbIterPCG
         call mf_iga_get_Cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, W_u, W_v, W_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -411,8 +411,8 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
         x = x + alpha * p
         r = r - alpha * Ap
 
-        RelRes(iter+1) = dot_product(r, r)/bdotb
-        if (RelRes(iter+1).le.epsilon) exit
+        RelRes(iter+1) = maxval(abs(r))/normb
+        if (RelRes(iter+1).le.threshold) exit
 
         call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
         rsnew = dot_product(r, z)

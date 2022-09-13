@@ -1063,13 +1063,12 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
 
     do k = 1, 3
         ! Set Vscript
-        Vscript = 0.d0
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                    UU = [M_u(ju), M_v(jv), M_w(jw)]
-                    Vscript(ju, jv, jw) = CC(k, k, genPos)*UU(k)/(UU(1)*UU(2)*UU(3))
+                    UU = [M_u(ju), M_v(jv), M_w(jw)] 
+                    Vscript(ju, jv, jw) = CC(k, k, genPos)*UU(k)/product(UU)
                 end do
             end do
         end do
@@ -1099,10 +1098,7 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
     end do
 
     do k = 1, 3
-        ! Initialize
-        Wscript = 0.d0
-        Nscript = 0.d0
-        Mscript = 0.d0
+
         c = 0
         do l = 1, 3
             if (k.ne.l) then 
@@ -1115,7 +1111,7 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
                             UU = [M_u(ju), M_v(jv), M_w(jw)]
                             WW = [K_u(ju), K_v(jv), K_w(jw)]
                             Wscript(c, ju, jv, jw) = CC(k, k, genPos)*UU(k)*UU(l)&
-                                                        /(UU(1)*UU(2)*UU(3)*WW(k))
+                                                        /(product(UU)*WW(k))
                         end do
                     end do
                 end do
@@ -1165,6 +1161,7 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
     !! (from parametric to physical space) 
     !! We suppose that this transformation is a composition of a rotation and a stretching, then 
     !! one can apply polar decomposition to the jacobian matrix of F.
+    !! THIS FUNCTION IS DEPRECATED
     
     implicit none
     ! Input /  output data
@@ -1181,7 +1178,6 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
     integer :: i, j, k, l, nb_pts, nb_pts_temp
     double precision, dimension(3,3) :: dist, JJtemp, Q
     double precision, dimension(3) :: dummy
-    double precision :: sq
 
     ! Define step
     step = min((nc_u-1)/2, (nc_v-1)/2, (nc_w-1)/2)
@@ -1223,14 +1219,11 @@ subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
         end do
     end do
 
-    ! Update data
-    sq = sqrt(Lu*Lu + Lv*Lv + Lw*Lw)
-    Lu = Lu/sq; Lv = Lv/sq; Lw = Lw/sq
-    
 end subroutine jacobien_mean_3d
 
 subroutine conductivity_mean_3d(nc_u, nc_v, nc_w, nnz, KK, lamb_u, lamb_v, lamb_w)
-    
+    !! This function is DEPRECATED. 
+
     implicit none
     ! Input /  output data
     ! --------------------
@@ -1244,7 +1237,6 @@ subroutine conductivity_mean_3d(nc_u, nc_v, nc_w, nnz, KK, lamb_u, lamb_v, lamb_
     ! Local data
     ! ----------
     integer :: i, j, k, pos, nb_pts, nb_pts_temp
-    double precision :: sq
 
     ! Define step
     step = min((nc_u-1)/2, (nc_v-1)/2, (nc_w-1)/2)
@@ -1295,8 +1287,45 @@ subroutine conductivity_mean_3d(nc_u, nc_v, nc_w, nnz, KK, lamb_u, lamb_v, lamb_
         
     end if
 
-    ! Update data
-    sq = sqrt(lamb_u**2 + lamb_v**2 + lamb_w**2)
-    lamb_u = lamb_u/sq; lamb_v = lamb_v/sq; lamb_w = lamb_w/sq
-    
 end subroutine conductivity_mean_3d
+
+subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
+    !! Compute the "mean" of a property. This is a factor that improves fast diagonalization method 
+
+    implicit none
+    ! Input /  output data
+    ! --------------------
+    integer, intent(in) :: nc_u, nc_v, nc_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_u*nc_v*nc_w)
+
+    double precision, intent(out) :: integral
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k, genPos, pos
+    integer :: ind_u, ind_v, ind_w
+    dimension :: ind_u(3), ind_v(3), ind_w(3)
+    double precision :: coefs_temp
+    dimension :: coefs_temp(3, 3, 3)
+
+    ! Initialize
+    pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
+    pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
+    pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
+
+    ! Create new coefficients
+    coefs_temp = 0.d0
+    do k = 1, 3
+        do j = 1, 3
+            do i = 1, 3
+                genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
+                coefs_temp(i, j, k) = coefs(genPos)
+            end do
+        end do
+    end do
+
+    ! Compute integral
+    call trapezoidal_rule_3d(3, 3, 3, coefs_temp, integral)
+
+end subroutine compute_mean_3d

@@ -26,7 +26,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'capacity':3, 'conductivity':np.eye(3)}
+material = {'capacity':0.5, 'conductivity':np.eye(3)}
 modelPhy._set_material(material)
 
 # Block boundaries
@@ -38,7 +38,7 @@ Fext = modelPhy.eval_source_vector(powden_prism)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 
-for itmethod in ['FDC', 'JMC']:
+for itmethod in ['FDC', 'JMC', 'JMS']:
     # Solve linear transient problem
     sol, residue = modelPhy.MF_THL(F=Fext, method=itmethod)
     newresidue = residue[residue>0]*100

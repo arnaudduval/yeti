@@ -330,7 +330,7 @@ end subroutine mf_wq_get_su_3d_csr
 
 subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIter, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIterPCG, &
                             U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -341,7 +341,7 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     ! Input / output data
     ! -------------------
     logical, intent(in) :: isPrecond 
-    double precision, parameter :: epsilon = 1.d-7
+    double precision, parameter :: threshold = 1.d-7
     integer, parameter :: d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: coefs
@@ -356,7 +356,7 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     double precision, intent(in) :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), Deigen(d, nr_u*nr_v*nr_w)
-    integer, intent(in) :: ndu, ndv, ndw, nbIter
+    integer, intent(in) :: ndu, ndv, ndw, nbIterPCG
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
 
@@ -369,7 +369,7 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, norm2b, RelRes
+    double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb, RelRes
     double precision, allocatable, dimension(:, :) :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, Ap, As
     integer :: nr_total, iter
 
@@ -394,13 +394,13 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     call clean_dirichlet_3dim(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     rhat = r; p = r
     call block_dot_product(d, nr_total, r, rhat, rsold)
-    norm2b = norm2(r)
+    normb = maxval(abs(r))
 
     if (.not.isPrecond) then
         ! -------------------------------------------
         ! Conjugate gradient algorithm
         ! -------------------------------------------
-        do iter = 1, nbIter
+        do iter = 1, nbIterPCG
             call mf_wq_get_su_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -423,8 +423,8 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
             x = x + alpha*p + omega*s ! Normally x is alrady Dirichlet updated
             r = s - omega*As ! Normally r is alrady Dirichlet updated
 
-            RelRes = sqrt(norm2(r)/norm2b)
-            if (RelRes.le.epsilon) exit
+            RelRes = maxval(abs(r))/normb
+            if (RelRes.le.threshold) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Ap)
@@ -434,7 +434,7 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
         ! -------------------------------------------
         ! Preconditioned Conjugate Gradient algorithm
         ! -------------------------------------------
-        do iter = 1, nbIter
+        do iter = 1, nbIterPCG
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
             call clean_dirichlet_3dim(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
@@ -464,8 +464,8 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
             x = x + alpha*ptilde + omega*stilde ! Normally x is alrady Dirichlet updated
             r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
             
-            RelRes = sqrt(norm2(r)/norm2b)
-            if (RelRes.le.epsilon) exit
+            RelRes = maxval(abs(r))/normb
+            if (RelRes.le.threshold) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
@@ -482,12 +482,13 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     !! Solves elasto-plasticity problems using combined isotropic/kinematic hardening theory
     !! and Newton-Raphson method for non-linear equations
     !! IN CSR FORMAT
+    !! IT HAS NOT BEEN TESTED
 
     use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: nbIterRaphson = 30, nbIterSolver = 200
+    integer, parameter :: nbIterNL = 30, nbIterPCG = 200
     integer, parameter :: d = 3, dof = d*(d+1)/2
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -581,7 +582,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
         call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
         ! Solver Newton-Raphson
-        do j = 1, nbIterRaphson
+        do j = 1, nbIterNL
             print*, 'Step: ', i-1, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 
@@ -613,7 +614,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
             call mf_wq_elasticity_3d(coef_S, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
-            nbIterSolver, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
+            nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
             dF, ddisp)
 
         end do
@@ -630,7 +631,7 @@ end subroutine mf_wq_plasticity_3d
 subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            isPrecond, nbIter, table, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            isPrecond, nbIterPCG, table, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
     !! Moreover, it considers Dirichlet boundaries are zero
@@ -655,7 +656,7 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: nbIter, ndu, ndv, ndw
+    integer, intent(in) :: nbIterPCG, ndu, ndv, ndw
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(d, 2, d), dod_u(ndu), dod_v(ndv), dod_w(ndw)
     
@@ -710,7 +711,7 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     call mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIter, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIterPCG, &
                             U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
 
 end subroutine mf_wq_elasticity_3d_py

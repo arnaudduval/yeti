@@ -341,8 +341,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, 
-                    self._conductivity, self._Jqp, directsol]
+        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
@@ -389,11 +388,10 @@ class fortran_mf_wq(thermoMechaModel):
         Kcoefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         Ccoefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = [Ccoefs, Kcoefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                self._Jqp, newmarkdt, self._thermalDirichlet, dod, 
-                F, G, nbIterPCG, threshold, method]
+                newmarkdt, self._thermalDirichlet, dod, F, G, nbIterPCG, threshold, method]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue = solver.mf_wq_solve_ths_linear_3d_test(*inputs)
+        if self._dim == 3: sol, residue = solver.mf_wq_solve_ths_linear_3d(*inputs)
 
         return sol, residue
 
@@ -409,13 +407,12 @@ class fortran_mf_wq(thermoMechaModel):
         # Convert Python to Fortran
         dod = np.copy(self._thermal_dod); dod += 1
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                    self._thermalDirichlet, dod, f, ud, nbIterPCG, threshold]
+                    self._thermalDirichlet, dod, f, ud, nbIterPCG, threshold, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: 
             if method_pls == 'S': 
-                sol, residue = solver. mf_wq_solve_shs_3d(*inputs, 
-                                methodPCG, self._conductivity, self._Jqp)   
+                sol, residue = solver. mf_wq_solve_shs_3d(*inputs)   
             else: raise Warning('Method is not well implemented')
 
         return sol, residue
@@ -625,7 +622,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return x
 
-    def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-6, d=3):
+    def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-6, nbIterNL=10, d=3):
         " Solves plasticity problem "
 
         if self._dim != 3: raise Warning('Only for 3D')
@@ -653,7 +650,7 @@ class fortran_mf_wq(thermoMechaModel):
             prod2 = block_dot_product(d, Fext_t, Fext_t)
 
             # Solver Newton-Raphson
-            for j in range(2):
+            for j in range(nbIterNL):
                 print('Pas %d, iteration %d' %(i+1, j))
 
                 # Compute strain as function of displacement
@@ -675,12 +672,10 @@ class fortran_mf_wq(thermoMechaModel):
                 prod1 = block_dot_product(d, dF, dF)
                 relerror = np.sqrt(prod1/prod2)
                 print('Relative error: %.5f' %relerror)
+                if relerror <= self._sigmaY*threshold: break
 
-                if relerror <= self._sigmaY*threshold:
-                    break
-                else:
-                    ddisp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
-                    # ddisp = self.MFelasticity(coefs=coef_Stiff, indi=indi, Fext=dF)
+                ddisp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+                # ddisp = self.MFelasticity(coefs=coef_Stiff, indi=indi, Fext=dF)
 
             # Set values
             disp[:, :, i] = disp[:, :, i-1] + ddisp

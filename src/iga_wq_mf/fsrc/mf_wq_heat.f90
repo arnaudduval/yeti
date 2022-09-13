@@ -384,7 +384,7 @@ end subroutine mf_wq_get_kcu_3d
 subroutine mf_wq_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            b, nbIter, epsilon, x, RelRes)
+                            b, nbIterPCG, threshold, x, RelRes)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
 
@@ -403,17 +403,17 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: nbIter
-    double precision, intent(in) :: epsilon, b
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
     dimension :: b(nr_u*nr_v*nr_w)
     
     double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIter+1)
+    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
 
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, bdotb
+    double precision :: rsold, rsnew, alpha, omega, beta, normb
     double precision, allocatable, dimension(:) :: r, rhat, p, s, dummy, ptilde, Aptilde, stilde, Astilde
     integer :: nr_total, iter
 
@@ -469,10 +469,10 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     allocate(r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), dummy(nr_total), &
             ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total))
     x = 0.d0; r = b; rhat = r; p = r
-    rsold = dot_product(r, rhat); bdotb = dot_product(r, r)
+    rsold = dot_product(r, rhat); normb = maxval(abs(r))
     RelRes = 0.d0; RelRes(1) = 1.d0
 
-    do iter = 1, nbIter
+    do iter = 1, nbIterPCG
         dummy = p
         call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dummy, ptilde)
 
@@ -496,8 +496,8 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
         x = x + alpha*ptilde + omega*stilde
         r = s - omega*Astilde    
         
-        RelRes(iter+1) = dot_product(r, r)/bdotb
-        if (RelRes(iter+1).le.epsilon) exit
+        RelRes(iter+1) = maxval(abs(r))/normb
+        if (RelRes(iter+1).le.threshold) exit
 
         rsnew = dot_product(r, rhat)
         beta = (alpha/omega)*(rsnew/rsold)

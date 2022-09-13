@@ -187,8 +187,7 @@ class fortran_mf_iga(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, 
-                    self._conductivity, self._Jqp, directsol]
+        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue, error = solver.mf_iga_steady_heat_3d(*inputs)
