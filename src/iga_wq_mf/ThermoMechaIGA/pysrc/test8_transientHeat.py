@@ -10,7 +10,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 from lib.base_functions import create_table_properties
 
 def setKpop(T):
-    y = 1.0*np.ones(len(T))
+    y = 0.1*np.ones(len(T))
     return y
 
 def setCpop(T):
@@ -21,8 +21,9 @@ def setCpop(T):
 degree, cuts = 4, 3
 
 # Set time simulation
-N, n = 51, 20
-tt = np.linspace(0, 3, N)
+N, n = 10, 0
+tt = np.linspace(0, 10, N)
+ones = np.ones(len(tt))
 time_list = np.zeros(N+n)
 time_list[:N] = tt
 time_list[N:] = [tt[-1] + 1*(i+1) for i in range(n)]
@@ -33,7 +34,7 @@ table_Cprop = create_table_properties(setCpop, uref=np.linspace(-20, 20, 21))
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
-modelGeo = geomdlModel('VB', **geometry)
+modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                             np.array([cuts, cuts, cuts]))
 
@@ -41,19 +42,22 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Block boundaries
-Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+Dirichlet = {'thermal':np.array([[1, 1], [0, 0], [0, 0]])}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
+modelPhy.add_thermal_initial_dirichlet_condition(np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 dod = modelPhy._thermal_dod
 dof = modelPhy._thermal_dof
 
 # Create source
-Fend = modelPhy.eval_source_vector(powden_prism)
+Fend = modelPhy.eval_source_vector(powdentest)
 
 # ---------------------
 # Transient model
 # ---------------------
 # Add boundaries temperature
 Gbound = np.zeros((len(dod), len(time_list)))
+for i in range(len(time_list)):
+    Gbound[:, i] = modelPhy.get_thermal_initial_dirichlet_condition()
 
 # Add external force (transient)
 Fendt = np.atleast_2d(Fend).reshape(-1, 1)
@@ -65,6 +69,7 @@ del Fendt
 # Solve transient problem
 Tsol1 = modelPhy.MFtransientHeatNL(F=Fext, G=Gbound, time_list=time_list, 
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop)
+modelPhy.export_results(u_ctrlpts=Tsol1[:, -1], nbDOF=1)
 
 # # ---------------------
 # # Steady model

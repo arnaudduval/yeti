@@ -32,6 +32,7 @@ class thermoMechaModel():
         self._set_material(material)
 
         # Initialize Dirichlet boundaries
+        self._DirichletBound = None
         self._set_dirichlet_boundaries(Dirichlet)
 
         # Initialize Neumman boundaries
@@ -171,6 +172,25 @@ class thermoMechaModel():
         self._mechanical_dod = Mdod
 
         return 
+
+    def add_thermal_initial_dirichlet_condition(self, table=None, temperature=0.0):
+        "This function is first tentative of adding constant boundary conditions "
+
+        if self._thermalDirichlet is None: raise Warning('Please define first total Dirichlet boundaries')
+
+        # Get Dirichlet nodes
+        dod = self.Dirichlet_boundaries(table=table)[1][0]
+
+        if self._DirichletBound is None:
+            self._DirichletBound = np.zeros(self._nb_ctrlpts_total)
+            self._DirichletBound[dod] = temperature*np.ones(len(dod))
+        else:
+            self._DirichletBound[dod] += temperature*np.ones(len(dod))
+
+        return 
+
+    def get_thermal_initial_dirichlet_condition(self): 
+        return self._DirichletBound[self._thermal_dod]
 
     def _set_neumann_boundaries(self, Neumann:dict):
         " Gets Neumann control points and quadrature points"
@@ -653,6 +673,7 @@ class thermoMechaModel():
                     DET[i,j,k] = detJ[pos]
                     if self._dim == 3: X3[i,j,k] = qp_PS[2, pos]
                     if u_interp is not None: 
+                        u_interp = np.atleast_2d(u_interp)
                         for l in range(nbDOF):
                             U[l,i,j,k] = u_interp[l, pos]
         

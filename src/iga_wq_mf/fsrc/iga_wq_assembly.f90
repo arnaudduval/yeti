@@ -186,7 +186,7 @@ subroutine wq_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     dimension :: result(nr_u*nr_v*nr_w)
 
     ! Compute vector
-    call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         nnz_w, indi_w, indj_w, data_W_w(:, 1), &
@@ -237,7 +237,7 @@ subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     end do
 
     ! Compute force
-    call sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
+    call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         new_coefs(:), array_out(:))
 
@@ -487,7 +487,7 @@ subroutine wq_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_
     dimension :: result(nr_u*nr_v)
 
     ! Find vector
-    call sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, &
+    call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         coefs, result)

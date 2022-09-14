@@ -1099,7 +1099,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     integer :: nr_total, ndof, i, j
     double precision, allocatable, dimension(:) :: TTn0, TTn1i0, VVn0, VVn1, CdT, KT, Fstep, &
                                                     KTCdT, ddFF, ddVV, TTn1, TTinterp, GGtmp, ddGG
-    double precision :: resPCG, resNL, prod1, prod2, dt, dt2, factor
+    double precision :: resPCG, resNL, dt, dt2, factor
     dimension :: resPCG(nbIterPCG+1)
 
     integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
@@ -1159,7 +1159,6 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
 
         ! Get force of new step
         Fstep = FF(:, i)
-        prod2 = dot_product(Fstep, Fstep)
         
         ! Solver Newton-Raphson
         print*, 'Step: ', i - 1
@@ -1189,8 +1188,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             ! Compute residue
             ddFF = Fstep - KTCdT
             call clean_dirichlet_1dim(nr_total, ddFF, ndod, dod)
-            prod1 = dot_product(ddFF, ddFF)
-            resNL = sqrt(prod1/prod2)
+            resNL = sqrt(dot_product(ddFF, ddFF))
             print*, " with Raphson error: ", resNL
             if (isnan(resNL)) stop 'Error is NAN'
             if (resNL.le.1.d-6) exit

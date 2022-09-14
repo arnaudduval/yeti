@@ -135,7 +135,7 @@ subroutine mf_wq_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     allocate(array_temp_0(nc_total))
 
     ! Compute B' * array_in
-    call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+    call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                         nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                         nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                         nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
@@ -147,7 +147,7 @@ subroutine mf_wq_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     deallocate(array_temp_0)
 
     ! Compute W * array_temp_1
-    call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         nnz_w, indi_w, indj_w, data_W_w(:, 1), &
@@ -253,7 +253,7 @@ subroutine mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     
     do j = 1, d
         beta = 1; beta(j) = 2
-        call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
@@ -262,7 +262,7 @@ subroutine mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             alpha = 1; alpha(i) = 2
             zeta = beta + (alpha - 1)*2
             array_temp_1 = array_temp_0*coefs(i, j, :)
-            call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+            call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                 nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), & 

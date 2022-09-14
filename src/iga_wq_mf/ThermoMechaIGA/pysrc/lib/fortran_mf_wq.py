@@ -264,8 +264,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         # Final update of the vector (average)
         F = Ftemp[:-1, :]
-        FList = np.where(Ftemp[-1, :] >= 2)[0]
-        F[:, FList] /= Ftemp[-1, FList]
+        # FList = np.where(Ftemp[-1, :] >= 2)[0]
+        # F[:, FList] /= Ftemp[-1, FList]
+        # To modify 
 
         return F
 

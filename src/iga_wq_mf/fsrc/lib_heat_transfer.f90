@@ -122,7 +122,7 @@ module heat_transfer
         call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
         ! Interpolation
-        call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &

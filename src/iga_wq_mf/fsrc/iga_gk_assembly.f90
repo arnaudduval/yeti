@@ -237,7 +237,7 @@ subroutine iga_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     end do
 
     ! Compute vector 
-    call sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, indi_u, indj_u, data_W_u, &
                         nnz_v, indi_v, indj_v, data_W_v, &
                         nnz_w, indi_w, indj_w, data_W_w, &
@@ -447,7 +447,7 @@ subroutine iga_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz
     end do
 
     ! Compute vector 
-    call sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_W_u, &
+    call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_W_u, &
                         nnz_v, indi_v, indj_v, data_W_v, coefs, array_out)
 
 end subroutine iga_get_source_2d

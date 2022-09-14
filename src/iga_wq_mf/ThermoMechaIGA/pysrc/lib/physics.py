@@ -5,6 +5,11 @@
 """
 import numpy as np
 
+def powdentest(P:list):
+    x = P[0, :]
+    f = 0.0*np.sin(np.pi*x)
+    return f
+
 def power_density(P: list):
     " Compute power density at point P in physical space"
     f = 1 
@@ -18,15 +23,15 @@ def powden_cube(P: list):
     y = P[1, :]
     z = P[2, :]
 
-    # Isotropy
-    f = 3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
+    # # Isotropy
+    # f = 3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
 
-    # # Anisotropy
-    # f = (6*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
-    # - (np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*z)*np.sin(np.pi*y))/5 
-    # - (np.pi**2*np.cos(np.pi*y)*np.cos(np.pi*z)*np.sin(np.pi*x))/2 
-    # - np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*z)
-    # )
+    # Anisotropy
+    f = (6*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
+    - (np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*z)*np.sin(np.pi*y))/5 
+    - (np.pi**2*np.cos(np.pi*y)*np.cos(np.pi*z)*np.sin(np.pi*x))/2 
+    - np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*z)
+    )
 
     return f
 

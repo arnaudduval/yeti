@@ -5,8 +5,18 @@
 """
 
 from lib.__init__ import *
-from lib.base_functions import erase_rows_csr, create_knotvector, wq_find_basis_weights_fortran
-from iga_wq_mf import solver
+from lib.base_functions import fast_diagonalization
+
+# Optimal algorithm
+# 121	0.109375
+# 171	0.34375
+# 221	0.8125
+# 271	1.71875
+# 321	3.03125
+# 371	5.09375
+# 421	8.09375
+# 471	11.78125
+# 521	17.953125
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -15,34 +25,29 @@ folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Set global variable
-dataExist = True
+dataExist = False
 degree = 5
 
 if not dataExist:
-    
-    for nbel in range(60, 80, 50):         
-        # Define basis 
-        knotvector = create_knotvector(degree, nbel)
-        qp_wq, B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)[1:]
 
-        # Erase data
-        rows2erase = [0, -1]
-        indi_t, indj_t, data_t = erase_rows_csr(rows2erase, indi, indj, [B, W])
-        [B_t, W_t] = data_t
+    FDtime = []
+    for nb_ctrlpts in range(121, 300, 50):         
+        # Create matrix
+        M = np.ones((nb_ctrlpts, nb_ctrlpts))
 
-        # Initialize
-        shape_matrices, indices, data_B, data_W = [], [], [], []
-        for dim in range(3):
-            shape_matrices.append(len(qp_wq))
-            indices.append(indi_t); indices.append(indj_t) 
-            data_B.append(B_t); data_W.append(W_t)
+        # Create vector 
+        V = np.ones(nb_ctrlpts**3)
+        D = np.ones(nb_ctrlpts**3)
 
-        # Solve sylvester equation P s = r
-        inputs = [*shape_matrices, *indices, *data_B, *data_W]
+        # Compute fast diagonalization
         start = time.time()
-        solver.test_precondfd(*inputs) # !!!!!! Maybe it not longer used
+        fast_diagonalization(M, M, M, D, V,fdtype='interp')
         stop = time.time()
-        print(stop-start)
+        total = (stop - start)/2.0
+        print('For %s, time: %.4f' %(nb_ctrlpts, total))
+        FDtime.append([nb_ctrlpts, total])
+    FDtime = np.array(FDtime)
+    np.save(folder_data+'NewData', FDtime)
 
 else:
 

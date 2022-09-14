@@ -10,7 +10,7 @@
 ! Tensor algebra 
 ! ---------------
 
-subroutine tensor_n_mode_product(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R)
+subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
     !! Tensor X = (nc_u, nc_v, nc_w)
@@ -138,9 +138,9 @@ subroutine tensor_n_mode_product(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R)
         
     end if
 
-end subroutine tensor_n_mode_product
+end subroutine tensor_n_mode_product_dM
 
-subroutine tensor_n_mode_product_sp(nc_u, nc_v, nc_w, X, nrU, nnzU, dataU, indi, indj, mode, nrR, R)
+subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, X, nrU, nnzU, dataU, indi, indj, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
     !! Tensor X = (nc_u, nc_v, nc_w)
@@ -228,9 +228,9 @@ subroutine tensor_n_mode_product_sp(nc_u, nc_v, nc_w, X, nrU, nnzU, dataU, indi,
         
     end if
 
-end subroutine tensor_n_mode_product_sp
+end subroutine tensor_n_mode_product_spM
 
-subroutine sumproduct2d(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out)
+subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out)
     !! Evaluates a dot product between a tensor 2D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -238,7 +238,6 @@ subroutine sumproduct2d(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out)
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -257,15 +256,15 @@ subroutine sumproduct2d(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out)
 
     ! First product
     allocate(R1(nr_u*nc_v))
-    call tensor_n_mode_product(nc_u, nc_v, 1, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+    call tensor_n_mode_product_dM(nc_u, nc_v, 1, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
     ! Second product
-    call tensor_n_mode_product(nr_u, nc_v, 1, R1, nr_v, nc_v, Mv, 2, size(vector_out), vector_out)
+    call tensor_n_mode_product_dM(nr_u, nc_v, 1, R1, nr_v, nc_v, Mv, 2, size(vector_out), vector_out)
     deallocate(R1)
 
-end subroutine sumproduct2d
+end subroutine sumproduct2d_dM
 
-subroutine sumproduct3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vector_in, vector_out)
+subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vector_in, vector_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -274,7 +273,6 @@ subroutine sumproduct3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vector_i
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
 
-    use omp_lib
     implicit none 
     ! Input / output data 
     ! -------------------
@@ -293,20 +291,20 @@ subroutine sumproduct3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vector_i
 
     ! First product
     allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product(nc_u, nc_v, nc_w, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
     ! Second product
     allocate(R2(nr_u*nr_v*nc_w))
-    call tensor_n_mode_product(nr_u, nc_v, nc_w, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
+    call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
     deallocate(R1)
 
     ! Third product
-    call tensor_n_mode_product(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(vector_out), vector_out)
+    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(vector_out), vector_out)
     deallocate(R2)
 
-end subroutine sumproduct3d
+end subroutine sumproduct3d_dM
 
-subroutine sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
+subroutine sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
                             nnz_v, indi_v, indj_v, data_v, vector_in, vector_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
@@ -315,7 +313,6 @@ subroutine sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Vector_in = (nb_cols_u * nb_cols_v)
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -337,17 +334,17 @@ subroutine sumproduct2d_sp(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u
 
     ! First product
     allocate(R1(nr_u*nc_v))
-    call tensor_n_mode_product_sp(nc_u, nc_v, 1, vector_in, nr_u, nnz_u, &
+    call tensor_n_mode_product_spM(nc_u, nc_v, 1, vector_in, nr_u, nnz_u, &
                                 data_u, indi_u, indj_u, 1, size(R1), R1)
 
     ! Second product
-    call tensor_n_mode_product_sp(nr_u, nc_v, 1, R1, nr_v, nnz_v, &
+    call tensor_n_mode_product_spM(nr_u, nc_v, 1, R1, nr_v, nnz_v, &
                                 data_v, indi_v, indj_v, 2, size(vector_out), vector_out)
     deallocate(R1)
 
-end subroutine sumproduct2d_sp
+end subroutine sumproduct2d_spM
 
-subroutine sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
+subroutine sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
                         nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, &
                         vector_in, vector_out)
     !! Evaluates a dot product between a tensor 3D and a vector 
@@ -358,7 +355,6 @@ subroutine sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, in
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -380,21 +376,21 @@ subroutine sumproduct3d_sp(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, in
 
     ! First product
     allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product_sp(nc_u, nc_v, nc_w, vector_in, nr_u, nnz_u, &
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, vector_in, nr_u, nnz_u, &
                                 data_u, indi_u, indj_u, 1, size(R1), R1)
 
     ! Second product
     allocate(R2(nr_u*nr_v*nc_w))
-    call tensor_n_mode_product_sp(nr_u, nc_v, nc_w, R1, nr_v, nnz_v, &
+    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, R1, nr_v, nnz_v, &
                                 data_v, indi_v, indj_v, 2, size(R2), R2)
     deallocate(R1)
 
     ! Third product
-    call tensor_n_mode_product_sp(nr_u, nr_v, nc_w, R2, nr_w, nnz_w, &
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, R2, nr_w, nnz_w, &
                                 data_w, indi_w, indj_w, 3, size(vector_out), vector_out)
     deallocate(R2)
 
-end subroutine sumproduct3d_sp
+end subroutine sumproduct3d_spM
 
 ! --------------------------------
 ! Sum product to compute matrices 
@@ -464,7 +460,7 @@ subroutine csr_get_row_2d(coefs, nr_u, nc_u, nr_v, nc_v, row_u, row_v, &
     deallocate(Bt, Wt)
 
     ! Compute non zero values of the row
-    call sumproduct2d(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, BW_u, BW_v, Ci0, data_row)
+    call sumproduct2d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, BW_u, BW_v, Ci0, data_row)
 
 end subroutine csr_get_row_2d 
 
@@ -658,7 +654,7 @@ subroutine csr_get_row_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, row_u, row_
     deallocate(Bt, Wt)
 
     ! Compute non zero values of the row
-    call sumproduct3d(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
+    call sumproduct3d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
                             nnz_row_w, nnz_col_w, BW_u, BW_v, BW_w, Ci0, data_row)
 
 end subroutine csr_get_row_3d 
@@ -827,11 +823,11 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
     integer :: iu, iv, iw, ju, jv, jw, posCoef, genPos, offset, nb_tasks
     double precision :: sum_u, sum_v, sum_w
 
-    integer :: nnz_row_u, nnz_row_v, nnz_row_w
+    integer :: nnz_col_u, nnz_col_v, nnz_col_w
     integer, allocatable, dimension(:) :: j_nnz_u, j_nnz_v, j_nnz_w
     double precision, allocatable, dimension(:) :: B_nnz_u, B_nnz_v, B_nnz_w, W_nnz_u, W_nnz_v, W_nnz_w        
 
-    !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_row_u,nnz_row_v,nnz_row_w,offset,j_nnz_u,B_nnz_u,W_nnz_u) &
+    !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,B_nnz_u,W_nnz_u) &
     !$OMP PRIVATE(j_nnz_v,B_nnz_v,W_nnz_v,j_nnz_w,B_nnz_w,W_nnz_w,sum_u,sum_v,sum_w,posCoef,genPos)
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_u*nr_v*nr_w /nb_tasks) 
@@ -840,28 +836,28 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
             do iu = 1, nr_u
 
                 ! Set values 
-                nnz_row_u = indi_u(iu+1) - indi_u(iu)
-                allocate(j_nnz_u(nnz_row_u), B_nnz_u(nnz_row_u), W_nnz_u(nnz_row_u))
+                nnz_col_u = indi_u(iu+1) - indi_u(iu)
+                allocate(j_nnz_u(nnz_col_u), B_nnz_u(nnz_col_u), W_nnz_u(nnz_col_u))
                 offset = indi_u(iu)
-                do ju = 1, nnz_row_u
+                do ju = 1, nnz_col_u
                     j_nnz_u(ju) = indj_u(ju+offset-1)
                     B_nnz_u(ju) = data_B_u(ju+offset-1)
                     W_nnz_u(ju) = data_W_u(ju+offset-1)
                 end do
 
-                nnz_row_v = indi_v(iv+1) - indi_v(iv)
-                allocate(j_nnz_v(nnz_row_v), B_nnz_v(nnz_row_v), W_nnz_v(nnz_row_v))
+                nnz_col_v = indi_v(iv+1) - indi_v(iv)
+                allocate(j_nnz_v(nnz_col_v), B_nnz_v(nnz_col_v), W_nnz_v(nnz_col_v))
                 offset = indi_v(iv)
-                do jv = 1, nnz_row_v
+                do jv = 1, nnz_col_v
                     j_nnz_v(jv) = indj_v(jv+offset-1)
                     B_nnz_v(jv) = data_B_v(jv+offset-1)
                     W_nnz_v(jv) = data_W_v(jv+offset-1)
                 end do
 
-                nnz_row_w = indi_w(iw+1) - indi_w(iw)
-                allocate(j_nnz_w(nnz_row_w), B_nnz_w(nnz_row_w), W_nnz_w(nnz_row_w))
+                nnz_col_w = indi_w(iw+1) - indi_w(iw)
+                allocate(j_nnz_w(nnz_col_w), B_nnz_w(nnz_col_w), W_nnz_w(nnz_col_w))
                 offset = indi_w(iw)
-                do jw = 1, nnz_row_w
+                do jw = 1, nnz_col_w
                     j_nnz_w(jw) = indj_w(jw+offset-1)
                     B_nnz_w(jw) = data_B_w(jw+offset-1)
                     W_nnz_w(jw) = data_W_w(jw+offset-1)
@@ -869,11 +865,11 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
 
                 ! Sum factorization
                 sum_w = 0.d0
-                do jw = 1, nnz_row_w
+                do jw = 1, nnz_col_w
                     sum_v = 0.d0
-                    do jv = 1, nnz_row_v
+                    do jv = 1, nnz_col_v
                         sum_u = 0.d0
-                        do ju = 1, nnz_row_u
+                        do ju = 1, nnz_col_u
                             posCoef = j_nnz_u(ju) + (j_nnz_v(jv)-1)*nc_u + (j_nnz_w(jw)-1)*nc_u*nc_v
                             sum_u = sum_u + W_nnz_u(ju)*B_nnz_u(ju)*coefs(posCoef)
                         end do

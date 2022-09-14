@@ -14,7 +14,7 @@ folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 4
+degree, cuts = 4, 6
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
@@ -26,7 +26,9 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'capacity':0.5, 'conductivity':np.eye(3)}
+conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+material = {'capacity':10.0, 'conductivity': conductivity}
+# material = {'capacity':10, 'conductivity':np.eye(3)}
 modelPhy._set_material(material)
 
 # Block boundaries

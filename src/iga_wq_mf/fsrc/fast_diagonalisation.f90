@@ -92,7 +92,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     dimension :: array_temp(nr_total)
 
     ! Compute (Uw x Uv x Uu)'.array_in
-    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
     !$OMP PARALLEL 
@@ -105,7 +105,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     !$OMP END PARALLEL
 
     ! Compute (Uw x Uv x Uu).array_temp
-    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     U_u, U_v, U_w, array_temp, array_out)
     
 end subroutine fd_steady_heat_3d
@@ -132,11 +132,11 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
     dimension :: array_temp(nr_total)
 
     ! Compute (Uw x Uv x Uu)'.array_in
-    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                     transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
 
     ! Compute (Uw x Uv x Uu).array_temp
-    call sumproduct3d(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
+    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
 
 end subroutine fd_interpolation_3d
 

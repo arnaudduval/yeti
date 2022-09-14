@@ -55,11 +55,11 @@ subroutine tensor_n_mode_product_py(ncols, ncX, X, &
 
         if (istransp) then
             ! Compute tensor n mode product of transpose matrix
-            call tensor_n_mode_product(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
+            call tensor_n_mode_product_dM(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
                                     nrU, transpose(UU), mode, nrR, R)
         else
             ! Compute tensor n mode product
-            call tensor_n_mode_product(ncols(1), ncols(2), ncols(3), X, nrU, &
+            call tensor_n_mode_product_dM(ncols(1), ncols(2), ncols(3), X, nrU, &
                                     ncols(mode), UU, mode, nrR, R)
         end if
 
@@ -71,12 +71,12 @@ subroutine tensor_n_mode_product_py(ncols, ncX, X, &
             call csr2csc(1, nrU, ncols(mode), nnzU, dataUt, indj, indi, dataU_T, indj_T, indi_T)
 
             ! Compute tensor n mode product
-            call tensor_n_mode_product_sp(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
+            call tensor_n_mode_product_spM(ncols(1), ncols(2), ncols(3), X, ncols(mode), &
                                         nnzU, dataU_T(:, 1), indi_T, indj_T, mode, nrR, R)
         
         else
             ! Compute tensor n mode product
-            call tensor_n_mode_product_sp(ncols(1), ncols(2), ncols(3), X, nrU, &
+            call tensor_n_mode_product_spM(ncols(1), ncols(2), ncols(3), X, nrU, &
                                         nnzU, dataU, indi, indj, mode, nrR, R)
         end if
 
@@ -130,7 +130,7 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     do j = 1, d
         do i = 1, d
             beta = 1; beta(j) = 2
-            call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+            call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
@@ -191,7 +191,7 @@ subroutine interpolate_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
 
     ! Interpolation
     do i = 1, ddl_u
-        call sumproduct3d_sp(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
@@ -245,7 +245,7 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     do j = 1, d
         do i = 1, d
             beta = 1; beta(j) = 2
-            call sumproduct2d_sp(nc_u, nr_u, nc_v, nr_v, &
+            call sumproduct2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             ctrlpts(i, :), jacob(i, j, :))
@@ -303,7 +303,7 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
     ! Interpolation
     do i = 1, dof_u
-        call sumproduct2d_sp(nc_u, nr_u, nc_v, nr_v, &
+        call sumproduct2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             u_ctrlpts(i, :), u_interp(i, :))

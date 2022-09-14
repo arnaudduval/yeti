@@ -91,7 +91,6 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
 
         # Get "force" of new step
         Fstep = Fext[:, i]
-        prod2 = np.dot(Fstep, Fstep)
 
         # Corrector (Newton-Raphson)
         for j in range(nbIterNL):
@@ -107,7 +106,7 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
             Fint = compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, TTn1, ddTT)
             dF = Fstep[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
-            relerror = np.sqrt(prod1/prod2)
+            relerror = np.sqrt(prod1)
             if relerror <= threshold: break
 
             # Compute tangent matrix

@@ -974,6 +974,8 @@ def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
         array_out = solver.fd_steady_heat_3d(U, V, W, D, array_in)
     elif fdtype == 'elastic':
         array_out = solver.fd_elasticity_3d(U, V, W, D, array_in)
+    elif fdtype == 'interp':
+        array_out = solver.fd_interpolation_3d(U, V, W, array_in)
     return array_out
 
 # =========================
