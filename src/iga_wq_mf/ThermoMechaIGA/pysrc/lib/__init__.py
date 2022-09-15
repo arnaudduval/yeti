@@ -21,6 +21,7 @@ from mpltools import annotation
 from cycler import cycler
 
 # Default properties 
+mpl.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['figure.figsize'] = (5.0, 4.0)    
 mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'

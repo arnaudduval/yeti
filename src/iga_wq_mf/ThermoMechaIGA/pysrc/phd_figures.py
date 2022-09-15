@@ -15,7 +15,8 @@ from lib.__init__ import *
 from lib.base_functions import (create_knotvector, 
                                 wq_find_positions, 
                                 eval_basis_python, 
-                                iga_find_positions_weights
+                                iga_find_positions_weights,
+                                wq_find_weights
 )
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
@@ -98,8 +99,8 @@ def plot_geometry2D(geo:geomdlModel):
     return fig
 
 # Set global variables
-CASE = 6
-extension = '.pdf'
+CASE = 2
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -196,11 +197,11 @@ elif CASE == 2: # Bivariate functions
         axs[1, 1].plot(B0[i, :], knots, color="0.8")
 
     axs[0,0].plot(knots, B0_plot); axs[0, 0].axis(ymin=0,ymax=1)
-    axs[0,0].set_xlabel(r'$\xi_1$', fontsize=14)
+    axs[0,0].set_xlabel(r'$\xi_1$')
     axs[1,1].plot(B0_plot, knots); axs[1, 1].axis(xmin=0,xmax=1)
-    axs[1,1].set_ylabel(r'$\xi_2$', fontsize=14)
+    axs[1,1].set_ylabel(r'$\xi_2$')
     fig.tight_layout()
-    fig.savefig(filename) 
+    fig.savefig(filename, dpi=300) 
 
 elif CASE == 3: # Quadrature points in IGA
 
@@ -377,6 +378,114 @@ elif CASE == 7: # Convergence curve
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax.set_xlabel('Number of elements $nb_{el}$')
     ax.set_ylabel('Relative error ' + r'$\frac{|u-u^h|_\infty}{|u|_\infty}$')   
+    fig.tight_layout()
+    fig.savefig(filename)
+
+elif CASE == 8: # Weights W00
+
+    def plot_line(x, y, ax=None, color='k'):
+        for xi, yi in zip(x, y):
+            ax.plot([xi, xi], [0, yi], color=color)
+        return
+
+    # Choose b-spline
+    Bpos = 2
+
+    # Set filename
+    filename = folder + 'WeightsW00' + extension
+
+    # B-spline properties 
+    degree, nbel = 2, 3
+    knots = np.linspace(0, 1, 201)
+    knotvector = create_knotvector(degree, nbel)
+    qp_position = wq_find_positions(degree, knotvector, 2)
+    B0 = eval_basis_python(degree, knotvector, knots)[0]
+    B0 = B0.toarray()
+
+    # Get weights
+    W00 = wq_find_weights(degree, knotvector, 2)[0]
+    weights = W00.toarray()[Bpos, :]
+
+    # Plot basis
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+    for i in range(degree+nbel): 
+        ax1.plot(knots, B0[i, :], linewidth=2)
+
+    # Fill basis chose
+    ax1.fill_between(x=knots, y1=B0[Bpos, :], color="g", alpha=0.2)
+    ax1.set_ylim([0, 1])
+
+    # Plot weights 
+    ax2 = ax1.twinx()
+    ax2.plot(qp_position, weights, 'ko')
+    plot_line(qp_position, weights, ax2)
+    ax2.set_ylim([0, 0.25])
+    ax2.grid(None)
+
+    # Set properties
+    ax1.set_xlabel(r'$\xi$')
+    ax1.set_ylabel('Basis')
+    ax2.set_ylabel('Weights')
+    ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
+    fig.tight_layout()
+    fig.savefig(filename)
+
+elif CASE == 9: # Weights W11
+
+    def plot_line(x, y, ax=None, color='k'):
+        for xi, yi in zip(x, y):
+            ax.plot([xi, xi], [0, yi], color=color)
+        return
+
+    # Choose b-spline
+    Bpos = 2
+
+    # Set filename
+    filename = folder + 'WeightsW11' + extension
+
+    # B-spline properties 
+    degree, nbel = 2, 3
+    knots = np.linspace(0, 1, 201)
+    knotvector = create_knotvector(degree, nbel)
+    qp_position = wq_find_positions(degree, knotvector, 2)
+    B1 = eval_basis_python(degree, knotvector, knots)[1]
+    B1 = B1.toarray()
+
+    # B-spline properties 
+    degree1 = degree - 1
+    knotvector1 = create_knotvector(degree1, nbel)
+    B0 = eval_basis_python(degree1, knotvector1, knots)[0]
+    B0 = B0.toarray()
+
+    # Get weights
+    W11 = wq_find_weights(degree, knotvector, 2)[-1]
+    weights = W11.toarray()[Bpos, :]
+
+    # Plot basis
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+        
+    # Fill basis chose
+    for i in range(Bpos): 
+        ax1.plot(knots, B0[i, :], linewidth=2)
+    ax1.plot(knots, B1[Bpos, :], linewidth=2)
+    ax1.fill_between(x=knots, y1=B1[Bpos, :], color="g", alpha=0.2)
+    for i in range(Bpos, degree1+nbel): 
+        ax1.plot(knots, B0[i, :], linewidth=2)
+
+    ax1.set_ylim([-3, 3])
+
+    # Plot weights 
+    ax2 = ax1.twinx()
+    ax2.plot(qp_position, weights, 'ko')
+    plot_line(qp_position, weights, ax2)
+    ax2.set_ylim([-0.6, 0.6])
+    ax2.grid(None)
+
+    # Set properties
+    ax1.set_xlabel(r'$\xi$')
+    ax1.set_ylabel('Basis')
+    ax2.set_ylabel('Weights')
+    ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
     fig.tight_layout()
     fig.savefig(filename)
 
