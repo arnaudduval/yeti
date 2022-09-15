@@ -37,7 +37,7 @@ Mdod = modelPhy._mechanical_dod
 forces = [[0 for i in range(3)] for j in range(6)]
 forces[1] = [0.8, 0.0, 0.0]
 Neumann = {'mechanical': forces}
-modelPhy._set_neumann_boundaries(Neumann)
+modelPhy._set_neumann_condition(Neumann)
 
 # Set external forces
 Fext = modelPhy.eval_force_surf()

@@ -7,17 +7,6 @@
 from lib.__init__ import *
 from lib.base_functions import fast_diagonalization
 
-# Optimal algorithm
-# 121	0.109375
-# 171	0.34375
-# 221	0.8125
-# 271	1.71875
-# 321	3.03125
-# 371	5.09375
-# 421	8.09375
-# 471	11.78125
-# 521	17.953125
-
 # Select folder
 full_path = os.path.realpath(__file__)
 folder_data = os.path.dirname(full_path) + '/data/'

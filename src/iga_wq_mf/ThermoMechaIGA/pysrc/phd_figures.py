@@ -91,15 +91,15 @@ def plot_geometry2D(geo:geomdlModel):
     # Set properties
     ax.axis('equal')
     ax.legend()
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    ax.set_xlabel(r'$X_1$')
+    ax.set_ylabel(r'$X_2$')
     fig.tight_layout()
     
     return fig
 
 # Set global variables
-CASE = 1
-extension = '.png'
+CASE = 6
+extension = '.pdf'
 
 if CASE == 0: # B-spline curve
 
@@ -129,9 +129,9 @@ if CASE == 0: # B-spline curve
     ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points')
 
     # Set properties
-    ax.legend(prop={'size': 14})
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    ax.legend()
+    ax.set_xlabel(r'$X_1$')
+    ax.set_ylabel(r'$X_2$')
     ax.axis('equal')
     fig.tight_layout()
     fig.savefig(filename)
@@ -196,9 +196,9 @@ elif CASE == 2: # Bivariate functions
         axs[1, 1].plot(B0[i, :], knots, color="0.8")
 
     axs[0,0].plot(knots, B0_plot); axs[0, 0].axis(ymin=0,ymax=1)
-    axs[0,0].set_xlabel(r'$\xi$', fontsize=14)
+    axs[0,0].set_xlabel(r'$\xi_1$', fontsize=14)
     axs[1,1].plot(B0_plot, knots); axs[1, 1].axis(xmin=0,xmax=1)
-    axs[1,1].set_ylabel(r'$\eta$', fontsize=14)
+    axs[1,1].set_ylabel(r'$\xi_2$', fontsize=14)
     fig.tight_layout()
     fig.savefig(filename) 
 
@@ -227,8 +227,8 @@ elif CASE == 3: # Quadrature points in IGA
         ax.set_xticks([0, 0.5, 1])
         ax.set_yticks([0, 0.5, 1])
         ax.axis('equal')
-        ax.set_ylabel(r'$\eta$')
-        ax.set_xlabel(r'$\xi$')   
+        ax.set_ylabel(r'$\xi_2$')
+        ax.set_xlabel(r'$\xi_1$')   
     fig.tight_layout()
     fig.savefig(filename) 
 
@@ -257,8 +257,8 @@ elif CASE == 4: # Quadrature points in WQ
         ax.set_xticks([0, 0.5, 1])
         ax.set_yticks([0, 0.5, 1])
         ax.axis('equal')
-        ax.set_ylabel(r'$\eta$')
-        ax.set_xlabel(r'$\xi$')
+        ax.set_ylabel(r'$\xi_2$')
+        ax.set_xlabel(r'$\xi_1$')
     fig.tight_layout()
     fig.savefig(filename) 
 
@@ -359,7 +359,7 @@ elif CASE == 7: # Convergence curve
             u_exact = np.array(u_exact)
 
             # Relative error
-            error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)*100
+            error = np.linalg.norm(u_exact - u_interp, np.inf)/np.linalg.norm(u_exact, np.inf)
             norm.append(error)
             ddl.append(2**cuts)
             
@@ -375,8 +375,8 @@ elif CASE == 7: # Convergence curve
 
     # Set properties
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax.set_xlabel("Number of elements $nb_{el}$")
-    ax.set_ylabel("Relative error (%)")   
+    ax.set_xlabel('Number of elements $nb_{el}$')
+    ax.set_ylabel('Relative error ' + r'$\frac{|u-u^h|_\infty}{|u|_\infty}$')   
     fig.tight_layout()
     fig.savefig(filename)
 

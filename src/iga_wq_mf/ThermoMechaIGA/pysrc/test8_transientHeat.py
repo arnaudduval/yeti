@@ -7,7 +7,7 @@ from lib.__init__ import *
 from lib.physics import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
-from lib.base_functions import create_table_properties
+from lib.base_functions import create_table_properties, sigmoid
 
 def setKpop(T):
     y = 0.1*np.ones(len(T))
@@ -21,12 +21,8 @@ def setCpop(T):
 degree, cuts = 4, 3
 
 # Set time simulation
-N, n = 10, 0
-tt = np.linspace(0, 10, N)
-ones = np.ones(len(tt))
-time_list = np.zeros(N+n)
-time_list[:N] = tt
-time_list[N:] = [tt[-1] + 1*(i+1) for i in range(n)]
+N = 10
+time_list = np.linspace(0, 10, N)
 
 # Create material
 table_Kprop = create_table_properties(setKpop)
@@ -44,7 +40,7 @@ modelPhy = fortran_mf_wq(modelIGA)
 # Block boundaries
 Dirichlet = {'thermal':np.array([[1, 1], [0, 0], [0, 0]])}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
-modelPhy.add_thermal_initial_dirichlet_condition(np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
+modelPhy._add_thermal_IBC(np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 dod = modelPhy._thermal_dod
 dof = modelPhy._thermal_dof
 
@@ -56,14 +52,11 @@ Fend = modelPhy.eval_source_vector(powdentest)
 # ---------------------
 # Add boundaries temperature
 Gbound = np.zeros((len(dod), len(time_list)))
-for i in range(len(time_list)):
-    Gbound[:, i] = modelPhy.get_thermal_initial_dirichlet_condition()
+for i in range(len(time_list)): Gbound[:, i] = modelPhy._get_thermal_IBC()
 
 # Add external force (transient)
 Fendt = np.atleast_2d(Fend).reshape(-1, 1)
-Fext = np.zeros((len(Fendt), len(time_list)))
-Fext[:,:len(tt)] = np.kron(Fendt, tt)/np.max(tt)
-for i in range(len(tt), len(time_list)): Fext[:,i] = Fendt[:, 0]
+Fext  = np.kron(Fendt, sigmoid(time_list))
 del Fendt
 
 # Solve transient problem

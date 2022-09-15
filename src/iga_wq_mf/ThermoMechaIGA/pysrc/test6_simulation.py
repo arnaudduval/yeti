@@ -4,14 +4,8 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
-import os, numpy as np
-
-# My libraries
-from lib.physics import (powden_cube, 
-                        powden_prism,
-                        powden_thickring, 
-)
+from lib.__init__ import *
+from lib.physics import *
 from lib.post_treat_methods import (ThermalSimulation, 
                                     SimulationData, 
                                     plot_iterative_solver

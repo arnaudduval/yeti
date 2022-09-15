@@ -221,8 +221,8 @@ class fortran_mf_wq(thermoMechaModel):
         Ftemp = np.zeros((self._dim+1, self._nb_ctrlpts_total))
 
         # Get INC of control points and INC of quadrature points
-        INC_CP = super().get_NURBScoordinates(self._nb_ctrlpts)
-        INC_QP = super().get_NURBScoordinates(self._nb_qp)
+        INC_CP = super().get_INC_table(self._nb_ctrlpts)
+        INC_QP = super().get_INC_table(self._nb_qp)
 
         for _ in range(self._dim*2):
             # Get direction 

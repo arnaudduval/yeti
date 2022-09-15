@@ -32,11 +32,11 @@ class thermoMechaModel():
         self._set_material(material)
 
         # Initialize Dirichlet boundaries
-        self._DirichletBound = None
+        self._DirichletBound = np.zeros(self._nb_ctrlpts_total)
         self._set_dirichlet_boundaries(Dirichlet)
 
         # Initialize Neumman boundaries
-        self._set_neumann_boundaries(Neumann)
+        self._set_neumann_condition(Neumann)
 
         return
 
@@ -153,7 +153,7 @@ class thermoMechaModel():
         # Thermal 
         try: 
             TTable = Dirichlet['thermal']
-            Tdof, Tdod = self.Dirichlet_boundaries(table=TTable)
+            Tdof, Tdod = self.get_boundaries_nodes(table=TTable)
             Tdof, Tdod = Tdof[0], Tdod[0]
         except: 
             TTable, Tdof, Tdod = None, None, None
@@ -164,7 +164,7 @@ class thermoMechaModel():
         # Mechanical 
         try: 
             MTable = Dirichlet['mechanical']
-            Mdof, Mdod = self.Dirichlet_boundaries(table=MTable)
+            Mdof, Mdod = self.get_boundaries_nodes(table=MTable)
         except: 
             MTable, Mdof, Mdod = None, None, None
         self._mechanicalDirichlet = MTable
@@ -173,26 +173,20 @@ class thermoMechaModel():
 
         return 
 
-    def add_thermal_initial_dirichlet_condition(self, table=None, temperature=0.0):
+    def _add_thermal_IBC(self, table=None, temperature=0.0):
         "This function is first tentative of adding constant boundary conditions "
-
         if self._thermalDirichlet is None: raise Warning('Please define first total Dirichlet boundaries')
-
-        # Get Dirichlet nodes
-        dod = self.Dirichlet_boundaries(table=table)[1][0]
-
-        if self._DirichletBound is None:
-            self._DirichletBound = np.zeros(self._nb_ctrlpts_total)
-            self._DirichletBound[dod] = temperature*np.ones(len(dod))
-        else:
-            self._DirichletBound[dod] += temperature*np.ones(len(dod))
-
+        if np.any(self._thermalDirichlet-table<0): raise Warning('Table is not well defined')
+        if not np.any(table>0): raise Warning('At least one blocked face is needed')
+        dod = self.get_boundaries_nodes(table=table)[1][0]
+        self._DirichletBound[dod] += temperature*np.ones(len(dod))
         return 
 
-    def get_thermal_initial_dirichlet_condition(self): 
+    def _get_thermal_IBC(self): 
+        if self._thermalDirichlet is None: raise Warning('Please define first total Dirichlet boundaries')
         return self._DirichletBound[self._thermal_dod]
 
-    def _set_neumann_boundaries(self, Neumann:dict):
+    def _set_neumann_condition(self, Neumann:dict):
         " Gets Neumann control points and quadrature points"
         
         # Thermal 
@@ -298,7 +292,7 @@ class thermoMechaModel():
     # LOCAL FUNCTIONS
     # ========================
 
-    def get_NURBScoordinates(self, nnz_dim): 
+    def get_INC_table(self, nnz_dim): 
         """ Sets topology table, also known as INC: NURBS coordinates
         """
 
@@ -316,8 +310,8 @@ class thermoMechaModel():
 
         return INC
 
-    def Dirichlet_boundaries(self, table): 
-        " Gets the indices of the blocked (Dirichlet) and free control points "
+    def get_boundaries_nodes(self, table): 
+        " Gets the indices of the blocked and free control points from table"
 
         # The table of dirichlet boundaries must be at least 3D
         table = np.atleast_3d(table)
@@ -332,7 +326,7 @@ class thermoMechaModel():
         nb_ctrlpts_total = self._nb_ctrlpts_total
 
         # Get topology 
-        INC = self.get_NURBScoordinates(nb_ctrlpts)
+        INC = self.get_INC_table(nb_ctrlpts)
 
         # Find nodes
         dod_total = []; dof_total = []
