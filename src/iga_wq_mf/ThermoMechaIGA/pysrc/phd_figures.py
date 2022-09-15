@@ -99,7 +99,7 @@ def plot_geometry2D(geo:geomdlModel):
     return fig
 
 # Set global variables
-CASE = 2
+CASE = 9
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -160,6 +160,8 @@ elif CASE == 1: # Univariate functions
     for ax in [ax1, ax2]:
         ax.set_xlabel(r'$\xi$')
         ax.set_xticks(np.linspace(0, 1, nbel+1))
+    ax1.set_ylabel(r'$B_{i,p}(\xi)$')
+    ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
     fig.tight_layout()
     fig.savefig(filename)
 
@@ -189,7 +191,7 @@ elif CASE == 2: # Bivariate functions
     axs[1,0].set_box_aspect(1)
     axs[1,1].set_box_aspect(3/1)
     axs[1,0].grid(None)
-    axs[1,0].pcolormesh(X, Y, Z, cmap='inferno', shading = 'gouraud')
+    axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
     axs[1,0].set_yticks([0, 0.5, 1])
 
     for i in range(degree+nbel): 
@@ -198,8 +200,11 @@ elif CASE == 2: # Bivariate functions
 
     axs[0,0].plot(knots, B0_plot); axs[0, 0].axis(ymin=0,ymax=1)
     axs[0,0].set_xlabel(r'$\xi_1$')
+    axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
     axs[1,1].plot(B0_plot, knots); axs[1, 1].axis(xmin=0,xmax=1)
     axs[1,1].set_ylabel(r'$\xi_2$')
+    axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
+    axs[1,1].set_xticks([0, 1])
     fig.tight_layout()
     fig.savefig(filename, dpi=300) 
 
