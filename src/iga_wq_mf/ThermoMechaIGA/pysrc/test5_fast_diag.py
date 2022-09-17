@@ -22,11 +22,11 @@ if not dataExist:
     FDtime = []
     for nb_ctrlpts in range(121, 300, 50):         
         # Create matrix
-        M = np.ones((nb_ctrlpts, nb_ctrlpts))
+        M = np.random.random((nb_ctrlpts, nb_ctrlpts))
 
         # Create vector 
-        V = np.ones(nb_ctrlpts**3)
-        D = np.ones(nb_ctrlpts**3)
+        V = np.random.random(nb_ctrlpts**3)
+        D = np.random.random(nb_ctrlpts**3)
 
         # Compute fast diagonalization
         start = time.time()
@@ -36,7 +36,7 @@ if not dataExist:
         print('For %s, time: %.4f' %(nb_ctrlpts, total))
         FDtime.append([nb_ctrlpts, total])
     FDtime = np.array(FDtime)
-    np.save(folder_data+'NewData', FDtime)
+    # np.save(folder_data+'NewData', FDtime)
 
 else:
 

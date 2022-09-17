@@ -465,6 +465,7 @@ elif CASE == 9: # Weights W11
     # Get weights
     W11 = wq_find_weights(degree, knotvector, 2)[-1]
     weights = W11.toarray()[Bpos, :]
+    print(weights)
 
     # Plot basis
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
