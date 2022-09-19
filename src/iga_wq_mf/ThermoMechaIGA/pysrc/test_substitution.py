@@ -68,7 +68,7 @@ elif case == 2:
 
 # Solve system
 inputs = [F, nbIterPCG, threshold]   
-usol, residue = modelPhy.MFsteadyHeat_PLS(*inputs, ud=ud, methodPCG=method_precond)
+usol, residue = modelPhy.MF_SHSubs(*inputs, ud=ud, methodPCG=method_precond)
 
 # Plot
 newres = residue[np.nonzero(residue)]

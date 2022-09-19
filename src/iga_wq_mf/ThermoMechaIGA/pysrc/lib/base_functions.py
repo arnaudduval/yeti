@@ -798,14 +798,14 @@ def wq_find_basis_weights_fortran(degree, knotvector):
 # =========================
 # MF FUNCTIONS
 # =========================
-def create_table_properties(function, uref=None):
+def create_table_properties(function, uref=None, prop=1):
     "Create a table of scalar properties from given function "
 
     #Set default given x
     if uref is None: uref = np.linspace(-100, 200, 21)
 
     # Compute y
-    y = function(uref)
+    y = function(uref, prop)
 
     # Create table 
     table = np.zeros((len(uref), 2))
