@@ -29,7 +29,7 @@ degree, cuts = 4, 4
 conductivity, capacity = 0.1, 1
 
 # Set time simulation
-N = 10
+N = 100
 time_list = np.linspace(0, 10, N)
 
 # Create material
@@ -71,7 +71,7 @@ Fext  = np.kron(Fendt, sigmoid(time_list))
 # Solve transient problem at internal control points
 Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                methodPCG='JMC')
+                                methodPCG='JMC', newmark=1)
 
 # Post-treatment
 # --------------

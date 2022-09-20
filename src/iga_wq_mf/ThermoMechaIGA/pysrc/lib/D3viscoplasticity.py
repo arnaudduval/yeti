@@ -59,8 +59,8 @@ def compute_stress_norm(d, tensor):
     norm = 0.0
 
     # Compute norm
-    for i in range(d): norm += tensor(i)**2
-    for i in range(d, ddl): norm += 2.0*tensor(i)**2
+    for i in range(d): norm += tensor[i]**2
+    for i in range(d, ddl): norm += 2.0*tensor[i]**2
     norm = np.sqrt(norm)
 
     return norm
@@ -114,14 +114,14 @@ def create_incidence_matrix(d=3):
     if d==3: 
         EE[0, 0, 0] = 1.0; EE[4, 2, 0] = 1.0; EE[5, 1, 0] = 1.0
         EE[1, 1, 1] = 1.0; EE[3, 2, 1] = 1.0; EE[5, 0, 1] = 1.0
-        EE[2, 2, 2] = 1.0; EE[3, 1, 0] = 1.0; EE[4, 0, 0] = 1.0
+        EE[2, 2, 2] = 1.0; EE[3, 1, 2] = 1.0; EE[4, 0, 2] = 1.0
     elif d == 2: 
         EE[0, 0, 0] = 1.0; EE[2, 1, 0] = 1.0
         EE[1, 1, 1] = 1.0; EE[2, 0, 1] = 1.0
 
     return EE
 
-def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
+def cpp_combined_hardening(inputs, deps, sigma_n, alpha_n, ep_n, d=3):
     " Returns closest point proyection (cpp) in combined hardening plasticity criteria"
 
     def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
@@ -177,7 +177,7 @@ def cpp_combined_hardening(inputs, deps, sigma_n, ep_n, alpha_n, d=3):
         NNT = stkronst(N, N)
         Dalg = CC - (c1 - c2)*NNT - c2*Idev
 
-    return sigma_n1, ep_n1, alpha_n1, Dalg
+    return sigma_n1, alpha_n1, ep_n1, Dalg
 
 def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
     " Computes the coefficients to use in internal force vector and stiffness matrix"
@@ -194,10 +194,10 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
         for i in range(d):
             for j in range(d):
                 Dij = invJ[:,:,k] @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
-                coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d] = Dij*det
+                coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*det
 
             Si = invJ[:,:,k] @ EE[:,:,i].T @ sigma[:,k]
-            coef_Fint[i*d:(i+1)*d] = Si*det
+            coef_Fint[i*d:(i+1)*d, k] = Si*det
 
     return coef_Fint, coef_Stiff
 

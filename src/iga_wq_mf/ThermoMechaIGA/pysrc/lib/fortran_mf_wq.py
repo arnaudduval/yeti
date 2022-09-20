@@ -652,7 +652,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return x
 
-    def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-6, nbIterNL=10, d=3):
+    def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-9, nbIterNL=10, d=3):
         " Solves plasticity problem "
 
         if self._dim != 3: raise Warning('Only for 3D')
@@ -662,8 +662,10 @@ class fortran_mf_wq(thermoMechaModel):
         ddl = int(d*(d+1)/2)
         ep_n0 = np.zeros(self._nb_qp_total)
         sigma_n0 = np.zeros((ddl, self._nb_qp_total))
+        alpha_n0 = np.zeros((ddl, self._nb_qp_total))
         ep_n1 = np.zeros(self._nb_qp_total)
         sigma_n1 = np.zeros((ddl, self._nb_qp_total))
+        alpha_n1 = np.zeros((ddl, self._nb_qp_total))
         Dalg = np.zeros((ddl, ddl, self._nb_qp_total))
         disp = np.zeros(np.shape(Fext))
         inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._betaHard, self._hardening, self._Idev]
@@ -677,7 +679,6 @@ class fortran_mf_wq(thermoMechaModel):
             # Initialize
             ddisp = np.zeros(np.shape(disp[:, :, i-1]))
             Fext_t = Fext[:, :, i]
-            prod2 = block_dot_product(d, Fext_t, Fext_t)
 
             # Solver Newton-Raphson
             for j in range(nbIterNL):
@@ -688,8 +689,8 @@ class fortran_mf_wq(thermoMechaModel):
     
                 # Closest point projection in perfect plasticity
                 for k in range(self._nb_qp_total):
-                    sigma_n1t, ep_n1t, Dalgt = cpp_combined_hardening(inputs, deps[:, k], sigma_n0[:, k], ep_n0[k])
-                    sigma_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, ep_n1t, Dalgt
+                    sigma_n1t, alpha_n1t, ep_n1t, Dalgt = cpp_combined_hardening(inputs, deps[:, k], sigma_n0[:, k], alpha_n0[:, k], ep_n0[k])
+                    sigma_n1[:, k], alpha_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, alpha_n1t, ep_n1t, Dalgt
 
                 # Compute coefficients to compute Fint and Stiffness
                 coef_Fint, coef_Stiff = compute_plasticity_coef(sigma_n1, Dalg, self._invJ, self._detJ, d=d)
@@ -700,7 +701,7 @@ class fortran_mf_wq(thermoMechaModel):
                 clean_dirichlet_3d(dF, indi) 
                 print("WARNING: FIND A NEW STOP CRITERION")
                 prod1 = block_dot_product(d, dF, dF)
-                relerror = np.sqrt(prod1/prod2)
+                relerror = np.sqrt(prod1)
                 print('Relative error: %.5f' %relerror)
                 if relerror <= self._sigmaY*threshold: break
 

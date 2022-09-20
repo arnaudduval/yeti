@@ -201,7 +201,7 @@ subroutine create_incidence_matrix(dimen, ddl, EE)
         EE = 0.d0
         EE(1, 1, 1) = 1.d0; EE(5, 3, 1) = 1.d0; EE(6, 2, 1) = 1.d0
         EE(2, 2, 2) = 1.d0; EE(4, 3, 2) = 1.d0; EE(6, 1, 2) = 1.d0
-        EE(3, 3, 3) = 1.d0; EE(4, 2, 1) = 1.d0; EE(5, 1, 1) = 1.d0
+        EE(3, 3, 3) = 1.d0; EE(4, 2, 3) = 1.d0; EE(5, 1, 3) = 1.d0
 
     else if (dimen.eq.2) then
         EE = 0.d0

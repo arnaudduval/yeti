@@ -74,7 +74,7 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
 
         ! Compute E invJ result
         do i = 1, d
-            eps_temp = eps_temp + matmul(EE(:,:,i), matmul(transpose(invJ(:,:,k)), ders((i-1)*d+1:i*d, k)))
+            eps_temp = eps_temp + matmul(EE(:, :, i), matmul(transpose(invJ(:, :, k)), ders((i-1)*d+1:i*d, k)))
         end do
 
         ! Save data
@@ -112,10 +112,10 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
 
     do i = 1, d
         call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, indi_u, indj_u, data_W_u(:, 1), &
-                                    nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                                    nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                                    coefs(i, :), array_out(i, :))
+                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                            nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                            coefs(i, :), array_out(i, :))
     end do
 
 end subroutine wq_get_forcevol_3d
@@ -519,15 +519,17 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:, :), allocatable :: Deigen
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
+    double precision :: s_u, s_v, s_w
 
     double precision :: alpha_n0, alpha_n1, ep_n1, ep_n0, deps, sigma_n0, sigma_n1, Dalg, coef_fint, coef_S
-    dimension ::    alpha_n0(nc_total), alpha_n1(nc_total), ep_n0(nc_total), ep_n1(nc_total), &
+    dimension ::    alpha_n0(dof, nc_total), alpha_n1(dof, nc_total), ep_n0(nc_total), ep_n1(nc_total), &
                     deps(dof, nc_total), sigma_n0(dof, nc_total), sigma_n1(dof, nc_total), &
                     Dalg(dof, dof, nc_total), coef_fint(d*d, nc_total), coef_S(d*d, d*d, nc_total)
     
     double precision, allocatable, dimension(:, :) :: Fext_t, Fint, dF, ddisp    
-    double precision :: relerror, prod1, prod2
+    double precision :: relerror, prod
     integer :: i, j, k, nr_total
 
     ! Set total number of rows
@@ -537,7 +539,8 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     ! Eigen decomposition
     ! -------------------- 
     ! Initialize 
-    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), U_w(nr_w, nr_w, d), D_w(nr_w), Deigen(d, nr_total))
+    allocate(U_u(nr_u, nr_u, d), D_u(nr_u, d), U_v(nr_v, nr_v, d), D_v(nr_v, d), &
+            U_w(nr_w, nr_w, d), D_w(nr_w, d), Deigen(d, nr_total))
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
@@ -549,19 +552,14 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     do i = 1, d
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), table(1, :, i), D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
-
+                                data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), table(2, :, i), D_v, U_v(:, :, i), Kdiag_v, Mdiag_v)
-
+                                data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
-
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, 1.d0, 1.d0, 1.d0, Deigen(i, :))
+                                data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
     end do
-    deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
     ! ------------------------
@@ -569,8 +567,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     ! ------------------------
     ! Initialize
     allocate(Fext_t(d, nr_total), Fint(d, nr_total), dF(d, nr_total), ddisp(d, nr_total))
-    E = properties(1); H = properties(2);  beta = properties(3)
-    nu = properties(4); sigma_Y = properties(5)
+    E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0
     
@@ -579,11 +576,10 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
         ! Initialize 
         ddisp = 0.d0
         Fext_t = Fext(:, :, i)        
-        call block_dot_product(d, nr_total, Fext_t, Fext_t, prod2)
 
         ! Solver Newton-Raphson
         do j = 1, nbIterNL
-            print*, 'Step: ', i-1, ' Iteration: ', j-1
+            print*, 'Step: ', i, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 
             call interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -591,12 +587,21 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
             ! Closest point projection in perfect plasticity 
             do k = 1, nc_total
-                call cpp_combined_hardening(mat, deps(:, k), alpha_n0(k), ep_n0(k), sigma_n0(:, k), &
-                                    alpha_n1(k), ep_n1(k), sigma_n1(:, k), Dalg(:, :, k))
+                call cpp_combined_hardening(mat, deps(:, k), alpha_n0(:, k), ep_n0(k), sigma_n0(:, k), &
+                                    alpha_n1(:, k), ep_n1(k), sigma_n1(:, k), Dalg(:, :, k))
             end do
 
             ! Compute coefficients to compute Fint and Stiffness
             call compute_meca_coefficients(nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
+
+            ! Compute Deigen
+            do k = 1, d
+                call compute_mean_3d(nc_u, nc_v, nc_w, coef_S((k-1)*d+1, (k-1)*d+1, :), s_u)
+                call compute_mean_3d(nc_u, nc_v, nc_w, coef_S((k-1)*d+2, (k-1)*d+2, :), s_v)
+                call compute_mean_3d(nc_u, nc_v, nc_w, coef_S((k-1)*d+3, (k-1)*d+3, :), s_w)
+                call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, k), D_v(:, k), D_w(:, k), &
+                                            s_u, s_v, s_w, Deigen(k, :))
+            end do
             
             ! Compute Fint
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -604,26 +609,24 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
             dF = Fext_t - Fint
             call clean_dirichlet_3dim(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-            call block_dot_product(d, nr_total, dF, dF, prod1)
-            relerror = sqrt(prod1/prod2)
+            call block_dot_product(d, nr_total, dF, dF, prod)
+            relerror = sqrt(prod)
             print*, "Raphson with error: ", relerror
-            if (isnan(relerror)) stop
-            if (relerror.le.sigma_Y*1e-6) exit
+            if (relerror.le.sigma_Y*1e-9) exit
     
             ! Solver Bi-conjugate gradient
             call mf_wq_elasticity_3d(coef_S, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
-            nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-            dF, ddisp)
-
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
+                                nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
+                                dF, ddisp)
         end do
         
         ! Save values
         disp(:, :, i) = disp(:, :, i-1) + ddisp
         ep_n0 = ep_n1
         sigma_n0 = sigma_n1
-                
+    
     end do
 
 end subroutine mf_wq_plasticity_3d
