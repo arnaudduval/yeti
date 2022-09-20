@@ -6,7 +6,7 @@
 subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, & 
-                                method, directsol, x, RelRes, RelError)
+                                methodPCG, directsol, x, RelRes, RelError)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python)
@@ -27,7 +27,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
 
-    character(len = 10) :: method
+    character(len = 10) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b, directsol
     dimension :: b(nr_u*nr_v*nr_w), directsol(nr_u*nr_v*nr_w)
@@ -72,7 +72,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     normb = maxval(abs(r))
     if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
 
-    if (method.eq.'WP') then 
+    if (methodPCG.eq.'WP') then 
         if (nbIterPCG.gt.0) then
             ! ----------------------------
             ! Conjugate Gradient algorithm
@@ -110,14 +110,14 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
         k_u = 1.d0; k_v = 1.d0; k_w = 1.d0
 
-        if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
             ! Diagonal decomposition
             do iter = 1, 2
                 call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
-        else if ((method.eq.'JMS').or.(method.eq.'JMC')) then 
+        else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
             ! Compute mean
             call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), k_u) 
             call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), k_v) 
@@ -163,7 +163,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_u, k_v, k_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
-        if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
@@ -183,11 +183,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
             ! Preconditioned Conjugate Gradient algorithm
             ! -------------------------------------------
             dummy = r 
-            if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+            if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
             end if
             call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
-            if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+            if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                 call fd_sqr_scaling(nr_total, Dparametric, Dphysical, z) 
             end if
             p = z
@@ -210,11 +210,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                 if (RelRes(iter+1).le.threshold) exit       
 
                 dummy = r
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
                 end if
                 call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, z)
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, z) 
                 end if
                 rsnew = dot_product(r, z)
@@ -230,7 +230,7 @@ end subroutine mf_iga_steady_heat_3d
 subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            b, nbIterPCG, threshold, method, directsol, x, RelRes, RelError)
+                            b, nbIterPCG, threshold, methodPCG, directsol, x, RelRes, RelError)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python).
@@ -251,7 +251,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    character(len=10), intent(in) :: method
+    character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b, directsol
     dimension :: b(nr_u*nr_v*nr_w), directsol(nr_u*nr_v*nr_w)
@@ -296,7 +296,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     rsold = dot_product(r, rhat); normb = maxval(abs(r))
     if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
 
-    if (method.eq.'WP') then 
+    if (methodPCG.eq.'WP') then 
         if (nbIterPCG.gt.0) then
             ! ----------------------------
             ! Conjugate Gradient algorithm
@@ -336,14 +336,14 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
         k_u = 1.d0; k_v = 1.d0; k_w = 1.d0
 
-        if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
             ! Diagonal decomposition
             do iter = 1, 2
                 call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
                                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
             end do
 
-        else if ((method.eq.'JMS').or.(method.eq.'JMC')) then 
+        else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
             ! Compute mean
             call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), k_u) 
             call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), k_v) 
@@ -377,7 +377,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_u, k_v, k_w, Deigen)
         deallocate(I_u, I_v, I_w)
 
-        if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
@@ -398,11 +398,11 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
             do iter = 1, nbIterPCG
 
                 dummy = p
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
                 end if 
                 call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
                 end if
 
@@ -415,11 +415,11 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                 s = r - alpha*Aptilde
 
                 dummy = s
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
                 end if
                 call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-                if ((method.eq.'TDS').or.(method.eq.'JMS')) then
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
                     call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
                 end if
 
@@ -449,7 +449,7 @@ end subroutine mf_wq_steady_heat_3d
 subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                newmarkdt, b, nbIterPCG, threshold, method, solution, residue)
+                                newmarkdt, b, nbIterPCG, threshold, methodPCG, solution, residue)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (newmarkdt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -470,7 +470,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    character(len=10), intent(in) :: method
+    character(len=10), intent(in) :: methodPCG
     double precision, intent(in) :: newmarkdt
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
@@ -519,7 +519,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
     k_u = 1.d0; k_v = 1.d0; k_w = 1.d0; csigma = 1.d0
 
-    if ((method.eq.'JMC').or.(method.eq.'JMS')) then 
+    if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
         ! Compute mean 
         call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_u) 
         call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), k_v) 
@@ -554,7 +554,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     Deigen = csigma + newmarkdt*Deigen
     deallocate(I_u, I_v, I_w)
 
-    if (method.eq.'JMS') then
+    if (methodPCG.eq.'JMS') then
         allocate(Dparametric(size(b)), Dphysical(size(b)), Dtemp(size(b)))
 
         ! Find diagonal of preconditioner
@@ -580,9 +580,9 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     do iter = 1, nbIterPCG
 
         dummy = p
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
+        if (methodPCG.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
         call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, ptilde)  
+        if (methodPCG.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, ptilde)  
 
         call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
@@ -593,9 +593,9 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
         s = r - alpha*Aptilde
 
         dummy = s
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
+        if (methodPCG.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
         call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, stilde)  
+        if (methodPCG.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, stilde)  
 
         call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
@@ -625,7 +625,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
                                     indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
                                     data_B_u_t, data_B_v_t, data_B_w_t, data_W_u_t, data_W_v_t, data_W_w_t, &
                                     nbpts, table_cond, table_cap, newmark, invJJ, detJJ, sizeF, time_list, FF, &
-                                    ndod, dod, GG, solution)
+                                    ndod, dod, GG, methodPCG, solution, resPCG)
     !! Time-integration scheme (with Newton-Raphson method) to solve non linear transient heat problems
     !! For the moment, only for isotropic materials.
     !! It assumes that initial temperature equals 0
@@ -635,8 +635,8 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     implicit none 
     ! Input / output data
     ! -------------------
-    character(len=10) :: method = 'FDC'
-    double precision, parameter :: threshold = 1.d-8
+    character(len=10), intent(in) :: methodPCG
+    double precision, parameter :: threshold = 1.d-10
     integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -664,18 +664,18 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     double precision, intent(in) :: time_list, invJJ, detJJ, FF, GG
     dimension :: time_list(sizeF), invJJ(d, d, nc_total), detJJ(nc_total), FF(nr_total, sizeF), GG(ndod, sizeF)
     
-    double precision, intent(out) :: solution
-    dimension :: solution(nr_total, sizeF)
+    double precision, intent(out) :: solution, resPCG
+    dimension :: solution(nr_total, sizeF), resPCG(nbIterPCG+3, 4*sizeF)
 
     ! Local data
     ! ----------  
-    integer :: i, j, ndof
+    integer :: i, j, c, ndof
     double precision :: resNL, dt, dt2, factor
     double precision, allocatable, dimension(:) ::  TTn0, TTn1i0, VVn0, VVn1, CdT, KT, Fstep, &
                                                     KTCdT, ddFF, ddVV, TTn1, ddGG, ddFFdof, ddVVdof
-    double precision :: TTinterp, KK, CC, Kcoefs, CCoefs, resPCG
+    double precision :: TTinterp, KK, CC, Kcoefs, CCoefs
     dimension ::    TTinterp(nc_total), KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), &
-                    Ccoefs(nc_total), resPCG(nbIterPCG+1)
+                    Ccoefs(nc_total)
     integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
     double precision, allocatable, dimension(:) :: L, LT
 
@@ -684,6 +684,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     ndof = nr_total - ndod
     allocate(ddGG(ndod))
     solution(dod, :) = GG
+    resPCG = 0.0d0
 
     ! Compute initial velocity from boundary conditions
     if (sizeF.eq.2) then 
@@ -713,6 +714,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     allocate(TTn0(nr_total), TTn1i0(nr_total), VVn1(nr_total), CdT(nr_total), KT(nr_total), ddVV(nr_total), Fstep(nr_total), &
             KTCdT(nr_total), ddFF(nr_total), ddVVdof(nr_u*nr_v*nr_w), TTn1(nr_total), ddFFdof(nr_u*nr_v*nr_w))
     
+    c = 1
     do i = 2, sizeF
         ! Get delta time
         dt = time_list(i) - time_list(i-1)
@@ -761,15 +763,17 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
             if (resNL.le.1.d-6) exit
 
             ! Solve by iterations 
+            resPCG(1, c) = dble(i-1); resPCG(2, c) = dble(j)
             call mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    newmark*dt, ddFFdof, nbIterPCG, threshold, method, ddVVdof, resPCG)
+                                    newmark*dt, ddFFdof, nbIterPCG, threshold, methodPCG, ddVVdof, resPCG(3:, c))
 
             ! Update values
             call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)
             VVn1 = VVn1 + ddVV
             TTn1 = TTn1i0 + newmark*dt*VVn1
+            c = c + 1
                 
         end do
         

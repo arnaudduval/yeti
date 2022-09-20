@@ -64,7 +64,7 @@ if isLinear:
     fig, ax = plt.subplots(nrows=1, ncols=1)
     for itmethod in ['FDC', 'JMC', 'JMS']:
         # Solve linear transient problem
-        sol, residue = modelPhy.MF_THLSubs(F=Fext, method=itmethod)
+        sol, residue = modelPhy.MF_THLSubs(F=Fext, methodPCG=itmethod)
         newresidue = residue[residue>0]*100
         ax.semilogy(np.arange(len(newresidue )), newresidue, label=itmethod)
 
