@@ -8,6 +8,8 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                                 data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, & 
                                 method, directsol, x, RelRes, RelError)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
+    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
+    !! bn is compute beforehand (In python)
     !! IN CSR FORMAT
                         
     implicit none 
@@ -230,6 +232,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterPCG, threshold, method, directsol, x, RelRes, RelError)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
+    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
+    !! bn is compute beforehand (In python).
     !! IN CSR FORMAT
 
     implicit none 
@@ -442,10 +446,348 @@ subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
 
 end subroutine mf_wq_steady_heat_3d
 
+subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                newmarkdt, b, nbIterPCG, threshold, method, solution, residue)
+    !! Precontionned bi-conjugate gradient to solve transient heat problems
+    !! It solves Ann un = bn, where Ann is (newmarkdt*Knn + Cnn) and bn = Fn - And ud
+    !! bn is compute beforehand (In python or fortran).
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: Kcoefs, Ccoefs
+    dimension :: Kcoefs(d, d, nc_total), Ccoefs(nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    character(len=10), intent(in) :: method
+    double precision, intent(in) :: newmarkdt
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nr_u*nr_v*nr_w)
+    
+    double precision, intent(out) :: solution, residue
+    dimension :: solution(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    ! Conjugate gradient algorithm
+    double precision :: rsold, rsnew, alpha, omega, beta, normb
+    double precision, dimension(size(b)) :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, dummy
+    integer :: iter
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
+    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen, Dtemp
+    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision :: csigma, k_u, k_v, k_w
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+    ! Convert CSR to CSC
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+
+    ! Set variables
+    solution = 0.d0; r = b; rhat = r; p = r
+    rsold = dot_product(r, rhat); normb = maxval(abs(r))
+    residue = 0.d0; residue(1) = 1.d0
+    if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
+
+    ! Custumize method  
+    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+    Mcoef_w = 1.d0; Kcoef_w = 1.d0
+    k_u = 1.d0; k_v = 1.d0; k_w = 1.d0; csigma = 1.d0
+
+    if ((method.eq.'JMC').or.(method.eq.'JMS')) then 
+        ! Compute mean 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_u) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), k_v) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(3, 3, :), k_w) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Ccoefs(:), csigma)
+    end if
+
+    ! --------------------
+    ! Eigen decomposition
+    ! -------------------- 
+    allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w), Kdiag_u(nr_u), Mdiag_u(nr_u))
+
+    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                            data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+
+    allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
+    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                            data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
+
+    allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
+    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                            data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
+    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+
+    ! Find diagonal of eigen values
+    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(size(b)))
+    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_u, k_v, k_w, Deigen)
+    Deigen = csigma + newmarkdt*Deigen
+    deallocate(I_u, I_v, I_w)
+
+    if (method.eq.'JMS') then
+        allocate(Dparametric(size(b)), Dphysical(size(b)), Dtemp(size(b)))
+
+        ! Find diagonal of preconditioner
+        Dtemp = 0.d0
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, csigma)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                    Kdiag_u, Kdiag_v, Kdiag_w, k_u, k_v, k_w, Dparametric)
+        Dparametric = newmarkdt*Dparametric + Dtemp 
+
+        ! Find diagonal of real matrix (K + C in this case)
+        call wq_find_capacity_diagonal_3D(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dtemp)
+        call wq_find_conductivity_diagonal_3D(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
+        Dphysical = newmarkdt*Dphysical + Dtemp
+    end if
+
+    ! -------------------------------------------
+    ! Preconditioned Conjugate Gradient algorithm
+    ! -------------------------------------------
+    do iter = 1, nbIterPCG
+
+        dummy = p
+        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
+        call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
+        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, ptilde)  
+
+        call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            1.d0, newmarkdt, ptilde, Aptilde)
+
+        alpha = rsold/dot_product(Aptilde, rhat)
+        s = r - alpha*Aptilde
+
+        dummy = s
+        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
+        call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
+        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, stilde)  
+
+        call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            1.d0, newmarkdt, stilde, Astilde)
+
+        omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+        solution = solution + alpha*ptilde + omega*stilde
+        r = s - omega*Astilde    
+        
+        residue(iter+1) = maxval(abs(r))/normb
+        if (residue(iter+1).le.threshold) exit
+
+        rsnew = dot_product(r, rhat)
+        beta = (alpha/omega)*(rsnew/rsold)
+        p = r + beta*(p - omega*Aptilde)
+        rsold = rsnew
+
+    end do
+
+end subroutine mf_wq_transient_linear_3d
+
+subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                    nr_u_t, nc_u_t, nr_v_t, nc_v_t, nr_w_t, nc_w_t, nnz_u_t, nnz_v_t, nnz_w_t, & 
+                                    indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
+                                    data_B_u_t, data_B_v_t, data_B_w_t, data_W_u_t, data_W_v_t, data_W_w_t, &
+                                    nbpts, table_cond, table_cap, newmark, invJJ, detJJ, sizeF, time_list, FF, &
+                                    ndod, dod, GG, solution)
+    !! Time-integration scheme (with Newton-Raphson method) to solve non linear transient heat problems
+    !! For the moment, only for isotropic materials.
+    !! It assumes that initial temperature equals 0
+    !! IN CSR FORMAT
+    
+    use heat_transfer
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    character(len=10) :: method = 'FDC'
+    double precision, parameter :: threshold = 1.d-8
+    integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    integer :: nr_u_t, nc_u_t, nr_v_t, nc_v_t, nr_w_t, nc_w_t, nnz_u_t, nnz_v_t, nnz_w_t
+    integer, intent(in) :: indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t
+    dimension ::    indi_u_t(nr_u_t+1), indj_u_t(nnz_u_t), &
+                    indi_v_t(nr_v_t+1), indj_v_t(nnz_v_t), &
+                    indi_w_t(nr_w_t+1), indj_w_t(nnz_w_t)
+    double precision, intent(in) :: data_B_u_t, data_W_u_t, data_B_v_t, data_W_v_t, data_B_w_t, data_W_w_t
+    dimension ::    data_B_u_t(nnz_u_t, 2), data_W_u_t(nnz_u_t, 4), &
+                    data_B_v_t(nnz_v_t, 2), data_W_v_t(nnz_v_t, 4), &
+                    data_B_w_t(nnz_w_t, 2), data_W_w_t(nnz_w_t, 4)
+
+    integer, intent(in) :: nr_total, nbpts, sizeF, ndod, dod
+    dimension :: dod(ndod)
+    double precision, intent(in) :: table_cond, table_cap, newmark
+    dimension :: table_cond(nbpts, 2), table_cap(nbpts, 2)
+    double precision, intent(in) :: time_list, invJJ, detJJ, FF, GG
+    dimension :: time_list(sizeF), invJJ(d, d, nc_total), detJJ(nc_total), FF(nr_total, sizeF), GG(ndod, sizeF)
+    
+    double precision, intent(out) :: solution
+    dimension :: solution(nr_total, sizeF)
+
+    ! Local data
+    ! ----------  
+    integer :: i, j, ndof
+    double precision :: resNL, dt, dt2, factor
+    double precision, allocatable, dimension(:) ::  TTn0, TTn1i0, VVn0, VVn1, CdT, KT, Fstep, &
+                                                    KTCdT, ddFF, ddVV, TTn1, ddGG, ddFFdof, ddVVdof
+    double precision :: TTinterp, KK, CC, Kcoefs, CCoefs, resPCG
+    dimension ::    TTinterp(nc_total), KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), &
+                    Ccoefs(nc_total), resPCG(nbIterPCG+1)
+    integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
+    double precision, allocatable, dimension(:) :: L, LT
+
+    ! Set initial values
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
+    ndof = nr_total - ndod
+    allocate(ddGG(ndod))
+    solution(dod, :) = GG
+
+    ! Compute initial velocity from boundary conditions
+    if (sizeF.eq.2) then 
+        dt = time_list(2) - time_list(1)
+        ddGG = 1.d0/dt*(solution(dod, 2) - solution(dod, 1))
+    else if (sizeF.gt.2) then
+        dt = time_list(2) - time_list(1)
+        dt2 = time_list(3) - time_list(1)
+        factor = dt2/dt
+        ddGG = 1.d0/(dt*(factor - factor**2))*(solution(dod, 3) - (factor**2)*solution(dod, 2) - (1 - factor**2)*solution(dod, 1))
+    else
+        stop 'This solver needs at least 2 steps'
+    end if
+
+    ! Save data
+    allocate(VVn0(nr_total))
+    VVn0 = 0.d0; VVn0(dod) = ddGG
+    deallocate(ddGG)
+
+    ! Create block L
+    allocate(indi_L(ndof+1), indj_L(ndof), indi_LT(nr_total+1), indj_LT(ndof), L(ndof), LT(ndof))
+    call create_block_L(ndof, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)
+
+    ! --------------------------------------------
+    ! SOLVE
+    ! -------------------------------------------- 
+    allocate(TTn0(nr_total), TTn1i0(nr_total), VVn1(nr_total), CdT(nr_total), KT(nr_total), ddVV(nr_total), Fstep(nr_total), &
+            KTCdT(nr_total), ddFF(nr_total), ddVVdof(nr_u*nr_v*nr_w), TTn1(nr_total), ddFFdof(nr_u*nr_v*nr_w))
+    
+    do i = 2, sizeF
+        ! Get delta time
+        dt = time_list(i) - time_list(i-1)
+
+        ! Get values of last simulation 
+        TTn0 = solution(:, i-1)
+
+        ! Prediction of new step
+        TTn1 = TTn0 + dt*(1-newmark)*VVn0; TTn1(dod) = solution(dod, i)
+        TTn1i0 = TTn1; VVn1 = 0.d0
+        VVn1(dod) = 1.d0/newmark*(1.0d0/dt*(solution(dod, i) - solution(dod, i-1)) - (1 - newmark)*VVn0(dod))
+
+        ! Get force of new step
+        Fstep = FF(:, i)
+        
+        ! Solver Newton-Raphson
+        print*, 'Step: ', i - 1
+        do j = 1, nbIterNL
+
+            ! Compute temperature (at each quadrature point) 
+            call interpolate_temperature_3d(nr_u_t, nc_u_t, nr_v_t, nc_v_t, nr_w_t, nc_w_t, nnz_u_t, nnz_v_t, nnz_w_t, &
+                                        indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
+                                        data_B_u_t, data_B_v_t, data_B_w_t, TTn1, TTinterp)
+
+            ! Interpolate capacity and conductivity at each quadrature point 
+            call compute_heat_properties(nbpts, table_cond, table_cap, nc_total, TTinterp, KK, CC)
+
+            ! Compute coefficients to compute tangent matrix
+            call compute_heat_coefficients(nc_total, KK, CC, invJJ, detJJ, Kcoefs, Ccoefs)
+            
+            ! Compute Fint = C dT + K T 
+            call mf_wq_get_cu_3d_csr(Ccoefs, nc_total, nr_u_t, nc_u_t, nr_v_t, nc_v_t, nr_w_t, nc_w_t, &
+                                nnz_u_t, nnz_v_t, nnz_w_t, indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
+                                data_B_u_t, data_B_v_t, data_B_w_t, data_W_u_t, data_W_v_t, data_W_w_t, VVn1, CdT)
+
+            call mf_wq_get_ku_3d_csr(Kcoefs, nc_total, nr_u_t, nc_u_t, nr_v_t, nc_v_t, nr_w_t, nc_w_t, &
+                                nnz_u_t, nnz_v_t, nnz_w_t, indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
+                                data_B_u_t, data_B_v_t, data_B_w_t, data_W_u_t, data_W_v_t, data_W_w_t, TTn1, KT)
+            KTCdT = KT + CdT
+
+            ! Compute residue
+            ddFF = Fstep - KTCdT
+            call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
+            resNL = sqrt(dot_product(ddFFdof, ddFFdof))
+            print*, " with Raphson error: ", resNL
+            if (resNL.le.1.d-6) exit
+
+            ! Solve by iterations 
+            call mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                    newmark*dt, ddFFdof, nbIterPCG, threshold, method, ddVVdof, resPCG)
+
+            ! Update values
+            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)
+            VVn1 = VVn1 + ddVV
+            TTn1 = TTn1i0 + newmark*dt*VVn1
+                
+        end do
+        
+        ! Set values
+        solution(:, i) = TTn1
+        VVn0 = VVn1
+
+    end do
+
+end subroutine mf_wq_transient_nonlinear_3d
+
+! ============================
+! 'COMPLETE' METHODS
+! ============================
 subroutine fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pardiag, phydiag, method, &
                     ndof, indi_L, indj_L, indi_LT, indj_LT, L, LT, array_in, array_out)
-    !! Solves MM.s = r (MM is the preconditioner) in steady (or transient) heat 3D  with substitution method, 
-    !! where MM is an approximation of K or K+C.
+    !! Solves MM.s = r (MM is the preconditioner) in steady or transient heat 3D  with substitution method, 
+    !! where MM is an approximation of K or newmarkdt * K + C.
     !! IN CSR FORMAT
 
     implicit none
@@ -494,296 +836,6 @@ subroutine fd_tshs_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigendiag, pard
 
 end subroutine fd_tshs_3d
 
-subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            newmarkdt, b, nbIterPCG, threshold, method, x, residue)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: d = 3
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: Kcoefs, Ccoefs
-    dimension :: Kcoefs(d, d, nc_total), Ccoefs(nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    character(len=10), intent(in) :: method
-    double precision, intent(in) :: newmarkdt
-    integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nr_u*nr_v*nr_w)
-    
-    double precision, intent(out) :: x, residue
-    dimension :: x(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
-
-    ! Local data
-    ! ----------
-    ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, normb
-    double precision, dimension(size(b)) :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, dummy
-    integer :: iter
-
-    ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen, Dtemp
-    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
-    double precision :: csigma, k_u, k_v, k_w
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    ! Convert CSR to CSC
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    ! Set variables
-    x = 0.d0; r = b; rhat = r; p = r
-    rsold = dot_product(r, rhat); normb = maxval(abs(r))
-    residue = 0.d0; residue(1) = 1.d0
-    if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
-
-    ! Custumize method  
-    k_u = 1.d0; k_v = 1.d0; k_w = 1.d0; csigma = 1.d0
-    if ((method.eq.'JMC').or.(method.eq.'JMS')) then 
-        ! Compute mean 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_u) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), k_v) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(3, 3, :), k_w) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Ccoefs(:), csigma)
-    end if
-
-    ! --------------------
-    ! Eigen decomposition
-    ! -------------------- 
-    allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w), Kdiag_u(nr_u), Mdiag_u(nr_u))
-    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-    Mcoef_u = 1.d0; Kcoef_u = 1.d0
-    Mcoef_v = 1.d0; Kcoef_v = 1.d0
-    Mcoef_w = 1.d0; Kcoef_w = 1.d0
-
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                            data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
-
-    allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                            data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
-
-    allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
-    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                            data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
-    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-
-    ! Find diagonal of eigen values
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(size(b)))
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_u, k_v, k_w, Deigen)
-    Deigen = csigma + newmarkdt*Deigen
-    deallocate(I_u, I_v, I_w)
-
-    ! Scaling using diagonals
-    allocate(Dparametric(size(b)), Dphysical(size(b)))
-    Dparametric = 1.d0; Dphysical = 1.d0
-    if (method.eq.'JMS') then
-        ! Find diagonal of preconditioner
-        allocate(Dtemp(size(b)))
-        Dtemp = 0.d0
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, csigma)
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                    Kdiag_u, Kdiag_v, Kdiag_w, k_u, k_v, k_w, Dparametric)
-        Dparametric = newmarkdt*Dparametric + Dtemp 
-
-        ! Find diagonal of real matrix (K + C in this case)
-        call wq_find_capacity_diagonal_3D(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dtemp)
-        call wq_find_conductivity_diagonal_3D(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
-        Dphysical = newmarkdt*Dphysical + Dtemp
-    end if
-
-    ! -------------------------------------------
-    ! Preconditioned Conjugate Gradient algorithm
-    ! -------------------------------------------
-    do iter = 1, nbIterPCG
-
-        dummy = p
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
-        call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, ptilde)  
-
-        call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                            1.d0, newmarkdt, ptilde, Aptilde)
-
-        alpha = rsold/dot_product(Aptilde, rhat)
-        s = r - alpha*Aptilde
-
-        dummy = s
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, dummy) 
-        call fd_steady_heat_3d(size(b), nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-        if (method.eq.'JMS') call fd_sqr_scaling(size(b), Dparametric, Dphysical, stilde)  
-
-        call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                            1.d0, newmarkdt, stilde, Astilde)
-
-        omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-        x = x + alpha*ptilde + omega*stilde
-        r = s - omega*Astilde    
-        
-        residue(iter+1) = maxval(abs(r))/normb
-        if (residue(iter+1).le.threshold) exit
-
-        rsnew = dot_product(r, rhat)
-        beta = (alpha/omega)*(rsnew/rsold)
-        p = r + beta*(p - omega*Aptilde)
-        rsold = rsnew
-
-    end do
-
-end subroutine mf_wq_transient_linear_3d
-
-subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, nbpts, table_cond, table_cap, &
-                        newmark, invJJ, detJJ, sizeF, time_list, FF, temperature)
-    
-    use heat_transfer
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    character(len=10) :: method = 'FDC'
-    double precision, parameter :: threshold = 1.d-8
-    integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF, nbpts
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision, intent(in) :: table_cond, table_cap, newmark
-    dimension :: table_cond(nbpts, 2), table_cap(nbpts, 2)
-    double precision, intent(in) :: time_list, invJJ, detJJ, FF
-    dimension ::    time_list(sizeF), invJJ(d, d, nc_total), &
-                    detJJ(nc_total), FF(nr_u*nr_v*nr_w, sizeF)
-    
-    double precision, intent(out) :: temperature
-    dimension :: temperature(nr_u*nr_v*nr_w, sizeF)
-
-    ! Local data
-    ! ----------  
-    integer :: i, j, nr_total
-    double precision, allocatable, dimension(:) :: TTn0, TTn1i0, VVn0, VVn1, CdT, KT, Fstep, KTCdT, ddFF, ddVV, TTn1
-    double precision :: TTinterp, KK, CC, Kcoefs, CCoefs
-    dimension :: TTinterp(nc_total), KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), Ccoefs(nc_total)
-
-    double precision :: resPCG, resNL, dt
-    dimension :: resPCG(nbIterPCG+1)
-
-    ! --------------------------------------------
-    ! SOLVE
-    ! -------------------------------------------- 
-    nr_total = nr_u*nr_v*nr_w
-    allocate(TTn0(nr_total), TTn1i0(nr_total), VVn0(nr_total), VVn1(nr_total), CdT(nr_total), KT(nr_total), &
-            Fstep(nr_total), KTCdT(nr_total), ddFF(nr_total), ddVV(nr_total), TTn1(nr_total))
-
-    ! Initialize
-    temperature = 0.d0; VVn0 = 0.d0
-    
-    do i = 2, sizeF
-        ! Get delta time
-        dt = time_list(i) - time_list(i-1)
-
-        ! Get values of last simulation 
-        TTn0 = temperature(:, i-1)
-
-        ! Prediction of new step
-        TTn1 = TTn0 + dt*(1-newmark)*VVn0
-        TTn1i0 = TTn1; VVn1 = 0.d0
-
-        ! Get force of new step
-        Fstep = FF(:, i)
-        
-        ! Solver Newton-Raphson
-        print*, 'Step: ', i - 1
-        do j = 1, nbIterNL
-
-            ! Compute temperature (at each quadrature point) 
-            call interpolate_temperature_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, TTn1, TTinterp)
-
-            ! Interpolate capacity and conductivity at each quadrature point 
-            call compute_heat_properties(nbpts, table_cond, table_cap, nc_total, TTinterp, KK, CC)
-
-            ! Compute coefficients to compute tangent matrix
-            call compute_heat_coefficients(nc_total, KK, CC, invJJ, detJJ, Kcoefs, Ccoefs)
-            
-            ! Compute Fint = C dT + K T 
-            call mf_wq_get_cu_3d_csr(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, VVn1, CdT)
-
-            call mf_wq_get_ku_3d_csr(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, TTn1, KT)
-            KTCdT = KT + CdT
-
-            ! Compute residue
-            ddFF = Fstep - KTCdT
-            resNL = sqrt(dot_product(ddFF, ddFF))
-            print*, " with Raphson error: ", resNL
-            if (isnan(resNL)) stop 'Error is NAN'
-            if (resNL.le.1.d-6) exit
-
-            ! Solve by iterations 
-            call mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    newmark*dt, ddFF, nbIterPCG, threshold, method, ddVV, resPCG)
-
-            ! Update values
-            VVn1 = VVn1 + ddVV
-            TTn1 = TTn1i0 + newmark*dt*VVn1
-                
-        end do
-        
-        ! Set values
-        temperature(:, i) = TTn1
-        VVn0 = VVn1
-                
-    end do
-
-end subroutine mf_wq_transient_nonlinear_3d
-
-! ============================
-! 'COMPLETE' METHODS
-! ============================
-
 ! STEADY HEAT TRANSFER CASE:
 ! --------------------------
 
@@ -792,8 +844,8 @@ subroutine mf_wq_get_Au_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_W_u, data_W_v, data_W_w, indi_L, indj_L, indi_LT, indj_LT, L, LT, &
                                 ndof, array_in, array_out)
-    !! Computes Ann.u in steady heat 3D with substitution method, where 
-    !! But A is given as [Ann, And; Adn, Add]. So Ann u =  L A L' u, where L is a zeros and ones matrix.
+    !! Computes Ann un in steady heat problem with substitution method. Then A is K in this case.
+    !! Attention: Ann un =  L A L' un, where L is a zeros and ones matrix.
     !! IN CSR FORMAT
 
     implicit none 
@@ -857,10 +909,10 @@ end subroutine mf_wq_get_Au_shs_3d
 subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, ndod, dod, f, g, nbIterPCG, threshold, method, x, residue)
+                            table, ndod, dod, f, g, nbIterPCG, threshold, method, solution, residue)
     !! Precontionned bi-conjugate gradient to solve steady heat problems
-    !! We want to solve K x = F, with B.x = g (Dirichlet condition). Using substitution method, this is
-    !! Knn xn = Fn - Knd xd and xd = g 
+    !! It solves K u = b, with B u = g (Dirichlet condition). Using substitution method, this is
+    !! Knn un = bn and ud = g. Then using L matrix, it is L K L' un = L(b - K [0 g]') 
     !! IN CSR FORMAT
 
     implicit none 
@@ -886,15 +938,15 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     double precision, intent(in) :: threshold, f, g
     dimension :: f(nr_u*nr_v*nr_w), g(ndod)
     
-    double precision, intent(out) :: x, residue
-    dimension :: x(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
+    double precision, intent(out) :: solution, residue
+    dimension :: solution(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
 
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
+    integer :: nr_total, ndof, iter
     double precision :: rsold, rsnew, alpha, omega, beta, normb
     double precision, allocatable, dimension(:) :: r, rhat, p, Ap, s, As, ptilde, Aptilde, stilde, Astilde, xn, Kx, b
-    integer :: nr_total, iter
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -905,7 +957,6 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     double precision :: k_u, k_v, k_w
 
     ! Block L
-    integer :: ndof
     integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
     double precision, allocatable, dimension(:) :: L, LT
 
@@ -932,12 +983,12 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     allocate(indi_L(ndof+1), indj_L(ndof), indi_LT(nr_total+1), indj_LT(ndof), L(ndof), LT(ndof))
     call create_block_L(ndof, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)     
 
-    ! Compute K.x where x = [0, xd], then K.x = [Knd xd, Kdd xd]
-    x = 0.d0; x(dod) = g
+    ! Compute K.x where x = [0, xd]
+    solution = 0.d0; solution(dod) = g
     call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, x, Kx)
-    b = f - Kx ! This is the real b in Ax = b equation
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, solution, Kx)
+    b = f - Kx 
     call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, b, r)
 
     ! Set variables
@@ -966,8 +1017,8 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
             xn = xn + alpha*p + omega*s
             r = s - omega*As
 
-            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
-            x(dod) = g
+            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, solution)
+            solution(dod) = g
             
             residue(iter+1) = maxval(abs(r))/normb
             if (residue(iter+1).le.threshold) exit
@@ -984,8 +1035,8 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
         Mcoef_u = 1.d0; Kcoef_u = 1.d0 
         Mcoef_v = 1.d0; Kcoef_v = 1.d0
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
-
         k_u = 1.d0; k_v = 1.d0; k_w = 1.d0
+
         if ((method.eq.'TDS').or.(method.eq.'TDC')) then 
             ! Diagonal decomposition
             do iter = 1, 2
@@ -1070,10 +1121,9 @@ subroutine mf_wq_solve_shs_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
             xn = xn + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
-            x(dod) = g
-
-            residue(iter+1) = dot_product(r, r)/normb
+            call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, solution)
+            solution(dod) = g
+            residue(iter+1) = maxval(abs(r))/normb
             if (residue(iter+1).le.threshold) exit
 
             rsnew = dot_product(r, rhat)
@@ -1095,8 +1145,8 @@ subroutine mf_wq_get_Au_ths_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v,
                                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_W_u, data_W_v, data_W_w, indi_L, indj_L, indi_LT, indj_LT, L, LT, &
                                 ndof, newmarkdt, array_in, array_out)
-    !! Computes Ann.u in transient heat 3D with substitution method, where 
-    !! But A is given as [Ann, And; Adn, Add]. So Ann u =  L A L' u, where L is a zeros and ones matrix.
+    !! Computes Ann un in transient heat 3D with substitution method. Then A is (newmarkdt K + C) in this case.
+    !! Attention: Ann un =  L A L' un, where L is a zeros and ones matrix.
     !! IN CSR FORMAT
 
     implicit none 
@@ -1159,8 +1209,13 @@ end subroutine mf_wq_get_Au_ths_3d
 
 subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            newmarkdt, table, ndod, dod, f, g, nbIterPCG, threshold, method, x, residue)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, newmarkdt, &
+                            table, ndod, dod, f, g, nbIterPCG, threshold, method, solution, residue)
+    !! Precontionned bi-conjugate gradient to solve transient heat problems
+    !! It solves (newmarkdt*K + C) u = b, with B u = g (Dirichlet condition). Using substitution method, this is
+    !! (newmark*Knn + Cnn) un = bn and ud = g. 
+    !! Then using L matrix, it is L (newmarkdt*K + C) L' un = L(b - (newmarkdt*K + C) [0 g]') 
+    !! IN CSR FORMAT
 
     implicit none 
     ! Input / output data
@@ -1185,16 +1240,16 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     double precision, intent(in) :: threshold, f, g
     dimension :: f(nr_u*nr_v*nr_w), g(ndod)
     
-    double precision, intent(out) :: x, residue
-    dimension :: x(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
+    double precision, intent(out) :: solution, residue
+    dimension :: solution(nr_u*nr_v*nr_w), residue(nbIterPCG+1)
 
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
+    integer :: nr_total, ndof, iter
     double precision :: rsold, rsnew, alpha, omega, beta, normb
     double precision, allocatable, dimension(:) :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, xn, Ax, b
-    integer :: nr_total, iter
-
+    
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
@@ -1204,7 +1259,6 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     double precision :: csigma, k_u, k_v, k_w
 
     ! Block L
-    integer :: ndof
     integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
     double precision, allocatable, dimension(:) :: L, LT
 
@@ -1232,12 +1286,12 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     call create_block_L(ndof, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)     
 
     ! Compute A.x where x = [0, xd] and A = (C + alpha dt K)
-    x = 0.d0; x(dod) = g
+    solution = 0.d0; solution(dod) = g
     call mf_wq_get_kcu_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, 1.d0, newmarkdt, x, Ax)
-
-    b = f - Ax ! This is the real b in Ax = b equation
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                        1.d0, newmarkdt, solution, Ax)
+    b = f - Ax 
     call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, b, r)
 
     ! Set variables
@@ -1247,7 +1301,12 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
 
     ! Custumize method  
+    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+    Mcoef_w = 1.d0; Kcoef_w = 1.d0
     k_u = 1.d0; k_v = 1.d0; k_w = 1.d0; csigma = 1.d0
+
     if ((method.eq.'JMC').or.(method.eq.'JMS')) then 
         ! Compute mean 
         call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_u) 
@@ -1260,10 +1319,6 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     ! Eigen decomposition
     ! -------------------- 
     allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w), Kdiag_u(nr_u), Mdiag_u(nr_u))
-    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-    Mcoef_u = 1.d0; Kcoef_u = 1.d0
-    Mcoef_v = 1.d0; Kcoef_v = 1.d0
-    Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
     call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                             data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
@@ -1287,12 +1342,10 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     Deigen = csigma + newmarkdt*Deigen
     deallocate(I_u, I_v, I_w)
 
-    ! Scaling using diagonals
-    allocate(Dparametric(nr_total), Dphysical(nr_total))
-    Dparametric = 1.d0; Dphysical = 1.d0
     if (method.eq.'JMS') then
+        allocate(Dparametric(nr_total), Dphysical(nr_total), Dtemp(nr_total))
+        
         ! Find diagonal of preconditioner
-        allocate(Dtemp(nr_total))
         Dtemp = 0.d0
         call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, csigma)
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
@@ -1337,8 +1390,8 @@ subroutine mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
         xn = xn + alpha*ptilde + omega*stilde
         r = s - omega*Astilde    
         
-        call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, x)
-        x(dod) = g
+        call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, xn, solution)
+        solution(dod) = g
         residue(iter+1) = maxval(abs(r))/normb
         if (residue(iter+1).le.threshold) exit
 
@@ -1354,7 +1407,11 @@ end subroutine mf_wq_solve_ths_linear_3d
 subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, nbpts, table_cond, table_cap, &
-                        newmark, table_dir, ndod, dod, invJJ, detJJ, sizeF, time_list, FF, GG, temperature)
+                        newmark, table_dir, ndod, dod, invJJ, detJJ, sizeF, time_list, FF, GG, solution)
+    !! Time-integration scheme (with Newton-Raphson method) to solve non linear transient heat problems
+    !! It uses substitution method. For the moment, only for isotropic materials.
+    !! It assumes that initial temperature equals 0
+    !! IN CSR FORMAT
     
     use heat_transfer
     implicit none 
@@ -1381,22 +1438,17 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     dimension ::    time_list(sizeF), invJJ(d, d, nc_total), &
                     detJJ(nc_total), FF(nr_u*nr_v*nr_w, sizeF), GG(ndod, sizeF)
     
-    double precision, intent(out) :: temperature
-    dimension :: temperature(nr_u*nr_v*nr_w, sizeF)
+    double precision, intent(out) :: solution
+    dimension :: solution(nr_u*nr_v*nr_w, sizeF)
 
     ! Local data
     ! ----------  
     integer :: nr_total, ndof, i, j
+    double precision :: resNL, dt, dt2, factor
     double precision, allocatable, dimension(:) :: TTn0, TTn1i0, VVn0, VVn1, CdT, KT, Fstep, &
                                                     KTCdT, ddFF, ddVV, TTn1, TTinterp, GGtmp, ddGG
-    double precision :: resPCG, resNL, dt, dt2, factor
-    dimension :: resPCG(nbIterPCG+1)
-
-    integer, allocatable, dimension(:) :: indi_L, indj_L, indi_LT, indj_LT
-    double precision, allocatable, dimension(:) :: L, LT
-
-    double precision :: KK, CC, Kcoefs, CCoefs
-    dimension :: KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), Ccoefs(nc_total)
+    double precision :: KK, CC, Kcoefs, CCoefs, resPCG
+    dimension :: KK(nc_total), CC(nc_total), Kcoefs(dimen, dimen, nc_total), Ccoefs(nc_total), resPCG(nbIterPCG+1)
 
     ! Set initial values
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
@@ -1413,7 +1465,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
         dt = time_list(2) - time_list(1)
         dt2 = time_list(3) - time_list(1)
         factor = dt2/dt
-        ddGG = 1.d0/(dt*(factor-factor**2))*(GG(:, 3) - (factor**2)*GG(:, 2) - (1 - factor**2)*GG(:, 1))
+        ddGG = 1.d0/(dt*(factor - factor**2))*(GG(:, 3) - (factor**2)*GG(:, 2) - (1 - factor**2)*GG(:, 1))
     else
         stop 'This solver needs at least 2 steps'
     end if
@@ -1421,26 +1473,21 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     ! Save data
     allocate(VVn0(nr_total))
     VVn0 = 0.d0; VVn0(dod) = ddGG
-    deallocate(ddGG)
-
-    ! Create block L
-    allocate(indi_L(ndof+1), indj_L(ndof), indi_LT(nr_total+1), indj_LT(ndof), L(ndof), LT(ndof))
-    call create_block_L(ndof, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)     
+    deallocate(ddGG)     
 
     ! --------------------------------------------
     ! SOLVE
     ! -------------------------------------------- 
-    ! Initialize
     allocate(TTn0(nr_total), TTn1i0(nr_total), VVn1(nr_total), CdT(nr_total), KT(nr_total), Fstep(nr_total), &
-            KTCdT(nr_total), ddFF(nr_total), ddVV(nr_total), TTn1(nr_total), TTinterp(nc_total))
-    temperature = 0.d0; 
+                KTCdT(nr_total), ddFF(nr_total), ddVV(nr_total), TTn1(nr_total), TTinterp(nc_total))
+    solution = 0.d0; 
     
     do i = 2, sizeF
         ! Get delta time
         dt = time_list(i) - time_list(i-1)
 
         ! Get values of last simulation 
-        TTn0 = temperature(:, i-1)
+        TTn0 = solution(:, i-1)
 
         ! Prediction of new step
         TTn1 = TTn0 + dt*(1-newmark)*VVn0; TTn1(dod) = GG(:, i)
@@ -1476,18 +1523,16 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             KTCdT = KT + CdT
 
             ! Compute residue
-            ddFF = Fstep - KTCdT
-            call clean_dirichlet_1dim(nr_total, ddFF, ndod, dod)
+            ddFF = Fstep - KTCdT; ddFF(dod) = 0.d0
             resNL = sqrt(dot_product(ddFF, ddFF))
             print*, " with Raphson error: ", resNL
-            if (isnan(resNL)) stop 'Error is NAN'
             if (resNL.le.1.d-6) exit
 
             ! Solve by iterations 
             call mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    newmark*dt, table_dir, ndod, dod, ddFF, GGtmp, nbIterPCG, threshold, method, ddVV, resPCG)
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, newmark*dt, &
+                                    table_dir, ndod, dod, ddFF, GGtmp, nbIterPCG, threshold, method, ddVV, resPCG)
 
             ! Update values
             VVn1 = VVn1 + ddVV
@@ -1496,7 +1541,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
         end do
         
         ! Set values
-        temperature(:, i) = TTn1
+        solution(:, i) = TTn1
         VVn0 = VVn1
                 
     end do

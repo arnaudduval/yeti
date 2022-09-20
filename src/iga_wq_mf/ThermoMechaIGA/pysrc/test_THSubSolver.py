@@ -62,7 +62,6 @@ if isLinear:
     Fext = modelPhy.eval_source_vector(powden_prism)
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
-
     for itmethod in ['FDC', 'JMC', 'JMS']:
         # Solve linear transient problem
         sol, residue = modelPhy.MF_THLSubs(F=Fext, method=itmethod)

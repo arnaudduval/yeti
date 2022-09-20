@@ -3,24 +3,6 @@
 ! author :: Joaquin Cornejo
 ! ==========================
 
-subroutine clean_dirichlet_1dim(nr, A, ndod, dod)
-    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices 
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndod
-    double precision, intent(inout) :: A
-    dimension :: A(nr)
-
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
-
-    ! Clean array
-    A(dod) = 0.d0 
-
-end subroutine clean_dirichlet_1dim
-
 subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)
     !! Creates the block matrix L of size nrxnc. 
     !! This matrix satisfies : L M L' = Mnn (n are the free control points)

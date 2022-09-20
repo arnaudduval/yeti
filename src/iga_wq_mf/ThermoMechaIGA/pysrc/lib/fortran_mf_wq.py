@@ -302,7 +302,7 @@ class fortran_mf_wq(thermoMechaModel):
         return vector
 
     # ----------------------------------
-    # MATRIX FREE SOLUTION (IN FORTRAN)
+    # HEAT TRANSFER (IN FORTRAN)
     # ----------------------------------   
 
     def get_input4MatrixFree(self, table=None):
@@ -349,11 +349,11 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue, error
 
-    def MFtransientHeatNL(self, F=None, time_list=None, newmark=1, table_Kprop=None, table_Cprop=None):
+    def MFtransientHeatNL(self, F=None, G=None, time_list=None, newmark=1, table_Kprop=None, table_Cprop=None):
         "Solves transient heat problem  "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if F is None or time_list is None: raise Warning('Important information missing')
+        if F is None or G is None or time_list is None: raise Warning('Important information missing')
 
         # Get inputs 
         if table_Kprop is None: 
@@ -363,8 +363,11 @@ class fortran_mf_wq(thermoMechaModel):
             table_Cprop = np.array([[0, 1]])
             print('WARNING: Default capacity = 1.0')
 
+        # Convert Python to Fortran
+        dod = np.copy(self._thermal_dod); dod += 1
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [*inputs_tmp, table_Kprop, table_Cprop, newmark, self._invJ, self._detJ, time_list, F]
+        inputs = [*inputs_tmp, *self._nb_qp, *self._indices, *self._DB, *self._DW, table_Kprop, 
+                    table_Cprop, newmark, self._invJ, self._detJ, time_list, F, dod, G]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol = solver.mf_wq_transient_nonlinear_3d(*inputs)
@@ -394,7 +397,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return u_interp
 
-    # ------------------- TO VERIFY (substitution method used)-----------------
+    # ----------------- TO VERIFY (substitution method used) -----------------
     def MF_THNonLSubs(self, F=None, G=None, time_list=None, newmark=1, table_Kprop=None, table_Cprop=None):
         " Solves transient heat problems using substitution method "
 
@@ -442,7 +445,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue
 
-    def MF_SHSubs(self, f, nbIterPCG, threshold, ud=None, method_pls='S', methodPCG='TDC'): 
+    def MF_SHSubs(self, f, nbIterPCG, threshold, ud=None, methodPCG='TDC'): 
         " Solves steady heat with penalty, Lagrange or substitution method "
 
         # Get inputs 
@@ -457,12 +460,13 @@ class fortran_mf_wq(thermoMechaModel):
                     self._thermalDirichlet, dod, f, ud, nbIterPCG, threshold, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: 
-            if method_pls == 'S': 
-                sol, residue = solver. mf_wq_solve_shs_3d(*inputs)   
-            else: raise Warning('Method is not well implemented')
+        if self._dim == 3: sol, residue = solver. mf_wq_solve_shs_3d(*inputs)   
 
         return sol, residue
+
+    # ----------------------------------
+    # ELASTO-PLASTICITY (IN FORTRAN)
+    # ----------------------------------
 
     def MFplasticity_fortran(self, Fext=None, indi=None):
         " Solves a plasticity problem "
@@ -508,7 +512,7 @@ class fortran_mf_wq(thermoMechaModel):
         return result
 
     # ----------------------------------
-    # MATRIX FREE SOLUTION (IN PYTHON)
+    # ELASTO-PLASTICITY (IN PYTHON)
     # ---------------------------------- 
 
     def compute_eigen_all(self, table=None, ndof=3):
