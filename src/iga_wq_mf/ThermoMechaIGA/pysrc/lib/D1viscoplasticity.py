@@ -6,10 +6,11 @@
 
 import numpy as np
 
-def cpp_combined_hardening_1D(E, H, beta, sigma_Y0, deps, sigma_n0, alpha_n0, ep_n0):
+def cpp_combined_hardening_1D(properties, deps, sigma_n0, alpha_n0, ep_n0):
     """ Return mapping algorithm for one-dimensional rate-independent plasticity. 
         It uses combined isotropic/kinematic hardening theory.  
     """
+    E, H, beta, sigma_Y0 = properties
 
     # Elastic predictor
     sigma_trial = sigma_n0 + E*deps 
@@ -60,11 +61,11 @@ def interpolate_strain_1D(JJ, DB, disp):
     eps = DB[1].T @ disp / JJ
     return eps
 
-def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-6, nbIterNL=200):
+def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-9, nbIterNL=200):
     " Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
     # Initialize
-    JJ, E, H, beta, sigma_Y0, nb_qp = properties
+    JJ, nb_qp = properties[0], properties[-1]
     sigma_n0, alpha_n0, ep_n0 = np.zeros(nb_qp), np.zeros(nb_qp), np.zeros(nb_qp)
     sigma_n1, alpha_n1, ep_n1 = np.zeros(nb_qp), np.zeros(nb_qp), np.zeros(nb_qp)
     Dalg = np.zeros(nb_qp)
@@ -77,11 +78,11 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
     for i in range(1, np.shape(Fext)[1]):
 
         # Initialize
-        ddisp = np.zeros(np.shape(disp[:, i-1]))
-        Fstep = Fext[:, i]
-        prod2 = np.dot(Fstep, Fstep)
+        ddisp = np.zeros(np.shape(Fext)[0])
+        Fstep = np.copy(Fext[:, i])
 
         # Solver Newton-Raphson
+        print('Step %d' %i)
         for j in range(nbIterNL):
 
             # Compute strain as function of displacement
@@ -89,29 +90,30 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 
             # Find closest point projection 
             for k in range(nb_qp):
-                result = cpp_combined_hardening_1D(E, H, beta, sigma_Y0, 
+                result = cpp_combined_hardening_1D(properties[1:-1], 
                             deps[k], sigma_n0[k], alpha_n0[k], ep_n0[k])
                 Dalg[k], sigma_n1[k], alpha_n1[k], ep_n1[k] = result
 
             # Compute Fint
             Fint = compute_static_Fint_1D(DB, W, sigma_n1)
             dF = Fstep[dof] - Fint[dof]
-            prod1 = np.dot(dF, dF)
-            relerror = np.sqrt(prod1/prod2)
-            if relerror <= sigma_Y0*tol: break
+            relerror = np.sqrt(np.dot(dF, dF))
+            print('Rhapson with error %.5e' %relerror)
+            if relerror <= tol: break
 
             # Compute stiffness
             S = compute_tangent_static_matrix_1D(JJ, DB, W, Dalg)[np.ix_(dof, dof)]
-            ddisp[dof] = np.linalg.solve(S, dF)
-                
-        print(j+1, relerror)
-
+            delta_disp = np.linalg.solve(S, dF)
+            ddisp[dof] += delta_disp
+            
         # Update values in output
         disp[:, i] = disp[:, i-1] + ddisp
         ep[:, i] = ep_n1
         sigma[:, i] = sigma_n1
-        ep_n0 = ep_n1
-        sigma_n0 = sigma_n1
+
+        ep_n0 = np.copy(ep_n1)
+        sigma_n0 = np.copy(sigma_n1)
+        alpha_n0 = np.copy(alpha_n1)
 
     return disp, ep, sigma
 

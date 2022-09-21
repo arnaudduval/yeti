@@ -678,7 +678,7 @@ class fortran_mf_wq(thermoMechaModel):
 
             # Initialize
             ddisp = np.zeros(np.shape(disp[:, :, i-1]))
-            Fext_t = Fext[:, :, i]
+            Fstep = Fext[:, :, i]
 
             # Solver Newton-Raphson
             for j in range(nbIterNL):
@@ -697,20 +697,21 @@ class fortran_mf_wq(thermoMechaModel):
 
                 # Compute Fint 
                 Fint = self.compute_internal_force(coef_Fint)
-                dF = Fext_t - Fint
+                dF = Fstep - Fint
                 clean_dirichlet_3d(dF, indi) 
-                print("WARNING: FIND A NEW STOP CRITERION")
                 prod1 = block_dot_product(d, dF, dF)
                 relerror = np.sqrt(prod1)
                 print('Relative error: %.5f' %relerror)
-                if relerror <= self._sigmaY*threshold: break
-
-                ddisp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+                if relerror <= threshold: break
+                
                 # ddisp = self.MFelasticity(coefs=coef_Stiff, indi=indi, Fext=dF)
-
+                delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+                ddisp += delta_disp 
+                
             # Set values
             disp[:, :, i] = disp[:, :, i-1] + ddisp
-            ep_n0 = ep_n1
-            sigma_n0 = sigma_n1
+            ep_n0 = np.copy(ep_n1)
+            sigma_n0 = np.copy(sigma_n1)
+            alpha_n0 = np.copy(alpha_n1)
 
         return disp

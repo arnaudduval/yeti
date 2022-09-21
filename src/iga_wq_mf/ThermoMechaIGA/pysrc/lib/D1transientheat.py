@@ -4,7 +4,6 @@
 .. Joaquin Cornejo
 """
 
-from copy import deepcopy
 import numpy as np
 
 def compute_volsource_1D(JJ, DB, W, Fprop):
@@ -80,12 +79,11 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
         delta_t = time_list[i] - time_list[i-1]
 
         # Get values of last step
-        TTn0 = Tinout[:, i-1]; TTn1 = TTn0
+        TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
 
         # Predict values of new step
-        TTn1[dof] = TTn0[dof] + delta_t*(1-alpha)*VVn0
-        TTn1[dod] = Tinout[dod, i]
-        TTn1i0 = deepcopy(TTn1); ddTT = np.zeros(len(TTn1))
+        TTn1[dof] = TTn0[dof] + delta_t*(1-alpha)*VVn0; TTn1[dod] = Tinout[dod, i]
+        TTn1i0 = np.copy(TTn1); ddTT = np.zeros(len(TTn1))
         ddTT[dod] = 1.0/alpha*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-alpha)*ddGG)
         VVn1 = np.zeros(len(dof))
 
@@ -125,7 +123,7 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
 
         # Update values in output
         Tinout[:, i] = TTn1
-        VVn0 = VVn1
-        ddGG = ddTT[dod]
+        VVn0 = np.copy(VVn1)
+        ddGG = np.copy(ddTT[dod])
         
     return 

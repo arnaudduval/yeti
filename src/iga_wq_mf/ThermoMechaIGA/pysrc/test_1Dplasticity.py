@@ -11,7 +11,7 @@ folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Define mechanical properties
-E, H, sigma_Y, beta, JJ = 200e3, 25e3, 250, 0.5, 1
+E, H, sigma_Y, beta, JJ = 200e3, 50e3, 100, 0.5, 1
 
 # Define geometry
 degree, nbel = 5, 32
@@ -26,7 +26,7 @@ nb_qp = len(qp_cgg)
 properties = [JJ, E, H, beta, sigma_Y, nb_qp]
 
 # Define boundaries conditions
-N = 500
+N = 51
 t = np.linspace(0, 1, N)
 dof = np.arange(1, nb_ctrlpts, dtype=int)
 Fext = np.zeros((nb_ctrlpts, N))

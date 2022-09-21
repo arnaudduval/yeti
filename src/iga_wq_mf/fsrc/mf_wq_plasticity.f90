@@ -528,12 +528,15 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     deps(dof, nc_total), sigma_n0(dof, nc_total), sigma_n1(dof, nc_total), &
                     Dalg(dof, dof, nc_total), coef_fint(d*d, nc_total), coef_S(d*d, d*d, nc_total)
     
-    double precision, allocatable, dimension(:, :) :: Fext_t, Fint, dF, ddisp    
+    double precision, allocatable, dimension(:, :) :: Fstep, Fint, dF, ddisp, delta_disp 
     double precision :: relerror, prod
     integer :: i, j, k, nr_total
 
     ! Set total number of rows
     nr_total = nr_u*nr_v*nr_w
+    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
     ! --------------------
     ! Eigen decomposition
@@ -566,24 +569,27 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     ! Solver non linear system
     ! ------------------------
     ! Initialize
-    allocate(Fext_t(d, nr_total), Fint(d, nr_total), dF(d, nr_total), ddisp(d, nr_total))
+    allocate(Fstep(d, nr_total), Fint(d, nr_total), dF(d, nr_total), ddisp(d, nr_total), delta_disp(d, nr_total))
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0
     
     do i = 2, sizeF
 
-        ! Initialize 
+        ! Initialize displacement
         ddisp = 0.d0
-        Fext_t = Fext(:, :, i)        
+
+        ! Get force of new step
+        Fstep = Fext(:, :, i)        
 
         ! Solver Newton-Raphson
+        print*, 'Step: ', i - 1
         do j = 1, nbIterNL
-            print*, 'Step: ', i, ' Iteration: ', j-1
 
             ! Compute strain as a function of displacement (at each quadrature point) 
             call interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, invJ, ddisp, deps)
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                            invJ, ddisp, deps)
 
             ! Closest point projection in perfect plasticity 
             do k = 1, nc_total
@@ -607,25 +613,27 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
-            dF = Fext_t - Fint
+            dF = Fstep - Fint
             call clean_dirichlet_3dim(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(d, nr_total, dF, dF, prod)
             relerror = sqrt(prod)
             print*, "Raphson with error: ", relerror
-            if (relerror.le.sigma_Y*1e-9) exit
+            if (relerror.le.1e-8) exit
     
             ! Solver Bi-conjugate gradient
             call mf_wq_elasticity_3d(coef_S, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
                                 nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-                                dF, ddisp)
+                                dF, delta_disp)
+            ddisp = ddisp + delta_disp
         end do
         
         ! Save values
         disp(:, :, i) = disp(:, :, i-1) + ddisp
         ep_n0 = ep_n1
         sigma_n0 = sigma_n1
+        alpha_n0 = alpha_n1
     
     end do
 

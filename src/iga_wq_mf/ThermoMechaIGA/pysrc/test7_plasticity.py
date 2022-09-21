@@ -23,7 +23,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-6, 'young': 210e3, 'poisson': 0.3, 'sigmaY': 25e3, 'hardening':250, 'betahard':0.5}
+material = {'density': 7.8e-6, 'young': 210e3, 'poisson': 0.3, 'sigmaY': 250, 'hardening':50e3, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
@@ -65,8 +65,8 @@ else:
     Fext = np.zeros((*np.shape(Fsurf), nbStep+1))
     for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-    # # Solve system in fortran
-    # itersol_fr = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
+    # Solve system in fortran
+    itersol_fr = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
 
-    # Solve system in Python
-    itersol_py = modelPhy.MFplasticity_py(Fext=Fext, indi=Mdod)
+    # # Solve system in Python
+    # itersol_py = modelPhy.MFplasticity_py(Fext=Fext, indi=Mdod)
