@@ -604,15 +604,15 @@ class thermoMechaModel():
     # POST-PROCESSING 
     # ===========================
 
-    def interpolate_field(self, nnz=None, u_ctrlpts=None, nbDOF=3):
+    def interpolate_field(self, samplesize=None, u_ctrlpts=None, nbDOF=3):
         " Interpolates the input field. It also returns the jacobien "
 
         # -------------------------
         # Get basis using fortran
         # -------------------------
         # Define knots
-        if nnz == None: nnz = self._sample_size
-        knots = np.linspace(0, 1, nnz)
+        if samplesize == None: samplesize = self._sample_size
+        knots = np.linspace(0, 1, samplesize)
 
         # Set basis and indices
         data, indices = [], []
@@ -623,7 +623,7 @@ class thermoMechaModel():
         # -----------------------------
         # Get position and determinant 
         # -----------------------------
-        inputs = [*self._dim*[nnz], *indices, *data, self._ctrlpts]
+        inputs = [*self._dim*[samplesize], *indices, *data, self._ctrlpts]
         if self._dim == 2:
             JJ_interp, detJJ_interp, _ = assembly.eval_jacobien_2d(*inputs)
             position_interp = assembly.interpolate_fieldphy_2d(*inputs)
@@ -636,7 +636,7 @@ class thermoMechaModel():
         # -------------------
         if u_ctrlpts is not None:
             u_temp = np.atleast_2d(u_ctrlpts)
-            inputs = [*self._dim*[nnz], *indices, *data, u_temp]
+            inputs = [*self._dim*[samplesize], *indices, *data, u_temp]
 
             if self._dim == 2: u_interp = assembly.interpolate_fieldphy_2d(*inputs)    
             elif self._dim == 3: u_interp = assembly.interpolate_fieldphy_3d(*inputs)

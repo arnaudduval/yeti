@@ -20,17 +20,18 @@ def setKpop(T, prop=1.0):
     return y
 
 def setCpop(T, prop=1.0):
-    y = 1 + prop*np.exp(-0.1*abs(T))
-    # y = prop*np.ones(len(T))
+    # y = 1 + prop*np.exp(-0.1*abs(T))
+    y = prop*np.ones(len(T))
     return y
 
 # Set global variables
 degree, cuts = 4, 4
 conductivity, capacity = 0.1, 1
+newmark = 1.0
 
 # Set time simulation
 N = 100
-time_list = np.linspace(0, 10, N)
+time_list = np.linspace(0, 300, N)
 
 # Create material
 table_Kprop = create_table_properties(setKpop, prop=conductivity)
@@ -71,10 +72,33 @@ Fext  = np.kron(Fendt, sigmoid(time_list))
 # Solve transient problem at internal control points
 Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                methodPCG='JMC', newmark=1)
+                                methodPCG='JMC', newmark=newmark)
 
+# --------------
 # Post-treatment
 # --------------
+
+# Temperature of mid-point
+# -------------------------
+samplesize = 11
+pos = int((samplesize + 1)/2)
+Tpoint_list = []
+for i in range(np.shape(Tsol)[1]): 
+    Tinterp = modelPhy.interpolate_field(u_ctrlpts=Tsol[:, i], nbDOF=1, samplesize=samplesize)[-1]
+    Tpoint = Tinterp[pos + (pos-1)*samplesize + (pos-1)*samplesize**2]
+    Tpoint_list.append(Tpoint)
+
+fig, ax = plt.subplots(nrows=1, ncols=1)
+ax.plot(time_list, Tpoint_list, 'o-')
+
+# Set properties
+ax.set_xlabel('Time (s)')
+ax.set_ylabel('Temperature (K)')
+fig.tight_layout()
+fig.savefig(folder + 'EvolTemp.png')
+
+# Residue
+# -------
 resPCG = resPCG[:, resPCG[0, :]>0]
 
 # Colors
@@ -92,7 +116,6 @@ for _ in range(np.shape(resPCG)[1]):
 
 # Set properties
 ax.set_xlabel('Number of iterations')
-ax.set_ylabel('Relative error (%)')
 ax.set_ylabel('Relative residue (%)')
 fig.tight_layout()
 fig.savefig(folder + 'TransientNL.png')

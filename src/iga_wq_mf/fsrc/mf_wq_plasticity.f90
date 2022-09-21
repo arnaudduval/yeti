@@ -331,7 +331,7 @@ end subroutine mf_wq_get_su_3d_csr
 subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIterPCG, &
-                            U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, RelRes)
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
     !! Moreover, it considers Dirichlet boundaries are zero
@@ -363,13 +363,13 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     double precision, intent(in) :: b
     dimension :: b(d, nr_u*nr_v*nr_w)
     
-    double precision, intent(out) :: x 
-    dimension :: x(d, nr_u*nr_v*nr_w)
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(d, nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
 
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb, RelRes
+    double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb
     double precision, allocatable, dimension(:, :) :: r, rhat, p, s, ptilde, Aptilde, stilde, Astilde, Ap, As
     integer :: nr_total, iter
 
@@ -390,7 +390,7 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     allocate(r(d, nr_total), rhat(d, nr_total), p(d, nr_total), s(d, nr_total), &
             ptilde(d, nr_total), Aptilde(d, nr_total), Astilde(d, nr_total), & 
             stilde(d, nr_total), Ap(d, nr_total), As(d, nr_total))
-    x = 0.d0; r = b; 
+    x = 0.d0; r = b; RelRes = 0.d0; RelRes(1) = 1.d0
     call clean_dirichlet_3dim(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     rhat = r; p = r
     call block_dot_product(d, nr_total, r, rhat, rsold)
@@ -423,8 +423,8 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
             x = x + alpha*p + omega*s ! Normally x is alrady Dirichlet updated
             r = s - omega*As ! Normally r is alrady Dirichlet updated
 
-            RelRes = maxval(abs(r))/normb
-            if (RelRes.le.threshold) exit
+            RelRes(iter+1) = maxval(abs(r))/normb
+            if (RelRes(iter+1).le.threshold) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Ap)
@@ -464,15 +464,15 @@ subroutine mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
             x = x + alpha*ptilde + omega*stilde ! Normally x is alrady Dirichlet updated
             r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
             
-            RelRes = maxval(abs(r))/normb
-            if (RelRes.le.threshold) exit
+            RelRes(iter+1) = maxval(abs(r))/normb
+            if (RelRes(iter+1).le.threshold) exit
             call block_dot_product(d, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
         end do
     end if
-    print*, 'Bi CGstab with error: ', RelRes, 'after iterations', iter
+
 end subroutine mf_wq_elasticity_3d
 
 subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -517,8 +517,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: Deigen
-    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w, Deigen
     double precision, dimension(:), allocatable :: I_u, I_v, I_w
     double precision :: s_u, s_v, s_w
 
@@ -528,7 +527,8 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     Dalg(dof, dof, nc_total), coef_fint(d*d, nc_total), coef_S(d*d, d*d, nc_total)
     
     double precision, allocatable, dimension(:, :) :: Fstep, Fint, dF, ddisp, delta_disp 
-    double precision :: relerror, prod
+    double precision :: relerror, prod, RelRes
+    dimension :: RelRes(nbIterPCG+1)
     integer :: i, j, k, nr_total
 
     ! Set total number of rows
@@ -624,7 +624,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, .true., &
                                 nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-                                dF, delta_disp)
+                                dF, delta_disp, RelRes)
             ddisp = ddisp + delta_disp
         end do
         
@@ -640,14 +640,12 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
     end do
 
-    print*, 'Last step: ', maxval(abs(sigma_n1))
-
 end subroutine mf_wq_plasticity_3d
 
 subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            isPrecond, nbIterPCG, table, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            isPrecond, nbIterPCG, table, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x, RelRes)
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
     !! Moreover, it considers Dirichlet boundaries are zero
@@ -679,16 +677,17 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     double precision, intent(in) :: b
     dimension :: b(d, nr_u*nr_v*nr_w)
     
-    double precision, intent(out) :: x 
-    dimension :: x(d, nr_u*nr_v*nr_w)
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(d, nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
 
     ! Local data
     ! -----------
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: Deigen
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w, Deigen
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
+    double precision :: s_u, s_v, s_w
     integer :: nr_total, i
 
     ! Set total number of rows
@@ -701,8 +700,8 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! Eigen decomposition
     ! --------------------
     ! Initialize 
-    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), &
-            U_w(nr_w, nr_w, d), D_w(nr_w), Deigen(d, nr_total))
+    allocate(U_u(nr_u, nr_u, d), D_u(nr_u, d), U_v(nr_v, nr_v, d), D_v(nr_v, d), &
+            U_w(nr_w, nr_w, d), D_w(nr_w, d), Deigen(d, nr_total))
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
@@ -714,24 +713,30 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     do i = 1, d
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), table(1, :, i), D_u, U_u(:, :, i), Kdiag_u, Mdiag_u)
+                                data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
 
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), table(2, :, i), D_v, U_v(:, :, i), Kdiag_v, Mdiag_v)
+                                data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
 
         call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
                                 data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), table(3, :, i), D_w, U_w(:, :, i), Kdiag_w, Mdiag_w) 
-
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, 1.d0, 1.d0, 1.d0, Deigen(i, :))
+                                data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
     end do
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+
+    do i = 1, d
+        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*d+1, (i-1)*d+1, :), s_u)
+        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*d+2, (i-1)*d+2, :), s_v)
+        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*d+3, (i-1)*d+3, :), s_w)
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), &
+                                    s_u, s_v, s_w, Deigen(i, :))
+    end do
 
     call mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, &
                             nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
-                            b, x)
+                            b, x, RelRes)
 
 end subroutine mf_wq_elasticity_3d_py

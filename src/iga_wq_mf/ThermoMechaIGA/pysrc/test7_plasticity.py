@@ -10,6 +10,11 @@ from lib.D3viscoplasticity import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
 
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/test7/'
+if not os.path.isdir(folder): os.mkdir(folder)
+
 # Set global variables
 degree, cuts = 4, 4
 isElastic = True
@@ -51,10 +56,29 @@ if isElastic:
     # ELASTICITY
     # -------------
     # Compute iterative solution in fortran 
-    displacement = modelPhy.MFelasticity_fortran(indi=Mdod, Fext=Fsurf)
+    displacement, resPCG = modelPhy.MFelasticity_fortran(indi=Mdod, Fext=Fsurf)
+
+    # Plot residue
+    resPCG = resPCG[resPCG>0]*100
+
+    # Colors
+    colorset = ['#377eb8', '#ff7f00', '#4daf4a',
+            '#f781bf', '#a65628', '#984ea3',
+            '#999999', '#e41a1c', '#dede00']
+
+    fig, ax = plt.subplots(nrows=1, ncols=1)
+    ax.semilogy(np.arange(len(resPCG)), resPCG)
+
+    # Set properties
+    ax.set_xlabel('Number of iterations')
+    ax.set_ylabel('Relative residue (%)')
+    fig.tight_layout()
+    fig.savefig(folder + 'ElasticityRes.png')
+
+    # ---------------------
 
     # # Interpolate displacement
-    # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3)
+    # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
 
     # Compute strain 
     strain = modelPhy.compute_strain(u=displacement)
@@ -67,7 +91,7 @@ if isElastic:
 
     # Interpolate Von Mises field
     stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
-    modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1)
+    modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
 
 else:
     # --------------
@@ -82,7 +106,7 @@ else:
     displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
 
     # Interpolate displacement
-    modelPhy.export_results(u_ctrlpts=displacement[:,:,-1], nbDOF=3)
+    modelPhy.export_results(u_ctrlpts=displacement[:,:,-1], nbDOF=3, folder=folder)
 
     # # Interpolate Von Mises field
     # stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm[:, -1])

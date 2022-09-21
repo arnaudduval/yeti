@@ -16,7 +16,7 @@ def conductivity(T):
 
 def capacity(T):
     # C = 1 + 0.2*np.exp(-0.1*abs(T))
-    C = 5*np.ones(np.shape(T))
+    C = 1*np.ones(np.shape(T))
     return C
 
 def source(qp):
@@ -24,8 +24,8 @@ def source(qp):
     return f
 
 # Define some properties to solver
-alpha, JJ = 0.5, 1
-properties = [JJ, conductivity, capacity, alpha]
+newmark, JJ = 0.5, 1
+properties = [JJ, conductivity, capacity, newmark]
 
 # Create geometry
 degree, nbel = 5, 32
@@ -51,8 +51,9 @@ Fext = np.kron(FFend, sigmoid(time_list))
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
 temperature = np.zeros(np.shape(Fext))
-temperature[0, :] = 0
-temperature[-1,:] = sigmoid(time_list)
+temperature[0, :] = 0.0
+# temperature[-1,:] = sigmoid(time_list)
+temperature[-1,:] = 1.0
 
 # Solve transient heat problem
 solve_transient_heat_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, 
@@ -62,7 +63,8 @@ solve_transient_heat_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext,
 # Post-treatement
 # ------------------
 # Create eval points
-knots = np.linspace(0, 1, 101)
+nbknots = 101
+knots = np.linspace(0, 1, nbknots)
 DB = eval_basis_python(degree, knotvector, knots)
 temperature_interp = DB[0].T @ temperature
 
@@ -83,3 +85,13 @@ for ax, variable in zip([ax1], [temperature_interp]):
 fig.tight_layout()
 fig.savefig(folder + 'Transient_heat_1D.png')
 
+# Plot mid-point temperature
+pos = int((nbknots+1)/2)
+midpoint_temp = temperature_interp[pos, :]
+
+fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
+ax1.plot(time_list, midpoint_temp, 'o-')
+ax1.set_ylabel('Temperature (K)')
+ax1.set_xlabel('Time (s)')
+fig.tight_layout()
+fig.savefig(folder + 'EvolTemp.png')

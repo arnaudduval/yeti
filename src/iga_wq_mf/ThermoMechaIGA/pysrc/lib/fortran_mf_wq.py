@@ -514,9 +514,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
                 isPrecond, nbIterPCG, self._mechanicalDirichlet, *dod]
-        displacement = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
+        displacement, residue = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
 
-        return displacement
+        return displacement, residue
 
     # ----------------------------------
     # ELASTO-PLASTICITY (IN PYTHON)
