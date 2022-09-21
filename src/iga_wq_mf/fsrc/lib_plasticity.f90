@@ -104,7 +104,7 @@ end subroutine compute_stress_deviatoric
 
 subroutine compute_stress_norm(dimen, ddl, tensor, norm)
     !! Returns Frobenius norm of a second-order stress-like tensor 
-    !! The definition is norm = sqrt(s:s). Since s i a tensor written in Voigt notation
+    !! The definition is norm = sqrt(s:s). Since s is a tensor written in Voigt notation
     !! some scale factor must be considered.
 
     implicit none
@@ -214,6 +214,35 @@ subroutine create_incidence_matrix(dimen, ddl, EE)
 
 end subroutine create_incidence_matrix
 
+subroutine compute_stress_vonmises(dimen, ddl, tensor, VM)
+    !! Computes equivalent stress with Von Mises formula of a second-order stress-like tensor.
+    !! Given tensor is written in Voigt notation
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, ddl
+    double precision, intent(in) :: tensor
+    dimension :: tensor(ddl)
+
+    double precision, intent(out) :: VM
+
+    ! Local data
+    ! ----------
+    double precision :: dev_tensor
+    dimension :: dev_tensor(ddl)
+
+    ! Compute deviatoric
+    call compute_stress_deviatoric(dimen, ddl, tensor, dev_tensor)
+
+    ! Compute norm of deviatoric tensor
+    call compute_stress_norm(dimen, ddl, tensor, VM)
+
+    ! Normalize result
+    VM = sqrt(3.d0/2.d0)*VM
+
+end subroutine compute_stress_vonmises
+
 module elastoplasticity
 
     implicit none
@@ -259,7 +288,7 @@ module elastoplasticity
         mu = E/(2*(1+nu))
         bulk = lambda + 2.d0/3.d0*mu
 
-        ! Create special tensors in Voigt representation
+        ! Create special tensors in Voigt notation
         call fourth_order_identity(dimen, ddl, II)
         call one_kron_one(dimen, ddl, onekronone)
         Idev = II - 1.d0/3.d0*onekronone

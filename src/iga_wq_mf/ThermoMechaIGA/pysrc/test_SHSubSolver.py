@@ -51,7 +51,7 @@ elif case == 2:
     modelPhy = fortran_mf_wq(modelIGA)
     
     # Interpolation of u
-    u_interp = modelPhy.interpolate_ControlPoints(temperature_rotring)
+    u_interp = modelPhy.interpolate_ControlPoints(funfield=temperature_rotring)
 
     # Add material 
     material = {'capacity':1, 'conductivity':np.eye(3)}

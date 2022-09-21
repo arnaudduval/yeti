@@ -194,11 +194,16 @@ class fortran_mf_iga(thermoMechaModel):
 
         return sol, residue, error
         
-    def interpolate_ControlPoints(self, fun, nbIterPCG=100, threshold=1e-14):
+    def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "
         
         # Get coeficients 
-        coefs = fun(self._qp_PS)  * self._detJ
+        coefs = None
+        if datafield is not None: coefs = datafield * self._detJ
+        if funfield is not None: coefs = funfield(self._qp_PS) * self._detJ
+
+        # Verify data
+        if coefs is None: raise Warning('Missing data')
 
         # Get inputs 
         inputs = [coefs, *self._indices, *self._DB, *self._DW]

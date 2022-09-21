@@ -532,7 +532,7 @@ class thermoMechaModel():
 
         return coefs
 
-    def eval_elastic_coefficient(self, JJ, isnoised=False):
+    def eval_elastic_coefficient(self, invJ, detJ, isnoised=False):
         """ Computes elasto-plastic coefficients.
             This function only consider linear isotropic case 
         """
@@ -540,7 +540,7 @@ class thermoMechaModel():
         # Set shape
         d = self._dim
         ddl = int(d*(d+1)/2)
-        nnz = np.shape(JJ)[2]
+        nnz = len(detJ)
 
         # Create tensors
         EE = create_incidence_matrix(d)
@@ -589,14 +589,14 @@ class thermoMechaModel():
 
         for k in range(nnz):
             # Compute inverse and determinant of JJ
-            invJJ = np.linalg.inv(JJ[:,:,k])
-            detJJ = np.linalg.det(JJ[:,:,k])
+            invJt = invJ[:, :, k]
+            detJt = detJ[k]
 
             for i in range(d):
                 for j in range(d):
-                    ETCE = EE[:,:,i].T @ C[:,:,k] @ EE[:,:,j]
-                    Dij = invJJ @ ETCE @ invJJ.T
-                    coefs[j*d:(j+1)*d, j*d:(j+1)*d, k] = Dij*detJJ
+                    ETCE = EE[:, :, i].T @ C[:,:,k] @ EE[:, :, j]
+                    Dij = invJt @ ETCE @ invJt.T
+                    coefs[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*detJt
 
         return coefs
 

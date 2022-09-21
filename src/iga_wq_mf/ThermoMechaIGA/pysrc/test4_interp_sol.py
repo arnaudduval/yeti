@@ -29,7 +29,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 # Interpolation of u
 modelPhy = cfortran(modelIGA)
 
-u_interp = modelPhy.interpolate_ControlPoints(temperature_rotring)
+u_interp = modelPhy.interpolate_ControlPoints(funfield=temperature_rotring)
 output = modelPhy.interpolate_field(u_ctrlpts=u_interp, nbDOF=1)
 qp_sample, u_interp_sample = output[1], output[-1]
 

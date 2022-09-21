@@ -478,11 +478,10 @@ end subroutine mf_wq_elasticity_3d
 subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, properties, &
-                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, disp)
+                        table, ndu, ndv, ndw, dod_u, dod_v, dod_w, invJ, detJ, sizeF, Fext, disp, sigma_vm)
     !! Solves elasto-plasticity problems using combined isotropic/kinematic hardening theory
     !! and Newton-Raphson method for non-linear equations
     !! IN CSR FORMAT
-    !! IT HAS NOT BEEN TESTED
 
     use elastoplasticity
     implicit none 
@@ -507,8 +506,8 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     double precision, intent(in) :: invJ, detJ, Fext
     dimension :: invJ(d, d, nc_total), detJ(nc_total), Fext(d, nr_u*nr_v*nr_w, sizeF)
     
-    double precision, intent(out) :: disp
-    dimension :: disp(d, nr_u*nr_v*nr_w, sizeF)
+    double precision, intent(out) :: disp, sigma_vm
+    dimension :: disp(d, nr_u*nr_v*nr_w, sizeF), sigma_vm(nc_total, sizeF)
 
     ! Local data
     ! ----------
@@ -572,7 +571,7 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     allocate(Fstep(d, nr_total), Fint(d, nr_total), dF(d, nr_total), ddisp(d, nr_total), delta_disp(d, nr_total))
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, E, H, beta, nu, sigma_Y)
-    disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0
+    disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0; sigma_vm = 0.d0
     
     do i = 2, sizeF
 
@@ -634,8 +633,14 @@ subroutine mf_wq_plasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
         ep_n0 = ep_n1
         sigma_n0 = sigma_n1
         alpha_n0 = alpha_n1
-    
+
+        do k = 1, nc_total
+            call compute_stress_vonmises(dimen, ddl, sigma_n1(:, k), sigma_vm(k, i))
+        end do
+
     end do
+
+    print*, 'Last step: ', maxval(abs(sigma_n1))
 
 end subroutine mf_wq_plasticity_3d
 
@@ -688,12 +693,16 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     ! Set total number of rows
     nr_total = nr_u*nr_v*nr_w
+    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
     ! --------------------
     ! Eigen decomposition
     ! --------------------
     ! Initialize 
-    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), U_w(nr_w, nr_w, d), D_w(nr_w), Deigen(d, nr_total))
+    allocate(U_u(nr_u, nr_u, d), D_u(nr_u), U_v(nr_v, nr_v, d), D_v(nr_v), &
+            U_w(nr_w, nr_w, d), D_w(nr_w), Deigen(d, nr_total))
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
@@ -717,12 +726,12 @@ subroutine mf_wq_elasticity_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, 1.d0, 1.d0, 1.d0, Deigen(i, :))
     end do
-    deallocate(I_u, I_v, I_w, D_u, D_v, D_w)
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
     call mf_wq_elasticity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, nbIterPCG, &
-                            U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, x)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isPrecond, &
+                            nbIterPCG, U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, &
+                            b, x)
 
 end subroutine mf_wq_elasticity_3d_py

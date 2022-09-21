@@ -140,7 +140,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_mechanics()
         
         # Get inputs
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
         start = time.time()
         val_, indi_, indj_ = assembly.wq_get_stiffness_3d(*inputs)
@@ -181,7 +181,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
@@ -375,11 +375,16 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, resPCG
 
-    def interpolate_ControlPoints(self, fun, nbIterPCG=100, threshold=1e-14):
+    def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "
 
         # Get coeficients 
-        coefs = fun(self._qp_PS) * self._detJ
+        coefs = None
+        if datafield is not None: coefs = datafield * self._detJ
+        if funfield is not None: coefs = funfield(self._qp_PS) * self._detJ
+
+        # Verify data
+        if coefs is None: raise Warning('Missing data')
 
         # Get inputs
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
@@ -488,18 +493,18 @@ class fortran_mf_wq(thermoMechaModel):
         prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
         inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, prop, self._mechanicalDirichlet, 
                     *dod, self._invJ, self._detJ]
-        result = solver.mf_wq_plasticity_3d(*inputs, Fext)
+        displacement, stress_vm = solver.mf_wq_plasticity_3d(*inputs, Fext)
 
-        return result
+        return displacement, stress_vm
     
-    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=300, isPrecond=True, isnoised=False):
+    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, isPrecond=True, isnoised=False):
         " Solves a elasticity problem "
         
         # Get inputs 
         if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp, isnoised=isnoised)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ, isnoised=isnoised)
 
         dod = deepcopy(indi)
         for _ in range(len(dod)):
@@ -509,9 +514,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
                 isPrecond, nbIterPCG, self._mechanicalDirichlet, *dod]
-        result = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
+        displacement = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
 
-        return result
+        return displacement
 
     # ----------------------------------
     # ELASTO-PLASTICITY (IN PYTHON)
@@ -574,14 +579,14 @@ class fortran_mf_wq(thermoMechaModel):
         return Fint
 
     def MFelasticity_py(self, coefs=None, DU=None, Fext=None, indi=None, 
-                            nbIterPCG=200, threshold=1e-7, isPrecond=True, isnoised=False):
+                            nbIterPCG=100, threshold=1e-7, isPrecond=True, isnoised=False):
         " Solve linear system using Bi-CG Stab algorithm for elasticity problems "
 
         # Initialize
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._Jqp, isnoised=isnoised)
-        
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ, isnoised=isnoised)
+
         x = np.zeros(np.shape(Fext)); r = Fext
         clean_dirichlet_3d(r, indi)
         rhat, p = r, r
