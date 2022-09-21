@@ -6,11 +6,12 @@
 """
 
 from lib.__init__ import *
+from lib.D3viscoplasticity import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
 
 # Set global variables
-degree, cuts = 4, 3
+degree, cuts = 4, 4
 isElastic = True
 
 # Create geometry 
@@ -52,8 +53,21 @@ if isElastic:
     # Compute iterative solution in fortran 
     displacement = modelPhy.MFelasticity_fortran(indi=Mdod, Fext=Fsurf)
 
-    # Interpolate displacement
-    modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3)
+    # # Interpolate displacement
+    # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3)
+
+    # Compute strain 
+    strain = modelPhy.compute_strain(u=displacement)
+
+    # Compute stress
+    stress = modelPhy.compute_linear_stress(strain)
+    stress_vm = np.zeros(np.shape(stress)[1])
+    for k in range(np.shape(strain)[1]):
+        stress_vm[k] = compute_stress_vonmises(3, stress[:, k])
+
+    # Interpolate Von Mises field
+    stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
+    modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1)
 
 else:
     # --------------
@@ -65,11 +79,11 @@ else:
     for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
     # Solve system in fortran
-    displacement, stress = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
+    displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=Mdod)
 
     # Interpolate displacement
     modelPhy.export_results(u_ctrlpts=displacement[:,:,-1], nbDOF=3)
 
     # # Interpolate Von Mises field
-    # stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress[:, -1])
+    # stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm[:, -1])
     # modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1)

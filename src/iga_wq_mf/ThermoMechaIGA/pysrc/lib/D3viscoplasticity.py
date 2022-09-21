@@ -201,3 +201,16 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 
     return coef_Fint, coef_Stiff
 
+def compute_stress_vonmises(d, tensor):
+    " Computes equivalent stress with Von Mises formula of a second-order stress-like tensor "
+
+    # Compute deviatoric
+    dev = compute_stress_deviatoric(d, tensor)
+
+    # Compute norm of deviatoric
+    vm = compute_stress_norm(d, dev)
+
+    # Normalize result
+    vm = np.sqrt(3.0/2.0)*vm
+
+    return vm

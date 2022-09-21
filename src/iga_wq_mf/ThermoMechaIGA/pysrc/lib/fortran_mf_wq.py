@@ -567,6 +567,19 @@ class fortran_mf_wq(thermoMechaModel):
 
         return eps
 
+    def compute_linear_stress(self, eps=None):
+
+        # Initialize
+        super()._verify_mechanics()
+        
+        # Initialiaze
+        stress = np.zeros(np.shape(eps))
+
+        for i in range(np.shape(stress)[1]):
+            stress[:, i] = self._Ctensor @ eps[:, i] 
+
+        return stress
+
     def compute_internal_force(self, coefs=None):
         "Compute internal force using sigma coefficients "
 
