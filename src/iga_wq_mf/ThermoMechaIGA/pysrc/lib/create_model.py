@@ -656,7 +656,7 @@ class thermoMechaModel():
             dirname = os.path.dirname
             folder = dirname(dirname(full_path)) + '/results/'
             if not os.path.isdir(folder): os.mkdir(folder)
-            print("File saved in %s" %folder)
+        print("File saved in %s" %folder)
 
         if u_ctrlpts is None: pass
         elif isinstance(u_ctrlpts, np.ndarray): 

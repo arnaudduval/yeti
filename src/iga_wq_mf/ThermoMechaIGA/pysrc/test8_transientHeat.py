@@ -26,12 +26,12 @@ def setCpop(T, prop=1.0):
 
 # Set global variables
 degree, cuts = 4, 4
-conductivity, capacity = 0.1, 1
-newmark = 1.0
+conductivity, capacity = 0.1, 1.0
+newmark = 0.5
 
 # Set time simulation
 N = 100
-time_list = np.linspace(0, 300, N)
+time_list = np.linspace(0, 30, N)
 
 # Create material
 table_Kprop = create_table_properties(setKpop, prop=conductivity)
@@ -39,7 +39,7 @@ table_Cprop = create_table_properties(setCpop, prop=capacity)
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
-modelGeo = geomdlModel('VB', **geometry)
+modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                             np.array([cuts, cuts, cuts]))
 
@@ -74,22 +74,25 @@ Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
                                 methodPCG='JMC', newmark=newmark)
 
+modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
+
 # --------------
 # Post-treatment
 # --------------
 
 # Temperature of mid-point
 # -------------------------
-samplesize = 11
-pos = int((samplesize + 1)/2)
+samplesize = 61
+pos = int((samplesize-1)/2)
 Tpoint_list = []
 for i in range(np.shape(Tsol)[1]): 
     Tinterp = modelPhy.interpolate_field(u_ctrlpts=Tsol[:, i], nbDOF=1, samplesize=samplesize)[-1]
-    Tpoint = Tinterp[pos + (pos-1)*samplesize + (pos-1)*samplesize**2]
+    Tpoint = Tinterp[pos + pos*samplesize + pos*samplesize**2]
     Tpoint_list.append(Tpoint)
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.plot(time_list, Tpoint_list, 'o-')
+ax.plot(time_list, Tpoint_list)
+ax.set_ylim(top=0.6)
 
 # Set properties
 ax.set_xlabel('Time (s)')

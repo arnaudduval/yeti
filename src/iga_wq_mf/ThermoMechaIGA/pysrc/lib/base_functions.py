@@ -668,9 +668,6 @@ def wq_find_weights(degree, knotvector, r):
 
         Bt = B0wq_p1[np.ix_(F,P)]
         It = I11[np.ix_(F, [i])]
-        if i == 2:
-            print(Bt.toarray())
-            print(It.toarray())
             
         data_W11.extend(wq_solve_equation_system(Bt, It))
         indi.extend(i*np.ones(len(P), dtype= int))
