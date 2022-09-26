@@ -105,8 +105,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     !$OMP END PARALLEL
 
     ! Compute (Uw x Uv x Uu).array_temp
-    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                    U_u, U_v, U_w, array_temp, array_out)
+    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
     
 end subroutine fd_steady_heat_3d
 

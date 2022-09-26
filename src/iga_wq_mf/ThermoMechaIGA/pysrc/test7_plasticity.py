@@ -1,7 +1,13 @@
 """
 .. Test of plasticity 3D
 .. We test how plasticity module works
-.. Unities : MPa, mm2, kg
+.. SI (Steel) : 
+..      - Stress : MPa (210e3)
+..      - Length : mm
+..      - Force  : N
+..      - Mass   : Tonne (1e3 Kg)
+..      - Density: Tonne/mm^3 (7.8e-9)
+..      - Gravity: mm/s^2 (9.8e3)
 .. Joaquin Cornejo 
 """
 
@@ -29,22 +35,22 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-6, 'young': 210e3, 'poisson': 0.3, 'sigmaY': 500, 'hardening':50e3, 'betahard':0.5}
+material = {'density': 7.8e-9, 'young': 210e3, 'poisson': 0.3, 'sigmaY': 500, 'hardening':50e3, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
 table_Dir = np.zeros((3, 2, 3), dtype=int)
-table_Dir[0, 0, :] = 1
-# table_Dir[0, 0, 0] = 1
-# table_Dir[1, 0, 1] = 1
-# table_Dir[2, 0, 2] = 1
+# table_Dir[0, 0, :] = 1
+table_Dir[0, 0, 0] = 1
+table_Dir[1, 0, 1] = 1
+table_Dir[2, 0, 2] = 1
 Dirichlet = {'mechanical':table_Dir}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
 Mdod = modelPhy._mechanical_dod
 
 # Set Neumann boundaries
 forces = [[0 for i in range(3)] for j in range(6)]
-forces[1] = [0.0, 20.0, 0.0]
+forces[1] = [100.0, 200.0, 0.0]
 Neumann = {'mechanical': forces}
 modelPhy._set_neumann_condition(Neumann)
 
@@ -75,23 +81,21 @@ if isElastic:
     fig.tight_layout()
     fig.savefig(folder + 'ElasticityRes.png')
 
-    # ---------------------
+    # Interpolate displacement
+    modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
 
-    # # Interpolate displacement
-    # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
+    # # Compute strain 
+    # strain = modelPhy.compute_strain(u=displacement)
 
-    # Compute strain 
-    strain = modelPhy.compute_strain(u=displacement)
+    # # Compute stress
+    # stress = modelPhy.compute_linear_stress(strain)
+    # stress_vm = np.zeros(np.shape(stress)[1])
+    # for k in range(np.shape(strain)[1]):
+    #     stress_vm[k] = compute_stress_vonmises(3, stress[:, k])
 
-    # Compute stress
-    stress = modelPhy.compute_linear_stress(strain)
-    stress_vm = np.zeros(np.shape(stress)[1])
-    for k in range(np.shape(strain)[1]):
-        stress_vm[k] = compute_stress_vonmises(3, stress[:, k])
-
-    # Interpolate Von Mises field
-    stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
-    modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
+    # # Interpolate Von Mises field
+    # stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
+    # modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
 
 else:
     # --------------

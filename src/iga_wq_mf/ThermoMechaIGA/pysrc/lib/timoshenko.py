@@ -184,8 +184,8 @@ class Timoshenko():
         # Assemble vector
         nr = self._nb_ctrlpts
         F = np.zeros(3*nr)
-        F[range(nr)] = -F1 
-        F[range(nr, 2*nr)] = -F2   
+        F[range(nr)] = F1 
+        F[range(nr, 2*nr)] = F2   
         return F
 
     def add_boundary_force(self, bound, values=[0, 0, 0]):
@@ -199,7 +199,7 @@ class Timoshenko():
         F[dod] = values
         return F
 
-    def solve_timoshenko(self, Fext, tol=1e-12, nbIterNL=10):
+    def solve_timoshenko(self, Fext, tol=1e-9, nbIterNL=100):
         " Solves Timoshenko method "
 
         self.verify_mechaprop()

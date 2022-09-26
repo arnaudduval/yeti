@@ -10,11 +10,11 @@ if not os.path.isdir(folder): os.mkdir(folder)
 #  MODELIZE
 # ----------------
 # Define material (isotropic)
-nu, E = 0.0, 1e8
-length = 2.0
+nu, E = 0.3, 1e8
+length = 1.0
 
 # Define B-spline 
-degree, nbel = 3, 10 
+degree, nbel = 4, 10 
 knotvector = create_knotvector(degree, nbel)
 
 # Create Timoshenko object
@@ -27,11 +27,15 @@ model = Timoshenko(name=geoname, properties=properties)
 # ----------------
 # Block boundaries
 model.block_boundary(0, values=[0.0, 0.0, 0.0], table=[True, True, True])
-model.block_boundary(-1, values=[0.0, 0.0, 0.0], table=[True, True, True])
+# model.block_boundary(-1, values=[0.0, 0.0, 0.0], table=[False, True, False])
 
 # Compute external force vector of uniform force field
-Fu, Qw = 0.0, 1.0
+Fu, Qw = 0.0, -4.0
 Fext = model.compute_timoshenko_force(Fu, Qw)
+
+# # Add puntual force, momentum 
+# Fp = model.add_boundary_force(-1, values=[0, 3.007, 0])
+# Fext += Fp
 
 # Solve Timoshenko problem
 u, w, theta = model.solve_timoshenko(Fext)
