@@ -700,7 +700,7 @@ class thermoMechaModel():
                             U[l,i,j,k] = u_interp[l, pos]
         
         # Create point data 
-        pointData= {"detJ" : DET}
+        pointData= {"normalized det J" : DET}
         for l in range(nbDOF):
             varname = 'U' + str(l+1)
             pointData[varname] = U[l,:,:,:]

@@ -72,7 +72,7 @@ Fext  = np.kron(Fendt, sigmoid(time_list))
 # Solve transient problem at internal control points
 Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                methodPCG='JMC', newmark=newmark)
+                                methodPCG='JMS', newmark=newmark)
 
 modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
 

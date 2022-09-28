@@ -796,7 +796,7 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, diag)
     !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
-    !! Algotihm based on sum factorization adapted to diagonal case 
+    !! Algorithm based on sum factorization adapted to diagonal case 
     !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
     !! Indices must be in CSR format
 
@@ -820,77 +820,16 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
 
     ! Local data
     ! ----------
-    integer :: iu, iv, iw, ju, jv, jw, posCoef, genPos, offset, nb_tasks
-    double precision :: sum_u, sum_v, sum_w
+    double precision :: data_BW_u, data_BW_v, data_BW_w
+    dimension :: data_BW_u(nnz_u), data_BW_v(nnz_v), data_BW_w(nnz_w)
+    
+    ! Initialize
+    data_BW_u = data_B_u*data_W_u
+    data_BW_v = data_B_v*data_W_v
+    data_BW_w = data_B_w*data_W_w
 
-    integer :: nnz_col_u, nnz_col_v, nnz_col_w
-    integer, allocatable, dimension(:) :: j_nnz_u, j_nnz_v, j_nnz_w
-    double precision, allocatable, dimension(:) :: B_nnz_u, B_nnz_v, B_nnz_w, W_nnz_u, W_nnz_v, W_nnz_w        
-
-    !$OMP PARALLEL PRIVATE(ju,jv,jw,nnz_col_u,nnz_col_v,nnz_col_w,offset,j_nnz_u,B_nnz_u,W_nnz_u) &
-    !$OMP PRIVATE(j_nnz_v,B_nnz_v,W_nnz_v,j_nnz_w,B_nnz_w,W_nnz_w,sum_u,sum_v,sum_w,posCoef,genPos)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_u*nr_v*nr_w /nb_tasks) 
-    do iw = 1, nr_w
-        do iv = 1, nr_v
-            do iu = 1, nr_u
-
-                ! Set values 
-                nnz_col_u = indi_u(iu+1) - indi_u(iu)
-                allocate(j_nnz_u(nnz_col_u), B_nnz_u(nnz_col_u), W_nnz_u(nnz_col_u))
-                offset = indi_u(iu)
-                do ju = 1, nnz_col_u
-                    j_nnz_u(ju) = indj_u(ju+offset-1)
-                    B_nnz_u(ju) = data_B_u(ju+offset-1)
-                    W_nnz_u(ju) = data_W_u(ju+offset-1)
-                end do
-
-                nnz_col_v = indi_v(iv+1) - indi_v(iv)
-                allocate(j_nnz_v(nnz_col_v), B_nnz_v(nnz_col_v), W_nnz_v(nnz_col_v))
-                offset = indi_v(iv)
-                do jv = 1, nnz_col_v
-                    j_nnz_v(jv) = indj_v(jv+offset-1)
-                    B_nnz_v(jv) = data_B_v(jv+offset-1)
-                    W_nnz_v(jv) = data_W_v(jv+offset-1)
-                end do
-
-                nnz_col_w = indi_w(iw+1) - indi_w(iw)
-                allocate(j_nnz_w(nnz_col_w), B_nnz_w(nnz_col_w), W_nnz_w(nnz_col_w))
-                offset = indi_w(iw)
-                do jw = 1, nnz_col_w
-                    j_nnz_w(jw) = indj_w(jw+offset-1)
-                    B_nnz_w(jw) = data_B_w(jw+offset-1)
-                    W_nnz_w(jw) = data_W_w(jw+offset-1)
-                end do
-
-                ! Sum factorization
-                sum_w = 0.d0
-                do jw = 1, nnz_col_w
-                    sum_v = 0.d0
-                    do jv = 1, nnz_col_v
-                        sum_u = 0.d0
-                        do ju = 1, nnz_col_u
-                            posCoef = j_nnz_u(ju) + (j_nnz_v(jv)-1)*nc_u + (j_nnz_w(jw)-1)*nc_u*nc_v
-                            sum_u = sum_u + W_nnz_u(ju)*B_nnz_u(ju)*coefs(posCoef)
-                        end do
-                        sum_v = sum_v + W_nnz_v(jv)*B_nnz_v(jv)*sum_u
-                    end do
-                    sum_w = sum_w + W_nnz_w(jw)*B_nnz_w(jw)*sum_v
-                end do 
-
-                ! Update diagonal
-                genPos = iu + (iv - 1)*nr_u + (iw - 1)*nr_u*nr_w
-                diag(genPos) = sum_w
-
-                deallocate(j_nnz_u, B_nnz_u, W_nnz_u)
-                deallocate(j_nnz_v, B_nnz_v, W_nnz_v)
-                deallocate(j_nnz_w, B_nnz_w, W_nnz_w)
-
-            end do
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
+    call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_BW_u, &
+                    nnz_v, indi_v, indj_v, data_BW_v, nnz_w, indi_w, indj_w, data_BW_w, coefs, diag)
 
 end subroutine csr_get_diag_3d
 

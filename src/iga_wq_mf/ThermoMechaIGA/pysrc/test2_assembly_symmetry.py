@@ -19,9 +19,9 @@ folder = os.path.dirname(full_path) + '/results/test2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-isIGA = False
-doConstruction = True
-doSymetry = False
+isIGA           = False
+doConstruction  = True
+doSymetry       = False
 
 if isIGA: cfortran = fortran_mf_iga; cpython = IGA
 else: cfortran = fortran_mf_wq; cpython = WQ
@@ -80,8 +80,8 @@ if doConstruction:
                         var2 = modelPhy2._detJ
                     
                     elif varName == 'QP':
-                        var1 = modelPhy1._qp_PS[:,:]
-                        var2 = modelPhy2._qp_PS[:,:]
+                        var1 = modelPhy1._qp_PS
+                        var2 = modelPhy2._qp_PS
                     enablePrint()
 
                     # Compare results 

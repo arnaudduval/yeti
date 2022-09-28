@@ -32,6 +32,7 @@ cut_list = range(5, 10)
 timeFD_matrix = np.zeros((len(cut_list), len(degree_list)+1))
 timeFD_matrix[:, 0] = np.array([2**i for i in cut_list])
 
+
 if not dataExist:
 
     for i, cuts in enumerate(cut_list):
@@ -72,45 +73,42 @@ else:
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
 
     # Extract litterature data
-    file = pd.read_table(folder_data + 'FD_time.dat', sep=' ', names=['nbel', 'p2', 'p3', 'p4', 'p5', 'p6'])
-    nbel = file.nbel
-    times = np.column_stack((file.p2, file.p3, file.p4, file.p5, file.p6))
+    file = pd.read_table(folder_data + 'matvec_MF.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
+    degree = file.degree
+    arrays = [file.Cu64, file.Ku64]
+    labels = ['MF-WQ Mass', 'MF-WQ Stiffness']
 
-    # Plot data
-    for i in range(5):
-        nb_ctrlpts = (nbel + i)**3
-        ax.loglog(nb_ctrlpts, times[:, i], 'o--', label='degree ' + r'$p=$' + str(i+2))
-
-    # Compute slope
-    slope = np.polyfit(np.log10(nb_ctrlpts),np.log10(times[:, i]), 1)[0]
-    slope = round(slope, 3)
-    annotation.slope_marker((nb_ctrlpts[1], times[1, i]), slope, 
-                            poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+    for array, label in zip(arrays, labels):
+        ax.semilogy(degree, array, 'o--', label=label)
 
     # Set properties
     ax.legend(loc='best')
-    ax.set_xlabel("Total number of DOF")
+    ax.set_xlabel("Degree")
     ax.set_ylabel("CPU time (s)")
+    ax.set_xlim([1, 10])
+    ax.set_ylim([0.001, 10])
     fig.tight_layout()
-    fig.savefig(folder_figure + 'FastDiag' + '.pdf')
+    fig.savefig(folder_figure + 'ProductMF_lit' + '.png')
+
 
     if withReference:
         # Create plot
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
 
         # Extract litterature data
-        file = pd.read_table(folder_data + 'FD_time_lit.dat', sep='\t', names=['nbel', 'p2', 'p3', 'p4', 'p5', 'p6'])
-        nbel = file.nbel[:-1]
-        times = np.column_stack((file.p2, file.p3, file.p4, file.p5, file.p6))
+        file = pd.read_table(folder_data + 'matvec_MF_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
+        degree = file.degree
+        arrays = [file.Cu64, file.Ku64]
+        labels = ['MF-WQ Mass', 'MF-WQ Stiffness']
 
-        # Plot data
-        for i in range(np.shape(times)[1]):
-            nb_ctrlpts = (nbel + i)**3
-            ax.loglog(nb_ctrlpts, times[:-1, i], 'o--', label='degree ' + r'$p=$' + str(i+2))
+        for array, label in zip(arrays, labels):
+            ax.semilogy(degree, array, 'o--', label=label)
 
         # Set properties
         ax.legend(loc='best')
-        ax.set_xlabel("Total number of DOF")
+        ax.set_xlabel("Degree")
         ax.set_ylabel("CPU time (s)")
+        ax.set_xlim([1, 10])
+        ax.set_ylim([0.001, 10])
         fig.tight_layout()
-        fig.savefig(folder_figure + 'FastDiag_lit' + '.png')
+        fig.savefig(folder_figure + 'ProductMF_lit' + '.png')

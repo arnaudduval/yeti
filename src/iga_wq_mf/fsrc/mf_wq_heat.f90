@@ -31,9 +31,6 @@ subroutine wq_find_capacity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v,
     double precision, intent(out) :: diag
     dimension :: diag(nr_u*nr_v*nr_w)
 
-    ! Initialize
-    diag = 0.d0 
-
     ! Compute diagonal
     call csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

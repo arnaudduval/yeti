@@ -6,7 +6,6 @@
 
 from lib.__init__ import *
 from lib.base_functions import wq_find_basis_weights_fortran, create_knotvector
-from iga_wq_mf import assembly
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -20,8 +19,8 @@ nbel = 64
 degree_list = np.arange(2, 8)
 
 # Set filename
-filename_data = folder_data + 'setup_time_WQ_'  + 'nbel_' + str(nbel) 
-filename_figure = folder_figure + 'setup_time_WQ_'  + 'nbel_' + str(nbel) 
+filename_data = folder_data + 'setup_time_' + str(nbel) 
+filename_figure = folder_figure + 'setup_time_' + str(nbel) 
 
 # Output
 time_matrix = np.zeros((len(degree_list), 3))
@@ -48,8 +47,7 @@ if not dataExist:
         start = time.time()
         assembly.wq_get_capacity_3d(*inputs)
         stop = time.time()
-        time_matrix[i, 1] = stop - start 
-        del inputs, coefs
+        time_matrix[i, 1] = stop - start         
 
         # --------------------
         # Conductivity matrix
@@ -71,7 +69,7 @@ else :
     if nbel == 40:
         # Load data
         mydata = np.loadtxt(filename_data)
-        litterature = pd.read_table(folder_data + 'lit_WQ.dat', sep='\t', names=['degree', 'time'])
+        litterature = pd.read_table(folder_data + 'setup_time_lit_40.dat', sep='\t', names=['degree', 'time'])
 
         # Plot data
         fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
@@ -92,12 +90,11 @@ else :
         ax1.loglog(xx, yy, '-', label=r'$O(C p^3)$')
 
         # Properties
-        for ax in [ax1]:
-            ax.legend()
-            ax.set_xlim([2, 10])
-            ax.set_ylim([1e-1, 1e3])
-            ax.set_ylabel('CPU setup time (s)')
-            ax.set_xlabel('Polynomial degree p')
+        ax1.legend()
+        ax1.set_xlim([2, 10])
+        ax1.set_ylim([1e-1, 1e3])
+        ax1.set_ylabel('CPU setup time (s)')
+        ax1.set_xlabel('Polynomial degree p')
 
         fig.tight_layout()
         fig.savefig(filename_figure)
@@ -105,7 +102,7 @@ else :
     if nbel == 64:
         # Load data
         mydata = np.loadtxt(filename_data)
-        litterature = pd.read_table(folder_data + 'lit_MF.dat', sep='\t', names=['degree', 'C', 'K'])
+        litterature = pd.read_table(folder_data + 'setup_time_lit_64.dat', sep='\t', names=['degree', 'C', 'K'])
 
         # Plot data
         fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,4))
