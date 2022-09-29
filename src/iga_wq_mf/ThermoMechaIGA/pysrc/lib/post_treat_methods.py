@@ -130,7 +130,7 @@ class ThermalSimulation():
             ud = model.interpolate_ControlPoints(funfield=funTemp)[dod]
             u = np.zeros(model._nb_ctrlpts_total); u[dod] = ud
             Fn = model.eval_source_vector(funPowDen, indi=dof) 
-            Knd_ud = model.eval_Ku(u)
+            Knd_ud = model.eval_Ku(u)[0]
             Fn -= Knd_ud
         else:
             ud = None

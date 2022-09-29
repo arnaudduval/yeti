@@ -78,7 +78,8 @@ else:
 
     # Plot data
     for i in range(5):
-        nb_ctrlpts = (nbel + i)**3
+        # nb_ctrlpts = (nbel + i)**3
+        nb_ctrlpts = nbel
         ax.loglog(nb_ctrlpts, times[:, i], 'o--', label='degree ' + r'$p=$' + str(i+2))
 
     # Compute slope
@@ -89,7 +90,7 @@ else:
 
     # Set properties
     ax.legend(loc='best')
-    ax.set_xlabel("Total number of DOF")
+    ax.set_xlabel("Discretization level " + r'$h^{-1}$')
     ax.set_ylabel("CPU time (s)")
     fig.tight_layout()
     fig.savefig(folder_figure + 'FastDiag' + '.pdf')

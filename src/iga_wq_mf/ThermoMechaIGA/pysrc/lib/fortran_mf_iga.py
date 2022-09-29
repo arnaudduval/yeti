@@ -127,10 +127,13 @@ class fortran_mf_iga(thermoMechaModel):
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = self.get_input4MatrixFree(table=table)
 
+        start = time.time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_iga_get_ku_3d_csr(coefs, *inputs, u)  
+        stop = time.time()
+        timeCPU = stop - start
 
-        return result
+        return result, timeCPU
     
     def eval_source_vector(self, fun, indi= None, indj=None, Td=None): 
         " Computes source vector "

@@ -158,10 +158,14 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = self.get_input4MatrixFree(table=table)
+    
+        start = time.time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_ku_3d_csr(coefs, *inputs, u)
+        stop = time.time()
+        timeCPU = stop - start
 
-        return result
+        return result, timeCPU
 
     def eval_Cu(self, u, table= None): 
         " Computes C u where C is capacity matrix "
@@ -170,10 +174,13 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = self.get_input4MatrixFree(table=table)
+        start = time.time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_cu_3d_csr(coefs, *inputs, u)
+        stop = time.time()
+        timeCPU = stop - start
 
-        return result
+        return result, timeCPU
 
     def eval_Su(self, u, coefs=None):
         " Computes S u where S is stiffness matrix "
