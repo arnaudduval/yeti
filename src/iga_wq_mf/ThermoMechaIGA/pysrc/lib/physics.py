@@ -5,11 +5,6 @@
 """
 import numpy as np
 
-def powdentest(P:list):
-    x = P[0, :]
-    f = 0.0*np.sin(np.pi*x)
-    return f
-
 def power_density(P: list):
     " Compute power density at point P in physical space"
     f = 1 

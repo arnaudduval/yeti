@@ -23,7 +23,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 4, 4
-isElastic = True
+isElastic = False
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}

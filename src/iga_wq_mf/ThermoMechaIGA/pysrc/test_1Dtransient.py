@@ -7,7 +7,7 @@ from lib.D1transientheat import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test/'
+folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def setKprop(T):
@@ -24,11 +24,11 @@ def powdentest(qp):
     return f
 
 # Define some properties to solver
-newmark, JJ = 1, 1.0
+newmark, JJ = 1.0, 1.0
 properties = [JJ, setKprop, setCprop, newmark]
 
 # Create geometry
-degree, nbel = 4, 16
+degree, nbel = 4, 64
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
 knotvector = create_knotvector(degree, nbel)
@@ -81,7 +81,7 @@ ax.grid(None)
 ax.set_ylabel('Time (s)')
 ax.set_xlabel('Position (m)')
 fig.tight_layout()
-fig.savefig(folder + 'Transient_heat_1D.png')
+fig.savefig(folder + 'TransientHeat_1D.png')
 
 # -----------------------
 
@@ -94,4 +94,38 @@ ax.set_ylim(top=0.6)
 ax.set_ylabel('Temperature (K)')
 ax.set_xlabel('Time (s)')
 fig.tight_layout()
-fig.savefig(folder + 'EvolTemp.png')
+fig.savefig(folder + 'EvolTemp_1D.png')
+
+# Save data to compare with 3D
+data2save = np.column_stack((time_list, midpoint_temp))
+np.savetxt(folder + 'data1D.dat', data2save)
+
+# ===========================
+def sum_fourier(T0, T1, r, XX, TT, nmax=100):
+    def compute_coefs(T0, T1, i):
+        Ai = 2.0/(np.pi*i)*(np.power(-1, i)*T1 - T0)
+        return Ai
+    nmax = int(nmax)
+    S = np.zeros(np.shape(XX))
+    for i in range(1, nmax):
+        Ai = compute_coefs(T0, T1, i)
+        S += Ai*np.exp(-r*TT*(i*np.pi)**2)*np.sin(i*np.pi*XX)
+
+    return S
+
+# Define temperatures and variables
+T0, T1 = 0.0, 1.0
+r = 0.1
+temperature_exact = XX*T1 + (1.0 - XX)*T0 + sum_fourier(T0, T1, r, XX, TIME, nmax=1e4)
+error = np.abs(temperature_interp.T-temperature_exact)/temperature_exact
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
+ax.grid(None)
+im = ax.contourf(XX, TIME, error, 5, locator=ticker.LogLocator())
+cbar = plt.colorbar(im, format='%.0e')
+cbar.set_label('Error temperature (K)')
+
+ax.set_ylabel('Time (s)')
+ax.set_xlabel('Position (m)')
+fig.tight_layout()
+fig.savefig(folder + 'EvolTemp_th.png', dpi=300) 

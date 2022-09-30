@@ -15,7 +15,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def setKpop(T, prop=1.0):
+def setKpop(T, prop=0.1):
     y = prop*np.ones(len(T))
     return y
 
@@ -24,10 +24,15 @@ def setCpop(T, prop=1.0):
     y = prop*np.ones(len(T))
     return y
 
+def powdentest(P:list):
+    x = P[0, :]
+    f = 0.0*np.sin(np.pi*x)
+    return f
+
 # Set global variables
 degree, cuts = 4, 4
 conductivity, capacity = 0.1, 1.0
-newmark = 0.5
+newmark = 1.0
 
 # Set time simulation
 N = 100
@@ -74,7 +79,7 @@ Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                 table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
                                 methodPCG='JMS', newmark=newmark)
 
-modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
+# modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
 
 # --------------
 # Post-treatment
@@ -90,15 +95,22 @@ for i in range(np.shape(Tsol)[1]):
     Tpoint = Tinterp[pos + pos*samplesize + pos*samplesize**2]
     Tpoint_list.append(Tpoint)
 
-fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.plot(time_list, Tpoint_list)
-ax.set_ylim(top=0.6)
+fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+ax1.plot(time_list, Tpoint_list)
+ax1.set_ylim(top=0.6)
+
+# Get 1D data
+datapoint1D = np.loadtxt(folder+'data1D.dat')
+ax2.semilogy(abs(Tpoint_list - datapoint1D[:, 1]), 'o', 
+            nonpositive='mask')
 
 # Set properties
-ax.set_xlabel('Time (s)')
-ax.set_ylabel('Temperature (K)')
+ax1.set_xlabel('Time (s)')
+ax1.set_ylabel('Temperature (K)')
+ax2.set_xlabel('Step')
+ax2.set_ylabel(r'$||T_{1D} - T_{3D}||$')
 fig.tight_layout()
-fig.savefig(folder + 'EvolTemp.png')
+fig.savefig(folder + 'EvolTemp_3D.png')
 
 # Residue
 # -------
@@ -106,8 +118,8 @@ resPCG = resPCG[:, resPCG[0, :]>0]
 
 # Colors
 colorset = ['#377eb8', '#ff7f00', '#4daf4a',
-        '#f781bf', '#a65628', '#984ea3',
-        '#999999', '#e41a1c', '#dede00']
+            '#f781bf', '#a65628', '#984ea3',
+            '#999999', '#e41a1c', '#dede00']
 
 fig, ax = plt.subplots(nrows=1, ncols=1)
 for _ in range(np.shape(resPCG)[1]):
@@ -121,4 +133,4 @@ for _ in range(np.shape(resPCG)[1]):
 ax.set_xlabel('Number of iterations')
 ax.set_ylabel('Relative residue (%)')
 fig.tight_layout()
-fig.savefig(folder + 'TransientNL.png')
+fig.savefig(folder + 'TransientNL_CB.png')

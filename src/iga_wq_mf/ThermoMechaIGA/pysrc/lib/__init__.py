@@ -16,7 +16,7 @@ from geomdl import (
 )
 from pyevtk.hl import gridToVTK
 import matplotlib as mpl
-from matplotlib import pyplot as plt
+from matplotlib import ticker, pyplot as plt
 from mpltools import annotation
 from cycler import cycler
 
