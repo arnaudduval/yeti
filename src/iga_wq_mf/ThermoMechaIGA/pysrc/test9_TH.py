@@ -31,8 +31,8 @@ def powdentest(P:list):
     return f
 
 # Initialize
-dataExist = True
-geoname, PCGmethod = 'CB', 'JMS'
+dataExist = False
+geoname, PCGmethod = 'CB', 'JMC'
 filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
 
 if not dataExist:

@@ -30,7 +30,7 @@ def powdentest(P:list):
     return f
 
 # Set global variables
-degree, cuts = 4, 4
+degree, cuts = 4, 5
 conductivity, capacity = 0.1, 1.0
 newmark = 1.0
 

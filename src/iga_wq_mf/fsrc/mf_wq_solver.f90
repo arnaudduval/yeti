@@ -510,7 +510,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     solution = 0.d0; r = b; rhat = r; p = r
     rsold = dot_product(r, rhat); normb = maxval(abs(r))
     residue = 0.d0; residue(1) = 1.d0
-    if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
+    ! if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
 
     ! Custumize method  
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
@@ -636,7 +636,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     ! Input / output data
     ! -------------------
     character(len=10), intent(in) :: methodPCG
-    double precision, parameter :: threshold = 1.d-10
+    double precision, parameter :: threshold = 1.d-12
     integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -760,7 +760,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
             call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
             resNL = sqrt(dot_product(ddFFdof, ddFFdof))
             print*, " with Raphson error: ", resNL
-            if (resNL.le.1.d-6) exit
+            if (resNL.le.1.d-12) exit
 
             ! Solve by iterations 
             resPCG(1, c) = dble(i-1); resPCG(2, c) = dble(j)
@@ -1422,7 +1422,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     ! Input / output data
     ! -------------------
     character(len=10) :: method = 'FDC'
-    double precision, parameter :: threshold = 1.d-8
+    double precision, parameter :: threshold = 1.d-12
     integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF, nbpts
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -1530,7 +1530,7 @@ subroutine mf_wq_ths_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
             ddFF = Fstep - KTCdT; ddFF(dod) = 0.d0
             resNL = sqrt(dot_product(ddFF, ddFF))
             print*, " with Raphson error: ", resNL
-            if (resNL.le.1.d-6) exit
+            if (resNL.le.1.d-12) exit
 
             ! Solve by iterations 
             call mf_wq_solve_ths_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &

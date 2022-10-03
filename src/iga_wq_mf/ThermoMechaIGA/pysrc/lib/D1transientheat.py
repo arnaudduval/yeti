@@ -55,7 +55,7 @@ def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, newmark=0.5, dt=0
     return M
 
 def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=None, 
-                            dof=None, dod=None, Tinout=None, threshold=1e-5, nbIterNL=20):
+                            dof=None, dod=None, Tinout=None, threshold=1e-12, nbIterNL=20):
     " Solves transient heat problem in 1D. "
 
     # Initialize

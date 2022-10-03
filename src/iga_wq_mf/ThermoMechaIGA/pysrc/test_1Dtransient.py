@@ -28,7 +28,7 @@ newmark, JJ = 1.0, 1.0
 properties = [JJ, setKprop, setCprop, newmark]
 
 # Create geometry
-degree, nbel = 4, 64
+degree, nbel = 6, 256
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
 knotvector = create_knotvector(degree, nbel)
