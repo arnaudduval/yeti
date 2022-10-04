@@ -1031,7 +1031,8 @@ module tensor_methods
 
         double precision, allocatable :: W(:) ! Array of eigen values
         integer :: LWORk, LIWORK
-        double precision, allocatable :: WORK(:), IWORK(:)
+        double precision, allocatable :: WORK(:)
+        integer, allocatable :: IWORK(:)
         double precision :: dummy(1)
         integer :: idum(1)
         integer :: INFO
@@ -1087,7 +1088,7 @@ module tensor_methods
         LWORk = -1
         LIWORK = -1
         call dsygvd(ITYPE, JOBZ, UPLO, N, KK, LDA, MM, LDB, W, dummy, LWORk, idum, LIWORK, INFO)
-
+        
         ! Make sure that there is enough workspace 
         LWORK = max(1+(6+2*n)*n, nint(dummy(1)))
         LIWORK = max(3+5*n, idum(1))
