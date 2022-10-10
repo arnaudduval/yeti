@@ -31,18 +31,18 @@ def powdentest(P:list):
     return f
 
 # Initialize
-dataExist = False
-geoname, PCGmethod = 'CB', 'JMC'
+dataExist = True
+geoname, PCGmethod = 'TR', 'JMS'
 filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
 
 if not dataExist:
     # Set global variables
     degree, cuts = 4, 4
     conductivity, capacity = 0.1, 1.0
-    newmark = 0.5
+    newmark = 1.0
     
     # Set time simulation
-    N = 20
+    N = 100
     time_list = np.linspace(0, 30, N)
 
     # Create material
@@ -101,7 +101,8 @@ else:
                 '#f781bf', '#a65628', '#984ea3',
                 '#999999', '#e41a1c', '#dede00']
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
+    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 4), 
+                                gridspec_kw=dict(width_ratios=[1,1.5]))
     # Initialize new data
     step_list, iterNl_list, niter_list = [], [], []
     for _ in range(np.shape(resPCG)[1]):
@@ -136,6 +137,10 @@ else:
                 if iterNl_list[k] == NL and niter_list[k] == iter:
                     c += 1
             Data2plot[i, j+1] = c
+    
+    sumData = np.sum(Data2plot, axis=0)
+    for i in range(1, np.shape(Data2plot)[1]):
+        Data2plot[:, i] = Data2plot[:, i]/sumData[i]*100.0 
 
     # Set columns
     columns = ['Iterations']
@@ -150,7 +155,7 @@ else:
         ax2.bar_label(container)
     ax2.grid(None)
     ax2.set_ylim(top=np.ceil(ax2.get_ylim()[-1]/10+1)*10)
-    ax2.set_ylabel('Frequency')
+    ax2.set_ylabel('Frequency (%)')
     ax2.legend(loc=2)
 
     # Set properties

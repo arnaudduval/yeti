@@ -635,8 +635,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     implicit none 
     ! Input / output data
     ! -------------------
-    character(len=10), intent(in) :: methodPCG
-    double precision, parameter :: threshold = 1.d-12
+    double precision, parameter :: thresholdPCG = 1.d-14, thresholdNL=1.d-14
     integer, parameter :: nbIterNL = 20, nbIterPCG = 100, d = 3
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -663,7 +662,8 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     dimension :: table_cond(nbpts, 2), table_cap(nbpts, 2)
     double precision, intent(in) :: time_list, invJJ, detJJ, FF, GG
     dimension :: time_list(sizeF), invJJ(d, d, nc_total), detJJ(nc_total), FF(nr_total, sizeF), GG(ndod, sizeF)
-    
+    character(len=10), intent(in) :: methodPCG
+
     double precision, intent(out) :: solution, resPCG
     dimension :: solution(nr_total, sizeF), resPCG(nbIterPCG+3, 4*sizeF)
 
@@ -758,16 +758,16 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! Compute residue
             ddFF = Fstep - KTCdT
             call spMdotdV(ndof, nr_total, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
-            resNL = sqrt(dot_product(ddFFdof, ddFFdof))
+            resNL = maxval(abs(ddFFdof))
             print*, " with Raphson error: ", resNL
-            if (resNL.le.1.d-12) exit
+            if (resNL.le.thresholdNL) exit
 
             ! Solve by iterations 
             resPCG(1, c) = dble(i-1); resPCG(2, c) = dble(j)
             call mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                    newmark*dt, ddFFdof, nbIterPCG, threshold, methodPCG, ddVVdof, resPCG(3:, c))
+                                    newmark*dt, ddFFdof, nbIterPCG, thresholdPCG, methodPCG, ddVVdof, resPCG(3:, c))
 
             ! Update values
             call spMdotdV(nr_total, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)

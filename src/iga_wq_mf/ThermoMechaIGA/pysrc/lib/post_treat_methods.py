@@ -131,7 +131,7 @@ class ThermalSimulation():
             u = np.zeros(model._nb_ctrlpts_total); u[dod] = ud
             Fn = model.eval_source_vector(funPowDen, indi=dof) 
             Knd_ud = model.eval_Ku(u)[0]
-            Fn -= Knd_ud
+            Fn -= Knd_ud[dof]
         else:
             ud = None
             Fn = model.eval_source_vector(funPowDen, indi=dof)

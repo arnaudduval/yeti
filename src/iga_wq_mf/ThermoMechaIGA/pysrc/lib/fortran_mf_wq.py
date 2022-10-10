@@ -339,17 +339,17 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterPCG=100, threshold=1.e-7, methodPCG='FDC', directsol=None): 
+    def MFsteadyHeat(self, F, nbIterPCG=100, threshold=1.e-12, methodPCG='FDC', directsol=None): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if directsol is None: directsol = np.ones(len(f))
+        if directsol is None: directsol = np.ones(len(F))
 
         # Get inputs 
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, methodPCG, directsol]
+        inputs = [coefs, *inputs_tmp, F, nbIterPCG, threshold, methodPCG, directsol]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
@@ -412,7 +412,7 @@ class fortran_mf_wq(thermoMechaModel):
 
     # ----------------- TO VERIFY (substitution method used) -----------------
 
-    def MF_SHSubs(self, f, nbIterPCG, threshold, ud=None, methodPCG='TDC'): 
+    def MF_SHSubs(self, F, nbIterPCG, threshold, ud=None, methodPCG='TDC'): 
         " Solves steady heat with penalty, Lagrange or substitution method "
 
         # Get inputs 
@@ -424,7 +424,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Convert Python to Fortran
         dod = np.copy(self._thermal_dod); dod += 1
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                    self._thermalDirichlet, dod, f, ud, nbIterPCG, threshold, methodPCG]
+                    self._thermalDirichlet, dod, F, ud, nbIterPCG, threshold, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue = solver. mf_wq_solve_shs_3d(*inputs)   
