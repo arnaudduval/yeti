@@ -12,7 +12,7 @@ from lib.fortran_mf_iga import fortran_mf_iga
 
 # Set global variables
 isIGA = False
-degree, cuts = 6, 5
+degree, cuts = 6, 4
 
 if isIGA: cfortran = fortran_mf_iga
 else: cfortran = fortran_mf_wq
@@ -48,22 +48,22 @@ modelPhy._set_dirichlet_boundaries(Dirichlet)
 dof = modelPhy._thermal_dof
 dod = modelPhy._thermal_dod 
 
-# # ----------------------
-# # By direct method
-# # ----------------------
-# ud = u_interp[dod]
-# K = modelPhy.eval_conductivity_matrix()
-# Knn = K[dof, :][:, dof]
-# Knd = K[dof, :][:, dod]
-# Fn = modelPhy.eval_source_vector(powden_rotring, dof) - Knd @ ud
-# un = sclin.solve(Knn.todense(), Fn)
-# usol = np.zeros(modelPhy._nb_ctrlpts_total)
-# usol[dof] = un; usol[dod] = ud
+# ----------------------
+# By direct method
+# ----------------------
+ud = u_interp[dod]
+K = modelPhy.eval_conductivity_matrix()
+Knn = K[dof, :][:, dof]
+Knd = K[dof, :][:, dod]
+Fn = modelPhy.eval_source_vector(powden_rotring, dof) - Knd @ ud
+un = sclin.solve(Knn.todense(), Fn)
+usol = np.zeros(modelPhy._nb_ctrlpts_total)
+usol[dof] = un; usol[dod] = ud
 
-# # Compare solutions 
-# u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol, nbDOF=1)[-1]
-# error_2 = np.linalg.norm(u_interp_sample-u_interp_sample2, np.inf)/np.linalg.norm(u_interp_sample, np.inf)*100
-# print("Error interpolation/direct solution : %.3e %%" %(error_2,))
+# Compare solutions 
+u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol, nbDOF=1)[-1]
+error_2 = np.linalg.norm(u_interp_sample-u_interp_sample2, np.inf)/np.linalg.norm(u_interp_sample, np.inf)*100
+print("Error interpolation/direct solution : %.3e %%" %(error_2,))
 
 # # ----------------------
 # # By iterative solver

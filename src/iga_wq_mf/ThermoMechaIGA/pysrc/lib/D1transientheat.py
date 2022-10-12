@@ -61,7 +61,7 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
     # Initialize
     JJ, conductivity, capacity, newmark = properties
     ddGG = np.zeros(len(dod)) # d Temperature/ d time
-    VVn0 = np.zeros(len(dof))
+    VVn0 = np.zeros(len(dof)+len(dod))
 
     # Compute initial velocity from boundry conditions (for i = 0)
     if np.shape(Tinout)[1] == 2:
@@ -71,8 +71,9 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
         delta_t1 = time_list[1] - time_list[0]
         delta_t2 = time_list[2] - time_list[0]
         factor = delta_t2/delta_t1
-        ddGG = (Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1-factor**2)*Tinout[dod, 0])/(delta_t1*(factor-factor**2))
+        ddGG = 1.0/(delta_t1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
     else: raise Warning('We need more than 2 steps')
+    VVn0[dod] = ddGG
 
     for i in range(1, np.shape(Tinout)[1]):
         # Get delta time
@@ -82,10 +83,9 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
         TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
 
         # Predict values of new step
-        TTn1[dof] = TTn0[dof] + delta_t*(1-newmark)*VVn0; TTn1[dod] = Tinout[dod, i]
-        TTn1i0 = np.copy(TTn1); ddTT = np.zeros(len(TTn1))
-        ddTT[dod] = 1.0/newmark*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-newmark)*ddGG)
-        VVn1 = np.zeros(len(dof))
+        TTn1 = TTn0 + delta_t*(1-newmark)*VVn0; TTn1[dod] = Tinout[dod, i]
+        TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
+        VVn1[dod] = 1.0/newmark*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-newmark)*VVn0[dod])
 
         # Get "force" of new step
         Fstep = Fext[:, i]
@@ -101,7 +101,7 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
             Cprop = capacity(T_interp)
 
             # Compute residue
-            Fint = compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, TTn1, ddTT)
+            Fint = compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, TTn1, VVn1)
             dF = Fstep[dof] - Fint[dof]
             prod1 = np.dot(dF, dF)
             relerror = np.sqrt(prod1)
@@ -115,15 +115,13 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
             ddVV = np.linalg.solve(MM, dF)
 
             # Update values
-            VVn1 += ddVV
-            TTn1[dof] = TTn1i0[dof] + newmark*delta_t*VVn1
-            ddTT[dof] += VVn1 
+            VVn1[dof] += ddVV
+            TTn1[dof] = TTn1i0[dof] + newmark*delta_t*VVn1[dof]
 
         print(j+1, relerror)
 
         # Update values in output
-        Tinout[:, i] = TTn1
+        Tinout[:, i] = np.copy(TTn1)
         VVn0 = np.copy(VVn1)
-        ddGG = np.copy(ddTT[dod])
-        
+
     return 

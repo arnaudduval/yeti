@@ -665,7 +665,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     character(len=10), intent(in) :: methodPCG
 
     double precision, intent(out) :: solution, resPCG
-    dimension :: solution(nr_total, sizeF), resPCG(nbIterPCG+3, 4*sizeF)
+    dimension :: solution(nr_total, sizeF), resPCG(nbIterPCG+3, 8*sizeF)
 
     ! Local data
     ! ----------  

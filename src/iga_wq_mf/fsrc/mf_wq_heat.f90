@@ -503,3 +503,49 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     end do
 
 end subroutine mf_wq_interpolate_cp_3d
+
+subroutine H1norm(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                coefs, dercoefs, array_in, norm)
+    !! Computes H1 norm 
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    double precision, intent(in) :: dercoefs, coefs
+    dimension :: dercoefs(3, 3, nc_total), coefs(nc_total)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_u*nr_v*nr_w)
+
+    double precision, intent(out) :: norm
+
+    ! Local data
+    ! ------------
+    double precision :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w)
+
+    norm = 0.d0
+
+    call mf_wq_get_cu_3d_csr(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            array_in, array_out)
+    norm = norm + dot_product(array_in, array_out)
+
+    call mf_wq_get_ku_3d_csr(dercoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            array_in, array_out)
+    norm = norm + dot_product(array_in, array_out)
+
+end subroutine

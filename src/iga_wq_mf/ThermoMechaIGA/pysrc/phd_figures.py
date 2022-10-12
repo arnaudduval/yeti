@@ -20,6 +20,7 @@ from lib.base_functions import (create_knotvector,
 )
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
+from PIL import Image
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -496,45 +497,57 @@ elif CASE == 9: # Weights W11
     fig.savefig(filename)
 
 elif CASE == 10:
-
-    # Create geometry
+    # Global variables
     geoname = 'CB'
-    geo = geomdlModel(geoname)
-    geo.knot_refinement(nb_refinementByDirection=np.array([1,1,1]))
-    model = fortran_mf_wq(geo)
-    model.export_results()
-
-    # Set name of file
     filename = folder + 'VTK_' + geoname + '.png'
 
-    # Read data
-    full_path = os.path.realpath(__file__)
-    folderVTK = os.path.dirname(full_path) + '/results/' + geoname
-    grid = pv.read(folderVTK+ '.vts')
-    if geoname == 'RQA': rot = grid.rotate_z(180)
-    elif geoname == 'VB': rot = grid.rotate_z(45)
-    else: rot = grid
-    z = np.ones(len(grid.points[:, 2]))
+    # # Create geometry
+    # geo = geomdlModel(geoname)
+    # geo.knot_refinement(nb_refinementByDirection=np.array([1,1,1]))
+    # model = fortran_mf_wq(geo)
+    # model.export_results()    
+
+    # # Read data
+    # full_path = os.path.realpath(__file__)
+    # folderVTK = os.path.dirname(full_path) + '/results/' + geoname
+    # grid = pv.read(folderVTK+ '.vts')
+    # if geoname == 'RQA': rot = grid.rotate_z(180)
+    # elif geoname == 'VB': rot = grid.rotate_z(45)
+    # else: rot = grid
+    # z = np.ones(len(grid.points[:, 2]))
     
-    # Plot the data 
-    sargs = dict(
-            title_font_size=50,
-            label_font_size=40,
-            shadow=True,
-            n_labels=2,
-            fmt="%.1f",
-            position_x=0.2, 
-            position_y=0.1,
-    )
-    # boring_cmap = plt.cm.get_cmap("GnBu", 1)
-    pv.start_xvfb()
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-    plotter.camera.zoom(0.6)
-    # pv.Renderer.isometric_view(plotter)
-    plotter.background_color = 'white'
-    plotter.window_size = [1600, 1600]
-    plotter.screenshot(filename)
-    
+    # # Plot the data 
+    # sargs = dict(
+    #         title_font_size=50,
+    #         label_font_size=40,
+    #         shadow=True,
+    #         n_labels=2,
+    #         fmt="%.1f",
+    #         position_x=0.2, 
+    #         position_y=0.1,
+    # )
+    # # boring_cmap = plt.cm.get_cmap("GnBu", 1)
+    # pv.start_xvfb()
+    # plotter = pv.Plotter(off_screen=True)
+    # plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+    # # plotter.camera.zoom(0.6)
+    # # pv.Renderer.isometric_view(plotter)
+    # plotter.background_color = 'white'
+    # plotter.window_size = [1600, 1600]
+    # plotter.screenshot(filename)
+
+    # Open image and make into Numpy array
+    im = Image.open(filename).convert('RGB')
+    na = np.array(im)
+    # Find coordinates
+    colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
+
+    # Find first and last row containing colored pixels
+    top, bottom = colorY[0], colorY[-1]
+
+    # Extract Region of Interest
+    ROI=na[top:bottom, :]
+    Image.fromarray(ROI).save(filename)
+
 else: raise Warning('Case unkwnon')
 

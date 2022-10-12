@@ -23,7 +23,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 4, 4
-isElastic = False
+isElastic = True
 
 # Create geometry 
 geometry = {'degree':[degree, degree, degree]}
@@ -35,7 +35,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7.8e-9, 'young': 210e3, 'poisson': 0.3, 'sigmaY': 500, 'hardening':50e3, 'betahard':0.5}
+material = {'density': 7800, 'young': 210e9, 'poisson': 0.0, 'sigmaY': 500e6, 'hardening':50e9, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
@@ -50,7 +50,7 @@ Mdod = modelPhy._mechanical_dod
 
 # Set Neumann boundaries
 forces = [[0 for i in range(3)] for j in range(6)]
-forces[1] = [100.0, 200.0, 0.0]
+forces[1] = [1e8, 2e8, 0.0]
 Neumann = {'mechanical': forces}
 modelPhy._set_neumann_condition(Neumann)
 
@@ -81,11 +81,12 @@ if isElastic:
     fig.tight_layout()
     fig.savefig(folder + 'ElasticityRes.png')
 
-    # Interpolate displacement
-    modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
+    # # Interpolate displacement
+    # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
 
-    # # Compute strain 
-    # strain = modelPhy.compute_strain(u=displacement)
+    # Compute strain 
+    strain = modelPhy.compute_strain(u=displacement)
+    modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
 
     # # Compute stress
     # stress = modelPhy.compute_linear_stress(strain)

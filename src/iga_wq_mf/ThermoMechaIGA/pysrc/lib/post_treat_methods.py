@@ -10,7 +10,7 @@ from .create_geomdl import geomdlModel
 from .fortran_mf_iga import fortran_mf_iga
 from .fortran_mf_wq import fortran_mf_wq
 
-def plot_iterative_solver(filename, inputs:dict, extension='.png', threshold=1.e-16):
+def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e-16, twoplots=False):
     
     # Get new name
     savename = filename.split('.')[0] + extension
@@ -22,34 +22,59 @@ def plot_iterative_solver(filename, inputs:dict, extension='.png', threshold=1.e
 
     # Get new names
     new_method_list = []
+    # for pcgmethod in method_list:
+    #     if pcgmethod == "WP": new_method_list.append('Without preconditioner')
+    #     elif pcgmethod == "C": new_method_list.append('Fast Diagonalisation (FD)')
+    #     elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
+    #     elif pcgmethod == "JMC": new_method_list.append('FD + jacobien mean')  
+    #     elif pcgmethod == "TDC": new_method_list.append('FD + tensor decomp.') 
+    #     elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
+
     for pcgmethod in method_list:
         if pcgmethod == "WP": new_method_list.append('Without preconditioner')
-        elif pcgmethod == "C": new_method_list.append('Fast Diagonalisation (FD)')
-        elif pcgmethod == "TDS": new_method_list.append('FD + tensor decomp. + scaling') 
-        elif pcgmethod == "JMC": new_method_list.append('FD + jacobien mean')  
-        elif pcgmethod == "TDC": new_method_list.append('FD + tensor decomp.') 
-        elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
+        elif pcgmethod == "C": new_method_list.append('Fast Diag. (FD)')
+        elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
+        elif pcgmethod == "TDC": new_method_list.append('Literature') 
+        elif pcgmethod == "JMC": new_method_list.append('This work') 
+        elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
     
-    # Set figure parameters
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(15,6))
-    makers = ['o', 'v', 'X', 's', '+', 'p']
-    for i, pcgmethod in enumerate(new_method_list):
-        error_method = np.asarray(error[i])
-        residue_method = np.asarray(residue[i])
+    makers = ['o', 'v', 's', 'X', '+', 'p']
+    if twoplots:
+        # Set figure parameters
+        fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(15,6))
+        for i, pcgmethod in enumerate(new_method_list):
+            error_method = np.asarray(error[i])
+            residue_method = np.asarray(residue[i])
 
-        error_method = error_method[residue_method>threshold]
-        residue_method = residue_method[residue_method>threshold]
-        
-        ax1.semilogy(np.arange(len(error_method)), error_method*100, '--',
-                    label=pcgmethod, marker=makers[i])
-        ax2.semilogy(np.arange(len(residue_method)), residue_method*100, '--',
-                    label=pcgmethod, marker=makers[i])
+            error_method = error_method[residue_method>threshold]
+            residue_method = residue_method[residue_method>threshold]
+            
+            ax1.semilogy(np.arange(len(error_method)), error_method*100, '-',
+                        label=pcgmethod, marker=makers[i])
+            ax2.semilogy(np.arange(len(residue_method)), residue_method*100, '-',
+                        label=pcgmethod, marker=makers[i])
 
-    # Set properties
-    for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations')
-    ax1.set_ylabel('Relative error (%)')
-    ax2.set_ylabel('Relative residue (%)')
-    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        # Set properties
+        for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations')
+        ax1.set_ylabel('Relative error (%)')
+        ax2.set_ylabel('Relative residue (%)')
+
+    else: 
+        # Set figure parameters
+        fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(7, 6))
+        for i, pcgmethod in enumerate(new_method_list):
+            residue_method = np.asarray(residue[i])
+            residue_method = residue_method[residue_method>threshold]
+            ax2.semilogy(np.arange(len(residue_method)), residue_method, '-',
+                        label=pcgmethod, marker=makers[i])
+
+        # Set properties
+        ax2.set_ylim(top=10.0, bottom=1e-15)
+        ax2.set_xlabel('Number of iterations')
+        ax2.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+
+    # ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax2.legend()
     fig.tight_layout()
     fig.savefig(savename)
 

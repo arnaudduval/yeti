@@ -21,8 +21,10 @@ from mpltools import annotation
 from cycler import cycler
 
 # Default properties 
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}'] 
 mpl.rcParams.update({'figure.autolayout': True})
-mpl.rcParams['figure.figsize'] = (5.0, 4.0)    
+mpl.rcParams['figure.figsize'] = (5.0, 4.0) 
 mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
@@ -32,7 +34,7 @@ mpl.rcParams['axes.prop_cycle'] = cycler('color', ['#377eb8', '#ff7f00', '#4daf4
                                                     '#999999', '#e41a1c', '#dede00'])
 
 import pyvista as pv
-pv.rcParams['transparent_background'] = True
+pv.rcParams['transparent_background'] = False
 pv.global_theme.font.family = 'times'
 pv.global_theme.font.color = 'black'
 

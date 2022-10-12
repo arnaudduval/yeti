@@ -19,15 +19,17 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 FileExist = True
 isIGA = False
-degree, cuts = 6, 5
-method_list = ["WP", "C", "TDS", "TDC", "JMS", "JMC"]
+degree, cuts = 6, 6
+method_list = ["WP", "C", "TDC", "JMC"]
 
-for geometryName in ['VB']:  
-    
+# for geometryName in ['CB', 'VB', 'TR']: 
+for geometryName in ['RQA']:  
+
     # Get file name
     if geometryName   == 'CB': funpow, funtemp = powden_cube, None 
     elif geometryName == 'VB': funpow, funtemp = powden_prism, None 
     elif geometryName == 'TR': funpow, funtemp = powden_thickring, None 
+    elif geometryName == 'RQA': funpow, funtemp = powden_rotring, temperature_rotring 
 
     # Run simulation
     thermalinputs = {'degree': degree, 'cuts': cuts, 'case': geometryName, 'isIGA': isIGA, 
@@ -36,8 +38,8 @@ for geometryName in ['VB']:
     filename = Simulation._filename
 
     if not FileExist:
-        conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-        # conductivity = np.array([[1.0, 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        # conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+        conductivity = np.array([[1.0, 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
         Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
         material = {'capacity':1.0, 'conductivity': conductivity}
         Simulation.run_simulation(material=material, Dirichlet=Dirichlet)

@@ -16,12 +16,13 @@ folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def setKpop(T, prop=0.1):
-    y = 0.1 + prop*np.exp(-0.1*abs(T))
+    # y = prop + prop*np.exp(-0.1*abs(T))
+    y = prop + prop*1.0/(1.0 + np.exp(-(T-1.0)))
     # y = prop*np.ones(len(T))
     return y
 
 def setCpop(T, prop=1.0):
-    y = 1 + prop*np.exp(-0.1*abs(T))
+    y = prop + prop*np.exp(-0.1*abs(T))
     # y = prop*np.ones(len(T))
     return y
 
@@ -31,134 +32,143 @@ def powdentest(P:list):
     return f
 
 # Initialize
-dataExist = True
-geoname, PCGmethod = 'TR', 'JMS'
-filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
+dataExist = False
+geolist = ['VB', 'CB', 'TR']
+mlist = ['JMS', 'JMC']
 
 if not dataExist:
-    # Set global variables
-    degree, cuts = 4, 4
-    conductivity, capacity = 0.1, 1.0
-    newmark = 1.0
     
-    # Set time simulation
-    N = 100
-    time_list = np.linspace(0, 30, N)
+    for geoname in geolist:
+        for PCGmethod in mlist:
+            filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
+            
+            # Set global variables
+            degree, cuts = 4, 5
+            conductivity, capacity = 0.1, 1.0
+            newmark = 1.0
+            
+            # Set time simulation
+            N = 60
+            time_list = np.linspace(0, 15, N)
 
-    # Create material
-    table_Kprop = create_table_properties(setKpop, prop=conductivity)
-    table_Cprop = create_table_properties(setCpop, prop=capacity)
+            # Create material
+            table_Kprop = create_table_properties(setKpop, prop=conductivity)
+            table_Cprop = create_table_properties(setCpop, prop=capacity)
 
-    # Create geometry 
-    geometry = {'degree':[degree, degree, degree]}
-    modelGeo = geomdlModel(geoname, **geometry)
-    modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-                                                np.array([cuts, cuts, cuts]))
+            # Create geometry 
+            geometry = {'degree':[degree, degree, degree]}
+            modelGeo = geomdlModel(geoname, **geometry)
+            modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
+                                                        np.array([cuts, cuts, cuts]))
 
-    # Create model
-    modelPhy = fortran_mf_wq(modelIGA)
+            # Create model
+            modelPhy = fortran_mf_wq(modelIGA)
 
-    # Add material 
-    material = {'capacity':capacity, 'conductivity':conductivity*np.eye(3)}
-    modelPhy._set_material(material)
+            # Add material 
+            material = {'capacity':capacity, 'conductivity':conductivity*np.eye(3)}
+            modelPhy._set_material(material)
 
-    # Block boundaries
-    Dirichlet = {'thermal':np.array([[1, 1], [0, 0], [0, 0]])}
-    modelPhy._set_dirichlet_boundaries(Dirichlet)
+            # Block boundaries
+            Dirichlet = {'thermal':np.array([[1, 1], [0, 0], [0, 0]])}
+            modelPhy._set_dirichlet_boundaries(Dirichlet)
 
-    # Add constant temperature
-    modelPhy._add_thermal_IBC(np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
+            # Add constant temperature
+            modelPhy._add_thermal_IBC(np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
-    # ---------------------
-    # Transient model
-    # ---------------------
-    # Interpolate temperature on boundaries over time 
-    GBound = np.zeros((len(modelPhy._thermal_dod), len(time_list)))
-    for i in range(len(time_list)): GBound[:, i] = modelPhy._get_thermal_IBC()
+            # ---------------------
+            # Transient model
+            # ---------------------
+            # Interpolate temperature on boundaries over time 
+            GBound = np.zeros((len(modelPhy._thermal_dod), len(time_list)))
+            for i in range(len(time_list)): GBound[:, i] = modelPhy._get_thermal_IBC()
 
-    # Add external force (transient)
-    Fend = modelPhy.eval_source_vector(powdentest)
-    Fendt = np.atleast_2d(Fend).reshape(-1, 1)
-    Fext  = np.kron(Fendt, sigmoid(time_list))
+            # Add external force (transient)
+            Fend = modelPhy.eval_source_vector(powdentest)
+            Fendt = np.atleast_2d(Fend).reshape(-1, 1)
+            Fext  = np.kron(Fendt, sigmoid(time_list))
 
-    # Solve transient problem at internal control points
-    Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
-                                    table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                    methodPCG=PCGmethod, newmark=newmark)
-
-    np.savetxt(filename, resPCG)
-    # modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
+            # Solve transient problem at internal control points
+            Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
+                                            table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
+                                            methodPCG=PCGmethod, newmark=newmark)
+            print('Finish')
+            np.savetxt(filename, resPCG)
+            # modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
 
 else:
-    # --------------
-    # Post-treatment
-    # --------------
-    resPCG = np.loadtxt(filename)
-    resPCG = resPCG[:, resPCG[0, :]>0]
+    for geoname in geolist:
+        for PCGmethod in mlist:
+            filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
+            
+            # --------------
+            # Post-treatment
+            # --------------
+            resPCG = np.loadtxt(filename)
+            resPCG = resPCG[:, resPCG[0, :]>0]
 
-    # Colors
-    colorset = ['#377eb8', '#ff7f00', '#4daf4a',
-                '#f781bf', '#a65628', '#984ea3',
-                '#999999', '#e41a1c', '#dede00']
+            # Colors
+            colorset = ['#377eb8', '#ff7f00', '#4daf4a',
+                        '#f781bf', '#a65628', '#984ea3',
+                        '#999999', '#e41a1c', '#dede00']
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 4), 
-                                gridspec_kw=dict(width_ratios=[1,1.5]))
-    # Initialize new data
-    step_list, iterNl_list, niter_list = [], [], []
-    for _ in range(np.shape(resPCG)[1]):
-        step = resPCG[0, _]; iterNL = resPCG[1, _]
-        newresidue = resPCG[2:, _]; newresidue = newresidue[newresidue>0]*100
-        step_list.append(int(step)) # Maybe it will no be used
-        iterNl_list.append(int(iterNL))
-        niter_list.append(len(newresidue))
-        ax1.semilogy(np.arange(len(newresidue)), newresidue, 
-                    color=colorset[int(step%len(colorset))], alpha=1.0/iterNL)
-    # Print the first
-    step = resPCG[0, 0]; iterNL = resPCG[1, 0]
-    newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]*100
-    ax1.semilogy(np.arange(len(newresidue)), newresidue, 'o-', linewidth=2.5,
-                color='black', label='First step NR1')
-    ax1.legend(loc=1)
-    ax1.set_xlabel('Number of iterations')
-    ax1.set_ylabel('Relative residue ' + r'$\frac{||Ax - b||_\infty}{||b||_\infty}$' + ' (%)')
+            fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 4), 
+                                        gridspec_kw=dict(width_ratios=[1,2]))
+            # Initialize new data
+            step_list, iterNl_list, niter_list = [], [], []
+            for _ in range(np.shape(resPCG)[1]):
+                step = resPCG[0, _]; iterNL = resPCG[1, _]
+                newresidue = resPCG[2:, _]; newresidue = newresidue[newresidue>0]*100
+                step_list.append(int(step)) # Maybe it will no be used
+                iterNl_list.append(int(iterNL))
+                niter_list.append(len(newresidue))
+                ax1.semilogy(np.arange(len(newresidue)), newresidue, 
+                            color=colorset[int(step%len(colorset))], alpha=1.0/iterNL)
+            # Print the first
+            step = resPCG[0, 0]; iterNL = resPCG[1, 0]
+            newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]*100
+            ax1.semilogy(np.arange(len(newresidue)), newresidue, 'o-', linewidth=2.5,
+                        color='black', label='First step NR1')
+            ax1.legend(loc=1)
+            ax1.set_xlabel('Number of iterations')
+            ax1.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$' + ' (\%)')
 
-    # ----------------------
-    # Get labels of bar-diagram
-    labels_NL   = np.unique(iterNl_list)
-    labels_iter = np.unique(niter_list)
-    
-    # Count data
-    Data2plot = np.zeros((len(labels_iter), len(labels_NL)+1), dtype=int)
-    Data2plot[:, 0] = np.array(labels_iter) - 1
-    for i, iter in enumerate(labels_iter):
-        for j, NL in enumerate(labels_NL):
-            c = 0
-            for k in range(len(step_list)):
-                if iterNl_list[k] == NL and niter_list[k] == iter:
-                    c += 1
-            Data2plot[i, j+1] = c
-    
-    sumData = np.sum(Data2plot, axis=0)
-    for i in range(1, np.shape(Data2plot)[1]):
-        Data2plot[:, i] = Data2plot[:, i]/sumData[i]*100.0 
+            # ----------------------
+            # Get labels of bar-diagram
+            labels_NL   = np.unique(iterNl_list)
+            labels_iter = np.unique(niter_list)
+            
+            # Count data
+            Data2plot = np.zeros((len(labels_iter), len(labels_NL)+1), dtype=int)
+            Data2plot[:, 0] = np.array(labels_iter) - 1
+            for i, iter in enumerate(labels_iter):
+                for j, NL in enumerate(labels_NL):
+                    c = 0
+                    for k in range(len(step_list)):
+                        if iterNl_list[k] == NL and niter_list[k] == iter:
+                            c += 1
+                    Data2plot[i, j+1] = c
+            
+            sumData = np.sum(Data2plot, axis=0)
+            for i in range(1, np.shape(Data2plot)[1]):
+                Data2plot[:, i] = Data2plot[:, i]/sumData[i]*100
 
-    # Set columns
-    columns = ['Iterations']
-    columns.extend(['NR' + str(NL) for NL in labels_NL])
+            # Set columns
+            columns = ['Iterations']
+            columns.extend(['NR' + str(NL) + ': ' + str(nb) for NL, nb in zip(labels_NL, sumData[1:])])
 
-    # Set dataframe
-    df = pd.DataFrame(Data2plot, columns=columns)
+            # Set dataframe
+            df = pd.DataFrame(Data2plot, columns=columns)
 
-    # Plot
-    df.plot(x='Iterations', kind='bar', ax=ax2)
-    for container in ax2.containers:
-        ax2.bar_label(container)
-    ax2.grid(None)
-    ax2.set_ylim(top=np.ceil(ax2.get_ylim()[-1]/10+1)*10)
-    ax2.set_ylabel('Frequency (%)')
-    ax2.legend(loc=2)
+            # Plot
+            df.plot(x='Iterations', kind='bar', ax=ax2)
+            for container in ax2.containers:
+                ax2.bar_label(container, fontsize=10)
+            ax2.grid(None)
+            ax2.set_ylim(top=np.ceil(ax2.get_ylim()[-1]/10+1)*10)
+            ax2.set_ylabel('Frequency (\%)')
+            ax2.legend(loc=2)
 
-    # Set properties
-    filename = folder + 'TransientNL_' + geoname + '_' + PCGmethod + '.png'
-    fig.tight_layout()
-    fig.savefig(filename)
+            # Set properties
+            filename = folder + 'TransientNL_' + geoname + '_' + PCGmethod + '.png'
+            fig.tight_layout()
+            fig.savefig(filename)

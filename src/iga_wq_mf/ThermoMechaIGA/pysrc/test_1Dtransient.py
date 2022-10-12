@@ -11,13 +11,13 @@ folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def setKprop(T):
-    K = 0.1*np.ones(np.shape(T))
-    return K
+    y = 0.1 + 0.1*np.exp(-0.01*abs(T))
+    return y
 
 def setCprop(T):
-    # C = 1 + 0.2*np.exp(-0.1*abs(T))
-    C = 1*np.ones(np.shape(T))
-    return C
+    y = 1.0 + 1.0*np.exp(-0.01*abs(T))
+    # y = 1.0*np.ones(np.shape(T))
+    return y
 
 def powdentest(qp):
     f = 0*np.sin(np.pi*qp)
@@ -28,7 +28,7 @@ newmark, JJ = 1.0, 1.0
 properties = [JJ, setKprop, setCprop, newmark]
 
 # Create geometry
-degree, nbel = 8, 64
+degree, nbel = 5, 64
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
 knotvector = create_knotvector(degree, nbel)
@@ -71,17 +71,17 @@ temperature_interp = DB[0].T @ temperature
 # Create mesh space-time
 XX, TIME = np.meshgrid(knots*JJ, time_list)
 
-# # Plot figure
-# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
-# im = ax.contourf(XX, TIME, temperature_interp.T, 20)
-# cbar = plt.colorbar(im)
-# cbar.set_label('Temperature (K)')
+# Plot figure
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
+im = ax.contourf(XX, TIME, temperature_interp.T, 20)
+cbar = plt.colorbar(im)
+cbar.set_label('Temperature (K)')
 
-# ax.grid(None)
-# ax.set_ylabel('Time (s)')
-# ax.set_xlabel('Position (m)')
-# fig.tight_layout()
-# fig.savefig(folder + 'TransientHeat_1D.png')
+ax.grid(None)
+ax.set_ylabel('Time (s)')
+ax.set_xlabel('Position (m)')
+fig.tight_layout()
+fig.savefig(folder + 'TransientHeat_1D.png')
 
 # -----------------------
 

@@ -33,7 +33,7 @@ Fext = np.zeros((nb_ctrlpts, N))
 Fext[-1, :] = 400*t
 
 # Solve elastoplasticity problem
-disp, epn, sigma = solve_plasticity_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
+disp, epn, sigma = solve_plasticity_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof, update=3)
 epn_cp = interpolate_controlPoints_1D(basis_cgg, weight_cgg, epn)
 sigma_cp = interpolate_controlPoints_1D(basis_cgg, weight_cgg, sigma)
 
