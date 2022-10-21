@@ -23,6 +23,13 @@ cmake_minimum_required(VERSION 3.21.0)
 # Project definition, use languages Fortran and C
 project(yeti Fortran C)
 
+# Set version number
+set(PROJECT_VERSION_MAJOR 0)
+set(PROJECT_VERSION_MINOR 1)
+
+set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+
+
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -34,6 +41,8 @@ find_package(Python3
 
 #find_package(Numpy REQUIRED)
 find_package(F2PY REQUIRED)
+
+find_package(Sphinx)
 
 # Fortran compilation flags
 SET(CMAKE_Fortran_FLAGS "-O2 -fPIC")
@@ -56,7 +65,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
     set(FCOMPILER "--fcompiler=intelem")
 endif()
                     
-subdirs(src)
+subdirs(src doc)
 
 enable_testing()
 # Copy benchs to build directory 
