@@ -108,7 +108,7 @@ C     ------------------------------------------------------------------
                Ukv_dir(:n) = Ukv3_patch(:)
             Endif
             xi_bar(:) = zero
-            call grevilleAbscissae(Ukv_dir(:n),p,ng,xi_bar(:ng))
+            call grevilleAbscissae(Ukv_dir(:n),p,n,ng,xi_bar(:ng))
             
             
 !     Evaluate bspline basis functions
