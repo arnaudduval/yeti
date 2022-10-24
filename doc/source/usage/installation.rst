@@ -6,7 +6,8 @@ Prerequisites
 *************
 
 yeti is currently only available for Linux environment.
-For usage in a Microsoft Windows environment, *Windows Subsystem for Linux (WSL) can be used*
+For usage in a Microsoft Windows environment, *Windows Subsystem for Linux (WSL)* can be used.
+A quick tutorial for the installation of WSL can be found :ref:`here <install-wsl>`.
 
 For a Ubuntu 20.04 distribution, the following packages are required :
  - python3
@@ -42,6 +43,15 @@ Install required python modules with pip :
 
 ``pip install numpy matplotlib scipy nlopt``
 
+For use of umfpack with scipy sparse solver :
+
+``pip install wheel``
+
+``sudo apt install libsuitesparse-dev swig``
+
+``pip install scikit-umfpack``
+
+
 Compile yeti
 ************
 
@@ -55,7 +65,7 @@ Create a build directory:
 
 If not already loaded, load virtual python environment
 
-``source ~/yeti-venv/bin/avtivate``
+``source ~/yeti-venv/bin/activate``
 
 Configure with CMake :
 
@@ -65,4 +75,7 @@ Build yeti :
 
 ``make -j4``
 
-yeti library will be located in ``build/lib/python``
+yeti library will be located in ``build/lib/python``. You must add it to your PYTHONPATH environmant variable :
+
+``export PYTHONPATH=$PYTHONPATH:~/yeti/build/lib/python``
+

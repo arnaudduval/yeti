@@ -12,7 +12,7 @@ Prerequisites
 
 Some packages are necessary for compilation:
 
-``sudo apt install gcc g++ libssl-dev``
+``sudo apt install gcc g++ gfortran libssl-dev make``
 
 Get sources and uncompress
 --------------------------

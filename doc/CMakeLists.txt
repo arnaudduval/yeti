@@ -13,7 +13,10 @@ if(Sphinx_FOUND)
         "${CMAKE_CURRENT_LIST_DIR}/source/usage/elements_library.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/usage/connectivity_convention.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/usage/build_cmake.rst"
+        "${CMAKE_CURRENT_LIST_DIR}/source/usage/install_wsl.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/nodes-numbering.png"
+        "${CMAKE_CURRENT_LIST_DIR}/source/_static/install_WSL/01_launch_powershell_admin.png"
+        "${CMAKE_CURRENT_LIST_DIR}/source/_static/install_WSL/02_launch_Ubuntu.png"
 
     )
 
