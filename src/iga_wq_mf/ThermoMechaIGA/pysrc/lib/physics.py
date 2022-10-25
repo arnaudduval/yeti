@@ -115,13 +115,33 @@ def powden_rotring(P: list):
     y = P[1, :]
     z = P[2, :]
 
-    # Isotropy
-    f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
-        + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
-        + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-        - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
-    )
+    # # Isotropy
+    # f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
+    #     + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+    #     + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    #     - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+    # )
 
+    # Anisotropy
+    f = (16*x*y**4*np.sin(np.pi*z) 
+    + 8*x**2*y**3*np.sin(np.pi*z) 
+    + 8*x**3*y**2*np.sin(np.pi*z) 
+    + 2*y**3*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+    + 2*y**3*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+    + 26*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+    + 4*x**2*y*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+    + 26*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+    + 4*x**2*y*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+    + 4*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    + 2*y*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    + (y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/5 
+    + x*y**3*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1) 
+    + x*y**3*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 4) 
+    + (2*x**2*y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1))/5 
+    + (2*x**2*y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 4))/5 
+    - 3*x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+    + x*y*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+    )
     return f
 
 def temperature_rotring(P: list):

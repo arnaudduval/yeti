@@ -31,11 +31,17 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
     #     elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
 
     for pcgmethod in method_list:
-        if pcgmethod == "WP": new_method_list.append('Without preconditioner')
-        elif pcgmethod == "C": new_method_list.append('Fast Diag. (FD)')
+        # if pcgmethod == "WP": new_method_list.append('CG w.o. preconditioner')
+        # elif pcgmethod == "C": new_method_list.append('CG + FD w.o. problem info')
+        # elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
+        # elif pcgmethod == "TDC": new_method_list.append('CG + literature method') 
+        # elif pcgmethod == "JMC": new_method_list.append('CG + FD w. problem info') 
+        # elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
+        if pcgmethod == "WP": new_method_list.append('w.o. preconditioner')
+        elif pcgmethod == "C": new_method_list.append('FD w.o. problem info.')
         elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
-        elif pcgmethod == "TDC": new_method_list.append('Literature') 
-        elif pcgmethod == "JMC": new_method_list.append('This work') 
+        elif pcgmethod == "TDC": new_method_list.append('Literature method') 
+        elif pcgmethod == "JMC": new_method_list.append('FD w. problem info.') 
         elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
     
     makers = ['o', 'v', 's', 'X', '+', 'p']
@@ -55,13 +61,13 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
                         label=pcgmethod, marker=makers[i])
 
         # Set properties
-        for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations')
+        for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations of BiCG solver')
         ax1.set_ylabel('Relative error (%)')
         ax2.set_ylabel('Relative residue (%)')
 
     else: 
         # Set figure parameters
-        fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(7, 6))
+        fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
         for i, pcgmethod in enumerate(new_method_list):
             residue_method = np.asarray(residue[i])
             residue_method = residue_method[residue_method>threshold]
@@ -70,11 +76,11 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
 
         # Set properties
         ax2.set_ylim(top=10.0, bottom=1e-15)
-        ax2.set_xlabel('Number of iterations')
+        ax2.set_xlabel('Number of iterations of BiCG solver')
         ax2.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 
     # ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax2.legend()
+    ax2.legend(loc=0)
     fig.tight_layout()
     fig.savefig(savename)
 
@@ -198,7 +204,7 @@ class ThermalSimulation():
 
         return un, time_assembly, time_dirsolver
 
-    def run_simulation(self, material=None, Dirichlet=None):
+    def run_simulation(self, material=None, Dirichlet=None, threshold=1e-15):
         " Runs simulation using given input information "
 
         # Initialize
@@ -228,7 +234,7 @@ class ThermalSimulation():
         time_itersolver, residue, error = [], [], []
         for itmethod in self._iterMethods:
             _, residue_t, error_t, time_temp = self.run_iterative_solver(self._thermalModel, Fn=Fn, 
-                                                                        method=itmethod, solDir=solDir)
+                                                                        method=itmethod, solDir=solDir, threshold=threshold)
             time_itersolver.append(time_temp)
             residue.append(residue_t); error.append(error_t)
                 

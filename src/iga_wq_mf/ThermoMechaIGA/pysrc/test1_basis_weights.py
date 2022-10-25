@@ -42,6 +42,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             # ---------- 
             B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)[2:]
             nb_qp_wq = np.max(indj); indi -= 1; indj -= 1
+            print(nb_qp_wq)
 
             # Create basis and weights from fortran
             B0f  = sp.csr_matrix((B[:,0], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
@@ -95,6 +96,8 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
         strlabel = 'Degree p = ' + str(degree)
         ax.loglog(nbel_list, norm_fortran, '-o', label=strlabel, color=color)
         ax.loglog(nbel_list, norm_python, '--P', color=color)
+
+        print('---------------')
 
     # Plot configurations
     ax.set_xlabel("Number of elements $nb_{el}$")

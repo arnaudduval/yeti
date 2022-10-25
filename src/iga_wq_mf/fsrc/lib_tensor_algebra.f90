@@ -1264,3 +1264,61 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
     call trapezoidal_rule_3d(3, 3, 3, coefs_temp, integral)
 
 end subroutine compute_mean_3d
+
+subroutine compute_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
+    
+    implicit none
+    ! Input /  output data
+    ! --------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: Kcoefs, Ccoefs
+    dimension :: Kcoefs(d, d, nnz), Ccoefs(nnz)
+    double precision, intent(in) :: Kmean, Cmean
+    dimension :: Kmean(d)
+
+    double precision, intent(out) :: kappa
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k, info
+    double precision :: wr, wi, vl, vr, work, KK, Kmean2
+    dimension :: wr(d), wi(d), vl(d, d), vr(1, d), work(5*d), KK(d, d), Kmean2(d)
+    double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
+
+    do i = 1, d
+        kmean2(i) = 1.0/sqrt(Kmean(i))
+    end do
+    KK = Kcoefs(:, :, 1)
+    do i = 1, d
+        do j = 1, d
+            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+        end do
+    end do
+    call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+    supKold = maxval(wr); infKold = minval(wr)
+    supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
+
+    do k = 2, nnz
+        
+        KK = Kcoefs(:, :, k)
+        do i = 1, d
+            do j = 1, d
+                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+            end do
+        end do
+        call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+        supKnew = maxval(wr); infKnew = minval(wr)
+        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
+        
+        Cnew = Ccoefs(k)/Cmean
+        supC = max(supCold, Cnew); infC = min(infCold, Cnew)
+
+        supKold = supK; infKold = infK
+        supCold = supC; infCold = infC
+
+    end do
+    
+    kappa = max(supK, supC)/min(infK, infC)
+
+end subroutine compute_condition_number

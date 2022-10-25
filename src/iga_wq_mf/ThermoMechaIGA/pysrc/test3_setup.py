@@ -15,12 +15,12 @@ if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Simulation setup
 dataExist = True
-nbel = 64
+nbel = 40
 degree_list = np.arange(2, 8)
 
 # Set filename
-filename_data = folder_data + 'setup_time_' + str(nbel) 
-filename_figure = folder_figure + 'setup_time_' + str(nbel) 
+filename_data = folder_data + 'setup_time_' + str(nbel)
+filename_figure = folder_figure + 'setup_time_' + str(nbel) + '.pdf' 
 
 # Output
 time_matrix = np.zeros((len(degree_list), 3))
@@ -44,9 +44,9 @@ if not dataExist:
         coefs = np.ones(len(qp_position)**3)
         inputs = [coefs, *nb_qp_list, *indices, *dB, *dW, *size_I]
         
-        start = time.time()
+        start = time.process_time()
         assembly.wq_get_capacity_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
         time_matrix[i, 1] = stop - start         
 
         # --------------------
@@ -55,9 +55,9 @@ if not dataExist:
         coefs = np.ones((3, 3, len(qp_position)**3))
         inputs = [coefs, *nb_qp_list, *indices, *dB, *dW, *size_I]
 
-        start = time.time()
+        start = time.process_time()
         assembly.wq_get_conductivity_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
         time_matrix[i, 2] = stop - start 
         del inputs, coefs
 
@@ -73,8 +73,8 @@ else :
 
         # Plot data
         fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
-        ax1.loglog(litterature.degree, litterature.time, 'o--', label='Litterature')
-        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='My algorithm')
+        ax1.loglog(litterature.degree, litterature.time, 'o--', label='Literature')
+        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='This work')
 
         # Compute slope
         slope = np.polyfit(np.log10(mydata[:,0]), np.log10(mydata[:,1]), 1)[0]
@@ -106,8 +106,8 @@ else :
 
         # Plot data
         fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12,4))
-        ax1.loglog(litterature.degree, litterature.C, 'o--', label='Litterature')
-        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='My algorithm')
+        ax1.loglog(litterature.degree, litterature.C, 'o--', label='Literature')
+        ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='This work')
 
         ax2.loglog(litterature.degree, litterature.K, 'o--')
         ax2.loglog(mydata[:,0], mydata[:,2], 'x--')

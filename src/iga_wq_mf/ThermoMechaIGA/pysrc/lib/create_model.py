@@ -411,7 +411,7 @@ class thermoMechaModel():
             This functions is deprecated. Please use Fortran for faster computations 
         """
         print('Evaluating jacobien and physical position')
-        start = time.time()
+        start = time.process_time()
         
         # Initialize 
         J = np.zeros((dim, dim, nnz))
@@ -444,7 +444,7 @@ class thermoMechaModel():
             invJ[:, :, i] = np.linalg.inv(J[:, :, i])
             detJ[i] = np.linalg.det(J[:, :, i])
         
-        stop = time.time()
+        stop = time.process_time()
         print('\t Time jacobien: %.5f s' %(stop-start))
         
         return J, detJ, invJ, PPS
@@ -453,7 +453,7 @@ class thermoMechaModel():
         " Computes conductivity coefficients "
 
         print('Getting conductivity coefficients')
-        start = time.time()
+        start = time.process_time()
         
         # Initialize
         Kprop = np.atleast_3d(Kprop)
@@ -484,7 +484,7 @@ class thermoMechaModel():
 
             else: raise Warning('It is not possible to compute coefficients')
 
-        stop = time.time()
+        stop = time.process_time()
         print('\tConductivity coefficients in : %.5f s' %(stop-start))
 
         return coefs
@@ -493,7 +493,7 @@ class thermoMechaModel():
         " Computes capacity coefficients "
 
         print('Getting capacity coefficients')
-        start = time.time()
+        start = time.process_time()
 
         # Initialize
         Cprop = np.atleast_1d(Cprop)
@@ -514,7 +514,7 @@ class thermoMechaModel():
 
             else: raise Warning('It is not possible to compute coefficients')
 
-        stop = time.time()
+        stop = time.process_time()
         print('\tCapacity coefficients in : %.5f s' %(stop-start))
 
         return coefs
@@ -523,11 +523,11 @@ class thermoMechaModel():
         " Computes source coefficients "
 
         print('Getting source coefficients')
-        start = time.time()
+        start = time.process_time()
         # Get source coefficient
         qp = np.atleast_2d(qp)
         coefs = fun(qp)*detJ
-        stop = time.time()
+        stop = time.process_time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 
         return coefs

@@ -18,7 +18,7 @@ class geomdlModel():
         self._geometry = None
 
         print('\nCreating geometry: ' + name + '...')
-        start = time.time()
+        start = time.process_time()
         if name == 'quarter_annulus' or name == 'QA':
             # Set number of dimension 
             self._dim = 2
@@ -77,13 +77,13 @@ class geomdlModel():
             
             # Create prism
             XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-            Height = geometry.get('Height', 2)
+            Height = geometry.get('Height', 1)
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_prism(XY, Height, degree_xi, degree_nu, degree_eta) 
 
         else: raise Warning("It is not a shape in this library")
         
-        stop = time.time()
+        stop = time.process_time()
         print('\tBasic geometry created in: %.3e s' %(stop-start))
 
         # Update data
@@ -94,7 +94,7 @@ class geomdlModel():
     def update_geometry(self): 
         " Updates and saves important properties of the geometry created "
 
-        start = time.time()
+        start = time.process_time()
         # Set geometry object
         obj = self._geometry
         if obj is None: raise Warning('Geometry unknown')
@@ -152,7 +152,7 @@ class geomdlModel():
 
         # Update control points
         self._ctrlpts = ctrlpts_new
-        stop = time.time()
+        stop = time.process_time()
         print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
 
         return
@@ -262,7 +262,7 @@ class geomdlModel():
             This functions is deprecated. Instead use YETI functions. 
         """
 
-        start = time.time()
+        start = time.process_time()
         # Copy geometry
         geometry = deepcopy(self._geometry)
 
@@ -282,7 +282,7 @@ class geomdlModel():
                 knot_insert[dim] = knot
                 operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
         self._geometry = geometry
-        stop = time.time()
+        stop = time.process_time()
         print('Knot refinement in: %.3e s' %(stop-start))
 
         # Update values

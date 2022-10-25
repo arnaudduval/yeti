@@ -32,7 +32,7 @@ class WQ(thermoMechaModel):
         " Computes Basis and weights in WQ approach "
         
         print('Evaluating basis and weights')
-        start = time.time()
+        start = time.process_time()
 
         # Initalize 
         self._qp_dim, self._DB, self._DW = [], [], []
@@ -47,7 +47,7 @@ class WQ(thermoMechaModel):
         # Update number of quadrature points
         self._nb_qp_total = np.prod(self._nb_qp)
 
-        stop = time.time()
+        stop = time.process_time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
 
         return
@@ -64,7 +64,7 @@ class WQ(thermoMechaModel):
     def eval_conductivity_matrix(self):
         " Assemble conductivity matrix K "
 
-        start = time.time()
+        start = time.process_time()
         # Initialize 
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
@@ -93,7 +93,7 @@ class WQ(thermoMechaModel):
                 # Find K = W C B
                 matrix += sp.csr_matrix.dot(Wt.tocsr()[:,:], Bt.tocsr()[:,:].T)
         
-        stop = time.time()
+        stop = time.process_time()
         print('Conductivity matrix assembled in : %.5f s' %(stop-start))
 
         return matrix
@@ -101,7 +101,7 @@ class WQ(thermoMechaModel):
     def eval_capacity_matrix(self):
         " Assemble capacity matrix C "
 
-        start = time.time()
+        start = time.process_time()
         # Initialize
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
@@ -120,7 +120,7 @@ class WQ(thermoMechaModel):
         W = sp.csr_matrix.dot(W, sp.diags(coefs))
         matrix = sp.csr_matrix.dot(W.tocsr()[:,:], B.tocsr()[:,:].T)
 
-        stop = time.time()
+        stop = time.process_time()
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
 
         return matrix
@@ -128,7 +128,7 @@ class WQ(thermoMechaModel):
     def eval_source_vector(self, fun):
         " Assemble power density vector F "
 
-        start = time.time()
+        start = time.process_time()
 
         # Get source coefficients
         coefs = self.eval_source_coefficient(fun)       
@@ -143,7 +143,7 @@ class WQ(thermoMechaModel):
 
         # Assemble vector
         vector = sp.csr.csr_matrix.dot(W.tocsr()[:,:], coefs)
-        stop = time.time()
+        stop = time.process_time()
         print('Source vector assembled in : %.5f s' %(stop-start))
 
         return vector

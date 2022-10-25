@@ -33,8 +33,8 @@ def powdentest(P:list):
 
 # Initialize
 dataExist = False
-geolist = ['VB', 'CB', 'TR']
-mlist = ['JMS', 'JMC']
+geolist = ['TR', 'VB', 'CB']
+mlist = ['JMC', 'JMS']
 
 if not dataExist:
     
@@ -43,8 +43,8 @@ if not dataExist:
             filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
             
             # Set global variables
-            degree, cuts = 4, 5
-            conductivity, capacity = 0.1, 1.0
+            degree, cuts = 4, 4
+            conductivity, capacity = 1.0, 1.0
             newmark = 1.0
             
             # Set time simulation

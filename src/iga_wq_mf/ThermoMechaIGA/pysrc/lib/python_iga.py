@@ -31,7 +31,7 @@ class IGA(thermoMechaModel):
         " Computes Basis and weights in WQ approach "
         
         print('Evaluating basis and weights')
-        start = time.time()
+        start = time.process_time()
 
         # Initalize 
         self._qp_dim, self._DB, self._DW = [], [], []
@@ -45,7 +45,7 @@ class IGA(thermoMechaModel):
         # Update number of quadrature points
         self._nb_qp_total = np.prod(self._nb_qp)
 
-        stop = time.time()
+        stop = time.process_time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
 
     # ---------------
@@ -60,7 +60,7 @@ class IGA(thermoMechaModel):
     def eval_conductivity_matrix(self):
         " Assemble conductivity matrix K "
 
-        start = time.time()
+        start = time.process_time()
         
         # Initialize 
         super()._verify_thermal()
@@ -94,7 +94,7 @@ class IGA(thermoMechaModel):
                 BW = sp.csr_matrix.dot(Btl.tocsr()[:,:], Wt.tocsr()[:,:])
                 matrix += sp.csr_matrix.dot(BW.tocsr()[:,:], Btr_Cij.tocsr()[:,:].T)
 
-        stop = time.time()
+        stop = time.process_time()
         print('Conductivity matrix assembled in : %.5f s' %(stop-start))
 
         return matrix
@@ -102,7 +102,7 @@ class IGA(thermoMechaModel):
     def eval_capacity_matrix(self):
         " Assemble capacity matrix C "
 
-        start = time.time()
+        start = time.process_time()
         
         # Initialize 
         super()._verify_thermal()
@@ -124,7 +124,7 @@ class IGA(thermoMechaModel):
         W = sp.csr_matrix.dot(W, sp.diags(coefs))
         matrix = sp.csr_matrix.dot(sp.csr_matrix.dot(B.tocsr()[:,:], sp.diags(W)), B.tocsr()[:,:].T)
 
-        stop = time.time()
+        stop = time.process_time()
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
 
         return matrix
@@ -132,7 +132,7 @@ class IGA(thermoMechaModel):
     def eval_source_vector(self, fun):
         " Assemble power density vector F "
 
-        start = time.time()
+        start = time.process_time()
         
         # Get source coefficients
         coefs = self.eval_source_coefficient(fun)
@@ -151,7 +151,7 @@ class IGA(thermoMechaModel):
 
         # Assemble vector
         vector = sp.csr_matrix.dot(sp.csr_matrix.dot(B.tocsr()[:,:], W.tocsr()[:,:]), coefs)
-        stop = time.time()
+        stop = time.process_time()
         print('Source vector assembled in : %.5f s' %(stop-start))
 
         return vector

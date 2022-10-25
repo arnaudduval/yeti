@@ -492,7 +492,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen, Dtemp
     double precision, dimension(:, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
-    double precision :: csigma, k_u, k_v, k_w
+    double precision :: cm, k_um, k_vm, k_wm, kmeanvector(d), kappa
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -517,14 +517,14 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
-    k_u = 1.d0; k_v = 1.d0; k_w = 1.d0; csigma = 1.d0
+    k_um = 1.d0; k_vm = 1.d0; k_wm = 1.d0; cm = 1.d0
 
     if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
         ! Compute mean 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_u) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), k_v) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(3, 3, :), k_w) 
-        call compute_mean_3d(nc_u, nc_v, nc_w, Ccoefs(:), csigma)
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), k_um) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), k_vm) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(3, 3, :), k_wm) 
+        call compute_mean_3d(nc_u, nc_v, nc_w, Ccoefs(:), cm)
     end if
 
     ! --------------------
@@ -550,8 +550,8 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
     ! Find diagonal of eigen values
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(size(b)))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_u, k_v, k_w, Deigen)
-    Deigen = csigma + newmarkdt*Deigen
+    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_um, k_vm, k_wm, Deigen)
+    Deigen = cm + newmarkdt*Deigen
     deallocate(I_u, I_v, I_w)
 
     if (methodPCG.eq.'JMS') then
@@ -559,9 +559,9 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
 
         ! Find diagonal of preconditioner
         Dtemp = 0.d0
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, csigma)
+        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cm)
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                    Kdiag_u, Kdiag_v, Kdiag_w, k_u, k_v, k_w, Dparametric)
+                                    Kdiag_u, Kdiag_v, Kdiag_w, k_um, k_vm, k_wm, Dparametric)
         Dparametric = newmarkdt*Dparametric + Dtemp 
 
         ! Find diagonal of real matrix (K + C in this case)
@@ -573,6 +573,15 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
         Dphysical = newmarkdt*Dphysical + Dtemp
     end if
+
+    ! Condition number P^-1 A
+    kmeanvector = (/k_um, k_vm, k_wm/)
+    call compute_condition_number(nc_total, Kcoefs, Ccoefs, kmeanvector, cm, kappa)
+    if (methodPCG.eq.'JMS') then
+        Dtemp = Dparametric/Dphysical
+        kappa = kappa*maxval(Dtemp)/minval(Dtemp)
+    end if
+    print*, 'Condition number: ', kappa
 
     ! -------------------------------------------
     ! Preconditioned Conjugate Gradient algorithm

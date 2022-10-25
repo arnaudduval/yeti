@@ -39,6 +39,31 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
 
 end subroutine eigen_decomposition_py
 
+subroutine compute_diagonal_py(nr_u, nr_v, nr_w, D_u, D_v, D_w, clist, Diag)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: d = 4
+    integer, intent(in) :: nr_u, nr_v, nr_w
+    double precision, intent(in) :: D_u, D_v, D_w, clist
+    dimension :: D_u(nr_u), D_v(nr_v), D_w(nr_w), clist(d)
+
+    double precision, intent(out) :: Diag
+    dimension :: Diag(nr_u*nr_v*nr_w)
+
+    ! Local data
+    ! ----------
+    double precision :: I_u, I_v, I_w
+    dimension :: I_u(nr_u), I_v(nr_v), I_w(nr_w)
+
+    ! Compute diagonal
+    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, clist(1), clist(2), clist(3), Diag)
+    Diag = clist(4) + Diag
+
+end subroutine compute_diagonal_py
+
 subroutine fd_sqr_scaling(nnz, factor_up, factor_down, array_inout)
     !! Square-root scaling in fast diagonalization method
 

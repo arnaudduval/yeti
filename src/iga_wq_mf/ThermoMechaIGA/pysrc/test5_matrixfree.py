@@ -16,15 +16,17 @@ if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Set global variable
 dataExist = True
-withReference = True
-degree_list = range(7, 8)
-cut_list = range(5, 6)
+withReference = False
+degree_list = range(5, 8)
+cut_list = range(7, 8)
 
 # Initialize
 timeMF_Mass_matrix = np.zeros((len(degree_list), len(cut_list)+1))
 timeMF_Mass_matrix[:, 0] = degree_list
 timeMF_Stiff_matrix = np.zeros((len(degree_list), len(cut_list)+1))
 timeMF_Stiff_matrix[:, 0] = degree_list
+timeMF_SM_matrix = np.zeros((len(degree_list), len(cut_list)+1))
+timeMF_SM_matrix[:, 0] = degree_list
 timePython = np.zeros((len(degree_list), len(cut_list)+1))
 timePython[:, 0] = degree_list
 
@@ -33,7 +35,7 @@ if not dataExist:
     for j, cuts in enumerate(cut_list):
         for i, degree in enumerate(degree_list):
             
-            # blockPrint()
+            blockPrint()
             # Set number of elements
             nbel = 2**cuts
             nb_ctrlpts = degree + nbel - 2
@@ -62,9 +64,9 @@ if not dataExist:
             # # Compute matrix C
             # dof = modelPhy._thermal_dof
             # CC = modelPhy.eval_capacity_matrix()[:, dof][dof, :]
-            # start = time.time()
+            # start = time.process_time()
             # R = CC.dot(V)
-            # stop = time.time()
+            # stop = time.process_time()
             # time_python = stop - start
             # timePython[i, j+1] = time_python
             # # np.savetxt(folder_data+'matvec_Python.dat', timePython)
@@ -72,44 +74,79 @@ if not dataExist:
             # Compute Matrix free product
             MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
             timeMF_Mass_matrix[i, j+1] = MFtime1
-            np.savetxt(folder_data+'matvec_MF_Mass.dat', timeMF_Mass_matrix)
+            # np.savetxt(folder_data+'matvec_MF_Mass2.dat', timeMF_Mass_matrix)
 
-            MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
-            timeMF_Stiff_matrix[i, j+1] = MFtime2
-            np.savetxt(folder_data+'matvec_MF_Stiff.dat', timeMF_Stiff_matrix)
+            # MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
+            # timeMF_Stiff_matrix[i, j+1] = MFtime2
+            # np.savetxt(folder_data+'matvec_MF_Stiff2.dat', timeMF_Stiff_matrix)
+
+            # MFtime3 = modelPhy.eval_KCu(V, table=Dirichlet)[-1]
+            # timeMF_SM_matrix[i, j+1] = MFtime3
+            # np.savetxt(folder_data+'matvec_MF_SM2.dat', timeMF_SM_matrix)
             
             enablePrint()
             # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_python))
             print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
-            print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
+            # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
+            # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime3))
             print('')
 
 else:
+
+    # # Create plot
+    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+
+    # # Extract litterature data
+    # file_P = pd.read_table(folder_data + 'matvec_Python.dat', sep=' ', names=['degree', 'Cu64']) 
+    # # file_M = pd.read_table(folder_data + 'matvec_MF_Mass.dat', sep=' ', names=['degree', 'Cu32', 'Cu64']) 
+    # # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff.dat', sep=' ', names=['degree', 'Ku32', 'Ku64']) 
+    # # file_KM = pd.read_table(folder_data + 'matvec_MF_SM.dat', sep=' ', names=['degree', 'KMu32', 'KMu64']) 
+    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass.dat', sep=' ', names=['degree', 'Cu64']) 
+    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff.dat', sep=' ', names=['degree', 'Ku64']) 
+    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM.dat', sep=' ', names=['degree', 'KMu64']) 
+    # degree = file_M.degree
+    # arrays = [file_M.Cu64, file_K.Ku64, file_KM.KMu64]
+    # labels = ['MF-WQ '+r'$\mathsf{M}u$', 'MF-WQ '+r'$\mathsf{K}u$', 'MF-WQ \n'+r'$(\mathsf{M}+\theta\Delta t \mathsf{K})u$']
+
+    # for array, label in zip(arrays, labels):
+    #     ax.semilogy(degree, array, 'o--', label=label)
+
+    # ax.semilogy(file_P.degree, file_P.Cu64, 'o--', label='Python SpMDV')
+
+    # # Set properties
+    # ax.legend(loc='best')
+    # # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    # ax.set_xlabel("Polynomial degree")
+    # ax.set_ylabel("CPU time (s)")
+    # ax.set_xlim([1, 11])
+    # ax.set_ylim([0.01, 100])
+    # fig.tight_layout()
+    # fig.savefig(folder_figure + 'ProductMF' + '.pdf')
 
     # Create plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
 
     # Extract litterature data
-    file_P = pd.read_table(folder_data + 'matvec_Python.dat', sep=' ', names=['degree', 'Cu32', 'Cu64']) 
-    file_M = pd.read_table(folder_data + 'matvec_MF_Mass.dat', sep=' ', names=['degree', 'Cu32', 'Cu64']) 
-    file_K = pd.read_table(folder_data + 'matvec_MF_Stiff.dat', sep=' ', names=['degree', 'Ku32', 'Ku64']) 
+    file_M = pd.read_table(folder_data + 'matvec_MF_Mass2.dat', sep=' ', names=['degree', 'Cu128']) 
+    file_K = pd.read_table(folder_data + 'matvec_MF_Stiff2.dat', sep=' ', names=['degree', 'Ku128']) 
+    file_KM = pd.read_table(folder_data + 'matvec_MF_SM2.dat', sep=' ', names=['degree', 'KMu128']) 
     degree = file_M.degree
-    arrays = [file_M.Cu64, file_K.Ku64]
-    labels = ['MF-WQ Mass', 'MF-WQ Stiffness']
+    arrays = [file_M.Cu128, file_K.Ku128, file_KM.KMu128]
+    labels = ['MF-WQ '+r'$\mathsf{M}u$', 'MF-WQ '+r'$\mathsf{K}u$', 'MF-WQ \n'+r'$(\mathsf{M}+\theta\Delta t \mathsf{K})u$']
 
     for array, label in zip(arrays, labels):
         ax.semilogy(degree, array, 'o--', label=label)
 
-    ax.semilogy(file_P.degree, file_P.Cu64, 'o--', label='Python built-in SpMDV')
-
     # Set properties
     ax.legend(loc='best')
+    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     ax.set_xlabel("Polynomial degree")
     ax.set_ylabel("CPU time (s)")
     ax.set_xlim([1, 11])
     ax.set_ylim([0.01, 100])
     fig.tight_layout()
-    fig.savefig(folder_figure + 'ProductMF' + '.pdf')
+    fig.savefig(folder_figure + 'ProductMF2' + '.pdf')
+
 
     if withReference:
         # Create plot

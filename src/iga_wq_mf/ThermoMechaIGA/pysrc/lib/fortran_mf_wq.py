@@ -36,7 +36,7 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes basis and weights "
 
         print('Evaluating basis and weights')
-        start = time.time()
+        start = time.process_time()
 
         # Initialize 
         self._nnz_I, self._qp_dim, self._DB, self._DW, self._indices = [], [], [], [], []
@@ -52,7 +52,7 @@ class fortran_mf_wq(thermoMechaModel):
         # Update number of quadrature points
         self._nb_qp_total = np.prod(self._nb_qp)
 
-        stop = time.time()
+        stop = time.process_time()
         print('\tBasis and weights in : %.5f s' %(stop-start))
 
         return
@@ -61,7 +61,7 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes jacobien and physical position "
 
         print('Evaluating jacobien and physical position')
-        start = time.time()
+        start = time.process_time()
         
         # Get inputs
         inputs = [*self._nb_qp, *self._indices, *self._DB, self._ctrlpts]
@@ -71,7 +71,7 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim == 3:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
             self._qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
         print('\t Time jacobien: %.5f s' %(stop-start))
 
         return
@@ -102,11 +102,11 @@ class fortran_mf_wq(thermoMechaModel):
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: val_, indi_, indj_ = assembly.wq_get_capacity_2d(*inputs)
         if self._dim == 3: val_, indi_, indj_ = assembly.wq_get_capacity_3d(*inputs)
         matrix = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
-        stop = time.time()
+        stop = time.process_time()
 
         print('Capacity matrix assembled in : %.5f s' %(stop-start))
         
@@ -123,11 +123,11 @@ class fortran_mf_wq(thermoMechaModel):
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
 
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: val_, indi_, indj_ = assembly.wq_get_conductivity_2d(*inputs)
         if self._dim == 3: val_, indi_, indj_ = assembly.wq_get_conductivity_3d(*inputs)
         matrix = super().array2csr_matrix(val_, indi_, indj_).tocsc()[indi, :][:, indj]
-        stop = time.time()
+        stop = time.process_time()
 
         print('Conductivity matrix assembled in : %5f s' %(stop-start))
         
@@ -142,10 +142,10 @@ class fortran_mf_wq(thermoMechaModel):
         # Get inputs
         if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
-        start = time.time()
+        start = time.process_time()
         val_, indi_, indj_ = assembly.wq_get_stiffness_3d(*inputs)
         matrix = super().array2coo_matrix(val_, indi_, indj_).tocsc()
-        stop = time.time()
+        stop = time.process_time()
 
         print('Stiffness matrix assembled in : %5f s' %(stop-start))
         
@@ -159,25 +159,41 @@ class fortran_mf_wq(thermoMechaModel):
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = self.get_input4MatrixFree(table=table)
     
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_ku_3d_csr(coefs, *inputs, u)
-        stop = time.time()
+        stop = time.process_time()
         timeCPU = stop - start
 
         return result, timeCPU
 
-    def eval_Cu(self, u, table= None): 
+    def eval_Cu(self, u, table=None): 
         " Computes C u where C is capacity matrix "
 
         # Get inputs
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = self.get_input4MatrixFree(table=table)
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_cu_3d_csr(coefs, *inputs, u)
-        stop = time.time()
+        stop = time.process_time()
+        timeCPU = stop - start
+
+        return result, timeCPU
+
+    def eval_KCu(self, u, table=None, alpha=1.0, beta=1.0): 
+        " Computes C u where C is capacity matrix "
+
+        # Get inputs
+        super()._verify_thermal()
+        Kcoefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
+        Ccoefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
+        inputs = self.get_input4MatrixFree(table=table)
+        start = time.process_time()
+        if self._dim == 2: raise Warning('Until now not done')
+        if self._dim == 3: result = solver.mf_wq_get_kcu_3d_csr(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
+        stop = time.process_time()
         timeCPU = stop - start
 
         return result, timeCPU
@@ -202,10 +218,10 @@ class fortran_mf_wq(thermoMechaModel):
         # Get source coefficients
         coefs = self.eval_source_coefficient(fun)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: vector = assembly.wq_get_source_2d(*inputs)[indi]
         if self._dim == 3: vector = assembly.wq_get_source_3d(*inputs)[indi]
-        stop = time.time()
+        stop = time.process_time()
 
         print('Source vector assembled in : %.5f s' %(stop-start))
 
@@ -284,9 +300,9 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim != 3: raise Warning('Method only for 3D geometries')
         coefs = self.eval_bodyforce_coefficient(fun)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
-        start = time.time()
+        start = time.process_time()
         vector = solver.wq_get_forcevol_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
 
         print('Body force vector assembled in : %.5f s' %(stop-start))
 
@@ -299,10 +315,10 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
-        start = time.time()
+        start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: vector = assembly.wq_find_conductivity_diagonal_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
 
         print('Conductivity matrix assembled in : %5f s' %(stop-start))
         
@@ -402,9 +418,9 @@ class fortran_mf_wq(thermoMechaModel):
 
         # Solve linear system with fortran
         inputs = [self._detJ, *self._nb_qp, *self._indices, *self._DB, *self._DW, vector, nbIterPCG, threshold]
-        start = time.time()
+        start = time.process_time()
         u_interp, relres = solver.mf_wq_interpolate_cp_3d(*inputs)
-        stop = time.time()
+        stop = time.process_time()
         res_end = relres[np.nonzero(relres)][-1]
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 

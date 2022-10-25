@@ -80,7 +80,7 @@ if not dataExist:
     Tsol = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                     table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
                                     methodPCG='JMS', newmark=newmark)[0]
-    np.savetxt(folder + 'data3D.dat', Tsol)
+    # np.savetxt(folder + 'data3D.dat', Tsol)
 
 else:
     # --------------
