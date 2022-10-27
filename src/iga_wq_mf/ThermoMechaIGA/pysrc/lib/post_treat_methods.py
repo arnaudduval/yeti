@@ -44,7 +44,7 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
         elif pcgmethod == "JMC": new_method_list.append('FD w. problem info.') 
         elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
     
-    makers = ['o', 'v', 's', 'X', '+', 'p']
+    markers = ['o', 'v', 's', 'X', '+', 'p']
     if twoplots:
         # Set figure parameters
         fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(15,6))
@@ -56,12 +56,12 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
             residue_method = residue_method[residue_method>threshold]
             
             ax1.semilogy(np.arange(len(error_method)), error_method*100, '-',
-                        label=pcgmethod, marker=makers[i])
+                        label=pcgmethod, marker=markers[i])
             ax2.semilogy(np.arange(len(residue_method)), residue_method*100, '-',
-                        label=pcgmethod, marker=makers[i])
+                        label=pcgmethod, marker=markers[i])
 
         # Set properties
-        for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations of BiCG solver')
+        for ax in [ax1, ax2]: ax.set_xlabel('Number of iterations of BiCGSTAB solver')
         ax1.set_ylabel('Relative error (%)')
         ax2.set_ylabel('Relative residue (%)')
 
@@ -72,15 +72,15 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
             residue_method = np.asarray(residue[i])
             residue_method = residue_method[residue_method>threshold]
             ax2.semilogy(np.arange(len(residue_method)), residue_method, '-',
-                        label=pcgmethod, marker=makers[i])
+                        label=pcgmethod, marker=markers[i])
 
         # Set properties
-        ax2.set_ylim(top=10.0, bottom=1e-15)
-        ax2.set_xlabel('Number of iterations of BiCG solver')
+        ax2.set_ylim(top=10.0, bottom=1e-12)
+        ax2.set_xlabel('Number of iterations of BiCGSTAB solver')
         ax2.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 
     # ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax2.legend(loc=0)
+    # ax2.legend(loc=0)
     fig.tight_layout()
     fig.savefig(savename)
 

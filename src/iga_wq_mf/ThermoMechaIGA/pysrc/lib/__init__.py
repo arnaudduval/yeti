@@ -34,7 +34,7 @@ mpl.rcParams['axes.prop_cycle'] = cycler('color', ['#377eb8', '#ff7f00', '#4daf4
                                                     '#999999', '#e41a1c', '#dede00'])
 
 import pyvista as pv
-pv.rcParams['transparent_background'] = False
+pv.rcParams['transparent_background'] = True
 pv.global_theme.font.family = 'times'
 pv.global_theme.font.color = 'black'
 

@@ -498,7 +498,7 @@ elif CASE == 9: # Weights W11
 
 elif CASE == 10:
     # Global variables
-    geoname = 'CB'
+    geoname = 'VB'
     filename = folder + 'VTK_' + geoname + '.png'
 
     # # Create geometry
@@ -536,6 +536,7 @@ elif CASE == 10:
     # plotter.window_size = [1600, 1600]
     # plotter.screenshot(filename)
 
+    # -------------------------------------
     # Open image and make into Numpy array
     im = Image.open(filename).convert('RGB')
     na = np.array(im)

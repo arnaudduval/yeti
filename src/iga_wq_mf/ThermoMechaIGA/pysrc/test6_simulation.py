@@ -19,12 +19,15 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 FileExist = False
 isIGA = False
-degree_list, cuts_list = np.arange(3, 7), np.arange(4, 7)
+degree_list, cuts_list = np.arange(3, 7), np.arange(4, 8)
 method_list = ["WP", "C", "JMC", "TDC"]
+# method_list = ["JMC", "TDC"]
 
-for cuts in cuts_list:
-    for degree in degree_list:
+for cuts in [6]:
+    for degree in [6]:
         for geometryName in ['CB', 'VB', 'TR', 'RQA']: 
+        # for geometryName in ['VB']: 
+
 
             # Get file name
             if geometryName   == 'CB': funpow, funtemp = powden_cube, None 

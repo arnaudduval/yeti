@@ -23,7 +23,7 @@ if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 filename_data = folder_data + 'FD_time.dat' 
 
 # Set global variable
-dataExist = True
+dataExist = False
 withReference = False
 degree_list = range(2, 7)
 cut_list = range(6, 10)
@@ -68,6 +68,7 @@ else:
 
     # Create plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+    markers = ['o', 'v', 's', 'X', '+', 'p']
 
     # Extract litterature data
     file = pd.read_table(folder_data + 'FD_time.dat', sep=' ', names=['nbel', 'p2', 'p3', 'p4', 'p5', 'p6'])
@@ -76,14 +77,13 @@ else:
 
     # Plot data
     for i in range(5):
-        # nb_ctrlpts = (nbel + i)**3
         nb_ctrlpts = nbel
-        ax.loglog(nb_ctrlpts, times[:, i], 'o--', label='degree ' + r'$p=$' + str(i+2))
+        ax.loglog(nb_ctrlpts, times[:, i], '--', label='degree ' + r'$p=$' + str(i+2), marker=markers[i])
 
     # Compute slope
-    slope = np.polyfit(np.log10(nb_ctrlpts),np.log10(times[:, i]), 1)[0]
+    slope = np.polyfit(np.log10(nb_ctrlpts),np.log10(times[:, 2]), 1)[0]
     slope = round(slope, 3)
-    annotation.slope_marker((nb_ctrlpts[1], times[1, i]), slope, 
+    annotation.slope_marker((nb_ctrlpts[1], times[1, 2]), slope, 
                             poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
     ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
