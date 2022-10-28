@@ -39,7 +39,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
         allocate(Xt(nc_u, nc_v*nc_w))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -56,7 +56,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
 
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nr/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do i = 1, nr
@@ -73,7 +73,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
         allocate(Xt(nc_v, nc_u*nc_w))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jw = 1, nc_w
             do ju = 1, nc_u
                 do jv = 1, nc_v
@@ -90,7 +90,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
 
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nr*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks) 
         do jw = 1, nc_w
             do ju = 1, nc_u
                 do i = 1, nr
@@ -107,7 +107,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
         allocate(Xt(nc_w, nc_u*nc_v))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nc_w*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jv = 1, nc_v
             do ju = 1, nc_u
                 do jw = 1, nc_w
@@ -124,7 +124,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, X, nr, nc, U, mode, nrR, R
 
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks) 
         do jv = 1, nc_v
             do ju = 1, nc_u
                 do i = 1, nr
@@ -230,7 +230,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, X, nrU, nnzU, dataU, indi
 
 end subroutine tensor_n_mode_product_spM
 
-subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out)
+subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     !! Evaluates a dot product between a tensor 2D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -244,27 +244,25 @@ subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, vector_in, vector_out
     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v
     double precision, intent(in) :: Mu, Mv
     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v)
-    double precision, intent(in) :: vector_in
-    dimension :: vector_in(nc_u*nc_v)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v)
 
-    double precision, intent(out) :: vector_out
-    dimension :: vector_out(nr_u*nr_v)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v)
 
     ! Local data 
     ! ----------
     double precision, allocatable, dimension(:) :: R1
 
-    ! First product
     allocate(R1(nr_u*nc_v))
-    call tensor_n_mode_product_dM(nc_u, nc_v, 1, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+    call tensor_n_mode_product_dM(nc_u, nc_v, 1, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
-    ! Second product
-    call tensor_n_mode_product_dM(nr_u, nc_v, 1, R1, nr_v, nc_v, Mv, 2, size(vector_out), vector_out)
+    call tensor_n_mode_product_dM(nr_u, nc_v, 1, R1, nr_v, nc_v, Mv, 2, size(array_out), array_out)
     deallocate(R1)
 
 end subroutine sumproduct2d_dM
 
-subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vector_in, vector_out)
+subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -279,33 +277,30 @@ subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, vecto
     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v,nr_w, nc_w
     double precision, intent(in) :: Mu, Mv, Mw
     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w)
-    double precision, intent(in) :: vector_in
-    dimension :: vector_in(nc_u*nc_v*nc_w)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v*nc_w)
 
-    double precision, intent(out) :: vector_out
-    dimension :: vector_out(nr_u*nr_v*nr_w)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w)
 
     ! Local data 
     ! ----------
     double precision, allocatable, dimension(:) :: R1, R2
 
-    ! First product
     allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, vector_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
-    ! Second product
     allocate(R2(nr_u*nr_v*nc_w))
     call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
     deallocate(R1)
 
-    ! Third product
-    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(vector_out), vector_out)
+    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
     deallocate(R2)
 
 end subroutine sumproduct3d_dM
 
 subroutine sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
-                            nnz_v, indi_v, indj_v, data_v, vector_in, vector_out)
+                            nnz_v, indi_v, indj_v, data_v, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -317,36 +312,33 @@ subroutine sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    double precision, intent(in) :: vector_in
-    dimension :: vector_in(nc_u*nc_v)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v)
     double precision, intent(in) :: data_u, data_v
     dimension :: data_u(nnz_u), data_v(nnz_v)
     integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
     dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
                     indj_u(nnz_u), indj_v(nnz_v)
 
-    double precision, intent(out) :: vector_out
-    dimension :: vector_out(nr_u*nr_v)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v)
 
     ! Local data 
     ! ----------
     double precision, allocatable, dimension(:) :: R1
 
-    ! First product
     allocate(R1(nr_u*nc_v))
-    call tensor_n_mode_product_spM(nc_u, nc_v, 1, vector_in, nr_u, nnz_u, &
+    call tensor_n_mode_product_spM(nc_u, nc_v, 1, array_in, nr_u, nnz_u, &
                                 data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    ! Second product
     call tensor_n_mode_product_spM(nr_u, nc_v, 1, R1, nr_v, nnz_v, &
-                                data_v, indi_v, indj_v, 2, size(vector_out), vector_out)
+                                data_v, indi_v, indj_v, 2, size(array_out), array_out)
     deallocate(R1)
 
 end subroutine sumproduct2d_spM
 
 subroutine sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
-                        nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, &
-                        vector_in, vector_out)
+                        nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector 
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -359,35 +351,32 @@ subroutine sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, i
     ! Input / output data
     ! -------------------
     integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: vector_in
-    dimension :: vector_in(nc_u*nc_v*nc_w)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v*nc_w)
     double precision, intent(in) :: data_u, data_v, data_w
     dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w)
     integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
     dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
                     indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
 
-    double precision, intent(out) :: vector_out
-    dimension :: vector_out(nr_u*nr_v*nr_w)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w)
 
     ! Local data 
     ! ----------
     double precision, allocatable, dimension(:) :: R1, R2
 
-    ! First product
     allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, vector_in, nr_u, nnz_u, &
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, array_in, nr_u, nnz_u, &
                                 data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    ! Second product
     allocate(R2(nr_u*nr_v*nc_w))
     call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, R1, nr_v, nnz_v, &
                                 data_v, indi_v, indj_v, 2, size(R2), R2)
     deallocate(R1)
 
-    ! Third product
     call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, R2, nr_w, nnz_w, &
-                                data_w, indi_w, indj_w, 3, size(vector_out), vector_out)
+                                data_w, indi_w, indj_w, 3, size(array_out), array_out)
     deallocate(R2)
 
 end subroutine sumproduct3d_spM
@@ -425,10 +414,8 @@ subroutine csr_get_row_2d(coefs, nr_u, nc_u, nr_v, nc_v, row_u, row_v, &
     double precision, allocatable, dimension(:) :: Ci0, Wt
     double precision, allocatable, dimension(:,:) :: BW_u, BW_v, Bt
 
-    ! Initiliaze
-    allocate(Ci0(nnz_col_u*nnz_col_v))
-
     ! Set values of C
+    allocate(Ci0(nnz_col_u*nnz_col_v))
     do jv = 1, nnz_col_v
         do ju = 1, nnz_col_u
             genPosC = ju + (jv-1)*nnz_col_u 
@@ -505,7 +492,6 @@ subroutine csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     integer, allocatable, dimension(:) :: i_nnz_u, i_nnz_v, j_nnz_u, j_nnz_v
     double precision, allocatable, dimension(:) :: data_row
 
-    ! Initialize
     allocate(B_u(nr_u, nc_u), B_v(nr_v, nc_v), W_u(nr_u, nc_u), W_v(nr_v, nc_v))
     call csr2dense(nnz_u, indi_u, indj_u, data_B_u, nr_u, nc_u, B_u)
     call csr2dense(nnz_v, indi_v, indj_v, data_B_v, nr_v, nc_v, B_v)
@@ -606,10 +592,8 @@ subroutine csr_get_row_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, row_u, row_
     double precision, allocatable, dimension(:) :: Ci0, Wt
     double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w, Bt
 
-    ! Initiliaze
-    allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
-
     ! Set values of C
+    allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
     do jw = 1, nnz_col_w
         do jv = 1, nnz_col_v
             do ju = 1, nnz_col_u
@@ -702,7 +686,6 @@ subroutine csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, n
     integer, allocatable, dimension(:) :: i_nnz_u, i_nnz_v, i_nnz_w, j_nnz_u, j_nnz_v, j_nnz_w
     double precision, allocatable :: data_row(:)
 
-    ! Initialize
     allocate(B_u(nr_u, nc_u), B_v(nr_v, nc_v), B_w(nr_w, nc_w), &
             W_u(nr_u, nc_u), W_v(nr_v, nc_v), W_w(nr_w, nc_w))
     call csr2dense(nnz_u, indi_u, indj_u, data_B_u, nr_u, nc_u, B_u)
@@ -823,7 +806,6 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
     double precision :: data_BW_u, data_BW_v, data_BW_w
     dimension :: data_BW_u(nnz_u), data_BW_v(nnz_v), data_BW_w(nnz_w)
     
-    ! Initialize
     data_BW_u = data_B_u*data_W_u
     data_BW_v = data_B_v*data_W_v
     data_BW_w = data_B_w*data_W_w
@@ -836,10 +818,10 @@ end subroutine csr_get_diag_3d
 ! ----------------------------
 ! Fast Diagonalization method
 ! ----------------------------
-subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
+subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
                                 data_B0, data_W0, data_B1, data_W1, robin_condition, &
                                 eigenvalues, eigenvectors, Kdiag, Mdiag)
-    !! Eigen decomposition generalized KU = MUD
+    !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
     !! U: eigenvectors matrix
@@ -849,10 +831,10 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
     implicit none 
     ! Input / output data
     ! -------------------
-    double precision, parameter :: penalty = 1001
+    double precision, parameter :: penalty = 1001.0
     integer, intent(in) :: nr, nc, nnz
-    double precision, intent(in) :: Mcoef, Kcoef
-    dimension :: Mcoef(nc), Kcoef(nc)
+    double precision, intent(in) :: Mcoefs, Kcoefs
+    dimension :: Mcoefs(nc), Kcoefs(nc)
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
@@ -873,12 +855,12 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
     double precision, allocatable, dimension(:) :: work, iwork
     double precision :: dummy(1)
     
-    ! Initialize masse matrix
+    ! Masse matrix
     allocate(data_B0t(nnz))
     data_B0t = data_B0
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_B0t(j) = data_B0t(j)*Mcoef(indj(j))
+            data_B0t(j) = data_B0t(j)*Mcoefs(indj(j))
         end do
     end do
 
@@ -891,12 +873,12 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
     MM = matmul(WW0, transpose(BB0))
     deallocate(BB0, WW0)
 
-    ! Initialize stiffness matrix
+    ! Stiffness matrix
     allocate(data_B1t(nnz))
     data_B1t = data_B1
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_B1t(j) = data_B1t(j)*Kcoef(indj(j))
+            data_B1t(j) = data_B1t(j)*Kcoefs(indj(j))
         end do
     end do
 
@@ -909,7 +891,7 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
     KK = matmul(WW1, transpose(BB1))
     deallocate(BB1, WW1)
 
-    ! Modify K to avoid singular matrix (Like a Robin boundary condition)
+    ! Modify K to avoid singular matrix (using Robin boundary condition)
     if (robin_condition(1).eq.1) then 
         KK(1, 1) = penalty*KK(1,1)
     end if
@@ -919,18 +901,16 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
     end if
 
     ! Save diagonal of M and K
-    do j = 1, nr
-        Kdiag(j) = KK(j, j)
-        Mdiag(j) = MM(j, j)
+    do i = 1, nr
+        Kdiag(i) = KK(i, i)
+        Mdiag(i) = MM(i, i)
     end do
 
     ! -----------------------------------
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
-    ! Use routine workspace query to get optimal workspace
+    ! Get optimal size
     call dsygvd(1, 'V', 'L', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
-
-    ! Make sure that there is enough workspace 
     lwork = max(1+(6+2*nr)*nr, nint(dummy(1)))
     liwork = max(3+5*nr, idum(1))
     allocate (work(lwork), iwork(liwork))
@@ -942,33 +922,31 @@ subroutine eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
 
 end subroutine eigen_decomposition
 
-subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                    Kdiag_u, Kdiag_v, Kdiag_w, c_u, c_v, c_w, diag)
-    !! Find the diagonal of the preconditioner in fast diagonalization method
+subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, cu, cv, cw, diag)
+    !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)
                         
     implicit none
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr_u, nr_v, nr_w
-    double precision, intent(in) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
-    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), &
-                Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
-    double precision :: c_u, c_v, c_w
+    double precision, intent(in) :: Mu, Mv, Mw, Ku, Kv, Kw
+    dimension :: Mu(nr_u), Mv(nr_v), Mw(nr_w), &
+                Ku(nr_u), Kv(nr_v), Kw(nr_w)
+    double precision :: cu, cv, cw
 
     double precision, intent(out) :: diag
     dimension :: diag(nr_u*nr_v*nr_w)
 
-    ! Initialize
     diag = 0.d0
 
-    ! Find M3 x M2 x K1
-    call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Kdiag_u, diag, c_u)
+    ! Mw x Mv x Ku
+    call kronvec3d(nr_w, Mw, nr_v, Mv, nr_u, Ku, diag, cu)
 
-    ! Find M3 x K2 x M1
-    call kron_product_3vec(nr_w, Mdiag_w, nr_v, Kdiag_v, nr_u, Mdiag_u, diag, c_v)
+    ! Mw x Kv x Mu
+    call kronvec3d(nr_w, Mw, nr_v, Kv, nr_u, Mu, diag, cv)
 
-    ! Find K3 x M2 x M1
-    call kron_product_3vec(nr_w, Kdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, diag, c_w)
+    ! Kw x Mv x Mu
+    call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, cw)
     
 end subroutine find_parametric_diag_3d
 
@@ -997,7 +975,6 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
     double precision :: UU(3), WW(3), WWlk(2)
 
     do k = 1, 3
-        ! Set Vscript
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -1038,7 +1015,6 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
         do l = 1, 3
             if (k.ne.l) then 
                 c = c + 1
-                ! Set Wscript
                 do jw = 1, nc_w
                     do jv = 1, nc_v
                         do ju = 1, nc_u
@@ -1091,7 +1067,7 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
 end subroutine tensor_decomposition_3d
 
 subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
-    !! Compute the "mean" of a property. This is a factor that improves fast diagonalization method 
+    !! Compute the "mean" of a given vector in Fast Diagonalization method 
 
     implicit none
     ! Input /  output data
@@ -1107,27 +1083,26 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
     integer :: i, j, k, genPos, pos
     integer :: ind_u, ind_v, ind_w
     dimension :: ind_u(3), ind_v(3), ind_w(3)
-    double precision :: coefs_temp
-    dimension :: coefs_temp(3, 3, 3)
+    double precision :: coefs_set
+    dimension :: coefs_set(3, 3, 3)
 
-    ! Initialize
     pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
     pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
     pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
 
-    ! Create new coefficients
-    coefs_temp = 0.d0
+    ! Select a set of coefficients
+    coefs_set = 0.d0
     do k = 1, 3
         do j = 1, 3
             do i = 1, 3
                 genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
-                coefs_temp(i, j, k) = coefs(genPos)
+                coefs_set(i, j, k) = coefs(genPos)
             end do
         end do
     end do
 
     ! Compute integral
-    call trapezoidal_rule_3d(3, 3, 3, coefs_temp, integral)
+    call trapezoidal_rule_3d(3, 3, 3, coefs_set, integral)
 
 end subroutine compute_mean_3d
 

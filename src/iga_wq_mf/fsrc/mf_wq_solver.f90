@@ -559,7 +559,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
 
         ! Find diagonal of preconditioner
         Dtemp = 0.d0
-        call kron_product_3vec(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cm)
+        call kronvec3d(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cm)
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
                                     Kdiag_u, Kdiag_v, Kdiag_w, k_um, k_vm, k_wm, Dparametric)
         Dparametric = newmarkdt*Dparametric + Dtemp 
