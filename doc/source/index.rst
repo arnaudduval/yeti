@@ -12,6 +12,7 @@ YETI (YET another Iga code) is python library for isogeometric analysis dedicate
    usage/installation
    usage/using_yeti
    usage/coupling_modelling
+   validation/benchs
 
 
 
