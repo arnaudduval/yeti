@@ -1090,140 +1090,6 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
 
 end subroutine tensor_decomposition_3d
 
-subroutine jacobien_mean_3d(nc_u, nc_v, nc_w, nnz, JJ, Lu, Lv, Lw)
-    !! This method aims to calculate the average "deformation" that 
-    !! the hypercube undergoes through the topological transformation F 
-    !! (from parametric to physical space) 
-    !! We suppose that this transformation is a composition of a rotation and a stretching, then 
-    !! one can apply polar decomposition to the jacobian matrix of F.
-    !! THIS FUNCTION IS DEPRECATED
-    
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer :: step
-    integer, intent(in) :: nc_u, nc_v, nc_w, nnz
-    double precision, intent(in) :: JJ
-    dimension :: JJ(3, 3, nnz)
-
-    double precision, intent(out) :: Lu, Lv, Lw
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k, l, nb_pts, nb_pts_temp
-    double precision, dimension(3,3) :: dist, JJtemp, Q
-    double precision, dimension(3) :: dummy
-
-    ! Define step
-    step = min((nc_u-1)/2, (nc_v-1)/2, (nc_w-1)/2)
-    
-    ! Count number of quadrature points
-    nb_pts = 1
-    nb_pts_temp = 0
-    do i = 1, nc_u, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-    nb_pts_temp = 0
-
-    do j = 1, nc_v, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-    nb_pts_temp = 0
-
-    do k = 1, nc_w, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-
-    ! Initialize    
-    Lu = 0.d0; Lv = 0.d0; Lw = 0.d0
-    do k = 1, nc_w, step
-        do j = 1, nc_v, step
-            do i = 1, nc_u, step
-                l = i + (j-1)*nc_u + (k-1)*nc_u*nc_v
-                JJtemp = JJ(:, :, l)
-                call polar_decomposition(JJtemp, Q, dist, dummy, .true., .true.)
-
-                ! Find mean of diagonal of jacobien
-                Lu = Lu + dist(1, 1)/nb_pts
-                Lv = Lv + dist(2, 2)/nb_pts
-                Lw = Lw + dist(3, 3)/nb_pts
-            end do
-        end do
-    end do
-
-end subroutine jacobien_mean_3d
-
-subroutine conductivity_mean_3d(nc_u, nc_v, nc_w, nnz, KK, lamb_u, lamb_v, lamb_w)
-    !! This function is DEPRECATED. 
-
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer :: step
-    integer, intent(in) :: nc_u, nc_v, nc_w, nnz
-    double precision, intent(in) :: KK
-    dimension :: KK(3, 3, nnz)
-
-    double precision, intent(out) :: lamb_u, lamb_v, lamb_w
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k, pos, nb_pts, nb_pts_temp
-
-    ! Define step
-    step = min((nc_u-1)/2, (nc_v-1)/2, (nc_w-1)/2)
-    
-    ! Count number of quadrature points
-    nb_pts = 1
-    nb_pts_temp = 0
-    do i = 1, nc_u, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-    nb_pts_temp = 0
-
-    do j = 1, nc_v, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-    nb_pts_temp = 0
-
-    do k = 1, nc_w, step
-        nb_pts_temp = nb_pts_temp + 1
-    end do
-    nb_pts = nb_pts * nb_pts_temp
-
-    if (nnz.eq.1) then
-
-        lamb_u = KK(1, 1, 1)
-        lamb_v = KK(2, 2, 1)
-        lamb_w = KK(3, 3, 1)
-
-    else 
-
-        ! Initialize
-        lamb_u = 0.d0; lamb_v = 0.d0; lamb_w = 0.d0
-
-        do k = 1, nc_w, step
-            do j = 1, nc_v, step
-                do i = 1, nc_u, step
-                    pos = i + (j-1)*nc_u + (k-1)*nc_u*nc_v
-    
-                    ! Find mean of diagonal 
-                    lamb_u = lamb_u + KK(1, 1, pos)/nb_pts
-                    lamb_v = lamb_v + KK(2, 2, pos)/nb_pts
-                    lamb_w = lamb_w + KK(3, 3, pos)/nb_pts
-                end do
-            end do
-        end do
-        
-    end if
-
-end subroutine conductivity_mean_3d
-
 subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
     !! Compute the "mean" of a property. This is a factor that improves fast diagonalization method 
 
@@ -1265,7 +1131,7 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
 
 end subroutine compute_mean_3d
 
-subroutine compute_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
+subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
     
     implicit none
     ! Input /  output data
@@ -1321,4 +1187,57 @@ subroutine compute_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
     
     kappa = max(supK, supC)/min(infK, infC)
 
-end subroutine compute_condition_number
+end subroutine compute_transient_condition_number
+
+subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
+    
+    implicit none
+    ! Input /  output data
+    ! --------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: Kcoefs
+    dimension :: Kcoefs(d, d, nnz)
+    double precision, intent(in) :: Kmean
+    dimension :: Kmean(d)
+
+    double precision, intent(out) :: kappa
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k, info
+    double precision :: wr, wi, vl, vr, work, KK, Kmean2
+    dimension :: wr(d), wi(d), vl(d, d), vr(1, d), work(5*d), KK(d, d), Kmean2(d)
+    double precision :: supKold, infKold, supKnew, infKnew, supK, infK
+
+    do i = 1, d
+        kmean2(i) = 1.0/sqrt(Kmean(i))
+    end do
+    KK = Kcoefs(:, :, 1)
+    do i = 1, d
+        do j = 1, d
+            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+        end do
+    end do
+    call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+    supKold = maxval(wr); infKold = minval(wr)
+
+    do k = 2, nnz
+        
+        KK = Kcoefs(:, :, k)
+        do i = 1, d
+            do j = 1, d
+                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+            end do
+        end do
+        call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+        supKnew = maxval(wr); infKnew = minval(wr)
+        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
+
+        supKold = supK; infKold = infK
+
+    end do
+    
+    kappa = supK/infK
+
+end subroutine compute_steady_condition_number

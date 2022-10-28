@@ -15,10 +15,10 @@ folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Set global variable
-dataExist = False
+dataExist = True
 withReference = False
-degree_list = range(2, 11)
-cut_list = range(6, 8)
+degree_list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15]
+cut_list = range(6, 7)
 
 # Initialize
 timeMF_Mass_matrix = np.zeros((len(degree_list), len(cut_list)+1))
@@ -69,86 +69,85 @@ if not dataExist:
             # stop = time.process_time()
             # time_python = stop - start
             # timePython[i, j+1] = time_python
-            # np.savetxt(folder_data+'matvec_Python.dat', timePython)
+            # np.savetxt(folder_data+'matvec_Python7.dat', timePython)
 
-            # Compute Matrix free product
-            MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
-            timeMF_Mass_matrix[i, j+1] = MFtime1
-            np.savetxt(folder_data+'matvec_MF_Mass'+cuts+'.dat', timeMF_Mass_matrix)
+            # # Compute Matrix free product
+            # MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
+            # timeMF_Mass_matrix[i, j+1] = MFtime1
+            # np.savetxt(folder_data+'matvec_MF_Mass'+str(cuts)+'.dat', timeMF_Mass_matrix)
 
-            MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
-            timeMF_Stiff_matrix[i, j+1] = MFtime2
-            np.savetxt(folder_data+'matvec_MF_Stiff'+cuts+'.dat', timeMF_Stiff_matrix)
+            # MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
+            # timeMF_Stiff_matrix[i, j+1] = MFtime2
+            # np.savetxt(folder_data+'matvec_MF_Stiff'+str(cuts)+'.dat', timeMF_Stiff_matrix)
 
             MFtime3 = modelPhy.eval_KCu(V, table=Dirichlet)[-1]
             timeMF_SM_matrix[i, j+1] = MFtime3
-            np.savetxt(folder_data+'matvec_MF_SM'+cuts+'.dat', timeMF_SM_matrix)
+            # np.savetxt(folder_data+'matvec_MF_SM'+str(cuts)+'.dat', timeMF_SM_matrix)
             
             enablePrint()
             # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_python))
-            print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
-            print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
+            # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
+            # print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
             print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime3))
-            print('')
+            # print('')
 
 else:
+
+    # # Create plot
+    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+    # markers = ['o', 'v', 's', 'X', '+', 'p']
+
+    # # Extract litterature data
+    # file_P = pd.read_table(folder_data + 'matvec_Python7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # degree = file_M.degree
+    # arrays = [file_M.P1, file_K.P1, file_KM.P1]
+    # labels = [  r'$\mathsf{M}x$' + ', ' + r'$h^{-1}=64$', 
+    #             r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=64$', 
+    #             r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$']
+
+    # ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=64$', marker=markers[0])
+    # for i, [array, label] in enumerate(zip(arrays, labels)):
+    #     ax.semilogy(degree, array, '--', label=label, marker=markers[i+1])
+
+    # # Set properties
+    # ax.legend(loc='best')
+    # ax.set_xlabel("Degree " + r'$p$')
+    # ax.set_ylabel("CPU time (s)")
+    # ax.set_xlim([1, 11])
+    # ax.set_ylim([0.01, 100])
+    # fig.tight_layout()
+    # fig.savefig(folder_figure + 'ProductMF' + '.pdf')
 
     # Create plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
     markers = ['o', 'v', 's', 'X', '+', 'p']
 
     # Extract litterature data
-    file_P = pd.read_table(folder_data + 'matvec_Python.dat', sep=' ', names=['degree', 'Cu64']) 
-    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass.dat', sep=' ', names=['degree', 'Cu32', 'Cu64']) 
-    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff.dat', sep=' ', names=['degree', 'Ku32', 'Ku64']) 
-    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM.dat', sep=' ', names=['degree', 'KMu32', 'KMu64']) 
-    file_M = pd.read_table(folder_data + 'matvec_MF_Mass.dat', sep=' ', names=['degree', 'Cu64']) 
-    file_K = pd.read_table(folder_data + 'matvec_MF_Stiff.dat', sep=' ', names=['degree', 'Ku64']) 
-    file_KM = pd.read_table(folder_data + 'matvec_MF_SM.dat', sep=' ', names=['degree', 'KMu64']) 
-    degree = file_M.degree
-    arrays = [file_M.Cu64, file_K.Ku64, file_KM.KMu64]
-    labels = ['MF-WQ '+r'$\mathsf{M}x$', 
-                'MF-WQ '+r'$\mathsf{K}x$', 
-                'MF-WQ \n'+r'$(\mathsf{M}+\theta\Delta t \mathsf{K})x$']
+    file_P = pd.read_table(folder_data + 'matvec_Python7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    file_M = pd.read_table(folder_data + 'matvec_MF_Mass7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    file_K = pd.read_table(folder_data + 'matvec_MF_Stiff7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    file_KM = pd.read_table(folder_data + 'matvec_MF_SM7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    degree = file_KM.degree
+    arrays = [file_KM.P1, file_KM.P2]
+    labels = [  r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$',  
+                r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=128$']
 
+    ax.semilogy(file_P.degree, file_P.P1, '--', label='spMV'+', '+r'$h^{-1}=64$', marker=markers[0])
+    ax.semilogy(file_P.degree, file_P.P2, '--', label='spMV'+', '+r'$h^{-1}=128$', marker=markers[0])
     for i, [array, label] in enumerate(zip(arrays, labels)):
-        ax.semilogy(degree, array, '--', label=label, marker=markers[i])
-
-    ax.semilogy(file_P.degree, file_P.Cu64, '--', label='Python SpMDV', marker=markers[i+1])
+        ax.semilogy(degree, array, '--', label=label, marker=markers[i+1], nonpositive='mask')
 
     # Set properties
     ax.legend(loc='best')
-    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax.set_xlabel("Polynomial degree")
+    ax.set_xlabel("Degree " + r'$p$')
     ax.set_ylabel("CPU time (s)")
-    ax.set_xlim([1, 11])
+    ax.set_xlim([1, 13])
     ax.set_ylim([0.01, 100])
     fig.tight_layout()
-    fig.savefig(folder_figure + 'ProductMF' + '.pdf')
-
-    # # Create plot
-    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
-
-    # # Extract litterature data
-    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass2.dat', sep=' ', names=['degree', 'Cu128']) 
-    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff2.dat', sep=' ', names=['degree', 'Ku128']) 
-    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM2.dat', sep=' ', names=['degree', 'KMu128']) 
-    # degree = file_M.degree
-    # arrays = [file_M.Cu128, file_K.Ku128, file_KM.KMu128]
-    # labels = ['MF-WQ '+r'$\mathsf{M}u$', 'MF-WQ '+r'$\mathsf{K}u$', 'MF-WQ \n'+r'$(\mathsf{M}+\theta\Delta t \mathsf{K})u$']
-
-    # for array, label in zip(arrays, labels):
-    #     ax.semilogy(degree, array, 'o--', label=label)
-
-    # # Set properties
-    # ax.legend(loc='best')
-    # # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    # ax.set_xlabel("Polynomial degree")
-    # ax.set_ylabel("CPU time (s)")
-    # ax.set_xlim([1, 11])
-    # ax.set_ylim([0.01, 100])
-    # fig.tight_layout()
-    # fig.savefig(folder_figure + 'ProductMF2' + '.pdf')
+    fig.savefig(folder_figure + 'ProductMF2' + '.pdf')
 
 
     if withReference:

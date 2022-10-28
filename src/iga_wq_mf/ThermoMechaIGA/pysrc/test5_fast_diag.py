@@ -23,7 +23,7 @@ if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 filename_data = folder_data + 'FD_time.dat' 
 
 # Set global variable
-dataExist = False
+dataExist = True
 withReference = False
 degree_list = range(2, 7)
 cut_list = range(6, 10)

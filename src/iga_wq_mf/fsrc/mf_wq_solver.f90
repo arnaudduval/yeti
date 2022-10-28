@@ -576,7 +576,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v,
 
     ! Condition number P^-1 A
     kmeanvector = (/k_um, k_vm, k_wm/)
-    call compute_condition_number(nc_total, Kcoefs, Ccoefs, kmeanvector, cm, kappa)
+    call compute_transient_condition_number(nc_total, Kcoefs, Ccoefs, kmeanvector, cm, kappa)
     if (methodPCG.eq.'JMS') then
         Dtemp = Dparametric/Dphysical
         kappa = kappa*maxval(Dtemp)/minval(Dtemp)
