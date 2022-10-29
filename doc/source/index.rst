@@ -26,5 +26,5 @@ Indices and tables
 Appendix
 ========
 
- * :ref:`install-wsl`
- * :ref:`buildcmake`
+* :ref:`install-wsl`
+* :ref:`buildcmake`
