@@ -28,7 +28,6 @@ subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT
     double precision :: data_coo
     dimension :: data_coo(nr, 1)
 
-    ! Initialize 
     nc = nr + ndod
     if (any(dod.ge.nc+1)) stop 'Problem creating C'
     
@@ -45,17 +44,14 @@ subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT
         j = j + 1
     end do
 
-    ! Get COO format
+    ! Get L and L' in CSR format
     do i = 1, nr ! ndof = nr
         indi_coo(i) = i
         indj_coo(i) = dof(i)
         data_coo(i, 1) = 1.d0 
     end do
 
-    ! Convert L in COO to CSR format
     call coo2csr(1, nr, nr, data_coo, indi_coo, indj_coo, L, indj_L, indi_L)
-
-    ! Convert L' in COO to CSR format
     call coo2csr(1, nc, nr, data_coo, indj_coo, indi_coo, LT, indj_LT, indi_LT)
 
 end subroutine create_block_L
@@ -98,12 +94,10 @@ module heat_transfer
         double precision :: data_BT_u, data_BT_v, data_BT_w
         dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-        ! Convert CSR to CSC
         call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
         call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
         call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-        ! Interpolation
         call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
@@ -152,11 +146,8 @@ module heat_transfer
 
         do k = 1, nc_total
 
-            ! Initialize
             invJJt = invJ(:, :, k)
             detJJt = detJ(k)
-
-            ! Compute coefficients
             Kcoefs(:, :, k) = conductivity(k) * matmul(invJJt, transpose(invJJt)) * detJJt
             Ccoefs(k) = capacity(k) * detJJt
 

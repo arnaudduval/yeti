@@ -31,31 +31,21 @@ subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, d
     double precision :: nodes, B0t, B1t
     dimension :: nodes(size_kv+1), B0t(degree+1), B1t(degree+1)
 
-    ! Get nodes from knot-vector
     call find_unique_array(size_kv, knotvector, nodes)
-
-    ! Set number of control points
     nb_ctrlpts = size_kv - degree - 1
-
-    ! Get table of functions over knot-span
     nbel = int(nodes(size_kv+1)) - 1
+
     allocate(table_functions_span(nbel, degree+1))
     call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
 
     do i = 1, nb_knots
-        ! Find knot-span for a given knot
+        ! Computes B0 and B1 using a YETI function
         call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
-
-        ! Find parametric span for a given knot
         call find_parametric_span(size_kv, nodes, knots(i), span(2), span_tol)
-
-        ! Get the functions over the parametric span 
         functions_span = table_functions_span(span(2), :)
-
-        ! Evaluate B0 and B1 for a given knot
         call dersbasisfuns(span(1), degree, nb_ctrlpts, knots(i), knotvector, B0t, B1t)
         
-        ! Save data in COO format
+        ! Save in COO format
         do j = 1, degree+1
             k = (i - 1)*(degree + 1) + j
             data_basis(k, 1) = B0t(j)
@@ -87,7 +77,6 @@ subroutine get_basis_generalized_csr(degree, size_kv, knotvector, nb_knots, knot
     integer, dimension(:, :), allocatable :: indices
     double precision, dimension(:, :), allocatable :: data_B_coo
 
-    ! Get results in coo format
     size_data = nb_knots*(degree+1)
     allocate(data_B_coo(size_data, 2), indices(size_data, 2))
     call get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_B_coo, indices)
@@ -120,22 +109,15 @@ subroutine iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weig
     ! ----------
     type(iga), pointer :: obj
 
-    ! Evaluate basis and weights
     call iga_initialize(obj, degree, size_kv, knotvector)    
     call iga_basis_weights_dense2coo(obj)
 
-    ! Set quadrature points
+    ! Save information
     qp_position = obj%qp_position
     qp_weight = obj%qp_weight
-
-    ! Set data 
     data_basis(:, 1) = obj%data_B0
     data_basis(:, 2) = obj%data_B1
-
-    ! Set indices
     indices = obj%indices
-
-    ! Set number of non zeros of integral matrix 
     nnz_I = obj%nnz_I
 
 end subroutine iga_get_data
@@ -163,7 +145,6 @@ subroutine iga_get_data_csr(degree, size_kv, knotvector, nb_qp, qp_position, qp_
     dimension :: data_ind(size_data, 2)
     double precision, dimension(:,:), allocatable :: data_dummy
     
-    ! Get data in COO format
     call iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weight, size_data, data_basis, data_ind, nnz_I)
 
     ! Convert COO to CSR format
@@ -191,15 +172,12 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
     integer, parameter :: method = 1 ! Method 2 is possible
     logical :: ismaxregular, isuniform
 
-    ! Verify if the knot-vector given respect the conditions to compute basis and weights
     call wq_initialize(obj, degree, size_kv, knotvector, method)
     call verify_regularity_uniformity(degree, size_kv, knotvector, ismaxregular, isuniform, span_tol)
-
-    ! Compute quatrature points positions
     call wq_get_qp_positions(obj)
     call wq_get_B_shape(obj)
 
-    ! Save data
+    ! Save information
     size_data = obj%nnz_B
     nb_qp = obj%nb_qp_wq
 
@@ -228,25 +206,18 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_positio
     type(wq), pointer :: obj
     integer, parameter :: method = 1 ! Method 2 is possible
 
-    ! Evaluate basis and weights
     call wq_initialize(obj, degree, size_kv, knotvector, method)
-    call wq_basis_weights_dense2coo(obj)
+    call wq_basis_weights_dense2coo(obj)  
 
-    ! Save quadrature points
+    ! Save information 
     qp_position = obj%qp_position
-
-    ! Save data 
     data_basis(:, 1) = obj%data_B0
     data_basis(:, 2) = obj%data_B1
     data_weights(:, 1) = obj%data_W00
     data_weights(:, 2) = obj%data_W01
     data_weights(:, 3) = obj%data_W10
     data_weights(:, 4) = obj%data_W11
-
-    ! Save indices
     indices = obj%indices
-
-    ! Set number of non zeros of integral matrix
     nnz_I = obj%nnz_I
 
 end subroutine wq_get_data
@@ -274,7 +245,6 @@ subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, nb_qp, qp_pos
     dimension :: data_ind(size_data, 2)
     double precision, dimension(:,:), allocatable :: data_dummy
     
-    ! Get data in COO format
     call wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, data_basis, data_weights, data_ind, nnz_I)
 
     ! Convert COO to CSR format

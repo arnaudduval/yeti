@@ -80,7 +80,7 @@ subroutine iga_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
         data_W_w(i) = data_B_w(i, 1) * W_w(indj_w(i))
     end do
 
-    ! Get values
+    ! Compute non zero data
     call csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u(:, 1), data_B_v(:, 1), data_B_w(:, 1), &

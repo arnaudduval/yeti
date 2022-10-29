@@ -39,15 +39,12 @@ subroutine find_knotvector_span(degree, size_kv, knotvector, x, span, span_tol)
 
     integer, intent(out) :: span 
 
-    ! Set first value of span
     span = degree + 2
     
-    ! Find span
     do while ((span.lt.(size_kv-degree)).and.((knotvector(span)-x).le.span_tol))
         span = span + 1
     end do
     
-    ! Set result
     span = span - 1 
 
 end subroutine find_knotvector_span
@@ -65,22 +62,12 @@ subroutine find_parametric_span(size_kv, nodes, x, span, span_tol)
 
     integer, intent(out) :: span 
 
-    ! Local data
-    ! ----------
-    integer :: size_nodes
-
-    ! Initialize 
-    size_nodes = int(nodes(size_kv+1))
-
-    ! Set first value of span
     span = 2
     
-    ! Find span
-    do while ((span.lt.size_nodes).and.((nodes(span)-x).le.span_tol))
+    do while ((span.lt.int(nodes(size_kv+1))).and.((nodes(span)-x).le.span_tol))
         span = span + 1
     end do
     
-    ! Set result
     span = span - 1 
 
 end subroutine find_parametric_span
@@ -102,7 +89,6 @@ subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
     ! ----------
     integer :: i
 
-    ! Initialize 
     multiplicity = 0
 
     do i = 1, size_kv
@@ -113,20 +99,20 @@ subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
 
 end subroutine find_multiplicity
 
-subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_kv_out, knotvector_out, span_tol)
+subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out, kv_out, span_tol)
     !! Computes a new knot-vector using p-refinement 
-    !! Ex: Given the knot-vector = [0, 0, 0, 0.5, 1, 1, 1] and times = 1, then new knot vector = [0, 0, 0, 0.5, 0.5, 1, 1, 1]
+    !! Ex: Given the knot-vector = [0, 0, 0, 0.5, 1, 1, 1] and repeat = 1, then new knot vector = [0, 0, 0, 0.5, 0.5, 1, 1, 1]
 
     implicit none
-    ! Input/output data
+    ! Input / output data
     ! -----------------
-    integer, intent(in) :: times, degree, size_kv_in
-    double precision, intent(in) :: knotvector_in, span_tol
-    dimension :: knotvector_in(size_kv_in)
+    integer, intent(in) :: repeat, degree, size_kv_in
+    double precision, intent(in) :: kv_in, span_tol
+    dimension :: kv_in(size_kv_in)
 
     integer, intent(inout) :: size_kv_out
-    double precision, intent(out) :: knotvector_out
-    dimension :: knotvector_out(*)
+    double precision, intent(out) :: kv_out
+    dimension :: kv_out(*)
 
     ! Local data
     ! -----------
@@ -134,36 +120,31 @@ subroutine increase_multiplicity(times, degree, size_kv_in, knotvector_in, size_
     double precision :: nodes
     dimension :: nodes(size_kv_in+1)
 
-    ! Get nodes of a given knot-vector
-    call find_unique_array(size_kv_in, knotvector_in, nodes)
+    call find_unique_array(size_kv_in, kv_in, nodes)
     size_nodes = int(nodes(size_kv_in+1))
 
     if (size_kv_out.le.0) then 
-        ! Find the size of the new knot-vector
-        size_kv_out = size_kv_in + (size_nodes-2)*times
+        size_kv_out = size_kv_in + (size_nodes - 2)*repeat
 
     else 
-        ! Get the (degree+1) first 0 of the knot-vector
         c = 1
         do i = 1, degree + 1
-            knotvector_out(c) = 0.d0
+            kv_out(c) = 0.d0
             c = c + 1
         end do
 
-        ! Find multiplicity and update output
         do i = 2, size_nodes - 1
-            call find_multiplicity(size_kv_in, knotvector_in, nodes(i), multiplicity, span_tol)
-            multiplicity = multiplicity + times
+            call find_multiplicity(size_kv_in, kv_in, nodes(i), multiplicity, span_tol)
+            multiplicity = multiplicity + repeat
 
             do j = 1, multiplicity
-                knotvector_out(c) = nodes(i)
+                kv_out(c) = nodes(i)
                 c = c + 1
             end do
         end do
 
-        ! Get the (degree+1) last 1 of the knot-vector
         do i = 1, degree+1
-            knotvector_out(c) = 1.d0
+            kv_out(c) = 1.d0
             c = c + 1
         end do
 
@@ -194,7 +175,6 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
     dimension :: nodes(size_kv+1)
     double precision, dimension(:), allocatable :: unique_kv, diffknot 
 
-    ! Compute nodes or unique vector
     call find_unique_array(size_kv, knotvector, nodes)
     nbel = int(nodes(size_kv+1)) - 1
     nb_ctrlpts = size_kv - degree - 1
@@ -284,28 +264,21 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
     double precision :: B0t, B1t, data_B0, data_B1
     dimension :: B0t(degree+1), B1t(degree+1), data_B0((degree+1)*nb_knots), data_B1((degree+1)*nb_knots)
 
-    ! Set number of control points
     nb_ctrlpts = size_kv - degree - 1
-
-    ! Get table of functions over knot-span
     nbel = int(nodes(size_kv+1)) - 1
+
     allocate(table_functions_span(nbel, degree+1))
     call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
 
     do i = 1, nb_knots
-        ! Find knot-vector span for a given knot
+        ! Computes B0 and B1 using a YETI function
         call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
-
-        ! Find parametric span for a given knot
         call find_parametric_span(size_kv, nodes, knots(i), span(2), span_tol)
-
-        ! Find functions over the parametric span 
         functions_span = table_functions_span(span(2), :)
 
-        ! Evaluate B0 and B1 for a given knot
         call dersbasisfuns(span(1), degree, nb_ctrlpts, knots(i), knotvector, B0t, B1t)
         
-        ! Save data in COO format
+        ! Save in COO format
         do j = 1, degree+1
             k = (i - 1)*(degree + 1) + j
             data_B0(k) = B0t(j)
@@ -341,11 +314,9 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     dimension :: MB(nr, nc), MI(nr, nr), ones(nnz_B)
     double precision, allocatable, dimension(:) :: data_I
 
-    ! Initialize
+    ! Compute I = B * B.T
     ones = 1.d0 
     call csr2dense(nnz_B, indi_B, indj_B, ones, nr, nc, MB)
-
-    ! Compute I = B * B.T
     MI = matmul(MB, transpose(MB))
     
     ! Convert dense matrix to CSR format
@@ -374,27 +345,18 @@ subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
     ! ----------
     integer ::  i, c
 
-    ! Initialize
-    nodes = 0.d0; knotvector = 0.d0
+    ! Create nodes 
+    nodes = 0.d0; nodes(1) = 0.d0; nodes(nbel+1) = 1.d0
 
-    !
-    ! Create nodes :
-    ! 
-    ! Assign first and last values
-    nodes(1) = 0.d0
-    nodes(nbel+1) = 1.d0
-
-    ! Assign values
     do i = 2, nbel 
         nodes(i) = dble(i - 1)/dble(nbel) 
     end do
 
     nodes(size(nodes)) = nbel + 1
 
-    !
-    ! Create knotvector :
-    ! 
-    ! Set p+1 first values of knot vector 
+    ! Create knotvector 
+    knotvector = 0.d0
+
     c = 1
     do i = 1, degree+1
         knotvector(c) = 0.d0
@@ -406,7 +368,6 @@ subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
         c = c + 1
     end do
 
-    ! Set p+1 last values of knot vector 
     do i = 1, degree+1
         knotvector(c) = 1.d0
         c = c + 1
@@ -422,7 +383,7 @@ subroutine iga_get_qp_positions_weights(degree, size_kv, nodes, qp_nnz, qp_posit
     !! Gets quadrature points' positions and weights in IGA approach 
 
     implicit none 
-    ! Input / Output data
+    ! Input / output data
     ! -------------------
     integer, intent(in) :: degree, size_kv, qp_nnz
     double precision, intent(in) :: nodes
@@ -437,17 +398,13 @@ subroutine iga_get_qp_positions_weights(degree, size_kv, nodes, qp_nnz, qp_posit
     dimension :: GaussPdsCoord(2, degree+1), pg(degree+1), wg(degree+1)
     integer :: nbel, i, j, k
 
-    ! Set number of elements
-    nbel = int(nodes(size_kv+1)) - 1 
-
     ! Find position and weight in isoparametric space
     call Gauss(size(pg), 1, GaussPdsCoord, 0)
-
-    ! Split values 
     wg = GaussPdsCoord(1, :)
     pg = GaussPdsCoord(2, :)
 
     ! From isoparametric to parametric space
+    nbel = int(nodes(size_kv+1)) - 1 
     do i = 1, nbel
         do j = 1, size(pg)
             k = (i - 1)*size(pg) + j
@@ -499,7 +456,6 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
 
     ! Get table of spans for each function
     do i = 1, nb_ctrlpts
-        ! Find min 
         min_span = 1
         do j = 1, nbel
             if (any(table_functions_span(j, :).eq.i)) then
@@ -508,7 +464,6 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
             end if
         end do 
 
-        ! Find max
         max_span = nbel
         do j = nbel, 1, -1
             if (any(table_functions_span(j, :).eq.i)) then
@@ -517,7 +472,6 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
             end if
         end do 
 
-        ! Save values
         table_spans_function(i, :) = [min_span, max_span]
     end do 
             
@@ -540,7 +494,7 @@ end subroutine iga_get_B_shape
 
 subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape, weights_obj)
     !! Gets the quadrature rules of objective (or target) functions 
-    !! Integral II = int Btest Bobj from 0 to 1
+    !! Here the integral II = int Btest Bobj from 0 to 1
     
     implicit none
     ! Input / output data
@@ -558,16 +512,13 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
     ! ----------
     integer :: i, j, Pmin, Pmax, Fmin, Fmax
 
-    ! Initialize
     weights_obj = 0.d0  
 
     do i = 1, nr_obj
 
-        ! Find position of points within i-function support
         Pmin = Bshape_obj(i, 1)
         Pmax = Bshape_obj(i, 2)
 
-        ! Find functions which intersect i-function support
         Fmin = 1
         do j = 1, nr_test
             if (IIshape(j, i).gt.0) then
@@ -584,7 +535,6 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
             end if
         end do 
         
-        ! Solve linear system
         call solve_linear_system(Fmax-Fmin+1, Pmax-Pmin+1, BBtest(Fmin:Fmax, Pmin:Pmax), &
                                 II(Fmin:Fmax, i), weights_obj(i, Pmin:Pmax))
     end do
@@ -599,11 +549,11 @@ module iga_basis_weights
     implicit none
     double precision, parameter :: span_tol = 1.d-8
     type :: iga
-        ! Inputs 
+        ! Input
         integer :: degree, size_kv
         double precision, dimension(:), pointer :: knotvector
         
-        ! Outputs 
+        ! Output
         double precision, dimension(:), pointer :: qp_position, qp_weight, data_B0, data_B1
         integer, dimension(:,:), pointer :: indices
         integer :: nnz_B, nnz_I
@@ -637,19 +587,18 @@ module iga_basis_weights
         obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1)
         obj%knotvector = knotvector
 
-        ! Compute unique knots
         allocate(obj%nodes(size_kv+1))
         call find_unique_array(obj%size_kv, obj%knotvector, obj%nodes)
         obj%size_nodes = int(obj%nodes(size_kv+1))
         obj%nb_qp = (degree + 1)*(obj%size_nodes - 1)
         obj%nnz_B = obj%nb_qp*(obj%degree + 1) 
         
-        ! Get quadrature points position
+        ! Get quadrature points positions
         allocate(obj%qp_position(obj%nb_qp), obj%qp_weight(obj%nb_qp))
         call iga_get_qp_positions_weights(obj%degree, obj%size_kv, obj%nodes, & 
                                     obj%nb_qp, obj%qp_position, obj%qp_weight)
 
-        ! Set non zeros values of B0 and B1
+        ! Set nonzero values of B0 and B1
         allocate(obj%Bshape(obj%nb_ctrlpts, 2))
         call iga_get_B_shape(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%Bshape, span_tol)  
 
@@ -696,11 +645,11 @@ module wq_basis_weights
     double precision, parameter :: tol = 1.d-14, span_tol = 1.d-8
 
     type :: wq
-        ! Inputs 
+        ! Input
         integer :: degree, size_kv, method
         double precision, dimension(:), pointer :: knotvector 
 
-        ! Outputs
+        ! Output
         double precision, dimension(:), pointer ::  qp_position, data_B0, data_B1, & 
                                                     data_W00, data_W01, data_W10, data_W11
         integer, dimension(:,:), pointer :: indices
@@ -741,31 +690,24 @@ module wq_basis_weights
         obj%degree = degree
         obj%size_kv = size_kv
         obj%nb_ctrlpts = size_kv - degree - 1
-        obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1) ! Only in max regularity
+        obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1) 
         obj%knotvector = knotvector
         obj%isuniform = isuniform
 
-        ! Compute unique knots
         allocate(obj%nodes(size_kv+1))
         call find_unique_array(obj%size_kv, obj%knotvector, obj%nodes)
         obj%size_nodes = int(obj%nodes(obj%size_kv+1))
 
-        ! Set max rule (number of quadrature point in inner spans)
-        if (method.eq.1) then 
-            obj%maxrule = 1
-        else if (method.eq.2) then
-            obj%maxrule = 2
-        else
-            stop 'Method only can be 1 or 2'
-        end if
+        if (method.eq.1) obj%maxrule = 1
+        if (method.eq.2) obj%maxrule = 2
         
-        ! Get new local data
         obj%method = method
         obj%nb_qp_wq = 2*(obj%degree + r) + (obj%size_nodes - 1)*(obj%maxrule + 1) - 2*obj%maxrule - 3  
         obj%nb_qp_cgg = (obj%degree + 1)*(obj%size_nodes - 1)
 
-        ! Initialize 
-        allocate(obj%qp_position(obj%nb_qp_wq), obj%B0shape(obj%nb_ctrlpts, 2), obj%B1shape(obj%nb_ctrlpts, 2))
+        allocate(obj%qp_position(obj%nb_qp_wq), &
+                obj%B0shape(obj%nb_ctrlpts, 2), &
+                obj%B1shape(obj%nb_ctrlpts, 2))
         obj%qp_position = 0.d0
         obj%B0shape = 0
         obj%B1shape = 0
@@ -785,29 +727,26 @@ module wq_basis_weights
         integer :: i, j, k
         double precision, allocatable, dimension(:) :: nodes, QPB, QPI
         
-        ! Initialize
         allocate(QPB(obj%degree+r), QPI(2+obj%maxrule))
         allocate(nodes(obj%size_nodes))
         nodes = obj%nodes(1:obj%size_nodes)
     
-        ! Find values for the first boundary
+        ! First span
         call linspace(nodes(1), nodes(2), size(QPB), QPB)
         do j = 1, size(QPB)
             obj%qp_position(j) = QPB(j)
         end do
     
-        ! Find values for the last boundary 
+        ! Last span 
         call linspace(nodes(size(nodes)-1), nodes(size(nodes)), size(QPB), QPB)
         do j = 1, size(QPB)
             obj%qp_position(size(obj%qp_position)-size(QPB)+j) = QPB(j)
         end do
-    
+        
+        ! Inner spans
         if (size(nodes).ge.4) then
             do i = 2, size(nodes)-2
-                ! Find quadrature points for inner spans
                 call linspace(nodes(i), nodes(i+1), size(QPI), QPI)
-    
-                ! Save values
                 do j = 1, size(QPI) 
                     k = size(QPB) + (size(QPI) - 1)*(i - 2) + j - 1    
                     obj%qp_position(k) = QPI(j)
@@ -831,7 +770,6 @@ module wq_basis_weights
         integer, allocatable, dimension(:, :) :: table_points_span, table_functions_span, table_spans_function
         integer :: i, j, c
     
-        ! Extract some data
         degree = obj%degree
         nbel = obj%size_nodes - 1
         nb_ctrlpts = obj%nb_ctrlpts
@@ -857,7 +795,6 @@ module wq_basis_weights
     
         ! Get table of spans for each function
         do i = 1, nb_ctrlpts
-            ! Find min 
             min_span = 1
             do j = 1, nbel
                 if (any(table_functions_span(j, :).eq.i)) then
@@ -866,7 +803,6 @@ module wq_basis_weights
                 end if
             end do 
     
-            ! Find max
             max_span = nbel
             do j = nbel, 1, -1
                 if (any(table_functions_span(j, :).eq.i)) then
@@ -875,7 +811,6 @@ module wq_basis_weights
                 end if
             end do 
     
-            ! Assigning values
             table_spans_function(i, :) = [min_span, max_span]
         end do 
                 
@@ -1001,7 +936,6 @@ module wq_basis_weights
         ! ---------------------
         ! Integrals and Weights
         ! ---------------------
-        ! Initialize
         allocate(Bcgg_p0_int(obj%nb_ctrlpts, obj%nb_qp_cgg))
         allocate(Bcgg_p1_int(nb_ctrlpts_p1, obj%nb_qp_cgg))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
@@ -1123,7 +1057,6 @@ module wq_basis_weights
         ! ------------------------------------
         ! Integrals and Weights
         ! ------------------------------------
-        ! Initialize
         allocate(Bcgg_p0_int(obj%nb_ctrlpts, obj%nb_qp_cgg))
         allocate(Bcgg_p1_int(nb_ctrlpts_p1, obj%nb_qp_cgg))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
@@ -1171,7 +1104,6 @@ module wq_basis_weights
         double precision, allocatable, dimension(:) :: knotvector_m, nodes_m
         double precision, allocatable, dimension(:,:) :: B0_m, B1_m, W00_m, W01_m, W10_m, W11_m
 
-        ! Initialize
         method = obj%method
         if (.not.any((/1, 2/).eq.method)) stop 'Only method 1 or 2 are allowed'
 
@@ -1189,14 +1121,12 @@ module wq_basis_weights
             W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
             W10(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W11(obj%size_kv-obj%degree-1, obj%nb_qp_wq))
 
-            ! Get basis and weights 
             if (method.eq.1) then
                 call wq_basis_weights_method1(obj, B0, B1, W00, W01, W10, W11)
             else if (method.eq.2) then
                 call wq_basis_weights_method2(obj, B0, B1, W00, W01, W10, W11)
             end if
 
-            ! Save values
             c = 0
             do i = 1, obj%nb_ctrlpts
                 do j = obj%B1shape(i, 1), obj%B1shape(i, 2)
@@ -1227,7 +1157,6 @@ module wq_basis_weights
                     W00_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W01_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), &
                     W10_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W11_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq))
 
-            ! Compute model
             if (method.eq.1) then
                 call wq_basis_weights_method1(obj_m, B0_m, B1_m, W00_m, W01_m, W10_m, W11_m)
             else if (method.eq.2) then

@@ -118,7 +118,6 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-    ! Convert CSR to CSC
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
@@ -140,7 +139,6 @@ subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nn
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
     
-    ! Compute inverse and determinant 
     !$OMP PARALLEL
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, size(detJ)/nb_tasks) 
@@ -184,12 +182,10 @@ subroutine interpolate_fieldphy_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-    ! Convert CSR to CSC
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    ! Interpolation
     do i = 1, ddl_u
         call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
@@ -234,7 +230,6 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
 
-    ! Convert CSR to CSC
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
@@ -254,7 +249,6 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
 
-    ! Compute inverse and determinant
     !$OMP PARALLEL 
     nb_tasks = omp_get_num_threads()
     !$OMP DO SCHEDULE(STATIC, size(detJ)/nb_tasks) 
@@ -297,11 +291,9 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
 
-    ! Convert CSR to CSC
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    ! Interpolation
     do i = 1, dof_u
         call sumproduct2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &

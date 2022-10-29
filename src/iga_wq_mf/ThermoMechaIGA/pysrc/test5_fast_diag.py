@@ -56,7 +56,8 @@ if not dataExist:
             # Compute fast diagonalization
             start = time.process_time()
             eig_t, U_t = eigen_decomposition(indi_t, indj_t, data_t)
-            eig_diag = solver.compute_diagonal_py(eig_t, eig_t, eig_t, np.arange(4))
+            # eig_diag = solver.compute_diagonal_py(eig_t, eig_t, eig_t, np.arange(4))
+            eig_diag = np.random.random(nb_ctrlpts**3)
             fast_diagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
             stop = time.process_time()
             FDtime = stop - start

@@ -910,7 +910,7 @@ def eigen_decomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
     else: [mcoefs, kcoefs] = coefs
 
     # Compute eigen values and vectors
-    eigenvalues, eigenvectors = solver.eigen_decomposition_py(indi, indj, B0, W0, 
+    eigenvalues, eigenvectors = solver.eigen_decomposition_f2py(indi, indj, B0, W0, 
                                         B1, W1, mcoefs, kcoefs, robin_condition)
 
     return eigenvalues, eigenvectors

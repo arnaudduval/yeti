@@ -185,7 +185,6 @@ subroutine wq_get_source_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     double precision, intent(out) :: result
     dimension :: result(nr_u*nr_v*nr_w)
 
-    ! Compute vector
     call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &
@@ -224,19 +223,14 @@ subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
 
     ! Compute coefficients
     do i = 1, nc_total
-        ! Define vectors
-        v1 = JJ(:, 1, i)
-        v2 = JJ(:, 2, i)
-        
-        ! Compute the surface 
+
+        v1 = JJ(:, 1, i); v2 = JJ(:, 2, i)
         call crossproduct(v1, v2, v3)
         dsurf = sqrt(dot_product(v3, v3))
-
-        ! Compute coefs
         new_coefs(i) = coefs(i) * dsurf
+
     end do
 
-    ! Compute force
     call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         new_coefs(:), array_out(:))
@@ -280,7 +274,6 @@ subroutine wq_get_stiffness_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     integer :: i, j, k, l, nnz, count
     integer :: init, fin
 
-    ! Initialize
     size_data_result = nnz_I_u*nnz_I_v*nnz_I_w
     nr_total = nr_u*nr_v*nr_w
     allocate(data_temp(size_data_result), indi_temp_csr(nr_total+1), &
@@ -486,7 +479,6 @@ subroutine wq_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_
     double precision, intent(out) :: result
     dimension :: result(nr_u*nr_v)
 
-    ! Find vector
     call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &

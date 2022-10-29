@@ -28,7 +28,6 @@ subroutine clean_dirichlet_3dim(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
 
-    ! Clean array
     A(1, dod_u) = 0.d0 
     A(2, dod_v) = 0.d0 
     A(3, dod_w) = 0.d0 
@@ -54,9 +53,7 @@ subroutine block_dot_product(dimen, nr, A, B, result)
     integer :: i
     double precision :: rtemp
 
-    ! Initialize
     result = 0.d0
-
     do i = 1, dimen 
         rtemp = dot_product(A(i, :), B(i, :))
         result = result + rtemp
@@ -85,19 +82,16 @@ subroutine compute_stress_deviatoric(dimen, ddl, tensor, dev)
     double precision :: trace, one
     dimension :: one(ddl)
 
-    ! Compute trace of tensor
-    trace = 0.d0
-    do i = 1, dimen
-        trace = trace + tensor(i)
-    end do
-
-    ! Compute one
     one = 0.d0
     do i = 1, dimen
         one(i) = 1.d0
     end do
 
-    ! Definition of deviatoric
+    trace = 0.d0
+    do i = 1, dimen
+        trace = trace + tensor(i)
+    end do    
+
     dev = tensor - 1.d0/3.d0*trace*one 
     
 end subroutine compute_stress_deviatoric
@@ -120,7 +114,6 @@ subroutine compute_stress_norm(dimen, ddl, tensor, norm)
     ! ----------
     integer :: i
 
-    ! Initialize 
     norm = 0.0d0
 
     do i = 1, dimen
@@ -149,7 +142,6 @@ subroutine fourth_order_identity(dimen, ddl, identity)
     ! ----------
     integer :: i
 
-    ! Create identity
     identity = 0.d0
     do i = 1, dimen
         identity(i, i) = 1.d0
@@ -175,7 +167,6 @@ subroutine one_kron_one(dimen, ddl, onekronone)
     ! ----------
     integer :: i, j
 
-    ! Create one kron one
     onekronone = 0.d0
     do j = 1, dimen
         do i = 1, dimen
@@ -232,13 +223,8 @@ subroutine compute_stress_vonmises(dimen, ddl, tensor, VM)
     double precision :: dev_tensor
     dimension :: dev_tensor(ddl)
 
-    ! Compute deviatoric
     call compute_stress_deviatoric(dimen, ddl, tensor, dev_tensor)
-
-    ! Compute norm of deviatoric tensor
     call compute_stress_norm(dimen, ddl, tensor, VM)
-
-    ! Normalize result
     VM = sqrt(3.d0/2.d0)*VM
 
 end subroutine compute_stress_vonmises
@@ -283,17 +269,15 @@ module elastoplasticity
         double precision :: lambda, mu, bulk
         double precision, dimension(ddl, ddl) :: II, Idev, onekronone, CC, SS
 
-        ! Compute Lame coefficients
-        lambda = nu*E/((1+nu)*(1-2*nu))
-        mu = E/(2*(1+nu))
-        bulk = lambda + 2.d0/3.d0*mu
-
         ! Create special tensors in Voigt notation
         call fourth_order_identity(dimen, ddl, II)
         call one_kron_one(dimen, ddl, onekronone)
         Idev = II - 1.d0/3.d0*onekronone
 
-        ! Computes C and S
+        ! Compute mechanical properties
+        lambda = nu*E/((1+nu)*(1-2*nu))
+        mu = E/(2*(1+nu))
+        bulk = lambda + 2.d0/3.d0*mu
         CC = lambda*onekronone + 2*mu*II
         SS = 1.d0/(9.d0*bulk)*onekronone + 1.d0/(2.d0*mu)*(Idev)
 
@@ -334,35 +318,24 @@ module elastoplasticity
         double precision :: EE, ETCE, Dij, Si
         dimension :: EE(ddl, dimen, dimen), ETCE(dimen, dimen), Dij(dimen, dimen), Si(dimen)
                     
-        ! Construct passage matrix
         call create_incidence_matrix(dimen, ddl, EE)
 
         do k = 1, nc_total
 
-            ! For stiffness and stress coefficients
             do i = 1, dimen
-
                 do j = 1, dimen
-                
-                    ! Compute E.T C E
+                    ! Compute stiffness coefficients    
                     ETCE = matmul(transpose(EE(:,:,i)), matmul(DD(:,:,k), EE(:,:,j)))
-
-                    ! Compute Dij
                     Dij = matmul(invJ(:,:,k), matmul(ETCE, transpose(invJ(:,:,k))))
-
-                    ! Save data
                     coef_Stiff((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, k) = Dij*detJ(k)
 
                 end do
 
-                ! Compute invJ E.T sigma
+                ! Compute stress coefficients
                 Si = matmul(invJ(:,:,k), matmul(transpose(EE(:,:,i)), sigma(:,k)))
-
-                ! Save data
                 coef_Fint((i-1)*dimen+1:i*dimen, k) = Si*detJ(k)
 
             end do
-
         end do
 
     end subroutine compute_meca_coefficients
@@ -383,17 +356,11 @@ module elastoplasticity
         double precision :: eta, dev_sigma
         dimension :: eta(ddl), dev_sigma(ddl)
 
-        ! Compute deviatoric of sigma tensor
         call compute_stress_deviatoric(dimen, ddl, sigma, dev_sigma)
-
-        ! Compute eta
         eta = dev_sigma - alpha
-
-        ! Compute the norm sqrt(eta:eta)
         call compute_stress_norm(dimen, ddl, eta, norm)
         f = norm - sqrt(2.d0/3.d0) * (sigma_Y + (1-beta)*H*ep)   
 
-        ! Compute gradient of the gradient of f
         if (norm.gt.0.d0) then
             NN = 1.d0/norm*eta
         else
@@ -423,33 +390,22 @@ module elastoplasticity
         double precision :: sigma_trial, N, NNT
         dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
 
-        ! Compute elastic predictor
         sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
-        
-        ! Review condition
         call yield_combined_hardening(mat%sigma_Y, mat%hardening, mat%beta, sigma_trial, alpha_n0, ep_n0, f, norm, N)
 
         if (f.le.0.d0) then ! Elastic point
 
-            ! Send back values
-            sigma_n1 = sigma_trial
-            ep_n1 = ep_n0
-            alpha_n1 = alpha_n0
-            Dalg = mat%Ctensor
+            sigma_n1 = sigma_trial ! stress
+            ep_n1 = ep_n0 ! effective plastic strain
+            alpha_n1 = alpha_n0 ! back stress
+            Dalg = mat%Ctensor ! tangent matrix
 
         else ! Plastic point
 
-            ! Consistency parameter
-            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0)
-
-            ! Update stress
+            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0) ! consistency parameter
             sigma_n1 = sigma_trial - 2.d0*mat%mu*dgamma*N
-
-            ! Update back stress
-            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
-
-            ! Update effective plastic strain 
             ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
+            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
 
             ! Compute consistent tangent matrix
             c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)

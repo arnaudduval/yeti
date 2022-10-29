@@ -54,10 +54,8 @@ subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, 
         data_W_w(i, :) = data_B_w(i, :) * W_w(indj_w(i))
     end do
 
-    ! Initialize
-    diag = 0.d0
-
     ! Compute diagonal
+    diag = 0.d0
     do j = 1, d
         do i = 1, d
             alpha = 1; alpha(i) = 2
@@ -115,9 +113,8 @@ subroutine mf_iga_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     ! Local data 
     ! -----------
     integer :: ju, jv, jw, genPos, nb_tasks
-    double precision :: coefs_temp
-    dimension :: coefs_temp(nc_total)
-    double precision, allocatable, dimension(:) :: array_temp_0, array_temp_1
+    double precision :: coefs_temp, array_temp_0, array_temp_1
+    dimension :: coefs_temp(nc_total), array_temp_0(nc_total), array_temp_1(nc_total)
 
     ! Get new coefficients 
     !$OMP PARALLEL PRIVATE(genPos)
@@ -135,7 +132,6 @@ subroutine mf_iga_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     !$OMP END PARALLEL
 
     ! Eval B' * array_in
-    allocate(array_temp_0(nc_total))
     call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), & 
@@ -143,9 +139,7 @@ subroutine mf_iga_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
                             array_in, array_temp_0)
 
     ! Evaluate diag(coefs) * array_temp_0
-    allocate(array_temp_1(nc_total))
     array_temp_1 = array_temp_0*coefs_temp
-    deallocate(array_temp_0)
 
     ! Eval W * array_temp_1
     call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -153,7 +147,6 @@ subroutine mf_iga_get_cu_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
                             nnz_v, indi_v, indj_v, data_B_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_B_w(:, 1), &
                             array_temp_1, array_out)
-    deallocate(array_temp_1)
 
 end subroutine mf_iga_get_cu_3d
 
@@ -199,9 +192,8 @@ subroutine mf_iga_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     ! Local data 
     ! ----------
     integer :: ju, jv, jw, genPos, nb_tasks
-    double precision :: coefs_temp
-    dimension :: coefs_temp(d, d, nc_total)
-    double precision, allocatable, dimension(:) :: array_temp_0, array_temp_1, array_temp_2
+    double precision :: coefs_temp, array_temp_0, array_temp_1, array_temp_2
+    dimension :: coefs_temp(d,d, nc_total), array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total)
     integer :: i, j, alpha, beta
     dimension :: alpha(d), beta(d)
 
@@ -220,10 +212,7 @@ subroutine mf_iga_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL
 
-    ! Initialize
-    allocate(array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total))
     array_out = 0.d0
-    
     do j = 1, d
         beta = 1; beta(j) = 2
         call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
@@ -242,7 +231,6 @@ subroutine mf_iga_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w,
             array_out = array_out + array_temp_2
         end do
     end do
-    deallocate(array_temp_0, array_temp_1, array_temp_2)
     
 end subroutine mf_iga_get_ku_3d
 
@@ -281,7 +269,6 @@ subroutine mf_iga_get_ku_3d_csr(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-    ! Convert CSR to CSC
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
@@ -299,7 +286,7 @@ end subroutine mf_iga_get_ku_3d_csr
 ! Conjugate gradient 
 ! -------------------
 
-subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, x, RelRes)
     !! Preconditioned conjugate gradient to solve interpolation problem
@@ -308,7 +295,7 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: coefs
     dimension :: coefs(nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -322,22 +309,24 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
-    dimension :: b(nr_u*nr_v*nr_w)
+    dimension :: b(nr_total)
     
     double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
+    dimension :: x(nr_total), RelRes(nbIterPCG+1)
 
     ! Local data
     ! -----------
     ! Conjugate gradient algorithm
     double precision :: rsold, rsnew, alpha, normb
-    double precision, allocatable, dimension(:) :: r, p, Ap, z
-    integer :: nr_total, iter, i
+    double precision :: r, p, Ap, z
+    dimension :: r(nr_total), p(nr_total), Ap(nr_total), z(nr_total)
+    integer :: iter, i
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, Kdiag, Mdiag
-    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w, data_W
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w
+    double precision, dimension(:, :), allocatable :: data_W
+    double precision :: U_u, U_v, U_w, D_u, D_v, D_w
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), D_u(nr_u), D_v(nr_v), D_w(nr_w)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -346,7 +335,7 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
 
-    ! Convert CSR to CSC
+    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
@@ -354,7 +343,6 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     ! --------------------
     ! Eigen decomposition
     ! --------------------
-    allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
@@ -386,13 +374,11 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
                             data_B_w(:, 1), data_W(:, 1), data_B_w(:, 2), &
                             data_W(:, 2), (/0, 0/), D_w, U_w, Kdiag, Mdiag)  
     deallocate(data_W, Kdiag, Mdiag)
+    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
     ! -------------------------------------------
     ! Preconditioned Conjugate Gradient algorithm
     ! -------------------------------------------
-    ! Set initial values
-    nr_total = nr_u*nr_v*nr_w
-    allocate(r(nr_total), p(nr_total), Ap(nr_total), z(nr_total))
     x = 0.d0; r = b
     call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
     p = z
@@ -406,7 +392,6 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
                             data_BT_u, data_BT_v, data_BT_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, p, Ap)
-
         alpha = rsold/dot_product(p, Ap)
         x = x + alpha * p
         r = r - alpha * Ap
@@ -416,7 +401,6 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
         call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
         rsnew = dot_product(r, z)
-
         p = z + rsnew/rsold * p
         rsold = rsnew
     end do
