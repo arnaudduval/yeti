@@ -16,7 +16,7 @@ For a Ubuntu 20.04 distribution, the following packages are required :
  - git
  - gfortran
  - gcc
- - cmake (minimum version 3.21 is required, a quick guide to build cmake 2.24 is available :ref:`here <buildcmake>`.
+ - cmake (minimum version 3.21 is required, a quick guide to build cmake 2.24 is available :ref:`here <buildcmake>`)
 
 
 
@@ -24,58 +24,77 @@ Get sources
 ***********
 With git :
 
-``git clone https://lamcosplm.insa-lyon.fr/plugins/git/yeti/yeti.git``
+..  code-block:: bash
+
+    git clone https://lamcosplm.insa-lyon.fr/plugins/git/yeti/yeti.git
 
 Create virtual python environment for yeti
 ******************************************
 
 Virtual environnement will be created at the root of user home directory
 
-``python3 -m venv ~/yeti-venv``
+.. code-block:: bash
 
-To activate ths environment :
+    python3 -m venv ~/yeti-venv
 
-``source ~/yeti-venv/bin/activate``
+To activate this environment:
 
-Install required python modules with pip :
+.. code-block:: bash
 
-``pip install --upgrade pip``
+    source ~/yeti-venv/bin/activate
 
-``pip install numpy matplotlib scipy nlopt``
+Install required python modules with pip:
 
-For use of umfpack with scipy sparse solver :
+..  code-block:: bash
 
-``pip install wheel``
+    pip install --upgrade pip
+    pip install numpy matplotlib scipy nlopt
 
-``sudo apt install libsuitesparse-dev swig``
 
-``pip install scikit-umfpack``
+For use of umfpack with scipy sparse solver:
+
+..  code-block:: bash
+
+    pip install wheel
+    sudo apt install libsuitesparse-dev swig
+    pip install scikit-umfpack
 
 
 Compile yeti
 ************
 
-``cd yeti``
+..  code-block:: bash
+
+    cd yeti
 
 Create a build directory:
 
-``mkdir build``
+..  code-block:: bash
 
-``cd build``
+    mkdir build
+    cd build
 
-If not already loaded, load virtual python environment
+If not already loaded, load virtual python environment:
 
-``source ~/yeti-venv/bin/activate``
+..  code-block:: bash
 
-Configure with CMake :
+    source ~/yeti-venv/bin/activate
 
-``cmake ..``
+Configure with CMake:
 
-Build yeti :
+..  code-block:: bash
 
-``make -j4``
+    cmake ..
 
-yeti library will be located in ``build/lib/python``. You must add it to your PYTHONPATH environmant variable :
+Build yeti:
 
-``export PYTHONPATH=$PYTHONPATH:~/yeti/build/lib/python``
+..  code-block:: bash
+
+    make -j4
+
+yeti library will be located in :file:`build/lib/python`. You must add it to your ``PYTHONPATH`` environment variable:
+
+..  code-block:: bash
+
+    export PYTHONPATH=$PYTHONPATH:~/yeti/build/lib/python
 
