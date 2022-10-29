@@ -5,28 +5,32 @@ Windows Subsystem for Linux installation
 
 This procedure has been tested on Windows 10, build 19044.2006
 
-Start by opening a Windows Powershell with adminitrstor rights : 
+Start by opening a Windows Powershell with adminitrstor rights: 
 
 .. image:: ../_static/install_WSL/01_launch_powershell_admin.png
    :width: 400
    :align: center
 
-In this powershell, run the following command to install Windows Subsystem for Linux with the Ubuntu distribution : 
+In this powershell, run the following command to install Windows Subsystem for Linux with the Ubuntu distribution: 
 
-``wsl --install -d Ubuntu``
+..  code-block:: bat
 
-Force the use of WSL version 1 : 
+   wsl --install -d Ubuntu
 
-``wsl --set-default-version 1``
+Force the use of WSL version 1: 
+
+..  code-block:: bat
+
+   wsl --set-default-version 1
 
 Restart Windows.
 
-For the start menu, launch Ubuntu application : 
+From the start menu, launch **Ubuntu** application : 
 
 .. image:: ../_static/install_WSL/02_launch_Ubuntu.png
    :width: 400
    :align: center
 
-You will be asked to set a news user name and a password.
+You will be asked to set a new user name and a password.
 
-Your Windows Subsystem is now ready. You can continue by installing YETI.
+Your Windows Subsystem is now ready. You can continue by :ref:`installing YETI <yeti-installation>`.
