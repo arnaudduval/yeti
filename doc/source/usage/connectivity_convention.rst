@@ -5,9 +5,9 @@ Nodes order in connectivity table defines parametric directions of an element.
 Defining an element
 -------------------
 
-Nodes list starts at higher value of all parametric directions, then decrease along 1 parametric diretion,
+Nodes list starts at higher value of all parametric directions, then decrease along 1st parametric direction,
 then 2nd parametric direction and finally 3rd parametric direction. For example, with a 2nd degree solid
-element with following coordinates in parametric space :
+element with following coordinates in parametric space (see figure :numref:`fig-nodes-numbering`):
 
 +--------+----------+----------+----------+ 
 | Node # | coord #1 | coord #2 | coord #3 | 
@@ -67,20 +67,26 @@ element with following coordinates in parametric space :
 |   27   |   1.0    |   1.0    |   1.0    |
 +--------+----------+----------+----------+
 
-Node list definiing connectivity should read :
+Node list defining connectivity should read :
 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
 
-.. image:: ../_static/nodes-numbering.png
+.. _fig-nodes-numbering:
+
+.. figure:: ../_static/nodes-numbering.png
    :width: 400
    :align: center
+
+   Nodes numbering for a degree 2 solid element.
+
+.. _faces-numbering:
 
 Defining faces
 --------------
 
 From connectivity table and parametric direction, faces indices are defined as follows :
- - Face 1 : minimal value of 1st parametric direction
- - Face 2 : maximal value of 1st parametric direction
- - Face 3 : minimal value of 2nd parametric direction
- - Face 4 : maximal value of 2nd parametric direction
- - Face 5 : minimal value of 3rd parametric direction
- - Face 6 : maximal value of 3rd parametric direction
+ - **Face 1** : minimal value of 1st parametric direction
+ - **Face 2** : maximal value of 1st parametric direction
+ - **Face 3** : minimal value of 2nd parametric direction
+ - **Face 4** : maximal value of 2nd parametric direction
+ - **Face 5** : minimal value of 3rd parametric direction
+ - **Face 6** : maximal value of 3rd parametric direction
