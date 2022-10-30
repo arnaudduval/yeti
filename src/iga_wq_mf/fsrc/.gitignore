@@ -2,3 +2,4 @@
 *.out
 *.mod
 main.f90
+main.f03

@@ -249,7 +249,7 @@ module elastoplasticity
     
     end type mecamat
 
-    contains
+contains
 
     ! ======================================
     ! COMBINED ISOTROPIC/KINEMATIC HARDENING

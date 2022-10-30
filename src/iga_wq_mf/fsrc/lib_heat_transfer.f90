@@ -62,7 +62,7 @@ module heat_transfer
     integer, parameter :: dimen = 3
     double precision, parameter :: span_tol = 1e-8
 
-    contains
+contains
 
     subroutine interpolate_temperature_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, T_ctrlpts, T_interp)

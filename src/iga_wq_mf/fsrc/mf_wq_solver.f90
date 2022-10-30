@@ -3,7 +3,7 @@
 ! author: Joaquin Cornejo
 ! ==========================
 
-subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, & 
                                 methodPCG, directsol, x, RelRes, RelError)
@@ -15,7 +15,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: coefs
     dimension :: coefs(3, 3, nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -30,17 +30,17 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     character(len = 10) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b, directsol
-    dimension :: b(nr_u*nr_v*nr_w), directsol(nr_u*nr_v*nr_w)
+    dimension :: b(nr_total), directsol(nr_total)
     
     double precision, intent(out) :: x, RelRes, RelError
-    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1), RelError(nbIterPCG+1)
+    dimension :: x(nr_total), RelRes(nbIterPCG+1), RelError(nbIterPCG+1)
 
     ! Local data
     ! ----------
     ! Conjugate gradient algorithm
     double precision :: rsold, rsnew, alpha, normb
     double precision, allocatable, dimension(:) :: r, p, Ap, dummy, z
-    integer :: nr_total, iter, i
+    integer :: iter, i
 
     ! Fast diagonalization
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -58,19 +58,19 @@ subroutine mf_iga_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
     double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w
 
-    ! Convert CSR to CSC
+    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Set initial variables
-    nr_total = nr_u*nr_v*nr_w
     allocate(r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total))
     x = 0.d0; r = b
     RelRes = 0.d0; RelRes(1) = 1.d0
     RelError = 0.d0; RelError(1) = 1.d0
     normb = maxval(abs(r))
     if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
+    ! if (normb.lt.threshold) return 
 
     if (methodPCG.eq.'WP') then 
         if (nbIterPCG.gt.0) then

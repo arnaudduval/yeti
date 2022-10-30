@@ -565,7 +565,7 @@ module iga_basis_weights
 
     end type iga
 
-    contains
+contains
 
     subroutine iga_initialize(obj, degree, size_kv, knotvector)
         !! Initialize IGA-Galerkin approach
@@ -663,7 +663,7 @@ module wq_basis_weights
     
     end type wq
 
-    contains
+contains
 
     subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
         !! Initialize IGA-WQ approach
