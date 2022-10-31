@@ -21,19 +21,15 @@ IGAparametrization class to generate the datasetting for an IsoGeometric
 Analysis.
 """
 
-import os
-import sys
-import time
-from copy import deepcopy
-
 import numpy as np
 from scipy import sparse as sp
 
 from DOF import getinddof
+from postprocessing.postproc import generate_vtk, generate_vtk_wsol
 from ..geometricmodel import NBfile
 from ..mechanicalmodel import MechanicalModel as INPfile
 from .IGA_refinementFcts import iga_refinement
-from postprocessing.postproc import generate_vtk, generate_vtk_wsol
+
 
 
 class IGAparametrization:
