@@ -19,7 +19,7 @@ YETI (YET another Iga code) is a python library for isogeometric analysis dedica
    :maxdepth: 2
    :Caption: API reference:
 
-   api/test.rst
+   api/preprocessing.rst
 
 
 
