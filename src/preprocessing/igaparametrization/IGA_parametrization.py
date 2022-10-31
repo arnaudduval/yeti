@@ -662,19 +662,14 @@ class IGAparametrization:
         return inputs
 
     def get_inputs4eval_coupling_gpts(self, filename, npts_u, npts_v):
-        """Return the necessary data evaluate coupling Gauss points coordinates
-        Paramaters
-        ----------
-        filename : string
-            Base name for resulting files
-        npts_u : integer
-            Number of points to compute along u parametric direction
-        npts_v : integer
-            Number of points to compute along v parametric direction
-        Return
-        ------
-        inputs : dict
-            The necessary input parameters for Fortran subroutin eval_coupling_gpts
+        """
+        Return the necessary data to evaluate coupling Gauss points coordinates
+
+        :param str filename: base name for resulting files
+        :param int npts_u: number of points to compute along u parametric direction
+        :param int npts_v: number of points to compute along v parametric direction
+        :return: the necessary input parameters for Fortran subroutine ``eval_coupling_gpts``
+        :rtype: dict
         """
         inputs = {'filename': filename,
                   'npts_u': npts_u,
