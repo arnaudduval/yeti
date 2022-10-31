@@ -39,24 +39,14 @@ class IGAparametrization:
                  filename=None):
         """Initialise IGA parametrization class object.
 
-        Parameters
-        ----------
-        mechanicalSettings : TYPE, optional
-            DESCRIPTION. The default is None.
-        geometricSettings : TYPE, optional
-            DESCRIPTION. The default is None.
-        filename : str, optional
-            Short name of input files (without extensions) to read. The
-            default is None.
-
+        :param str filename: short name (without exetension) of input files to read, defaults to ``None``
+        :param list mechanicalSettings: list containing mechanical settings, defaults to ``None``
+        :param list geometricSettings: list containing geometric settings, defaults to ``None``
+        
         Raises
         ------
         Exception
             DESCRIPTION.
-
-        Returns
-        -------
-        None.
 
         """
         if filename is not None:
