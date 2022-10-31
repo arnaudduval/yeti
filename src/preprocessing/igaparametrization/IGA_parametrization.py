@@ -1,5 +1,5 @@
 # Copyright 2018-2021 Thibaut Hirschler
-# Copyright 2020-2021 Arnaud Duval
+# Copyright 2020-2022 Arnaud Duval
 # Copyright 2021 Marie Guerder
 
 # This file is part of Yeti.
@@ -14,11 +14,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
+
 """
-Created on Mon Feb 19 2018
-
-@author: thirschler
-
 CONTAINS:
 IGAparametrization class to generate the datasetting for an IsoGeometric
 Analysis.
