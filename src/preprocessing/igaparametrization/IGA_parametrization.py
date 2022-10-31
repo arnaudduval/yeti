@@ -619,19 +619,20 @@ class IGAparametrization:
     ---------------------------------------------------------------------------
     """
 
-    def get_inputs4analysis(self):
-        """Return the necessary data for linear eleastic analysis."""
-        inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv,
-                  self._Ukv, self._Nijk, self._weight, self._Jpqr,
-                  self._ELT_TYPE, self._PROPS, self._JPROPS,
-                  self._MATERIAL_PROPERTIES, self._TENSOR, self._bc_target,
-                  self._indDLoad, self._JDLType, self._ADLMAG,
-                  self._bc_target_nbelem, self._load_target_nbelem,
-                  self._bc_values, self._mcrd, self._NBPINT, self._nb_bc,
-                  self._nb_load, self._nb_cload, self._nb_patch, self._nb_elem,
-                  self._nnode, self._nb_cp]
+    #### Not used anymore ?
+    # def get_inputs4analysis(self):
+    #     """Return the necessary data for linear eleastic analysis."""
+    #     inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv,
+    #               self._Ukv, self._Nijk, self._weight, self._Jpqr,
+    #               self._ELT_TYPE, self._PROPS, self._JPROPS,
+    #               self._MATERIAL_PROPERTIES, self._TENSOR, self._bc_target,
+    #               self._indDLoad, self._JDLType, self._ADLMAG,
+    #               self._bc_target_nbelem, self._load_target_nbelem,
+    #               self._bc_values, self._mcrd, self._NBPINT, self._nb_bc,
+    #               self._nb_load, self._nb_cload, self._nb_patch, self._nb_elem,
+    #               self._nnode, self._nb_cp]
 
-        return inputs
+    #     return inputs
 
     def get_inputs4indDOF(self):
         """Get the settings concerning fixed and free degrees of freedom."""
