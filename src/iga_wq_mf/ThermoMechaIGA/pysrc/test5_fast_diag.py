@@ -21,6 +21,7 @@ if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Set filename
 filename_data = folder_data + 'FD_time.dat' 
+extension = '.png'
 
 # Set global variable
 dataExist = True
@@ -98,7 +99,7 @@ else:
     ax.set_ylim([0.01, 100])
 
     fig.tight_layout()
-    fig.savefig(folder_figure + 'FastDiag' + '.pdf')
+    fig.savefig(folder_figure + 'FastDiag' + extension)
 
     if withReference:
         # Create plot

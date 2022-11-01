@@ -551,17 +551,17 @@ module iga_basis_weights
     type :: iga
         ! Input
         integer :: degree, size_kv
-        double precision, dimension(:), pointer :: knotvector
+        double precision, dimension(:), allocatable :: knotvector
         
         ! Output
-        double precision, dimension(:), pointer :: qp_position, qp_weight, data_B0, data_B1
-        integer, dimension(:,:), pointer :: indices
+        double precision, dimension(:), allocatable :: qp_position, qp_weight, data_B0, data_B1
+        integer, dimension(:,:), allocatable :: indices
         integer :: nnz_B, nnz_I
         
         ! Local 
         integer :: nb_ctrlpts, nb_qp, size_nodes
-        integer, dimension(:,:), pointer :: Bshape
-        double precision, dimension(:), pointer :: nodes
+        integer, dimension(:,:), allocatable :: Bshape
+        double precision, dimension(:), allocatable :: nodes
 
     end type iga
 
@@ -647,18 +647,18 @@ module wq_basis_weights
     type :: wq
         ! Input
         integer :: degree, size_kv, method
-        double precision, dimension(:), pointer :: knotvector 
+        double precision, dimension(:), allocatable :: knotvector 
 
         ! Output
-        double precision, dimension(:), pointer ::  qp_position, data_B0, data_B1, & 
+        double precision, dimension(:), allocatable ::  qp_position, data_B0, data_B1, & 
                                                     data_W00, data_W01, data_W10, data_W11
-        integer, dimension(:,:), pointer :: indices
+        integer, dimension(:,:), allocatable :: indices
         integer :: nnz_B, nnz_I
 
         ! Local
         integer :: maxrule, size_nodes, nb_ctrlpts, nb_qp_wq, nb_qp_cgg
-        integer, dimension(:, :), pointer :: B0shape, B1shape
-        double precision, dimension(:), pointer :: nodes 
+        integer, dimension(:, :), allocatable :: B0shape, B1shape
+        double precision, dimension(:), allocatable :: nodes 
         logical :: isuniform
     
     end type wq

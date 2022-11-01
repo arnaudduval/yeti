@@ -23,6 +23,7 @@ add_library(iga_wq_mf
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_heat_transfer.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_plasticity.f90"
+            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_heatsolver.f03"
 )
 
 target_link_libraries(iga_wq_mf base OpenMP::OpenMP_Fortran ${LAPACK_lapack_LIBRARY})  

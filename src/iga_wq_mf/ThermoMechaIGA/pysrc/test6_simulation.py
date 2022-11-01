@@ -17,7 +17,7 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-FileExist = False
+FileExist = True
 isIGA = False
 degree_list, cuts_list = np.arange(3, 7), np.arange(4, 8)
 method_list = ["WP", "C", "JMC", "TDC"]
@@ -49,5 +49,5 @@ for cuts in [6]:
 
             else :
                 inputs = SimulationData(filename)._dataSimulation
-                plot_iterative_solver(filename, inputs)
+                plot_iterative_solver(filename, inputs, extension= '.png')
 

@@ -31,18 +31,18 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
     #     elif pcgmethod == "JMS": new_method_list.append('FD + jacobien mean + scaling')
 
     for pcgmethod in method_list:
-        # if pcgmethod == "WP": new_method_list.append('CG w.o. preconditioner')
-        # elif pcgmethod == "C": new_method_list.append('CG + FD w.o. problem info')
-        # elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
-        # elif pcgmethod == "TDC": new_method_list.append('CG + literature method') 
-        # elif pcgmethod == "JMC": new_method_list.append('CG + FD w. problem info') 
-        # elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
         if pcgmethod == "WP": new_method_list.append('w.o. preconditioner')
-        elif pcgmethod == "C": new_method_list.append('FD w.o. problem info.')
+        elif pcgmethod == "C": new_method_list.append('Classic FD method')
         elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
-        elif pcgmethod == "TDC": new_method_list.append('Literature method') 
-        elif pcgmethod == "JMC": new_method_list.append('FD w. problem info.') 
+        elif pcgmethod == "TDC": new_method_list.append('Literature') 
+        elif pcgmethod == "JMC": new_method_list.append('This work') 
         elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
+        # if pcgmethod == "WP": new_method_list.append('w.o. preconditioner')
+        # elif pcgmethod == "C": new_method_list.append('FD w.o. problem info.')
+        # elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
+        # elif pcgmethod == "TDC": new_method_list.append('Literature method') 
+        # elif pcgmethod == "JMC": new_method_list.append('FD w. problem info.') 
+        # elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
     
     markers = ['o', 'v', 's', 'X', '+', 'p']
     if twoplots:

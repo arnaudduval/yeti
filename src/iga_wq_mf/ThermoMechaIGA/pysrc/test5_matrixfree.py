@@ -15,6 +15,7 @@ folder_figure = os.path.dirname(full_path) + '/results/test5/'
 if not os.path.isdir(folder_figure): os.mkdir(folder_figure)
 
 # Set global variable
+extension = '.png'
 dataExist = True
 withReference = False
 degree_list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15]
@@ -93,34 +94,6 @@ if not dataExist:
 
 else:
 
-    # # Create plot
-    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
-    # markers = ['o', 'v', 's', 'X', '+', 'p']
-
-    # # Extract litterature data
-    # file_P = pd.read_table(folder_data + 'matvec_Python7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-    # degree = file_M.degree
-    # arrays = [file_M.P1, file_K.P1, file_KM.P1]
-    # labels = [  r'$\mathsf{M}x$' + ', ' + r'$h^{-1}=64$', 
-    #             r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=64$', 
-    #             r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$']
-
-    # ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=64$', marker=markers[0])
-    # for i, [array, label] in enumerate(zip(arrays, labels)):
-    #     ax.semilogy(degree, array, '--', label=label, marker=markers[i+1])
-
-    # # Set properties
-    # ax.legend(loc='best')
-    # ax.set_xlabel("Degree " + r'$p$')
-    # ax.set_ylabel("CPU time (s)")
-    # ax.set_xlim([1, 11])
-    # ax.set_ylim([0.01, 100])
-    # fig.tight_layout()
-    # fig.savefig(folder_figure + 'ProductMF' + '.pdf')
-
     # Create plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
     markers = ['o', 'v', 's', 'X', '+', 'p']
@@ -130,25 +103,52 @@ else:
     file_M = pd.read_table(folder_data + 'matvec_MF_Mass7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
     file_K = pd.read_table(folder_data + 'matvec_MF_Stiff7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
     file_KM = pd.read_table(folder_data + 'matvec_MF_SM7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-    degree = file_KM.degree
-    arrays = [file_KM.P1, file_KM.P2]
-    labels = [  r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$',  
-                r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=128$']
+    degree = file_M.degree
+    arrays = [file_M.P1, file_K.P1, file_KM.P1]
+    labels = [  r'$\mathsf{M}x$' + ', ' + r'$h^{-1}=64$', 
+                r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=64$', 
+                r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$']
 
-    ax.semilogy(file_P.degree, file_P.P1, '--', label='spMV'+', '+r'$h^{-1}=64$', marker=markers[0])
-    ax.semilogy(file_P.degree, file_P.P2, '--', label='spMV'+', '+r'$h^{-1}=128$', marker=markers[0])
+    ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=64$', marker=markers[0])
     for i, [array, label] in enumerate(zip(arrays, labels)):
-        ax.semilogy(degree, array, '--', label=label, marker=markers[i+1], nonpositive='mask')
+        ax.semilogy(degree, array, '--', label=label, marker=markers[i+1])
 
     # Set properties
     ax.legend(loc='best')
     ax.set_xlabel("Degree " + r'$p$')
     ax.set_ylabel("CPU time (s)")
-    ax.set_xlim([1, 13])
+    ax.set_xlim([1, 11])
     ax.set_ylim([0.01, 100])
     fig.tight_layout()
-    fig.savefig(folder_figure + 'ProductMF2' + '.pdf')
+    fig.savefig(folder_figure + 'ProductMF' + extension)
 
+    # # Create plot
+    # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
+    # markers = ['o', 'v', 's', 'X', '+', 'p']
+
+    # # Extract litterature data
+    # file_P = pd.read_table(folder_data + 'matvec_Python7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_M = pd.read_table(folder_data + 'matvec_MF_Mass7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_K = pd.read_table(folder_data + 'matvec_MF_Stiff7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # file_KM = pd.read_table(folder_data + 'matvec_MF_SM7.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+    # degree = file_KM.degree
+    # arrays = [file_KM.P1, file_KM.P2]
+    # labels = [  r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=64$',  
+    #             r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=128$']
+
+    # ax.semilogy(file_P.degree, file_P.P1, '--', label='spMV'+', '+r'$h^{-1}=64$', marker=markers[0])
+    # ax.semilogy(file_P.degree, file_P.P2, '--', label='spMV'+', '+r'$h^{-1}=128$', marker=markers[0])
+    # for i, [array, label] in enumerate(zip(arrays, labels)):
+    #     ax.semilogy(degree, array, '--', label=label, marker=markers[i+1], nonpositive='mask')
+
+    # # Set properties
+    # ax.legend(loc='best')
+    # ax.set_xlabel("Degree " + r'$p$')
+    # ax.set_ylabel("CPU time (s)")
+    # ax.set_xlim([1, 13])
+    # ax.set_ylim([0.01, 100])
+    # fig.tight_layout()
+    # fig.savefig(folder_figure + 'ProductMF2' + extension)
 
     if withReference:
         # Create plot
