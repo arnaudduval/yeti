@@ -1,5 +1,5 @@
 # Copyright 2018-2021 Thibaut Hirschler
-# Copyright 2020-2021 Arnaud Duval
+# Copyright 2020-2022 Arnaud Duval
 # Copyright 2021 Marie Guerder
 
 # This file is part of Yeti.
@@ -14,29 +14,22 @@
 #
 # You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
+
 """
-Created on Mon Feb 19 2018
-
-@author: thirschler
-
 CONTAINS:
 IGAparametrization class to generate the datasetting for an IsoGeometric
 Analysis.
 """
 
-import os
-import sys
-import time
-from copy import deepcopy
-
 import numpy as np
 from scipy import sparse as sp
 
 from DOF import getinddof
+from postprocessing.postproc import generate_vtk, generate_vtk_wsol
 from ..geometricmodel import NBfile
 from ..mechanicalmodel import MechanicalModel as INPfile
 from .IGA_refinementFcts import iga_refinement
-from postprocessing.postproc import generate_vtk, generate_vtk_wsol
+
 
 
 class IGAparametrization:
@@ -46,24 +39,14 @@ class IGAparametrization:
                  filename=None):
         """Initialise IGA parametrization class object.
 
-        Parameters
-        ----------
-        mechanicalSettings : TYPE, optional
-            DESCRIPTION. The default is None.
-        geometricSettings : TYPE, optional
-            DESCRIPTION. The default is None.
-        filename : str, optional
-            Short name of input files (without extensions) to read. The
-            default is None.
-
+        :param str filename: short name (without exetension) of input files to read, defaults to ``None``
+        :param list mechanicalSettings: list containing mechanical settings, defaults to ``None``
+        :param list geometricSettings: list containing geometric settings, defaults to ``None``
+        
         Raises
         ------
         Exception
             DESCRIPTION.
-
-        Returns
-        -------
-        None.
 
         """
         if filename is not None:
@@ -636,19 +619,20 @@ class IGAparametrization:
     ---------------------------------------------------------------------------
     """
 
-    def get_inputs4analysis(self):
-        """Return the necessary data for linear eleastic analysis."""
-        inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv,
-                  self._Ukv, self._Nijk, self._weight, self._Jpqr,
-                  self._ELT_TYPE, self._PROPS, self._JPROPS,
-                  self._MATERIAL_PROPERTIES, self._TENSOR, self._bc_target,
-                  self._indDLoad, self._JDLType, self._ADLMAG,
-                  self._bc_target_nbelem, self._load_target_nbelem,
-                  self._bc_values, self._mcrd, self._NBPINT, self._nb_bc,
-                  self._nb_load, self._nb_cload, self._nb_patch, self._nb_elem,
-                  self._nnode, self._nb_cp]
+    #### Not used anymore ?
+    # def get_inputs4analysis(self):
+    #     """Return the necessary data for linear eleastic analysis."""
+    #     inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv,
+    #               self._Ukv, self._Nijk, self._weight, self._Jpqr,
+    #               self._ELT_TYPE, self._PROPS, self._JPROPS,
+    #               self._MATERIAL_PROPERTIES, self._TENSOR, self._bc_target,
+    #               self._indDLoad, self._JDLType, self._ADLMAG,
+    #               self._bc_target_nbelem, self._load_target_nbelem,
+    #               self._bc_values, self._mcrd, self._NBPINT, self._nb_bc,
+    #               self._nb_load, self._nb_cload, self._nb_patch, self._nb_elem,
+    #               self._nnode, self._nb_cp]
 
-        return inputs
+    #     return inputs
 
     def get_inputs4indDOF(self):
         """Get the settings concerning fixed and free degrees of freedom."""
@@ -678,19 +662,14 @@ class IGAparametrization:
         return inputs
 
     def get_inputs4eval_coupling_gpts(self, filename, npts_u, npts_v):
-        """Return the necessary data evaluate coupling Gauss points coordinates
-        Paramaters
-        ----------
-        filename : string
-            Base name for resulting files
-        npts_u : integer
-            Number of points to compute along u parametric direction
-        npts_v : integer
-            Number of points to compute along v parametric direction
-        Return
-        ------
-        inputs : dict
-            The necessary input parameters for Fortran subroutin eval_coupling_gpts
+        """
+        Return the necessary data to evaluate coupling Gauss points coordinates
+
+        :param str filename: base name for resulting files
+        :param int npts_u: number of points to compute along u parametric direction
+        :param int npts_v: number of points to compute along v parametric direction
+        :return: the necessary input parameters for Fortran subroutine ``eval_coupling_gpts``
+        :rtype: dict
         """
         inputs = {'filename': filename,
                   'npts_u': npts_u,

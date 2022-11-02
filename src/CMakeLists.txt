@@ -48,7 +48,7 @@ macro(CreateF2PYModule)
     add_custom_command(
         OUTPUT ${generated_module_file}
         COMMAND ${F2PY_EXECUTABLE} 
-        -m ${MODULE_NAME} #--quiet
+        -m ${MODULE_NAME} --quiet
         -c --opt=-O2 
         -I${CMAKE_Fortran_MODULE_DIRECTORY}
         -L${LIBRARY_OUTPUT_PATH}

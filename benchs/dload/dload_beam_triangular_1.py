@@ -42,12 +42,12 @@ nb_deg[0, 0] = 1
 nb_deg[1, 0] = 1
 nb_deg[2, 0] = 1
 
-nb_ref[0, 0] = 4
-nb_ref[1, 0] = 3
-nb_ref[2, 0] = 6
+nb_ref[0, 0] = 2
+nb_ref[1, 0] = 2
+nb_ref[2, 0] = 5
 
 # Initial refinement (none)
-modeleIGA.refine(nb_deg, nb_ref)
+modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
 ndof = modeleIGA._nb_dof_free
@@ -106,7 +106,7 @@ print(f)
 error = (SOL[idx, 2] - f) / f
 print(error)
 
-if abs(error) > 0.03:
+if abs(error) > 0.02:
     sys.exit(-1)
 else:
     sys.exit(0)
