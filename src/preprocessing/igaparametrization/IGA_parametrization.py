@@ -2137,7 +2137,7 @@ class IGAparametrization:
             # Get initial type of load (does not change)
             l_name = distrib[1]
             # Fill new dictionnary with refined pressure field
-            new_nodal_distributions[key] = [new_field.flatten().copy(), l_name]
+            new_nodal_distributions[key] = [new_field.copy(), l_name]
         # Update internal property
         self._nodal_distributions = new_nodal_distributions
 
