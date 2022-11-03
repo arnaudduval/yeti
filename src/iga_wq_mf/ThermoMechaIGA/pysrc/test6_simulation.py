@@ -19,14 +19,13 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 FileExist = True
 isIGA = False
-degree_list, cuts_list = np.arange(3, 7), np.arange(4, 8)
+degree_list, cuts_list = np.arange(6, 7), np.arange(5, 6)
 method_list = ["WP", "C", "JMC", "TDC"]
-# method_list = ["JMC", "TDC"]
 
 for cuts in [6]:
     for degree in [6]:
-        for geometryName in ['CB', 'VB', 'TR', 'RQA']: 
-        # for geometryName in ['VB']: 
+        # for geometryName in ['CB', 'VB', 'TR', 'RQA']: 
+        for geometryName in ['CB']: 
 
 
             # Get file name
@@ -49,5 +48,5 @@ for cuts in [6]:
 
             else :
                 inputs = SimulationData(filename)._dataSimulation
-                plot_iterative_solver(filename, inputs, extension= '.png')
+                plot_iterative_solver(filename, inputs, extension= '.pdf')
 

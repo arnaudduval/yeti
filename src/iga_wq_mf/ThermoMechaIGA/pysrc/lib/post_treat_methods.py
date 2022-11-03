@@ -80,7 +80,7 @@ def plot_iterative_solver(filename, inputs:dict, extension='.pdf', threshold=1.e
         ax2.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 
     # ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    # ax2.legend(loc=0)
+    ax2.legend(loc=0)
     fig.tight_layout()
     fig.savefig(savename)
 

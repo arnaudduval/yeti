@@ -700,10 +700,11 @@ class thermoMechaModel():
                             U[l,i,j,k] = u_interp[l, pos]
         
         # Create point data 
-        pointData= {"normalized det J" : DET}
+        pointData = {}
         for l in range(nbDOF):
             varname = 'U' + str(l+1)
             pointData[varname] = U[l,:,:,:]
+        pointData["normalized det J"] = DET
 
         # Export geometry
         name = folder + self._name

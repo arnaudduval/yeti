@@ -2,14 +2,70 @@ module Heatsolver
 
     use heat_transfer
     type CGtype
-        logical :: withscaling = .false.
+        logical :: withscaling = .false., withdiag = .true.
+        integer :: matrixfreetype = 1
         double precision, dimension(:), pointer :: factor_up => NULL(), factor_down => NULL()
-        procedure(), pointer, nopass :: matrixfree => NULL()
     end type CGtype
 
 contains
 
-    subroutine set_FDscaling(solv, nr_total, factor_up, factor_down)
+    subroutine matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(CGtype), pointer :: solv
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        if (solv%matrixfreetype.eq.1) then
+
+            call mf_wq_get_cu(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        else if (solv%matrixfreetype.eq.2) then
+
+            call mf_wq_get_ku(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        else if (solv%matrixfreetype.eq.3) then
+
+            call mf_wq_get_kcu(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        else 
+            stop 'function not defined'
+        end if
+
+    end subroutine matrixfree
+
+    subroutine setup_FDscaling(solv, nr_total, factor_up, factor_down)
 
         implicit none
         ! Input / output data
@@ -23,7 +79,36 @@ contains
         solv%factor_up => factor_up
         solv%factor_down => factor_down
 
-    end subroutine set_FDscaling
+    end subroutine setup_FDscaling
+
+    subroutine FDscaling(nnz, factor_up, factor_down, array_inout)
+        !! Square-root scaling in fast diagonalization method
+    
+        use omp_lib
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, intent(in) :: nnz
+        double precision, intent(in) :: factor_up, factor_down
+        dimension :: factor_up(nnz), factor_down(nnz)
+    
+        double precision, intent(inout) :: array_inout
+        dimension :: array_inout(nnz)
+    
+        ! Local data
+        ! ----------
+        integer :: i, nb_tasks
+    
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        do i = 1, nnz
+            array_inout(i) = sqrt(factor_up(i)/factor_down(i))*array_inout(i) 
+        end do  
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL 
+    
+    end subroutine FDscaling
 
     subroutine fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -38,7 +123,7 @@ contains
         integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
         double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
         dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                        eigen_diag(nr_total), array_in(nr_total)
+                        eigen_diag(*), array_in(nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(nr_total)
@@ -51,27 +136,29 @@ contains
 
         dummy = array_in
         if (solv%withscaling) then 
-            call fd_sqr_scaling(nr_total, solv%factor_up, solv%factor_down, dummy)
+            call FDscaling(nr_total, solv%factor_up, solv%factor_down, dummy)
         end if
     
         ! Compute (Uw x Uv x Uu)'.array_in
         call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                         transpose(U_u), transpose(U_v), transpose(U_w), dummy, array_temp)
-    
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-        do i = 1, nr_total
-            array_temp(i) = array_temp(i)/eigen_diag(i)
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
+        
+        if (solv%withdiag) then
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
+            do i = 1, nr_total
+                array_temp(i) = array_temp(i)/eigen_diag(i)
+            end do
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL
+        end if
     
         ! Compute (Uw x Uv x Uu).array_temp
         call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, dummy)
 
         if (solv%withscaling) then 
-            call fd_sqr_scaling(nr_total, solv%factor_up, solv%factor_down, dummy)
+            call FDscaling(nr_total, solv%factor_up, solv%factor_down, dummy)
         end if
         array_out = dummy
         
@@ -123,7 +210,7 @@ contains
         rsold = dot_product(r, r); p = r
         
         do iter = 1, nbIterPCG
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Ap)
@@ -193,7 +280,7 @@ contains
         rsold = dot_product(r, z); p = z
         
         do iter = 1, nbIterPCG
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Ap)
@@ -260,14 +347,14 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Ap)
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, s, As)
@@ -337,7 +424,7 @@ contains
 
         do iter = 1, nbIterPCG
             call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, p, ptilde)
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
@@ -345,7 +432,7 @@ contains
             s = r - alpha*Aptilde
             
             call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, s, stilde)
-            call solv%matrixfree(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call matrixfree(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, stilde, Astilde)

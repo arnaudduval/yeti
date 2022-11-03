@@ -100,8 +100,8 @@ def plot_geometry2D(geo:geomdlModel):
     return fig
 
 # Set global variables
-CASE = 10
-extension = '.pdf'
+CASE = 11
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -511,10 +511,6 @@ elif CASE == 10:
     # full_path = os.path.realpath(__file__)
     # folderVTK = os.path.dirname(full_path) + '/results/' + geoname
     # grid = pv.read(folderVTK+ '.vts')
-    # if geoname == 'RQA': rot = grid.rotate_z(180)
-    # elif geoname == 'VB': rot = grid.rotate_z(45)
-    # else: rot = grid
-    # z = np.ones(len(grid.points[:, 2]))
     
     # # Plot the data 
     # sargs = dict(
@@ -532,6 +528,51 @@ elif CASE == 10:
     # plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
     # # plotter.camera.zoom(0.6)
     # # pv.Renderer.isometric_view(plotter)
+    # plotter.background_color = 'white'
+    # plotter.window_size = [1600, 1600]
+    # plotter.screenshot(filename)
+
+    # -------------------------------------
+    # Open image and make into Numpy array
+    im = Image.open(filename).convert('RGB')
+    na = np.array(im)
+    # Find coordinates
+    colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
+
+    # Find first and last row containing colored pixels
+    top, bottom = colorY[0], colorY[-1]
+
+    # Extract Region of Interest
+    ROI=na[top:bottom, :]
+    Image.fromarray(ROI).save(filename)
+
+elif CASE == 11:
+
+    # Read data
+    full_path = os.path.realpath(__file__)
+    folderVTK = os.path.dirname(full_path) + '/results/test8/'
+    grid = pv.read(folderVTK + 'IGAparametrization.vts')
+
+    # Global variables
+    geoname = 'CB'
+    filename = folderVTK + 'VTK_' + geoname + '.png'
+
+    # # Plot the data 
+    # sargs = dict(
+    #         title = 'Temperature',
+    #         title_font_size=50,
+    #         label_font_size=40,
+    #         shadow=True,
+    #         n_labels=2,
+    #         fmt="%.1f",
+    #         position_x=0.2, 
+    #         position_y=0.1,
+    # )
+    # # boring_cmap = plt.cm.get_cmap("GnBu", 1)
+    # pv.start_xvfb()
+    # plotter = pv.Plotter(off_screen=True)
+    # plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs, label='Temperature')
+    # plotter.camera.zoom(0.6)
     # plotter.background_color = 'white'
     # plotter.window_size = [1600, 1600]
     # plotter.screenshot(filename)
