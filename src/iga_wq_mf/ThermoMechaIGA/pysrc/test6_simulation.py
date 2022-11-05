@@ -17,7 +17,7 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-FileExist = True
+FileExist = False
 isIGA = False
 degree_list, cuts_list = np.arange(6, 7), np.arange(5, 6)
 method_list = ["WP", "C", "JMC", "TDC"]
@@ -25,7 +25,7 @@ method_list = ["WP", "C", "JMC", "TDC"]
 for cuts in [6]:
     for degree in [6]:
         # for geometryName in ['CB', 'VB', 'TR', 'RQA']: 
-        for geometryName in ['CB']: 
+        for geometryName in ['RQA']: 
 
 
             # Get file name

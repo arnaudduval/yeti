@@ -24,7 +24,7 @@ filename_data = folder_data + 'FD_time.dat'
 extension = '.png'
 
 # Set global variable
-dataExist = True
+dataExist = False
 withReference = False
 degree_list = range(2, 7)
 cut_list = range(6, 10)
@@ -64,7 +64,7 @@ if not dataExist:
             FDtime = stop - start
             print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, FDtime))
             timeFD_matrix[i, j+1] = FDtime
-            np.savetxt(filename_data, timeFD_matrix)
+            # np.savetxt(filename_data, timeFD_matrix)
 
 else:
 

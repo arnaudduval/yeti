@@ -295,7 +295,7 @@ subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array
     deallocate(R1)
 
     call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
-    deallocate(R2)
+    deallocate(R2)   
 
 end subroutine sumproduct3d_dM
 

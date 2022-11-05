@@ -33,9 +33,10 @@ def powdentest(P:list):
 
 # Initialize
 dataExist = True
-geolist = ['TR','CB']
+geolist = ['VB', 'CB']
 mlist = ['WP', 'C', 'JMC']
 # mlist = ['JMC', 'C', 'WP']
+
 
 if not dataExist:
     
@@ -44,7 +45,7 @@ if not dataExist:
             filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
             
             # Set global variables
-            degree, cuts = 6, 4
+            degree, cuts = 6, 5
             conductivity, capacity = 0.1, 1.0
             newmark = 1.0
             
@@ -203,16 +204,16 @@ else:
             #                 color=colorset[int(step%len(colorset))], alpha=1.0/iterNL)
 
             # Print the first
-            step = resPCG[0, -1]; iterNL = resPCG[1, -1]
-            newresidue = resPCG[2:, -1]; newresidue = newresidue[newresidue>0]
+            step = resPCG[0, 0]; iterNL = resPCG[1, 0]
+            newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]
             ax.semilogy(np.arange(len(newresidue)), newresidue, 'o-', linewidth=2.5,
                         label=labelmethod)
-            ax.legend(loc=0)
+            # ax.legend(loc=0)
             ax.set_xlabel('Number of iterations of BiCGSTAB solver')
             ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
             ax.set_ybound(lower=1e-12, upper=10)
 
         # Set properties
-        filename = folder + 'TransientNL_' + geoname + '2.pdf'
+        filename = folder + 'TransientNL_' + geoname + '.pdf'
         fig.tight_layout()
         fig.savefig(filename)
