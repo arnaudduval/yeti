@@ -5,19 +5,21 @@
 """
 
 from lib.__init__ import *
-from lib.physics import powden_rotring, temperature_rotring
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.fortran_mf_iga import fortran_mf_iga
+from lib.physics import powden_rotring, temperature_rotring
+from lib.base_functions import relativeError
 
 # Set global variables
-isIGA = False
-degree, cuts = 6, 4
+isIGA   = False
+degree  = 6
+cuts    = 4
 
 if isIGA: cfortran = fortran_mf_iga
 else: cfortran = fortran_mf_wq
 
-# Create geometry 
+# Create model 
 geometry = {'degree':[degree, degree, degree]}
 modelGeo = geomdlModel('RQA', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
@@ -26,16 +28,14 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 # ----------------------
 # By interpolation
 # ----------------------
-# Interpolation of u
 modelPhy = cfortran(modelIGA)
-
 u_interp = modelPhy.interpolate_ControlPoints(funfield=temperature_rotring)
 output = modelPhy.interpolate_field(u_ctrlpts=u_interp, nbDOF=1)
 qp_sample, u_interp_sample = output[1], output[-1]
 
 # Compare results
 u_exact_sample = temperature_rotring(qp_sample)
-error_1 = np.linalg.norm(u_exact_sample-u_interp_sample, np.inf)/np.linalg.norm(u_exact_sample, np.inf)*100
+error_1 = relativeError(u_interp_sample, u_exact_sample)
 print("Error using interpolation : %.3e %%" %(error_1,))
 
 # Add material 
@@ -62,7 +62,7 @@ usol[dof] = un; usol[dod] = ud
 
 # Compare solutions 
 u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol, nbDOF=1)[-1]
-error_2 = np.linalg.norm(u_interp_sample-u_interp_sample2, np.inf)/np.linalg.norm(u_interp_sample, np.inf)*100
+error_2 = relativeError(u_interp_sample, u_interp_sample2)
 print("Error interpolation/direct solution : %.3e %%" %(error_2,))
 
 # # ----------------------

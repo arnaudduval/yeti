@@ -9,7 +9,8 @@ from lib.base_functions import (create_knotvector,
                                 eval_basis_python,
                                 iga_find_positions_weights,
                                 wq_find_basis_weights_opt, 
-                                wq_find_basis_weights_fortran
+                                wq_find_basis_weights_fortran,
+                                relativeError
 )
 
 # Select folder
@@ -17,23 +18,19 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test1/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# Set number of elements
 nbel_list = [2**i for i in np.arange(1, 6)]
 
 for varName in ['I00', 'I01', 'I10', 'I11']:
     
-    # Create plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
 
     for degree in range(3, 8):
 
-        # Initialize
         norm_fortran = []; norm_python = []
         color = next(ax._get_lines.prop_cycler)['color']
 
         for nbel in nbel_list: 
 
-            # Initialize
             knotvector = create_knotvector(degree, nbel)
             nb_ctrlpts = degree + nbel
 
@@ -43,7 +40,6 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)[2:]
             nb_qp_wq = np.max(indj); indi -= 1; indj -= 1
 
-            # Create basis and weights from fortran
             B0f  = sp.csr_matrix((B[:,0], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
             B1f  = sp.csr_matrix((B[:,1], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
             W00f = sp.csr_matrix((W[:,0], indj, indi), shape=(nb_ctrlpts, nb_qp_wq))
@@ -74,33 +70,28 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
             I00 = B0 @ np.diag(Wcgg) @ B0.T; I01 = B0 @ np.diag(Wcgg) @ B1.T
             I10 = B1 @ np.diag(Wcgg) @ B0.T; I11 = B1 @ np.diag(Wcgg) @ B1.T
 
-            # To choose variables
+            # -------------
+            # Compare results 
+            # -------------
             if varName   == 'I00': var1 = I00; var2 = I00f; var3 = I00p
             elif varName == 'I01': var1 = I01; var2 = I01f; var3 = I01p
             elif varName == 'I10': var1 = I10; var2 = I10f; var3 = I10p
             elif varName == 'I11': var1 = I11; var2 = I11f; var3 = I11p
 
-            # Compare results 
-            error_fortran = var1 - var2
-            norm_temp = np.linalg.norm(error_fortran, np.inf)/np.linalg.norm(var1, np.inf)*100
-            if norm_temp > 1e-5: raise Warning("Something happend. Fortran basis are wrong")
+            norm_temp = relativeError(var2, var1)
+            if norm_temp > 1e-5: raise Warning('Something happend. Fortran basis are wrong')
             norm_fortran.append(norm_temp)
 
-            error_python = var1 - var3
-            norm_temp = np.linalg.norm(error_python, np.inf)/np.linalg.norm(var1, np.inf)*100
-            if norm_temp > 1e-5: raise Warning("Something happend. Python basis are wrong")
+            norm_temp = relativeError(var3, var1)
+            if norm_temp > 1e-5: raise Warning('Something happend. Python basis are wrong')
             norm_python.append(norm_temp)
 
-        # Figure 
-        strlabel = 'Degree p = ' + str(degree)
-        ax.loglog(nbel_list, norm_fortran, '-o', label=strlabel, color=color)
+        label = 'Degree $p = $ ' + str(degree)
+        ax.loglog(nbel_list, norm_fortran, '-o', label=label, color=color)
         ax.loglog(nbel_list, norm_python, '--P', color=color)
 
-        print('---------------')
-
-    # Plot configurations
-    ax.set_xlabel("Number of elements $nb_{el}$")
-    ax.set_ylabel("Relative error (%)")
+    ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+    ax.set_ylabel('Relative error')
     ax.legend(bbox_to_anchor= (1.05, 1.0), loc='upper left')
     fig.tight_layout()
-    fig.savefig(folder + 'Error_basisweights_' + varName +'.png')
+    fig.savefig(folder + 'Error_basisweights_' + varName + '.pdf')

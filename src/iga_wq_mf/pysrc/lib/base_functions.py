@@ -10,6 +10,12 @@ from .__init__ import *
 # GENERAL FUNCTIONS
 # ==========================
 
+def relativeError(array_app, array_th):
+    error = array_th - array_app
+    try:    relError = np.linalg.norm(error, np.inf)/np.linalg.norm(array_th, np.inf)
+    except: relError = sp.linalg.norm(error, np.inf)/sp.linalg.norm(array_th, np.inf)
+    return relError
+
 def sigmoid(x, c1=1, c2=0):
     f = 1.0/(1.0 + np.exp(-c1*(x-c2)))
     return f
@@ -516,7 +522,6 @@ def wq_find_weights(degree, knotvector, r):
     
     nbel = len(np.unique(knotvector))-1
     nb_ctrlpts = degree + nbel
-    nb_qp_wq = len(xwq)
 
     # ------------
     # Space S^p_r
@@ -557,6 +562,7 @@ def wq_find_weights(degree, knotvector, r):
     data_W00, data_W01, data_W10, data_W11 = [], [], [], []
     
     # Find shape of B and I
+    nb_qp_wq = len(xwq)
     shape_B0_p0, shape_B1_p0 = wq_get_shape_B(degree, nbel, r)
     shape_B_p1 = wq_get_shape_B(degree-1, nbel, r+1)[0]
 

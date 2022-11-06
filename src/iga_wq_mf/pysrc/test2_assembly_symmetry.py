@@ -1,7 +1,7 @@
 """
 .. Test of assembly and symmetry 
 .. We test if the assembly by fortran and python are the same
-.. We also test how asymetric are K and C matrices
+.. We also test how asymmetric the stiffness and mass matrices are
 .. Joaquin Cornejo 
 """
 
@@ -12,6 +12,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 from lib.python_iga import IGA
 from lib.python_wq import WQ
 from lib.physics import power_density
+from lib.base_functions import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -19,9 +20,9 @@ folder = os.path.dirname(full_path) + '/results/test2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-isIGA           = False
-doConstruction  = True
-doSymetry       = False
+isIGA       = False
+doAssembly  = False
+doSymmetry  = True
 
 if isIGA: cfortran = fortran_mf_iga; cpython = IGA
 else: cfortran = fortran_mf_wq; cpython = WQ
@@ -29,32 +30,27 @@ else: cfortran = fortran_mf_wq; cpython = WQ
 # ------------------------
 # TEST ERROR CONSTRUCTION
 # ------------------------
-if doConstruction: 
+if doAssembly: 
     for geoName in ['VB', 'TR', 'CB']:
         for varName in ['C', 'K', 'F', 'J', 'QP']:
 
-            # Create plot
-            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
             for degree in range(3, 6):
 
-                # Initialize
                 norm = []; nbel_list =[]
 
                 for cuts in range(1, 4): 
                     print(degree, cuts, varName)
 
                     blockPrint()
-                    # Get file name
-                    funpow = power_density 
-
-                    # Define geometry 
+                    
+                    # Define model 
                     geometry = {'degree':[degree, degree, degree]}
                     modelGeo = geomdlModel(geoName, **geometry)
                     modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                                                 np.array([cuts, cuts, cuts]))
                 
-                    # Creation of thermal model object
                     modelPhy1 = cfortran(modelIGA)
                     modelPhy2 = cpython(modelIGA)
 
@@ -62,12 +58,13 @@ if doConstruction:
                     material = {'capacity':1, 'conductivity':np.eye(3)}
                     modelPhy1._set_material(material)
                     modelPhy2._set_material(material)
+                    funpow = power_density 
 
-                    if varName == "K": 
+                    if varName == 'K': 
                         var1 = modelPhy1.eval_conductivity_matrix()
                         var2 = modelPhy2.eval_conductivity_matrix()
 
-                    elif varName == "C": 
+                    elif varName == 'C': 
                         var1 = modelPhy1.eval_capacity_matrix()
                         var2 = modelPhy2.eval_capacity_matrix()
                     
@@ -85,80 +82,64 @@ if doConstruction:
                     enablePrint()
 
                     # Compare results 
-                    error = var1 - var2
-                    try: norm_temp = sp.linalg.norm(error, np.inf)/sp.linalg.norm(var1, np.inf)*100
-                    except: norm_temp = np.linalg.norm(error, np.inf)/np.linalg.norm(var1, np.inf)*100
-                    if norm_temp > 1e-5: raise Warning("Fortran and Python give different results")
+                    norm_temp = relativeError(var1, var2)
+                    if norm_temp > 1e-5: raise Warning('Fortran and Python give different results')
                     norm.append(norm_temp)
-
-                    # Set number of elements
                     nbel_list.append(2**cuts)
                 
-                # Plot 
-                strlabel = 'Degree p = ' + str(degree)
-                ax.loglog(nbel_list, norm, label=strlabel)
+                label = 'Degree $p =$ ' + str(degree)
+                ax.loglog(nbel_list, norm, label=label)
 
-            # Properties
             ax.grid()
-            ax.set_xlabel("Number of elements $nb_{el}$")
-            ax.set_ylabel("Relative error (%)")
+            ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+            ax.set_ylabel('Relative error')
             ax.legend()
             fig.tight_layout()
             fig.savefig(folder + 'Error_constructionI_' + geoName + '_' + varName + '.png')
 
-
 # ------------------------
 # TEST ERROR SYMMETRY
 # ------------------------
-if doSymetry:
+if doSymmetry:
     for geoName in ['VB', 'CB', 'TR', 'RQA']:
         for varName in ['K', 'C']:
 
-            # Create plot
-            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
-
-            for degree in range(3, 6):
+            for degree in range(3, 7):
                 
-                # Initialize
                 norm = []; nbel_list =[]
                 
                 for cuts in range(1, 5): 
                     print(degree, cuts)
                     
-                    # blockPrint()
-                    # Define geometry 
+                    blockPrint()
+                    # Define model 
                     geometry = {'degree':[degree, degree, degree]}
                     modelGeo = geomdlModel(geoName, **geometry)
                     modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                                                 np.array([cuts, cuts, cuts]))
                 
-                    # Creation of thermal model object
                     modelPhy1 = cfortran(modelIGA)
 
                     # Set physical properties
                     material = {'capacity':1, 'conductivity':np.eye(3)}
                     modelPhy1._set_material(material)
 
-                    if varName == "K": var1 = modelPhy1.eval_conductivity_matrix()
-                    elif varName == "C": var1 = modelPhy1.eval_capacity_matrix()
-                    # enablePrint()
+                    if varName == 'K': var1 = modelPhy1.eval_conductivity_matrix()
+                    elif varName == 'C': var1 = modelPhy1.eval_capacity_matrix()
+                    enablePrint()
 
                     # Compare results 
-                    error = var1.T - var1
-                    norm_temp = sp.linalg.norm(error, np.inf)/sp.linalg.norm(var1, np.inf)*100
+                    norm_temp = relativeError(var1, var1.T)
                     norm.append(norm_temp)
-
-                    # Set number of elements
                     nbel_list.append(2**cuts/(degree+1))
 
-                # Plot 
-                strlabel = 'Degree p = ' + str(degree)
-                ax.loglog(nbel_list, norm, label=strlabel)
+                label = 'Degree $p =$ ' + str(degree)
+                ax.loglog(nbel_list, norm, label=label)
 
-            # Properties
-            ax.set_xlabel("(Parametric support width)" + r"$^{-1}$", fontsize= 16)
-            ax.set_ylabel("Relative error (%)", fontsize= 16)
+            ax.set_xlabel('(Parametric support width)' + r'$^{-1}$')
+            ax.set_ylabel('Relative error')
             ax.legend()
             fig.tight_layout()
             fig.savefig(folder + 'Error_symmetry_' + geoName + '_' + varName + '.png')
