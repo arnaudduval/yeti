@@ -8,9 +8,8 @@
 *.pdf
 *.png
 *.dat
-*.tar.gz
+*.gz
 
 # Folders
-results/
-data/
-fsrc_dev
+results
+data
