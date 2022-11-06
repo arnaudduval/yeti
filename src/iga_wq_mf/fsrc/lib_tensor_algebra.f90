@@ -818,6 +818,7 @@ end subroutine csr_get_diag_3d
 ! ----------------------------
 ! Fast Diagonalization method
 ! ----------------------------
+
 subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
                                 data_B0, data_W0, data_B1, data_W1, robin_condition, &
                                 eigenvalues, eigenvectors, Kdiag, Mdiag)
@@ -1107,7 +1108,7 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
 end subroutine compute_mean_3d
 
 subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
-    
+
     implicit none
     ! Input /  output data
     ! --------------------

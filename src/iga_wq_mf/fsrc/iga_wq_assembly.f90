@@ -4,6 +4,8 @@
 !
 ! This module computes matrices and vectors using sum-factorization algorithms. 
 ! These algorithms exploits tensor-product structure of shape functions.
+! ATTENTION :   this file is not supposed to be used since we want to optimize 
+!               the calculation time by not forming the matrix.
 ! ==========================
 
 ! ---------------
@@ -44,7 +46,7 @@ subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1), indi_I_w(nr_w+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v, indj_I_w
 
-    ! Verify if number of non-zero values are well-defined
+    ! Verify if number of nonzero values are well-defined
     nnz_I_u_t = -1; nnz_I_v_t = -1; nnz_I_w_t = -1
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
@@ -64,7 +66,7 @@ subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
 
-    ! Compute non zero data 
+    ! Compute nonzero data 
     call csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u(:, 1), data_B_v(:, 1), data_B_w(:, 1), &
@@ -119,7 +121,7 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     integer :: i, j, alpha, beta, zeta
     dimension :: alpha(d), beta(d), zeta(d)
 
-    ! Verify if number of non-zero values are well-defined
+    ! Verify if number of nonzero values are well-defined
     nnz_I_u_t = -1; nnz_I_v_t = -1; nnz_I_w_t = -1
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
@@ -139,7 +141,7 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
 
-    ! Compute non zero data
+    ! Compute nonzero data
     data_result = 0.d0
     do j = 1, d
         do i = 1, d
@@ -349,7 +351,7 @@ subroutine wq_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
     dimension :: indi_I_u(nr_u+1), indi_I_v(nr_v+1)
     integer, allocatable, dimension(:) :: indj_I_u, indj_I_v
 
-    ! Verify if number of non-zero values are well-defined
+    ! Verify if number of nonzero values are well-defined
     nnz_I_u_t = -1; nnz_I_v_t = -1
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
@@ -365,7 +367,7 @@ subroutine wq_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
 
-    ! Compute non zero data
+    ! Compute nonzero data
     call csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
                             data_B_u(:, 1), data_B_v(:, 1), data_W_u(:, 1), data_W_v(:, 1), &
@@ -418,7 +420,7 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     integer :: i, j, alpha, beta, zeta
     dimension :: alpha(d), beta(d), zeta(d)
 
-    ! Verify if number of non-zero values are well-defined
+    ! Verify if number of nonzero values are well-defined
     nnz_I_u_t = -1; nnz_I_v_t = -1
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
@@ -434,7 +436,7 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
                                     nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                     size(data_result), indi_result, indj_result)
 
-    ! Compute non zero data
+    ! Compute nonzero data
     data_result = 0.d0
     do j = 1, d
         do i = 1, d

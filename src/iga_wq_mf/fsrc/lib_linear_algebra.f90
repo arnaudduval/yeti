@@ -596,6 +596,7 @@ end subroutine trapezoidal_rule_3d
 ! --------
 ! Indices
 ! --------
+
 subroutine coo2csr(nm, nr, nnz, a_coo, indi_coo, indj_coo, a_csr, indj_csr, indi_csr)
     !! Change COO format to CSR format
 
@@ -960,7 +961,7 @@ subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT
     !! Creates the block matrix L of size nrxnc. 
     !! This matrix satisfies : L M L' = Mnn (n are the free control points)
     !! Returns L and LT in CSR format
-    !! In this matrix, the number of non zero values is equal to the number of rows (nc = nr + ndod, nr = ndof)
+    !! In this matrix, the number of nonzero values is equal to the number of rows (nc = nr + ndod, nr = ndof)
 
     implicit none
     ! Input/output data
