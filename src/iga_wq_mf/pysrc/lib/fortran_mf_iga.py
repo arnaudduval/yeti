@@ -180,22 +180,21 @@ class fortran_mf_iga(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, f, nbIterPCG, threshold, method, directsol): 
+    def MFsteadyHeat(self, f, nbIterPCG, threshold, method): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if directsol is None: directsol = np.ones(len(f))
-        # epsilon,method,cond,jj,directsol
+
         # Get inputs
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method, directsol]
+        inputs = [coefs, *inputs_tmp, f, nbIterPCG, threshold, method]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue, error = solver.mf_iga_steady_heat_3d(*inputs)
+        if self._dim == 3: sol, residue = solver.mf_iga_steady_heat_3d(*inputs)
 
-        return sol, residue, error
+        return sol, residue
         
     def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "

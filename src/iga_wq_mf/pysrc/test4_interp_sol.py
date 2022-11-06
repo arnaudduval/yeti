@@ -65,14 +65,14 @@ u_interp_sample2 = modelPhy.interpolate_field(u_ctrlpts=usol, nbDOF=1)[-1]
 error_2 = relativeError(u_interp_sample, u_interp_sample2)
 print("Error interpolation/direct solution : %.3e %%" %(error_2,))
 
-# # ----------------------
-# # By iterative solver
-# # ----------------------
-# method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
-# for method_name in method_list: 
-#     inputs = [Fn, 80, 1e-15, method_name, un]   
-#     un_t = modelPhy.MFsteadyHeat(*inputs)[0]
-#     usol_t = np.zeros(modelPhy._nb_ctrlpts_total)
-#     usol_t[dof] = un_t; usol_t[dod] = ud
-#     error_3 = np.linalg.norm(usol-usol_t, np.inf)/np.linalg.norm(usol, np.inf)*100
-#     print("Error direct/iterative solution : %.3e %%" %(error_3,))
+# ----------------------
+# By iterative solver
+# ----------------------
+method_list = ["WP", "C", "TDS", "JMS", "TDC", "JMC"]
+for method_name in method_list: 
+    inputs = [Fn, 50, 1e-15, method_name]   
+    un_t = modelPhy.MFsteadyHeat(*inputs)[0]
+    usol_t = np.zeros(modelPhy._nb_ctrlpts_total)
+    usol_t[dof] = un_t; usol_t[dod] = ud
+    error_3 = relativeError(usol_t, usol)
+    print("Error direct/iterative solution : %.3e %%" %(error_3,))

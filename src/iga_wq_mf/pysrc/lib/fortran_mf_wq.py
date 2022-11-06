@@ -351,22 +351,21 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, F, nbIterPCG=100, threshold=1.e-12, methodPCG='FDC', directsol=None): 
+    def MFsteadyHeat(self, F, nbIterPCG=100, threshold=1.e-12, methodPCG='FDC'): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if directsol is None: directsol = np.ones(len(F))
 
         # Get inputs 
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, F, nbIterPCG, threshold, methodPCG, directsol]
+        inputs = [coefs, *inputs_tmp, F, nbIterPCG, threshold, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: sol, residue, error = solver.mf_wq_steady_heat_3d(*inputs)
+        if self._dim == 3: sol, residue = solver.mf_wq_steady_heat_3d(*inputs)
 
-        return sol, residue, error
+        return sol, residue
 
     def MFtransientHeatNL(self, F=None, G=None, time_list=None, newmark=1, 
                         table_Kprop=None, table_Cprop=None, methodPCG='FDC'):

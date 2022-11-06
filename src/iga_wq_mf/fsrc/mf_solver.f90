@@ -3,139 +3,21 @@
 ! author: Joaquin Cornejo
 ! ==========================
 
-subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, x, RelRes)
-    !! Preconditioned conjugate gradient to solve interpolation problem
-    !! IN CSR FORMAT
-                        
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-    double precision, intent(in) :: W_u, W_v, W_w
-    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
-
-    integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nr_total)
-    
-    double precision, intent(out) :: x, RelRes
-    dimension :: x(nr_total), RelRes(nbIterPCG+1)
-
-    ! Local data
-    ! -----------
-    ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, normb
-    double precision :: r, p, Ap, z
-    dimension :: r(nr_total), p(nr_total), Ap(nr_total), z(nr_total)
-    integer :: iter, i
-
-    ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, Kdiag, Mdiag
-    double precision, dimension(:, :), allocatable :: data_W
-    double precision :: U_u, U_v, U_w, D_u, D_v, D_w
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), D_u(nr_u), D_v(nr_v), D_w(nr_w)
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    
-    ! --------------------
-    ! Eigen decomposition
-    ! --------------------
-    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-    Mcoef_u = 1.d0; Kcoef_u = 1.d0
-    Mcoef_v = 1.d0; Kcoef_v = 1.d0
-    Mcoef_w = 1.d0; Kcoef_w = 1.d0
-
-    allocate(data_W(nnz_u, 2), Kdiag(nr_u), Mdiag(nr_u))
-    do i = 1, nnz_u
-        data_W(i, :) = data_B_u(i, :) * W_u(indj_u(i))
-    end do
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u(:, 1), data_W(:, 1), data_B_u(:, 2), &
-                            data_W(:, 2), (/0, 0/), D_u, U_u, Kdiag, Mdiag)
-    deallocate(data_W, Kdiag, Mdiag)
-    
-    allocate(data_W(nnz_v, 2), Kdiag(nr_v), Mdiag(nr_v))
-    do i = 1, nnz_v
-        data_W(i, :) = data_B_v(i, :) * W_v(indj_v(i))
-    end do
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v(:, 1), data_W(:, 1), data_B_v(:, 2), &
-                            data_W(:, 2), (/0, 0/), D_v, U_v, Kdiag, Mdiag)    
-    deallocate(data_W, Kdiag, Mdiag)
-
-    allocate(data_W(nnz_w, 2), Kdiag(nr_w), Mdiag(nr_w))
-    do i = 1, nnz_w
-        data_W(i, :) = data_B_w(i, :) * W_w(indj_w(i))
-    end do
-    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w(:, 1), data_W(:, 1), data_B_w(:, 2), &
-                            data_W(:, 2), (/0, 0/), D_w, U_w, Kdiag, Mdiag)  
-    deallocate(data_W, Kdiag, Mdiag)
-    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-
-    ! -------------------------------------------
-    ! Preconditioned Conjugate Gradient algorithm
-    ! -------------------------------------------
-    x = 0.d0; r = b
-    call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
-    p = z
-    rsold = dot_product(r, z); normb = maxval(abs(r))
-    RelRes = 0.d0; RelRes(1) = 1.d0
-
-    do iter = 1, nbIterPCG
-        call mf_iga_get_Cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, W_u, W_v, W_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, p, Ap)
-        alpha = rsold/dot_product(p, Ap)
-        x = x + alpha * p
-        r = r - alpha * Ap
-
-        RelRes(iter+1) = maxval(abs(r))/normb
-        if (RelRes(iter+1).le.threshold) exit
-
-        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
-        rsnew = dot_product(r, z)
-        p = z + rsnew/rsold * p
-        rsold = rsnew
-    end do
-
-end subroutine mf_iga_interpolate_cp_3d
-
 subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterPCG, threshold, x, RelRes)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
+    
+    use heat_spmf
+    use heat_solver
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
+    double precision, target, intent(in) :: coefs
     dimension :: coefs(nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -155,17 +37,14 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     ! Local data
     ! ----------
-    ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, normb
-    double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
-    dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
-                    ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-    integer :: iter
+    type(thermomat), pointer :: mat
+    type(cgsolver), pointer :: solv
 
     ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, Kdiag, Mdiag
-    double precision :: U_u, U_v, U_w, D_u, D_v, D_w
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), D_u(nr_u), D_v(nr_v), D_w(nr_w)
+    double precision, dimension(:), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+                                                    Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, Deigen
+    double precision :: U_u, U_v, U_w
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -179,73 +58,384 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
-    ! ---------------------
     ! Eigen decomposition
-    ! ---------------------
-    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+    allocate(   Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w), &
+                Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-    allocate(Kdiag(nr_u), Mdiag(nr_u))
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                            data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag, Mdiag)
-    deallocate(Kdiag, Mdiag)
+    call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
+                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+    deallocate( Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, &
+                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
-    allocate(Kdiag(nr_v), Mdiag(nr_v))
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                            data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag, Mdiag)   
-    deallocate(Kdiag, Mdiag) 
+    ! Set material and solver
+    allocate(mat, solv)
+    mat%Ccoefs => coefs
+    solv%withscaling = .false.
+    solv%withdiag = .false.
+    solv%matrixfreetype = 1
 
-    allocate(Kdiag(nr_w), Mdiag(nr_w))
-    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                            data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag, Mdiag)  
-    deallocate(Kdiag, Mdiag)
-    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-
-    ! -----------------------------------------------
-    ! Preconditioned bi-conjugate gradient algorithm
-    ! -----------------------------------------------
-    x = 0.d0; r = b; rhat = r; p = r
-    rsold = dot_product(r, rhat); normb = maxval(abs(r))
-    RelRes = 0.d0; RelRes(1) = 1.d0
-
-    do iter = 1, nbIterPCG
-        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde)
-        call mf_wq_get_cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-        alpha = rsold/dot_product(Aptilde, rhat)
-        s = r - alpha*Aptilde
-        
-        call fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
-        call mf_wq_get_cu_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, stilde, Astilde)
-        omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-        x = x + alpha*ptilde + omega*stilde
-        r = s - omega*Astilde    
-        
-        RelRes(iter+1) = maxval(abs(r))/normb
-        if (RelRes(iter+1).le.threshold) exit
-
-        rsnew = dot_product(r, rhat)
-        beta = (alpha/omega)*(rsnew/rsold)
-        p = r + beta*(p - omega*Aptilde)
-        rsold = rsnew
-    end do
+    call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+            data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, Deigen, &
+            nbIterPCG, threshold, b, x, RelRes)
 
 end subroutine mf_wq_interpolate_cp_3d
 
+subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, x, RelRes)
+    !! Preconditioned conjugate gradient to solve interpolation problem
+    !! IN CSR FORMAT
+    use heat_spmf
+    use heat_solver
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, target, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
+    double precision, intent(in) :: W_u, W_v, W_w
+    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
+
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nr_total)
+    
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(nr_total), RelRes(nbIterPCG+1)
+
+    ! Local data
+    ! -----------
+    type(thermomat), pointer :: mat
+    type(cgsolver), pointer :: solv
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+                                                    Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, Deigen
+    double precision :: U_u, U_v, U_w
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w)
+    double precision :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+    integer :: i
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+
+    ! Calculate equivalent weight
+    do i = 1, nnz_u
+        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
+        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
+    end do
+    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
+
+    do i = 1, nnz_v
+        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
+        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
+    end do
+    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
+
+    do i = 1, nnz_w
+        data_W_w(i, 1) = data_B_w(i, 1) * W_w(indj_w(i))
+        data_W_w(i, 4) = data_B_w(i, 2) * W_w(indj_w(i))
+    end do
+    data_W_w(i, 2) = data_W_w(i, 1); data_W_w(i, 3) = data_W_w(i, 4)
+    
+    ! Eigen decomposition
+    allocate(   Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w), &
+                Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+    Mcoef_w = 1.d0; Kcoef_w = 1.d0
+
+    call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
+                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+    deallocate( Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, &
+                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+    
+    ! Set material and solver
+    allocate(mat, solv)
+    mat%Ccoefs => coefs
+    solv%withscaling = .false.
+    solv%withdiag = .false.
+    solv%matrixfreetype = 1
+
+    call PCG(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+            data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, Deigen, &
+            nbIterPCG, threshold, b, x, RelRes)
+            
+end subroutine mf_iga_interpolate_cp_3d
+
+subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            b, nbIterPCG, threshold, methodPCG, x, RelRes)
+    !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
+    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
+    !! bn is compute beforehand (In python).
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(3, 3, nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    character(len=10), intent(in) :: methodPCG
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nr_u*nr_v*nr_w)
+    
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    ! Conjugate gradient algorithm
+    double precision :: rsold, rsnew, alpha, omega, beta, normb
+    double precision, allocatable, dimension(:) :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde
+    integer :: nr_total, iter, i, j
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
+    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
+    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w, temp
+    double precision, dimension(:, :, :), allocatable :: newcoefs
+    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
+    double precision :: k_um, k_vm, k_wm, kmeanvector(3), kappa
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+    
+    ! Convert CSR to CSC
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+
+    ! Set initial values
+    nr_total = nr_u*nr_v*nr_w
+    allocate(r(nr_total), rhat(nr_total), p(nr_total), Ap(nr_total), As(nr_total), s(nr_total), &
+            dummy(nr_total), ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total))
+    x = 0.d0; r = b; rhat = r; p = r
+    RelRes = 0.d0; RelRes(1) = 1.d0
+    rsold = dot_product(r, rhat); normb = maxval(abs(r))
+    if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
+
+    if (methodPCG.eq.'WP') then 
+        if (nbIterPCG.gt.0) then
+            ! ----------------------------
+            ! Conjugate Gradient algorithm
+            ! ----------------------------
+            do iter = 1, nbIterPCG
+                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, Ap)
+                alpha = rsold/dot_product(Ap, rhat)
+                s = r - alpha*Ap
+
+                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, s, As)
+                omega = dot_product(As, s)/dot_product(As, As)
+                x = x + alpha*p + omega*s
+                r = s - omega*As
+    
+                RelRes(iter+1) = maxval(abs(r))/normb
+                if (RelRes(iter+1).le.threshold) exit
+
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Ap)
+                rsold = rsnew
+            end do
+        end if
+
+    else  
+        ! Custumize method
+        allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        k_um = 1.d0; k_vm = 1.d0; k_wm = 1.d0
+
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
+            ! Diagonal decomposition
+            do iter = 1, 2
+                call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
+                                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+            end do
+
+        else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
+            ! Compute mean
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), k_um) 
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), k_vm) 
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), k_wm) 
+        
+        end if
+
+        ! Condition number P^-1 A
+        if ((methodPCG.eq.'C').or.(methodPCG.eq.'JMC')) then
+            
+            kmeanvector = (/k_um, k_vm, k_wm/)
+            call compute_steady_condition_number(nc_total, coefs, kmeanvector, kappa)
+            print*, 'Method:', methodPCG, 'Condition number: ', kappa
+        
+        else if (methodPCG.eq.'TDC') then
+            allocate(newcoefs(3, 3, nc_total), temp(3, nc_total))
+            temp = 0.d0
+            call kronvec3d(nc_w, Mcoef_w, nc_v, Mcoef_v, nc_u, Kcoef_u, temp(1, :), 1.d0)
+            call kronvec3d(nc_w, Mcoef_w, nc_v, Kcoef_v, nc_u, Mcoef_u, temp(2, :), 1.d0)
+            call kronvec3d(nc_w, Kcoef_w, nc_v, Mcoef_v, nc_u, Mcoef_u, temp(3, :), 1.d0)
+            do i = 1, 3
+                do j = 1, 3
+                    newcoefs(i, j, :) = (coefs(i, j, :)/sqrt(temp(i, :)))/sqrt(temp(j, :))
+                end do
+            end do
+            call compute_steady_condition_number(nc_total, newcoefs, (/1.d0, 1.d0, 1.d0/), kappa)
+            print*, 'Method:', methodPCG, 'Condition number: ', kappa
+        end if
+        
+        ! --------------------
+        ! Eigen decomposition
+        ! -------------------- 
+        allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w), Kdiag_u(nr_u), Mdiag_u(nr_u))
+
+        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+
+        allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
+        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
+
+        allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
+        call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
+        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+
+        ! Find diagonal of eigen values
+        allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(nr_total))
+        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_um, k_vm, k_wm, Deigen)
+        deallocate(I_u, I_v, I_w)
+
+        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
+            ! Find diagonal of preconditioner
+            allocate(Dparametric(nr_total))
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w, k_um, k_vm, k_wm, Dparametric)
+            deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+
+            ! Find diagonal of real matrix (K in this case)
+            allocate(Dphysical(nr_total))
+            call wq_find_conductivity_diagonal_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
+        end if
+
+        if (nbIterPCG.gt.0) then
+            ! -------------------------------------------
+            ! Preconditioned Conjugate Gradient algorithm
+            ! -------------------------------------------
+            do iter = 1, nbIterPCG
+
+                dummy = p
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
+                end if 
+                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
+                end if
+
+                call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
+
+                alpha = rsold/dot_product(Aptilde, rhat)
+                s = r - alpha*Aptilde
+
+                dummy = s
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
+                end if
+                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
+                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
+                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
+                end if
+
+                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, stilde, Astilde)
+
+                omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+                x = x + alpha*ptilde + omega*stilde
+                r = s - omega*Astilde    
+
+                RelRes(iter+1) = maxval(abs(r))/normb
+                if (RelRes(iter+1).le.threshold) exit
+
+                rsnew = dot_product(r, rhat)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Aptilde)
+                rsold = rsnew
+            end do
+        end if
+    end if
+
+end subroutine mf_wq_steady_heat_3d
+
 subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, nbIterPCG, threshold, & 
-                                methodPCG, directsol, x, RelRes, RelError)
+                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, b, &
+                                nbIterPCG, threshold, methodPCG, x, RelRes)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python)
@@ -268,11 +458,11 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
 
     character(len = 10) :: methodPCG
     integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold, b, directsol
-    dimension :: b(nr_total), directsol(nr_total)
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nr_total)
     
-    double precision, intent(out) :: x, RelRes, RelError
-    dimension :: x(nr_total), RelRes(nbIterPCG+1), RelError(nbIterPCG+1)
+    double precision, intent(out) :: x, RelRes
+    dimension :: x(nr_total), RelRes(nbIterPCG+1)
 
     ! Local data
     ! ----------
@@ -306,7 +496,6 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     allocate(r(nr_total), p(nr_total), Ap(nr_total), dummy(nr_total), z(nr_total))
     x = 0.d0; r = b
     RelRes = 0.d0; RelRes(1) = 1.d0
-    RelError = 0.d0; RelError(1) = 1.d0
     normb = maxval(abs(r))
     if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
     ! if (normb.lt.threshold) return 
@@ -332,7 +521,6 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 r = r - alpha * Ap
 
                 RelRes(iter+1) = maxval(abs(r))/normb
-                RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 if (RelRes(iter+1).le.threshold) exit
             
                 rsnew = dot_product(r, r)
@@ -445,7 +633,6 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 r = r - alpha * Ap
 
                 RelRes(iter+1) = maxval(abs(r))/normb
-                RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
                 if (RelRes(iter+1).le.threshold) exit       
 
                 dummy = r
@@ -465,249 +652,6 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     end if
 
 end subroutine mf_iga_steady_heat_3d
-
-subroutine mf_wq_steady_heat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            b, nbIterPCG, threshold, methodPCG, directsol, x, RelRes, RelError)
-    !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
-    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
-    !! bn is compute beforehand (In python).
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(3, 3, nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    character(len=10), intent(in) :: methodPCG
-    integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold, b, directsol
-    dimension :: b(nr_u*nr_v*nr_w), directsol(nr_u*nr_v*nr_w)
-    
-    double precision, intent(out) :: x, RelRes, RelError
-    dimension :: x(nr_u*nr_v*nr_w), RelRes(nbIterPCG+1), RelError(nbIterPCG+1)
-
-    ! Local data
-    ! ----------
-    ! Conjugate gradient algorithm
-    double precision :: rsold, rsnew, alpha, omega, beta, normb
-    double precision, allocatable, dimension(:) :: r, rhat, p, Ap, s, As, dummy, ptilde, Aptilde, stilde, Astilde
-    integer :: nr_total, iter, i, j
-
-    ! Fast diagonalization
-    double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:), allocatable :: Dparametric, Dphysical, Deigen
-    double precision, dimension(:, :), allocatable :: U_u, U_v, U_w, temp
-    double precision, dimension(:, :, :), allocatable :: newcoefs
-    double precision, dimension(:), allocatable :: D_u, D_v, D_w, I_u, I_v, I_w
-    double precision :: k_um, k_vm, k_wm, kmeanvector(3), kappa
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    ! Convert CSR to CSC
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    ! Set initial values
-    nr_total = nr_u*nr_v*nr_w
-    allocate(r(nr_total), rhat(nr_total), p(nr_total), Ap(nr_total), As(nr_total), s(nr_total), &
-            dummy(nr_total), ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total))
-    x = 0.d0; r = b; rhat = r; p = r
-    RelRes = 0.d0; RelRes(1) = 1.d0
-    RelError = 0.d0; RelError(1) = 1.d0
-    rsold = dot_product(r, rhat); normb = maxval(abs(r))
-    if (normb.lt.threshold) stop 'Force is almost zero, then it is a trivial solution' 
-
-    if (methodPCG.eq.'WP') then 
-        if (nbIterPCG.gt.0) then
-            ! ----------------------------
-            ! Conjugate Gradient algorithm
-            ! ----------------------------
-            do iter = 1, nbIterPCG
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, p, Ap)
-                alpha = rsold/dot_product(Ap, rhat)
-                s = r - alpha*Ap
-
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, s, As)
-                omega = dot_product(As, s)/dot_product(As, As)
-                x = x + alpha*p + omega*s
-                r = s - omega*As
-    
-                RelRes(iter+1) = maxval(abs(r))/normb
-                RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-                if (RelRes(iter+1).le.threshold) exit
-
-                rsnew = dot_product(r, rhat)
-                beta = (alpha/omega)*(rsnew/rsold)
-                p = r + beta*(p - omega*Ap)
-                rsold = rsnew
-            end do
-        end if
-
-    else  
-        ! Custumize method
-        allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
-        Mcoef_w = 1.d0; Kcoef_w = 1.d0
-        k_um = 1.d0; k_vm = 1.d0; k_wm = 1.d0
-
-        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
-            ! Diagonal decomposition
-            do iter = 1, 2
-                call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
-                                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-            end do
-
-        else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
-            ! Compute mean
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), k_um) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), k_vm) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), k_wm) 
-        
-        end if
-
-        ! Condition number P^-1 A
-        if ((methodPCG.eq.'C').or.(methodPCG.eq.'JMC')) then
-            
-            kmeanvector = (/k_um, k_vm, k_wm/)
-            call compute_steady_condition_number(nc_total, coefs, kmeanvector, kappa)
-            print*, 'Method:', methodPCG, 'Condition number: ', kappa
-        
-        else if (methodPCG.eq.'TDC') then
-            allocate(newcoefs(3, 3, nc_total), temp(3, nc_total))
-            temp = 0.d0
-            call kronvec3d(nc_w, Mcoef_w, nc_v, Mcoef_v, nc_u, Kcoef_u, temp(1, :), 1.d0)
-            call kronvec3d(nc_w, Mcoef_w, nc_v, Kcoef_v, nc_u, Mcoef_u, temp(2, :), 1.d0)
-            call kronvec3d(nc_w, Kcoef_w, nc_v, Mcoef_v, nc_u, Mcoef_u, temp(3, :), 1.d0)
-            do i = 1, 3
-                do j = 1, 3
-                    newcoefs(i, j, :) = (coefs(i, j, :)/sqrt(temp(i, :)))/sqrt(temp(j, :))
-                end do
-            end do
-            call compute_steady_condition_number(nc_total, newcoefs, (/1.d0, 1.d0, 1.d0/), kappa)
-            print*, 'Method:', methodPCG, 'Condition number: ', kappa
-        end if
-        
-
-        ! --------------------
-        ! Eigen decomposition
-        ! -------------------- 
-        allocate(U_u(nr_u, nr_u), D_u(nr_u), U_v(nr_v, nr_v), D_v(nr_v), U_w(nr_w, nr_w), D_w(nr_w), Kdiag_u(nr_u), Mdiag_u(nr_u))
-
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
-
-        allocate(Kdiag_v(nr_v), Mdiag_v(nr_v))
-        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)    
-
-        allocate(Kdiag_w(nr_w), Mdiag_w(nr_w))
-        call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
-        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-
-        ! Find diagonal of eigen values
-        allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w), Deigen(nr_total))
-        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, k_um, k_vm, k_wm, Deigen)
-        deallocate(I_u, I_v, I_w)
-
-        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-            ! Find diagonal of preconditioner
-            allocate(Dparametric(nr_total))
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, k_um, k_vm, k_wm, Dparametric)
-            deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-
-            ! Find diagonal of real matrix (K in this case)
-            allocate(Dphysical(nr_total))
-            call wq_find_conductivity_diagonal_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
-        end if
-
-        if (nbIterPCG.gt.0) then
-            ! -------------------------------------------
-            ! Preconditioned Conjugate Gradient algorithm
-            ! -------------------------------------------
-            do iter = 1, nbIterPCG
-
-                dummy = p
-                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy) 
-                end if 
-                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, ptilde)
-                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, ptilde)  
-                end if
-
-                call mf_wq_get_ku_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-
-                alpha = rsold/dot_product(Aptilde, rhat)
-                s = r - alpha*Aptilde
-
-                dummy = s
-                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, dummy)  
-                end if
-                call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, dummy, stilde)
-                if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-                    call fd_sqr_scaling(nr_total, Dparametric, Dphysical, stilde) 
-                end if
-
-                call mf_wq_get_Ku_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, stilde, Astilde)
-
-                omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-                x = x + alpha*ptilde + omega*stilde
-                r = s - omega*Astilde    
-
-                RelRes(iter+1) = maxval(abs(r))/normb
-                RelError(iter+1) = maxval(abs(directsol - x))/maxval(abs(directsol))
-                if (RelRes(iter+1).le.threshold) exit
-
-                rsnew = dot_product(r, rhat)
-                beta = (alpha/omega)*(rsnew/rsold)
-                p = r + beta*(p - omega*Aptilde)
-                rsold = rsnew
-            end do
-        end if
-    end if
-
-end subroutine mf_wq_steady_heat_3d
 
 subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
