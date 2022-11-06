@@ -1,11 +1,11 @@
-module Heatsolver
+module heat_solver
 
-    use heat_transfer
-    type CGtype
+    use heat_spmf
+    type cgsolver
         logical :: withscaling = .false., withdiag = .true.
         integer :: matrixfreetype = 1
         double precision, dimension(:), pointer :: factor_up => NULL(), factor_down => NULL()
-    end type CGtype
+    end type cgsolver
 
 contains
 
@@ -17,7 +17,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -70,7 +70,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         integer, intent(in) :: nr_total
         double precision, intent(in), target :: factor_up, factor_down
         dimension :: factor_up(nr_total), factor_down(nr_total)
@@ -119,7 +119,7 @@ contains
         implicit none
         ! Input / output  data 
         !---------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
         double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
         dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
@@ -172,7 +172,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -238,7 +238,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -309,7 +309,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -382,7 +382,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(CGtype), pointer :: solv
+        type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -451,4 +451,4 @@ contains
 
     end subroutine PBiCGSTAB
 
-end module Heatsolver
+end module heat_solver

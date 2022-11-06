@@ -4,7 +4,6 @@ from lib.base_functions import create_knotvector, iga_find_basis_weights_opt
 class Timoshenko():
     def __init__(self, name=None, properties=dict):
 
-        # Read inputs to create Timoshenko object
         self.read_material(prop=properties)
         self.read_bspline(prop=properties)
 
@@ -24,7 +23,6 @@ class Timoshenko():
 
         self.set_bspline_basis_weights()
 
-        # Initialize
         self._EA, self._EI, self._GAKs = None, None, None
         self._dod, self._gdod = [], []
 
@@ -62,7 +60,6 @@ class Timoshenko():
         return
 
     def set_bspline_basis_weights(self):
-        # Initialize
         self._DB, self._DW = [], []
         qp_position, B0, B1, qp_weight = iga_find_basis_weights_opt(self._degree, self._knotvector)
         self._nb_qp = len(qp_position); self._qp_cgg = qp_position
@@ -104,7 +101,6 @@ class Timoshenko():
     def compute_timoshenko_stiffness(self, dw):
         " Compute Timoshenko stiffness matrix "
         
-        # Initialize
         EAdw  = self._EA * dw
         EAdw2 = EAdw * dw
 
@@ -140,7 +136,6 @@ class Timoshenko():
     def compute_timoshenko_tangent_stiffness(self, du, dw):
         " Compute Timoshenko tangent stiffness matrix "
         
-        # Initialize
         EAdw  = self._EA * dw
         EAdw2 = EAdw * dw
         EAdudw2 = EAdw2 + self._EA*du
@@ -181,7 +176,6 @@ class Timoshenko():
         F1 = compute_sub_force_vector(self._Jpq, self._DB, self._DW, p)
         F2 = compute_sub_force_vector(self._Jpq, self._DB, self._DW, q)
 
-        # Assemble vector
         nr = self._nb_ctrlpts
         F = np.zeros(3*nr)
         F[range(nr)] = F1 
@@ -205,14 +199,11 @@ class Timoshenko():
         self.verify_mechaprop()
         if not len(self._dod): raise Warning('Add boundary conditions')
         
-        # Initialize sol = [u, w, theta]
         nr = self._nb_ctrlpts
         sol = np.zeros(3*nr)
         sol[self._dod] = self._gdod
-
-        # Set free control points
         dof = self.find_free_ctrlpts()
-
+        
         for i in range(nbIterNL):
             # Compute derivative of w
             dwdx = compute_derivative(self._Jpq, self._DB, sol[range(nr, 2*nr)])

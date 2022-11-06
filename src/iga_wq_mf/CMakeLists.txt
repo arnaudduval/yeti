@@ -52,12 +52,6 @@ CreateF2PYModule(NAME solver
                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
-CreateF2PYModule(NAME solver2
-                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_solver2.f90"
-                LINK_LIBRARIES iga_wq_mf base 
-                DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
-)
-
 add_custom_target(copy_iga_wq_mf ALL)
 
 add_custom_command(TARGET copy_iga_wq_mf PRE_BUILD

@@ -17,14 +17,10 @@ def sigmoid(x, c1=1, c2=0):
 def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
     " Returns new data after erasing rows in CSR format "
     
-    # Initialize 
     indi_int, indj_int = np.copy(indi_in), np.copy(indj_in) 
     if isfortran: indi_int -= 1; indj_int -= 1 
-    indi_outt = np.copy(indi_int)
+    indi_outt = np.delete(indi_int, rows2er)
     indj_out, data_out = [], []
-
-    # Delete indices
-    indi_outt = np.delete(indi_outt, rows2er)
     
     # Copy column indices
     for _ in range(len(indi_outt)-1): 
@@ -51,40 +47,6 @@ def erase_rows_csr(rows2er, indi_in, indj_in, data_in, isfortran=True):
 
     return indi_out, indj_out, data_out
 
-def generate_rand_positive_matrix(dim, nnz):
-    " Return nnz random symetric positive definite matrix of size (dim x dim) "
-    
-    # Generate random matrix 
-    A = np.random.random((dim, dim, nnz))
-    I = np.eye(dim)
-    
-    for i in range(nnz):
-        # Construct symmetric matrix 
-        B = A[:, :, i]
-        B = np.matmul(B, B.T) + I
-        A[:, :, i] = B
-
-    return A 
-
-def compute_jacobien_mean(J):
-    """ Returns the average of the diagonal of H. 
-        where H is the stretch tensor in the polar decomposition of J.
-    """
-
-    # Get the size of J
-    J = np.atleast_3d(J)
-    nnz = np.shape(J)[2]
-    dim = np.shape(J)[1] # or [0]
-
-    # Initialize diagonal
-    diag = np.zeros(dim)
-
-    for i in range(nnz):
-        _, P = sclin.polar(J[:, :, i])
-        diag += np.diagonal(P)/nnz
-
-    return diag
-
 # ==========================
 # B-SPLINE FUNCTIONS
 # ==========================
@@ -92,10 +54,8 @@ def compute_jacobien_mean(J):
 def create_knotvector(p, nbel, multiplicity=1):
     " Creates an uniform, open, with maximum regularity, knot-vector "
 
-    # Set knot-vector to be inserted
     kv_unique = np.linspace(0., 1., nbel + 1)[1 : -1]
 
-    # Create knot-vector 
     knotvector = []
     for _ in range(p+1): 
         knotvector.append(0.0)
@@ -107,7 +67,6 @@ def create_knotvector(p, nbel, multiplicity=1):
     for _ in range(p+1): 
         knotvector.append(1.0)
 
-    # Change type
     knotvector = np.array(knotvector)
     
     return knotvector
@@ -117,13 +76,8 @@ def eval_basis_python(degree, knotvector, knots, multiplicity=1):
         Knot-vector needs to be regular
     """
 
-    # Set number of points x
-    nbx = len(knots)
-
-    # Set number of elements 
+    nbknots = len(knots)
     nbel = len(np.unique(knotvector)) - 1
-
-    # Find number of control points 
     nb_ctrlpts = degree + multiplicity*(nbel - 1) + 1
 
     # Set table of functions per element 
@@ -131,42 +85,29 @@ def eval_basis_python(degree, knotvector, knots, multiplicity=1):
     table_functions_element[0, 0] = degree; table_functions_element[0, 1:] = np.arange(degree + 1) 
 
     for _ in range(1, nbel): 
-        # Set values of the table
         table_functions_element[_, :2] = table_functions_element[_-1, :2] + multiplicity
         table_functions_element[_, 2:] = table_functions_element[_, 1] + np.arange(1, degree + 1) 
 
-    # Evaluate B0 and B1
-    B0 = sp.lil_matrix((nb_ctrlpts, nbx))
-    B1 = sp.lil_matrix((nb_ctrlpts, nbx))
+    # Set B0 and B1
+    B0 = sp.lil_matrix((nb_ctrlpts, nbknots))
+    B1 = sp.lil_matrix((nb_ctrlpts, nbknots))
 
     for i, knot in enumerate(knots):
     
-        # Find knot-span
         knot_span = helpers.find_span_linear(degree, knotvector, nb_ctrlpts, knot)
-        
-        # Find element
         element = np.where(table_functions_element[:, 0] == knot_span)[0].tolist()
-        
-        # Find functions at the element
         functions_element = table_functions_element[element, 1:][0]
-
-        # Evaluate B0 and B1 at the knot
         B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
 
         # Set procedure if knot is in the knot-vector
         if knot in np.unique(knotvector)[1:-1]:             
-            # Erase zeros
             B0t = B0t[:-multiplicity] 
             B1t = B1t[:-multiplicity] 
-
-            # Erase zeros functions
             functions_element = functions_element[:-multiplicity]
 
-        # Replace values
         B0[np.ix_(functions_element, [i])] = np.asarray(B0t).reshape((-1,1))
         B1[np.ix_(functions_element, [i])] = np.asarray(B1t).reshape((-1,1))
 
-    # Convert COO to CSR format 
     B0, B1 = B0.tocsr(), B1.tocsr()
 
     return B0, B1
@@ -174,9 +115,8 @@ def eval_basis_python(degree, knotvector, knots, multiplicity=1):
 def eval_basis_fortran(degree, knotvector, knots):
     " Evaluates B-spline functions at given knots using fortran libraries "
 
-    B, indi, indj = basis_weights.get_basis_generalized_csr(
-                                    degree, knotvector, knots)
-                            
+    B, indi, indj = basis_weights.get_basis_generalized_csr(degree, knotvector, knots)
+    
     return B, indi, indj
 
 # ==========================
@@ -190,111 +130,111 @@ def gaussTable(order):
         pos = [0.0]
         wgt = [2.0]
     elif order == 2:
-        pos = [-0.577350269189625764509148780502,
-                0.577350269189625764509148780502]
+        pos = [ -0.57735026918962576,
+                0.57735026918962576]
 
-        wgt = [1.0,
+        wgt = [ 1.0,
                 1.0]
     elif order == 3:
-        pos = [-0.774596669241483377035853079956,
+        pos = [ -0.77459666924148337,
                 0.0,
-                0.774596669241483377035853079956]
+                0.77459666924148337]
 
-        wgt = [5.0 / 9.0,
+        wgt = [ 5.0 / 9.0,
                 8.0 / 9.0,
                 5.0 / 9.0]
     elif order == 4:
-        pos = [- 0.861136311594052575223946488893,
-                - 0.339981043584856264802665759103,
-                0.339981043584856264802665759103, 
-                0.861136311594052575223946488893]
+        pos = [ -0.8611363115940526,
+                -0.3399810435848563,
+                0.3399810435848563, 
+                0.8611363115940526]
 
-        wgt = [0.347854845137453857373063949222,
-                0.652145154862546142626936050778,
-                0.652145154862546142626936050778,
-                0.347854845137453857373063949222]
+        wgt = [ 0.3478548451374539,
+                0.6521451548625461,
+                0.6521451548625461,
+                0.3478548451374539]
     elif order == 5:
-        pos = [- 0.906179845938663992797626878299,
-                - 0.538469310105683091036314420700,
+        pos = [ -0.9061798459386640,
+                -0.5384693101056831,
                 0.0,
-                0.538469310105683091036314420700,
-                0.906179845938663992797626878299]
+                0.5384693101056831,
+                0.9061798459386640]
 
-        wgt = [0.236926885056189087514264040720,
-                0.478628670499366468041291514836,
-                0.568888888888888888888888888889,
-                0.478628670499366468041291514836,
-                0.236926885056189087514264040720]
+        wgt = [ 0.2369268850561891,
+                0.4786286704993665,
+                0.5688888888888889,
+                0.4786286704993665,
+                0.2369268850561891]
     elif order == 6:
-        pos = [- 0.932469514203152027812301554494,
-                - 0.661209386466264513661399595020,
-                - 0.238619186083196908630501721681,
-                0.238619186083196908630501721681,
-                0.661209386466264513661399595020,
-                0.932469514203152027812301554494]
+        pos = [ -0.9324695142031520,
+                -0.6612093864662645,
+                -0.2386191860831969,
+                0.2386191860831969,
+                0.6612093864662645,
+                0.9324695142031520]
 
-        wgt = [0.171324492379170345040296142173,
-                0.360761573048138607569833513838, 
-                0.467913934572691047389870343990,
-                0.467913934572691047389870343990,
-                0.360761573048138607569833513838,
-                0.171324492379170345040296142173]
+        wgt = [ 0.1713244923791703,
+                0.3607615730481386, 
+                0.4679139345726910,
+                0.4679139345726910,
+                0.3607615730481386,
+                0.1713244923791703]
     elif order == 7:
-        pos = [- 0.949107912342758524526189684048,
-                - 0.741531185599394439863864773281,
-                - 0.405845151377397166906606412077,
+        pos = [ -0.9491079123427585,
+                -0.7415311855993944,
+                -0.4058451513773972,
                 0.0,
-                0.405845151377397166906606412077,
-                0.741531185599394439863864773281,
-                0.949107912342758524526189684048]
+                0.4058451513773972,
+                0.7415311855993944,
+                0.9491079123427585]
 
-        wgt = [0.129484966168869693270611432679,
-                0.279705391489276667901467771424,
-                0.381830050505118944950369775489,
-                0.417959183673469387755102040816,
-                0.381830050505118944950369775489,
-                0.279705391489276667901467771424,
-                0.129484966168869693270611432679]
+        wgt = [ 0.1294849661688697,
+                0.2797053914892767,
+                0.3818300505051189,
+                0.4179591836734694,
+                0.3818300505051189,
+                0.2797053914892767,
+                0.1294849661688697]
     elif order == 8:
-        pos = [- 0.960289856497536231683560868569,
-                - 0.796666477413626739591553936476,
-                - 0.525532409916328985817739049189,
-                - 0.183434642495649804939476142360,
-                0.183434642495649804939476142360,
-                0.525532409916328985817739049189,
-                0.796666477413626739591553936476,
-                0.960289856497536231683560868569]
+        pos = [ -0.9602898564975362,
+                -0.7966664774136267,
+                -0.5255324099163290,
+                -0.1834346424956498,
+                0.1834346424956498,
+                0.5255324099163290,
+                0.7966664774136267,
+                0.9602898564975362]
 
-        wgt = [0.101228536290376259152531354310,
-                0.222381034453374470544355994426,
-                0.313706645877887287337962201987,
-                0.362683783378361982965150449277,
-                0.362683783378361982965150449277,
-                0.313706645877887287337962201987,
-                0.222381034453374470544355994426,
-                0.101228536290376259152531354310]
+        wgt = [ 0.1012285362903763,
+                0.2223810344533745,
+                0.3137066458778873,
+                0.3626837833783620,
+                0.3626837833783620,
+                0.3137066458778873,
+                0.2223810344533745,
+                0.1012285362903763]
     elif order == 9:
-        pos = [- 0.968160239507626089835576202904,
-                - 0.836031107326635794299429788070,
-                - 0.613371432700590397308702039341,
-                - 0.324253423403808929038538014643,
+        pos = [ -0.9681602395076261,
+                -0.8360311073266358,
+                -0.6133714327005904,
+                -0.3242534234038089,
                 0.0,
-                0.324253423403808929038538014643,
-                0.613371432700590397308702039341,
-                0.836031107326635794299429788070,
-                0.968160239507626089835576202904]
+                0.3242534234038089,
+                0.6133714327005904,
+                0.8360311073266358,
+                0.9681602395076261]
 
-        wgt = [0.812743883615744119718921581105E-01,
-                0.180648160694857404058472031243,
-                0.260610696402935462318742869419,
-                0.312347077040002840068630406584,
-                0.330239355001259763164525069287,
-                0.312347077040002840068630406584,
-                0.260610696402935462318742869419,
-                0.180648160694857404058472031243,
-                0.812743883615744119718921581105E-01]
+        wgt = [ 0.0812743883615744,
+                0.1806481606948574,
+                0.2606106964029354,
+                0.3123470770400028,
+                0.3302393550012597,
+                0.3123470770400028,
+                0.2606106964029354,
+                0.1806481606948574,
+                0.0812743883615744]
     elif order == 10:
-        pos = [-0.9739065285171717,
+        pos = [ -0.9739065285171717,
                 -0.8650633666889845,
                 -0.6794095682990244,
                 -0.4333953941292472,
@@ -305,7 +245,7 @@ def gaussTable(order):
                 0.8650633666889845,
                 0.9739065285171717]
 
-        wgt = [0.0666713443086881,
+        wgt = [ 0.0666713443086881,
                 0.1494513491505806,
                 0.2190863625159820,
                 0.2692667193099963,
@@ -316,7 +256,7 @@ def gaussTable(order):
                 0.1494513491505806,
                 0.0666713443086881]                
     elif order == 11:
-        pos = [-0.9782286581460570,
+        pos = [ -0.9782286581460570,
                 -0.8870625997680953,
                 -0.7301520055740494,
                 -0.5190961292068118,
@@ -328,7 +268,7 @@ def gaussTable(order):
                 0.8870625997680953,
                 0.9782286581460570]
 
-        wgt = [0.0556685671161737,
+        wgt = [ 0.0556685671161737,
                 0.1255803694649046,
                 0.1862902109277343,
                 0.2331937645919905,
@@ -341,7 +281,7 @@ def gaussTable(order):
                 0.0556685671161737]
 
     elif order == 12:
-        pos = [-0.9815606342467192,
+        pos = [ -0.9815606342467192,
                 -0.9041172563704749,
                 -0.7699026741943047,
                 -0.5873179542866175,
@@ -354,7 +294,7 @@ def gaussTable(order):
                 0.9041172563704749,
                 0.9815606342467192]
 
-        wgt = [0.0471753363865118,
+        wgt = [ 0.0471753363865118,
                 0.1069393259953184,
                 0.1600783285433462,
                 0.2031674267230659,
@@ -368,7 +308,7 @@ def gaussTable(order):
                 0.0471753363865118]
 
     elif order == 15:
-        pos = [-0.9879925180204854,
+        pos = [ -0.9879925180204854,
                 -0.9372733924007060,
                 -0.8482065834104272,
                 -0.7244177313601701,
@@ -384,7 +324,7 @@ def gaussTable(order):
                 0.9372733924007060,
                 0.9879925180204854]
 
-        wgt = [0.0307532419961173,
+        wgt = [ 0.0307532419961173,
                 0.0703660474881081,
                 0.1071592204671719,
                 0.1395706779261543,
@@ -413,34 +353,21 @@ def iga_find_positions_weights(degree, knotvector):
     def iga_find_positions_weights_element(degree, knotvector, el):
         " Computes Gauss weights and positions in parametric space for a given element "
 
-        # Find knots of the knot-vector
         knots = np.unique(knotvector)
-
-        # Find position and weight of Gauss points
         xg, wg = gaussTable(degree + 1)
-        
-        # Find position of quadrature points at the element (scaling)
         xg = 0.5*((knots[el+1] - knots[el])*xg + knots[el] + knots[el+1])
-
-        # Find weight of quadrature points at the element (scaling)
         wg = 0.5*(knots[el+1] - knots[el])*wg
 
         return xg, wg
 
-    # Find number of elements
     nbel = len(np.unique(knotvector)) - 1
 
-    # Initialize
+    # Find quadrature points and weights
     xg = []; wg = []
-
     for _ in range(nbel): 
-        # Find quadrature points for all elements
         xg_el, wg_el = iga_find_positions_weights_element(degree, knotvector, _)
-
-        # Save data
         xg.extend(xg_el); wg.extend(wg_el)
 
-    # Change type
     xg, wg = np.array(xg), np.array(wg)
 
     return xg, wg
@@ -448,10 +375,7 @@ def iga_find_positions_weights(degree, knotvector):
 def iga_find_basis_weights_opt(degree, knotvector):
     " Computes basis and weights in IGA approach "
 
-    # Find positions and weights
     qp_position, qp_weight = iga_find_positions_weights(degree, knotvector)
-
-    # Find basis
     B0, B1 = eval_basis_python(degree, knotvector, qp_position)
 
     return qp_position, B0, B1, qp_weight
@@ -459,13 +383,9 @@ def iga_find_basis_weights_opt(degree, knotvector):
 def iga_find_basis_weights_fortran(degree, knotvector): 
     " Computes basis and weights in IGA approach using fortran "
 
-    # Set number of elements
+    # Set number of elements, quadrature points and size of data
     nbel = len(np.unique(knotvector)) - 1
-
-    # Set number of quadrature points
     nb_qp = (degree + 1) * nbel
-
-    # Set guessed size of data 
     nnz_B = (degree + 1) * nb_qp
 
     # Get basis and weights from fortran
@@ -483,10 +403,7 @@ def wq_get_shape_B(degree, nbel, r, multiplicity=1, maxrule=1):
         It considers an open and uniform knot-vector
     """
 
-    # Set number of control points 
     nb_ctrlpts = degree + multiplicity*(nbel - 1) + 1
-
-    # Set number of quadrature points
     nb_qp = 2*(degree + r) + nbel*(maxrule + 1) - 2*maxrule - 3
 
     # Set table of positions of quadrature points 
@@ -503,7 +420,6 @@ def wq_get_shape_B(degree, nbel, r, multiplicity=1, maxrule=1):
     tableOfFunctionsOnElement[0, :] = np.arange(degree + 1) 
 
     for _ in range(1, nbel): 
-        # Set values of the table
         tableOfFunctionsOnElement[_, 0] = tableOfFunctionsOnElement[_-1, 0] + multiplicity
         tableOfFunctionsOnElement[_, 1:] = tableOfFunctionsOnElement[_, 0] + np.arange(1, degree + 1) 
 
@@ -547,7 +463,6 @@ def wq_get_shape_B(degree, nbel, r, multiplicity=1, maxrule=1):
         indi_B1.extend(i*np.ones(len(support_B1), dtype= int))
         indj_B1.extend(support_B1)
     
-    # Set shape of B0 and B1
     data_B0 = np.ones(len(indi_B0))
     B0shape = sp.csr_matrix((data_B0, (indi_B0, indj_B0)), shape=(nb_ctrlpts, nb_qp))
     
@@ -562,13 +477,10 @@ def wq_solve_equation_system(B, I):
     """
 
     # Convert type of B and I to array
-    B = B.toarray()
-    I = I.toarray()
+    B = B.toarray(); I = I.toarray()
 
     # Solve system 
-    sol1, _, _, _ = np.linalg.lstsq(B, I, rcond=None)
-
-    # Save solution
+    sol1 = np.linalg.lstsq(B, I, rcond=None)[0]
     w = sol1.reshape((1, -1)).tolist()[0]
     
     return w
@@ -576,25 +488,18 @@ def wq_solve_equation_system(B, I):
 def wq_find_positions(degree, knotvector, r, maxrule= 1):
     " Return position of quadrature points in WQ approach "
     
-    # Set unique knots
     kv_unique = np.unique(knotvector)
-
-    # Set number of elements
     nbel = len(kv_unique) - 1
 
-    # Initialize 
+    # Compute quadrature positions
     qp_position = []
-    
     for i in range(nbel):
 
         if i == 0 or i == nbel - 1:
-            # Case: boundary knot-spans
             xt = np.linspace(kv_unique[i], kv_unique[i+1], degree+r)[1:-1]
         else:
-            # Case: interior knot-spans
             xt = np.linspace(kv_unique[i], kv_unique[i+1], 2 + maxrule)[1:-1]
         
-        # Save
         qp_position.extend(xt)
     
     # Include knots of knot-vector
@@ -609,8 +514,9 @@ def wq_find_positions(degree, knotvector, r, maxrule= 1):
 def wq_find_weights(degree, knotvector, r):
     " Returns weights at quadrature points in WQ approach using space S^[p-1] method "
     
-    # Set number of elements
     nbel = len(np.unique(knotvector))-1
+    nb_ctrlpts = degree + nbel
+    nb_qp_wq = len(xwq)
 
     # ------------
     # Space S^p_r
@@ -642,25 +548,12 @@ def wq_find_weights(degree, knotvector, r):
     # ------------------
     # Compute Integrals
     # ------------------
-    # Compute exact integral I00 = int Bi(p) Bj(p) dx to calculate W00
     I00 = B0cgg_p0 @ sp.diags(wcgg) @ B0cgg_p0.T
-    
-    # Compute exact integral I01 = int Bi(p) Bj'(p) dx to calculate W01
     I01 = B0cgg_p1 @ sp.diags(wcgg) @ B0cgg_p0.T 
-
-    # Compute exact integral I01 = int Bi'(p) Bj(p) dx to calculate W01
     I10 = B0cgg_p0 @ sp.diags(wcgg) @ B1cgg_p0.T
-    
-    # Compute exact integral I11 = int Bi'(p) Bj'(p) dx to calculate W11
-    I11 = B0cgg_p1 @ sp.diags(wcgg) @ B1cgg_p0.T
+    I11 = B0cgg_p1 @ sp.diags(wcgg) @ B1cgg_p0.T    
 
-    # Set number of control points
-    nb_ctrlpts = degree + nbel
-
-    # Set number of WQ quadrature points 
-    nb_qp_wq = len(xwq)
-
-    # Initialize data for W00, W01, W10 and W11
+    # Set W00, W01, W10 and W11
     data_W00, data_W01, data_W10, data_W11 = [], [], [], []
     
     # Find shape of B and I
@@ -741,10 +634,7 @@ def wq_find_weights(degree, knotvector, r):
 def wq_find_basis_weights_opt(degree, knotvector, r): 
     " Return basis and weights in WQ approach computed in an efficient way "
     
-    # Set number of elements
     nbel = len(np.unique(knotvector)) - 1
-
-    # Set quadrature points
     xwq = wq_find_positions(degree, knotvector, r)
 
     if nbel <= degree + 3 : 
@@ -767,17 +657,11 @@ def wq_find_basis_weights_opt(degree, knotvector, r):
         #------------------------------
         # Algorithm to get the results
         #------------------------------
-        # Set number of points
         nbx = 2*(nbel + degree + r) - 5
-
-        # Set number of functions
         nbfunct = degree + nbel
 
-        # Initialize 
         data_B0, data_B1, data_W00, data_W01, data_W10, data_W11 = [], [], [], [], [], []
         function_B0, support_B0, function_B1, support_B1 = [], [], [], []
-
-        # Find shape of B
         shape_B0, shape_B1 = wq_get_shape_B(degree, nbel, r)
 
         for i in range(degree+1):
@@ -853,14 +737,14 @@ def wq_find_basis_weights_fortran(degree, knotvector):
                                                     degree, knotvector, nnz_B, nb_qp)
 
     return nnz_I, qp_position, basis, weights, indi, indj
-    
+
 # =========================
 # MF FUNCTIONS
 # =========================
 def create_table_properties(function, uref=None, prop=None):
     "Create a table of scalar properties from given function "
 
-    #Set default given x
+    # Set default given x
     if uref is None: uref = np.linspace(-100, 200, 21)
 
     # Compute y
@@ -899,17 +783,13 @@ def eigen_decomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
         D: diagonal of eigenvalues
     """
 
-    # Get number of quadrature points
     nb_qp = np.max(indj)
-
-    # Unpack B0, B1 and W00, W11
     [B0, B1, W0, W1] = data
 
     # Create mcoef and kcoef is are none type
     if coefs is None: mcoefs = np.ones(nb_qp); kcoefs = np.ones(nb_qp)
     else: [mcoefs, kcoefs] = coefs
 
-    # Compute eigen values and vectors
     eigenvalues, eigenvectors = solver.eigen_decomposition_f2py(indi, indj, B0, W0, 
                                         B1, W1, mcoefs, kcoefs, robin_condition)
 
@@ -1023,12 +903,10 @@ def compute_eig_diag(eig_u, eig_v, eig_w, coefs=[1, 1, 1]):
         result = np.kron(np.kron(A, B), C)
         return result
 
-    # Initialize
     one_u = np.ones(len(eig_u))
     one_v = np.ones(len(eig_v))
     one_w = np.ones(len(eig_w))
 
-    # Compute eigen diagonal
     eig_diag = coefs[0]*kron3vec(one_w, one_v, eig_u)
     eig_diag += coefs[1]*kron3vec(one_w, eig_v, one_u)
     eig_diag += coefs[2]*kron3vec(eig_w, one_v, one_u)
@@ -1044,32 +922,3 @@ def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
     elif fdtype == 'interp':
         array_out = solver.fd_interpolation_3d(U, V, W, array_in)
     return array_out
-
-# =========================
-# USING TENSOR ALGEBRA
-# =========================
-
-def tensor_n_mode_product(x, cols, Ucsr=None, mode=1, isdense=False, istransp=False): 
-    """ Computes tensor n-mode product with a matrix R = X xn U,
-        where X = vec(x). It uses fortran functions. 
-        WARNING : It has not been tested.
-    """
-    # Verify if input are well defined
-    nc_total = np.prod(cols)
-    if nc_total != len(x): raise Warning('Shape of X is not well defined') 
-    if mode not in [1, 2, 3]: raise Warning('n-mode product can only be 1, 2 or 3')
-
-    # Unpack data of matrix
-    [indi, indj, data] = Ucsr
-
-    # Get number of rows of U
-    nrU = len(indi) - 1 
-
-    # Get size of R
-    rows = cols; rows[mode-1] = nrU
-    nrR = np.prod(rows)
-
-    # Compute tensor n-mode product
-    R = assembly.tensor_n_mode_product_py(cols, x, data, indi, indj, mode, isdense, istransp, nrR)
-    
-    return R

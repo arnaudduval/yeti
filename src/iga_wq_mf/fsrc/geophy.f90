@@ -227,116 +227,60 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine interpolate_fieldphy_2d
 
-subroutine eval_conductivity_coefficient(dime, nnz, invJJ, detJJ, nnz_K, KK, Kcoef, info)
+subroutine eval_conductivity_coefficient(dimen, nnz, invJJ, detJJ, nnz_K, Kprop, Kcoefs, info)
     !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
     
-    use omp_lib
+    use heat_spmf
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dime, nnz, nnz_K
-    double precision, intent(in) :: invJJ, detJJ, KK
-    dimension :: invJJ(dime, dime, nnz), detJJ(nnz), KK(dime, dime, nnz_K)
+    integer, intent(in) :: dimen, nnz, nnz_K
+    double precision, intent(in) :: invJJ, detJJ
+    dimension :: invJJ(dimen, dimen, nnz), detJJ(nnz)
+    double precision, target, intent(in) :: Kprop
+    dimension :: Kprop(dimen, dimen, nnz_K)
 
     integer, intent(out) :: info
-    double precision, intent(out) :: Kcoef
-    dimension :: Kcoef(dime, dime, nnz)
+    double precision, intent(out) :: Kcoefs
+    dimension :: Kcoefs(dimen, dimen, nnz)
 
     ! Local data
     ! ----------
-    integer :: i, nb_tasks
-    double precision :: invJt, detJt
-    dimension :: invJt(dime, dime)
-    double precision :: Kt
-    dimension :: Kt(dime, dime)  
+    type(thermomat), pointer :: mat
 
-    info = 1
-
-    if (nnz_K.eq.1) then 
-
-        !$OMP PARALLEL PRIVATE(invJt, detJt, Kt)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-        do i = 1, nnz
-            ! Compute K = invJ * prop * detJ * invJ'
-            invJt = invJJ(:, :, i); detJt = detJJ(i)
-            Kt = detJt * matmul(invJt, KK(:, :, 1)) 
-            Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-
-    else if (nnz_K.eq.nnz) then 
-
-        !$OMP PARALLEL PRIVATE(invJt, detJt, Kt)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-        do i = 1, nnz
-            ! Compute K = invJ * prop * detJ * invJ'
-            invJt = invJJ(:, :, i); detJt = detJJ(i)
-            Kt = detJt * matmul(invJt, KK(:, :, i)) 
-            Kcoef(:, :, i) = matmul(Kt, transpose(invJt))
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-    else 
-        info = 0
-        print*, "Error computing thermal coefficient (Conductivity)"
-    end if
-
+    allocate(mat)
+    mat%Kprop => Kprop
+    allocate(mat%Kcoefs(dimen, dimen, nnz))
+    call update_conductivity_coefs(mat, dimen, nnz, invJJ, detJJ, info)
+    Kcoefs = mat%Kcoefs
+    
 end subroutine eval_conductivity_coefficient
 
-subroutine eval_capacity_coefficient(nnz, detJJ, nnz_C, CC, Ccoef, info)
+subroutine eval_capacity_coefficient(nnz, detJJ, nnz_C, Cprop, Ccoefs, info)
     !! Computes capacity coefficient coef = sigma * detJ
     
-    use omp_lib
+    use heat_spmf
     implicit none 
     ! Input / output data
     ! -------------------  
     integer, intent(in) :: nnz, nnz_C
-    double precision, intent(in) :: detJJ, CC
-    dimension :: detJJ(nnz), CC(nnz_C)
+    double precision, intent(in) :: detJJ
+    dimension :: detJJ(nnz)
+    double precision, target, intent(in) :: Cprop
+    dimension :: Cprop(nnz_C)
 
     integer, intent(out) :: info
-    double precision, intent(out) :: Ccoef
-    dimension :: Ccoef(nnz)
+    double precision, intent(out) :: Ccoefs
+    dimension :: Ccoefs(nnz)
 
     ! Local data
     ! ----------
-    integer :: i, nb_tasks
-    double precision :: detJt
+    type(thermomat), pointer :: mat
 
-    info = 1
-
-    if (nnz_C.eq.1) then 
-
-        !$OMP PARALLEL PRIVATE(detJt)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-        do i = 1, nnz
-            ! Compute C = detJ  * prop
-            detJt = detJJ(i)
-            Ccoef(i) = detJt * CC(1)
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-
-    else if (nnz_C.eq.nnz) then
-
-        !$OMP PARALLEL PRIVATE(detJt)
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-        do i = 1, nnz
-            ! Compute C = detJ  * prop
-            detJt = detJJ(i)
-            Ccoef(i) = detJt * CC(i)
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-
-    else
-        info = 0
-        print*, "Error computing thermal coefficient (Capacity) "
-    end if
+    allocate(mat)
+    mat%Cprop => Cprop
+    allocate(mat%Ccoefs(nnz))
+    call update_capacity_coefs(mat, nnz, detJJ, info)
+    Ccoefs = mat%Ccoefs
 
 end subroutine eval_capacity_coefficient

@@ -2,73 +2,20 @@
 ! module :: Heat transfer 
 ! author :: Joaquin Cornejo
 ! ==========================
-module heat_transfer
+module heat_spmf
 
     implicit none
     double precision, parameter :: span_tol = 1e-8
 
     type thermomat
-        integer :: dimen = 3
         double precision :: scalars(2) = (/1.d0, 1.d0/)
         double precision, dimension(:), pointer :: Cprop, Ccoefs
-        double precision, dimension(:, :, :), pointer :: Kprop, Kcoefs
+        double precision, dimension(:,:,:), pointer :: Kprop, Kcoefs
     end type thermomat
 
 contains
 
-    subroutine set_capacity_prop(mat, nnz, prop)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: prop
-        dimension :: prop(nnz)
-
-        mat%Cprop => prop
-
-    end subroutine set_capacity_prop
-
-    subroutine set_conductivity_prop(mat, nnz, prop)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: prop
-        dimension :: prop(mat%dimen, mat%dimen, nnz)
-
-        mat%Kprop => prop
-
-    end subroutine set_conductivity_prop
-
-    subroutine set_capacity_coefs(mat, nnz, coefs)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: coefs
-        dimension :: coefs(nnz)
-
-        mat%Ccoefs => coefs
-
-    end subroutine set_capacity_coefs
-
-    subroutine set_conductivity_coefs(mat, nnz, coefs)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: coefs
-        dimension :: coefs(mat%dimen, mat%dimen, nnz)
-
-        mat%Kcoefs => coefs
-
-    end subroutine set_conductivity_coefs
-
-    subroutine update_conductivity_coefs(mat, nnz, invJJ, detJJ, info)
+    subroutine update_conductivity_coefs(mat, dimen, nnz, invJJ, detJJ, info)
         !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
         
         use omp_lib
@@ -76,9 +23,9 @@ contains
         ! Input / output data
         ! -------------------
         type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
+        integer, intent(in) :: dimen, nnz
         double precision, intent(in) :: invJJ, detJJ
-        dimension :: invJJ(mat%dimen, mat%dimen, nnz), detJJ(nnz)
+        dimension :: invJJ(dimen, dimen, nnz), detJJ(nnz)
         
         integer, intent(out) :: info
 
@@ -86,7 +33,7 @@ contains
         ! ----------
         integer :: i, nb_tasks
         double precision :: invJt, Kt
-        dimension :: invJt(mat%dimen, mat%dimen), Kt(mat%dimen, mat%dimen)  
+        dimension :: invJt(dimen, dimen), Kt(dimen, dimen)  
         
         info = 1
     
@@ -443,4 +390,4 @@ contains
         
     end subroutine mf_wq_get_kcu
 
-end module heat_transfer
+end module heat_spmf

@@ -28,7 +28,6 @@ def block_dot_product(d, A, B):
         Both are actually vectors arranged following each dimension
         A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
     """
-    # Compute result
     result = 0.0
     for i in range(d): result += A[i, :] @ B[i, :]
     return result
@@ -36,17 +35,14 @@ def block_dot_product(d, A, B):
 def compute_stress_deviatoric(d, tensor):
     " Computes deviatoric of a second-order stress-like tensor "
 
-    # Initialize
     ddl = int(d*(d+1)/2)
     one = np.zeros(ddl)
 
-    # Compute trace of tensor and one tensor
     trace = 0.0
     for i in range(d):
         trace += tensor[i]
         one[i] = 1.0
         
-    # Compute deviatoric
     dev = tensor - 1.0/3.0*trace*one
 
     return dev
@@ -54,11 +50,9 @@ def compute_stress_deviatoric(d, tensor):
 def compute_stress_norm(d, tensor): 
     " Returns frobenius norm of a second-order stress-like tensor "
 
-    # Initialize
     ddl = int(d*(d+1)/2)
     norm = 0.0
 
-    # Compute norm
     for i in range(d): norm += tensor[i]**2
     for i in range(d, ddl): norm += 2.0*tensor[i]**2
     norm = np.sqrt(norm)
@@ -68,7 +62,7 @@ def compute_stress_norm(d, tensor):
 def create_fourth_order_identity(d=3):
     " Creates a fourth-order identity (Voigt notation) "
     
-    if  d == 2:
+    if d == 2:
         I = np.diag(np.array([1.0, 1.0, 0.5]))
     elif d == 3:    
         I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
@@ -79,7 +73,6 @@ def create_fourth_order_identity(d=3):
 def create_one_kron_one(d=3): 
     " Creates a one kron one tensor (Voigt notation) "
 
-    # Initialize
     ddl = int(d*(d+1)/2)
     onekronone = np.zeros((ddl, ddl))
 
@@ -94,7 +87,6 @@ def stkronst(A, B):
         A and B are second order stress-like tensor in Voigt notation
     """
 
-    # Set kron product
     At = np.atleast_2d(A)
     Bt = np.atleast_2d(B)
     result = np.kron(At.T, Bt)
@@ -107,7 +99,6 @@ def create_incidence_matrix(d=3):
         us_ij = 0.5*(u_(i,j) + u_(j,i))  
     """
 
-    # Create EE
     ddl = int(d*(d+1)/2)
     EE = np.zeros((ddl, d, d))
 
@@ -127,28 +118,16 @@ def cpp_combined_hardening(inputs, deps, sigma_n, alpha_n, ep_n, d=3):
     def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
         " Computes the value of f (consistency condition) in plasticity criteria"
 
-        # Compute deviatoric 
         eta = compute_stress_deviatoric(d, sigma) - alpha
-
-        # Compute the norm of dev
         norm = compute_stress_norm(d, eta)
-
-        # Compute f
         f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*ep_n)
-
-        # Compute unit deviatoric tensor
         if norm > 0.0: N = 1.0/norm*eta
         else: N = np.zeros(np.shape(eta))
 
         return f, N, norm
 
-    # Initialize
     CC, sigma_Y, mu, beta, H, Idev = inputs
-
-    # Compute trial sigma 
     sigma_trial = sigma_n + CC@deps
-
-    # Compute yield function and unit deviatoric tensor
     f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
 
     # Check status
@@ -182,10 +161,7 @@ def cpp_combined_hardening(inputs, deps, sigma_n, alpha_n, ep_n, d=3):
 def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
     " Computes the coefficients to use in internal force vector and stiffness matrix"
 
-    # Computes passage matrix
     EE = create_incidence_matrix(d)
-
-    # Initialize
     coef_Fint = np.zeros((d*d, len(detJ)))
     coef_Stiff = np.zeros((d*d, d*d, len(detJ)))
 
@@ -204,13 +180,8 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 def compute_stress_vonmises(d, tensor):
     " Computes equivalent stress with Von Mises formula of a second-order stress-like tensor "
 
-    # Compute deviatoric
     dev = compute_stress_deviatoric(d, tensor)
-
-    # Compute norm of deviatoric
     vm = compute_stress_norm(d, dev)
-
-    # Normalize result
     vm = np.sqrt(3.0/2.0)*vm
 
     return vm

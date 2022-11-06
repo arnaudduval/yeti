@@ -17,11 +17,8 @@ class IGA(thermoMechaModel):
 
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet)
 
-        # Evaluate basis and weights
         self._nb_qp, self._nb_qp_total = np.ones(self._dim, dtype=int), None
         self.eval_basis_weights()
-
-        # Get jacobian and physical position
         self._Jqp, self._detJ, self._invJ, self._qp_PS = super().eval_jacobien_physicalPosition(self._dim, 
                                                         self._nb_qp_cgg_total, self._ctrlpts, self._DB)
         
@@ -33,9 +30,7 @@ class IGA(thermoMechaModel):
         print('Evaluating basis and weights')
         start = time.process_time()
 
-        # Initalize 
         self._qp_dim, self._DB, self._DW = [], [], []
-
         for dim in range(self._dim): 
             qp_position, B0, B1, W = iga_find_basis_weights_opt(self._degree[dim], self._knotvector[dim]) 
             self._nb_qp[dim] = len(qp_position)
@@ -62,7 +57,6 @@ class IGA(thermoMechaModel):
 
         start = time.process_time()
         
-        # Initialize 
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         matrix = sp.csr_matrix((self._nb_ctrlpts_total, self._nb_ctrlpts_total))
@@ -87,10 +81,7 @@ class IGA(thermoMechaModel):
                     at = alpha[dim] 
                     Btl = sp.kron(self._DB[dim][at], Btl)
                     
-                # Evaluates Cij * B in each point
                 Btr_Cij = sp.csr_matrix.dot(Btr, sp.diags(Cij))
-
-                # Find K
                 BW = sp.csr_matrix.dot(Btl.tocsr()[:,:], Wt.tocsr()[:,:])
                 matrix += sp.csr_matrix.dot(BW.tocsr()[:,:], Btr_Cij.tocsr()[:,:].T)
 
@@ -104,23 +95,16 @@ class IGA(thermoMechaModel):
 
         start = time.process_time()
         
-        # Initialize 
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         
         B = 1; W = 1
         for dim in range(self._dim): 
-            # Find basis
             B0 = self._DB[dim][0]
-
-            # Find weights
             W00 = self._DW[dim]
-
-            # Find W and B
             B = sp.kron(B0, B)
             W = np.kron(np.array(W00), W)
             
-        # Assemble C
         W = sp.csr_matrix.dot(W, sp.diags(coefs))
         matrix = sp.csr_matrix.dot(sp.csr_matrix.dot(B.tocsr()[:,:], sp.diags(W)), B.tocsr()[:,:].T)
 
@@ -134,22 +118,16 @@ class IGA(thermoMechaModel):
 
         start = time.process_time()
         
-        # Get source coefficients
         coefs = self.eval_source_coefficient(fun)
 
         B = 1; W = 1
         for dim in range(self._dim): 
-            # Find basis
             B0 = self._DB[dim][0]
-
-            # Find weights
             W00 = self._DW[dim]
 
-            # Find W and B
             W = sp.kron(sp.diags(W00), W)
             B = sp.kron(B0, B)
 
-        # Assemble vector
         vector = sp.csr_matrix.dot(sp.csr_matrix.dot(B.tocsr()[:,:], W.tocsr()[:,:]), coefs)
         stop = time.process_time()
         print('Source vector assembled in : %.5f s' %(stop-start))

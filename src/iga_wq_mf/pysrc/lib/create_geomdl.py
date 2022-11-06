@@ -11,38 +11,27 @@ class geomdlModel():
     def __init__(self, name=None, **geometry): 
 
         if name is None: raise Warning('Insert the name of the part')
-        else : self._name = name
-
-        # Initialize
+        else: self._name = name
         self._sample_size = 101
         self._geometry = None
 
         print('\nCreating geometry: ' + name + '...')
         start = time.process_time()
         if name == 'quarter_annulus' or name == 'QA':
-            # Set number of dimension 
             self._dim = 2
-
-            # Create quarter annulus
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 3, 2])
             self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
 
         elif name == 'quadrilateral' or name == 'SQ':
-            # Set number of dimension
             self._dim = 2
-            
-            # Create quadrilateral
             XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
             degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
             self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
 
         elif name == 'parallelepiped' or name == 'CB': 
-            # Set number of dimension
             self._dim = 3
-            
-            # Create parallelepiped
             Lx = geometry.get('Lx', 1.0)
             Ly = geometry.get('Ly', 1.0)
             Lz = geometry.get('Lz', 1.0)
@@ -50,10 +39,7 @@ class geomdlModel():
             self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_xi, degree_nu, degree_eta) 
 
         elif name == 'thick_ring' or name == 'TR':
-            # Set number of dimension 
             self._dim = 3
-
-            # Create thick ring
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
             Height = geometry.get('Height', 1.0)
@@ -61,10 +47,7 @@ class geomdlModel():
             self._geometry = self.create_thick_ring(Rin, Rout, Height, degree_xi, degree_nu, degree_eta) 
 
         elif name == 'rotated_quarter_annulus' or name == 'RQA':
-            # Set number of dimension 
             self._dim = 3
-
-            # Create rotated quarter annulus
             Rin = geometry.get('Rin', 1.0)
             Rout = geometry.get('Rout', 2.0)
             exc = geometry.get('Rout', 1.0) 
@@ -72,10 +55,7 @@ class geomdlModel():
             self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
 
         elif name == 'prism' or name == 'VB':
-            # Set number of dimension
             self._dim = 3
-            
-            # Create prism
             XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
             Height = geometry.get('Height', 1)
             degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
@@ -86,7 +66,6 @@ class geomdlModel():
         stop = time.process_time()
         print('\tBasic geometry created in: %.3e s' %(stop-start))
 
-        # Update data
         self.update_geometry()
 
         return
@@ -95,7 +74,7 @@ class geomdlModel():
         " Updates and saves important properties of the geometry created "
 
         start = time.process_time()
-        # Set geometry object
+
         obj = self._geometry
         if obj is None: raise Warning('Geometry unknown')
 
@@ -149,9 +128,8 @@ class geomdlModel():
                         ctrlpts_temp = ctrlpts_old[pos]
                         ctrlpts_new[:, c] = ctrlpts_temp
                         c += 1 
-
-        # Update control points
         self._ctrlpts = ctrlpts_new
+
         stop = time.process_time()
         print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
 
@@ -163,9 +141,7 @@ class geomdlModel():
         def array2txt(array: np.array, format= '%.2f'):
             return ','.join([format %(i) for i in array])
 
-        # --------------
-        # With inp file
-        # --------------
+        # .inp file
         inpfile = filename + '.inp'
         introduction =  [
             '** Copyright 2020 Thibaut Hirschler',
@@ -211,9 +187,7 @@ class geomdlModel():
             f.write('*STEP,extrapolation=NO,NLGEOM=NO\n*Static\n')
             f.write('** OUTPUT REQUESTS\n*node file,frequency=1\nU,RF,CF\n*el file,frequency=1\nSDV\n*End Step')
 
-        # ------------
-        # With NB file
-        # ------------
+        # .NB file
         NBfile = filename + '.NB'
         introduction =  [
             '** Copyright 2020 Thibaut Hirschler',
@@ -263,17 +237,12 @@ class geomdlModel():
         """
 
         start = time.process_time()
-        # Copy geometry
-        geometry = deepcopy(self._geometry)
 
-        # Set new number of elements
+        geometry = deepcopy(self._geometry)
         cuts = nb_refinementByDirection
         nbel = [2**cuts[dim]*self._nbel[dim] for dim in range(self._dim)]
-
-        # Create knots to be inserted
         knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
 
-        # Insert knots
         for dim in range(self._dim):
             multiplicity = np.zeros(self._dim, dtype= int)
             multiplicity[dim] = 1
@@ -282,10 +251,10 @@ class geomdlModel():
                 knot_insert[dim] = knot
                 operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
         self._geometry = geometry
+
         stop = time.process_time()
         print('Knot refinement in: %.3e s' %(stop-start))
 
-        # Update values
         self.update_geometry()
 
         return
@@ -295,10 +264,7 @@ class geomdlModel():
             It has a better performance than knot-refinement function
         """
 
-        # Write file abaqus
         self.write_abaqus_file(filename=self._name)
-
-        # Discretisize the part
         modelIGA = IGAparametrization(filename=self._name)
         modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
 
@@ -319,7 +285,6 @@ class geomdlModel():
         # -------------------------------------
         # First part : construction of the arc
         # -------------------------------------
-        # Set knot-vector 
         nb_ctrlpts_nu = degree_nu + 1 
         knot_vector_nu = create_knotvector(degree_nu, 1)
 
@@ -333,16 +298,12 @@ class geomdlModel():
             pts_interp.append([x, y])
         pts_interp.append([0.0, radius])
 
-        # Do interpolation
         curve = fitting.interpolate_curve(pts_interp, degree_nu)
-
-        # Get control points and knot-vector
         ctrlpts_arc = np.asarray(curve.ctrlpts)
 
         # -------------------------------------
         # Second part : construction of line
         # -------------------------------------
-        # Define degree in this direction
         nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
         knot_vector_xi = create_knotvector(degree_xi, 1)
@@ -350,10 +311,8 @@ class geomdlModel():
         # -------------------------------------------
         # Third part : construction of annulus sector
         # -------------------------------------------
-        # Get control points
+        # Set control points
         ctrlpts = []
-
-        # Over x direction 
         for i in range(nb_ctrlpts_xi): 
             for x_arc, y_arc in ctrlpts_arc:
                 x = ctrlpts_x[i] * x_arc
@@ -362,21 +321,12 @@ class geomdlModel():
 
         # Create surface
         srf = BSpline.Surface()
-
-        # Set degree
         srf.degree_u = degree_xi
         srf.degree_v = degree_nu
-
-        # Set number of control points 
         srf.ctrlpts_size_u, srf.ctrlpts_size_v = nb_ctrlpts_xi, nb_ctrlpts_nu
-
-        # Set control points
         srf.ctrlpts = ctrlpts
-
-        # Set knot-vector
         srf.knotvector_u = knot_vector_xi
         srf.knotvector_v = knot_vector_nu
-
         srf.sample_size = self._sample_size
 
         return srf
@@ -384,29 +334,22 @@ class geomdlModel():
     def create_quadrilateral(self, XY, degree_xi, degree_nu):
         " Creates a quadrilateral given coordinates in counterclockwise direction "
 
-        # Position of reference
-        x0 = [0, 1, 1, 0]
-        y0 = [0, 0, 1, 1]
-
-        # Position of quadrilateral corners
-        x1 = XY[:, 0]
-        y1 = XY[:, 1]
+        # Set reference position and real position
+        x0 = [0, 1, 1, 0]; y0 = [0, 0, 1, 1]
+        x1 = XY[:, 0];     y1 = XY[:, 1]
 
         # Transformation of control points
         # x1 = ax1 x0 + ax2 y0 + ax3 x0 y0 + ax4
         # y1 = ay1 x0 + ay2 y0 + ay3 x0 y0 + ay4
         T = []
-        for i in range(4): 
-            T.append([x0[i], y0[i], x0[i] * y0[i], 1])
+        for i in range(4): T.append([x0[i], y0[i], x0[i] * y0[i], 1])
         ax = np.linalg.solve(T, x1)
         ay = np.linalg.solve(T, y1)
-
-        # Set number of control points
-        nb_ctrlpts_xi = degree_xi + 1 
-        nb_ctrlpts_nu = degree_nu + 1 
         
-        # Create uniform control points
+        # Set control points
+        nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_xi = np.linspace(0, 1, nb_ctrlpts_xi)
+        nb_ctrlpts_nu = degree_nu + 1 
         ctrlpts_nu = np.linspace(0, 1, nb_ctrlpts_nu)
         
         ctrlpts = []
@@ -420,27 +363,14 @@ class geomdlModel():
 
                 ctrlpts.append([x, y, 0])
 
-        # Get knot-vector
-        knot_vector_xi = create_knotvector(degree_xi, 1)
-        knot_vector_nu = create_knotvector(degree_nu, 1)
-
-        # Creation of Quadralateral surface
+        # Create surface
         srf = BSpline.Surface() 
-
-        # Set degree
         srf.degree_u = degree_xi
         srf.degree_v = degree_nu
-        
-        # Set number of control points 
         srf.ctrlpts_size_u, srf.ctrlpts_size_v = nb_ctrlpts_xi, nb_ctrlpts_nu
-
-        # Set control points
         srf.ctrlpts = ctrlpts
-
-        # Set knot-vector
-        srf.knotvector_u = knot_vector_xi
-        srf.knotvector_v = knot_vector_nu
-
+        srf.knotvector_u = create_knotvector(degree_xi, 1)
+        srf.knotvector_v = create_knotvector(degree_nu, 1)
         srf.sample_size = self._sample_size
 
         return srf
@@ -459,11 +389,6 @@ class geomdlModel():
         ctrlpts_v = np.linspace(0.0, Ly, nb_ctrlpts_nu)
         ctrlpts_w = np.linspace(0.0, Lz, nb_ctrlpts_eta)
 
-        # Get knot-vector
-        knot_vector_xi = create_knotvector(degree_xi, 1)
-        knot_vector_nu = create_knotvector(degree_nu, 1)
-        knot_vector_eta = create_knotvector(degree_eta, 1)
-
         # Create control points of the volume
         control_points = []
         for k in range(nb_ctrlpts_eta):
@@ -473,25 +398,13 @@ class geomdlModel():
 
         # Create a B-spline volume
         vol = BSpline.Volume()
-
-        # Set degree
-        vol.degree_u = degree_xi
-        vol.degree_v = degree_nu
-        vol.degree_w = degree_eta
-
-        # Set number of control points 
-        vol.ctrlpts_size_u = int(nb_ctrlpts_xi)
-        vol.ctrlpts_size_v = int(nb_ctrlpts_nu)
-        vol.ctrlpts_size_w = int(nb_ctrlpts_eta)
-
-        # Set control points
+        vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
+        vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
+            int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
         vol.ctrlpts = control_points
-
-        # Set knot-vector
-        vol.knotvector_u = knot_vector_xi
-        vol.knotvector_v = knot_vector_nu
-        vol.knotvector_w = knot_vector_eta
-
+        vol.knotvector_u = create_knotvector(degree_xi, 1)
+        vol.knotvector_v = create_knotvector(degree_nu, 1)
+        vol.knotvector_w = create_knotvector(degree_eta, 1)
         vol.sample_size = self._sample_size
 
         return vol
@@ -502,7 +415,6 @@ class geomdlModel():
         # -------------------------------------
         # First part : construction of the arc
         # -------------------------------------
-        # Set knot-vector 
         nb_ctrlpts_nu = degree_nu + 1 
         knot_vector_nu = create_knotvector(degree_nu, 1)
 
@@ -516,10 +428,7 @@ class geomdlModel():
             pts_interp.append([x, y])
         pts_interp.append([0.0, radius])
 
-        # Do interpolation
         curve = fitting.interpolate_curve(pts_interp, degree_nu)
-
-        # Get control points and knot-vector
         ctrlpts_arc = np.asarray(curve.ctrlpts)
 
         # -------------------------------------
@@ -540,8 +449,6 @@ class geomdlModel():
         # -------------------------------------------
         # Get control points
         ctrlpts = []
-
-        # Over x and z direction 
         for k in range(nb_ctrlpts_eta):
             for i in range(nb_ctrlpts_xi): 
                 for x_arc, y_arc in ctrlpts_arc:
@@ -552,24 +459,13 @@ class geomdlModel():
 
         # Create volume
         vol = BSpline.Volume()
-
-        # Set degree
-        vol.degree_u = degree_xi
-        vol.degree_v = degree_nu
-        vol.degree_w = degree_eta
-
-        # Set number of control points 
+        vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
             int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-
-        # Set control points
         vol.ctrlpts = ctrlpts
-
-        # Set knot-vector
         vol.knotvector_u = knot_vector_xi
         vol.knotvector_v = knot_vector_nu
         vol.knotvector_w = knot_vector_eta
-
         vol.sample_size = self._sample_size
 
         return vol
@@ -580,7 +476,6 @@ class geomdlModel():
         # -------------------------------------
         # First part : construction of the arc 1
         # -------------------------------------
-        # Set knot-vector characteristics
         nb_ctrlpts_nu = degree_nu + 1 
         knot_vector_nu = create_knotvector(degree_nu, 1)
 
@@ -594,16 +489,12 @@ class geomdlModel():
             pts_interp.append([x, y])
         pts_interp.append([0.0, radius])
 
-        # Do interpolation
         curve = fitting.interpolate_curve(pts_interp, degree_nu)
-
-        # Get control points and knot-vector
         ctrlpts_arc_1 = np.asarray(curve.ctrlpts)
 
         # -------------------------------------
         # Second part : construction of line
         # -------------------------------------
-        # Define degree in xi direction
         nb_ctrlpts_xi = degree_xi + 1 
         ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
         knot_vector_xi = create_knotvector(degree_xi, 1)
@@ -611,7 +502,6 @@ class geomdlModel():
         # -------------------------------------
         # Third part : construction of the arc 2
         # -------------------------------------
-        # Set knot-vector characteristics
         nb_ctrlpts_eta = degree_eta + 1 
         knot_vector_eta = create_knotvector(degree_eta, 1)
 
@@ -625,10 +515,7 @@ class geomdlModel():
             pts_interp.append([x, y])
         pts_interp.append([0.0, radius])
 
-        # Do interpolation
         curve = fitting.interpolate_curve(pts_interp, degree_eta)
-
-        # Get control points and knot-vector
         ctrlpts_arc_2 = np.asarray(curve.ctrlpts)
 
         # -------------------------------------------
@@ -636,8 +523,6 @@ class geomdlModel():
         # -------------------------------------------
         # Get control points
         ctrlpts = []
-
-        # Over x and z direction 
         for y_arc_2, z_arc_2 in ctrlpts_arc_2:
             for i in range(nb_ctrlpts_xi): 
                 for x_arc_1, y_arc_1 in ctrlpts_arc_1:
@@ -649,24 +534,13 @@ class geomdlModel():
 
         # Create volume
         vol = BSpline.Volume()
-
-        # Set degree
-        vol.degree_u = degree_xi
-        vol.degree_v = degree_nu
-        vol.degree_w = degree_eta
-
-        # Set number of control points 
+        vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
             int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-
-        # Set control points
         vol.ctrlpts = ctrlpts
-
-        # Set knot-vector
         vol.knotvector_u = knot_vector_xi
         vol.knotvector_v = knot_vector_nu
         vol.knotvector_w = knot_vector_eta
-
         vol.sample_size = self._sample_size
 
         return vol
@@ -675,31 +549,24 @@ class geomdlModel():
         """ Creates a prism using a quadrilateral as a base.
         The quadrilateral coordinates are given in counterclockwise direction """
 
-        # Position of reference
-        x0 = [0, 1, 1, 0]
-        y0 = [0, 0, 1, 1]
-
-        # Position of quadrilateral corners
-        x1 = XY[:, 0]
-        y1 = XY[:, 1]
+        # Set reference position and real position
+        x0 = [0, 1, 1, 0]; y0 = [0, 0, 1, 1]
+        x1 = XY[:, 0];     y1 = XY[:, 1]
 
         # Transformation of control points
         # x1 = ax1 x0 + ax2 y0 + ax3 x0 y0 + ax4
         # y1 = ay1 x0 + ay2 y0 + ay3 x0 y0 + ay4
         T = []
-        for i in range(4): 
-            T.append([x0[i], y0[i], x0[i] * y0[i], 1])
-
+        for i in range(4): T.append([x0[i], y0[i], x0[i] * y0[i], 1])
         ax = np.linalg.solve(T, x1)
         ay = np.linalg.solve(T, y1)
 
-        # Control points
+        # Set control points
         nb_ctrlpts_xi = degree_xi + 1 
-        nb_ctrlpts_nu = degree_nu + 1 
-        nb_ctrlpts_eta = degree_eta + 1 
-        
         ctrlpts_xi = np.linspace(0, 1, nb_ctrlpts_xi)
+        nb_ctrlpts_nu = degree_nu + 1 
         ctrlpts_nu = np.linspace(0, 1, nb_ctrlpts_nu)
+        nb_ctrlpts_eta = degree_eta + 1 
         ctrlpts_eta = np.linspace(0, 1, nb_ctrlpts_eta)
         
         ctrlpts = []
@@ -715,32 +582,15 @@ class geomdlModel():
 
                     ctrlpts.append([x, y, z])
 
-        # Get knot-vector
-        knot_vector_xi = create_knotvector(degree_xi, 1)
-        knot_vector_nu = create_knotvector(degree_nu, 1)
-        knot_vector_eta = create_knotvector(degree_eta, 1)
-
-        # Creation of Quadralateral surface
-        vol = BSpline.Volume() 
-
-        # Set degree
-        vol.degree_u = degree_xi
-        vol.degree_v = degree_nu
-        vol.degree_w = degree_eta
-        
-        # Set number of control points 
+        # Create volume
+        vol = BSpline.Volume()
+        vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
         vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-        int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-
-        # Set control points
+            int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
         vol.ctrlpts = ctrlpts
-
-        # Set knot-vector
-        vol.knotvector_u = knot_vector_xi
-        vol.knotvector_v = knot_vector_nu
-        vol.knotvector_w = knot_vector_eta
-
+        vol.knotvector_u = create_knotvector(degree_xi, 1)
+        vol.knotvector_v = create_knotvector(degree_nu, 1)
+        vol.knotvector_w = create_knotvector(degree_eta, 1)
         vol.sample_size = self._sample_size
 
         return vol
-

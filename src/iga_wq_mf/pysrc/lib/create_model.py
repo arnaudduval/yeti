@@ -17,7 +17,6 @@ class thermoMechaModel():
         
         print('\nInitializing thermo-mechanical model')
 
-        # Initialize B-Spline properties
         print('Setting B-spline properties')
         self._sample_size = 101
         self._r_ = 2
@@ -27,15 +26,10 @@ class thermoMechaModel():
         self._knotvector, self._size_kv = self.read_knotvector(modelIGA)
         self._ctrlpts = self.read_ControlPoints(modelIGA)
         self._set_parametric_properties()
-
-        # Initialize thermo-mechanical properties
+        
         self._set_material(material)
-
-        # Initialize Dirichlet boundaries
         self._DirichletBound = np.zeros(self._nb_ctrlpts_total)
         self._set_dirichlet_boundaries(Dirichlet)
-
-        # Initialize Neumman boundaries
         self._set_neumann_condition(Neumann)
 
         return
@@ -324,12 +318,9 @@ class thermoMechaModel():
         """ Sets topology table, also known as INC: NURBS coordinates
         """
 
-        # Find total number of nnz
-        nnz_total = np.prod(nnz_dim)
-
         # Create INC: NURBS coordinates
+        nnz_total = np.prod(nnz_dim)
         INC = np.zeros((nnz_total, 3), dtype= int)
-
         for i3 in range(nnz_dim[2]): 
             for i2 in range(nnz_dim[1]): 
                 for i1 in range(nnz_dim[0]):
@@ -349,14 +340,10 @@ class thermoMechaModel():
         if np.shape(table)[0] < self._dim or np.shape(table)[1] != 2:
             raise Warning('Table is not well defined')
 
-        # Get total number of control points
+        # Find nodes
         nb_ctrlpts = self._nb_ctrlpts
         nb_ctrlpts_total = self._nb_ctrlpts_total
-
-        # Get topology 
         INC = self.get_INC_table(nb_ctrlpts)
-
-        # Find nodes
         dod_total = []; dof_total = []
         for i in range(nbDOF):
             dod = []
@@ -380,11 +367,8 @@ class thermoMechaModel():
     def array2coo_matrix(self, data, indi, indj):
         " Computes coo sparse matrix  "
 
-        # Computes number of rows and cols
         nb_rows = max(indi) + 1
         nb_cols = max(indj) + 1
-
-        # Set sparse coo matrix
         sparse_matrix = sp.coo_matrix((data, (indi, indj)), shape=(nb_rows, nb_cols))
                                         
         return sparse_matrix
@@ -392,11 +376,8 @@ class thermoMechaModel():
     def array2csr_matrix(self, data, indi, indj):
         " Computes csr sparse matrix "
 
-        # Computes number of rows and cols
         nb_rows = len(indi) - 1
         nb_cols = max(indj) + 1
-
-        # Set sparse csr matrix
         sparse_matrix = sp.csr_matrix((data, indj, indi), shape=(nb_rows, nb_cols))
                                         
         return sparse_matrix
@@ -413,7 +394,6 @@ class thermoMechaModel():
         print('Evaluating jacobien and physical position')
         start = time.process_time()
         
-        # Initialize 
         J = np.zeros((dim, dim, nnz))
         PPS = np.zeros((dim, nnz))
         invJ = np.zeros((dim, dim, nnz))
@@ -455,7 +435,6 @@ class thermoMechaModel():
         print('Getting conductivity coefficients')
         start = time.process_time()
         
-        # Initialize
         Kprop = np.atleast_3d(Kprop)
         nnz = len(detJ)
         coefs = np.zeros(np.shape(invJ))
@@ -466,20 +445,12 @@ class thermoMechaModel():
         else:
             if np.shape(Kprop)[2] == 1:
                 for i in range(nnz): 
-
-                    # Find inverse of Jacobien 
                     inv_J = invJ[:,:,i]
-
-                    # Find coefficient of conductivity matrix
                     coefs[:, :, i] = inv_J @ Kprop[:, :, 0] @ inv_J.T * detJ[i]
 
             elif np.shape(Kprop)[2] == nnz:
                 for i in range(nnz): 
-
-                    # Find inverse of Jacobien 
                     inv_J = invJ[:,:,i]
-
-                    # Find coefficient of conductivity matrix
                     coefs[:, :, i] = inv_J @ Kprop[:, :, i] @ inv_J.T * detJ[i]
 
             else: raise Warning('It is not possible to compute coefficients')
@@ -495,7 +466,6 @@ class thermoMechaModel():
         print('Getting capacity coefficients')
         start = time.process_time()
 
-        # Initialize
         Cprop = np.atleast_1d(Cprop)
         nnz = np.size(detJ)
         coefs = np.zeros(nnz)
@@ -524,15 +494,16 @@ class thermoMechaModel():
 
         print('Getting source coefficients')
         start = time.process_time()
-        # Get source coefficient
+
         qp = np.atleast_2d(qp)
         coefs = fun(qp)*detJ
+
         stop = time.process_time()
         print('\tSource coefficients in : %.5f s' %(stop-start))
 
         return coefs
 
-    def eval_elastic_coefficient(self, invJ, detJ, isnoised=False):
+    def eval_elastic_coefficient(self, invJ, detJ):
         """ Computes elasto-plastic coefficients.
             This function only consider linear isotropic case 
         """
@@ -547,54 +518,14 @@ class thermoMechaModel():
         coefs = np.zeros((d*d, d*d, nnz))
         
         # Create material tensor
-        CC = self._Ctensor
-        if CC is None: raise Warning('C tensor not define')
-
-        # Initialize
-        C = np.zeros((ddl, ddl, nnz))
-        for k in range(nnz): C[:, :, k] = CC
-
-        if isnoised:
-            # Inset noise by hand
-            noise = np.random.normal(loc=-100, scale=13, size=(nnz))
-            C[0, 0, :] += noise
-
-            noise = np.random.normal(loc=-50, scale=8, size=(nnz))
-            C[1, 1, :] += noise; C[2, 2, :] += noise
-
-            noise = np.random.normal(loc=-60, scale=12, size=(nnz))
-            C[3, 3, :] += noise; C[4, 4, :] += noise; C[5, 5, :] += noise
-
-            noise = np.random.normal(loc=50, scale=7, size=(nnz))
-            C[0, 1, :] += noise; C[1, 0, :] += noise
-            C[0, 2, :] += noise; C[2, 0, :] += noise
-
-            noise = np.random.normal(loc=5, scale=5, size=(nnz))
-            C[1, 2, :] += noise; C[2, 1, :] += noise
-
-            noise = np.random.normal(loc=0, scale=8, size=(nnz))
-            C[0, 3, :] += noise; C[0, 5, :] += noise
-            C[3, 0, :] += noise; C[5, 0, :] += noise
-
-            noise = np.random.normal(loc=0, scale=4, size=(nnz))
-            C[1, 3, :] += noise; C[3, 1, :] += noise
-            C[2, 5, :] += noise; C[5, 2, :] += noise
-
-            noise = np.random.normal(loc=0, scale=4, size=(nnz))
-            C[2, 3, :] += noise; C[3, 2, :] += noise
-            C[1, 5, :] += noise; C[5, 1, :] += noise
-
-            noise = np.random.normal(loc=0, scale=3, size=(nnz))
-            C[5, 3, :] += noise; C[3, 5, :] += noise
+        if self._Ctensor is None: raise Warning('C tensor not define')
 
         for k in range(nnz):
-            # Compute inverse and determinant of JJ
             invJt = invJ[:, :, k]
             detJt = detJ[k]
-
             for i in range(d):
                 for j in range(d):
-                    ETCE = EE[:, :, i].T @ C[:,:,k] @ EE[:, :, j]
+                    ETCE = EE[:, :, i].T @ self._Ctensor @ EE[:, :, j]
                     Dij = invJt @ ETCE @ invJt.T
                     coefs[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*detJt
 
@@ -607,22 +538,15 @@ class thermoMechaModel():
     def interpolate_field(self, samplesize=None, u_ctrlpts=None, nbDOF=3):
         " Interpolates the input field. It also returns the jacobien "
 
-        # -------------------------
         # Get basis using fortran
-        # -------------------------
-        # Define knots
         if samplesize == None: samplesize = self._sample_size
         knots = np.linspace(0, 1, samplesize)
-
-        # Set basis and indices
         data, indices = [], []
         for dim in range(self._dim):  
             B, indi, indj = eval_basis_fortran(self._degree[dim], self._knotvector[dim], knots)
             data.append(B); indices.append(indi); indices.append(indj)
 
-        # -----------------------------
         # Get position and determinant 
-        # -----------------------------
         inputs = [*self._dim*[samplesize], *indices, *data, self._ctrlpts]
         if self._dim == 2:
             JJ_interp, detJJ_interp, _ = assembly.eval_jacobien_2d(*inputs)
@@ -631,9 +555,7 @@ class thermoMechaModel():
             JJ_interp, detJJ_interp, _ = assembly.eval_jacobien_3d(*inputs)
             position_interp = assembly.interpolate_fieldphy_3d(*inputs)
 
-        # -------------------
         # Get interpolation
-        # -------------------
         if u_ctrlpts is not None:
             u_temp = np.atleast_2d(u_ctrlpts)
             inputs = [*self._dim*[samplesize], *indices, *data, u_temp]
@@ -664,15 +586,9 @@ class thermoMechaModel():
                 raise Warning('Not enough control points')
         else: raise Warning('Solution must be ndarray type')
 
-        # Set shape
-        shape_pts = [1, 1, 1]
-        for dim in range(self._dim): shape_pts[dim] = self._sample_size
-        shape_pts = tuple(shape_pts)
-
         # ------------------
         # Get interpolation
         # ------------------
-        # Interpolate 
         _, qp_PS, detJ, u_interp = self.interpolate_field(u_ctrlpts=u_ctrlpts, nbDOF=nbDOF)
         mean_detJ = statistics.mean(detJ)
         detJ /= mean_detJ
@@ -680,9 +596,10 @@ class thermoMechaModel():
         # ------------------
         # Export results
         # ------------------
-        X1 = np.zeros(shape_pts)
-        X2 = np.zeros(shape_pts)
-        X3 = np.zeros(shape_pts)
+        shape_pts = [1, 1, 1]
+        for dim in range(self._dim): shape_pts[dim] = self._sample_size
+        shape_pts = tuple(shape_pts)
+        X1, X2, X3 = np.zeros(shape_pts), np.zeros(shape_pts), np.zeros(shape_pts)
         U = np.zeros((nbDOF, *shape_pts))
         DET = np.zeros(shape_pts)
 

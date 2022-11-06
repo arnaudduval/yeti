@@ -18,11 +18,8 @@ class WQ(thermoMechaModel):
         
         super().__init__(modelIGA, material= material, Dirichlet= Dirichlet)
 
-        # Evaluate basis and weights
         self._nb_qp, self._nb_qp_total = np.ones(self._dim, dtype=int), None
         self.eval_basis_weights()
-
-        # Get jacobian and physical position
         self._Jqp, self._detJ, self._invJ, self._qp_PS = super().eval_jacobien_physicalPosition(self._dim, 
                                                         self._nb_qp_wq_total, self._ctrlpts, self._DB)
 
@@ -34,9 +31,7 @@ class WQ(thermoMechaModel):
         print('Evaluating basis and weights')
         start = time.process_time()
 
-        # Initalize 
         self._qp_dim, self._DB, self._DW = [], [], []
-
         for dim in range(self._dim): 
             qp_position, B0, B1, W00, W01, W10, W11 = \
             wq_find_basis_weights_opt(self._degree[dim], self._knotvector[dim], self._r_)  
@@ -65,7 +60,7 @@ class WQ(thermoMechaModel):
         " Assemble conductivity matrix K "
 
         start = time.process_time()
-        # Initialize 
+
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         matrix = sp.csr_matrix((self._nb_ctrlpts_total, self._nb_ctrlpts_total))
@@ -87,10 +82,7 @@ class WQ(thermoMechaModel):
                     bt = beta[dim]
                     Wt = sp.kron(self._DW[dim][at][bt], Wt)  
 
-                # Evaluates Cij * W in each point
                 Wt = sp.csr_matrix.dot(Wt, sp.diags(Cij))
-
-                # Find K = W C B
                 matrix += sp.csr_matrix.dot(Wt.tocsr()[:,:], Bt.tocsr()[:,:].T)
         
         stop = time.process_time()
@@ -102,21 +94,18 @@ class WQ(thermoMechaModel):
         " Assemble capacity matrix C "
 
         start = time.process_time()
-        # Initialize
+
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         
         B = 1; W = 1
         for dim in range(self._dim): 
-            # Find basis and weights
+
             B0 = self._DB[dim][0]
             W00 = self._DW[dim][0][0]
-
-            # Find W and B
             B = sp.kron(B0, B)
             W = sp.kron(W00, W)
 
-        # Assemble C
         W = sp.csr_matrix.dot(W, sp.diags(coefs))
         matrix = sp.csr_matrix.dot(W.tocsr()[:,:], B.tocsr()[:,:].T)
 
@@ -130,19 +119,15 @@ class WQ(thermoMechaModel):
 
         start = time.process_time()
 
-        # Get source coefficients
         coefs = self.eval_source_coefficient(fun)       
 
-        W = 1; 
+        W = 1 
         for dim in range(self._dim): 
-            # Find weights
             W00 = self._DW[dim][0][0]
-
-            # Find W
             W = sp.kron(W00, W)
 
-        # Assemble vector
         vector = sp.csr.csr_matrix.dot(W.tocsr()[:,:], coefs)
+
         stop = time.process_time()
         print('Source vector assembled in : %.5f s' %(stop-start))
 

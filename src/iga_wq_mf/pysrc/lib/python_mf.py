@@ -24,7 +24,6 @@ class MF(WQ):
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
 
-        # Initialize
         Ku = np.zeros(len(indi))
         for j in range(self._dim):
             beta = np.zeros(self._dim, dtype = int); beta[j] = 1
@@ -44,7 +43,6 @@ class MF(WQ):
                     bt = beta[dim]
                     Wt = sp.kron(self._DW[dim][at][bt], Wt)  
 
-                # Evaluates Cij * W in each point
                 Wt = sp.csr_matrix.dot(Wt, sp.diags(Cij))
                 Ku += sp.csr_matrix.dot(Wt.tocsr()[indi,:], But)
 
@@ -60,15 +58,11 @@ class MF(WQ):
         
         B = 1; W = 1
         for dim in range(self._dim): 
-            # Find basis and weights
             B0 = self._DB[dim][0]
             W00 = self._DW[dim][0][0]
-
-            # Find W and B
             B = sp.kron(B0, B)
             W = sp.kron(W00, W)
 
-        # Assemble C
         W = W * sp.diags(coefs)
         Bu = sp.csr_matrix.dot(B.tocsr()[indj,:].T, u)
         Cu = sp.csr_matrix.dot(W.tocsr()[indi,:], Bu)
@@ -79,19 +73,13 @@ class MF(WQ):
         " Computes F "
 
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
-
-        # Get source coefficients
         coefs = super().eval_source_coefficient(fun)
 
-        W = 1; 
+        W = 1
         for dim in range(self._dim): 
-            # Find weights
             W00 = self._DW[dim][0][0]
-
-            # Find W
             W = sp.kron(W, W00)
 
-        # Assemble F
         vector = sp.csr_matrix.dot(W.tocsr()[indi,:], coefs)
 
         return vector

@@ -83,26 +83,22 @@ def interpolate_strain_1D(JJ, DB, disp):
 def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-9, nbIterNL=200, update=2):
     " Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
-    # Initialize
     JJ, nb_qp = properties[0], properties[-1]
     sigma_n0, alpha_n0, ep_n0 = np.zeros(nb_qp), np.zeros(nb_qp), np.zeros(nb_qp)
     sigma_n1, alpha_n1, ep_n1 = np.zeros(nb_qp), np.zeros(nb_qp), np.zeros(nb_qp)
     Dalg = np.zeros(nb_qp)
     disp = np.zeros(np.shape(Fext))
 
-    # Set some variables to return
     ep = np.zeros((nb_qp, np.shape(Fext)[1]))
     sigma = np.zeros((nb_qp, np.shape(Fext)[1]))
 
     for i in range(1, np.shape(Fext)[1]):
 
-        # Initialize
         ddisp = np.zeros(np.shape(Fext)[0])
         Fstep = np.copy(Fext[:, i])
 
-        # Solver Newton-Raphson
         print('Step %d' %i)
-        for j in range(nbIterNL):
+        for j in range(nbIterNL): # Newton-Raphson
 
             # Compute strain as function of displacement
             deps = interpolate_strain_1D(JJ, DB, ddisp)

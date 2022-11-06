@@ -24,7 +24,7 @@ def compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, T, dT):
     Kcoefs = W * Kprop * 1.0/JJ
     K = DB[1] @ np.diag(Kcoefs) @ DB[1].T 
 
-    # Compute capacitiy matrix 
+    # Compute capacity matrix 
     Ccoefs = W * Cprop * JJ
     C = DB[0] @ np.diag(Ccoefs) @ DB[0].T
 
@@ -43,7 +43,7 @@ def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, newmark=0.5, dt=0
 
     # Compute conductivity matrix
     Kcoefs = W * Kprop * 1.0/JJ
-    K = DB[1] @ np.diag(Kcoefs) @ DB[1].T # In fact we have to add radiation matrix and convection matrix
+    K = DB[1] @ np.diag(Kcoefs) @ DB[1].T 
 
     # Compute capacitiy matrix 
     Ccoefs = W * Cprop * JJ
@@ -58,7 +58,6 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
                             dof=None, dod=None, Tinout=None, threshold=1e-12, nbIterNL=20):
     " Solves transient heat problem in 1D. "
 
-    # Initialize
     JJ, conductivity, capacity, newmark = properties
     ddGG = np.zeros(len(dod)) # d Temperature/ d time
     VVn0 = np.zeros(len(dof)+len(dod))
@@ -82,16 +81,13 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
         # Get values of last step
         TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
 
-        # Predict values of new step
+        # Get values of new step
         TTn1 = TTn0 + delta_t*(1-newmark)*VVn0; TTn1[dod] = Tinout[dod, i]
         TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
         VVn1[dod] = 1.0/newmark*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-newmark)*VVn0[dod])
-
-        # Get "force" of new step
         Fstep = Fext[:, i]
 
-        # Corrector (Newton-Raphson)
-        for j in range(nbIterNL):
+        for j in range(nbIterNL): # Newton-Raphson
 
             # Interpolate temperature
             T_interp = interpolate_temperature_1D(DB, TTn1)

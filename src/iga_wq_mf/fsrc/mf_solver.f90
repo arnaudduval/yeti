@@ -934,7 +934,7 @@ subroutine mf_wq_transient_nonlinear_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc
     !! It assumes that initial temperature equals 0
     !! IN CSR FORMAT
     
-    use heat_transfer
+    use heat_spmf
     implicit none 
     ! Input / output data
     ! -------------------

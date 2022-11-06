@@ -4,7 +4,6 @@
 .. Joaquin Cornejo 
 """
 
-# Python libraries
 from .__init__ import *
 
 # My libraries
@@ -23,11 +22,8 @@ class fortran_mf_wq(thermoMechaModel):
 
         super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 
-        # Set basis and weights
         self._nb_qp, self._nb_qp_total = np.ones(self._dim, dtype=int), None
         self.eval_basis_weigths()
-        
-        # Get jacobian and physical position 
         self.eval_jacobien_physicalPosition()
 
         return
@@ -454,14 +450,14 @@ class fortran_mf_wq(thermoMechaModel):
 
         return displacement, stress_vm
     
-    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, isPrecond=True, isnoised=False):
+    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, isPrecond=True):
         " Solves a elasticity problem "
         
         # Get inputs 
         if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ, isnoised=isnoised)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 
         dod = deepcopy(indi)
         for _ in range(len(dod)):
@@ -549,13 +545,13 @@ class fortran_mf_wq(thermoMechaModel):
         return Fint
 
     def MFelasticity_py(self, coefs=None, DU=None, Fext=None, indi=None, 
-                            nbIterPCG=100, threshold=1e-7, isPrecond=True, isnoised=False):
+                            nbIterPCG=100, threshold=1e-7, isPrecond=True):
         " Solve linear system using Bi-CG Stab algorithm for elasticity problems "
 
         # Initialize
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
-        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ, isnoised=isnoised)
+        if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 
         x = np.zeros(np.shape(Fext)); r = Fext
         clean_dirichlet_3d(r, indi)
