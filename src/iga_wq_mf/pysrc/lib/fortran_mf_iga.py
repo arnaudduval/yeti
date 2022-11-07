@@ -129,7 +129,7 @@ class fortran_mf_iga(thermoMechaModel):
 
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_iga_get_ku_3d_csr(coefs, *inputs, u)  
+        if self._dim == 3: result = solver.mf_iga_get_ku_3d_py(coefs, *inputs, u)  
         stop = time.process_time()
         timeCPU = stop - start
 

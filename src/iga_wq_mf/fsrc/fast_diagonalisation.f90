@@ -3,7 +3,7 @@
 ! author :: Joaquin Cornejo
 ! ====================================================
 
-subroutine eigen_decomposition_f2py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
+subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
                                 Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -37,43 +37,14 @@ subroutine eigen_decomposition_f2py(nr, nc, nnz, indi, indj, data_B0, data_W0, d
                             data_B0, data_W0, data_B1, data_W1, robin_condition, &
                             eigenvalues, eigenvectors, Kdiag, Mdiag)
 
-end subroutine eigen_decomposition_f2py
+end subroutine eigen_decomposition_py
 
-subroutine fd_sqr_scaling(nnz, factor_up, factor_down, array_inout)
-    !! Square-root scaling in fast diagonalization method
-
-    use omp_lib
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: factor_up, factor_down
-    dimension :: factor_up(nnz), factor_down(nnz)
-
-    double precision, intent(inout) :: array_inout
-    dimension :: array_inout(nnz)
-
-    ! Local data
-    ! ----------
-    integer :: i, nb_tasks
-
-    !$OMP PARALLEL 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
-    do i = 1, nnz
-        array_inout(i) = sqrt(factor_up(i)/factor_down(i))*array_inout(i) 
-    end do  
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
-end subroutine fd_sqr_scaling
-
-subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+subroutine fd_steady_heat_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to steady heat problems
     !! by G. Sanaglli and M. Tani
     
-    use omp_lib
+    use heat_solver
     implicit none
     ! Input / output  data 
     !---------------------
@@ -87,34 +58,20 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
 
     ! Local data
     ! ----------
-    integer :: i, nb_tasks
-    double precision :: array_temp
-    dimension :: array_temp(nr_total)
+    type(cgsolver), pointer :: solv
 
-    ! Compute (Uw x Uv x Uu)'.array_in
-    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                    transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
+    allocate(solv)
+    call setup_eigendiag(solv, nr_total, eigen_diag)
+    call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
 
-    !$OMP PARALLEL 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-    do i = 1, nr_total
-        array_temp(i) = array_temp(i)/eigen_diag(i)
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL
+end subroutine fd_steady_heat_3d_py
 
-    ! Compute (Uw x Uv x Uu).array_temp
-    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
-    
-end subroutine fd_steady_heat_3d
-
-subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+subroutine fd_interpolation_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applieg in control points interpolation problems
     !! by G. Sanaglli and M. Tani
     
-    use omp_lib
+    use heat_solver
     implicit none
     ! Input / output  data 
     !---------------------
@@ -127,19 +84,14 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
 
     ! Local data
     ! ----------
-    double precision :: array_temp
-    dimension :: array_temp(nr_total)
+    type(cgsolver), pointer :: solv
 
-    ! Compute (Uw x Uv x Uu)'.array_in
-    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                    transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
+    allocate(solv)
+    call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
 
-    ! Compute (Uw x Uv x Uu).array_temp
-    call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
+end subroutine fd_interpolation_3d_py
 
-end subroutine fd_interpolation_3d
-
-subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
@@ -169,4 +121,4 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
         array_out(i, :) = array_temp
     end do
     
-end subroutine fd_elasticity_3d
+end subroutine fd_elasticity_3d_py

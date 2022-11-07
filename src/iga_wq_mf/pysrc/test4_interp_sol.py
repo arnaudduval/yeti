@@ -13,7 +13,7 @@ from lib.base_functions import relativeError
 
 # Set global variables
 isIGA   = False
-degree  = 6
+degree  = 4
 cuts    = 4
 
 if isIGA: cfortran = fortran_mf_iga

@@ -2,9 +2,10 @@ module heat_solver
 
     use heat_spmf
     type cgsolver
-        logical :: withscaling = .false., withdiag = .true.
+        logical :: withscaling = .false., withdiag = .false.
         integer :: matrixfreetype = 1
         double precision, dimension(:), allocatable :: factor
+        double precision, dimension(:), pointer :: diag
     end type cgsolver
 
 contains
@@ -65,6 +66,22 @@ contains
 
     end subroutine matrixfree_spMdV
 
+    subroutine setup_eigendiag(solv, nr_total, diag)
+
+        use omp_lib
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver), pointer :: solv
+        integer, intent(in) :: nr_total
+        double precision, target, intent(in) :: diag
+        dimension :: diag(nr_total)
+
+        solv%withdiag = .true.
+        solv%diag => diag
+        
+    end subroutine setup_eigendiag
+
     subroutine setup_FDscaling(solv, nr_total, factor_up, factor_down)
 
         use omp_lib
@@ -98,35 +115,7 @@ contains
 
     end subroutine setup_FDscaling
 
-    subroutine get_FDscaling(solv, nr_total, array_inout)
-        !! Square-root scaling in fast diagonalization method
-    
-        use omp_lib
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr_total
-    
-        double precision, intent(inout) :: array_inout
-        dimension :: array_inout(nr_total)
-    
-        ! Local data
-        ! ----------
-        integer :: i, nb_tasks
-    
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-        do i = 1, nr_total
-            array_inout(i) = solv%factor(i)*array_inout(i) 
-        end do  
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-    
-    end subroutine get_FDscaling
-
-    subroutine fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
+    subroutine fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
         !! by G. Sanaglli and M. Tani
@@ -137,9 +126,8 @@ contains
         !---------------------
         type(cgsolver), pointer :: solv
         integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-        double precision, intent(in) :: U_u, U_v, U_w, diag, array_in
-        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                        diag(*), array_in(nr_total)
+        double precision, intent(in) :: U_u, U_v, U_w, array_in
+        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), array_in(nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(nr_total)
@@ -151,7 +139,16 @@ contains
         dimension :: array_temp(nr_total), dummy(nr_total)
 
         dummy = array_in
-        if (solv%withscaling) call get_FDscaling(solv, nr_total, dummy)
+        if (solv%withscaling) then
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
+            do i = 1, nr_total
+                dummy(i) = solv%factor(i)*dummy(i) 
+            end do  
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL 
+        end if  
     
         ! Compute (Uw x Uv x Uu)'.array_in
         call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
@@ -162,7 +159,7 @@ contains
             nb_tasks = omp_get_num_threads()
             !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
             do i = 1, nr_total
-                array_temp(i) = array_temp(i)/diag(i)
+                array_temp(i) = array_temp(i)/solv%diag(i)
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
@@ -171,7 +168,16 @@ contains
         ! Compute (Uw x Uv x Uu).array_temp
         call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, dummy)
 
-        if (solv%withscaling) call get_FDscaling(solv, nr_total, dummy)
+        if (solv%withscaling) then
+            !$OMP PARALLEL 
+            nb_tasks = omp_get_num_threads()
+            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
+            do i = 1, nr_total
+                dummy(i) = solv%factor(i)*dummy(i) 
+            end do  
+            !$OMP END DO NOWAIT
+            !$OMP END PARALLEL 
+        end if
         array_out = dummy
         
     end subroutine fast_diagonalization
@@ -179,7 +185,7 @@ contains
     subroutine CG(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, RelRes)
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -205,8 +211,8 @@ contains
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, RelRes
-        dimension :: x(nr_total), RelRes(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
         ! Local data
         ! -----------
@@ -216,7 +222,7 @@ contains
         integer :: iter
 
         x = 0.d0; r = b; normb = maxval(abs(r))
-        RelRes = 0.d0; RelRes(1) = 1.d0
+        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return 
 
         rsold = dot_product(r, r); p = r
@@ -231,8 +237,8 @@ contains
             x = x + alpha * p
             r = r - alpha * Ap
 
-            RelRes(iter+1) = maxval(abs(r))/normb
-            if (RelRes(iter+1).le.threshold) exit
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit
         
             rsnew = dot_product(r, r)
             p = r + rsnew/rsold * p
@@ -244,8 +250,7 @@ contains
     subroutine PCG(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, eigen_diag, &
-                nbIterPCG, threshold, b, x, RelRes)
+                data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -267,15 +272,15 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        double precision, intent(in) :: U_u, U_v, U_w, eigen_diag
-        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), eigen_diag(nr_total)
+        double precision, intent(in) :: U_u, U_v, U_w
+        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w)
 
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, RelRes
-        dimension :: x(nr_total), RelRes(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
         ! Local data
         ! -----------
@@ -285,10 +290,10 @@ contains
         integer :: iter
 
         x = 0.d0; r = b; normb = maxval(abs(r))
-        RelRes = 0.d0; RelRes(1) = 1.d0
+        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return
 
-        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, r, z)
+        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
         rsold = dot_product(r, z); p = z
         
         do iter = 1, nbIterPCG
@@ -301,10 +306,10 @@ contains
             x = x + alpha * p
             r = r - alpha * Ap
 
-            RelRes(iter+1) = maxval(abs(r))/normb
-            if (RelRes(iter+1).le.threshold) exit       
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit       
 
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, r, z)
+            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
             rsnew = dot_product(r, z)
 
             p = z + rsnew/rsold * p
@@ -316,7 +321,7 @@ contains
     subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, RelRes)
+                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -342,8 +347,8 @@ contains
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, RelRes
-        dimension :: x(nr_total), RelRes(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
         ! Local data
         ! -----------
@@ -355,7 +360,7 @@ contains
 
         x = 0.d0; r = b; rhat = r; p = r
         rsold = dot_product(r, rhat); normb = maxval(abs(r))
-        RelRes = 0.d0; RelRes(1) = 1.d0
+        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
@@ -374,8 +379,8 @@ contains
             x = x + alpha*p + omega*s
             r = s - omega*As
 
-            RelRes(iter+1) = maxval(abs(r))/normb
-            if (RelRes(iter+1).le.threshold) exit
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -388,8 +393,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, eigen_diag, &
-                        nbIterPCG, threshold, b, x, RelRes)
+                        data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -411,15 +415,15 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        double precision, intent(in) :: U_u, U_v, U_w, eigen_diag
-        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), eigen_diag(nr_total)
+        double precision, intent(in) :: U_u, U_v, U_w
+        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w)
 
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, RelRes
-        dimension :: x(nr_total), RelRes(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
         ! Local data
         ! -----------
@@ -431,11 +435,11 @@ contains
 
         x = 0.d0; r = b; rhat = r; p = r
         rsold = dot_product(r, rhat); normb = maxval(abs(r))
-        RelRes = 0.d0; RelRes(1) = 1.d0
+        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, p, ptilde)
+            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -443,7 +447,7 @@ contains
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, s, stilde)
+            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -452,8 +456,8 @@ contains
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            RelRes(iter+1) = maxval(abs(r))/normb
-            if (RelRes(iter+1).le.threshold) exit
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)

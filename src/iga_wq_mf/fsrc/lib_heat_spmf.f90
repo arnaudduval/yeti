@@ -15,6 +15,24 @@ module heat_spmf
 
 contains
 
+    subroutine setupKcoefs(mat, dimen, nnz, coefs)
+        implicit none
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: dimen, nnz
+        double precision, target, intent(in) ::  coefs
+        dimension :: coefs(dimen, dimen, nnz)
+        mat%Kcoefs => coefs
+    end subroutine setupKcoefs
+
+    subroutine setupCcoefs(mat, nnz, coefs)
+        implicit none
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nnz
+        double precision, target, intent(in) ::  coefs
+        dimension :: coefs(nnz)
+        mat%Ccoefs => coefs
+    end subroutine setupCcoefs
+
     subroutine update_conductivity_coefs(mat, dimen, nnz, invJJ, detJJ, info)
         !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
         

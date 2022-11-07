@@ -157,7 +157,7 @@ class fortran_mf_wq(thermoMechaModel):
     
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_wq_get_ku_3d_csr(coefs, *inputs, u)
+        if self._dim == 3: result = solver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
         stop = time.process_time()
         timeCPU = stop - start
 
@@ -172,7 +172,7 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = self.get_input4MatrixFree(table=table)
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_wq_get_cu_3d_csr(coefs, *inputs, u)
+        if self._dim == 3: result = solver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
         stop = time.process_time()
         timeCPU = stop - start
 
@@ -188,7 +188,7 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = self.get_input4MatrixFree(table=table)
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: result = solver.mf_wq_get_kcu_3d_csr(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
+        if self._dim == 3: result = solver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
         stop = time.process_time()
         timeCPU = stop - start
 
