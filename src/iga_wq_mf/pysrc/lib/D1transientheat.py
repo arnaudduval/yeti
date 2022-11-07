@@ -33,9 +33,9 @@ def compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, T, dT):
 
     return Fint
 
-def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, newmark=0.5, dt=0.1):
+def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, theta=0.5, dt=0.1):
     """ Computes tangent matrix in transient heat
-        S = C + newmark dt K
+        S = C + theta dt K
         K = int_Omega dB/dx Kprop dB/dx dx = int_[0, 1] J^-1 dB/dxi Kprop J^-1 dB/dxi detJ dxi.
         But in 1D: detJ times J^-1 get cancelled.
         C = int_Omega B Cprop B dx = int [0, 1] B Cprop det J B dxi
@@ -50,7 +50,7 @@ def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, newmark=0.5, dt=0
     C = DB[0] @ np.diag(Ccoefs) @ DB[0].T
 
     # Compute tangent matrix 
-    M = C + newmark*dt*K
+    M = C + theta*dt*K
 
     return M
 
@@ -58,7 +58,7 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
                             dof=None, dod=None, Tinout=None, threshold=1e-12, nbIterNL=20):
     " Solves transient heat problem in 1D. "
 
-    JJ, conductivity, capacity, newmark = properties
+    JJ, conductivity, capacity, theta = properties
     ddGG = np.zeros(len(dod)) # d Temperature/ d time
     VVn0 = np.zeros(len(dof)+len(dod))
 
@@ -82,9 +82,9 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
         TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
 
         # Get values of new step
-        TTn1 = TTn0 + delta_t*(1-newmark)*VVn0; TTn1[dod] = Tinout[dod, i]
+        TTn1 = TTn0 + delta_t*(1-theta)*VVn0; TTn1[dod] = Tinout[dod, i]
         TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
-        VVn1[dod] = 1.0/newmark*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-newmark)*VVn0[dod])
+        VVn1[dod] = 1.0/theta*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
         Fstep = Fext[:, i]
 
         for j in range(nbIterNL): # Newton-Raphson
@@ -105,14 +105,14 @@ def solve_transient_heat_1D(properties, DB=None, W=None, Fext=None, time_list=No
 
             # Compute tangent matrix
             MM = compute_tangent_thermal_matrix_1D(JJ, DB, W, 
-                    Kprop, Cprop, newmark=newmark, dt=delta_t)[np.ix_(dof, dof)]
+                    Kprop, Cprop, theta=theta, dt=delta_t)[np.ix_(dof, dof)]
 
             # Compute delta dT 
             ddVV = np.linalg.solve(MM, dF)
 
             # Update values
             VVn1[dof] += ddVV
-            TTn1[dof] = TTn1i0[dof] + newmark*delta_t*VVn1[dof]
+            TTn1[dof] = TTn1i0[dof] + theta*delta_t*VVn1[dof]
 
         print(j+1, relerror)
 

@@ -236,7 +236,7 @@ class thermoMechaModel():
         if self._capacity is None: raise Warning('Capacity not defined')
         return
     
-    def _compute_velocity(self, X, time_list, newmark=1):
+    def _compute_velocity(self, X, time_list, theta=1):
         "Computes velocity defined as dX/dt from X given and time"
 
         if np.shape(X)[1] != len(time_list): raise Warning('Different size')
@@ -259,7 +259,7 @@ class thermoMechaModel():
 
         for i in range(1, len(time_list)):
             dt = time_list[i] - time_list[i-1]
-            dX1 = 1.0/newmark*(1.0/dt*(X[:, i] - X[:, i-1]) - (1 - newmark)*dX)
+            dX1 = 1.0/theta*(1.0/dt*(X[:, i] - X[:, i-1]) - (1 - theta)*dX)
             V[:, 0] = dX1; dX = dX1
 
         return V

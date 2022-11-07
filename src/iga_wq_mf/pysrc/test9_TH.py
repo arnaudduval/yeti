@@ -1,6 +1,6 @@
 """
 .. Test of transient heat solver
-.. ATTENTION: IT ONLY WORKS IN 'ISOTROPIC' MATERIALS
+.. ATTENTION: IT ONLY WORKS WITH 'ISOTROPIC' MATERIALS
 .. Joaquin Cornejo 
 """
 
@@ -14,22 +14,6 @@ from lib.base_functions import create_table_properties, sigmoid
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
-
-def setKpop(T, prop=0.1):
-    # y = prop + prop*np.exp(-0.1*abs(T))
-    y = prop + prop*1.0/(1.0 + np.exp(-(T-1.0)))
-    # y = prop*np.ones(len(T))
-    return y
-
-def setCpop(T, prop=1.0):
-    y = prop + prop*np.exp(-0.1*abs(T))
-    # y = prop*np.ones(len(T))
-    return y
-
-def powdentest(P:list):
-    x = P[0, :]
-    f = 0.0*np.sin(np.pi*x)
-    return f
 
 # Initialize
 dataExist = True
@@ -54,8 +38,8 @@ if not dataExist:
             time_list = np.linspace(0, 25, N)
 
             # Create material
-            table_Kprop = create_table_properties(setKpop, prop=conductivity)
-            table_Cprop = create_table_properties(setCpop, prop=capacity)
+            table_Kprop = create_table_properties(setKprop, prop=conductivity)
+            table_Cprop = create_table_properties(setCprop, prop=capacity)
 
             # Create geometry 
             geometry = {'degree':[degree, degree, degree]}
@@ -92,7 +76,7 @@ if not dataExist:
             # Solve transient problem at internal control points
             Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                             table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                            methodPCG=PCGmethod, newmark=newmark)
+                                            methodPCG=PCGmethod, theta=newmark)
             print('Finish')
             np.savetxt(filename, resPCG)
             # modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)

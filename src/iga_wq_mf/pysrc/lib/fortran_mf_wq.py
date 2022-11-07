@@ -34,9 +34,7 @@ class fortran_mf_wq(thermoMechaModel):
         print('Evaluating basis and weights')
         start = time.process_time()
 
-        # Initialize 
         self._nnz_I, self._qp_dim, self._DB, self._DW, self._indices = [], [], [], [], []
-
         for dim in range(self._dim):  
             nnz_I, qp_position, basis, \
             weights, indi, indj = wq_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim])
@@ -59,7 +57,6 @@ class fortran_mf_wq(thermoMechaModel):
         print('Evaluating jacobien and physical position')
         start = time.process_time()
         
-        # Get inputs
         inputs = [*self._nb_qp, *self._indices, *self._DB, self._ctrlpts]
         if self._dim == 2:
             self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
@@ -93,7 +90,6 @@ class fortran_mf_wq(thermoMechaModel):
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
         
-        # Get inputs
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
@@ -114,7 +110,6 @@ class fortran_mf_wq(thermoMechaModel):
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
         if indj is None: indj = np.arange(self._nb_ctrlpts_total, dtype=int)
         
-        # Get inputs
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
@@ -135,7 +130,6 @@ class fortran_mf_wq(thermoMechaModel):
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
         
-        # Get inputs
         if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, *self._nnz_I]
         start = time.process_time()
@@ -150,7 +144,6 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_Ku(self, u, table=None): 
         " Computes K u where K is conductivity matrix "
 
-        # Get inputs
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = self.get_input4MatrixFree(table=table)
@@ -166,10 +159,10 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_Cu(self, u, table=None): 
         " Computes C u where C is capacity matrix "
 
-        # Get inputs
         super()._verify_thermal()
         coefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = self.get_input4MatrixFree(table=table)
+        
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
@@ -181,11 +174,11 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_KCu(self, u, table=None, alpha=1.0, beta=1.0): 
         " Computes C u where C is capacity matrix "
 
-        # Get inputs
         super()._verify_thermal()
         Kcoefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         Ccoefs = super().eval_capacity_coefficient(self._detJ, self._capacity)
         inputs = self.get_input4MatrixFree(table=table)
+        
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: result = solver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
@@ -197,11 +190,11 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_Su(self, u, coefs=None):
         " Computes S u where S is stiffness matrix "
 
-        # Get inputs
         if self._dim != 3: raise Warning('Until now not done')
-        super()._verify_mechanics()
         if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
+        super()._verify_mechanics()
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
+
         result = solver.mf_wq_get_su_3d_csr(*inputs, u)
 
         return result
@@ -210,10 +203,9 @@ class fortran_mf_wq(thermoMechaModel):
         " Computes source vector "
 
         if indi is None: indi = np.arange(self._nb_ctrlpts_total, dtype=int)
-
-        # Get source coefficients
         coefs = self.eval_source_coefficient(fun)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
+
         start = time.process_time()
         if self._dim == 2: vector = assembly.wq_get_source_2d(*inputs)[indi]
         if self._dim == 3: vector = assembly.wq_get_source_3d(*inputs)[indi]
@@ -236,19 +228,16 @@ class fortran_mf_wq(thermoMechaModel):
             else: side = 0
             return direction, side
 
-        # Initialize 
         Ftemp = np.zeros((self._dim+1, self._nb_ctrlpts_total))
 
         # Get INC of control points and INC of quadrature points
         INC_CP = super().get_INC_table(self._nb_ctrlpts)
         INC_QP = super().get_INC_table(self._nb_qp)
 
-        for _ in range(self._dim*2):
-            # Get direction 
-            direction, side = get_info(_)
+        for dim in range(self._dim*2):
+            direction, side = get_info(dim)
+            force = self._mechanicalNeumann[dim]
 
-            # Get force
-            force = self._mechanicalNeumann[_]
             if np.array_equal(force, np.zeros(self._dim)): continue
             else:
                 # Get control points and quadrature points list
@@ -260,28 +249,26 @@ class fortran_mf_wq(thermoMechaModel):
                     CPList = np.where(INC_CP[:, direction] == self._nb_ctrlpts[direction]-1)[0]
                     QPList = np.where(INC_QP[:, direction] == self._nb_qp[direction]-1)[0]
                 
-                # Order my list
                 CPList = list(np.sort(CPList))
                 QPList = list(np.sort(QPList))
 
-                # Get modified Jacobien matrix
+                # Modify Jacobien matrix
                 valrange = [i for i in range(self._dim)]
                 valrange.pop(direction)
                 JJ = self._Jqp[:, :, QPList]
                 JJ = JJ[:, valrange, :]
 
-                # Get inputs to compute vector
+                # Compute surface force
                 nnz, indices, data_W = [], [], []
                 for _ in valrange:
                     nnz.append(self._nb_qp[_]); data_W.append(self._DW[_])
                     indices.append(self._indices[2*_]); indices.append(self._indices[2*_+1]) 
                 
-                # Compute surface force
                 FSurf = solver.wq_get_forcesurf_3d(force, JJ, *nnz, *indices, *data_W)
                 Ftemp[:-1, CPList] += FSurf
                 Ftemp[-1, CPList] += 1
 
-        # Final update of the vector (average)
+        # Update vector (average)
         F = Ftemp[:-1, :]
         # FList = np.where(Ftemp[-1, :] >= 2)[0]
         # F[:, FList] /= Ftemp[-1, FList]
@@ -292,10 +279,10 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_force_body(self, fun):
         " Computes body (volumetric) force "
 
-        # Get source coefficients
         if self._dim != 3: raise Warning('Method only for 3D geometries')
         coefs = self.eval_bodyforce_coefficient(fun)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
+
         start = time.process_time()
         vector = solver.wq_get_forcevol_3d(*inputs)
         stop = time.process_time()
@@ -307,10 +294,10 @@ class fortran_mf_wq(thermoMechaModel):
     def eval_diag_K(self): 
         " Computes the diagonal of conductivity matrix "
 
-        # Get inputs
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
+
         start = time.process_time()
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: vector = assembly.wq_find_conductivity_diagonal_3d(*inputs)
@@ -325,13 +312,10 @@ class fortran_mf_wq(thermoMechaModel):
     # ----------------------------------   
 
     def get_input4MatrixFree(self, table=None):
-        " Returns necessary inputs to compute the product between a matrix and a vector"
-
-        # Initialize
-        indices, data_B, data_W = [], [], []
+        " Returns necessary inputs to compute the product between a matrix and a vector "
         
-        # Compute inputs
         if table is None: table = np.asarray([[0, 0], [0, 0], [0, 0]])
+        indices, data_B, data_W = [], [], []
         for dim in range(self._dim):
             # Select data
             if np.array_equal(table[dim, :], [0, 0]): rows2erase = []
@@ -351,30 +335,28 @@ class fortran_mf_wq(thermoMechaModel):
 
         return inputs
 
-    def MFsteadyHeat(self, F, nbIterPCG=100, threshold=1.e-12, methodPCG='FDC'): 
+    def MFsteadyHeat(self, b, nbIterPCG=100, threshold=1e-12, methodPCG='FDC'): 
         " Solves steady heat problems using directly substitution method "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
 
-        # Get inputs 
         super()._verify_thermal()
         coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [coefs, *inputs_tmp, F, nbIterPCG, threshold, methodPCG]
+        inputs = [coefs, *inputs_tmp, b, nbIterPCG, threshold, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, residue = solver.mf_wq_steady_heat_3d(*inputs)
 
         return sol, residue
 
-    def MFtransientHeatNL(self, F=None, G=None, time_list=None, newmark=1, 
+    def MFtransientHeatNL(self, F=None, G=None, time_list=None, theta=1, 
                         table_Kprop=None, table_Cprop=None, methodPCG='FDC'):
-        "Solves transient heat problem  "
+        " Solves transient heat problem "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if F is None or G is None or time_list is None: raise Warning('Important information missing')
 
-        # Get inputs 
         if table_Kprop is None: 
             table_Kprop = np.array([[0, 1]])
             print('WARNING: Default conductivity = 1.0')
@@ -382,11 +364,10 @@ class fortran_mf_wq(thermoMechaModel):
             table_Cprop = np.array([[0, 1]])
             print('WARNING: Default capacity = 1.0')
 
-        # Convert Python to Fortran
         dod = np.copy(self._thermal_dod); dod += 1
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [*inputs_tmp, *self._nb_qp, *self._indices, *self._DB, *self._DW, table_Kprop, 
-                    table_Cprop, newmark, self._invJ, self._detJ, time_list, F, dod, G, methodPCG]
+        inputs = [*inputs_tmp, *self._indices, *self._DB, *self._DW, time_list, F, dod, G, 
+                    table_Kprop, table_Cprop, self._invJ, self._detJ, theta, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: sol, resPCG = solver.mf_wq_transient_nonlinear_3d(*inputs)
@@ -396,18 +377,13 @@ class fortran_mf_wq(thermoMechaModel):
     def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
         " Interpolation from parametric space to physical space "
 
-        # Get coeficients 
         coefs = None
         if datafield is not None: coefs = datafield * self._detJ
         if funfield is not None: coefs = funfield(self._qp_PS) * self._detJ
-
-        # Verify data
         if coefs is None: raise Warning('Missing data')
 
-        # Get inputs
-        inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
-
         # Calculate vector
+        inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
         if self._dim == 2: raise Warning('Until now not done')
         if self._dim == 3: vector = assembly.wq_get_source_3d(*inputs)
 

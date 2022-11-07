@@ -185,3 +185,21 @@ def powden_annulus(P: list):
     )
     
     return f
+
+# ------------------
+
+def setKprop(T, prop=0.1):
+    # y = prop + prop*np.exp(-0.1*abs(T))
+    y = prop + prop*1.0/(1.0 + np.exp(-(T-1.0)))
+    return y
+
+def setCprop(T, prop=1.0):
+    y = prop + prop*np.exp(-0.1*abs(T))
+    return y
+
+def powden(P:list, dim=1):
+    if dim == 1  : x = P[:]
+    elif dim == 2: x = P[0, :]
+    elif dim == 3: x = P[0, :]
+    f = 0.0*np.sin(np.pi*x)
+    return f

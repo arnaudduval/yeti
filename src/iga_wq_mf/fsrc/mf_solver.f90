@@ -490,7 +490,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 b, thetadt, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
-    !! It solves Ann un = bn, where Ann is (newmarkdt*Knn + Cnn) and bn = Fn - And ud
+    !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
     !! IN CSR FORMAT
 
