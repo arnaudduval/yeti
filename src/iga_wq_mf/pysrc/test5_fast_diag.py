@@ -64,14 +64,13 @@ if not dataExist:
 else:
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
-    markers = ['o', 'v', 's', 'X', '+', 'p']
 
     # Load data
     file = pd.read_table(folder_data + 'FD_time.dat', sep=' ', names=['nbel', 'p2', 'p3', 'p4', 'p5', 'p6'])
     times = np.column_stack((file.p2, file.p3, file.p4, file.p5, file.p6))
 
     for i in range(5):
-        ax.loglog(file.nbel, times[:, i], '--', label='degree ' + r'$p=$' + str(i+2), marker=markers[i])
+        ax.loglog(file.nbel, times[:, i], '--', label='degree ' + r'$p=$' + str(i+2), marker=markerSet[i])
 
     # Compute slope
     slope = np.polyfit(np.log10(file.nbel),np.log10(times[:, 2]), 1)[0]

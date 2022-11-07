@@ -96,7 +96,6 @@ if not dataExist:
 else:
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
-    markers = ['o', 'v', 's', 'X', '+', 'p']
 
     # Load data
     file_P = pd.read_table(folder_data + 'matvec_Python_'+str(cuts)+'.dat', sep=' ', names=['degree', 'P1', 'P2']) 
@@ -109,9 +108,9 @@ else:
                 r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
                 r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts)]
 
-    ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=$ ' + str(2**cuts), marker=markers[0])
+    ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=$ ' + str(2**cuts), marker=markerSet[0])
     for i, [array, label] in enumerate(zip(arrays, labels)):
-        ax.semilogy(degree, array, '--', label=label, marker=markers[i+1])
+        ax.semilogy(degree, array, '--', label=label, marker=markerSet[i+1])
 
     ax.legend(loc='best')
     ax.set_xlabel('Degree ' + r'$p$')

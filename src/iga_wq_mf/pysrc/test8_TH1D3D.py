@@ -10,6 +10,7 @@ from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
 from lib.base_functions import create_table_properties, sigmoid
 from lib.physics import setCprop, setKprop, powden
+from lib.base_functions import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -17,7 +18,7 @@ folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist    = False
+dataExist    = True
 theta        = 1.0
 degree, cuts = 5, 5
 conductivity = 0.1
@@ -39,7 +40,7 @@ Dirichlet = {'thermal':np.array([[1, 1], [0, 0], [0, 0]])}
 modelPhy._set_dirichlet_boundaries(Dirichlet)
 
 # Add external force
-N = 101
+N = 100
 time_list = np.linspace(0, 20, N)
 Fend  = modelPhy.eval_source_vector(powden)
 Fendt = np.atleast_2d(Fend).reshape(-1, 1)
@@ -59,46 +60,46 @@ if not dataExist:
     # Solve
     Tsol = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                     table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                    methodPCG='JMS', theta=theta)[0]
+                                    methodPCG='JMC', theta=theta)[0]
     np.savetxt(folder + 'data3D.dat', Tsol)
 
-# else:
-#     # --------------
-#     # Post-treatment
-#     # --------------
-#     # Temperature compared to steady  
-#     Ku = modelPhy.eval_Ku(modelPhy._DirichletBound)[0]
-#     F = Fext[:,-1] - Ku
-#     F = F[modelPhy._thermal_dof]
+else:
+    # --------------
+    # Post-treatment
+    # --------------
+    # Temperature compared to steady  
+    Ku = modelPhy.eval_Ku(modelPhy._DirichletBound)[0]
+    F  = Fext[:,-1] - Ku
+    F  = F[modelPhy._thermal_dof]
     
-#     Tref = modelPhy.MFsteadyHeat(b=F, methodPCG='JMC')[0]
-#     Tsol = np.loadtxt(folder + 'data3D.dat')
-#     error = np.linalg.norm(Tref-Tsol[:,-1][modelPhy._thermal_dof], np.inf)/np.linalg.norm(Tref, np.inf)*100
-#     print('Relative error in steady-transient: %.5e %%' %error)
+    Tref  = modelPhy.MFsteadyHeat(b=F, methodPCG='JMC')[0]
+    Tsol  = np.loadtxt(folder + 'data3D.dat')
+    Tapp  = Tsol[:, -1][modelPhy._thermal_dof]
+    error = relativeError(Tapp, Tref) 
+    print('Relative error in steady-transient: %.5e %%' %error)
 
-#     # Temperature of mid-point
-#     samplesize = 61
-#     pos = int((samplesize-1)/2)
-#     Tpoint_list = []
-#     for i in range(np.shape(Tsol)[1]): 
-#         Tinterp = modelPhy.interpolate_field(u_ctrlpts=Tsol[:, i], nbDOF=1, samplesize=samplesize)[-1]
-#         Tpoint = Tinterp[pos + pos*samplesize + pos*samplesize**2]
-#         Tpoint_list.append(Tpoint)
+    # Temperature of mid-point
+    samplesize = 61
+    pos = int((samplesize-1)/2)
+    Tpoint_list = []
+    for i in range(np.shape(Tsol)[1]): 
+        Tinterp = modelPhy.interpolate_field(u_ctrlpts=Tsol[:, i], nbDOF=1, samplesize=samplesize)[-1]
+        Tpoint = Tinterp[pos + pos*samplesize + pos*samplesize**2]
+        Tpoint_list.append(Tpoint)
 
-#     fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
-#     ax1.plot(time_list, Tpoint_list)
-#     ax1.set_ylim(top=0.6)
+    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+    ax1.plot(time_list, Tpoint_list)
+    ax1.set_ylim(top=0.6)
 
-#     # Get 1D data
-#     datapoint1D = np.loadtxt(folder+'data1D.dat')
-#     ax2.semilogy(abs(Tpoint_list - datapoint1D[:, 1]), 'o', 
-#                 nonpositive='mask')
-#     ax2.set_ylim([1e-12, 1e-3])
+    # Get 1D data
+    datapoint1D = np.loadtxt(folder + 'data1D.dat')
+    ax2.semilogy(abs(Tpoint_list - datapoint1D[:, 1]), 'o', 
+                nonpositive='mask')
+    ax2.set_ylim([1e-12, 1e-3])
 
-#     # Set properties
-#     ax1.set_xlabel('Time (s)')
-#     ax1.set_ylabel('Temperature (K)')
-#     ax2.set_xlabel('Step')
-#     ax2.set_ylabel(r'$||T_{1D} - T_{3D}||$')
-#     fig.tight_layout()
-#     fig.savefig(folder + 'EvolTemp_midP31.png')
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Temperature (K)')
+    ax2.set_xlabel('Step')
+    ax2.set_ylabel(r'$||T_{1D} - T_{3D}||$')
+    fig.tight_layout()
+    fig.savefig(folder + 'EvolTemp_midP31.png')

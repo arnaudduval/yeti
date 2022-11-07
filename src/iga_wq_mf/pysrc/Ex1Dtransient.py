@@ -25,7 +25,7 @@ basis_cgg = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions
-N = 101
+N = 100
 time_list = np.linspace(0, 20, N)
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)

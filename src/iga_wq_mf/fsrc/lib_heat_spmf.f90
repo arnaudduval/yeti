@@ -236,7 +236,7 @@ contains
 
     end subroutine interp_temperature
 
-    subroutine mf_wq_get_cu(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -287,9 +287,9 @@ contains
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
                             array_temp, array_out)
         
-    end subroutine mf_wq_get_cu
+    end subroutine mf_wq_get_cu_3d
 
-    subroutine mf_wq_get_ku(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -352,9 +352,9 @@ contains
             end do
         end do
         
-    end subroutine mf_wq_get_ku
+    end subroutine mf_wq_get_ku_3d
 
-    subroutine mf_wq_get_kcu(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_wq_get_kcu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -392,20 +392,20 @@ contains
         double precision :: array_temp
         dimension :: array_temp(nr_total)
 
-        call mf_wq_get_cu(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         array_out = mat%scalars(1)*array_out
 
-        call mf_wq_get_ku(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_temp)
 
         array_out = array_out + mat%scalars(2)*array_temp
         
-    end subroutine mf_wq_get_kcu
+    end subroutine mf_wq_get_kcu_3d
 
 end module heat_spmf

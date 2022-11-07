@@ -17,7 +17,7 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist    = True
+dataExist    = False
 isIGA        = False
 degree_list  = np.arange(6, 7)
 cuts_list    = np.arange(5, 6)

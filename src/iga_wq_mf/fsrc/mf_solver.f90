@@ -702,9 +702,9 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
 
     integer :: indi_T_u_t, indi_T_v_t, indi_T_w_t, indj_T_u_t, indj_T_v_t, indj_T_w_t
     dimension ::    indi_T_u_t(nc_u+1), indi_T_v_t(nc_v+1), indi_T_w_t(nc_w+1), &
-                    indj_T_u_t(nnz_u), indj_T_v_t(nnz_v), indj_T_w_t(nnz_w)
+                    indj_T_u_t(nnz_u_t), indj_T_v_t(nnz_v_t), indj_T_w_t(nnz_w_t)
     double precision :: data_BT_u_t, data_BT_v_t, data_BT_w_t
-    dimension :: data_BT_u_t(nnz_u, 2), data_BT_v_t(nnz_v, 2), data_BT_w_t(nnz_w, 2)
+    dimension :: data_BT_u_t(nnz_u_t, 2), data_BT_v_t(nnz_v_t, 2), data_BT_w_t(nnz_w_t, 2)
         
     if (nr_total_t.ne.nr_u_t*nr_v_t*nr_w_t) stop 'Size problem'
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
@@ -717,9 +717,10 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     solution(dod, :) = GG
 
     allocate(mat)
-    mat%Kcoefs => Kcoefs
-    mat%Ccoefs => Ccoefs
-
+    Ccoefs = 0.d0; Kcoefs = 0.d0
+    call setupCcoefs(mat, nc_total, Ccoefs)
+    call setupKcoefs(mat, 3, nc_total, Kcoefs)
+    
     ! Compute initial velocity from boundary conditions
     allocate(ddGG(ndod))
     if (nbsteps.eq.2) then 
@@ -762,37 +763,36 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         
         print*, 'Step: ', i - 1
         do j = 1, nbIterNL ! Newton-Raphson algorithm
-
             ! Compute temperature and properties at each quadrature point
             call interp_temperature(nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, nnz_u_t, nnz_v_t, nnz_w_t, &
                                         indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
                                         data_B_u_t, data_B_v_t, data_B_w_t, TTn1, TTinterp)
-
             call interp_isotropic_prop(nbpts, table_cap, nc_total, TTinterp, Cprop)
             call interp_isotropic_prop(nbpts, table_cond, nc_total, TTinterp, Kprop)
             
             ! Compute coefficients to compute tangent matrix
             call eval_isotropic_coefs(nc_total, Kprop, Cprop, invJJ, detJJ, Kcoefs, Ccoefs)
-            
-            ! Compute internal force
-            call mf_wq_get_cu(mat, nr_total_t, nc_total, nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, &
+
+            ! Compute internal force = C dT + K T
+            call mf_wq_get_cu_3d(mat, nr_total_t, nc_total, nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, &
                             nnz_u_t, nnz_v_t, nnz_w_t, indi_T_u_t, indj_T_u_t, indi_T_v_t, indj_T_v_t, &
                             indi_T_w_t, indj_T_w_t, data_BT_u_t, data_BT_v_t, data_BT_w_t, &
                             indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
                             data_W_u_t, data_W_v_t, data_W_w_t, VVn1, CdT)
 
-            call mf_wq_get_ku(mat, nr_total_t, nc_total, nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, &
+            call mf_wq_get_ku_3d(mat, nr_total_t, nc_total, nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, &
                             nnz_u_t, nnz_v_t, nnz_w_t, indi_T_u_t, indj_T_u_t, indi_T_v_t, indj_T_v_t, &
                             indi_T_w_t, indj_T_w_t, data_BT_u_t, data_BT_v_t, data_BT_w_t, &
                             indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
                             data_W_u_t, data_W_v_t, data_W_w_t, TTn1, KT)
-                            
+
             KTCdT = KT + CdT
 
             ! Compute residue
             ddFF = Fstep - KTCdT
             call spMdotdV(ndof, nr_total_t, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
             resNL = maxval(abs(ddFFdof))
+            print*, 'Raphson error:', resNL
             if (resNL.le.thresholdNL) exit
 
             ! Iterative solver 
@@ -801,7 +801,6 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                         ddFFdof, theta*dt, nbIterPCG, thresholdPCG, methodPCG, ddVVdof, resPCG(3:, k))
-
             ! Update values
             call spMdotdV(nr_total_t, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)
             VVn1 = VVn1 + ddVV

@@ -15,39 +15,29 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# Initialize
-dataExist = True
-geolist = ['VB', 'CB']
-mlist = ['WP', 'C', 'JMC']
-# mlist = ['JMC', 'C', 'WP']
-
+# Set global variables
+dataExist   = True
+geolist     = ['VB', 'CB']
+method_list = ['WP', 'C', 'JMC']
 
 if not dataExist:
-    
+
+    degree, cuts = 6, 5
+    conductivity, capacity = 0.1, 1.0
+    theta = 1.0
+    time_list = np.linspace(0, 25, 81)  
+    table_Kprop = create_table_properties(setKprop, prop=conductivity)
+    table_Cprop = create_table_properties(setCprop, prop=capacity)     
+
     for geoname in geolist:
-        for PCGmethod in mlist:
-            filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
-            
-            # Set global variables
-            degree, cuts = 6, 5
-            conductivity, capacity = 0.1, 1.0
-            newmark = 1.0
-            
-            # Set time simulation
-            N = 81
-            time_list = np.linspace(0, 25, N)
+        for PCGmethod in method_list:
+            filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'        
 
-            # Create material
-            table_Kprop = create_table_properties(setKprop, prop=conductivity)
-            table_Cprop = create_table_properties(setCprop, prop=capacity)
-
-            # Create geometry 
+            # Create model 
             geometry = {'degree':[degree, degree, degree]}
             modelGeo = geomdlModel(geoname, **geometry)
             modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
                                                         np.array([cuts, cuts, cuts]))
-
-            # Create model
             modelPhy = fortran_mf_wq(modelIGA)
 
             # Add material 
@@ -69,14 +59,14 @@ if not dataExist:
             for i in range(len(time_list)): GBound[:, i] = modelPhy._get_thermal_IBC()
 
             # Add external force (transient)
-            Fend = modelPhy.eval_source_vector(powdentest)
+            Fend  = modelPhy.eval_source_vector(powden)
             Fendt = np.atleast_2d(Fend).reshape(-1, 1)
             Fext  = np.kron(Fendt, sigmoid(time_list))
 
-            # Solve transient problem at internal control points
+            # Solve
             Tsol, resPCG = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
                                             table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
-                                            methodPCG=PCGmethod, theta=newmark)
+                                            methodPCG=PCGmethod, theta=theta)
             print('Finish')
             np.savetxt(filename, resPCG)
             # modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
@@ -159,15 +149,10 @@ else:
     #         fig.tight_layout()
     #         fig.savefig(filename)
 
-    # Colors
-    colorset = ['#377eb8', '#ff7f00', '#4daf4a',
-                '#f781bf', '#a65628', '#984ea3',
-                '#999999', '#e41a1c', '#dede00']
-
     for geoname in geolist:
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
-        for PCGmethod in mlist:
+        for PCGmethod in method_list:
             filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
             resPCG = np.loadtxt(filename)
             resPCG = resPCG[:, resPCG[0, :]>0]
@@ -185,7 +170,7 @@ else:
             #     iterNl_list.append(int(iterNL))
             #     niter_list.append(len(newresidue))
             #     ax.semilogy(np.arange(len(newresidue)), newresidue, 
-            #                 color=colorset[int(step%len(colorset))], alpha=1.0/iterNL)
+            #                 color=colorSet[int(step%len(colorSet))], alpha=1.0/iterNL)
 
             # Print the first
             step = resPCG[0, 0]; iterNL = resPCG[1, 0]
@@ -197,7 +182,6 @@ else:
             ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
             ax.set_ybound(lower=1e-12, upper=10)
 
-        # Set properties
         filename = folder + 'TransientNL_' + geoname + '.pdf'
         fig.tight_layout()
         fig.savefig(filename)
