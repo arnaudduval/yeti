@@ -116,7 +116,7 @@ subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_
     dimension :: array_temp(nr_total)
 
     do i = 1, d 
-        call fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
+        call fd_steady_heat_3d_py(nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
                                 eigen_diag(i, :), array_in(i, :), array_temp)
         array_out(i, :) = array_temp
     end do

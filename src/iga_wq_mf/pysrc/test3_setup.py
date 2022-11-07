@@ -15,7 +15,7 @@ folder_data = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
 dataExist   = True
-nbel        = 64
+nbel        = 64 # or 40
 degree_list = np.arange(2, 8)
 
 # Set filename
