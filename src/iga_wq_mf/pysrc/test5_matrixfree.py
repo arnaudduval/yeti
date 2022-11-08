@@ -126,7 +126,7 @@ else:
         fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6,4))
 
         # Load data
-        file = pd.read_table(folder_data + 'matvec_MF_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
+        file   = pd.read_table(folder_data + 'matvec_MF_lit.dat', sep='\t', names=['degree', 'Ku64', 'Cu64']) 
         arrays = [file.Cu64, file.Ku64]
         labels = ['MF-WQ Mass', 'MF-WQ Stiffness']
 

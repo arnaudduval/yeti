@@ -12,7 +12,7 @@ from lib.base_functions import create_table_properties, sigmoid
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test8/'
+folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
