@@ -5,7 +5,7 @@
 module heat_spmf
 
     implicit none
-    double precision, parameter :: span_tol = 1e-8
+    double precision, parameter :: span_tol = 1d-8
 
     type thermomat
         double precision :: scalars(2) = (/1.d0, 1.d0/)

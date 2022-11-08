@@ -195,7 +195,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_mechanics()
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
 
-        result = solver.mf_wq_get_su_3d_csr(*inputs, u)
+        result = solver.mf_wq_get_su_3d_py(*inputs, u)
 
         return result
 
@@ -397,7 +397,6 @@ class fortran_mf_wq(thermoMechaModel):
 
         return u_interp
 
-    # ----------------- TO VERIFY -----------------
 
     # ----------------------------------
     # ELASTO-PLASTICITY (IN FORTRAN)
@@ -406,46 +405,45 @@ class fortran_mf_wq(thermoMechaModel):
     def MFplasticity_fortran(self, Fext=None, indi=None):
         " Solves a plasticity problem "
 
-        # Get inputs 
         if self._dim != 3: raise Warning('Not yet')
         super()._verify_mechanics()
         if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
 
         dod = deepcopy(indi)
-        for _ in range(len(dod)):
-            newdod = np.array(dod[_])
-            newdod += 1
-            dod[_] = list(newdod)
+        for i in range(len(dod)):
+            dod_t = np.array(dod[i])
+            dod_t += 1
+            dod[i] = list(dod_t)
 
         prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
-        inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, prop, self._mechanicalDirichlet, 
-                    *dod, self._invJ, self._detJ]
-        displacement, stress_vm = solver.mf_wq_plasticity_3d(*inputs, Fext)
+        inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
+                    self._mechanicalDirichlet, self._invJ, self._detJ, prop]
+        displacement, stress_vm = solver.mf_wq_plasticity_3d(*inputs)
 
         return displacement, stress_vm
     
-    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, isPrecond=True):
+    def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, threshold=1e-8, isPrecond=True):
         " Solves a elasticity problem "
         
-        # Get inputs 
         if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
         if indi is None or Fext is None: raise Warning('Impossible')
         super()._verify_mechanics()
         if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 
         dod = deepcopy(indi)
-        for _ in range(len(dod)):
-            newdod = np.array(dod[_])
-            newdod += 1
-            dod[_] = list(newdod)
+        for i in range(len(dod)):
+            dod_t = np.array(dod[i])
+            dod_t += 1
+            dod[i] = list(dod_t)
 
-        inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, 
-                isPrecond, nbIterPCG, self._mechanicalDirichlet, *dod]
-        displacement, residue = solver.mf_wq_elasticity_3d_py(*inputs, Fext)
+        inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, Fext,
+                *dod, self._mechanicalDirichlet, nbIterPCG, threshold, isPrecond]
+        displacement, residue = solver.mf_wq_elasticity_3d_py(*inputs)
 
         return displacement, residue
 
+    # ----------------- TO VERIFY -----------------
     # ----------------------------------
     # ELASTO-PLASTICITY (IN PYTHON)
     # ---------------------------------- 

@@ -23,7 +23,7 @@ add_library(iga_wq_mf
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_heat_spmf.f90"
             "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_heat_solver.f90"
-            # "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_plasticity.f90"
+            "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_plasticity.f90"
 )
 
 target_link_libraries(iga_wq_mf base OpenMP::OpenMP_Fortran ${LAPACK_lapack_LIBRARY})  
@@ -47,6 +47,12 @@ CreateF2PYModule(NAME solver
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_mfprod.f90"  
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_solver.f90"  
                         # "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_plasticity.f90"
+                LINK_LIBRARIES iga_wq_mf base 
+                DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
+)
+
+CreateF2PYModule(NAME elastoplasticity
+                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_plasticity.f90"
                 LINK_LIBRARIES iga_wq_mf base 
                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
