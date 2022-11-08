@@ -252,6 +252,28 @@ subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
 
 end subroutine mf_wq_get_su_3d_py
 
+subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to elasticity problems
+    !! by G. Sanaglli and M. Tani
+    
+    use omp_lib
+    implicit none
+    ! Input / output  data 
+    !---------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
+    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
+    dimension ::    U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), &
+                    eigen_diag(d, nr_total), array_in(d, nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(d, nr_total)
+
+    call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+    
+end subroutine fd_elasticity_3d_py
+
 subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
@@ -266,7 +288,8 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     use elastoplasticity
     implicit none 
     ! Input / output data
-    ! --------------------- 
+    ! -------------------
+    integer, parameter :: dimen = 3 
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: coefs
     dimension :: coefs(dimen*dimen, dimen*dimen, nc_total)
@@ -361,7 +384,8 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: nbIterNL = 30, nbIterPCG = 200
+    integer, parameter :: dimen = 3, ddl = dimen*(dimen+1)/2, nbIterNL = 30, nbIterPCG = 200
+    double precision, parameter :: tolNL = 1d-8, tolPCG = 1d-8
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -437,9 +461,10 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! ------------------------
     ! Solver non linear system
     ! ------------------------
-    allocate(Fstep(dimen, nr_total), Fint(dimen, nr_total), dF(dimen, nr_total), ddisp(dimen, nr_total), delta_disp(dimen, nr_total))
+    allocate(Fstep(dimen, nr_total), Fint(dimen, nr_total), dF(dimen, nr_total), &
+            ddisp(dimen, nr_total), delta_disp(dimen, nr_total))
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
-    call initialize_mecamat(mat, E, H, beta, nu, sigma_Y)
+    call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0; sigma_vm = 0.d0
     
     do i = 2, sizeF
@@ -462,7 +487,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             end do
 
             ! Compute coefficients to compute Fint and Stiffness
-            call compute_meca_coefficients(nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
+            call compute_meca_coefficients(dimen, ddl, nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
 
             ! Compute Deigen
             do k = 1, dimen
@@ -482,14 +507,14 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)
             print*, "Raphson with error: ", resNL
-            if (resNL.le.1d-8) exit
+            if (resNL.le.tolNL) exit
     
             ! Solve
             call mf_wq_elasticity_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, data_W_w, &
                                 U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, dF, &
-                                nbIterPCG, 1d-8, .true., delta_disp, resPCG)
+                                nbIterPCG, tolPCG, .true., delta_disp, resPCG)
             ddisp = ddisp + delta_disp
         end do
         

@@ -921,10 +921,11 @@ def compute_eig_diag(eig_u, eig_v, eig_w, coefs=[1, 1, 1]):
 
 def fast_diagonalization(U, V, W, D, array_in, fdtype='steady'):
     " Compute fast diagonalization using Fortran"
-    if fdtype == 'steady':
+    if fdtype == 'interp':
+        array_out = solver.fd_interpolation_3d_py(U, V, W, array_in)
+    elif fdtype == 'steady':
         array_out = solver.fd_steady_heat_3d_py(U, V, W, D, array_in)
     elif fdtype == 'elastic':
-        array_out = solver.fd_elasticity_3d_py(U, V, W, D, array_in)
-    elif fdtype == 'interp':
-        array_out = solver.fd_interpolation_3d_py(U, V, W, array_in)
+        array_out = elastoplasticity.fd_elasticity_3d_py(U, V, W, D, array_in)
+    
     return array_out

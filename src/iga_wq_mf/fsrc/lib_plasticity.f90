@@ -232,12 +232,9 @@ end subroutine compute_stress_vonmises
 module elastoplasticity
 
     implicit none
-    integer, parameter :: dimen = 3
-    integer, parameter :: ddl = dimen*(dimen+1)/2
-    double precision, parameter :: tol1 = 1d-6, tol2 = 1d-6
-
     type :: mecamat
         ! Inputs 
+        integer :: dimen=3, ddl=6
         double precision :: young, hardening, beta, poisson, sigma_Y
 
         ! Outputs
@@ -255,23 +252,30 @@ contains
     ! COMBINED ISOTROPIC/KINEMATIC HARDENING
     ! ======================================
 
-    subroutine initialize_mecamat(mat, E, H, beta, nu, sigma_Y)
+    subroutine initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
         !! Creates a material using combined isotropic/kinematic hardening theory 
 
         implicit none
         ! Input / output data
         ! -------------------
+        integer, intent(in) :: dimen
         double precision, intent(in) :: E, H, beta, nu, sigma_Y
         type(mecamat), pointer :: mat
 
         ! Local data
         ! ----------
         double precision :: lambda, mu, bulk
-        double precision, dimension(ddl, ddl) :: II, Idev, onekronone, CC, SS
+        double precision, dimension(:, :), allocatable :: II, Idev, onekronone, CC, SS
+
+        allocate(mat)
+        mat%dimen = dimen
+        mat%ddl = dimen*(dimen+1)/2
+        allocate(II(mat%ddl, mat%ddl), Idev(mat%ddl, mat%ddl), &
+                onekronone(mat%ddl, mat%ddl), CC(mat%ddl, mat%ddl), SS(mat%ddl, mat%ddl))
 
         ! Create special tensors in Voigt notation
-        call fourth_order_identity(dimen, ddl, II)
-        call one_kron_one(dimen, ddl, onekronone)
+        call fourth_order_identity(mat%dimen, mat%ddl, II)
+        call one_kron_one(mat%dimen, mat%ddl, onekronone)
         Idev = II - 1.d0/3.d0*onekronone
 
         ! Compute mechanical properties
@@ -282,8 +286,7 @@ contains
         SS = 1.d0/(9.d0*bulk)*onekronone + 1.d0/(2.d0*mu)*(Idev)
 
         ! Save data computed
-        allocate(mat)
-        allocate(mat%Ctensor(ddl, ddl), mat%Stensor(ddl, ddl), mat%Idev(ddl, ddl))
+        allocate(mat%Ctensor(mat%ddl, mat%ddl), mat%Stensor(mat%ddl, mat%ddl), mat%Idev(mat%ddl, mat%ddl))
         mat%young = E
         mat%hardening = H
         mat%beta = beta
@@ -298,14 +301,93 @@ contains
 
     end subroutine initialize_mecamat
 
-    subroutine compute_meca_coefficients(nc_total, sigma, DD, invJ, detJ, coefs_Fint, coefs_Stiff)
+    subroutine yield_combined_hardening(mat, sigma, alpha, ep, f, norm, NN)
+        !! Computes the value of f (consistency condition) in combined hardening criteria
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(mecamat), pointer :: mat
+        double precision, intent(in) :: sigma, alpha, ep
+        dimension :: sigma(mat%ddl), alpha(mat%ddl)
+        double precision, intent(out) :: f, norm, NN
+        dimension :: NN(mat%ddl)
+
+        ! Local data
+        ! ----------
+        double precision :: eta, dev_sigma
+        dimension :: eta(mat%ddl), dev_sigma(mat%ddl)
+
+        call compute_stress_deviatoric(mat%dimen, mat%ddl, sigma, dev_sigma)
+        eta = dev_sigma - alpha
+        call compute_stress_norm(mat%dimen, mat%ddl, eta, norm)
+        f = norm - sqrt(2.d0/3.d0) * (mat%sigma_Y + (1-mat%beta)*mat%hardening*ep)   
+
+        NN = 0.d0
+        if (norm.gt.0.d0) NN = 1.d0/norm*eta
+
+    end subroutine yield_combined_hardening
+
+    subroutine cpp_combined_hardening(mat, deps, alpha_n0, ep_n0, sigma_n0, &
+                                    alpha_n1, ep_n1, sigma_n1, Dalg)
+        !! Return closest point proyection (cpp) in combined hardening criteria
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(mecamat), pointer :: mat
+        double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
+        dimension :: alpha_n0(mat%ddl), deps(mat%ddl), sigma_n0(mat%ddl)
+
+        double precision, intent(out) ::alpha_n1, ep_n1, sigma_n1, Dalg
+        dimension :: alpha_n1(mat%ddl), sigma_n1(mat%ddl), Dalg(mat%ddl, mat%ddl)
+        
+        ! Local data
+        ! ----------
+        integer :: i, j
+        double precision :: f, norm, dgamma, c1, c2
+        double precision :: sigma_trial, N, NNT
+        dimension :: sigma_trial(mat%ddl), N(mat%ddl), NNT(mat%ddl, mat%ddl)
+
+        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
+        call yield_combined_hardening(mat, sigma_trial, alpha_n0, ep_n0, f, norm, N)
+
+        if (f.le.0.d0) then ! Elastic point
+
+            sigma_n1 = sigma_trial ! stress
+            ep_n1 = ep_n0 ! effective plastic strain
+            alpha_n1 = alpha_n0 ! back stress
+            Dalg = mat%Ctensor ! tangent matrix
+
+        else ! Plastic point
+
+            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0) ! consistency parameter
+            sigma_n1 = sigma_trial - 2.d0*mat%mu*dgamma*N
+            ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
+            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
+
+            ! Compute consistent tangent matrix
+            c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
+            c2 = 4.d0*mat%mu**2.d0*dgamma/norm
+            do i = 1, mat%ddl
+                do j = 1, mat%ddl
+                    NNT(i, j) = N(i)*N(j)
+                end do
+            end do
+            Dalg = mat%Ctensor - (c1-c2)*NNT - c2*mat%Idev
+
+        end if
+
+    end subroutine cpp_combined_hardening
+
+    subroutine compute_meca_coefficients(dimen, ddl, nc_total, sigma, DD, invJ, detJ, coefs_Fint, coefs_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
         !! If a pseudo Newton-Raphson method is used, one must compute coef_Fint and coef_Stiff separately
 
         implicit none 
         ! Input / output data
         ! -------------------
-        integer, intent(in) :: nc_total
+        integer, intent(in) :: dimen, ddl, nc_total
         double precision, intent(in) :: sigma, DD, invJ, detJ
         dimension :: sigma(ddl, nc_total), DD(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
 
@@ -338,84 +420,6 @@ contains
         end do
 
     end subroutine compute_meca_coefficients
-
-    subroutine yield_combined_hardening(sigma_Y, H, beta, sigma, alpha, ep, f, norm, NN)
-        !! Computes the value of f (consistency condition) in combined hardening criteria
-        
-        implicit none
-        ! Input / output data
-        ! -------------------
-        double precision, intent(in) :: sigma_Y, beta, H, sigma, alpha, ep
-        dimension :: sigma(ddl), alpha(ddl)
-        double precision, intent(out) :: f, norm, NN
-        dimension :: NN(ddl)
-
-        ! Local data
-        ! ----------
-        double precision :: eta, dev_sigma
-        dimension :: eta(ddl), dev_sigma(ddl)
-
-        call compute_stress_deviatoric(dimen, ddl, sigma, dev_sigma)
-        eta = dev_sigma - alpha
-        call compute_stress_norm(dimen, ddl, eta, norm)
-        f = norm - sqrt(2.d0/3.d0) * (sigma_Y + (1-beta)*H*ep)   
-
-        NN = 0.d0
-        if (norm.gt.0.d0) NN = 1.d0/norm*eta
-
-    end subroutine yield_combined_hardening
-
-    subroutine cpp_combined_hardening(mat, deps, alpha_n0, ep_n0, sigma_n0, &
-                                    alpha_n1, ep_n1, sigma_n1, Dalg)
-        !! Return closest point proyection (cpp) in combined hardening criteria
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(mecamat), pointer :: mat
-        double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
-        dimension :: alpha_n0(ddl), deps(ddl), sigma_n0(ddl)
-
-        double precision, intent(out) ::alpha_n1, ep_n1, sigma_n1, Dalg
-        dimension :: alpha_n1(ddl), sigma_n1(ddl), Dalg(ddl, ddl)
-        
-        ! Local data
-        ! ----------
-        integer :: i, j
-        double precision :: f, norm, dgamma, c1, c2
-        double precision :: sigma_trial, N, NNT
-        dimension :: sigma_trial(ddl), N(ddl), NNT(ddl, ddl)
-
-        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
-        call yield_combined_hardening(mat%sigma_Y, mat%hardening, mat%beta, sigma_trial, alpha_n0, ep_n0, f, norm, N)
-
-        if (f.le.0.d0) then ! Elastic point
-
-            sigma_n1 = sigma_trial ! stress
-            ep_n1 = ep_n0 ! effective plastic strain
-            alpha_n1 = alpha_n0 ! back stress
-            Dalg = mat%Ctensor ! tangent matrix
-
-        else ! Plastic point
-
-            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0) ! consistency parameter
-            sigma_n1 = sigma_trial - 2.d0*mat%mu*dgamma*N
-            ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
-            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
-
-            ! Compute consistent tangent matrix
-            c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
-            c2 = 4.d0*mat%mu**2.d0*dgamma/norm
-            do i = 1, ddl
-                do j = 1, ddl
-                    NNT(i, j) = N(i)*N(j)
-                end do
-            end do
-            Dalg = mat%Ctensor - (c1-c2)*NNT - c2*mat%Idev
-
-        end if
-
-    end subroutine cpp_combined_hardening
 
 end module elastoplasticity
 
@@ -479,6 +483,41 @@ subroutine mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
 
 end subroutine mf_wq_get_su_3d
 
+subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to elasticity problems
+    !! by G. Sanaglli and M. Tani
+    
+    use heat_solver
+    implicit none
+    ! Input / output  data 
+    !---------------------
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
+    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
+    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
+                    eigen_diag(dimen, nr_total), array_in(dimen, nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(dimen, nr_total)
+
+    ! Local data
+    ! ----------
+    type(cgsolver), pointer :: solv
+    double precision :: array_temp
+    dimension :: array_temp(nr_total)
+    integer :: i
+
+    allocate(solv)
+    do i = 1, dimen 
+        call setup_eigendiag(solv, nr_total, eigen_diag(i, :))
+        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
+                                array_in(i, :), array_temp)
+        array_out(i, :) = array_temp
+    end do
+    
+end subroutine fd_elasticity_3d
+
 subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
@@ -492,10 +531,10 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: d = 3    
+    integer, parameter :: dimen = 3    
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: coefs
-    dimension :: coefs(d*d, d*d, nc_total)
+    dimension :: coefs(dimen*dimen, dimen*dimen, nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -505,7 +544,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     double precision, intent(in) :: U_u, U_v, U_w, Deigen
-    dimension :: U_u(nr_u, nr_u, d), U_v(nr_v, nr_v, d), U_w(nr_w, nr_w, d), Deigen(d, nr_total)
+    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), Deigen(dimen, nr_total)
     integer, intent(in) :: ndu, ndv, ndw
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
@@ -515,15 +554,15 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     logical, intent(in) :: isPrecond 
 
     double precision, intent(in) :: b
-    dimension :: b(d, nr_total)
+    dimension :: b(dimen, nr_total)
     
     double precision, intent(out) :: x, resPCG
-    dimension :: x(d, nr_total), resPCG(nbIterPCG+1)
+    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
 
     ! Local data
     ! ----------
     double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb
-    double precision, dimension(d, nr_total) :: r, rhat, p, s, Aptilde, Astilde
+    double precision, dimension(dimen, nr_total) :: r, rhat, p, s, Aptilde, Astilde
     double precision, allocatable, dimension(:, :) :: ptilde, stilde
     integer :: iter
 
@@ -541,7 +580,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     x = 0.d0; r = b; resPCG = 0.d0; resPCG(1) = 1.d0
     call clean_dirichlet_3d(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     rhat = r; p = r
-    call block_dot_product(d, nr_total, r, rhat, rsold)
+    call block_dot_product(dimen, nr_total, r, rhat, rsold)
     normb = maxval(abs(r))
 
     if (.not.isPrecond) then ! Conjugate gradient algorithm
@@ -553,7 +592,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_W_u, data_W_v, data_W_w, p, Aptilde)
             call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
-            call block_dot_product(d, nr_total, Aptilde, rhat, prod)
+            call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
 
@@ -563,21 +602,21 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_W_u, data_W_v, data_W_w, s, Astilde)
             call clean_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
-            call block_dot_product(d, nr_total, Astilde, s, prod)
-            call block_dot_product(d, nr_total, Astilde, Astilde, prod2)
+            call block_dot_product(dimen, nr_total, Astilde, s, prod)
+            call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
             omega = prod/prod2
             x = x + alpha*p + omega*s ! Normally x is alrady Dirichlet updated
             r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
 
             resPCG(iter+1) = maxval(abs(r))/normb
             if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(d, nr_total, r, rhat, rsnew)
+            call block_dot_product(dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
         end do
     else ! Preconditioned Conjugate Gradient algorithm
-        allocate(ptilde(d, nr_total), stilde(d, nr_total))
+        allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
         do iter = 1, nbIterPCG
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
             call clean_dirichlet_3d(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
@@ -588,7 +627,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
             call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             
-            call block_dot_product(d, nr_total, Aptilde, rhat, prod)
+            call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
             
@@ -601,8 +640,8 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_W_u, data_W_v, data_W_w, stilde, Astilde)
             call clean_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
-            call block_dot_product(d, nr_total, Astilde, s, prod)
-            call block_dot_product(d, nr_total, Astilde, Astilde, prod2)
+            call block_dot_product(dimen, nr_total, Astilde, s, prod)
+            call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
 
             omega = prod/prod2
             x = x + alpha*ptilde + omega*stilde ! Normally x is alrady Dirichlet updated
@@ -610,7 +649,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             
             resPCG(iter+1) = maxval(abs(r))/normb
             if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(d, nr_total, r, rhat, rsnew)
+            call block_dot_product(dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
