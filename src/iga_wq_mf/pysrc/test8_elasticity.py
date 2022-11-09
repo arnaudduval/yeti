@@ -64,20 +64,10 @@ ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\i
 fig.tight_layout()
 fig.savefig(folder + 'ElasticityRes.png')
 
-# # # Interpolate displacement
-# # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
-
-# # Compute strain 
-# strain = modelPhy.compute_strain(u=displacement)
+# # Interpolate displacement
 # modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
 
-# # # Compute stress
-# # stress = modelPhy.compute_linear_stress(strain)
-# # stress_vm = np.zeros(np.shape(stress)[1])
-# # for k in range(np.shape(strain)[1]):
-# #     stress_vm[k] = compute_stress_vonmises(3, stress[:, k])
-
-# # # Interpolate Von Mises field
-# # stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
-# # modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
+# # Interpolate Von Mises field
+# stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
+# modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
 

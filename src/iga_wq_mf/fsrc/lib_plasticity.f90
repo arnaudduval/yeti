@@ -14,54 +14,7 @@
 ! Otherwise some scale factor need to be considered.
 ! ==========================
 
-subroutine clean_dirichlet_3d(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
-    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
-    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndu, ndv, ndw
-    double precision, intent(inout) :: A
-    dimension :: A(3, nr)
-
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
-
-    A(1, dod_u) = 0.d0 
-    A(2, dod_v) = 0.d0 
-    A(3, dod_w) = 0.d0 
-
-end subroutine clean_dirichlet_3d
-
-subroutine block_dot_product(dimen, nr, A, B, result)
-    !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
-    !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
-    !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
-
-    implicit none
-    ! Input/ output data
-    ! ------------------
-    integer, intent(in) :: dimen, nr
-    double precision, intent(in) :: A, B
-    dimension :: A(dimen, nr), B(dimen, nr)
-
-    double precision :: result
-
-    ! Local data
-    ! ----------
-    integer :: i
-    double precision :: rtemp
-
-    result = 0.d0
-    do i = 1, dimen 
-        rtemp = dot_product(A(i, :), B(i, :))
-        result = result + rtemp
-    end do
-
-end subroutine block_dot_product
-
-subroutine compute_stress_deviatoric(dimen, ddl, tensor, dev)
+subroutine compute_stress_deviatoric(dimen, nvoigt, tensor, dev)
     !! Returns deviatoric of a second-order tensor. That is
     !! dev(s) = s - 1/3 trace(s) 1. 
     !! s is a tensor written in Voigt notation
@@ -69,18 +22,18 @@ subroutine compute_stress_deviatoric(dimen, ddl, tensor, dev)
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl
+    integer, intent(in) :: dimen, nvoigt
     double precision, intent(in) :: tensor
-    dimension :: tensor(ddl)
+    dimension :: tensor(nvoigt)
 
     double precision, intent(out) :: dev
-    dimension :: dev(ddl)
+    dimension :: dev(nvoigt)
 
     ! Local data
     ! ----------
     integer :: i
     double precision :: trace, one
-    dimension :: one(ddl)
+    dimension :: one(nvoigt)
 
     one = 0.d0
     do i = 1, dimen
@@ -96,7 +49,7 @@ subroutine compute_stress_deviatoric(dimen, ddl, tensor, dev)
     
 end subroutine compute_stress_deviatoric
 
-subroutine compute_stress_norm(dimen, ddl, tensor, norm)
+subroutine compute_stress_norm(dimen, nvoigt, tensor, norm)
     !! Returns Frobenius norm of a second-order stress-like tensor 
     !! The definition is norm = sqrt(s:s). Since s is a tensor written in Voigt notation
     !! some scale factor must be considered.
@@ -104,9 +57,9 @@ subroutine compute_stress_norm(dimen, ddl, tensor, norm)
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl
+    integer, intent(in) :: dimen, nvoigt
     double precision, intent(in) :: tensor
-    dimension :: tensor(ddl)
+    dimension :: tensor(nvoigt)
 
     double precision, intent(out) :: norm
 
@@ -120,7 +73,7 @@ subroutine compute_stress_norm(dimen, ddl, tensor, norm)
         norm = norm + tensor(i)*tensor(i)
     end do
 
-    do i = dimen+1, ddl
+    do i = dimen+1, nvoigt
         norm = norm + 2.d0*tensor(i)*tensor(i)
     end do
 
@@ -128,15 +81,15 @@ subroutine compute_stress_norm(dimen, ddl, tensor, norm)
     
 end subroutine compute_stress_norm
 
-subroutine fourth_order_identity(dimen, ddl, identity)
+subroutine fourth_order_identity(dimen, nvoigt, identity)
     !! Creates a fourth-order identity (in Voigt notation)
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl 
+    integer, intent(in) :: dimen, nvoigt 
     double precision, intent(out) :: identity
-    dimension :: identity(ddl, ddl)
+    dimension :: identity(nvoigt, nvoigt)
 
     ! Local data
     ! ----------
@@ -147,21 +100,21 @@ subroutine fourth_order_identity(dimen, ddl, identity)
         identity(i, i) = 1.d0
     end do
 
-    do i = dimen+1, ddl
+    do i = dimen+1, nvoigt
         identity(i, i) = 0.5d0
     end do
 
 end subroutine fourth_order_identity
 
-subroutine one_kron_one(dimen, ddl, onekronone)
+subroutine one_kron_one(dimen, nvoigt, onekronone)
     !! Creates a one kron one tensor (in Voigt notation)
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl
+    integer, intent(in) :: dimen, nvoigt
     double precision, intent(out) :: onekronone
-    dimension :: onekronone(ddl, ddl)
+    dimension :: onekronone(nvoigt, nvoigt)
 
     ! Local data
     ! ----------
@@ -176,7 +129,7 @@ subroutine one_kron_one(dimen, ddl, onekronone)
 
 end subroutine one_kron_one
 
-subroutine create_incidence_matrix(dimen, ddl, EE)
+subroutine create_incidence_matrix(dimen, nvoigt, EE)
     !! Creates incidence matrix E. E is the passage matrix from derivative to actual symetric values. 
     !! If we multiply a vector of values u_(i, j) with M matrix, one obtains the vector: 
     !! us_ij = 0.5*(u_(i,j) + u_(j,i))  
@@ -184,9 +137,9 @@ subroutine create_incidence_matrix(dimen, ddl, EE)
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl
+    integer, intent(in) :: dimen, nvoigt
     double precision, intent(out) :: EE
-    dimension :: EE(ddl, dimen, dimen)
+    dimension :: EE(nvoigt, dimen, dimen)
 
     if (dimen.eq.3) then 
         EE = 0.d0
@@ -205,26 +158,26 @@ subroutine create_incidence_matrix(dimen, ddl, EE)
 
 end subroutine create_incidence_matrix
 
-subroutine compute_stress_vonmises(dimen, ddl, tensor, VM)
+subroutine compute_stress_vonmises(dimen, nvoigt, tensor, VM)
     !! Computes equivalent stress with Von Mises formula of a second-order stress-like tensor.
     !! Given tensor is written in Voigt notation
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, ddl
+    integer, intent(in) :: dimen, nvoigt
     double precision, intent(in) :: tensor
-    dimension :: tensor(ddl)
+    dimension :: tensor(nvoigt)
 
     double precision, intent(out) :: VM
 
     ! Local data
     ! ----------
     double precision :: dev_tensor
-    dimension :: dev_tensor(ddl)
+    dimension :: dev_tensor(nvoigt)
 
-    call compute_stress_deviatoric(dimen, ddl, tensor, dev_tensor)
-    call compute_stress_norm(dimen, ddl, tensor, VM)
+    call compute_stress_deviatoric(dimen, nvoigt, tensor, dev_tensor)
+    call compute_stress_norm(dimen, nvoigt, tensor, VM)
     VM = sqrt(3.d0/2.d0)*VM
 
 end subroutine compute_stress_vonmises
@@ -234,7 +187,7 @@ module elastoplasticity
     implicit none
     type :: mecamat
         ! Inputs 
-        integer :: dimen=3, ddl=6
+        integer :: dimen=3, nvoigt=6
         double precision :: young, hardening, beta, poisson, sigma_Y
 
         ! Outputs
@@ -269,13 +222,13 @@ contains
 
         allocate(mat)
         mat%dimen = dimen
-        mat%ddl = dimen*(dimen+1)/2
-        allocate(II(mat%ddl, mat%ddl), Idev(mat%ddl, mat%ddl), &
-                onekronone(mat%ddl, mat%ddl), CC(mat%ddl, mat%ddl), SS(mat%ddl, mat%ddl))
+        mat%nvoigt = dimen*(dimen+1)/2
+        allocate(II(mat%nvoigt, mat%nvoigt), Idev(mat%nvoigt, mat%nvoigt), &
+                onekronone(mat%nvoigt, mat%nvoigt), CC(mat%nvoigt, mat%nvoigt), SS(mat%nvoigt, mat%nvoigt))
 
         ! Create special tensors in Voigt notation
-        call fourth_order_identity(mat%dimen, mat%ddl, II)
-        call one_kron_one(mat%dimen, mat%ddl, onekronone)
+        call fourth_order_identity(mat%dimen, mat%nvoigt, II)
+        call one_kron_one(mat%dimen, mat%nvoigt, onekronone)
         Idev = II - 1.d0/3.d0*onekronone
 
         ! Compute mechanical properties
@@ -286,7 +239,7 @@ contains
         SS = 1.d0/(9.d0*bulk)*onekronone + 1.d0/(2.d0*mu)*(Idev)
 
         ! Save data computed
-        allocate(mat%Ctensor(mat%ddl, mat%ddl), mat%Stensor(mat%ddl, mat%ddl), mat%Idev(mat%ddl, mat%ddl))
+        allocate(mat%Ctensor(mat%nvoigt, mat%nvoigt), mat%Stensor(mat%nvoigt, mat%nvoigt), mat%Idev(mat%nvoigt, mat%nvoigt))
         mat%young = E
         mat%hardening = H
         mat%beta = beta
@@ -309,18 +262,18 @@ contains
         ! -------------------
         type(mecamat), pointer :: mat
         double precision, intent(in) :: sigma, alpha, ep
-        dimension :: sigma(mat%ddl), alpha(mat%ddl)
+        dimension :: sigma(mat%nvoigt), alpha(mat%nvoigt)
         double precision, intent(out) :: f, norm, NN
-        dimension :: NN(mat%ddl)
+        dimension :: NN(mat%nvoigt)
 
         ! Local data
         ! ----------
         double precision :: eta, dev_sigma
-        dimension :: eta(mat%ddl), dev_sigma(mat%ddl)
+        dimension :: eta(mat%nvoigt), dev_sigma(mat%nvoigt)
 
-        call compute_stress_deviatoric(mat%dimen, mat%ddl, sigma, dev_sigma)
+        call compute_stress_deviatoric(mat%dimen, mat%nvoigt, sigma, dev_sigma)
         eta = dev_sigma - alpha
-        call compute_stress_norm(mat%dimen, mat%ddl, eta, norm)
+        call compute_stress_norm(mat%dimen, mat%nvoigt, eta, norm)
         f = norm - sqrt(2.d0/3.d0) * (mat%sigma_Y + (1-mat%beta)*mat%hardening*ep)   
 
         NN = 0.d0
@@ -337,17 +290,17 @@ contains
         ! -------------------
         type(mecamat), pointer :: mat
         double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
-        dimension :: alpha_n0(mat%ddl), deps(mat%ddl), sigma_n0(mat%ddl)
+        dimension :: alpha_n0(mat%nvoigt), deps(mat%nvoigt), sigma_n0(mat%nvoigt)
 
         double precision, intent(out) ::alpha_n1, ep_n1, sigma_n1, Dalg
-        dimension :: alpha_n1(mat%ddl), sigma_n1(mat%ddl), Dalg(mat%ddl, mat%ddl)
+        dimension :: alpha_n1(mat%nvoigt), sigma_n1(mat%nvoigt), Dalg(mat%nvoigt, mat%nvoigt)
         
         ! Local data
         ! ----------
         integer :: i, j
         double precision :: f, norm, dgamma, c1, c2
         double precision :: sigma_trial, N, NNT
-        dimension :: sigma_trial(mat%ddl), N(mat%ddl), NNT(mat%ddl, mat%ddl)
+        dimension :: sigma_trial(mat%nvoigt), N(mat%nvoigt), NNT(mat%nvoigt, mat%nvoigt)
 
         sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
         call yield_combined_hardening(mat, sigma_trial, alpha_n0, ep_n0, f, norm, N)
@@ -369,8 +322,8 @@ contains
             ! Compute consistent tangent matrix
             c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
             c2 = 4.d0*mat%mu**2.d0*dgamma/norm
-            do i = 1, mat%ddl
-                do j = 1, mat%ddl
+            do i = 1, mat%nvoigt
+                do j = 1, mat%nvoigt
                     NNT(i, j) = N(i)*N(j)
                 end do
             end do
@@ -380,16 +333,16 @@ contains
 
     end subroutine cpp_combined_hardening
 
-    subroutine compute_meca_coefficients(dimen, ddl, nc_total, sigma, DD, invJ, detJ, coefs_Fint, coefs_Stiff)
+    subroutine compute_meca_coefficients(dimen, nvoigt, nc_total, sigma, DD, invJ, detJ, coefs_Fint, coefs_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
         !! If a pseudo Newton-Raphson method is used, one must compute coef_Fint and coef_Stiff separately
 
         implicit none 
         ! Input / output data
         ! -------------------
-        integer, intent(in) :: dimen, ddl, nc_total
+        integer, intent(in) :: dimen, nvoigt, nc_total
         double precision, intent(in) :: sigma, DD, invJ, detJ
-        dimension :: sigma(ddl, nc_total), DD(ddl, ddl, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
+        dimension :: sigma(nvoigt, nc_total), DD(nvoigt, nvoigt, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
 
         double precision, intent(out) :: coefs_Fint, coefs_Stiff
         dimension :: coefs_Fint(dimen*dimen, nc_total), coefs_Stiff(dimen*dimen, dimen*dimen, nc_total)
@@ -398,9 +351,9 @@ contains
         ! ----------
         integer :: i, j, k
         double precision :: EE, ETCE, Dij, Si
-        dimension :: EE(ddl, dimen, dimen), ETCE(dimen, dimen), Dij(dimen, dimen), Si(dimen)
+        dimension :: EE(nvoigt, dimen, dimen), ETCE(dimen, dimen), Dij(dimen, dimen), Si(dimen)
                     
-        call create_incidence_matrix(dimen, ddl, EE)
+        call create_incidence_matrix(dimen, nvoigt, EE)
 
         do k = 1, nc_total
             do i = 1, dimen
@@ -580,11 +533,13 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    x = 0.d0; r = b; resPCG = 0.d0; resPCG(1) = 1.d0
-    call clean_dirichlet_3d(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    x = 0.d0; r = b
+    call cleanDirichlet3ddl(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     rhat = r; p = r
     call block_dot_product(dimen, nr_total, r, rhat, rsold)
     normb = maxval(abs(r))
+    resPCG = 0.d0; resPCG(1) = 1.d0
+    if (normb.lt.threshold) return
 
     if (.not.isPrecond) then ! Conjugate gradient algorithm
         
@@ -593,7 +548,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Aptilde)
-            call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
@@ -603,7 +558,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, s, Astilde)
-            call clean_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(dimen, nr_total, Astilde, s, prod)
             call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
@@ -624,24 +579,26 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
         do iter = 1, nbIterPCG
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
-            call clean_dirichlet_3d(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+
             call mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-            call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+
             call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
             
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
-            call clean_dirichlet_3d(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, stilde, Astilde)
-            call clean_dirichlet_3d(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
 
             call block_dot_product(dimen, nr_total, Astilde, s, prod)
             call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
@@ -656,6 +613,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
+
         end do
 
     end if

@@ -19,7 +19,7 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     implicit none 
     ! Input / output data
     ! -------------------  
-    integer, parameter :: dimen = 3, ddl = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
     integer, intent(in) :: nc_total, nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -31,7 +31,7 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
 
     double precision, intent(out) :: eps
-    dimension :: eps(ddl, nc_total)
+    dimension :: eps(nvoigt, nc_total)
 
     ! Local data
     !-----------
@@ -44,12 +44,12 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
 
     integer :: i, j, k, beta(dimen)
     double precision :: EE, ders, eps_temp
-    dimension :: EE(ddl, dimen, dimen), ders(dimen*dimen, nc_total), eps_temp(ddl)
+    dimension :: EE(nvoigt, dimen, dimen), ders(dimen*dimen, nc_total), eps_temp(nvoigt)
 
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    call create_incidence_matrix(dimen, ddl, EE)
+    call create_incidence_matrix(dimen, nvoigt, EE)
 
     ! Compute derivatives of displacement field with respect to u (in parametric space)
     do j = 1, dimen
@@ -385,7 +385,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, ddl = dimen*(dimen+1)/2, nbIterNL = 30, nbIterPCG = 200
+    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2, nbIterNL = 30, nbIterPCG = 200
     double precision, parameter :: tolNL = 1d-8, tolPCG = 1d-8
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -422,9 +422,9 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     double precision :: s_u, s_v, s_w
 
     double precision :: alpha_n0, alpha_n1, ep_n1, ep_n0, deps, sigma_n0, sigma_n1, Dalg, coef_fint, coef_S
-    dimension ::    alpha_n0(ddl, nc_total), alpha_n1(ddl, nc_total), ep_n0(nc_total), ep_n1(nc_total), &
-                    deps(ddl, nc_total), sigma_n0(ddl, nc_total), sigma_n1(ddl, nc_total), &
-                    Dalg(ddl, ddl, nc_total), coef_fint(dimen*dimen, nc_total), coef_S(dimen*dimen, dimen*dimen, nc_total)
+    dimension ::    alpha_n0(nvoigt, nc_total), alpha_n1(nvoigt, nc_total), ep_n0(nc_total), ep_n1(nc_total), &
+                    deps(nvoigt, nc_total), sigma_n0(nvoigt, nc_total), sigma_n1(nvoigt, nc_total), &
+                    Dalg(nvoigt, nvoigt, nc_total), coef_fint(dimen*dimen, nc_total), coef_S(dimen*dimen, dimen*dimen, nc_total)
     
     double precision, allocatable, dimension(:, :) :: Fint, dF, ddisp, delta_disp 
     double precision :: resNL, resPCG, prod
@@ -488,7 +488,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             end do
 
             ! Compute coefficients to compute Fint and Stiffness
-            call compute_meca_coefficients(dimen, ddl, nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
+            call compute_meca_coefficients(dimen, nvoigt, nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
 
             ! Compute Deigen
             do k = 1, dimen
@@ -504,7 +504,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
             dF = dF - Fint
-            call clean_dirichlet_3d(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call cleanDirichlet3ddl(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)
             print*, "Raphson with error: ", resNL
@@ -526,7 +526,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         alpha_n0 = alpha_n1
 
         do k = 1, nc_total
-            call compute_stress_vonmises(dimen, ddl, sigma_n1(:, k), sigma_vm(k, i))
+            call compute_stress_vonmises(dimen, nvoigt, sigma_n1(:, k), sigma_vm(k, i))
         end do
 
     end do
