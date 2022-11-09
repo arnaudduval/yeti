@@ -1,13 +1,13 @@
 """
-.. Test of plasticity 3D
-.. We test how plasticity module works
+.. Test of elasticity 3D
+.. We test how elasticity module works
 .. SI (Steel) : 
-..      - Stress : MPa (210e3)
-..      - Length : mm
+..      - Stress : Pa (210e9)
+..      - Length : m
 ..      - Force  : N
-..      - Mass   : Tonne (1e3 Kg)
-..      - Density: Tonne/mm^3 (7.8e-9)
-..      - Gravity: mm/s^2 (9.8e3)
+..      - Mass   : kg 
+..      - Density: kg/m^3 (7.8e3)
+..      - Gravity: m/s^2 (9.8)
 .. Joaquin Cornejo 
 """
 
@@ -18,7 +18,7 @@ from lib.fortran_mf_wq import fortran_mf_wq
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test7/'
+folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables

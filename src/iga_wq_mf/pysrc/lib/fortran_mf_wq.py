@@ -195,7 +195,7 @@ class fortran_mf_wq(thermoMechaModel):
         super()._verify_mechanics()
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
 
-        result = solver.mf_wq_get_su_3d_py(*inputs, u)
+        result = elastoplasticity.mf_wq_get_su_3d_py(*inputs, u)
 
         return result
 
@@ -264,7 +264,7 @@ class fortran_mf_wq(thermoMechaModel):
                     nnz.append(self._nb_qp[_]); data_W.append(self._DW[_])
                     indices.append(self._indices[2*_]); indices.append(self._indices[2*_+1]) 
                 
-                FSurf = solver.wq_get_forcesurf_3d(force, JJ, *nnz, *indices, *data_W)
+                FSurf = elastoplasticity.wq_get_forcesurf_3d(force, JJ, *nnz, *indices, *data_W)
                 Ftemp[:-1, CPList] += FSurf
                 Ftemp[-1, CPList] += 1
 
@@ -284,27 +284,11 @@ class fortran_mf_wq(thermoMechaModel):
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
 
         start = time.process_time()
-        vector = solver.wq_get_forcevol_3d(*inputs)
+        vector = elastoplasticity.wq_get_forcevol_3d(*inputs)
         stop = time.process_time()
 
         print('Body force vector assembled in : %.5f s' %(stop-start))
 
-        return vector
-
-    def eval_diag_K(self): 
-        " Computes the diagonal of conductivity matrix "
-
-        super()._verify_thermal()
-        coefs = super().eval_conductivity_coefficient(self._invJ, self._detJ, self._conductivity)
-        inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
-
-        start = time.process_time()
-        if self._dim == 2: raise Warning('Until now not done')
-        if self._dim == 3: vector = assembly.wq_find_conductivity_diagonal_3d(*inputs)
-        stop = time.process_time()
-
-        print('Conductivity matrix assembled in : %5f s' %(stop-start))
-        
         return vector
 
     # ----------------------------------
@@ -419,7 +403,7 @@ class fortran_mf_wq(thermoMechaModel):
         prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
         inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
                     self._mechanicalDirichlet, self._invJ, self._detJ, prop]
-        displacement, stress_vm = solver.mf_wq_plasticity_3d(*inputs)
+        displacement, stress_vm = elastoplasticity.mf_wq_plasticity_3d(*inputs)
 
         return displacement, stress_vm
     
@@ -437,9 +421,10 @@ class fortran_mf_wq(thermoMechaModel):
             dod_t += 1
             dod[i] = list(dod_t)
 
+
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, Fext,
                 *dod, self._mechanicalDirichlet, nbIterPCG, threshold, isPrecond]
-        displacement, residue = solver.mf_wq_elasticity_3d_py(*inputs)
+        displacement, residue = elastoplasticity.mf_wq_elasticity_3d_py(*inputs)
 
         return displacement, residue
 
@@ -489,7 +474,7 @@ class fortran_mf_wq(thermoMechaModel):
         if u is None: raise Warning('Insert displacement')
         
         inputs = [*self._nb_qp, *self._indices, *self._DB, self._invJ, u]
-        eps = solver.interpolate_strain_3d(*inputs)
+        eps = elastoplasticity.interpolate_strain_3d(*inputs)
 
         return eps
 
@@ -513,7 +498,7 @@ class fortran_mf_wq(thermoMechaModel):
         if coefs is None: raise Warning('Insert coefficients')
 
         inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
-        Fint = solver.wq_get_forceint_3d(*inputs)
+        Fint = elastoplasticity.wq_get_forceint_3d(*inputs)
 
         return Fint
 

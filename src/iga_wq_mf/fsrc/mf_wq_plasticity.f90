@@ -319,10 +319,11 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     ! Local data
     ! -----------
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w, Deigen
+    double precision, dimension(:), allocatable :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
     double precision, dimension(:), allocatable :: I_u, I_v, I_w
+    double precision :: U_u, U_v, U_w, D_u, D_v, D_w, Deigen
+    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
+                    D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen), Deigen(dimen, nr_total)
     double precision :: s_u, s_v, s_w
     integer :: i
 
@@ -331,15 +332,11 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
     ! Eigen decomposition
-    allocate(U_u(nr_u, nr_u, dimen), D_u(nr_u, dimen), U_v(nr_v, nr_v, dimen), D_v(nr_v, dimen), &
-            U_w(nr_w, nr_w, dimen), D_w(nr_w, dimen), Deigen(dimen, nr_total))
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
-    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
+    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w)) 
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
 
     do i = 1, dimen
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
@@ -355,7 +352,10 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
                                 data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
     end do
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
+    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
+    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
     do i = 1, dimen
         call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+1, (i-1)*dimen+1, :), s_u)
         call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+2, (i-1)*dimen+2, :), s_v)
@@ -363,6 +363,7 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), &
                                     s_u, s_v, s_w, Deigen(i, :))
     end do
+    deallocate(I_u, I_v, I_w)
 
     call mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -413,9 +414,11 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Kdiag_u, Kdiag_v, Kdiag_w, Mdiag_u, Mdiag_v, Mdiag_w
-    double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: D_u, D_v, D_w, Deigen
     double precision, dimension(:), allocatable :: I_u, I_v, I_w
+
+    double precision :: U_u, U_v, U_w, D_u, D_v, D_w, Deigen
+    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
+                D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen), Deigen(dimen, nr_total)
     double precision :: s_u, s_v, s_w
 
     double precision :: alpha_n0, alpha_n1, ep_n1, ep_n0, deps, sigma_n0, sigma_n1, Dalg, coef_fint, coef_S
@@ -423,7 +426,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     deps(ddl, nc_total), sigma_n0(ddl, nc_total), sigma_n1(ddl, nc_total), &
                     Dalg(ddl, ddl, nc_total), coef_fint(dimen*dimen, nc_total), coef_S(dimen*dimen, dimen*dimen, nc_total)
     
-    double precision, allocatable, dimension(:, :) :: Fstep, Fint, dF, ddisp, delta_disp 
+    double precision, allocatable, dimension(:, :) :: Fint, dF, ddisp, delta_disp 
     double precision :: resNL, resPCG, prod
     dimension :: resPCG(nbIterPCG+1)
     integer :: i, j, k
@@ -435,8 +438,6 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! --------------------
     ! Eigen decomposition
     ! -------------------- 
-    allocate(U_u(nr_u, nr_u, dimen), D_u(nr_u, dimen), U_v(nr_v, nr_v, dimen), D_v(nr_v, dimen), &
-            U_w(nr_w, nr_w, dimen), D_w(nr_w, dimen), Deigen(dimen, nr_total))
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
@@ -457,12 +458,12 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                                 data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
     end do
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+    deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
     ! ------------------------
     ! Solver non linear system
     ! ------------------------
-    allocate(Fstep(dimen, nr_total), Fint(dimen, nr_total), dF(dimen, nr_total), &
-            ddisp(dimen, nr_total), delta_disp(dimen, nr_total))
+    allocate(Fint(dimen, nr_total), dF(dimen, nr_total), ddisp(dimen, nr_total), delta_disp(dimen, nr_total))
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0; sigma_vm = 0.d0
@@ -470,7 +471,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     do i = 2, sizeF
 
         ddisp = 0.d0
-        Fstep = Fext(:, :, i)        
+        dF = Fext(:, :, i)        
 
         print*, 'Step: ', i - 1
         do j = 1, nbIterNL ! Newton-Raphson solver
@@ -502,7 +503,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
-            dF = Fstep - Fint
+            dF = dF - Fint
             call clean_dirichlet_3d(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)

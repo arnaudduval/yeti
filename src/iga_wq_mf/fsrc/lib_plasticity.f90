@@ -405,6 +405,7 @@ contains
         do k = 1, nc_total
             do i = 1, dimen
                 do j = 1, dimen
+                    
                     ! Compute stiffness coefficients    
                     ETCE = matmul(transpose(EE(:,:,i)), matmul(DD(:,:,k), EE(:,:,j)))
                     Dij = matmul(invJ(:,:,k), matmul(ETCE, transpose(invJ(:,:,k))))
@@ -463,19 +464,21 @@ subroutine mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     ! Local data 
     ! ----------
     type(thermomat), pointer :: mat
-    double precision :: array_temp
-    dimension :: array_temp(nr_total)
+    double precision :: coefs_temp, array_temp
+    dimension :: coefs_temp(dimen, dimen, nc_total), array_temp(nr_total)
     integer :: i, j
     
+    allocate(mat)
     array_out = 0.d0
     do i = 1, dimen
         do j = 1, dimen
 
-            call setupKcoefs(mat, dimen, nc_total, coefs((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, :))
+            coefs_temp = coefs((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, :)
+            call setupKcoefs(mat, dimen, nc_total, coefs_temp)
             call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_W_u, data_W_v, data_W_w, array_in(j, :), array_temp)
+                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                                array_in(j, :), array_temp)
             array_out(i, :) = array_out(i, :) + array_temp    
 
         end do 
@@ -504,16 +507,16 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     ! Local data
     ! ----------
     type(cgsolver), pointer :: solv
-    double precision :: array_temp
-    dimension :: array_temp(nr_total)
+    double precision :: diag_temp
+    dimension :: diag_temp(nr_total) 
     integer :: i
 
     allocate(solv)
     do i = 1, dimen 
-        call setup_eigendiag(solv, nr_total, eigen_diag(i, :))
+        diag_temp = eigen_diag(i, :)
+        call setup_eigendiag(solv, nr_total, diag_temp)
         call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                array_in(i, :), array_temp)
-        array_out(i, :) = array_temp
+                                array_in(i, :), array_out(i, :))
     end do
     
 end subroutine fd_elasticity_3d
@@ -615,18 +618,18 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
         end do
+
     else ! Preconditioned Conjugate Gradient algorithm
+
         allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
         do iter = 1, nbIterPCG
             call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
             call clean_dirichlet_3d(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
             call mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
             call clean_dirichlet_3d(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-            
             call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
@@ -654,6 +657,7 @@ subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
         end do
+
     end if
 
 end subroutine mf_wq_elasticity_3d

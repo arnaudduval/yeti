@@ -29,14 +29,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # Project needs Python
 set(Python3_FIND_VIRTUALENV FIRST)
 find_package(Python3
-             COMPONENTS Interpreter Development NumPy
-             REQUIRED)
+            COMPONENTS Interpreter Development NumPy
+            REQUIRED)
 
 #find_package(Numpy REQUIRED)
 find_package(F2PY REQUIRED)
 
 # Fortran compilation flags
-SET(CMAKE_Fortran_FLAGS "-O2 -fPIC")
+SET(CMAKE_Fortran_FLAGS "-O3 -fPIC")
                     
 # Define location of Fortran module files
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)

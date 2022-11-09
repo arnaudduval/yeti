@@ -331,6 +331,7 @@ contains
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+
         array_out = 0.d0
         do j = 1, dimen
             beta = 1; beta(j) = 2

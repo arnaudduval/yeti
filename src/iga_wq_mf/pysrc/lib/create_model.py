@@ -510,7 +510,6 @@ class thermoMechaModel():
 
         # Set shape
         d = self._dim
-        ddl = int(d*(d+1)/2)
         nnz = len(detJ)
 
         # Create tensors
