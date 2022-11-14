@@ -124,6 +124,9 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision :: dJdP        !! jacobia determinant
     dimension dJdP(3)
 
+    double precision :: DdUAdxDP
+    dimension DdUAdxDP(3, 3, 3, nadj)
+    
     double precision :: dEAdP
     dimension dEAdP(2*mcrd, 3, nadj)
 
@@ -132,8 +135,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension voigt(6,2)
 
     !! Temporary storage
-    double precision :: temp
-    dimension temp(3, 3)
+    double precision :: temp, temp2
+    dimension temp(3, 3), temp2(3, 3)
 
     !! Various loop variables
     integer :: i, j, k, ij, icp, inodemap, iA
@@ -373,6 +376,26 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             dJdP(:) = dJdP * detjac
 
             !! Compute derivative of adjoint displacement
+            DdUAdxDP(:, :, :, :) = zero
+            do iA = 1, nadj
+                do i = 1, 3
+                    !! ATTENTION : ERREUR PROBABLE AVEC INVERSION DU 2EME ET
+                    !! 3EME INDICE SUR LES DERIVÉES PAR RAPPORT À P (TABLEAUX À 4 INDICES)
+                    
+                    call MulMat(DdxidthetaDP(i, :, :), dthetadx(:,:), temp(:,:), 3, 3, 3)
+                    DdUAdxDP(i, :, :, iA) = DdUAdxDP(i, :, :, iA) + temp(:,:)
+
+                    call MulMat(dxidtheta(:,:), DdthetadxiDP(i, :, :), temp(:,:), 3, 3, 3)
+                    call MulMat(temp(:,:), dxidx(:,:), temp2(:,:), 3, 3, 3)
+                    DdUAdxDP(i, :, :, iA) = DdUAdxDP(i, :, :, iA) + temp2(:,:)
+
+                    DdUAdxDP(i, :, :, iA) = DdUAdxDP(i, :, :, iA) + DdxidxDP(i, :, :)
+
+                                ! DdxidthetaDP x dthetadxi x dxidx
+                                ! + dxidtheta x DdthetadxiDP x dxidx
+                                ! + dxidtheta x dthetadxi x DdxidxDP
+                enddo
+            enddo
             
             !! Compute derivative of adjoint strain
             dEAdP(:,:,:) = zero
