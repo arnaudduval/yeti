@@ -99,9 +99,22 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision :: dxdxi, dxidx, det_dxdxi
     dimension dxdxi(3, 3), dxidx(3, 3)
 
-    !! Mapping embedded ârametric space -> physical space
+    !! Mapping embedded parametric space -> physical space
     double precision :: dthetadx
     dimension dthetadx(3, 3)
+
+    !! disp/strain/stress fields
+    double precision :: ddsdde
+    dimension ddsdde(2*mcrd, 2*mcrd)
+    double precision :: dUdtheta, dUAdtheta
+    dimension dUdtheta(3,3), dUAdtheta(3, 3, nadj)
+    double precision :: strain, stress
+    dimension strain(2*mcrd), stress(2*mcrd)
+    double precision :: strainAdj, stressAdj
+    dimension strainAdj(2*mcrd, nadj), stressAdj(2*mcrd, nadj)
+    double precision :: coef1, coef2
+    double precision :: work
+    dimension work(nadj)
 
     !! Derivatives w.r.t embbeded control points P
     double precision :: DdxdxiDP, DdxidthetaDP      !! mappings
@@ -150,6 +163,9 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Will be necessary for further 2D implementations
     if (TENSOR == 'PSTRESS') lambda = two*lambda*mu/(lambda+two*mu)
 
+    !! Material behavior
+    call material_lib(MATERIAL_PROPERTIES, TENSOR, MCRD, ddsdde)
+      
 
     !! Computation
     isave = 0
@@ -238,6 +254,66 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         !! Compute product of all mapping determinants
         detjac = det_dxdxi * det_dxidtheta*det_dthetadtildexi
 
+        !! Compute disp and adjoint derivatives
+        dUdtheta(:,:) = zero
+        do i = 1, mcrd
+            do icp = 1, nnode
+                dUdtheta(:, i) = dUdtheta(:, i) + dRdtheta(icp, i) * Uelem(:, icp)
+            enddo
+        enddo
+
+        dUAdtheta(:,:,:) = zero
+        do iA = 1, nadj
+            do i = 1, mcrd
+                do icp = 1, nnode
+                    dUAdtheta(:, i, iA) = dUAdtheta(:, i, iA) + dRdtheta(icp, i) * UAelem(:, icp, iA)
+                enddo
+            enddo
+        enddo
+
+        !! Compute state strain and stress
+        strain(:) = zero
+        stress(:) = zero
+        do ij = 1, ntens
+            i = voigt(ij, 1); j = voigt(ij, 2)
+            if (i==j) then
+                call dot(dUdtheta(i, :), dthetadx(:, i), coef1)
+            else
+                call dot(dUdtheta(i, :), dthetadx(:, j), coef1)
+                call dot(dUdtheta(j, :), dthetadx(:, i), coef2)
+                strain(ij) = coef1 + coef2
+            endif
+        enddo
+        call MulVect(ddsdde, strain, stress, ntens, ntens)
+
+        !! Compute adjoint strain and stress
+        strainAdj(:,:) = zero
+        stressAdj(:,:) = zero
+        do iA = 1, nadj
+            do ij = 1, ntens
+                i = voigt(ij, 1); j = voigt(ij, 2)
+                if (i==j) then
+                    call dot(dUAdtheta(i, :, iA), dthetadx(:, i), coef1)
+                else
+                    call dot(dUAdtheta(i, :, iA), dthetadx(:, j), coef1)
+                    call dot(dUAdtheta(j, :, iA), dthetadx(:, i), coef2)
+                    strain(ij) = coef1 + coef2
+                endif
+            enddo
+            call MulVect(ddsdde, strainAdj(:, iA), stressAdj(:, iA), ntens, ntens)
+        enddo
+
+        !! Compute local work
+        !! TODO : verify if is needed
+        work(:) = zero
+        do ij = 1, ntens
+            work(:) = work(:) + strainAdj(ij, :)*stress(ij)
+        enddo
+
+
+
+
+
         !! Derivatives
         !! ===========
 
@@ -296,6 +372,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
             dJdP(:) = dJdP * detjac
 
+            !! Compute derivative of adjoint displacement
+            
             !! Compute derivative of adjoint strain
             dEAdP(:,:,:) = zero
             
