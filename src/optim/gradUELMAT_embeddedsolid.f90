@@ -18,7 +18,8 @@
 !! Implemented for 3D case
 !! TODO : should be adapted to work with 2D case
 
-subroutine gradUELMAT10adj(nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
+subroutine gradUELMAT10adj(Uelem, UAelem,               &
+                    &      nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
                     &      coords, coordsall, &
                     &      tensor, material_properties,     &
                     &      gradWint_elem, gradWext_elem)
@@ -41,6 +42,9 @@ subroutine gradUELMAT10adj(nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
     character(len=*), intent(in) :: tensor
     double precision, intent(in) :: material_properties
     dimension material_properties(2)
+
+    double precision, intent(in) :: Uelem, UAelem
+    dimension Uelem(3, nnode), UAelem(3, nnode, nadj)
 
     !! Outputs
     double precision, intent(out) :: gradWint_elem, gradWext_elem
@@ -100,15 +104,27 @@ subroutine gradUELMAT10adj(nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
     dimension dthetadx(3, 3)
 
     !! Derivatives w.r.t embbeded control points P
-    double precision :: DdxdxiDP, DdxidthetaDP
+    double precision :: DdxdxiDP, DdxidthetaDP      !! mappings
     dimension DdxdxiDP(3, 3, 3), DdxidthetaDP(3, 3, 3)
-    double precision :: dJdP
+    double precision :: DdxidxDP, DdthetadxiDP      !! inverse mappings
+    dimension DdxidxDP(3, 3, 3), DdthetadxiDP(3, 3, 3)
+    double precision :: dJdP        !! jacobia determinant
     dimension dJdP(3)
 
+    double precision :: dEAdP
+    dimension dEAdP(2*mcrd, 3, nadj)
+
+    !! Voigt convention
+    Integer :: voigt
+    dimension voigt(6,2)
+
     !! Various loop variables
-    integer :: i, j, k, icp, inodemap
+    integer :: i, j, k, ij, icp, inodemap, iA
 
     !! Initialization
+
+    voigt(:,1) = (/ 1,2,3,1,1,2 /)
+    voigt(:,2) = (/ 1,2,3,2,3,3 /)
 
     ntens = 2*mcrd      ! Size of stiffness matrix
     nbPtInt = int(nbint**(1.0/float(mcrd)))     ! Nb of quadrature pts per direction
@@ -249,19 +265,36 @@ subroutine gradUELMAT10adj(nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
                 enddo
             enddo
             DdxdxiDP(:,:,:) = DdxdxiDP(:,:,:) * R(icp)
+
+            !! Compute inverse mapping derivatives
+            DdxidxDP(:,:,:) = zero
+            DdthetadxiDP(:,:,:) = zero
+
+            do i = 1, 3
+                call MulMat(dxidx(:,:), DdxdxiDP(i, :, :), DdxidxDP(i, :, :), 3, 3, 3)
+                call MulMat(dthetadxi(:,:), DdxidthetaDP(i, :, :), DdthetadxiDP(i, :, :), 3, 3, 3)
+            enddo
+
+            DdxidxDP(:, :, :) = -1.D0 * DdxdxiDP(:, :, :)
+            DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
+
             
             !! Compute derivative of jacobian determinant
             dJdP(:) = zero
             do i = 1, 3
                 do j = 1, 3
                     do k = 1, 3
-                        dJdP(i) = dJdP(i) + dxidx(j, k)*DdxdxiDP(k, j) + dthetadxi(j, k)*DdxidthetaDP(k, j)
+                        dJdP(i) = dJdP(i) + dxidx(j, k)*DdxdxiDP(i, k, j) + dthetadxi(j, k)*DdxidthetaDP(i, k, j)
                     enddo
                 enddo
             enddo
             dJdP(:) = dJdP * detjac
 
+            !! Compute derivative of adjoint strain
+            dEAdP(:,:,:) = zero
             
+
+
 
         enddo
 
