@@ -1,0 +1,285 @@
+!! Copyright 2022 Arnaud Duval
+
+!! This file is part of Yeti.
+!!
+!! Yeti is free software: you can redistribute it and/or modify it under the terms 
+!! of the GNU Lesser General Public License as published by the Free Software 
+!! Foundation, either version 3 of the License, or (at your option) any later version.
+!!
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! PURPOSE. See the GNU Lesser General Public License for more details.
+!!
+!! You should have received a copy of the GNU Lesser General Public License along 
+!! with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+
+!! Compute gradient for the embedded solid element U10
+!! Implemented for 3D case
+!! TODO : should be adapted to work with 2D case
+
+subroutine gradUELMAT10adj(nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
+                    &      coords, coordsall, &
+                    &      tensor, material_properties,     &
+                    &      gradWint_elem, gradWext_elem)
+
+    use parameters
+    use nurbspatch
+    use embeddedMapping
+
+    implicit none
+
+    !! TODO : DOCUMENTER À QUOI CORRESPOND nb_cp -> EST-CE POUR UN ELEMENT 
+    !! DE L'ENVELOPPE OU POUR L'ENVELOPPE ENTIÈRE ?
+
+    !! Input arguments
+    integer, intent(in) :: nadj, mcrd, nnode, nnodemap, nb_cp, nbint
+    double precision, intent(in) :: coords
+    dimension coords(mcrd, nnode)
+    double precision, intent(in) :: coordsall
+    dimension coordsall(3, nb_cp)
+    character(len=*), intent(in) :: tensor
+    double precision, intent(in) :: material_properties
+    dimension material_properties(2)
+
+    !! Outputs
+    double precision, intent(out) :: gradWint_elem, gradWext_elem
+    dimension gradWint_elem(nadj, 3, nnode)
+    dimension gradWext_elem(nadj, 3, nnode)
+
+    !! local variables
+    integer :: ntens
+    integer :: isave    !! index of last extracted hull element
+
+    !! Quadrature
+    integer :: nbPtInt
+    double precision :: GaussPdsCoord, PtGauss
+    dimension GaussPdsCoord(mcrd+1, nbint), PtGauss(mcrd+1)
+    integer :: igp
+
+    double precision :: detjac, dvol
+
+    !! Materiel behaviour
+    double precision :: E, nu, lambda, mu
+
+    !! Embedded solid
+    double precision :: R, dRdtheta, ddRddtheta
+    dimension R(nnode), dRdtheta(nnode, 3), ddRddtheta(nnode, 6)
+    double precision :: theta
+    dimension theta(3)
+    double precision :: dRdx
+    dimension dRdx(nnode, 3)
+
+    !! Hull
+    double precision :: N, dNdxi, ddNddxi
+    dimension N(nnodemap), dNdxi(nnodemap, 3), ddNddxi(nnodemap, 6)
+    
+    double precision :: xi
+    dimension xi(3)
+
+    !! Mapping parent element -> embedded parameter space
+    double precision :: dthetadtildexi, det_dthetadtildexi
+    dimension dthetadtildexi(3, 3)
+
+    !! Mapping embedded parametric space -> hull parametric space
+    double precision :: dxidtheta, dthetadxi, det_dxidtheta
+    dimension dxidtheta(3, 3), dthetadxi(3, 3)
+
+    !! Elements infos
+    double precision :: coordsmap
+    dimension coordsmap(mcrd, nnodemap)
+    integer :: sctr_map
+    dimension sctr_map(nnodemap)
+
+    !! Mapping hull parametric space -> physical space
+    double precision :: dxdxi, dxidx, det_dxdxi
+    dimension dxdxi(3, 3), dxidx(3, 3)
+
+    !! Mapping embedded ârametric space -> physical space
+    double precision :: dthetadx
+    dimension dthetadx(3, 3)
+
+    !! Derivatives w.r.t embbeded control points P
+    double precision :: DdxdxiDP, DdxidthetaDP
+    dimension DdxdxiDP(3, 3, 3), DdxidthetaDP(3, 3, 3)
+    double precision :: dJdP
+    dimension dJdP(3)
+
+    !! Various loop variables
+    integer :: i, j, k, icp, inodemap
+
+    !! Initialization
+
+    ntens = 2*mcrd      ! Size of stiffness matrix
+    nbPtInt = int(nbint**(1.0/float(mcrd)))     ! Nb of quadrature pts per direction
+    if (nbPtInt**mcrd < nbint) nbPtInt = nbPtInt + 1
+
+    !! Compute Gauss pts coordinates and weights
+    call Gauss(nbPtInt, mcrd, GaussPdsCoord, 0)
+
+    !! Gradients
+    gradWint_elem(:,:,:) = zero
+    gradWext_elem(:,:,:) = zero
+
+    !! Material behaviour
+    !! TODO : use material_lib subroutine
+    E = material_properties(1)
+    nu = material_properties(2)
+    lambda = E*nu/(one+nu)/(one-two*nu)
+    mu     = E/two/(one+nu)
+    !! Will be necessary for further 2D implementations
+    if (TENSOR == 'PSTRESS') lambda = two*lambda*mu/(lambda+two*mu)
+
+
+    !! Computation
+    isave = 0
+
+    !! Loop on integration points
+    do igp = 1, nbint
+
+        !! Embedded solid
+        !! ==============
+
+        ptGauss(:) = GaussPdsCoord(2:, igp)
+        !! DetJac = GaussPdsCoord(1, igp) ! a gerer de façon plus lisible
+
+        !! Compute parametric coordinates in embedded element from parent element
+        !!theta(:) = zero
+        do i = 1, mcrd
+            theta(i) = ((Ukv_elem(2,i) - Ukv_elem(1,i)) * PtGauss(i)  &
+                &     + (Ukv_elem(2,i) + Ukv_elem(1,i))) * 0.5
+        enddo
+
+        !! Compute NURBS basis function and derivative
+        call evalnurbs_w2ndDerv(theta, R, dRdtheta, ddRddtheta)
+
+        !! Compute coordinates in hull parametric space
+        xi(:) = zero
+        do icp = 1, nnode
+            xi(:) = xi(:) + R(icp)*coords(:, icp)
+        enddo
+
+        !! Gradient of mapping : parent element -> embedded parametric space
+        !! tildexi : parametric coord in parent element [-1,1]^d
+        dthetadtildexi(:,:) = zero
+        do i = 1, dim_patch
+            dthetadtildexi(i,i) = 0.5d0 * (Ukv_elem(2, i) - Ukv_elem(1, i))
+        enddo
+
+        call MatrixDet(dthetadtildexi, det_dthetadtildexi, 3)
+
+        !! Gradient of mapping : embedded parametric space -> hull parametric space
+        dxidtheta(:,:) = zero
+        do icp = 1, nnode
+            do i = 1, dim_patch
+                dxidtheta(:, i) = dxidtheta(:, i) + dRdtheta(icp, i) * coords(:, icp)
+            enddo
+        enddo
+
+        call MatrixInv(dthetadxi, dxidtheta, det_dxidtheta, 3)
+
+        !! Hull
+        !! ====
+
+        !! Get active element number
+        call updateMapElementNumber(xi(:))
+
+        !! Evaluate NURBS basis functions and derivative of hull
+        call evalnurbs_mapping_w2ndDerv(xi(:), N(:), dNdxi(:,:), ddNddxi(:,:))
+
+        !! Extract CP coordinates of the hull
+        if (isave /= current_map_elem) then
+            sctr_map(:) = IEN_map(:, current_map_elem)
+            do icp = 1, nnodemap
+                coordsmap(:, icp) = coordsall(:, sctr_map(icp))
+            enddo
+            isave = current_map_elem
+        endif
+
+        !! Gradient of mapping : hull paraletric space -> physical space
+        dxdxi(:, :) = zero
+        do icp = 1, nnodemap
+            do i = 1, dim_patch
+                dxdxi(:, i) = dxdxi(:, i) + dNdxi(icp, i) * coordsmap(:, icp)
+            enddo
+        enddo
+
+        call MatrixInv(dxidx, dxdxi, det_dxdxi, 3)
+
+        !! Composition : hull x embedded solid
+        !! ===================================
+
+        !! Mapping
+        call MulMat(dthetadxi, dxidx, dthetadx, 3, 3, 3)
+
+        !! Basis functions composition
+        call Mulmat(dRdtheta, dthetadx, dRdx, nnode, 3, 3)
+
+        !! Compute product of all mapping determinants
+        detjac = det_dxdxi * det_dxidtheta*det_dthetadtildexi
+
+        !! Derivatives
+        !! ===========
+
+        do icp = 1, nnode
+            !! Compute mapping derivatives
+            DdxidthetaDP(:,:,:) = zero
+            do i = 1, 3
+                do j = 1, 3
+                    do k = 1, 3
+                        if (i == k) then
+                            DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
+                        endif
+                    enddo
+                enddo
+            enddo
+
+            DdxdxiDP(:,:,:) = zero
+            do inodemap = 1, nnodemap
+                do i = 1, 3
+                    do j = 1, 3
+                        do k = 1, 3
+                            if (i==j) then
+                                DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, i) * coordsmap(k, inodemap)
+                            else
+                                DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, i+j+1) * coordsmap(k, inodemap)
+                            endif
+                        enddo
+                    enddo
+                enddo
+            enddo
+            DdxdxiDP(:,:,:) = DdxdxiDP(:,:,:) * R(icp)
+            
+            !! Compute derivative of jacobian determinant
+            dJdP(:) = zero
+            do i = 1, 3
+                do j = 1, 3
+                    do k = 1, 3
+                        dJdP(i) = dJdP(i) + dxidx(j, k)*DdxdxiDP(k, j) + dthetadxi(j, k)*DdxidthetaDP(k, j)
+                    enddo
+                enddo
+            enddo
+            dJdP(:) = dJdP * detjac
+
+            
+
+        enddo
+
+        
+
+
+
+
+        
+        dvol = GaussPdsCoord(i, igp)*detjac
+
+
+
+    enddo
+
+    call evalnurbs_mapping_w2ndDerv
+
+
+end subroutine gradUELMAT10adj
+
+

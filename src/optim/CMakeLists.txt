@@ -23,6 +23,7 @@ set(optim_src_file ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_solid.f
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradCPLGMAT_disp.f
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradCPLGMAT_rot.f
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMASSMAT_solid.f
+                     ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_embeddedsolid.f90
                      )
                      
 
