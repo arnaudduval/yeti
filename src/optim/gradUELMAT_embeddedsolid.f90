@@ -115,8 +115,12 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension dEAdP(2*mcrd, 3, nadj)
 
     !! Voigt convention
-    Integer :: voigt
+    integer :: voigt
     dimension voigt(6,2)
+
+    !! Temporary storage
+    double precision :: temp
+    dimension temp(3, 3)
 
     !! Various loop variables
     integer :: i, j, k, ij, icp, inodemap, iA
@@ -271,8 +275,10 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             DdthetadxiDP(:,:,:) = zero
 
             do i = 1, 3
-                call MulMat(dxidx(:,:), DdxdxiDP(i, :, :), DdxidxDP(i, :, :), 3, 3, 3)
-                call MulMat(dthetadxi(:,:), DdxidthetaDP(i, :, :), DdthetadxiDP(i, :, :), 3, 3, 3)
+                call MulMat(dxidx(:,:), DdxdxiDP(i, :, :), temp(:,:), 3, 3, 3)
+                call mulmat(temp(:,:), dxidx(:,:), DdxidxDP(i, :, :), 3, 3, 3)
+                call MulMat(dthetadxi(:,:), DdxidthetaDP(i, :, :), temp(:,:), 3, 3, 3)
+                call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(i, :, :), 3, 3, 3)
             enddo
 
             DdxidxDP(:, :, :) = -1.D0 * DdxdxiDP(:, :, :)
