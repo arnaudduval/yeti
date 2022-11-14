@@ -593,23 +593,6 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
 
 end subroutine trapezoidal_rule_3d
 
-subroutine cleanDirichlet1ddl(nr, A, ndu, dod_u)
-    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndu
-    double precision, intent(inout) :: A
-    dimension :: A(1, nr)
-
-    integer, intent(in) :: dod_u
-    dimension :: dod_u(ndu)
-
-    A(1, dod_u) = 0.d0 
-
-end subroutine cleanDirichlet1ddl
-
 subroutine cleanDirichlet3ddl(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
     !! A is actually a vector arranged following each dimension [Au, Av, Aw]

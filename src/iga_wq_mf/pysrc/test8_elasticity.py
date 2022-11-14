@@ -52,22 +52,15 @@ Fsurf = modelPhy.eval_force_surf()
 # -------------
 # ELASTICITY
 # -------------
-# Solve in fortran 
-displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=True)
-resPCG = resPCG[resPCG>0]
-
 fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.semilogy(np.arange(len(resPCG)), resPCG)
+
+# Solve in fortran 
+for isPrecond in [True, False]:
+    displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=isPrecond)
+    resPCG = resPCG[resPCG>0]
+    ax.semilogy(np.arange(len(resPCG)), resPCG)
 
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 fig.tight_layout()
 fig.savefig(folder + 'ElasticityRes.png')
-
-# # Interpolate displacement
-# modelPhy.export_results(u_ctrlpts=displacement, nbDOF=3, folder=folder)
-
-# # Interpolate Von Mises field
-# stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm)
-# modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1, folder=folder)
-

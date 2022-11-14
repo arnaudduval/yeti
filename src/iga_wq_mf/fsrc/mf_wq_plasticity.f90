@@ -211,6 +211,7 @@ subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     !! This function is adapted to python
     !! IN CSR FORMAT
 
+    use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------
@@ -235,6 +236,7 @@ subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
 
     ! Local data 
     ! ----------
+    type(mecamat), pointer :: mat
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
@@ -245,7 +247,9 @@ subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    call mf_wq_get_su_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    allocate(mat)
+    call setupScoefs(mat, dimen, nc_total, coefs)
+    call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -285,7 +289,6 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     !! This function is adapted to python 
     !! IN CSR FORMAT 
 
-    use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------

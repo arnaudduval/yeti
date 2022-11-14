@@ -79,7 +79,7 @@ class Timoshenko():
 
     def block_boundary(self, bound, values=[0, 0, 0], table=[True, True, True]):
         if bound in self._dod: raise Warning('Enter non-repeated boundary')
-        if bound == 0:
+        if   bound == 0:
             for i in range(3): 
                 if table[i]: self._dod.append(i*self._nb_ctrlpts)
         elif bound == -1:
@@ -117,7 +117,7 @@ class Timoshenko():
                 + compute_sub_mass_matrix(self._Jpq, self._DB, self._DW, self._GAKs))
 
         # Assemble matrix 
-        nr = self._nb_ctrlpts
+        nr   = self._nb_ctrlpts
         ind1 = range(nr)
         ind2 = range(nr, 2*nr)
         ind3 = range(2*nr, 3*nr)
@@ -183,7 +183,7 @@ class Timoshenko():
 
     def add_boundary_force(self, bound, values=[0, 0, 0]):
         dod = []
-        if bound == 0:
+        if   bound == 0:
             for i in range(3): dod.append(i*self._nb_ctrlpts)
         elif bound == -1:
             for i in range(3): dod.append(self._nb_ctrlpts + i*self._nb_ctrlpts - 1)
@@ -198,7 +198,7 @@ class Timoshenko():
         self.verify_mechaprop()
         if not len(self._dod): raise Warning('Add boundary conditions')
         
-        nr = self._nb_ctrlpts
+        nr  = self._nb_ctrlpts
         sol = np.zeros(3*nr)
         sol[self._dod] = self._gdod
         dof = self.find_free_ctrlpts()
@@ -211,8 +211,8 @@ class Timoshenko():
             K = self.compute_timoshenko_stiffness(dwdx)
 
             # Compute dF
-            Fint = K @ sol
-            dF = Fext[dof] - Fint[dof]
+            Fint    = K @ sol
+            dF      = Fext[dof] - Fint[dof]
             errorNL = np.sqrt(np.dot(dF, dF))
             print('Iteration %s, error: %.5e' %(i, errorNL))
             if errorNL <= tol: break
@@ -226,8 +226,8 @@ class Timoshenko():
             sol[dof] += delta_sol
 
         # Select important data
-        u = sol[range(nr)]
-        w = sol[range(nr, 2*nr)]
+        u     = sol[range(nr)]
+        w     = sol[range(nr, 2*nr)]
         theta = sol[range(2*nr, 3*nr)]
 
         return u, w, theta

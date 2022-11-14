@@ -58,7 +58,7 @@ if not dataExist:
     for i in range(len(time_list)): GBound[:, i] = modelPhy._get_thermal_IBC()
 
     # Solve
-    Tsol = modelPhy.MFtransientHeatNL(F=Fext, G=GBound, time_list=time_list,
+    Tsol = modelPhy.MFtransientHeatNL(Fext=Fext, G=GBound, time_list=time_list,
                                     table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
                                     methodPCG='JMC', theta=theta)[0]
     np.savetxt(folder + 'data3D.dat', Tsol)
@@ -95,7 +95,7 @@ else:
     datapoint1D = np.loadtxt(folder + 'data1D.dat')
     ax2.semilogy(abs(Tpoint_list - datapoint1D[:, 1]), 'o', 
                 nonpositive='mask')
-    ax2.set_ylim([1e-12, 1e-3])
+    # ax2.set_ylim([1e-12, 1e-3])
 
     ax1.set_xlabel('Time (s)')
     ax1.set_ylabel('Temperature (K)')

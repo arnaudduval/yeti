@@ -334,12 +334,12 @@ class fortran_mf_wq(thermoMechaModel):
 
         return sol, residue
 
-    def MFtransientHeatNL(self, F=None, G=None, time_list=None, theta=1, 
+    def MFtransientHeatNL(self, Fext, G=None, time_list=None, theta=1, 
                         table_Kprop=None, table_Cprop=None, methodPCG='FDC'):
         " Solves transient heat problem "
 
         if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-        if F is None or G is None or time_list is None: raise Warning('Important information missing')
+        if G is None or time_list is None: raise Warning('Important information missing')
 
         if table_Kprop is None: 
             table_Kprop = np.array([[0, 1]])
@@ -350,7 +350,7 @@ class fortran_mf_wq(thermoMechaModel):
 
         dod = np.copy(self._thermal_dod); dod += 1
         inputs_tmp = self.get_input4MatrixFree(table=self._thermalDirichlet)
-        inputs = [*inputs_tmp, *self._indices, *self._DB, *self._DW, time_list, F, dod, G, 
+        inputs = [*inputs_tmp, *self._indices, *self._DB, *self._DW, time_list, Fext, dod, G, 
                     table_Kprop, table_Cprop, self._invJ, self._detJ, theta, methodPCG]
 
         if self._dim == 2: raise Warning('Until now not done')
@@ -380,7 +380,6 @@ class fortran_mf_wq(thermoMechaModel):
         print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 
         return u_interp
-
 
     # ----------------------------------
     # ELASTO-PLASTICITY (IN FORTRAN)
