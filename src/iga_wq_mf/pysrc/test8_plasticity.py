@@ -28,7 +28,7 @@ degree, cuts = 4, 4
 geometry = {'degree':[degree, degree, degree]}
 modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-                                            np.array([cuts, cuts, cuts]))
+											np.array([cuts, cuts, cuts]))
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 

@@ -1,7 +1,7 @@
 from lib.__init__ import *
 from lib.base_functions import (eval_basis_python,
-                                iga_find_positions_weights,
-                                create_knotvector, sigmoid
+								iga_find_positions_weights,
+								create_knotvector, sigmoid
 )
 from lib.physics import setCprop, setKprop, powden
 from lib.D1transientheat import *
@@ -24,7 +24,7 @@ qp_cgg, weight_cgg = iga_find_positions_weights(degree, knotvector)
 basis_cgg = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
-# Define boundaries conditions
+# Define boundaries conditions	
 N = 100
 time_list = np.linspace(0, 20, N)
 dod = [0, -1]
@@ -40,7 +40,7 @@ temperature[-1,:] = 1.0
 
 # Solve
 solve_transient_heat_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, 
-                        time_list=time_list, dof=dof, dod=dod, Tinout=temperature)
+						time_list=time_list, dof=dof, dod=dod, Tinout=temperature)
 
 # ------------------
 # Post-treatement

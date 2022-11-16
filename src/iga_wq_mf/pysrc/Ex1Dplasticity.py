@@ -1,7 +1,7 @@
 from lib.__init__ import *
 from lib.base_functions import (eval_basis_python,
-                                iga_find_positions_weights,
-                                create_knotvector
+								iga_find_positions_weights,
+								create_knotvector
 )
 from lib.D1viscoplasticity import *
 
@@ -50,12 +50,12 @@ XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
 names = ['Displacement field', 'Plastic strain field', 'Stress field']
 fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
 for ax, variable, name in zip([ax1, ax2, ax3], [displacement, plastic_strain, stress], names):
-    ax.contourf(XX, STEPS, variable.T, 20)
+	ax.contourf(XX, STEPS, variable.T, 20)
 
-    ax.grid(None)
-    ax.set_title(name)
-    ax.set_ylabel('Step')
-    ax.set_xlabel('Position (m)')
+	ax.grid(None)
+	ax.set_title(name)
+	ax.set_ylabel('Step')
+	ax.set_xlabel('Position (m)')
 
 fig.tight_layout()
 fig.savefig(folder + 'ElastoPlasticity.png')
@@ -63,9 +63,9 @@ fig.savefig(folder + 'ElastoPlasticity.png')
 # Plot stress-strain of single point
 fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
 for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-    ax.plot(strain[pos, :]*100, stress[pos, :])
-    ax.set_ylabel('Stress (MPa)')
-    ax.set_xlabel('Strain (\%)')
+	ax.plot(strain[pos, :]*100, stress[pos, :])
+	ax.set_ylabel('Stress (MPa)')
+	ax.set_xlabel('Strain (\%)')
 
 fig.tight_layout()
 fig.savefig(folder + 'TractionCurve.png')

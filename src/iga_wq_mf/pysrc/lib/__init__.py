@@ -9,10 +9,10 @@ from copy import deepcopy
 import numpy as np, math, statistics, pandas as pd
 from scipy import sparse as sp, linalg as sclin
 from geomdl import (
-    helpers,
-    fitting, 
-    BSpline, 
-    operations,
+	helpers,
+	fitting, 
+	BSpline, 
+	operations,
 )
 from pyevtk.hl import gridToVTK
 import matplotlib as mpl
@@ -23,8 +23,8 @@ from cycler import cycler
 # Default properties 
 markerSet = ['o', 'v', 's', 'X', '+', 'p']
 colorSet = ['#377eb8', '#ff7f00', '#4daf4a',
-            '#f781bf', '#a65628', '#984ea3',
-            '#999999', '#e41a1c', '#dede00']
+			'#f781bf', '#a65628', '#984ea3',
+			'#999999', '#e41a1c', '#dede00']
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}'] 
 mpl.rcParams.update({'figure.autolayout': True})
@@ -55,8 +55,6 @@ from iga_wq_mf import basis_weights, assembly, solver, elastoplasticity
 from preprocessing.igaparametrization import IGAparametrization
 
 # Define global functions
-def blockPrint():
-    sys.stdout = open(os.devnull, 'w')
+def blockPrint(): sys.stdout = open(os.devnull, 'w')
 
-def enablePrint():
-    sys.stdout = sys.__stdout__
+def enablePrint(): sys.stdout = sys.__stdout__

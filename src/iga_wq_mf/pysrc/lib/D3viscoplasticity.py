@@ -17,171 +17,171 @@
 import numpy as np
 
 def clean_dirichlet_3d(A, dod):
-    """ Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
-        A is actually a vector arranged following each dimension [Au, Av, Aw]
-    """
-    for i in range(3): A[i, dod[i]] = 0.0
-    return
+	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+		A is actually a vector arranged following each dimension [Au, Av, Aw]
+	"""
+	for i in range(3): A[i, dod[i]] = 0.0
+	return
 
 def block_dot_product(d, A, B):
-    """ Computes dot product of A and B. 
-        Both are actually vectors arranged following each dimension
-        A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
-    """
-    result = 0.0
-    for i in range(d): result += A[i, :] @ B[i, :]
-    return result
+	""" Computes dot product of A and B. 
+		Both are actually vectors arranged following each dimension
+		A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
+	"""
+	result = 0.0
+	for i in range(d): result += A[i, :] @ B[i, :]
+	return result
 
 def compute_stress_deviatoric(d, tensor):
-    " Computes deviatoric of a second-order stress-like tensor "
+	" Computes deviatoric of a second-order stress-like tensor "
 
-    ddl = int(d*(d+1)/2)
-    one = np.zeros(ddl)
+	ddl = int(d*(d+1)/2)
+	one = np.zeros(ddl)
 
-    trace = 0.0
-    for i in range(d):
-        trace += tensor[i]
-        one[i] = 1.0
-        
-    dev = tensor - 1.0/3.0*trace*one
+	trace = 0.0
+	for i in range(d):
+		trace += tensor[i]
+		one[i] = 1.0
+		
+	dev = tensor - 1.0/3.0*trace*one
 
-    return dev
+	return dev
 
 def compute_stress_norm(d, tensor): 
-    " Returns frobenius norm of a second-order stress-like tensor "
+	" Returns frobenius norm of a second-order stress-like tensor "
 
-    ddl = int(d*(d+1)/2)
-    norm = 0.0
+	ddl = int(d*(d+1)/2)
+	norm = 0.0
 
-    for i in range(d): norm += tensor[i]**2
-    for i in range(d, ddl): norm += 2.0*tensor[i]**2
-    norm = np.sqrt(norm)
+	for i in range(d): norm += tensor[i]**2
+	for i in range(d, ddl): norm += 2.0*tensor[i]**2
+	norm = np.sqrt(norm)
 
-    return norm
+	return norm
 
 def create_fourth_order_identity(d=3):
-    " Creates a fourth-order identity (Voigt notation) "
-    
-    if d == 2:
-        I = np.diag(np.array([1.0, 1.0, 0.5]))
-    elif d == 3:    
-        I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
-    else: raise Warning('Only 2d or 3d')
+	" Creates a fourth-order identity (Voigt notation) "
+	
+	if d == 2:
+		I = np.diag(np.array([1.0, 1.0, 0.5]))
+	elif d == 3:    
+		I = np.diag(np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5]))
+	else: raise Warning('Only 2d or 3d')
 
-    return I
+	return I
 
 def create_one_kron_one(d=3): 
-    " Creates a one kron one tensor (Voigt notation) "
+	" Creates a one kron one tensor (Voigt notation) "
 
-    ddl = int(d*(d+1)/2)
-    onekronone = np.zeros((ddl, ddl))
+	ddl = int(d*(d+1)/2)
+	onekronone = np.zeros((ddl, ddl))
 
-    for i in range(d):
-        for j in range(d):
-            onekronone[i,j] = 1.0
+	for i in range(d):
+		for j in range(d):
+			onekronone[i,j] = 1.0
 
-    return onekronone
+	return onekronone
 
 def stkronst(A, B):
-    """ Computes kron product of tensors A and B
-        A and B are second order stress-like tensor in Voigt notation
-    """
+	""" Computes kron product of tensors A and B
+		A and B are second order stress-like tensor in Voigt notation
+	"""
 
-    At = np.atleast_2d(A)
-    Bt = np.atleast_2d(B)
-    result = np.kron(At.T, Bt)
+	At = np.atleast_2d(A)
+	Bt = np.atleast_2d(B)
+	result = np.kron(At.T, Bt)
 
-    return result
+	return result
 
 def create_incidence_matrix(d=3):
-    """ Creates M matrix. E is the passage matrix from derivative to actual symetric values. 
-        If we multiply a vector of values u_(i, j) with E matrix, one obtains the vector: 
-        us_ij = 0.5*(u_(i,j) + u_(j,i))  
-    """
+	""" Creates M matrix. E is the passage matrix from derivative to actual symetric values. 
+		If we multiply a vector of values u_(i, j) with E matrix, one obtains the vector: 
+		us_ij = 0.5*(u_(i,j) + u_(j,i))  
+	"""
 
-    ddl = int(d*(d+1)/2)
-    EE = np.zeros((ddl, d, d))
+	ddl = int(d*(d+1)/2)
+	EE = np.zeros((ddl, d, d))
 
-    if d==3: 
-        EE[0, 0, 0] = 1.0; EE[4, 2, 0] = 1.0; EE[5, 1, 0] = 1.0
-        EE[1, 1, 1] = 1.0; EE[3, 2, 1] = 1.0; EE[5, 0, 1] = 1.0
-        EE[2, 2, 2] = 1.0; EE[3, 1, 2] = 1.0; EE[4, 0, 2] = 1.0
-    elif d == 2: 
-        EE[0, 0, 0] = 1.0; EE[2, 1, 0] = 1.0
-        EE[1, 1, 1] = 1.0; EE[2, 0, 1] = 1.0
+	if d==3: 
+		EE[0, 0, 0] = 1.0; EE[4, 2, 0] = 1.0; EE[5, 1, 0] = 1.0
+		EE[1, 1, 1] = 1.0; EE[3, 2, 1] = 1.0; EE[5, 0, 1] = 1.0
+		EE[2, 2, 2] = 1.0; EE[3, 1, 2] = 1.0; EE[4, 0, 2] = 1.0
+	elif d == 2: 
+		EE[0, 0, 0] = 1.0; EE[2, 1, 0] = 1.0
+		EE[1, 1, 1] = 1.0; EE[2, 0, 1] = 1.0
 
-    return EE
+	return EE
 
 def cpp_combined_hardening(inputs, deps, sigma_n, alpha_n, ep_n, d=3):
-    " Returns closest point proyection (cpp) in combined hardening plasticity criteria"
+	" Returns closest point proyection (cpp) in combined hardening plasticity criteria"
 
-    def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
-        " Computes the value of f (consistency condition) in plasticity criteria"
+	def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
+		" Computes the value of f (consistency condition) in plasticity criteria"
 
-        eta = compute_stress_deviatoric(d, sigma) - alpha
-        norm = compute_stress_norm(d, eta)
-        f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*ep_n)
-        if norm > 0.0: N = 1.0/norm*eta
-        else: N = np.zeros(np.shape(eta))
+		eta = compute_stress_deviatoric(d, sigma) - alpha
+		norm = compute_stress_norm(d, eta)
+		f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*ep_n)
+		if norm > 0.0: N = 1.0/norm*eta
+		else: N = np.zeros(np.shape(eta))
 
-        return f, N, norm
+		return f, N, norm
 
-    CC, sigma_Y, mu, beta, H, Idev = inputs
-    sigma_trial = sigma_n + CC@deps
-    f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
+	CC, sigma_Y, mu, beta, H, Idev = inputs
+	sigma_trial = sigma_n + CC@deps
+	f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
 
-    # Check status
-    if f < 0:
-        # Copy old variables
-        sigma_n1 = sigma_trial
-        ep_n1 = ep_n
-        alpha_n1 = alpha_n
-        Dalg = CC
-    else:
-        # Consistency parameter
-        dgamma = f/(2.0*mu+2.0/3.0*H)
+	# Check status
+	if f < 0:
+		# Copy old variables
+		sigma_n1 = sigma_trial
+		ep_n1 = ep_n
+		alpha_n1 = alpha_n
+		Dalg = CC
+	else:
+		# Consistency parameter
+		dgamma = f/(2.0*mu+2.0/3.0*H)
 
-        # Update stress
-        sigma_n1 = sigma_trial - 2*mu*dgamma*N
+		# Update stress
+		sigma_n1 = sigma_trial - 2*mu*dgamma*N
 
-        # Update back stress
-        alpha_n1 = alpha_n + 2.0/3.0*beta*H*dgamma*N
+		# Update back stress
+		alpha_n1 = alpha_n + 2.0/3.0*beta*H*dgamma*N
 
-        # Update effective plastic strain
-        ep_n1 = ep_n + np.sqrt(2.0/3.0)*dgamma
+		# Update effective plastic strain
+		ep_n1 = ep_n + np.sqrt(2.0/3.0)*dgamma
 
-        # Compute consistent tangent matrix
-        c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
-        c2 = 4.0*mu**2.0*dgamma/norm
-        NNT = stkronst(N, N)
-        Dalg = CC - (c1 - c2)*NNT - c2*Idev
+		# Compute consistent tangent matrix
+		c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
+		c2 = 4.0*mu**2.0*dgamma/norm
+		NNT = stkronst(N, N)
+		Dalg = CC - (c1 - c2)*NNT - c2*Idev
 
-    return sigma_n1, alpha_n1, ep_n1, Dalg
+	return sigma_n1, alpha_n1, ep_n1, Dalg
 
 def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
-    " Computes the coefficients to use in internal force vector and stiffness matrix"
+	" Computes the coefficients to use in internal force vector and stiffness matrix"
 
-    EE = create_incidence_matrix(d)
-    coef_Fint = np.zeros((d*d, len(detJ)))
-    coef_Stiff = np.zeros((d*d, d*d, len(detJ)))
+	EE = create_incidence_matrix(d)
+	coef_Fint = np.zeros((d*d, len(detJ)))
+	coef_Stiff = np.zeros((d*d, d*d, len(detJ)))
 
-    for k, det in enumerate(detJ):
+	for k, det in enumerate(detJ):
 
-        for i in range(d):
-            for j in range(d):
-                Dij = invJ[:,:,k] @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
-                coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*det
+		for i in range(d):
+			for j in range(d):
+				Dij = invJ[:,:,k] @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
+				coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*det
 
-            Si = invJ[:,:,k] @ EE[:,:,i].T @ sigma[:,k]
-            coef_Fint[i*d:(i+1)*d, k] = Si*det
+			Si = invJ[:,:,k] @ EE[:,:,i].T @ sigma[:,k]
+			coef_Fint[i*d:(i+1)*d, k] = Si*det
 
-    return coef_Fint, coef_Stiff
+	return coef_Fint, coef_Stiff
 
 def compute_stress_vonmises(d, tensor):
-    " Computes equivalent stress with Von Mises formula of a second-order stress-like tensor "
+	" Computes equivalent stress with Von Mises formula of a second-order stress-like tensor "
 
-    dev = compute_stress_deviatoric(d, tensor)
-    vm = compute_stress_norm(d, dev)
-    vm = np.sqrt(3.0/2.0)*vm
+	dev = compute_stress_deviatoric(d, tensor)
+	vm = compute_stress_norm(d, dev)
+	vm = np.sqrt(3.0/2.0)*vm
 
-    return vm
+	return vm

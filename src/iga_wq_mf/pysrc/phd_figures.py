@@ -16,11 +16,11 @@
 
 from lib.__init__ import *
 from lib.base_functions import (create_knotvector, 
-                                wq_find_positions, 
-                                eval_basis_python, 
-                                iga_find_positions_weights,
-                                wq_find_weights, 
-                                relativeError
+								wq_find_positions, 
+								eval_basis_python, 
+								iga_find_positions_weights,
+								wq_find_weights, 
+								relativeError
 )
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
@@ -32,85 +32,85 @@ folder = os.path.dirname(full_path) + '/results/phd/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def plot2DGeo(geo:geomdlModel):
-    "Plots a 2D geometry "
+	"Plots a 2D geometry "
 
-    def plot_mesh(pts, shape, ax):
-        "Plots mesh of control points"
+	def plot_mesh(pts, shape, ax):
+		"Plots mesh of control points"
 
-        if pts.shape[0] == 3: pts = pts[:2, :]
+		if pts.shape[0] == 3: pts = pts[:2, :]
 
-        pts2D = []
-        for j in range(shape[1]):
-            pts2D_temp = []
-            for i in range(shape[0]):
-                pos = i + j*shape[0]
-                pts2D_temp.append(pts[:, pos].tolist())
-            pts2D.append(pts2D_temp)
-        pts2D = np.asarray(pts2D)
+		pts2D = []
+		for j in range(shape[1]):
+			pts2D_temp = []
+			for i in range(shape[0]):
+				pos = i + j*shape[0]
+				pts2D_temp.append(pts[:, pos].tolist())
+			pts2D.append(pts2D_temp)
+		pts2D = np.asarray(pts2D)
 
-        # In the first direction
-        for _ in range(shape[1]): 
-            x = pts2D[_, :, 0]; y = pts2D[_, :, 1]
-            ax.plot(x, y, 'k--')
+		# In the first direction
+		for _ in range(shape[1]): 
+			x = pts2D[_, :, 0]; y = pts2D[_, :, 1]
+			ax.plot(x, y, 'k--')
 
-        # In the second direction
-        for _ in range(shape[0]):
-            x = pts2D[:, _, 0]; y = pts2D[:, _, 1]
-            ax.plot(x, y, 'k--')
+		# In the second direction
+		for _ in range(shape[0]):
+			x = pts2D[:, _, 0]; y = pts2D[:, _, 1]
+			ax.plot(x, y, 'k--')
 
-        return
+		return
 
-    geometry   = geo._geometry
-    ctrlpts    = np.asarray(geo._ctrlpts)
-    samplesize = geo._sample_size
+	geometry   = geo._geometry
+	ctrlpts    = np.asarray(geo._ctrlpts)
+	samplesize = geo._sample_size
 
-    # Get eval points
-    evalpts_old = np.array(geometry.evalpts)
-    evalpts_new = []
-    for j in range(samplesize):
-        for i in range(samplesize):
-            pos = j + i*samplesize
-            evalpts_temp = evalpts_old[pos, :]
-            evalpts_new.append(evalpts_temp.tolist())
+	# Get eval points
+	evalpts_old = np.array(geometry.evalpts)
+	evalpts_new = []
+	for j in range(samplesize):
+		for i in range(samplesize):
+			pos = j + i*samplesize
+			evalpts_temp = evalpts_old[pos, :]
+			evalpts_new.append(evalpts_temp.tolist())
 
-    evalpts_new = np.asarray(evalpts_new) 
-    X = np.asarray(evalpts_new[:,0].reshape((samplesize, samplesize)).tolist())
-    Y = np.asarray(evalpts_new[:,1].reshape((samplesize, samplesize)).tolist())
-    Z = np.zeros(X.shape)
+	evalpts_new = np.asarray(evalpts_new) 
+	X = np.asarray(evalpts_new[:,0].reshape((samplesize, samplesize)).tolist())
+	Y = np.asarray(evalpts_new[:,1].reshape((samplesize, samplesize)).tolist())
+	Z = np.zeros(X.shape)
 
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.grid(None)
-    ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
-    ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control points')
-    plot_mesh(ctrlpts, geo._nb_ctrlpts, ax)
-    ax.set_xticks(np.arange(0, max(evalpts_new[:,0])+1, 1.0))
-    ax.set_yticks(np.arange(0, max(evalpts_new[:,1])+1, 1.0))
+	fig, ax = plt.subplots(nrows=1, ncols=1)
+	ax.grid(None)
+	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
+	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control points')
+	plot_mesh(ctrlpts, geo._nb_ctrlpts, ax)
+	ax.set_xticks(np.arange(0, max(evalpts_new[:,0])+1, 1.0))
+	ax.set_yticks(np.arange(0, max(evalpts_new[:,1])+1, 1.0))
 
-    ax.axis('equal')
-    ax.legend()
-    ax.set_xlabel(r'$X_1$')
-    ax.set_ylabel(r'$X_2$')
-    fig.tight_layout()
-    
-    return fig
+	ax.axis('equal')
+	ax.legend()
+	ax.set_xlabel(r'$X_1$')
+	ax.set_ylabel(r'$X_2$')
+	fig.tight_layout()
+	
+	return fig
 
 def plotVerticalLine(x, y, ax=None, color='k'):
-    for xi, yi in zip(x, y):
-        ax.plot([xi, xi], [0, yi], color=color)
-    return
+	for xi, yi in zip(x, y):
+		ax.plot([xi, xi], [0, yi], color=color)
+	return
 
 def cropImage(filename):
-    im = Image.open(filename).convert('RGB')
-    na = np.array(im)
-    colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
+	im = Image.open(filename).convert('RGB')
+	na = np.array(im)
+	colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
 
-    # Find first and last row containing colored pixels
-    top, bottom = colorY[0], colorY[-1]
+	# Find first and last row containing colored pixels
+	top, bottom = colorY[0], colorY[-1]
 
-    # Extract Region of Interest
-    ROI = na[top:bottom, :]
-    Image.fromarray(ROI).save(filename)
-    return 
+	# Extract Region of Interest
+	ROI = na[top:bottom, :]
+	Image.fromarray(ROI).save(filename)
+	return 
 
 # Set global variables
 CASE      = 10
@@ -118,399 +118,399 @@ extension = '.pdf'
 
 if CASE == 0: # B-spline curve
 
-    # Set filename
-    filename = folder + 'BsplineCurve'+ extension
+	# Set filename
+	filename = folder + 'BsplineCurve'+ extension
 
-    # Create the curve 
-    degree, nbel = 2, 4
-    knotvector   = create_knotvector(degree, nbel)
-    crv            = BSpline.Curve()
-    crv.degree     = degree
-    crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], 
-                        [0.75, -0.5, 0], [1.5, 1, 0], [2, 0, 0]]
-    crv.knotvector = knotvector
-    crv.delta      = 0.01
+	# Create the curve 
+	degree, nbel = 2, 4
+	knotvector   = create_knotvector(degree, nbel)
+	crv            = BSpline.Curve()
+	crv.degree     = degree
+	crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], 
+						[0.75, -0.5, 0], [1.5, 1, 0], [2, 0, 0]]
+	crv.knotvector = knotvector
+	crv.delta      = 0.01
 
-    # Get data
-    evalpts = np.asarray(crv.evalpts)
-    ctrlpts = np.asarray(crv.ctrlpts)
-    x = evalpts[:, 0]; y = evalpts[:, 1]
-    
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.plot(x, y, label='B-spline curve')
-    ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points')
+	# Get data
+	evalpts = np.asarray(crv.evalpts)
+	ctrlpts = np.asarray(crv.ctrlpts)
+	x = evalpts[:, 0]; y = evalpts[:, 1]
+	
+	fig, ax = plt.subplots(nrows=1, ncols=1)
+	ax.plot(x, y, label='B-spline curve')
+	ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points')
 
-    ax.legend()
-    ax.set_xlabel(r'$X_1$')
-    ax.set_ylabel(r'$X_2$')
-    ax.axis('equal')
-    fig.tight_layout()
-    fig.savefig(filename)
+	ax.legend()
+	ax.set_xlabel(r'$X_1$')
+	ax.set_ylabel(r'$X_2$')
+	ax.axis('equal')
+	fig.tight_layout()
+	fig.savefig(filename)
 
 elif CASE == 1: # Univariate functions
 
-    # Set filename
-    filename = folder + 'UnivariateFunctions' + extension
+	# Set filename
+	filename = folder + 'UnivariateFunctions' + extension
 
-    # B-spline properties 
-    degree, nbel = 2, 4
-    knotvector   = create_knotvector(degree, nbel)
-    knots        = np.linspace(0, 1, 201)
-    qp_position  = wq_find_positions(degree, knotvector, 2)
-    B0, B1       = eval_basis_python(degree, knotvector, knots)
-    B0 = B0.toarray(); B1 = B1.toarray()
+	# B-spline properties 
+	degree, nbel = 2, 4
+	knotvector   = create_knotvector(degree, nbel)
+	knots        = np.linspace(0, 1, 201)
+	qp_position  = wq_find_positions(degree, knotvector, 2)
+	B0, B1       = eval_basis_python(degree, knotvector, knots)
+	B0 = B0.toarray(); B1 = B1.toarray()
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10,4))
-    for i in range(degree+nbel): 
-        ax1.plot(knots, B0[i, :], linewidth=2)
-        ax2.plot(knots, B1[i, :], linewidth=2)
+	fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10,4))
+	for i in range(degree+nbel): 
+		ax1.plot(knots, B0[i, :], linewidth=2)
+		ax2.plot(knots, B1[i, :], linewidth=2)
 
-    for ax in [ax1, ax2]:
-        ax.set_xlabel(r'$\xi$')
-        ax.set_xticks(np.linspace(0, 1, nbel+1))
-    ax1.set_ylabel(r'$B_{i,p}(\xi)$')
-    ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
-    fig.tight_layout()
-    fig.savefig(filename)
+	for ax in [ax1, ax2]:
+		ax.set_xlabel(r'$\xi$')
+		ax.set_xticks(np.linspace(0, 1, nbel+1))
+	ax1.set_ylabel(r'$B_{i,p}(\xi)$')
+	ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
+	fig.tight_layout()
+	fig.savefig(filename)
 
 elif CASE == 2: # Bivariate functions
 
-    # Set filename
-    filename = folder + 'BivariateFunctions' + extension
+	# Set filename
+	filename = folder + 'BivariateFunctions' + extension
 
-    # B-Spline properties
-    degree, nbel = 3, 1
-    knotvector   = create_knotvector(degree, nbel)
-    knots        = np.linspace(0, 1, 201)
-    B0 = eval_basis_python(degree, knotvector, knots)[0]
-    B0 = B0.toarray()
-    B02plot = B0[1, :]
+	# B-Spline properties
+	degree, nbel = 3, 1
+	knotvector   = create_knotvector(degree, nbel)
+	knots        = np.linspace(0, 1, 201)
+	B0 = eval_basis_python(degree, knotvector, knots)[0]
+	B0 = B0.toarray()
+	B02plot = B0[1, :]
 
-    # B-Spline 2D
-    X, Y = np.meshgrid(knots, knots)
-    Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
+	# B-Spline 2D
+	X, Y = np.meshgrid(knots, knots)
+	Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
 
-    fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
-                            gridspec_kw=dict(height_ratios=[1,3],
-                                            width_ratios=[3,1]))
-    axs[0,1].set_visible(False)
-    axs[0,0].set_box_aspect(1/3)
-    axs[1,0].set_box_aspect(1)
-    axs[1,1].set_box_aspect(3/1)
-    axs[1,0].grid(None)
-    axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
-    axs[1,0].set_yticks([0, 0.5, 1])
+	fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
+							gridspec_kw=dict(height_ratios=[1,3],
+											width_ratios=[3,1]))
+	axs[0,1].set_visible(False)
+	axs[0,0].set_box_aspect(1/3)
+	axs[1,0].set_box_aspect(1)
+	axs[1,1].set_box_aspect(3/1)
+	axs[1,0].grid(None)
+	axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
+	axs[1,0].set_yticks([0, 0.5, 1])
 
-    for i in range(degree+nbel): 
-        axs[0, 0].plot(knots, B0[i, :], color="0.8")
-        axs[1, 1].plot(B0[i, :], knots, color="0.8")
+	for i in range(degree+nbel): 
+		axs[0, 0].plot(knots, B0[i, :], color="0.8")
+		axs[1, 1].plot(B0[i, :], knots, color="0.8")
 
-    axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
-    axs[0,0].set_xlabel(r'$\xi_1$')
-    axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
-    axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
-    axs[1,1].set_ylabel(r'$\xi_2$')
-    axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
-    axs[1,1].set_xticks([0, 1])
-    fig.tight_layout()
-    fig.savefig(filename, dpi=300) 
+	axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
+	axs[0,0].set_xlabel(r'$\xi_1$')
+	axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
+	axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
+	axs[1,1].set_ylabel(r'$\xi_2$')
+	axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
+	axs[1,1].set_xticks([0, 1])
+	fig.tight_layout()
+	fig.savefig(filename, dpi=300) 
 
 elif CASE == 3: # Quadrature points in IGA
 
-    # Set filename
-    filename = folder + 'QuadPtsIGA' + extension
+	# Set filename
+	filename = folder + 'QuadPtsIGA' + extension
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
+	fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
 
-    # B-spline properties
-    degree = 4
-    for ax, nbel in zip([ax1, ax2], [8, 32]):
-        knotvector  = create_knotvector(degree, nbel)
-        qp_position = iga_find_positions_weights(degree, knotvector)[0]
-        XX, YY      = np.meshgrid(qp_position, qp_position)
-        ax.plot(XX, YY, 'ko', markersize=1.2)
+	# B-spline properties
+	degree = 4
+	for ax, nbel in zip([ax1, ax2], [8, 32]):
+		knotvector  = create_knotvector(degree, nbel)
+		qp_position = iga_find_positions_weights(degree, knotvector)[0]
+		XX, YY      = np.meshgrid(qp_position, qp_position)
+		ax.plot(XX, YY, 'ko', markersize=1.2)
 
-        grid = np.linspace(0, 1, nbel+1)
-        for i in grid:
-            ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
-            ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
+		grid = np.linspace(0, 1, nbel+1)
+		for i in grid:
+			ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
+			ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
 
-        ax.set_xticks([0, 0.5, 1])
-        ax.set_yticks([0, 0.5, 1])
-        ax.axis('equal')
-        ax.set_ylabel(r'$\xi_2$')
-        ax.set_xlabel(r'$\xi_1$')   
+		ax.set_xticks([0, 0.5, 1])
+		ax.set_yticks([0, 0.5, 1])
+		ax.axis('equal')
+		ax.set_ylabel(r'$\xi_2$')
+		ax.set_xlabel(r'$\xi_1$')   
 
-    fig.tight_layout()
-    fig.savefig(filename) 
+	fig.tight_layout()
+	fig.savefig(filename) 
 
 elif CASE == 4: # Quadrature points in WQ
 
-    # Set filename
-    filename = folder + 'QuadPtsWQ' + extension
+	# Set filename
+	filename = folder + 'QuadPtsWQ' + extension
 
-    fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
+	fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8,4))
 
-    # B-spline properties
-    degree = 4
-    for ax, nbel in zip([ax1, ax2], [8, 32]):
-        knotvector  = create_knotvector(degree, nbel)
-        qp_position = wq_find_positions(degree, knotvector, 2)
-        XX, YY      = np.meshgrid(qp_position, qp_position)
-        ax.plot(XX, YY, 'ko', markersize=1.2)
+	# B-spline properties
+	degree = 4
+	for ax, nbel in zip([ax1, ax2], [8, 32]):
+		knotvector  = create_knotvector(degree, nbel)
+		qp_position = wq_find_positions(degree, knotvector, 2)
+		XX, YY      = np.meshgrid(qp_position, qp_position)
+		ax.plot(XX, YY, 'ko', markersize=1.2)
 
-        grid = np.linspace(0.,1,nbel+1)
-        for i in grid:
-            ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
-            ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
+		grid = np.linspace(0.,1,nbel+1)
+		for i in grid:
+			ax.plot([i, i], [0, 1], 'grey', linewidth=0.5, alpha=0.8)
+			ax.plot([0, 1], [i, i], 'grey', linewidth=0.5, alpha=0.8)
 
-        ax.set_xticks([0, 0.5, 1])
-        ax.set_yticks([0, 0.5, 1])
-        ax.axis('equal')
-        ax.set_ylabel(r'$\xi_2$')
-        ax.set_xlabel(r'$\xi_1$')
+		ax.set_xticks([0, 0.5, 1])
+		ax.set_yticks([0, 0.5, 1])
+		ax.axis('equal')
+		ax.set_ylabel(r'$\xi_2$')
+		ax.set_xlabel(r'$\xi_1$')
 
-    fig.tight_layout()
-    fig.savefig(filename) 
+	fig.tight_layout()
+	fig.savefig(filename) 
 
 elif CASE == 5: # B-spline surface
 
-    # Surface properties
-    name = 'quarter_annulus'
-    modelGeo = geomdlModel(name=name, **{'degree':[3, 3, 3]})
-    fig = plot2DGeo(modelGeo)
+	# Surface properties
+	name = 'quarter_annulus'
+	modelGeo = geomdlModel(name=name, **{'degree':[3, 3, 3]})
+	fig = plot2DGeo(modelGeo)
 
-    filename = folder + 'BsplineSurface' + extension
-    fig.savefig(filename) 
+	filename = folder + 'BsplineSurface' + extension
+	fig.savefig(filename) 
 
 elif CASE == 6: # FEM functions 
 
-    # Set filename
-    filename = folder + 'FEM_Functions' + extension
+	# Set filename
+	filename = folder + 'FEM_Functions' + extension
 
-    # Functions in isoparametric space 
-    x  = np.linspace(-1, 1, 90)
-    f1 = x*(x-1)/2
-    f2 = (1-x**2)
-    f3 = x*(x+1)/2
+	# Functions in isoparametric space 
+	x  = np.linspace(-1, 1, 90)
+	f1 = x*(x-1)/2
+	f2 = (1-x**2)
+	f3 = x*(x+1)/2
 
-    # Parametric space properties
-    nbel  = 4
-    knots = np.linspace(0, 1, nbel+1)
+	# Parametric space properties
+	nbel  = 4
+	knots = np.linspace(0, 1, nbel+1)
 
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-    for _ in range(nbel):
-        x0 = knots[_]; x1 = knots[_+1]
-        xtemp = x0*(1-x)/2 + x1*(1+x)/2
-        ax.plot(xtemp, f1, color=colorSet[_])
-        ax.plot(xtemp, f2, color=colorSet[_])
-        ax.plot(xtemp, f3, color=colorSet[_])
-    
-    ax.set_xlabel(r'$\xi$')
-    ax.set_xticks([0, 0.5, 1])
-    fig.tight_layout()
-    fig.savefig(filename)
+	fig, ax = plt.subplots(nrows=1, ncols=1)
+	for _ in range(nbel):
+		x0 = knots[_]; x1 = knots[_+1]
+		xtemp = x0*(1-x)/2 + x1*(1+x)/2
+		ax.plot(xtemp, f1, color=colorSet[_])
+		ax.plot(xtemp, f2, color=colorSet[_])
+		ax.plot(xtemp, f3, color=colorSet[_])
+	
+	ax.set_xlabel(r'$\xi$')
+	ax.set_xticks([0, 0.5, 1])
+	fig.tight_layout()
+	fig.savefig(filename)
 
 elif CASE == 7: # Convergence curve
 
-    # Set filename
-    filename = folder + 'ConvergenceIGA'+ extension
+	# Set filename
+	filename = folder + 'ConvergenceIGA'+ extension
 
-    def powden(P:list):
-        x, y = P
-        f = np.sin(np.pi*x)*np.sin(np.pi*y)
-        return f
+	def powden(P:list):
+		x, y = P
+		f = np.sin(np.pi*x)*np.sin(np.pi*y)
+		return f
 
-    def solution(P:list): 
-        x, y = P
-        t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
-        return t
+	def solution(P:list): 
+		x, y = P
+		t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
+		return t
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
-    for degree in range(2, 8):
-        norm = []; nbel_list =[]
-        for cuts in range(1, 7):
-            print([degree, 2**cuts])
+	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
+	for degree in range(2, 8):
+		norm = []; nbel_list =[]
+		for cuts in range(1, 7):
+			print([degree, 2**cuts])
 
-            blockPrint()
-            # Create model
-            name     = 'quadrilateral'
-            modelGeo = geomdlModel(name=name, **{'degree':[degree, degree, degree]})
-            modelGeo.knot_refinement(np.array([cuts, cuts, cuts]))
-            modelPhy = fortran_mf_wq(modelGeo)
+			blockPrint()
+			# Create model
+			name     = 'quadrilateral'
+			modelGeo = geomdlModel(name=name, **{'degree':[degree, degree, degree]})
+			modelGeo.knot_refinement(np.array([cuts, cuts, cuts]))
+			modelPhy = fortran_mf_wq(modelGeo)
 
-            # Add material 
-            material = {'capacity':1, 'conductivity':np.eye(2)}
-            modelPhy._set_material(material)
+			# Add material 
+			material = {'capacity':1, 'conductivity':np.eye(2)}
+			modelPhy._set_material(material)
 
-            # Block boundaries
-            Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-            modelPhy._set_dirichlet_boundaries(Dirichlet)
-            dof = modelPhy._thermal_dof
-            dod = modelPhy._thermal_dod 
+			# Block boundaries
+			Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
+			modelPhy._set_dirichlet_boundaries(Dirichlet)
+			dof = modelPhy._thermal_dof
+			dod = modelPhy._thermal_dod 
 
-            # Solve
-            Kdd = modelPhy.eval_conductivity_matrix(indi=dof, indj=dof)
-            Fd  = modelPhy.eval_source_vector(powden, indi=dof)
-            Td  = sp.linalg.spsolve(Kdd, Fd)  
-            T   = np.zeros(modelPhy._nb_ctrlpts_total); T[dof] = Td
-            enablePrint()
+			# Solve
+			Kdd = modelPhy.eval_conductivity_matrix(indi=dof, indj=dof)
+			Fd  = modelPhy.eval_source_vector(powden, indi=dof)
+			Td  = sp.linalg.spsolve(Kdd, Fd)  
+			T   = np.zeros(modelPhy._nb_ctrlpts_total); T[dof] = Td
+			enablePrint()
 
-            # Interpolate
-            output  = modelPhy.interpolate_field(u_ctrlpts=T, nbDOF=1)
-            qp_interp, u_interp = output[1], output[-1]
-            u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
-            u_exact = np.array(u_exact)
+			# Interpolate
+			output  = modelPhy.interpolate_field(u_ctrlpts=T, nbDOF=1)
+			qp_interp, u_interp = output[1], output[-1]
+			u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
+			u_exact = np.array(u_exact)
 
-            # Relative error
-            error = relativeError(u_interp, u_exact)
-            norm.append(error)
-            nbel_list.append(2**cuts)
-            
-        ax.loglog(nbel_list, norm, label='Degree $p =$ ' + str(degree))
-        slope = np.polyfit(np.log10(nbel_list[1:5]),np.log10(norm[1:5]), 1)[0]
-        slope = round(slope)
-        annotation.slope_marker((nbel_list[3], norm[3]), slope, 
-                                poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+			# Relative error
+			error = relativeError(u_interp, u_exact)
+			norm.append(error)
+			nbel_list.append(2**cuts)
+			
+		ax.loglog(nbel_list, norm, label='Degree $p =$ ' + str(degree))
+		slope = np.polyfit(np.log10(nbel_list[1:5]),np.log10(norm[1:5]), 1)[0]
+		slope = round(slope)
+		annotation.slope_marker((nbel_list[3], norm[3]), slope, 
+								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
-    ax.set_ylabel('Relative error ' + r'$\displaystyle\frac{||u-u^h||_\infty}{||u||_\infty}$')   
-    fig.tight_layout()
-    fig.savefig(filename)
+	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+	ax.set_ylabel('Relative error ' + r'$\displaystyle\frac{||u-u^h||_\infty}{||u||_\infty}$')   
+	fig.tight_layout()
+	fig.savefig(filename)
 
 elif CASE == 8: # Weights W00 and W11
 
-    WeightName = 1 # or 0
-    if WeightName not in [0, 1]: raise Warning('Not possible')
-    if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
-    else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
+	WeightName = 1 # or 0
+	if WeightName not in [0, 1]: raise Warning('Not possible')
+	if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
+	else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
 
-    # Set filename
-    filename = folder + 'WeightsW' + str(WeightName) + extension
+	# Set filename
+	filename = folder + 'WeightsW' + str(WeightName) + extension
 
-    # B-spline properties 
-    WeightPos    = 2
-    degree, nbel = 2, 3
-    knotvector   = create_knotvector(degree, nbel)
-    qp_position  = wq_find_positions(degree, knotvector, 2)
-    knots = np.linspace(0, 1, 201)
-    B     = eval_basis_python(degree, knotvector, knots)[WeightName]; B = B.toarray()
+	# B-spline properties 
+	WeightPos    = 2
+	degree, nbel = 2, 3
+	knotvector   = create_knotvector(degree, nbel)
+	qp_position  = wq_find_positions(degree, knotvector, 2)
+	knots = np.linspace(0, 1, 201)
+	B     = eval_basis_python(degree, knotvector, knots)[WeightName]; B = B.toarray()
 
-    # Get weights
-    W00 = wq_find_weights(degree, knotvector, 2)[-WeightName]
-    weights = W00.toarray()[WeightPos, :]
+	# Get weights
+	W00 = wq_find_weights(degree, knotvector, 2)[-WeightName]
+	weights = W00.toarray()[WeightPos, :]
 
-    if WeightName == 0:
-        Bref = B
-    else:
-        kvref = create_knotvector(degree-1, nbel)
-        Bref = eval_basis_python(degree-1, kvref, knots)[0]
-        Bref = Bref.toarray()
+	if WeightName == 0:
+		Bref = B
+	else:
+		kvref = create_knotvector(degree-1, nbel)
+		Bref = eval_basis_python(degree-1, kvref, knots)[0]
+		Bref = Bref.toarray()
 
-    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
-    for i in range(np.shape(Bref)[0]): 
-        ax1.plot(knots, Bref[i, :], linewidth=2)
+	fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+	for i in range(np.shape(Bref)[0]): 
+		ax1.plot(knots, Bref[i, :], linewidth=2)
 
-    # Fill basis chosen
-    ax1.fill_between(x=knots, y1=B[WeightPos, :], color="g", alpha=0.2)
-    ax1.set_ylim(ylim1)
+	# Fill basis chosen
+	ax1.fill_between(x=knots, y1=B[WeightPos, :], color="g", alpha=0.2)
+	ax1.set_ylim(ylim1)
 
-    ax2 = ax1.twinx()
-    ax2.plot(qp_position, weights, 'ko')
-    plotVerticalLine(qp_position, weights, ax2)
-    ax2.set_ylim(ylim2)
-    ax2.grid(None)
+	ax2 = ax1.twinx()
+	ax2.plot(qp_position, weights, 'ko')
+	plotVerticalLine(qp_position, weights, ax2)
+	ax2.set_ylim(ylim2)
+	ax2.grid(None)
 
-    ax1.set_xlabel(r'$\xi$')
-    ax1.set_ylabel('Basis')
-    ax2.set_ylabel('Weights')
-    ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
-    fig.tight_layout()
-    fig.savefig(filename)
+	ax1.set_xlabel(r'$\xi$')
+	ax1.set_ylabel('Basis')
+	ax2.set_ylabel('Weights')
+	ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
+	fig.tight_layout()
+	fig.savefig(filename)
 
 elif CASE == 9: # 3D Geometries
 
-    geoName   = 'TR'
-    dataExist = True
+	geoName   = 'TR'
+	dataExist = True
 
-    # Set filename
-    filename = folder + 'VTK_' + geoName + '.png'
+	# Set filename
+	filename = folder + 'VTK_' + geoName + '.png'
 
-    if not dataExist:
+	if not dataExist:
 
-        # Create model
-        modelGeo = geomdlModel(geoName)
-        modelGeo.knot_refinement(nb_refinementByDirection=np.array([1, 1, 1]))
-        modelPhy = fortran_mf_wq(modelGeo)
-        modelPhy.export_results()    
+		# Create model
+		modelGeo = geomdlModel(geoName)
+		modelGeo.knot_refinement(nb_refinementByDirection=np.array([1, 1, 1]))
+		modelPhy = fortran_mf_wq(modelGeo)
+		modelPhy.export_results()    
 
-        # Read data
-        full_path = os.path.realpath(__file__)
-        fileVTK   = os.path.dirname(full_path) + '/results/' + geoName
-        grid      = pv.read(fileVTK + '.vts')
-        
-        sargs = dict(
-                title = 'det J',
-                title_font_size=50,
-                label_font_size=40,
-                shadow=True,
-                n_labels=2,
-                fmt="%.1f",
-                position_x=0.2, 
-                position_y=0.1,
-        )
-        pv.start_xvfb()
-        plotter = pv.Plotter(off_screen=True)
-        if geoName == 'CB': 
-            boring_cmap = plt.cm.get_cmap("GnBu", 1)
-            plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
-            plotter.camera.zoom(0.6)
-        else: 
-            plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		# Read data
+		full_path = os.path.realpath(__file__)
+		fileVTK   = os.path.dirname(full_path) + '/results/' + geoName
+		grid      = pv.read(fileVTK + '.vts')
+		
+		sargs = dict(
+				title = 'det J',
+				title_font_size=50,
+				label_font_size=40,
+				shadow=True,
+				n_labels=2,
+				fmt="%.1f",
+				position_x=0.2, 
+				position_y=0.1,
+		)
+		pv.start_xvfb()
+		plotter = pv.Plotter(off_screen=True)
+		if geoName == 'CB': 
+			boring_cmap = plt.cm.get_cmap("GnBu", 1)
+			plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
+			plotter.camera.zoom(0.6)
+		else: 
+			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
 
-        if geoName == 'VB': 
-            plotter.camera_position  = 'yz'
-            plotter.camera.elevation = 45
-        elif geoName == 'RQA': 
-            plotter.camera_position  = 'xz'
-            plotter.camera.azimuth   = -45
-            plotter.camera.zoom(0.8)
+		if geoName == 'VB': 
+			plotter.camera_position  = 'yz'
+			plotter.camera.elevation = 45
+		elif geoName == 'RQA': 
+			plotter.camera_position  = 'xz'
+			plotter.camera.azimuth   = -45
+			plotter.camera.zoom(0.8)
 
-        plotter.background_color = 'white'
-        plotter.window_size = [1600, 1600]
-        plotter.screenshot(filename)
-        os.remove(fileVTK + '.vts')
+		plotter.background_color = 'white'
+		plotter.window_size = [1600, 1600]
+		plotter.screenshot(filename)
+		os.remove(fileVTK + '.vts')
 
-    cropImage(filename)
+	cropImage(filename)
 
 elif CASE == 10: # Results
 
-    # Read data
-    full_path = os.path.realpath(__file__)
-    folderVTK = os.path.dirname(full_path) + '/results/test8/'
-    grid = pv.read(folderVTK + 'IGAparametrization.vts')
-    filename = folder + 'VTK_Results' + '.png'
+	# Read data
+	full_path = os.path.realpath(__file__)
+	folderVTK = os.path.dirname(full_path) + '/results/test8/'
+	grid = pv.read(folderVTK + 'IGAparametrization.vts')
+	filename = folder + 'VTK_Results' + '.png'
 
-    sargs = dict(
-            title = 'Temperature (K)',
-            title_font_size=50,
-            label_font_size=40,
-            shadow=True,
-            n_labels=2,
-            fmt="%.1f",
-            position_x=0.2, 
-            position_y=0.1,
-    )
+	sargs = dict(
+			title = 'Temperature (K)',
+			title_font_size=50,
+			label_font_size=40,
+			shadow=True,
+			n_labels=2,
+			fmt="%.1f",
+			position_x=0.2, 
+			position_y=0.1,
+	)
 
-    pv.start_xvfb()
-    plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-    plotter.camera.zoom(0.6)
-    plotter.background_color = 'white'
-    plotter.window_size = [1600, 1600]
-    plotter.screenshot(filename)
+	pv.start_xvfb()
+	plotter = pv.Plotter(off_screen=True)
+	plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+	plotter.camera.zoom(0.6)
+	plotter.background_color = 'white'
+	plotter.window_size = [1600, 1600]
+	plotter.screenshot(filename)
 
-    cropImage(filename)
+	cropImage(filename)
 
 else: raise Warning('Case unkwnon')

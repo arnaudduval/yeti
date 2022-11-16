@@ -15,6 +15,7 @@ from lib.__init__ import *
 from lib.D3viscoplasticity import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
+from lib.base_functions import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -28,7 +29,7 @@ degree, cuts = 4, 4
 geometry = {'degree':[degree, degree, degree]}
 modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-                                            np.array([cuts, cuts, cuts]))
+											np.array([cuts, cuts, cuts]))
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
@@ -52,15 +53,23 @@ Fsurf = modelPhy.eval_force_surf()
 # -------------
 # ELASTICITY
 # -------------
-fig, ax = plt.subplots(nrows=1, ncols=1)
+# fig, ax = plt.subplots(nrows=1, ncols=1)
 
-# Solve in fortran 
-for isPrecond in [True, False]:
-    displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=isPrecond)
-    resPCG = resPCG[resPCG>0]
-    ax.semilogy(np.arange(len(resPCG)), resPCG)
+# # Solve in fortran 
+# for isPrecond, label in zip([False, True], ['w.o. preconditioner', 'This work']):
+#     displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=isPrecond)
+#     resPCG = resPCG[resPCG>0]
+#     ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
 
-ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-fig.tight_layout()
-fig.savefig(folder + 'ElasticityRes.png')
+# ax.set_ybound(lower=1e-8, upper=10)
+# ax.legend()
+# ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+# fig.tight_layout()
+# fig.savefig(folder + 'ElasticityRes.png')
+
+
+displacement_py = modelPhy.MFelasticity_py(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=True)
+displacement_ft, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, isPrecond=True)
+# error = relativeError(displacement_py, displacement_ft)
+# print('Relative error %.5e' %error)
