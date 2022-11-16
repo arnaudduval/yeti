@@ -44,26 +44,9 @@ subroutine iga_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     ! ----------
     double precision :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-    integer :: i
 
-    ! Calculate equivalent weight
-    do i = 1, nnz_u
-        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
-        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
-    end do
-    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
-
-    do i = 1, nnz_v
-        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
-        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
-    end do
-    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
-
-    do i = 1, nnz_w
-        data_W_w(i, 1) = data_B_w(i, 1) * W_w(indj_w(i))
-        data_W_w(i, 4) = data_B_w(i, 2) * W_w(indj_w(i))
-    end do
-    data_W_w(i, 2) = data_W_w(i, 1); data_W_w(i, 3) = data_W_w(i, 4)
+    call iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
+                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
 
     call wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -106,26 +89,9 @@ subroutine iga_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     ! ----------
     double precision :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-    integer :: i
 
-    ! Calculate equivalent weight
-    do i = 1, nnz_u
-        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
-        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
-    end do
-    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
-
-    do i = 1, nnz_v
-        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
-        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
-    end do
-    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
-
-    do i = 1, nnz_w
-        data_W_w(i, 1) = data_B_w(i, 1) * W_w(indj_w(i))
-        data_W_w(i, 4) = data_B_w(i, 2) * W_w(indj_w(i))
-    end do
-    data_W_w(i, 2) = data_W_w(i, 1); data_W_w(i, 3) = data_W_w(i, 4)
+    call iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
+                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
 
     call wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -271,20 +237,9 @@ subroutine iga_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_
     ! ----------
     double precision :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-    integer :: i
 
-    ! Calculate equivalent weight
-    do i = 1, nnz_u
-        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
-        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
-    end do
-    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
-
-    do i = 1, nnz_v
-        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
-        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
-    end do
-    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
+    call iga2wq2d(nc_u, nc_v, nnz_u, nnz_v, indj_u, indj_v, &
+                data_B_u, data_B_v, W_u, W_v, data_W_u, data_W_v)
 
     call wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, &
@@ -319,16 +274,9 @@ subroutine iga_get_source_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz
     ! ----------
     double precision :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u), data_W_v(nnz_v)
-    integer :: i
 
-    ! Calculate equivalent weight
-    do i = 1, nnz_u
-        data_W_u(i) = data_B_u(i, 1) * W_u(indj_u(i))
-    end do
-
-    do i = 1, nnz_v
-        data_W_v(i) = data_B_v(i, 1) * W_v(indj_v(i))
-    end do
+    call iga2wq2d(nc_u, nc_v, nnz_u, nnz_v, indj_u, indj_v, &
+                data_B_u, data_B_v, W_u, W_v, data_W_u, data_W_v)
 
     ! Compute vector 
     call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_W_u, &

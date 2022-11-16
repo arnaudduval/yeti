@@ -91,7 +91,7 @@ subroutine iga_get_data(degree, size_kv, knotvector, nb_qp, qp_position, qp_weig
                         size_data, data_basis, indices, nnz_I)
     !! Gets in COO format basis and weights in IGA approach
 
-    use iga_basis_weights
+    use basis_weights
     implicit none
     ! Input / output data
     ! -------------------
@@ -157,7 +157,7 @@ end subroutine iga_get_data_csr
 subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
     !! Gets the size of non-zeros of matrices that will be used in wq_get_data
     
-    use wq_basis_weights
+    use basis_weights
     implicit none
     ! Input / output data
     ! -------------------
@@ -187,7 +187,7 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_positio
                         data_basis, data_weights, indices, nnz_I)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
-    use wq_basis_weights
+    use basis_weights
     implicit none
     ! Input / output data
     ! -------------------

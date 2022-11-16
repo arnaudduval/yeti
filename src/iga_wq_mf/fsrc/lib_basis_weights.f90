@@ -544,10 +544,12 @@ end subroutine wq_solve_weights
 ! ------------------------------------------------------------------------
 ! MODULES: In order to have a class structure to compute basis and weights
 ! ------------------------------------------------------------------------
-module iga_basis_weights
+module basis_weights
 
     implicit none
-    double precision, parameter :: span_tol = 1.d-8
+    integer, parameter :: r = 2
+    double precision, parameter :: tol = 1.d-14, span_tol = 1.d-8
+
     type :: iga
         ! Input
         integer :: degree, size_kv
@@ -564,6 +566,25 @@ module iga_basis_weights
         double precision, dimension(:), allocatable :: nodes
 
     end type iga
+
+    type :: wq
+        ! Input
+        integer :: degree, size_kv, method
+        double precision, dimension(:), allocatable :: knotvector 
+
+        ! Output
+        double precision, dimension(:), allocatable ::  qp_position, data_B0, data_B1, & 
+                                                    data_W00, data_W01, data_W10, data_W11
+        integer, dimension(:,:), allocatable :: indices
+        integer :: nnz_B, nnz_I
+
+        ! Local
+        integer :: maxrule, size_nodes, nb_ctrlpts, nb_qp_wq, nb_qp_cgg
+        integer, dimension(:, :), allocatable :: B0shape, B1shape
+        double precision, dimension(:), allocatable :: nodes 
+        logical :: isuniform
+    
+    end type wq
 
 contains
 
@@ -635,35 +656,6 @@ contains
         end do
 
     end subroutine iga_basis_weights_dense2coo
-
-end module iga_basis_weights
-
-module wq_basis_weights
-
-    implicit none
-    integer, parameter :: r = 2
-    double precision, parameter :: tol = 1.d-14, span_tol = 1.d-8
-
-    type :: wq
-        ! Input
-        integer :: degree, size_kv, method
-        double precision, dimension(:), allocatable :: knotvector 
-
-        ! Output
-        double precision, dimension(:), allocatable ::  qp_position, data_B0, data_B1, & 
-                                                    data_W00, data_W01, data_W10, data_W11
-        integer, dimension(:,:), allocatable :: indices
-        integer :: nnz_B, nnz_I
-
-        ! Local
-        integer :: maxrule, size_nodes, nb_ctrlpts, nb_qp_wq, nb_qp_cgg
-        integer, dimension(:, :), allocatable :: B0shape, B1shape
-        double precision, dimension(:), allocatable :: nodes 
-        logical :: isuniform
-    
-    end type wq
-
-contains
 
     subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
         !! Initialize IGA-WQ approach
@@ -1216,4 +1208,78 @@ contains
 
     end subroutine wq_basis_weights_dense2coo
 
-end module wq_basis_weights
+end module basis_weights
+
+subroutine iga2wq2d(nc_u, nc_v, nnz_u, nnz_v, indj_u, indj_v, &
+                    data_B_u, data_B_v, W_u, W_v, data_W_u, data_W_v)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_u, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indj_u, indj_v
+    dimension ::    indj_u(nnz_u), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_B_v
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
+    double precision, intent(in) :: W_u, W_v
+    dimension :: W_u(nc_u), W_v(nc_v)
+    double precision, intent(out) :: data_W_u, data_W_v
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+    ! Local data
+    ! ----------
+    integer :: i
+
+    do i = 1, nnz_u
+        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
+        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
+    end do
+    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
+
+    do i = 1, nnz_v
+        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
+        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
+    end do
+    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
+
+end subroutine iga2wq2d
+
+subroutine iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
+                    data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indj_u, indj_v, indj_w
+    dimension ::    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
+    double precision, intent(in) :: W_u, W_v, W_w
+    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
+    double precision, intent(out) :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+    ! Local data
+    ! ----------
+    integer :: i
+
+    do i = 1, nnz_u
+        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
+        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
+    end do
+    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
+
+    do i = 1, nnz_v
+        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
+        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
+    end do
+    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
+
+    do i = 1, nnz_w
+        data_W_w(i, 1) = data_B_w(i, 1) * W_w(indj_w(i))
+        data_W_w(i, 4) = data_B_w(i, 2) * W_w(indj_w(i))
+    end do
+    data_W_w(i, 2) = data_W_w(i, 1); data_W_w(i, 3) = data_W_w(i, 4)
+
+end subroutine iga2wq3d
