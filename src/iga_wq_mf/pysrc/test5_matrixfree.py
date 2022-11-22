@@ -15,10 +15,10 @@ if not os.path.isdir(folder): os.mkdir(folder)
 folder_data = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist     = True
+dataExist     = False
 withReference = False
-degree_list   = range(2, 10)
-cuts          = 6
+degree_list   = range(2, 3)
+cuts          = 7
 extension     = '.pdf'
 
 if not dataExist:
@@ -58,40 +58,40 @@ if not dataExist:
 
 		V = np.random.random(nb_ctrlpts**3)
 
-		# --------------
-		# Compute matrix
-		# --------------
-		dof = modelPhy._thermal_dof
-		CC = modelPhy.eval_capacity_matrix()[:, dof][dof, :]
+		# # --------------
+		# # Compute matrix
+		# # --------------
+		# dof = modelPhy._thermal_dof
+		# CC = modelPhy.eval_capacity_matrix()[:, dof][dof, :]
 		
-		start = time.process_time()
-		R = CC.dot(V)
-		stop = time.process_time()
+		# start = time.process_time()
+		# R = CC.dot(V)
+		# stop = time.process_time()
 
-		time_python = stop - start
-		timePython[i, 1] = time_python
-		np.savetxt(folder_data+'matvec_Python_'+str(cuts)+'.dat', timePython)
+		# time_python = stop - start
+		# timePython[i, 1] = time_python
+		# np.savetxt(folder_data+'matvec_Python_'+str(cuts)+'.dat', timePython)
 
 		# ------------------
 		# Compute MF product
 		# ------------------
-		MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
-		timeMF_Mass_matrix[i, 1] = MFtime1
-		np.savetxt(folder_data+'matvec_MF_Mass_'+str(cuts)+'.dat', timeMF_Mass_matrix)
+		# MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
+		# timeMF_Mass_matrix[i, 1] = MFtime1
+		# # np.savetxt(folder_data+'matvec_MF_Mass_'+str(cuts)+'.dat', timeMF_Mass_matrix)
 
 		MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
 		timeMF_Stiff_matrix[i, 1] = MFtime2
-		np.savetxt(folder_data+'matvec_MF_Stiff_'+str(cuts)+'.dat', timeMF_Stiff_matrix)
+		# np.savetxt(folder_data+'matvec_MF_Stiff_'+str(cuts)+'.dat', timeMF_Stiff_matrix)
 
-		MFtime3 = modelPhy.eval_KCu(V, table=Dirichlet)[-1]
-		timeMF_SM_matrix[i, 1] = MFtime3
-		np.savetxt(folder_data+'matvec_MF_SM_'+str(cuts)+'.dat', timeMF_SM_matrix)
+		# MFtime3 = modelPhy.eval_KCu(V, table=Dirichlet)[-1]
+		# timeMF_SM_matrix[i, 1] = MFtime3
+		# # np.savetxt(folder_data+'matvec_MF_SM_'+str(cuts)+'.dat', timeMF_SM_matrix)
 		
 		enablePrint()
-		print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_python))
-		print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
+		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_python))
+		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
 		print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
-		print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime3))
+		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime3))
 
 else:
 

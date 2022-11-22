@@ -281,7 +281,7 @@ end subroutine fd_elasticity_3d_py
 subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, nbIterPCG, threshold, isPrecond, x, resPCG)
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -309,9 +309,9 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(dimen, 2, dimen), dod_u(ndu), dod_v(ndv), dod_w(ndw)
     
+    character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold
-    logical, intent(in) :: isPrecond 
+    double precision, intent(in) :: threshold 
 
     double precision, intent(in) :: b
     dimension :: b(dimen, nr_total)
@@ -321,6 +321,7 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
 
     ! Local data
     ! -----------
+    logical :: isPrecond
     double precision, dimension(:), allocatable :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
     double precision, dimension(:), allocatable :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
     double precision, dimension(:), allocatable :: I_u, I_v, I_w
@@ -333,6 +334,8 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
     if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
+    isPrecond = .true.
+    if (methodPCG.eq.'WP') isPrecond = .false.
 
     ! Eigen decomposition
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -359,10 +362,14 @@ subroutine mf_wq_elasticity_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, n
 
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+    s_u = 1.d0; s_v = 1.d0; s_w = 1.d0 
+    print*, methodPCG, isPrecond
     do i = 1, dimen
-        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+1, (i-1)*dimen+1, :), s_u)
-        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+2, (i-1)*dimen+2, :), s_v)
-        call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+3, (i-1)*dimen+3, :), s_w)
+        if (methodPCG.eq.'JMC') then
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+1, (i-1)*dimen+1, :), s_u)
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+2, (i-1)*dimen+2, :), s_v)
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs((i-1)*dimen+3, (i-1)*dimen+3, :), s_w)
+        end if
         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), &
                                     s_u, s_v, s_w, Deigen(i, :))
     end do
@@ -429,7 +436,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     deps(nvoigt, nc_total), sigma_n0(nvoigt, nc_total), sigma_n1(nvoigt, nc_total), &
                     Dalg(nvoigt, nvoigt, nc_total), coef_fint(dimen*dimen, nc_total), coef_S(dimen*dimen, dimen*dimen, nc_total)
     
-    double precision, allocatable, dimension(:, :) :: Fint, dF, ddisp, delta_disp 
+    double precision, dimension(dimen, nr_total) :: Fint, dF, ddisp, delta_disp, Fstep
     double precision :: resNL, resPCG, prod
     dimension :: resPCG(nbIterPCG+1)
     integer :: i, j, k
@@ -466,7 +473,6 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! ------------------------
     ! Solver non linear system
     ! ------------------------
-    allocate(Fint(dimen, nr_total), dF(dimen, nr_total), ddisp(dimen, nr_total), delta_disp(dimen, nr_total))
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
     disp = 0.d0; ep_n0 = 0.d0; sigma_n0 = 0.d0; sigma_vm = 0.d0
@@ -474,7 +480,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     do i = 2, sizeF
 
         ddisp = 0.d0
-        dF = Fext(:, :, i)        
+        Fstep = Fext(:, :, i)        
 
         print*, 'Step: ', i - 1
         do j = 1, nbIterNL ! Newton-Raphson solver
@@ -494,6 +500,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call compute_meca_coefficients(dimen, nvoigt, nc_total, sigma_n1, Dalg, invJ, detJ, coef_fint, coef_S)
 
             ! Compute Deigen
+            s_u = 1.d0; s_v = 1.d0; s_w = 1.d0 
             do k = 1, dimen
                 call compute_mean_3d(nc_u, nc_v, nc_w, coef_S((k-1)*dimen+1, (k-1)*dimen+1, :), s_u)
                 call compute_mean_3d(nc_u, nc_v, nc_w, coef_S((k-1)*dimen+2, (k-1)*dimen+2, :), s_v)
@@ -506,7 +513,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call wq_get_forceint_3d(coef_fint, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
 
-            dF = dF - Fint
+            dF = Fstep - Fint
             call cleanDirichlet3ddl(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)
@@ -516,7 +523,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             ! Solve
             call mf_wq_elasticity_3d(coef_S, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, data_W_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, dF, &
                                 nbIterPCG, tolPCG, .true., delta_disp, resPCG)
             ddisp = ddisp + delta_disp

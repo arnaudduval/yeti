@@ -407,7 +407,7 @@ class fortran_mf_wq(thermoMechaModel):
 
 		return displacement, stress_vm
 	
-	def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, threshold=1e-8, isPrecond=True):
+	def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, threshold=1e-8, methodPCG='JMC'):
 		" Solves a elasticity problem "
 		
 		if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -422,7 +422,7 @@ class fortran_mf_wq(thermoMechaModel):
 			dod[i] = list(dod_t)
 
 		inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, Fext,
-				*dod, self._mechanicalDirichlet, nbIterPCG, threshold, isPrecond]
+				*dod, self._mechanicalDirichlet, nbIterPCG, threshold, methodPCG]
 		displacement, residue = elastoplasticity.mf_wq_elasticity_3d_py(*inputs)
 
 		return displacement, residue
@@ -593,7 +593,7 @@ class fortran_mf_wq(thermoMechaModel):
 			Fstep = Fext[:, :, i]
 
 			for j in range(nbIterNL): # Solver Newton-Raphson
-				print('Pas %d, iteration %d' %(i+1, j))
+				print('Step %d, iteration %d' %(i+1, j+1))
 
 				# Compute strain as function of displacement
 				deps = self.compute_strain(ddisp)

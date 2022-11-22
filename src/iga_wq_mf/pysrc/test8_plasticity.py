@@ -15,6 +15,7 @@ from lib.__init__ import *
 from lib.D3viscoplasticity import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
+from lib.base_functions import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -56,8 +57,13 @@ nbStep = 6; dt = 1/nbStep
 Fext = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
+# Elasticity
+displacement_ref = np.load(folder+'Elasto.npy')
+
 # Solve in fortran
 displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=dod)
+error = relativeError(displacement[:,:,-1], displacement_ref)
+print(error)
 
 # # Interpolate displacement
 # modelPhy.export_results(u_ctrlpts=displacement[:,:,-1], nbDOF=3, folder=folder)

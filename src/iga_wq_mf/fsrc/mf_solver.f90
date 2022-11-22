@@ -340,7 +340,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
     double precision, intent(in) :: W_u, W_v, W_w
     dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
 
-    character(len = 10) :: methodPCG
+    character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
     dimension :: b(nr_total)

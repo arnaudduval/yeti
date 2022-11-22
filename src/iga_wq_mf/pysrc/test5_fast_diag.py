@@ -19,10 +19,10 @@ if not os.path.isdir(folder): os.mkdir(folder)
 folder_data = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist     = True
+dataExist     = False
 withReference = True
-degree_list   = range(2, 7)
-cut_list      = range(6, 10)
+degree_list   = range(2, 4)
+cut_list      = range(9, 10)
 
 # Set filename
 filename_data = folder_data + 'FD_time.dat' 
