@@ -336,7 +336,7 @@ class fortran_mf_wq(thermoMechaModel):
 		return sol, residue
 
 	def MFtransientHeatNL(self, Fext, G=None, time_list=None, theta=1, 
-						table_Kprop=None, table_Cprop=None, methodPCG='FDC'):
+						table_Kprop=None, table_Cprop=None, methodPCG='FDC', pos=-1):
 		" Solves transient heat problem "
 
 		if self._thermalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
@@ -355,9 +355,17 @@ class fortran_mf_wq(thermoMechaModel):
 					table_Kprop, table_Cprop, self._invJ, self._detJ, theta, methodPCG]
 
 		if self._dim == 2: raise Warning('Until now not done')
-		if self._dim == 3: sol, resPCG = solver.mf_wq_transient_nonlinear_3d(*inputs)
+		if self._dim == 3: sol, resPCG, Cprop, Kprop = solver.mf_wq_transient_nonlinear_3d(*inputs)
+		resPCG = resPCG[:, resPCG[0, :]>0]
+		Cprop  = Cprop[:, :np.shape(resPCG)[1]]
+		Kprop  = Kprop[:, :np.shape(resPCG)[1]]
 
-		return sol, resPCG
+		properties = []
+		properties.append(self.interpolate_ControlPoints(datafield=Cprop[:, pos]))
+		properties.append(self.interpolate_ControlPoints(datafield=Kprop[:, pos]))
+		properties = np.array(properties)
+
+		return sol, resPCG, properties
 
 	def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
 		" Interpolation from parametric space to physical space "

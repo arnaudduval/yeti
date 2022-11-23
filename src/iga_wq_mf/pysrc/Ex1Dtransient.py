@@ -21,12 +21,12 @@ knotvector = create_knotvector(degree, nbel)
 
 # Get basis and weights in IgA
 qp_cgg, weight_cgg = iga_find_positions_weights(degree, knotvector)
-basis_cgg = eval_basis_python(degree, knotvector, qp_cgg)
+basis_cgg 	 = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions	
-N = 100
-time_list = np.linspace(0, 20, N)
+N = 41
+time_list = np.linspace(0, 10, N)
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
 Fprop     = powden(qp_cgg)

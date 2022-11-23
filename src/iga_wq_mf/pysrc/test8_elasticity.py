@@ -24,7 +24,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 4, 4
-geoName = 'CB'
+geoName = 'VB'
 
 # Create model 
 geometry = {'degree':[degree, degree, degree]}
@@ -34,7 +34,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7800, 'young': 210e9, 'poisson': 0.0, 'sigmaY': 500e6, 'hardening':50e9, 'betahard':0.5}
+material = {'density': 7800, 'young': 210e9, 'poisson': 0.0, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries

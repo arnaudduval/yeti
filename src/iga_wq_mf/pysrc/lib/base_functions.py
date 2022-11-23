@@ -751,7 +751,7 @@ def create_table_properties(function, uref=None, prop=None):
 	"Create a table of scalar properties from given function "
 
 	# Set default given x
-	if uref is None: uref = np.linspace(-100, 200, 21)
+	if uref is None: uref = np.linspace(-1., 1., 201)
 
 	# Compute y
 	if prop is None: y = function(uref)

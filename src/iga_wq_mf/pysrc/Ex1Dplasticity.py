@@ -11,7 +11,7 @@ folder = os.path.dirname(full_path) + '/results/examples/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-E, H, sigma_Y, beta, JJ = 200e3, 50e3, 100, 0.5, 1
+E, H, sigma_Y, beta, JJ = 200e3, 50e3, 100, 0.5, 1.0
 degree, nbel            = 5, 32
 
 nb_ctrlpts = degree + nbel

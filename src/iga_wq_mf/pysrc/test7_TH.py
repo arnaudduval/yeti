@@ -16,16 +16,17 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = False
+dataExist   = True
 geolist     = ['VB', 'CB']
 method_list = ['WP', 'C', 'JMC']
+# method_list = ['JMC']
 
 if not dataExist:
 
-	degree, cuts = 6, 6
+	degree, cuts = 6, 5
 	conductivity, capacity = 0.1, 1.0
 	theta = 1.0
-	time_list = np.linspace(0, 20, 81)  
+	time_list = np.linspace(0, 10, 41)  
 	table_Kprop = create_table_properties(setKprop, prop=conductivity)
 	table_Cprop = create_table_properties(setCprop, prop=capacity)     
 
@@ -64,9 +65,12 @@ if not dataExist:
 			Fext  = np.kron(Fendt, sigmoid(time_list))
 
 			# Solve
-			Tsol, resPCG = modelPhy.MFtransientHeatNL(Fext=Fext[:, :4], G=GBound[:, :4], time_list=time_list[:4],
+			N = 21
+			Tsol, resPCG, properties = modelPhy.MFtransientHeatNL(Fext=Fext[:, :N], G=GBound[:, :N], time_list=time_list[:N],
 											table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
 											methodPCG=PCGmethod, theta=theta)
+											
+			modelPhy.export_results(u_ctrlpts=properties, nbDOF=2, folder=folder+geoname+'_'+PCGmethod+'/')
 			print('Finish')
 			np.savetxt(filename, resPCG)
 			# modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
@@ -79,7 +83,6 @@ else:
 		for PCGmethod in method_list:
 			filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
 			resPCG = np.loadtxt(filename)
-			resPCG = resPCG[:, resPCG[0, :]>0]
 
 			if PCGmethod   == "WP" : labelmethod = 'w.o. preconditioner'
 			elif PCGmethod == "C"  : labelmethod = 'Classic FD method'

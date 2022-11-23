@@ -184,24 +184,24 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     ! ----------
     double precision :: array_temp
     dimension :: array_temp(nr_u*nr_v*nr_w)
-    integer :: i, j, k, alpha(dimen)
+    integer :: i, j, r, zeta(dimen)
     
     array_out = 0.d0
-    do j = 1, dimen
-        do i = 1, dimen
+    do i = 1, dimen
+        do j = 1, dimen
         
-            k = i + (j-1)*dimen
-            alpha = 1; alpha(i) = 4
+            r = j + (i-1)*dimen
+            zeta = 1; zeta(j) = 3
             call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, alpha(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, alpha(2)), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, alpha(3)), &
-                                coefs(k, :), array_temp)
-            array_out(j, :) = array_out(j, :) + array_temp
+                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
+                                coefs(r, :), array_temp)
+            array_out(i, :) = array_out(i, :) + array_temp
             
         end do
     end do
-    
+
 end subroutine wq_get_forceint_3d
 
 subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &

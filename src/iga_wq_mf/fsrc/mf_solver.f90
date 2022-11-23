@@ -607,7 +607,7 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                                     data_B_u_t, data_B_v_t, data_B_w_t, data_W_u_t, data_W_v_t, data_W_w_t, &
                                     !&
                                     nbsteps, time_list, FF, ndod, dod, GG, nbpts, table_cond, table_cap, invJJ, detJJ, &
-                                    theta, methodPCG, solution, resPCG)
+                                    theta, methodPCG, solution, resPCG, KpropT, CpropT)
     !! Time-integration scheme (with Newton-Raphson method) to solve non linear transient heat problems
     !! For the moment, only for isotropic materials.
     !! It assumes that initial temperature equals 0
@@ -653,6 +653,9 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
 
     double precision, intent(out) :: solution, resPCG
     dimension :: solution(nr_total_t, nbsteps), resPCG(nbIterPCG+3, nbIterNL*nbsteps)
+
+    double precision, intent(out) :: KpropT, CpropT
+    dimension :: KpropT(nc_total, nbIterNL*nbsteps), CpropT(nc_total, nbIterNL*nbsteps)
 
     ! Local data
     ! ----------  
@@ -736,6 +739,8 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                                         data_B_u_t, data_B_v_t, data_B_w_t, TTn1, TTinterp)
             call interp_isotropic_prop(nbpts, table_cap, nc_total, TTinterp, Cprop)
             call interp_isotropic_prop(nbpts, table_cond, nc_total, TTinterp, Kprop)
+            CpropT(:, k) = Cprop
+            KpropT(:, k) = Kprop
             
             ! Compute coefficients to compute tangent matrix
             call eval_isotropic_coefs(nc_total, Kprop, Cprop, invJJ, detJJ, Kcoefs, Ccoefs)
