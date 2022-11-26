@@ -129,7 +129,8 @@ c     Compute gradient .................................................
          CALL extractNurbsPatchMechInfos(NumPatch,IEN,PROPS,JPROPS,
      &        NNODE,nb_elem_patch,ELT_TYPE,TENSOR)
          
-         If (ELT_TYPE_patch == 'U30') then
+         If ((ELT_TYPE_patch == 'U30')
+     &    .or.(ELT_TYPE_patch == 'U10')) then
             i = int(PROPS_patch(2))
             call extractMappingInfos(i,nb_elem_patch,Nkv,Jpqr,Nijk,Ukv,
      &           weight,IEN,PROPS,JPROPS,NNODE,ELT_TYPE,TENSOR)         
@@ -212,11 +213,25 @@ c     Compute initial elementary matrix and load vector
                   Endif
                Enddo
                Endif
-               
+            
+            elseif(ELT_TYPE_patch == 'U10') then
+                ! embedded solid element
+                if (activeElement(jelem) == 1) then
+                    write(*,*) "Element is active"
+                    kk = int(PROPS_patch(2))
+                    call gradUELMAT10adj(U_elem(:,:nnode_patch),
+     &                      UA_elem(:,:nnode_patch,:), nadj, mcrd, 
+     &                      nnode_patch,
+     &                      nnode(kk), nb_cp, nbint(numpatch), 
+     &                      COORDS_elem,
+     &                      COORDS3D, TENSOR_patch, MAT_patch,
+     &                      gradWint(:,:,:), gradWext(:,:,:))
+                endif
+
             elseif (ELT_TYPE_patch == 'U30') then
                ! 'Element coque immerge'
                If (activeElement(JELEM)==1) then
-               print*,'Elt type U30 not available yet.'
+                print*,'Elt type U30 not available yet.'
                Endif
                
                

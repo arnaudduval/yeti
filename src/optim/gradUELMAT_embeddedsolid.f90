@@ -319,10 +319,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             work(:) = work(:) + strainAdj(ij, :)*stress(ij)
         enddo
 
-
-
-
-
         !! Derivatives
         !! ===========
 
@@ -441,7 +437,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
             !! Compute stress and its derivative
             do k = 1, 3
-                call MulVec(ddsdde(:,:), dEdP(:, k), dSdP(:, k), ntens, ntens)
+                call MulVect(ddsdde(:,:), dEdP(:, k), dSdP(:, k), ntens, ntens)
             enddo
 
             dEAdP_S(:,:) = zero
@@ -460,14 +456,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                  & - dEAdP_S(:, iA) * detJac * GaussPdsCoord(1, igp) &
                  & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
             enddo
-
         enddo   !! End loop on control point icp
-
     enddo       !! End loop on Gauss point igp
-
-    call evalnurbs_mapping_w2ndDerv
-
-
 end subroutine gradUELMAT10adj
 
 
