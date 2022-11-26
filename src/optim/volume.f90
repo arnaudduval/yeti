@@ -66,7 +66,7 @@ subroutine computeVolume(VOL, listpatch,     &
     double precision :: COORDS_elem,XI,R,dRdxi,detJ,normV,AI,vectV
     dimension COORDS_elem(3,MAXVAL(NNODE)),XI(3),R(MAXVAL(NNODE)),  &
         &     dRdxi(MAXVAL(NNODE),3),AI(3,3),vectV(3)
-    integer :: i,k,NumPatch,num_elem
+    integer :: i,j,k,NumPatch,num_elem
       
     !! Embedded entities
     double precision :: COORDSmap,Re,dRedxi,BI
@@ -94,7 +94,7 @@ subroutine computeVolume(VOL, listpatch,     &
             call extractNurbsPatchMechInfos(NumPatch,IEN,PROPS,JPROPS,  &
                 &        NNODE,nb_elem_patch,ELT_TYPE,TENSOR)
          
-            if (ELT_TYPE_patch == 'U30') then
+            if ((ELT_TYPE_patch == 'U30').or.(ELT_TYPE_patch == 'U10')) then
                 i = int(PROPS_patch(2))
                 call extractMappingInfos(i,nb_elem_patch,Nkv,Jpqr,Nijk,Ukv, &
                     &           weight,IEN,PROPS,JPROPS,NNODE,ELT_TYPE,TENSOR)         
@@ -105,7 +105,6 @@ subroutine computeVolume(VOL, listpatch,     &
             if (NbPtInt**dim_patch<NBINT(numPatch)) NbPtInt = NbPtInt+1
             call Gauss(NbPtInt,dim_patch,   &
                 &        GaussPdsCoord(:dim_patch+1,:NBINT(numPatch)),0)
-         
          
             !! Loop on elements
             do num_elem = 1,nb_elem_patch(NumPatch)
@@ -132,14 +131,15 @@ subroutine computeVolume(VOL, listpatch,     &
                     call evalnurbs(XI(:),R(:nnode_patch),   &
                         &              dRdxi(:nnode_patch,:))
                
-                    !! For embedded cases
-                    if (ELT_TYPE_patch == 'U30') then
+                    if ((ELT_TYPE_patch == 'U30').or.(ELT_TYPE_patch == 'U10')) then
+                        !! For embedded cases
                         XI(:)   = zero
                         BI(:,:) = zero
                         do i = 1,nnode_patch
                             XI(:) = XI(:) + R(i)*COORDS_elem(:,i)
-                            BI(:,1) = BI(:,1) + dRdxi(i,1)*COORDS_elem(:,i)
-                            BI(:,2) = BI(:,2) + dRdxi(i,2)*COORDS_elem(:,i)
+                            do j = 1, dim_patch
+                                BI(:,j) = BI(:,j) + dRdxi(i,j)*COORDS_elem(:,i)
+                            enddo
                         enddo
                   
                         dRedxi(:,:) = zero
@@ -149,8 +149,9 @@ subroutine computeVolume(VOL, listpatch,     &
                   
                         dRdxi(:,:) = zero
                         do i = 1,3
-                            dRdxi(:,1) = dRdxi(:,1) + BI(i,1)*dRedxi(:,i)
-                            dRdxi(:,2) = dRdxi(:,2) + BI(i,2)*dRedxi(:,i)
+                            do j = 1, dim_patch
+                                dRdxi(:,j) = dRdxi(:,j) + BI(i,j)*dRedxi(:,i)
+                            enddo
                         enddo
 
                         !! extract COORDS
@@ -172,8 +173,7 @@ subroutine computeVolume(VOL, listpatch,     &
                         enddo
                   
                     else
-                    !! Classical patch
-                  
+                        !! Classical patch
                         AI(:,:) = zero
                         do k = 1,dim_patch
                             do i = 1,nnode_patch
@@ -195,6 +195,7 @@ subroutine computeVolume(VOL, listpatch,     &
                         ! volume
                         call cross(AI(:,1),AI(:,2),vectV(:))
                         call dot(  AI(:,3),vectV(:),normV)
+                        call MatrixDet(AI, normV, 3)
                     endif
                
                     VOL = VOL + normV*detJ
