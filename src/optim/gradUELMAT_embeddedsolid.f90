@@ -286,7 +286,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         do ij = 1, ntens
             i = voigt(ij, 1); j = voigt(ij, 2)
             if (i==j) then
-                call dot(dUdtheta(i, :), dthetadx(:, i), coef1)
+                call dot(dUdtheta(i, :), dthetadx(:, i), strain(ij))
             else
                 call dot(dUdtheta(i, :), dthetadx(:, j), coef1)
                 call dot(dUdtheta(j, :), dthetadx(:, i), coef2)
@@ -303,11 +303,11 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             do ij = 1, ntens
                 i = voigt(ij, 1); j = voigt(ij, 2)
                 if (i==j) then
-                    call dot(dUAdtheta(i, :, iA), dthetadx(:, i), coef1)
+                    call dot(dUAdtheta(i, :, iA), dthetadx(:, i), strainAdj(ij, iA))
                 else
                     call dot(dUAdtheta(i, :, iA), dthetadx(:, j), coef1)
                     call dot(dUAdtheta(j, :, iA), dthetadx(:, i), coef2)
-                    strain(ij) = coef1 + coef2
+                    strainAdj(ij, iA) = coef1 + coef2
                 endif
             enddo
             call MulVect(ddsdde, strainAdj(:, iA), stressAdj(:, iA), ntens, ntens)
@@ -379,7 +379,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
             do iA = 1, nadj
                 gradWint_elem(iA, : , icp) &
-                 & = gradWint_elem(iA, : , icp) - work(iA)*dJdP(:)*det_dthetadtildexi*GaussPdsCoord(1, igp)
+                 & = gradWint_elem(iA, : , icp) - work(iA)*dJdP(:)*GaussPdsCoord(1, igp)
             enddo
 
             !! Compute derivative of embbeded element shape function gradient
@@ -393,7 +393,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 call MulMat(temp1(:,:), dxidx(:,:), DdRdxDP(:,:,k), nnode, 3, 3)
 
                 call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1(:,:), nnode, 3, 3)
-                call MulMat(temp1, DdxidxDP(:,:,k), temp2, nnode, 3, 3)
+                call MulMat(temp1(:,:), DdxidxDP(:,:,k), temp2(:,:), nnode, 3, 3)
                 DdRdxDP(:,:,k) = DdRdxDP(:,:,k) + temp2(:,:)
             enddo
 
@@ -428,10 +428,17 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 i = voigt(ij, 1)
                 j = voigt(ij, 2)
                 do k = 1, 3
-                    dEdP(ij, k) = 0.5 * (DdUdxDP(i, j, k) + DdUdxDP(j, i, k))
-                    do iA = 1, nadj
-                        dEAdP(ij, k, iA) =  0.5 * (DdUAdxDP(i, j, k, iA) + DdUAdxDP(j, i, k, iA))
-                    enddo
+                    if (i == j) then
+                        dEdP(ij, k) = DdUdxDP(i, i, k)
+                        do iA = 1, nadj
+                            dEAdP(ij, k, iA) =  DdUAdxDP(i, i, k, iA)
+                        enddo
+                    else
+                        dEdP(ij, k) = DdUdxDP(i, j, k) + DdUdxDP(j, i, k)
+                        do iA = 1, nadj
+                            dEAdP(ij, k, iA) =  DdUAdxDP(i, j, k, iA) + DdUAdxDP(j, i, k, iA)
+                        enddo
+                    endif
                 enddo
             enddo
 

@@ -225,7 +225,20 @@ c     Compute initial elementary matrix and load vector
      &                      nnode(kk), nb_cp, nbint(numpatch), 
      &                      COORDS_elem,
      &                      COORDS3D, TENSOR_patch, MAT_patch,
-     &                      gradWint(:,:,:), gradWext(:,:,:))
+     &                      gradWint_elem(:,:,:nnode_patch), 
+     &                      gradWext_elem(:,:,:nnode_patch))
+                    Do numcp = 1,nnode_patch
+                    If (computeWint) then
+                        gradWint(:,:,sctr(numcp))=
+     &                   gradWint(:,:,sctr(numcp))
+     &                + gradWint_elem(:,:,numcp)
+                    Endif
+                    If (computeWext) then
+                        gradWext(:,:,sctr(numcp))=
+     &                     gradWext(:,:,sctr(numcp))
+     &                   + gradWext_elem(:,:,numcp)
+                    Endif
+                    Enddo
                 endif
 
             elseif (ELT_TYPE_patch == 'U30') then
@@ -255,7 +268,7 @@ c     Compute initial elementary matrix and load vector
                Endif
                
             Endif
-            
+           
          Enddo ! end loop on element
          
          call deallocateMappingData()
