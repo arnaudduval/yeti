@@ -583,15 +583,20 @@ class fortran_mf_wq(thermoMechaModel):
 		super()._verify_mechanics()
 
 		ddl = int(d*(d+1)/2)
-		ep_n0 = np.zeros(self._nb_qp_total)
-		sigma_n0 = np.zeros((ddl, self._nb_qp_total))
-		alpha_n0 = np.zeros((ddl, self._nb_qp_total))
-		ep_n1 = np.zeros(self._nb_qp_total)
-		sigma_n1 = np.zeros((ddl, self._nb_qp_total))
-		alpha_n1 = np.zeros((ddl, self._nb_qp_total))
-		Dalg = np.zeros((ddl, ddl, self._nb_qp_total))
-		disp = np.zeros(np.shape(Fext))
-		inputs = [self._Ctensor, self._sigmaY, self._lame_mu, self._betaHard, self._hardening, self._Idev]
+		ep_n0 = np.zeros((ddl, self._nb_qp_total))
+		a_n0  = np.zeros(self._nb_qp_total)
+		b_n0  = np.zeros((ddl, self._nb_qp_total))
+		ep_n1 = np.zeros((ddl, self._nb_qp_total))
+		a_n1  = np.zeros(self._nb_qp_total)
+		b_n1  = np.zeros((ddl, self._nb_qp_total))
+		sigma = np.zeros((ddl, self._nb_qp_total))
+		Cep   = np.zeros((ddl, ddl, self._nb_qp_total))
+		disp  = np.zeros(np.shape(Fext))
+
+		one      = create_second_order_identity(d)
+		identity = create_fourth_order_identity(d)
+		inputs   = [self._Ctensor, self._sigmaY, self._lame_bulk, self._lame_mu, 
+					self._betaHard, self._hardening, identity, self._Idev, one]
 
 		DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
 
@@ -604,15 +609,16 @@ class fortran_mf_wq(thermoMechaModel):
 				print('Step %d, iteration %d' %(i+1, j+1))
 
 				# Compute strain as function of displacement
-				deps = self.compute_strain(ddisp)
+				d_n1 = disp[:, :, i-1] + ddisp
+				eps = self.compute_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
 				for k in range(self._nb_qp_total):
-					sigma_n1t, alpha_n1t, ep_n1t, Dalgt = cpp_combined_hardening(inputs, deps[:, k], sigma_n0[:, k], alpha_n0[:, k], ep_n0[k])
-					sigma_n1[:, k], alpha_n1[:, k], ep_n1[k], Dalg[:, :, k] = sigma_n1t, alpha_n1t, ep_n1t, Dalgt
+					sigmat, ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
+					sigma[:, k], ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, ep_n1t, a_n1t, b_n1t, Cept
 
 				# Compute coefficients to compute Fint and Stiffness
-				coef_Fint, coef_Stiff = compute_plasticity_coef(sigma_n1, Dalg, self._invJ, self._detJ, d=d)
+				coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
 
 				# Compute Fint 
 				Fint = self.compute_internal_force(coef_Fint)
@@ -625,10 +631,90 @@ class fortran_mf_wq(thermoMechaModel):
 				
 				delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
 				ddisp += delta_disp 
-				
-			disp[:, :, i] = disp[:, :, i-1] + ddisp
+		
+			disp[:, :, i] = d_n1			
 			ep_n0 = np.copy(ep_n1)
-			sigma_n0 = np.copy(sigma_n1)
-			alpha_n0 = np.copy(alpha_n1)
+			a_n0 = np.copy(a_n1)
+			b_n0 = np.copy(b_n1)
 
 		return disp
+
+	# def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-8, nbIterNL=10, d=3, new=True):
+		# " Solves plasticity problem "
+
+		# if self._dim != 3: raise Warning('Only for 3D')
+		# super()._verify_mechanics()
+
+		# ddl = int(d*(d+1)/2)
+		# ep_n0 = np.zeros((ddl, self._nb_qp_total))
+		# a_n0  = np.zeros(self._nb_qp_total)
+		# b_n0  = np.zeros((ddl, self._nb_qp_total))
+		# ep_n1 = np.zeros((ddl, self._nb_qp_total))
+		# a_n1  = np.zeros(self._nb_qp_total)
+		# b_n1  = np.zeros((ddl, self._nb_qp_total))
+		# sigma = np.zeros((ddl, self._nb_qp_total))
+		# Cep   = np.zeros((ddl, ddl, self._nb_qp_total))
+		# disp  = np.zeros(np.shape(Fext))
+		# one = create_second_order_identity(d)
+		# I = create_fourth_order_identity(d)
+
+		# if new:
+		# 	inputs = [self._Ctensor, self._sigmaY, self._lame_bulk, self._lame_mu, 
+		# 			self._betaHard, self._hardening, I, self._Idev, one]
+		# else:
+		# 	inputs = [self._Ctensor, self._sigmaY, self._lame_mu, 
+		# 			self._betaHard, self._hardening, self._Idev]
+
+		# DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
+
+		# for i in range(1, np.shape(Fext)[2]):
+
+		# 	ddisp = np.zeros(np.shape(disp[:, :, i-1]))
+		# 	Fstep = Fext[:, :, i]
+
+		# 	for j in range(nbIterNL): # Solver Newton-Raphson
+		# 		print('Step %d, iteration %d' %(i+1, j+1))
+
+		# 		# Compute strain as function of displacement
+		# 		if new:
+		# 			d_n1 = disp[:, :, i-1] + ddisp
+		# 			eps = self.compute_strain(d_n1)
+		# 		else:
+		# 			eps = self.compute_strain(ddisp)
+	
+		# 		a = 1
+
+		# 		# Closest point projection in perfect plasticity
+		# 		for k in range(self._nb_qp_total):
+		# 			if new:
+		# 				sigmat, ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening_2(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
+		# 				sigma[:, k], ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, ep_n1t, a_n1t, b_n1t, Cept
+
+		# 			else:
+		# 				ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
+		# 				ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = ep_n1t, a_n1t, b_n1t, Cept
+
+		# 		# Compute coefficients to compute Fint and Stiffness
+		# 		if not new: sigma = ep_n1
+		# 		coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
+
+		# 		# Compute Fint 
+		# 		Fint = self.compute_internal_force(coef_Fint)
+		# 		dF = Fstep - Fint
+		# 		clean_dirichlet_3d(dF, indi) 
+		# 		prod1 = block_dot_product(d, dF, dF)
+		# 		resNL = np.sqrt(prod1)
+		# 		print('Relative error: %.5e' %resNL)
+		# 		if resNL <= threshold: break
+				
+		# 		delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+		# 		ddisp += delta_disp 
+		
+		# 	if new: disp[:, :, i] = d_n1
+		# 	else: disp[:, :, i] = disp[:, :, i-1] + ddisp
+			
+		# 	ep_n0 = np.copy(ep_n1)
+		# 	a_n0 = np.copy(a_n1)
+		# 	b_n0 = np.copy(b_n1)
+
+		# return disp

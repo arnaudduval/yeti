@@ -46,7 +46,7 @@ dod = modelPhy._mechanical_dod
 
 # Set Neumann boundaries
 forces = [[0 for i in range(3)] for j in range(6)]
-forces[1] = [1e8, 2e8, 0.0]
+forces[1] = [1e8, 0.0, 0.0]
 modelPhy._set_neumann_condition({'mechanical': forces})
 Fsurf = modelPhy.eval_force_surf()
 
@@ -61,6 +61,7 @@ for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 displacement_ref = np.load(folder+'Elasto.npy')
 
 # Solve in fortran
+# displacement, stress_vm = modelPhy.MFplasticity_py(Fext=Fext, indi=dod)
 displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=dod)
 error = relativeError(displacement[:,:,-1], displacement_ref)
 print(error)

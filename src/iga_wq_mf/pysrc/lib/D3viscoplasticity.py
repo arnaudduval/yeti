@@ -32,17 +32,23 @@ def block_dot_product(d, A, B):
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
 
-def compute_stress_deviatoric(d, tensor):
-	" Computes deviatoric of a second-order stress-like tensor "
-
-	ddl = int(d*(d+1)/2)
-	one = np.zeros(ddl)
+def compute_trace(d, tensor):
+	" Computes trace of a second-order stress-like tensor "
 
 	trace = 0.0
 	for i in range(d):
 		trace += tensor[i]
-		one[i] = 1.0
 		
+	return trace
+
+def compute_deviatoric(d, tensor):
+	" Computes deviatoric of a second-order stress-like tensor "
+
+	ddl = int(d*(d+1)/2)
+	one = np.zeros(ddl)
+	for i in range(d): one[i] = 1.0
+
+	trace = compute_trace(d, tensor)		
 	dev = tensor - 1.0/3.0*trace*one
 
 	return dev
@@ -69,6 +75,17 @@ def create_fourth_order_identity(d=3):
 	else: raise Warning('Only 2d or 3d')
 
 	return I
+
+def create_second_order_identity(d=3):
+	" Creates a fourth-order identity (Voigt notation) "
+	
+	if d == 2:
+		one = np.array([1.0, 1.0, 0.0])
+	elif d == 3:    
+		one = np.array([1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
+	else: raise Warning('Only 2d or 3d')
+
+	return one
 
 def create_one_kron_one(d=3): 
 	" Creates a one kron one tensor (Voigt notation) "
@@ -112,53 +129,95 @@ def create_incidence_matrix(d=3):
 
 	return EE
 
-def cpp_combined_hardening(inputs, deps, sigma_n, alpha_n, ep_n, d=3):
+# def cpp_combined_hardening(inputs, deps, sigma_n, a_n, b_n, d=3):
+# 	" Returns closest point proyection (cpp) in combined hardening plasticity criteria"
+
+# 	def yield_function(sigma_Y, beta, H, sigma, a, b, d=3):
+# 		" Computes the value of f (consistency condition) in plasticity criteria"
+
+# 		eta = compute_deviatoric(d, sigma) - b
+# 		norm = compute_stress_norm(d, eta)
+# 		f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*a)
+# 		if norm > 0.0: N = 1.0/norm*eta
+# 		else: N = np.zeros(np.shape(eta))
+
+# 		return f, N, norm
+
+# 	CC, sigma_Y, mu, beta, H, Idev = inputs
+# 	sigma_trial = sigma_n + CC@deps
+# 	f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, a_n, b_n, d=d)
+
+# 	# Check status
+# 	if f < 0:
+# 		# Copy old variables
+# 		sigma_n1 = sigma_trial
+# 		a_n1 = a_n
+# 		b_n1 = b_n
+# 		Cep = CC
+# 	else:
+# 		# Consistency parameter
+# 		dgamma = f/(2.0*mu+2.0/3.0*H)
+
+# 		# Update stress
+# 		sigma_n1 = sigma_trial - 2*mu*dgamma*N
+
+# 		# Update effective plastic strain
+# 		a_n1 = a_n + np.sqrt(2.0/3.0)*dgamma
+
+# 		# Update back stress
+# 		b_n1 = b_n + 2.0/3.0*beta*H*dgamma*N
+
+# 		# Compute consistent tangent matrix
+# 		c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
+# 		c2 = 4.0*mu**2.0*dgamma/norm
+# 		NNT = stkronst(N, N)
+# 		Cep = CC - (c1 - c2)*NNT - c2*Idev
+
+# 	return sigma_n1, a_n1, b_n1, Cep
+
+def cpp_combined_hardening(inputs, eps, ep_n, a_n, b_n, d=3):
 	" Returns closest point proyection (cpp) in combined hardening plasticity criteria"
 
-	def yield_function(sigma_Y, beta, H, sigma, alpha, ep_n, d=3):
-		" Computes the value of f (consistency condition) in plasticity criteria"
+	CC, sigma_Y, bulk, mu, beta, H, I, Idev, one = inputs
 
-		eta = compute_stress_deviatoric(d, sigma) - alpha
-		norm = compute_stress_norm(d, eta)
-		f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*ep_n)
-		if norm > 0.0: N = 1.0/norm*eta
-		else: N = np.zeros(np.shape(eta))
-
-		return f, N, norm
-
-	CC, sigma_Y, mu, beta, H, Idev = inputs
-	sigma_trial = sigma_n + CC@deps
-	f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, alpha_n, ep_n, d=d)
+	trace_eps = compute_trace(d, eps)
+	e_n1 = compute_deviatoric(d, eps)
+	s_trial = 2*mu*(e_n1 - ep_n) @ I
+	eta_trial = s_trial - b_n
 
 	# Check status
-	if f < 0:
+	norm_eta = compute_stress_norm(d, eta_trial)
+	f = norm_eta - np.sqrt(2.0/3.0)*(sigma_Y + beta*H*a_n)
+
+	sigma = s_trial + bulk*trace_eps*one
+	Cep = CC
+	if f <= 0:
 		# Copy old variables
-		sigma_n1 = sigma_trial
 		ep_n1 = ep_n
-		alpha_n1 = alpha_n
-		Dalg = CC
+		a_n1 = a_n
+		b_n1 = b_n
+		
 	else:
+
 		# Consistency parameter
 		dgamma = f/(2.0*mu+2.0/3.0*H)
+		n_n1 = eta_trial/norm_eta
+		a_n1 = a_n + np.sqrt(2.0/3.0)*dgamma
 
 		# Update stress
-		sigma_n1 = sigma_trial - 2*mu*dgamma*N
-
-		# Update back stress
-		alpha_n1 = alpha_n + 2.0/3.0*beta*H*dgamma*N
-
-		# Update effective plastic strain
-		ep_n1 = ep_n + np.sqrt(2.0/3.0)*dgamma
+		b_n1 = b_n + 2.0/3.0*(1-beta)*H*dgamma*n_n1
+		ep_n1 = ep_n + dgamma*n_n1
+		sigma -= 2*mu*dgamma*n_n1
 
 		# Compute consistent tangent matrix
-		c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
-		c2 = 4.0*mu**2.0*dgamma/norm
-		NNT = stkronst(N, N)
-		Dalg = CC - (c1 - c2)*NNT - c2*Idev
+		c1 = 1.0 - 2.0*mu*dgamma/norm_eta
+		c2 = 1.0/(1.0 + H/(3.0*mu)) - (1.0 - c1)
+		NNT = stkronst(n_n1, n_n1)
+		Cep -= 2*mu*((1 - c1)*Idev + c2*NNT)
 
-	return sigma_n1, alpha_n1, ep_n1, Dalg
+	return sigma, ep_n1, a_n1, b_n1, Cep
 
-def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
+def compute_plasticity_coef(sigma, Cep, invJ, detJ, d=3):
 	" Computes the coefficients to use in internal force vector and stiffness matrix"
 
 	EE = create_incidence_matrix(d)
@@ -169,7 +228,7 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 
 		for i in range(d):
 			for j in range(d):
-				Dij = invJ[:,:,k] @ EE[:,:,i].T @ Dalg[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
+				Dij = invJ[:,:,k] @ EE[:,:,i].T @ Cep[:,:,k] @ EE[:,:,j] @ invJ[:,:,k].T
 				coef_Stiff[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*det
 
 			Si = invJ[:,:,k] @ EE[:,:,i].T @ sigma[:,k]
@@ -180,7 +239,7 @@ def compute_plasticity_coef(sigma, Dalg, invJ, detJ, d=3):
 def compute_stress_vonmises(d, tensor):
 	" Computes equivalent stress with Von Mises formula of a second-order stress-like tensor "
 
-	dev = compute_stress_deviatoric(d, tensor)
+	dev = compute_deviatoric(d, tensor)
 	vm = compute_stress_norm(d, dev)
 	vm = np.sqrt(3.0/2.0)*vm
 

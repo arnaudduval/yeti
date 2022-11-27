@@ -6,14 +6,14 @@
 
 import numpy as np
 
-def cpp_combined_hardening_1D_s1(properties, eps_n1, ep_n0, a_n0, b_n0):
+def cpp_combined_hardening_1D_s1(properties, eps, ep_n0, a_n0, b_n0):
 	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 		It uses combined isotropic/kinematic hardening theory.  
 	"""
 	E, H, beta, sigma_Y0 = properties
 
 	# Elastic predictor
-	sigma_trial = E*(eps_n1 - ep_n0)
+	sigma_trial = E*(eps - ep_n0)
 	eta_trial = sigma_trial - b_n0
 
 	# Check yield status
@@ -21,19 +21,19 @@ def cpp_combined_hardening_1D_s1(properties, eps_n1, ep_n0, a_n0, b_n0):
 	f_trial = abs(eta_trial) - (sigma_Y0 + beta*H*a_n0)
 
 	if f_trial <= fthreshold: # Elastic
-		sigma_n1 = sigma_trial
+		sigma = sigma_trial
 		ep_n1 = ep_n0
 		a_n1 = a_n0
 		b_n1 = b_n0
 		
 	else: # Plastic
 		dgamma = f_trial/(E + H)
-		sigma_n1 = sigma_trial - dgamma*E*np.sign(eta_trial)
+		sigma = sigma_trial - dgamma*E*np.sign(eta_trial)
 		ep_n1 = ep_n0 + dgamma*np.sign(eta_trial)
 		a_n1 = a_n0 + dgamma
 		b_n1 = b_n0 + dgamma*(1-beta)*H*np.sign(eta_trial)
 
-	return [sigma_n1, ep_n1, a_n1, b_n1]
+	return [sigma, ep_n1, a_n1, b_n1]
 
 def cpp_combined_hardening_1D_s2(properties, eps, ep_n0, a_n0, b_n0):
 	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
@@ -41,7 +41,7 @@ def cpp_combined_hardening_1D_s2(properties, eps, ep_n0, a_n0, b_n0):
 	"""
 	E, H, beta, sigma_Y0 = properties
 
-		# Elastic predictor
+	# Elastic predictor
 	sigma_trial = E*(eps - ep_n0)
 	eta_trial = sigma_trial - b_n0
 
@@ -97,14 +97,14 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 
 	for i in range(1, np.shape(Fext)[1]):
 
-		d_n0  = np.copy(disp[:, i-1]); d_n1 = np.copy(d_n0); ddisp = np.zeros(len(dof)) 
+		d_n1 = np.copy(disp[:, i-1]); ddisp = np.zeros(len(dof)) 
 		Fstep = np.copy(Fext[:, i])
 
 		print('Step %d' %i)
 		for j in range(nbIterNL): # Newton-Raphson
 
 			# Compute strain as function of displacement
-			d_n1[dof] = d_n0[dof] + ddisp
+			d_n1[dof] = disp[dof, i-1] + ddisp
 			eps = interpolate_strain_1D(JJ, DB, d_n1)
 
 			# Find closest point projection 

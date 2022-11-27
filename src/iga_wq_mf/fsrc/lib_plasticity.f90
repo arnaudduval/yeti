@@ -14,11 +14,54 @@
 ! Otherwise some scale factor need to be considered.
 ! ==========================
 
-subroutine compute_stress_deviatoric(dimen, nvoigt, tensor, dev)
-    !! Returns deviatoric of a second-order tensor. That is
-    !! dev(s) = s - 1/3 trace(s) 1. 
-    !! s is a tensor written in Voigt notation
+subroutine second_order_identity(dimen, nvoigt, one)
+    !! Creates a second-order identity (in Voigt notation)
 
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, nvoigt 
+    double precision, intent(out) :: one
+    dimension :: one(nvoigt)
+
+    ! Local data
+    ! ----------
+    integer :: i
+
+    one = 0.d0
+    do i = 1, dimen
+        one(i) = 1.d0
+    end do
+
+end subroutine second_order_identity
+
+subroutine fourth_order_identity(dimen, nvoigt, identity)
+    !! Creates a fourth-order identity (in Voigt notation)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, nvoigt 
+    double precision, intent(out) :: identity
+    dimension :: identity(nvoigt, nvoigt)
+
+    ! Local data
+    ! ----------
+    integer :: i
+
+    identity = 0.d0
+    do i = 1, dimen
+        identity(i, i) = 1.d0
+    end do
+
+    do i = dimen+1, nvoigt
+        identity(i, i) = 0.5d0
+    end do
+
+end subroutine fourth_order_identity
+
+subroutine compute_trace(dimen, nvoigt, tensor, trace)
+    
     implicit none
     ! Input / output data
     ! -------------------
@@ -26,28 +69,18 @@ subroutine compute_stress_deviatoric(dimen, nvoigt, tensor, dev)
     double precision, intent(in) :: tensor
     dimension :: tensor(nvoigt)
 
-    double precision, intent(out) :: dev
-    dimension :: dev(nvoigt)
+    double precision, intent(out) :: trace
 
     ! Local data
     ! ----------
     integer :: i
-    double precision :: trace, one
-    dimension :: one(nvoigt)
-
-    one = 0.d0
-    do i = 1, dimen
-        one(i) = 1.d0
-    end do
 
     trace = 0.d0
     do i = 1, dimen
         trace = trace + tensor(i)
-    end do    
+    end do   
 
-    dev = tensor - 1.d0/3.d0*trace*one 
-    
-end subroutine compute_stress_deviatoric
+end subroutine compute_trace
 
 subroutine compute_stress_norm(dimen, nvoigt, tensor, norm)
     !! Returns Frobenius norm of a second-order stress-like tensor 
@@ -80,31 +113,6 @@ subroutine compute_stress_norm(dimen, nvoigt, tensor, norm)
     norm = sqrt(norm)
     
 end subroutine compute_stress_norm
-
-subroutine fourth_order_identity(dimen, nvoigt, identity)
-    !! Creates a fourth-order identity (in Voigt notation)
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen, nvoigt 
-    double precision, intent(out) :: identity
-    dimension :: identity(nvoigt, nvoigt)
-
-    ! Local data
-    ! ----------
-    integer :: i
-
-    identity = 0.d0
-    do i = 1, dimen
-        identity(i, i) = 1.d0
-    end do
-
-    do i = dimen+1, nvoigt
-        identity(i, i) = 0.5d0
-    end do
-
-end subroutine fourth_order_identity
 
 subroutine one_kron_one(dimen, nvoigt, onekronone)
     !! Creates a one kron one tensor (in Voigt notation)
@@ -173,10 +181,13 @@ subroutine compute_stress_vonmises(dimen, nvoigt, tensor, VM)
 
     ! Local data
     ! ----------
-    double precision :: dev_tensor
-    dimension :: dev_tensor(nvoigt)
+    double precision :: one, dev, trace
+    dimension :: one(nvoigt), dev(nvoigt)
 
-    call compute_stress_deviatoric(dimen, nvoigt, tensor, dev_tensor)
+    call second_order_identity(dimen, nvoigt, one)
+    call compute_trace(dimen, nvoigt, tensor, trace)
+    dev = tensor - 1.d0/3.d0*trace*one 
+    
     call compute_stress_norm(dimen, nvoigt, tensor, VM)
     VM = sqrt(3.d0/2.d0)*VM
 
@@ -193,10 +204,11 @@ module elastoplasticity
 
         ! Outputs
         double precision :: lambda, mu, bulk
-        double precision, dimension(:,:), allocatable :: Ctensor, Stensor
+        double precision, dimension(:,:), allocatable :: Ctensor
 
         ! Local
-        double precision, dimension(:,:), allocatable :: Idev
+        double precision, dimension(:), allocatable :: one
+        double precision, dimension(:,:), allocatable :: II, Idev, onekronone
     
     end type mecamat
 
@@ -228,28 +240,30 @@ contains
         ! Local data
         ! ----------
         double precision :: lambda, mu, bulk
-        double precision, dimension(:, :), allocatable :: II, Idev, onekronone, CC, SS
+        double precision, dimension(:, :), allocatable :: II, Idev, onekronone, CC
+        double precision, dimension(:), allocatable :: one
 
         allocate(mat)
-        mat%dimen = dimen
+        mat%dimen  = dimen
         mat%nvoigt = dimen*(dimen+1)/2
         allocate(II(mat%nvoigt, mat%nvoigt), Idev(mat%nvoigt, mat%nvoigt), &
-                onekronone(mat%nvoigt, mat%nvoigt), CC(mat%nvoigt, mat%nvoigt), SS(mat%nvoigt, mat%nvoigt))
+                onekronone(mat%nvoigt, mat%nvoigt), CC(mat%nvoigt, mat%nvoigt), one(mat%nvoigt))
 
         ! Create special tensors in Voigt notation
+        call second_order_identity(mat%dimen, mat%nvoigt, one)
         call fourth_order_identity(mat%dimen, mat%nvoigt, II)
         call one_kron_one(mat%dimen, mat%nvoigt, onekronone)
         Idev = II - 1.d0/3.d0*onekronone
 
         ! Compute mechanical properties
         lambda = nu*E/((1+nu)*(1-2*nu))
-        mu = E/(2*(1+nu))
-        bulk = lambda + 2.d0/3.d0*mu
-        CC = lambda*onekronone + 2*mu*II
-        SS = 1.d0/(9.d0*bulk)*onekronone + 1.d0/(2.d0*mu)*(Idev)
+        mu     = E/(2*(1+nu))
+        bulk   = lambda + 2.d0/3.d0*mu
+        CC     = lambda*onekronone + 2*mu*II
 
         ! Save data computed
-        allocate(mat%Ctensor(mat%nvoigt, mat%nvoigt), mat%Stensor(mat%nvoigt, mat%nvoigt), mat%Idev(mat%nvoigt, mat%nvoigt))
+        allocate(mat%Ctensor(mat%nvoigt, mat%nvoigt), mat%Idev(mat%nvoigt, mat%nvoigt), &
+                mat%onekronone(mat%nvoigt, mat%nvoigt), mat%one(mat%nvoigt), mat%II(mat%nvoigt, mat%nvoigt))
         mat%young = E
         mat%hardening = H
         mat%beta = beta
@@ -259,91 +273,80 @@ contains
         mat%mu = mu
         mat%bulk = bulk
         mat%Ctensor = CC
-        mat%Stensor = SS
+        mat%II = II
         mat%Idev = Idev
+        mat%onekronone = onekronone
+        mat%one = one
 
     end subroutine initialize_mecamat
 
-    subroutine yield_combined_hardening(mat, sigma, alpha, ep, f, norm, NN)
-        !! Computes the value of f (consistency condition) in combined hardening criteria
-        
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(mecamat), pointer :: mat
-        double precision, intent(in) :: sigma, alpha, ep
-        dimension :: sigma(mat%nvoigt), alpha(mat%nvoigt)
-        double precision, intent(out) :: f, norm, NN
-        dimension :: NN(mat%nvoigt)
-
-        ! Local data
-        ! ----------
-        double precision :: eta, dev_sigma
-        dimension :: eta(mat%nvoigt), dev_sigma(mat%nvoigt)
-
-        call compute_stress_deviatoric(mat%dimen, mat%nvoigt, sigma, dev_sigma)
-        eta = dev_sigma - alpha
-        call compute_stress_norm(mat%dimen, mat%nvoigt, eta, norm)
-        f = norm - sqrt(2.d0/3.d0) * (mat%sigma_Y + (1-mat%beta)*mat%hardening*ep)   
-
-        NN = 0.d0
-        if (norm.gt.0.d0) NN = 1.d0/norm*eta
-
-    end subroutine yield_combined_hardening
-
-    subroutine cpp_combined_hardening(mat, deps, alpha_n0, ep_n0, sigma_n0, &
-                                    alpha_n1, ep_n1, sigma_n1, Dalg)
+    subroutine cpp_combined_hardening(mat, eps, ep_n0, a_n0, b_n0, ep_n1, a_n1, b_n1, sigma, Cep)
         !! Return closest point proyection (cpp) in combined hardening criteria
 
         implicit none
         ! Input / output data
         ! -------------------
         type(mecamat), pointer :: mat
-        double precision, intent(in) :: deps, alpha_n0, ep_n0, sigma_n0
-        dimension :: alpha_n0(mat%nvoigt), deps(mat%nvoigt), sigma_n0(mat%nvoigt)
+        double precision, intent(in) :: eps, ep_n0, a_n0, b_n0
+        dimension :: eps(mat%nvoigt), ep_n0(mat%nvoigt), b_n0(mat%nvoigt)
 
-        double precision, intent(out) ::alpha_n1, ep_n1, sigma_n1, Dalg
-        dimension :: alpha_n1(mat%nvoigt), sigma_n1(mat%nvoigt), Dalg(mat%nvoigt, mat%nvoigt)
+        double precision, intent(out) ::ep_n1, a_n1, b_n1, sigma, Cep
+        dimension :: ep_n1(mat%nvoigt), b_n1(mat%nvoigt), sigma(mat%nvoigt), Cep(mat%nvoigt, mat%nvoigt)
         
         ! Local data
         ! ----------
         integer :: i, j
-        double precision :: f, norm, dgamma, c1, c2
-        double precision :: sigma_trial, N, NNT
-        dimension :: sigma_trial(mat%nvoigt), N(mat%nvoigt), NNT(mat%nvoigt, mat%nvoigt)
+        double precision :: norm_eta, f_trial, dgamma, trace_eps, c1, c2
+        double precision :: e_n1, s_trial, eta_trial
+        dimension :: e_n1(mat%nvoigt), s_trial(mat%nvoigt), eta_trial(mat%nvoigt)
+        double precision, allocatable :: n_n1(:), nkn(:, :)
 
-        sigma_trial = sigma_n0 + matmul(mat%Ctensor, deps)
-        call yield_combined_hardening(mat, sigma_trial, alpha_n0, ep_n0, f, norm, N)
+        ! Compute trial elastic stress
+        call compute_trace(mat%dimen, mat%nvoigt, eps, trace_eps)        
+        e_n1      = eps - 1.d0/3.d0*trace_eps*mat%one 
+        s_trial   = 2*mat%mu*(e_n1 - ep_n0)
+        s_trial(mat%dimen+1:) = s_trial(mat%dimen+1:)*0.5d0
+        eta_trial = s_trial - b_n0
+        
+        ! Check yield condition
+        call compute_stress_norm(mat%dimen, mat%nvoigt, eta_trial, norm_eta)
+        f_trial = norm_eta - sqrt(2.d0/3.d0)*(mat%sigma_Y + mat%beta*mat%hardening*a_n0)  
 
-        if (f.le.0.d0) then ! Elastic point
-
-            sigma_n1 = sigma_trial ! stress
-            ep_n1 = ep_n0 ! effective plastic strain
-            alpha_n1 = alpha_n0 ! back stress
-            Dalg = mat%Ctensor ! tangent matrix
-
-        else ! Plastic point
-
-            dgamma = f/(2.d0*mat%mu+2.d0*mat%hardening/3.d0) ! consistency parameter
-            sigma_n1 = sigma_trial - 2.d0*mat%mu*dgamma*N
-            ep_n1 = ep_n0 + sqrt(2.d0/3.d0)*dgamma
-            alpha_n1 = alpha_n0 + 2.d0/3.d0*mat%beta*mat%hardening*dgamma*N
-
-            ! Compute consistent tangent matrix
-            c1 = 4.d0*mat%mu**2.d0/(2.d0*mat%mu+2.d0/3.d0*mat%hardening)
-            c2 = 4.d0*mat%mu**2.d0*dgamma/norm
-            do i = 1, mat%nvoigt
-                do j = 1, mat%nvoigt
-                    NNT(i, j) = N(i)*N(j)
-                end do
-            end do
-            Dalg = mat%Ctensor - (c1-c2)*NNT - c2*mat%Idev
-
+        Cep   = mat%Ctensor
+        sigma = s_trial + mat%bulk*trace_eps*mat%one
+        
+        if (f_trial.le.0.d0) then ! Elastic point
+            ep_n1 = ep_n0; a_n1 = a_n0; b_n1 = b_n0  
+            return
         end if
+
+        ! Compute n_n1 and find dgamma (usually using Newton Raphson)
+        allocate(n_n1(mat%nvoigt))
+        dgamma = f_trial/(2.d0*mat%mu+2.d0*mat%hardening/3.d0)
+        n_n1   = eta_trial/norm_eta
+        a_n1   = a_n0 + sqrt(2.d0/3.d0)*dgamma
+        
+        ! Update back stress, plastic strain and stress
+        b_n1  = b_n0 + 2.d0/3.d0*(1 - mat%beta)*mat%hardening*dgamma*n_n1
+        ep_n1 = ep_n0 + dgamma*n_n1
+        sigma = sigma - 2*mat%mu*dgamma*n_n1
+
+        ! Compute consistent elastoplastic tangent moduli
+        allocate(nkn(mat%nvoigt, mat%nvoigt))
+        c1 = 1.d0 - 2.d0*mat%mu*dgamma/norm_eta
+        c2 = 1.d0/(1.d0 + mat%hardening/(3.d0*mat%mu)) - (1.d0 - c1)
+
+        do i = 1, mat%nvoigt
+            do j = 1, mat%nvoigt
+                nkn(i, j) = n_n1(i)*n_n1(j)
+            end do
+        end do
+
+        Cep = Cep - 2*mat%mu*((1 - c1)*mat%Idev + c2*nkn)
 
     end subroutine cpp_combined_hardening
 
-    subroutine compute_meca_coefficients(dimen, nvoigt, nc_total, sigma, DD, invJ, detJ, coefs_Fint, coefs_Stiff)
+    subroutine compute_meca_coefficients(dimen, nvoigt, nc_total, sigma, Cep, invJ, detJ, coefs_Fint, coefs_Stiff)
         !! Computes the coefficients to use in internal force vector and stiffness matrix
         !! If a pseudo Newton-Raphson method is used, one must compute coef_Fint and coef_Stiff separately
 
@@ -351,8 +354,8 @@ contains
         ! Input / output data
         ! -------------------
         integer, intent(in) :: dimen, nvoigt, nc_total
-        double precision, intent(in) :: sigma, DD, invJ, detJ
-        dimension :: sigma(nvoigt, nc_total), DD(nvoigt, nvoigt, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
+        double precision, intent(in) :: sigma, Cep, invJ, detJ
+        dimension :: sigma(nvoigt, nc_total), Cep(nvoigt, nvoigt, nc_total), invJ(dimen, dimen, nc_total), detJ(nc_total)
 
         double precision, intent(out) :: coefs_Fint, coefs_Stiff
         dimension :: coefs_Fint(dimen*dimen, nc_total), coefs_Stiff(dimen*dimen, dimen*dimen, nc_total)
@@ -370,7 +373,7 @@ contains
                 do j = 1, dimen
                     
                     ! Compute stiffness coefficients    
-                    ETCE = matmul(transpose(EE(:,:,i)), matmul(DD(:,:,k), EE(:,:,j)))
+                    ETCE = matmul(transpose(EE(:,:,i)), matmul(Cep(:,:,k), EE(:,:,j)))
                     Dij = matmul(invJ(:,:,k), matmul(ETCE, transpose(invJ(:,:,k))))
                     coefs_Stiff((i-1)*dimen+1:i*dimen, (j-1)*dimen+1:j*dimen, k) = Dij*detJ(k)
 
