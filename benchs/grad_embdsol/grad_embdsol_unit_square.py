@@ -2,16 +2,18 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
-# Foundation, either version 3 of the License, or (at your option) any later version.
+# Yeti is free software: you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option)
+# any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-# PURPOSE. See the GNU Lesser General Public License for more details.
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
-# with Yeti. If not, see <https://www.gnu.org/licenses/>
+# You should have received a copy of the GNU Lesser General Public License
+# along with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 # -*- coding: utf-8 -*-
 
@@ -41,9 +43,10 @@ nb_ref[:, 1] = [0, 0, 0]
 modeleIGA.refine(nb_ref, nb_deg, additional_knots)
 initcoords = modeleIGA._COORDS
 
+
 # Build optim model
 def shapemodif(coords0, igapara, var):
-    igapara._COORDS[:,:] = coords0[:,:]
+    igapara._COORDS[:, :] = coords0[:, :]
     # shape change is made on nodes 10 and 12
     igapara._COORDS[0, 9] = initcoords[0, 9] + var[0]
     igapara._COORDS[1, 9] = initcoords[1, 9] + var[1]
@@ -53,6 +56,7 @@ def shapemodif(coords0, igapara, var):
     igapara._COORDS[2, 11] = initcoords[2, 11] + var[5]
 
     return None
+
 
 # Refinement from optim model to analysis model
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
@@ -65,7 +69,7 @@ optPB = OPTmodelling(modeleIGA, nb_var, shapemodif,
                      nb_refinementByDirection=nb_ref)
 
 x0 = np.zeros((6))
-print(optPB.compute_volume(x0, listpatch=[0, 1]))                     
+print(optPB.compute_volume(x0, listpatch=[0, 1]))
 
 print(optPB.compute_compliance_discrete(x0))
 
