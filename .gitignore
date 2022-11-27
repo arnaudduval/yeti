@@ -1,4 +1,6 @@
 build
+venv
 .vscode/settings.json
 src/parameters.mod
 *.save
+.vscode/cmake-kits.json
