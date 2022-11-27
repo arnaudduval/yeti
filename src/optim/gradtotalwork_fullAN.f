@@ -217,7 +217,6 @@ c     Compute initial elementary matrix and load vector
             elseif(ELT_TYPE_patch == 'U10') then
                 ! embedded solid element
                 if (activeElement(jelem) == 1) then
-                    write(*,*) "Element is active"
                     kk = int(PROPS_patch(2))
                     call gradUELMAT10adj(U_elem(:,:nnode_patch),
      &                      UA_elem(:,:nnode_patch,:), nadj, mcrd, 
