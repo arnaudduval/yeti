@@ -148,7 +148,7 @@ class IGAsubdomain:
         #self._LU = sp.linalg.splu(self._K2solve)
         #self._LU = pseudoLU(self._K2solve,tol=1.e-5)
         #self._LU = pseudoDense(self._K2solve)
-        if tol is 1:
+        if tol == 1.:
             self._LU = pseudoDense(self._K2solve)
         else:
             self._LU = pseudoLUstep(self._K2solve,tol=tol)
