@@ -32,7 +32,7 @@ target_link_libraries(optim base)
 
 CreateF2PYModule(NAME volume 
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/volume.f90 
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradvolume.f 
+                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradvolume.f90 
                  LINK_LIBRARIES base 
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
                  
