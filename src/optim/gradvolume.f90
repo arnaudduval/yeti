@@ -61,7 +61,7 @@ subroutine computeGradVolume(gradV, listpatch,      &
     double precision :: COORDS_elem,XI,R,dRdxi,detJ
     dimension COORDS_elem(3,MAXVAL(NNODE)),XI(3),R(MAXVAL(NNODE)),  &
      &     dRdxi(MAXVAL(NNODE),3)
-    integer :: i,k,l,kk,NumPatch,num_elem,sctr
+    integer :: i,j,k,l,kk,NumPatch,num_elem,sctr,idim
     dimension sctr(MAXVAL(NNODE))
 
     !! Embedded entities
@@ -75,11 +75,15 @@ subroutine computeGradVolume(gradV, listpatch,      &
     dimension sctr_map(MAXVAL(NNODE))
       
     !! grad
-    double precision :: AIxAJ,AI,normV, dA1dPe,dA2dPe,dA1dPm,dA2dPm,    &
-     &     coef1,coef2
-    dimension AIxAJ(3,3),AI(3,3),     &
-     &     dA1dPe(3,3,MAXVAL(NNODE)),dA2dPe(3,3,MAXVAL(NNODE)), &
-     &     dA1dPm(3,3,MAXVAL(NNODE)),dA2dPm(3,3,MAXVAL(NNODE))
+    double precision :: AIxAJ,AI,normV!, dA1dPe,dA2dPe,dA1dPm,dA2dPm,    &
+    !  &     coef1,coef2
+    dimension AIxAJ(3,3),AI(3,3)!!,     &
+    !  &     dA1dPe(3,3,MAXVAL(NNODE)),dA2dPe(3,3,MAXVAL(NNODE)), &
+    !  &     dA1dPm(3,3,MAXVAL(NNODE)),dA2dPm(3,3,MAXVAL(NNODE))
+    double precision :: dAidPe, dAidPm
+    double precision coefi
+    dimension coefi(3)
+    dimension dAidPe(3,3,3,MAXVAL(NNODE)), dAidPm(3,3,3,MAXVAL(NNODE))
       
     !! Gauss points
     integer :: NbPtInt, n
@@ -99,7 +103,7 @@ subroutine computeGradVolume(gradV, listpatch,      &
             call extractNurbsPatchMechInfos(NumPatch,IEN,PROPS,JPROPS,  &
                 &        NNODE,nb_elem_patch,ELT_TYPE,TENSOR)
             
-            if (ELT_TYPE_patch == 'U30') then
+            if ((ELT_TYPE_patch == 'U30').or.(ELT_TYPE_patch == 'U10')) then
                 i = int(PROPS_patch(2))
                 call extractMappingInfos(i,nb_elem_patch,Nkv,Jpqr,Nijk,Ukv, &
                     &           weight,IEN,PROPS,JPROPS,NNODE,ELT_TYPE,TENSOR)         
@@ -141,7 +145,7 @@ subroutine computeGradVolume(gradV, listpatch,      &
                     !! Build tangent vectors
 
                     !! For embedded cases
-                    if (ELT_TYPE_patch == 'U30') then
+                    if ((ELT_TYPE_patch == 'U30').or.(ELT_TYPE_patch == 'U10')) then
                         Re(:) = R(:)
                         dRedxi(:,:) = dRdxi(:,:)
                     
@@ -149,8 +153,11 @@ subroutine computeGradVolume(gradV, listpatch,      &
                         BI(:,:) = zero
                         do i = 1,nnode_patch
                             XI(:) = XI(:) + Re(i)*COORDS_elem(:,i)
-                            BI(:,1) = BI(:,1) + dRedxi(i,1)*COORDS_elem(:,i)
-                            BI(:,2) = BI(:,2) + dRedxi(i,2)*COORDS_elem(:,i)
+                            do j = 1, dim_patch
+                                BI(:,j) = BI(:,j) + dRedxi(i,j)*COORDS_elem(:,i)
+                            enddo
+                            !!BI(:,1) = BI(:,1) + dRedxi(i,1)*COORDS_elem(:,i)
+                            !!BI(:,2) = BI(:,2) + dRedxi(i,2)*COORDS_elem(:,i)
                         enddo
                     
                         call updateMapElementNumber(XI(:))
@@ -191,36 +198,55 @@ subroutine computeGradVolume(gradV, listpatch,      &
 
                         !! compute derivative versus the control points
                         !! - embedded CPs
-                        dA1dPe(:,:,:) = zero
-                        dA2dPe(:,:,:) = zero
+                        ! dA1dPe(:,:,:) = zero
+                        ! dA2dPe(:,:,:) = zero
+                        dAidPe(:,:,:,:) = zero
                         do i = 1,nnode_patch
                             do l = 1,3
-                                dA1dPe(:,l,i) = dRedxi(i,1)*VI(:,l)     &
-                                    &   + BI(l,1)*R(i)*dVI(:,l)
-                                dA2dPe(:,l,i) = dRedxi(i,2)*VI(:,l)     &
-                                    &   + BI(l,2)*R(i)*dVI(:,l)
-                                do k = 1,3
-                                    if (k /= l) then
-                                        kk = l+k+1
-                                        dA1dPe(:,l,i) = dA1dPe(:,l,i)       &
-                                            &   + BI(k,1)*R(i)*dVI(:,kk)
-                                        dA2dPe(:,l,i) = dA2dPe(:,l,i)       &
-                                            &   + BI(k,2)*R(i)*dVI(:,kk)
-                                    endif
+                                ! dA1dPe(:,l,i) = dRedxi(i,1)*VI(:,l)     &
+                                !     &   + BI(l,1)*R(i)*dVI(:,l)
+                                ! dA2dPe(:,l,i) = dRedxi(i,2)*VI(:,l)     &
+                                !     &   + BI(l,2)*R(i)*dVI(:,l)
+                                ! do k = 1,3
+                                !     if (k /= l) then
+                                !         kk = l+k+1
+                                !         dA1dPe(:,l,i) = dA1dPe(:,l,i)       &
+                                !             &   + BI(k,1)*R(i)*dVI(:,kk)
+                                !         dA2dPe(:,l,i) = dA2dPe(:,l,i)       &
+                                !             &   + BI(k,2)*R(i)*dVI(:,kk)
+                                !     endif
+                                ! enddo
+                                do idim  = 1, dim_patch
+                                    dAidPe(idim,:,l,i) = dRedxi(i,idim)*VI(:,l)     &
+                                     &   + BI(l,idim)*R(i)*dVI(:,l)
+                                    do k = 1, 3
+                                        if (k /= l) then
+                                            kk = l+k+1
+                                            dAidPe(idim,:,l,i) = dAidPe(idim,:,l,i)       &
+                                                &   + BI(k,idim)*R(i)*dVI(:,kk)
+                                        endif
+                                    enddo
                                 enddo
                             enddo
                         enddo
 
                         !! - mapping CPs
-                        dA1dPm(:,:,:) = zero
-                        dA2dPm(:,:,:) = zero
+                        ! dA1dPm(:,:,:) = zero
+                        ! dA2dPm(:,:,:) = zero
+                        dAidPm(:,:,:,:) = zero
 
                         do i = 1,nnode_map
-                            coef1 = SUM( BI(:,1)*dRmdxi(i,:) )
-                            coef2 = SUM( BI(:,2)*dRmdxi(i,:) )
+                            ! coef1 = SUM( BI(:,1)*dRmdxi(i,:) )
+                            ! coef2 = SUM( BI(:,2)*dRmdxi(i,:) )
+                            do idim = 1, dim_patch
+                                coefi(idim) = SUM( BI(:,idim)*dRmdxi(i,:) )
+                            enddo
                             do k = 1,3
-                                dA1dPm(k,k,i) = coef1
-                                dA2dPm(k,k,i) = coef2
+                                do idim = 1, dim_patch
+                                    dAidPm(idim,k,k,i) = coefi(idim)
+                                enddo
+                                ! dA1dPm(k,k,i) = coef1
+                                ! dA2dPm(k,k,i) = coef2
                             enddo
                         enddo
 
@@ -251,8 +277,8 @@ subroutine computeGradVolume(gradV, listpatch,      &
                                 k = sctr(i)
                                 do l = 1,3
                                     gradV(l,k) = gradV(l,k) +   &
-                                        &   ( SUM( AIxAJ(:,1) * dA1dPe(:,l,i) )     &
-                                        &   + SUM( AIxAJ(:,2) * dA2dPe(:,l,i) )     &
+                                        &   ( SUM( AIxAJ(:,1) * dAidPe(1,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,2) * dAidPe(2,:,l,i) )     &
                                         &   ) * detJ
                                 enddo
                             enddo
@@ -262,8 +288,8 @@ subroutine computeGradVolume(gradV, listpatch,      &
                                 k = sctr_map(i)
                                 do l = 1,3
                                     gradV(l,k) = gradV(l,k) +       &
-                                        &   ( SUM( AIxAJ(:,1) * dA1dPm(:,l,i) )     &
-                                        &   + SUM( AIxAJ(:,2) * dA2dPm(:,l,i) )     &
+                                        &   ( SUM( AIxAJ(:,1) * dAidPm(1,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,2) * dAidPm(2,:,l,i) )     &
                                         &   ) * detJ
                                 enddo
                             enddo
