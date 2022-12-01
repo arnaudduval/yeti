@@ -103,7 +103,7 @@ add_test(NAME opt_centrif_U1_cplg_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}
     # volume gradient
 add_test(NAME gradvol_embdsol_cube_nonli_hull 
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull.py
-         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdso
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # Benchs for sensibilities computation on embedded solid element
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
