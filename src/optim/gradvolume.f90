@@ -153,8 +153,8 @@ subroutine computeGradVolume(gradV, listpatch,      &
                         BI(:,:) = zero
                         do i = 1,nnode_patch
                             XI(:) = XI(:) + Re(i)*COORDS_elem(:,i)
-                            do j = 1, dim_patch
-                                BI(:,j) = BI(:,j) + dRedxi(i,j)*COORDS_elem(:,i)
+                            do idim = 1, dim_patch
+                                BI(:,idim) = BI(:,idim) + dRedxi(i,idim)*COORDS_elem(:,i)
                             enddo
                             !!BI(:,1) = BI(:,1) + dRedxi(i,1)*COORDS_elem(:,i)
                             !!BI(:,2) = BI(:,2) + dRedxi(i,2)*COORDS_elem(:,i)
