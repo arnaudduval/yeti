@@ -98,8 +98,15 @@ add_test(NAME centrif_U1_cpl_U10_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PA
 add_test(NAME opt_centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0)
 add_test(NAME opt_centrif_U1_cplg_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1)
 
+
+# Embedded solid element sensibilities
+    # volume gradient
+add_test(NAME gradvol_embdsol_cube_nonli_hull 
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdso
+)
 # Benchs for sensibilities computation on embedded solid element
-add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
+#add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
 
 set_tests_properties(
                      platevib 
@@ -138,7 +145,7 @@ set_tests_properties(
                      centrif_U1_cpl_U10_2loads
                      opt_centrif_U1_C0
                      opt_centrif_U1_cplg_U1
-                     grad_embdsol_unit_square
+                     gradvol_embdsol_cube_nonli_hull
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 
