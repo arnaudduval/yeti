@@ -15,6 +15,7 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx.ext.mathjax',
     'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon'       # Handle Numpy or Google style docstrings
 ]
 
 templates_path = ['_templates']
