@@ -4,3 +4,5 @@ venv
 src/parameters.mod
 *.save
 .vscode/cmake-kits.json
+benchs/*/results/*.vtu
+benchs/*/results/*.vtk
