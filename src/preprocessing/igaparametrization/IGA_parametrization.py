@@ -2249,3 +2249,22 @@ class IGAparametrization:
             generate_vtk_wsol(*inputs)
 
         return None
+
+    @property
+    def coords(self):
+        """
+        Coordinates of control points
+        """
+        return self._COORDS
+
+    @coords.setter
+    def coords(self, coords):
+        self._COORDS = coords
+
+    @property
+    def nb_patch(self):
+        """"
+        Total number of patchs in the model
+        """
+        return self._nb_patch
+
