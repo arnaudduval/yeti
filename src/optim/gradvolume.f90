@@ -309,15 +309,40 @@ subroutine computeGradVolume(gradV, listpatch,      &
                         call cross(AI(:,1),AI(:,2), AIxAJ(:,3))
                         call cross(AI(:,2),AI(:,3), AIxAJ(:,1))
                         call cross(AI(:,3),AI(:,1), AIxAJ(:,2))
+                        if (ELT_TYPE_patch == 'U10') then
+                            ! embedded volume
+                            do i = 1,nnode_patch
+                                k = sctr(i)
+                                do l = 1,3
+                                    gradV(l,k) = gradV(l,k) +   &
+                                        &   ( SUM( AIxAJ(:,1) * dAidPe(1,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,2) * dAidPe(2,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,3) * dAidPe(3,:,l,i) )     &
+                                        &   ) * detJ
+                                enddo
+                            enddo
 
-                        do i = 1,nnode_patch
-                            k = sctr(i)
-                            gradV(:,k) = gradV(:,k) +       &
-                                &   ( AIxAJ(:,3)*dRdxi(i,3)     &
-                                &   + AIxAJ(:,1)*dRdxi(i,1)     &
-                                &   + AIxAJ(:,2)*dRdxi(i,2)     &
-                                &   ) * detJ
-                        enddo
+                            ! mapping
+                            do i = 1,nnode_map
+                                k = sctr_map(i)
+                                do l = 1,3
+                                    gradV(l,k) = gradV(l,k) +       &
+                                        &   ( SUM( AIxAJ(:,1) * dAidPm(1,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,2) * dAidPm(2,:,l,i) )     &
+                                        &   + SUM( AIxAJ(:,3) * dAidPm(3,:,l,i) )     &
+                                        &   ) * detJ
+                                enddo
+                            enddo
+                        else
+                            do i = 1,nnode_patch
+                                k = sctr(i)
+                                gradV(:,k) = gradV(:,k) +       &
+                                    &   ( AIxAJ(:,3)*dRdxi(i,3)     &
+                                    &   + AIxAJ(:,1)*dRdxi(i,1)     &
+                                    &   + AIxAJ(:,2)*dRdxi(i,2)     &
+                                    &   ) * detJ
+                            enddo
+                        endif
                     endif
                 enddo
             enddo
