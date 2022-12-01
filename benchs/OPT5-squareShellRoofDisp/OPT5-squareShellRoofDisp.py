@@ -151,7 +151,4 @@ error = np.sqrt(sum((x-x_ref)**2.))
 
 print(error)
 
-if error > 1.e-5:
-    sys.exit(-1)
-else:
-    sys.exit(0)
+assert error < 5.e-4
