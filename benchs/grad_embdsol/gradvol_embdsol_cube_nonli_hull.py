@@ -73,4 +73,4 @@ if __name__ == "__main__":
     error = np.linalg.norm(gradV_DF - gradV_AN) / v0
     print(f"Error : {error:.02E}")
 
-    assert error < 1.e-5
+    assert error < 1.e-6
