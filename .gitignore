@@ -6,3 +6,4 @@ src/parameters.mod
 .vscode/cmake-kits.json
 benchs/*/results/*.vtu
 benchs/*/results/*.vtk
+.coverage
