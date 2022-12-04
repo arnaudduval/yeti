@@ -162,9 +162,11 @@ bds = ((0.,1.),)*nb_var
 # Run optimization
 
 ## 1 - get given 1st eigenvalue
-res = minimize(frecIGA,x0,method='SLSQP',jac=gradFrecIGA,bounds=bds,callback=saveXk)
+res = minimize(frecIGA,x0,method='SLSQP',jac=gradFrecIGA,bounds=bds,callback=saveXk, tol = 1.e-9)
 
-if not res['success'] or res['fun'] > 0.01:
+if not res['success'] or res['fun'] > 0.02:
+    print("res['success'] : ", res['success'])
+    print("res['fun'] : ", res['fun'])
     sys.exit(-1)
 else:
     sys.exit(0)
