@@ -71,6 +71,7 @@ if __name__ == "__main__":
     gradV_AN = optPB.compute_gradVolume_AN(x0)
 
     error = np.linalg.norm(gradV_DF - gradV_AN) / v0
+    print(f"Volume : {v0:.02E}")
     print(f"Error : {error:.02E}")
 
     assert error < 1.e-6
