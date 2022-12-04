@@ -109,6 +109,10 @@ add_test(NAME gradvol_embdsol_cube_nonli_embd
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_embd.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
+add_test(NAME gradvol_embdsol_cube_nonli_hull_embd
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull_embd.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
 # Benchs for sensibilities computation on embedded solid element
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
 
