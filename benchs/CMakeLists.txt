@@ -155,6 +155,7 @@ set_tests_properties(
                      opt_centrif_U1_cplg_U1
                      gradvol_embdsol_cube_nonli_hull
                      gradvol_embdsol_cube_nonli_embd
+                     gradvol_embdsol_cube_nonli_hull_embd
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 
