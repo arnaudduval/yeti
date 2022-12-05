@@ -17,21 +17,21 @@ def cpp_combined_hardening_1D_s1(properties, eps, ep_n0, a_n0, b_n0):
 	eta_trial = sigma_trial - b_n0
 
 	# Check yield status
-	fthreshold = sigma_Y0*1e-6
 	f_trial = abs(eta_trial) - (sigma_Y0 + beta*H*a_n0)
 
-	if f_trial <= fthreshold: # Elastic
+	if f_trial <= sigma_Y0*1e-6: # Elastic
 		sigma = sigma_trial
 		ep_n1 = ep_n0
 		a_n1 = a_n0
 		b_n1 = b_n0
 		
 	else: # Plastic
+		N = np.sign(eta_trial)
 		dgamma = f_trial/(E + H)
-		sigma = sigma_trial - dgamma*E*np.sign(eta_trial)
-		ep_n1 = ep_n0 + dgamma*np.sign(eta_trial)
+		sigma = sigma_trial - dgamma*E*N
+		ep_n1 = ep_n0 + dgamma*N
 		a_n1 = a_n0 + dgamma
-		b_n1 = b_n0 + dgamma*(1-beta)*H*np.sign(eta_trial)
+		b_n1 = b_n0 + (1-beta)*H*dgamma*N
 
 	return [sigma, ep_n1, a_n1, b_n1]
 
@@ -46,10 +46,9 @@ def cpp_combined_hardening_1D_s2(properties, eps, ep_n0, a_n0, b_n0):
 	eta_trial = sigma_trial - b_n0
 
 	# Check yield status
-	fthreshold = sigma_Y0*1e-6
 	f_trial = abs(eta_trial) - (sigma_Y0 + beta*H*a_n0)
 
-	if f_trial <= fthreshold: # Elastic
+	if f_trial <= sigma_Y0*1e-6: # Elastic
 		Cep = E
 	else: # Plastic
 		Cep = E*H/(E + H)

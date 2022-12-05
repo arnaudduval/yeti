@@ -619,8 +619,8 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     implicit none 
     ! Input / output data
     ! -------------------
-    double precision, parameter :: thresholdPCG = 1.d-11, thresholdNL=1.d-11
-    integer, parameter :: nbIterNL = 20, nbIterPCG = 100
+    double precision, parameter :: thresholdPCG = 1.d-12, thresholdNL=1.d-10
+    integer, parameter :: nbIterNL = 15, nbIterPCG = 100
     integer, intent(in) :: nr_total_t, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &

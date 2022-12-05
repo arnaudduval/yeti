@@ -355,17 +355,22 @@ class fortran_mf_wq(thermoMechaModel):
 					table_Kprop, table_Cprop, self._invJ, self._detJ, theta, methodPCG]
 
 		if self._dim == 2: raise Warning('Until now not done')
-		if self._dim == 3: sol, resPCG, Cprop, Kprop = solver.mf_wq_transient_nonlinear_3d(*inputs)
+		if self._dim == 3: sol, resPCG, Kprop, Cprop = solver.mf_wq_transient_nonlinear_3d(*inputs)
 		resPCG = resPCG[:, resPCG[0, :]>0]
 		Cprop  = Cprop[:, :np.shape(resPCG)[1]]
 		Kprop  = Kprop[:, :np.shape(resPCG)[1]]
 
-		properties = []
-		properties.append(self.interpolate_ControlPoints(datafield=Cprop[:, pos]))
-		properties.append(self.interpolate_ControlPoints(datafield=Kprop[:, pos]))
-		properties = np.array(properties)
+		properties_first = []
+		properties_first.append(self.interpolate_ControlPoints(datafield=Cprop[:, 0]))
+		properties_first.append(self.interpolate_ControlPoints(datafield=Kprop[:, 0]))
+		properties_first = np.array(properties_first)
 
-		return sol, resPCG, properties
+		properties_last = []
+		properties_last.append(self.interpolate_ControlPoints(datafield=Cprop[:, pos]))
+		properties_last.append(self.interpolate_ControlPoints(datafield=Kprop[:, pos]))
+		properties_last = np.array(properties_last)
+
+		return sol, resPCG, properties_first, properties_last
 
 	def interpolate_ControlPoints(self, funfield=None, datafield=None, nbIterPCG=100, threshold=1e-14):
 		" Interpolation from parametric space to physical space "

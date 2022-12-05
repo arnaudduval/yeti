@@ -20,11 +20,10 @@ from lib.base_functions import (create_knotvector,
 								eval_basis_python, 
 								iga_find_positions_weights,
 								wq_find_weights, 
-								relativeError
+								relativeError, cropImage
 )
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
-from PIL import Image
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -98,19 +97,6 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	for xi, yi in zip(x, y):
 		ax.plot([xi, xi], [0, yi], color=color)
 	return
-
-def cropImage(filename):
-	im = Image.open(filename).convert('RGB')
-	na = np.array(im)
-	colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
-
-	# Find first and last row containing colored pixels
-	top, bottom = colorY[0], colorY[-1]
-
-	# Extract Region of Interest
-	ROI = na[top:bottom, :]
-	Image.fromarray(ROI).save(filename)
-	return 
 
 # Set global variables
 CASE      = 10

@@ -208,7 +208,7 @@ module elastoplasticity
 
         ! Local
         double precision, dimension(:), allocatable :: one
-        double precision, dimension(:,:), allocatable :: II, Idev, onekronone
+        double precision, dimension(:,:), allocatable :: Idev, onekronone
     
     end type mecamat
 
@@ -263,7 +263,7 @@ contains
 
         ! Save data computed
         allocate(mat%Ctensor(mat%nvoigt, mat%nvoigt), mat%Idev(mat%nvoigt, mat%nvoigt), &
-                mat%onekronone(mat%nvoigt, mat%nvoigt), mat%one(mat%nvoigt), mat%II(mat%nvoigt, mat%nvoigt))
+                mat%onekronone(mat%nvoigt, mat%nvoigt), mat%one(mat%nvoigt))
         mat%young = E
         mat%hardening = H
         mat%beta = beta
@@ -273,7 +273,6 @@ contains
         mat%mu = mu
         mat%bulk = bulk
         mat%Ctensor = CC
-        mat%II = II
         mat%Idev = Idev
         mat%onekronone = onekronone
         mat%one = one
@@ -297,15 +296,15 @@ contains
         ! ----------
         integer :: i, j
         double precision :: norm_eta, f_trial, dgamma, trace_eps, c1, c2
-        double precision :: e_n1, s_trial, eta_trial
-        dimension :: e_n1(mat%nvoigt), s_trial(mat%nvoigt), eta_trial(mat%nvoigt)
-        double precision, allocatable :: n_n1(:), nkn(:, :)
+        double precision :: s_trial, eta_trial
+        dimension :: s_trial(mat%nvoigt), eta_trial(mat%nvoigt)
+        double precision, allocatable :: N(:), NkronN(:, :), Nn(:)
 
-        ! Compute trial elastic stress
+        ! Compute trial stress
         call compute_trace(mat%dimen, mat%nvoigt, eps, trace_eps)        
-        e_n1      = eps - 1.d0/3.d0*trace_eps*mat%one 
-        s_trial   = 2*mat%mu*(e_n1 - ep_n0)
-        s_trial(mat%dimen+1:) = s_trial(mat%dimen+1:)*0.5d0
+        s_trial = 2*mat%mu*matmul(mat%Idev, eps - ep_n0)
+
+        ! Compute shifted stress
         eta_trial = s_trial - b_n0
         
         ! Check yield condition
@@ -320,29 +319,39 @@ contains
             return
         end if
 
-        ! Compute n_n1 and find dgamma (usually using Newton Raphson)
-        allocate(n_n1(mat%nvoigt))
-        dgamma = f_trial/(2.d0*mat%mu+2.d0*mat%hardening/3.d0)
-        n_n1   = eta_trial/norm_eta
-        a_n1   = a_n0 + sqrt(2.d0/3.d0)*dgamma
-        
-        ! Update back stress, plastic strain and stress
-        b_n1  = b_n0 + 2.d0/3.d0*(1 - mat%beta)*mat%hardening*dgamma*n_n1
-        ep_n1 = ep_n0 + dgamma*n_n1
-        sigma = sigma - 2*mat%mu*dgamma*n_n1
+        ! Compute df/dsigma
+        allocate(N(mat%nvoigt))
+        N = eta_trial/norm_eta
 
-        ! Compute consistent elastoplastic tangent moduli
-        allocate(nkn(mat%nvoigt, mat%nvoigt))
-        c1 = 1.d0 - 2.d0*mat%mu*dgamma/norm_eta
-        c2 = 1.d0/(1.d0 + mat%hardening/(3.d0*mat%mu)) - (1.d0 - c1)
+        ! Compute plastic-strain increment        
+        dgamma = 3.d0*f_trial/(6.d0*mat%mu+2.d0*mat%hardening)
+
+        ! Update stress
+        sigma = sigma - 2*mat%mu*dgamma*N
+
+        ! Update plastic strain
+        allocate(Nn(mat%nvoigt))
+        Nn = N; Nn(mat%dimen+1:) = 2*Nn(mat%dimen+1:)
+        ep_n1 = ep_n0 + dgamma*Nn !!!!!!!!!!!!!!!!!!!!! Maybe should be modified (voigt notation)
+        
+        ! Update internal hardening variable
+        a_n1  = a_n0 + sqrt(2.d0/3.d0)*dgamma
+        
+        ! Update back stress
+        b_n1  = b_n0 + 2.d0/3.d0*(1 - mat%beta)*mat%hardening*dgamma*N
+        
+        ! Compute consistent tangent modulus
+        allocate(NkronN(mat%nvoigt, mat%nvoigt))
+        c1 = 2.d0*mat%mu*dgamma/norm_eta
+        c2 = 1.d0/(1.d0 + mat%hardening/(3.d0*mat%mu)) - c1
 
         do i = 1, mat%nvoigt
             do j = 1, mat%nvoigt
-                nkn(i, j) = n_n1(i)*n_n1(j)
+                NkronN(i, j) = N(i)*N(j)
             end do
         end do
 
-        Cep = Cep - 2*mat%mu*((1 - c1)*mat%Idev + c2*nkn)
+        Cep = Cep - 2*mat%mu*(c1*mat%Idev + c2*NkronN)
 
     end subroutine cpp_combined_hardening
 

@@ -8,7 +8,7 @@ from lib.__init__ import *
 from lib.physics import *
 from lib.create_geomdl import geomdlModel
 from lib.fortran_mf_wq import fortran_mf_wq
-from lib.base_functions import create_table_properties, sigmoid
+from lib.base_functions import create_table_properties, sigmoid, cropImage
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -16,27 +16,27 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = True
+dataExist   = False
 geolist     = ['VB', 'CB']
-method_list = ['WP', 'C', 'JMC']
-# method_list = ['JMC']
+# method_list = ['WP', 'C', 'JMC']
+method_list = ['JMC']
 
 if not dataExist:
 
 	degree, cuts = 6, 5
 	conductivity, capacity = 0.1, 1.0
 	theta = 1.0
-	time_list = np.linspace(0, 10, 41)  
+	time_list = np.linspace(0, 20, 41)  
 	table_Kprop = create_table_properties(setKprop, prop=conductivity)
 	table_Cprop = create_table_properties(setCprop, prop=capacity)     
 
-	for geoname in geolist:
+	for geoName in geolist:
 		for PCGmethod in method_list:
-			filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'        
+			filename = folder + 'ResPCG_' + geoName + '_' + PCGmethod + '.dat'        
 
 			# Create model 
 			geometry = {'degree':[degree, degree, degree]}
-			modelGeo = geomdlModel(geoname, **geometry)
+			modelGeo = geomdlModel(geoName, **geometry)
 			modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 														np.array([cuts, cuts, cuts]))
 			modelPhy = fortran_mf_wq(modelIGA)
@@ -65,23 +65,68 @@ if not dataExist:
 			Fext  = np.kron(Fendt, sigmoid(time_list))
 
 			# Solve
-			N = 21
-			Tsol, resPCG, properties = modelPhy.MFtransientHeatNL(Fext=Fext[:, :N], G=GBound[:, :N], time_list=time_list[:N],
+			N = 40
+			Tsol, resPCG, properties_first, properties_last = modelPhy.MFtransientHeatNL(Fext=Fext[:, :N], G=GBound[:, :N], time_list=time_list[:N],
 											table_Kprop=table_Kprop, table_Cprop=table_Cprop, 
 											methodPCG=PCGmethod, theta=theta)
-											
-			modelPhy.export_results(u_ctrlpts=properties, nbDOF=2, folder=folder+geoname+'_'+PCGmethod+'/')
+
+			# folderVTK = folder + geoName + '_' + PCGmethod + '/'					
+			# modelPhy.export_results(u_ctrlpts=properties_first, nbDOF=2, folder=folderVTK, name='Iga00')
+			# properties_first[[0, 1], :] = properties_first[[1, 0], :]
+			# modelPhy.export_results(u_ctrlpts=properties_first, nbDOF=2, folder=folderVTK, name='Iga01')
+
+			# modelPhy.export_results(u_ctrlpts=properties_last, nbDOF=2, folder=folderVTK, name='Iga10')
+			# properties_last[[0, 1], :] = properties_last[[1, 0], :]
+			# modelPhy.export_results(u_ctrlpts=properties_last, nbDOF=2, folder=folderVTK, name='Iga11')
+			
 			print('Finish')
 			np.savetxt(filename, resPCG)
 			# modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
 
 else:
+	
+	# for geoName in geolist:
+	# 	PCGmethod = 'JMC'
+	# 	folderVTK = folder + geoName + '_' + PCGmethod + '/'
 
-	for geoname in geolist:
+	# 	for i in [0, 1]: # first or last
+	# 		for j in [0, 1]:
+	# 			if j == 0: propName = 'Capacity'
+	# 			if j == 1: propName = 'Conductivity'
+	# 			gridName = 'Iga' + str(i) + str(j) + '.vts'
+	# 			grid = pv.read(folderVTK + gridName)
+
+	# 			sargs = dict(
+	# 				title = propName,
+	# 				title_font_size=50,
+	# 				label_font_size=40,
+	# 				shadow=True,
+	# 				n_labels=2,
+	# 				fmt="%.1f",
+	# 				position_x=0.2, 
+	# 				position_y=0.1,
+	# 			)
+	# 			pv.start_xvfb()
+	# 			plotter = pv.Plotter(off_screen=True)
+	# 			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+	# 			if geoName == 'CB': plotter.camera.zoom(0.6)				
+	# 			if geoName == 'VB': 
+	# 				plotter.camera_position  = 'yz'
+	# 				plotter.camera.elevation = 45
+
+	# 			plotter.background_color = 'white'
+	# 			plotter.window_size = [1600, 1600]
+	# 			filename = folderVTK + 'VTK_Results' + str(i) + str(j) + '.png'
+	# 			plotter.screenshot(filename)
+
+	# 			cropImage(filename)
+			
+
+	for geoName in geolist:
 		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
 		for PCGmethod in method_list:
-			filename = folder + 'ResPCG_' + geoname + '_' + PCGmethod + '.dat'
+			filename = folder + 'ResPCG_' + geoName + '_' + PCGmethod + '.dat'
 			resPCG = np.loadtxt(filename)
 
 			if PCGmethod   == "WP" : labelmethod = 'w.o. preconditioner'
@@ -99,6 +144,6 @@ else:
 			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 			ax.set_ybound(lower=1e-12, upper=10)
 
-		filename = folder + 'TransientNL_' + geoname + '.pdf'
+		filename = folder + 'TransientNL_' + geoName + '.pdf'
 		fig.tight_layout()
 		fig.savefig(filename)

@@ -567,7 +567,7 @@ class thermoMechaModel():
 
 		return JJ_interp, position_interp, detJJ_interp, u_interp
 	
-	def export_results(self, u_ctrlpts=None, folder=None, nbDOF=3): 
+	def export_results(self, u_ctrlpts=None, folder=None, name=None, nbDOF=3): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
@@ -625,7 +625,8 @@ class thermoMechaModel():
 		pointData['detJ'] = DET
 
 		# Export geometry
-		name = folder + self._name
+		if name is None: name = self._name
+		name = folder + name
 		gridToVTK(name, X1, X2, X3, pointData=pointData)
 		
 		return

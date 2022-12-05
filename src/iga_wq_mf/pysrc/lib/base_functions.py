@@ -5,10 +5,24 @@
 """
 
 from .__init__ import *
+from PIL import Image
 
 # ==========================
 # GENERAL FUNCTIONS
 # ==========================
+
+def cropImage(filename):
+	im = Image.open(filename).convert('RGB')
+	na = np.array(im)
+	colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
+
+	# Find first and last row containing colored pixels
+	top, bottom = colorY[0], colorY[-1]
+
+	# Extract Region of Interest
+	ROI = na[top:bottom, :]
+	Image.fromarray(ROI).save(filename)
+	return 
 
 def relativeError(array_app, array_th):
 	error = array_th - array_app
