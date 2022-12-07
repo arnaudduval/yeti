@@ -18,6 +18,10 @@ For a Ubuntu 20.04 distribution, the following packages are required :
  - git
  - gfortran
  - gcc
+ - libblas3
+ - libblas-dev
+ - liblapack3
+ - liblapack-dev
  - cmake (minimum version 3.21 is required, a quick guide to build cmake 2.24 is available :ref:`here <buildcmake>`)
 
 
