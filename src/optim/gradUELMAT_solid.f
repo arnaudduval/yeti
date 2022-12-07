@@ -383,12 +383,15 @@ c     - computing adjoint solution
          UA(:,:) = zero
          Do iA = 1,nadj
             Do cp = 1,NNODE
+                !! WARNING: variable i not initialized
+                !! WARNING: use R instead of dRdxi ???
                UA(:,iA)  = UA(:,iA) + dRdxi(cp,i)*UAelem(:,cp,iA)
             Enddo
          Enddo
          
          loadcount = 1
          Do nl = 1,nb_load
+            !! WARNING: i is not initialized (use nl instead ?)
             If (JDLTYPE(i)==101) then
 c     - centrifugal load
                ! Gauss point location
