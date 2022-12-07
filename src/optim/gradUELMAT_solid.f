@@ -393,6 +393,8 @@ c     - computing adjoint solution
          Do nl = 1,nb_load
             !! WARNING: i is not initialized (use nl instead ?)
             If (JDLTYPE(i)==101) then
+            !! WARNING : missing test : .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i))==JELEM)
+
 c     - centrifugal load
                ! Gauss point location
                pointGP(:) = zero
