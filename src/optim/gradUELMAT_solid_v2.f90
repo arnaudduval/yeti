@@ -15,6 +15,9 @@
 !! with Yeti. if not, see <https://www.gnu.org/licenses/>
 
 
+!! NOTE : this routine is never called
+
+
 subroutine gradUELMAT1adjv2(activeDir, Uelem, UAelem, &
     &     nadj, NDOFEL, MCRD, NNODE, JELEM, NBINT, COORDS, &
     &     TENSOR, MATERIAL_PROPERTIES, DENSITY, PROPS, JPROPS, nb_load, &
