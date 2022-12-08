@@ -115,8 +115,8 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
         !! body load
         loadcount = 1
         kload = 0
-        do i = 1,nb_load
-            if ((JDLTYPE(i)==101) .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i))==JELEM)) then
+        do i_load = 1,nb_load
+            if ((JDLTYPE(i_load)==101) .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i_load))==JELEM)) then
                 !! Centrifugal load
                 !! Gauss point location
                 pointGP(:) = zero
@@ -139,11 +139,11 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                 do numCP = 1,NNODE
                     do j = 1,MCRD
                         kk = kk+1
-                        RHS(kk) = RHS(kk) + DENSITY*ADLMAG(i)**two*vectR(j)*R(numCP)*dvol
+                        RHS(kk) = RHS(kk) + DENSITY*ADLMAG(i_load)**two*vectR(j)*R(numCP)*dvol
                     enddo
                 enddo
             endif
-            kload = kload + load_target_nbelem(i)
+            kload = kload + load_target_nbelem(i_load)
         enddo
     enddo   !! End of the loop on integration points
       
