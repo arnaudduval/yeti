@@ -170,6 +170,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Various loop variables
     integer :: i, j, k, ij, icp, inodemap, iA, b, idim, jdim, iload
 
+    write(*,*) "DEBUT"
+
     !! Initialization
 
     voigt(:,1) = (/ 1,2,3,1,1,2 /)
@@ -182,9 +184,15 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Compute Gauss pts coordinates and weights
     call Gauss(nbPtInt, mcrd, GaussPdsCoord, 0)
 
+    write(*,*) "REP A"
+    write(*,*) shape(gradWint_elem)
+    write(*,*) shape(gradWext_elem)
+
     !! Gradients
     gradWint_elem(:,:,:) = zero
     gradWext_elem(:,:,:) = zero
+
+    write(*,*) "REP A.1"
 
     !! Material behaviour
     !! TODO : use material_lib subroutine
@@ -202,8 +210,12 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Computation
     isave = 0
 
+    write(*,*) "REP B"
+
     !! Loop on integration points
     do igp = 1, nbint
+
+        write(*,*) "igp : ", igp
 
         !! Embedded solid
         !! ==============
@@ -492,6 +504,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         !! Body loads
 
         if(computeWext) then
+            write(*,*) "computeWext = .TRUE."
             !! Compute adjoint solution
             UA(:,:) = zero
             do iA = 1, nadj
@@ -503,6 +516,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             loadcount = 1
             kload = 0
             do iload = 1, nb_load
+                write(*,*) "iload : ", iload, '/', nb_load
                 if((JDLTYPE(iload) == 101) .and.        &
                     &   any(indDLoad(kload+1: kload+load_target_nbelem(iload)) == JELEM)) then
                     !! Centrifugal body force
@@ -528,6 +542,60 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
                     !! Derivatives / control points of embedded entity
                     do icp = 1, nnode
+                        write(*,*) 'icp : ', icp, '/', nnode
+
+                        !! Compute mapping derivatives
+                        DdxidthetaDP(:,:,:) = zero
+                        do i = 1, 3
+                            do j = 1, 3
+                                do k = 1, 3
+                                    if (i == k) then
+                                        DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
+                                    endif
+                                enddo
+                            enddo
+                        enddo
+
+                        DdxdxiDP(:,:,:) = zero
+                        do inodemap = 1, nnodemap
+                            do i = 1, 3
+                                do j = 1, 3
+                                    do k = 1, 3
+                                        if (j==k) then
+                                            DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
+                                        else
+                                            DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k+1) * coordsmap(i, inodemap)
+                                        endif
+                                    enddo
+                                enddo
+                            enddo
+                        enddo
+                        DdxdxiDP(:,:,:) = DdxdxiDP(:,:,:) * R(icp)
+
+                        !! Compute inverse mapping derivatives
+                        DdxidxDP(:,:,:) = zero
+                        DdthetadxiDP(:,:,:) = zero
+
+                        do k = 1, 3    !! Loop on CP coordinates
+                            call MulMat(dxidx(:,:), DdxdxiDP(:, :, k), temp(:,:), 3, 3, 3)
+                            call mulmat(temp(:,:), dxidx(:,:), DdxidxDP(:, :, k), 3, 3, 3)
+                            call MulMat(dthetadxi(:,:), DdxidthetaDP(:, :, k), temp(:,:), 3, 3, 3)
+                            call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), 3, 3, 3)
+                        enddo
+
+                        DdxidxDP(:, :, :) = -1.D0 * DdxdxiDP(:, :, :)
+                        DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
+                        
+                        !! Compute derivative of jacobian determinant
+                        dJdP(:) = zero
+                        do i = 1, 3
+                            do j = 1, 3
+                                do k = 1, 3
+                                    dJdP(k) = dJdP(k) + dxidx(i, j)*DdxdxiDP(j, i, k) + dthetadxi(i, j)*DdxidthetaDP(j, i, k)
+                                enddo
+                            enddo
+                        enddo
+                        dJdP(:) = dJdP(:) * detjac
 
                         dxdP(:,:) = R(icp) * dxdxi(:,:)
                         do idim = 1, dim_patch
@@ -541,9 +609,19 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                         do idim = 1, dim_patch
                             do jdim = 1, dim_patch
                                 dFdP(idim,jdim) = density*(adlmag(iload)**two)*        &
-                                    &   (dvectRdP(idim,jdim)*R(icp)*detjac + vectR(idim)*R(icp)*dJdP(jdim))
+                                    &   (dvectRdP(idim,jdim)*R(icp)*detjac + vectR(idim)*R(icp)*dJdP(jdim)) &
+                                    &       * GaussPdsCoord(1,igp)
                             enddo
                         enddo
+
+                        do iA = 1, nadj
+                            do i = 1, mcrd
+                                gradWext_elem(iA,:,icp) = gradWext_elem(iA,:,icp) + &
+                                    &   UA(idim, iA)*dFdP(idim, :)
+                            enddo
+                        enddo
+
+
 
                     enddo
 

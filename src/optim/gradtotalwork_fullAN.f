@@ -221,12 +221,18 @@ c     Compute initial elementary matrix and load vector
                     call gradUELMAT10adj(U_elem(:,:nnode_patch),
      &                      UA_elem(:,:nnode_patch,:), nadj, mcrd, 
      &                      nnode_patch,
-     &                      nnode(kk), nb_cp, nbint(numpatch), 
+     &                      nnode(kk), nb_cp, jelem, nbint(numpatch), 
      &                      COORDS_elem,
-     &                      COORDS3D, TENSOR_patch, MAT_patch,
-     &                      gradWint_elem(:,:,:nnode_patch), 
+     &                      COORDS3D, TENSOR_patch, MAT_patch, 
+     &                      RHO(numpatch),
+     &                      nb_load, indDload, load_target_nbelem, 
+     &                      JDLType,
+     &                      ADLMAG, load_additionalInfos, 
+     &                      size(load_additionalInfos),
      &                      computeWint, computeWext,
+     &                      gradWint_elem(:,:,:nnode_patch), 
      &                      gradWext_elem(:,:,:nnode_patch))
+
                     Do numcp = 1,nnode_patch
                     If (computeWint) then
                         gradWint(:,:,sctr(numcp))=
