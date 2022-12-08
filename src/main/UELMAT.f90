@@ -74,7 +74,8 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     dimension stiff( MCRD,MCRD,NNODE*(NNODE+1)/2 )
       
     !! Load vector
-    integer :: i,j,kk,KNumFace,KTypeDload,numCP,numI,k3,iField,kload
+    integer :: i,j,kk,KNumFace,KTypeDload,numCP,numI,k3,iField
+    integer :: kload, i_load
     double precision :: FbL,VectNorm, y, f_mag
     dimension FbL(NDOFEL),VectNorm(MCRD)
     !! centrifugal load
