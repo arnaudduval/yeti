@@ -436,7 +436,7 @@ c     - centrifugal load
                   Enddo
                   Do iA = 1,nadj
                      gradWext_elem(iA,:,cp) = gradWext_elem(iA,:,cp)
-     &                    + scalFUA(iA)*dJdP(:)*detJac
+     &                    + scalFUA(iA)*R(cp)*dJdP(:)*detJac
                   Enddo
 
                   ! 2. derivatives of the body force
