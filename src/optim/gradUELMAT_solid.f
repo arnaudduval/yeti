@@ -109,6 +109,7 @@ c     For loads
       Integer ntens
       Integer k1,k2,i,j,k,l,iA,kk,ll,ij,kl,cp, KTypeDload, KNumFace
       Double precision :: temp,temp1,temp2
+      integer :: idim, jdim
       
       
 C     ------------------------------------------------------------------
@@ -141,7 +142,7 @@ c     -----------
       
 c     Loop on integration points
       do n = 1,NBINT
-         
+        
 c     PRELIMINARY QUANTITES
 c     Computing NURBS basis functions and derivatives
          R(:)       = zero
@@ -279,6 +280,7 @@ c     Derivatives
             Do i = 1,MCRD
                dJdP(:) = dJdP(:) + AIxAJ(:,i)*dRdxi(cp,i)
             Enddo
+
             Do iA = 1,nadj
                gradWint_elem(iA,:,cp)
      &              = gradWint_elem(iA,:,cp) - work(iA)*dJdP(:)*detJac
@@ -385,7 +387,8 @@ c     - computing adjoint solution
             Do cp = 1,NNODE
                 !! WARNING: variable i not initialized
                 !! WARNING: use R instead of dRdxi ???
-               UA(:,iA)  = UA(:,iA) + dRdxi(cp,i)*UAelem(:,cp,iA)
+               !!UA(:,iA)  = UA(:,iA) + dRdxi(cp,i)*UAelem(:,cp,iA)
+                UA(:,iA)  = UA(:,iA) + R(cp)*UAelem(:,cp,iA)
             Enddo
          Enddo
          
@@ -434,17 +437,38 @@ c     - centrifugal load
                   Do i = 1,MCRD
                      dJdP(:) = dJdP(:) + AIxAJ(:,i)*dRdxi(cp,i)
                   Enddo
+
                   Do iA = 1,nadj
                      gradWext_elem(iA,:,cp) = gradWext_elem(iA,:,cp)
-     &                    + scalFUA(iA)*R(cp)*dJdP(:)*detJac
+     &                    + scalFUA(iA)*dJdP(:)*detJac
                   Enddo
 
                   ! 2. derivatives of the body force
+    !               dfdP_UA(:,:) = zero
+    !               Do iA = 1,nadj
+    !                  dfdP_UA(:,iA) = DENSITY*ADLMAG(nl)**two*R(cp)*(
+    !  &                    UA(:,iA) - vectDDUA(:,iA))
+    !               Enddo
+                  !! Nouvelle définition dfdP_UA
                   dfdP_UA(:,:) = zero
-                  Do iA = 1,nadj
-                     dfdP_UA(:,iA) = DENSITY*ADLMAG(nl)**two*R(cp)*(
-     &                    UA(:,iA) - vectDDUA(:,iA))
-                  Enddo
+                  do iA = 1, nadj
+                    do idim = 1, mcrd
+                        do jdim = 1, mcrd
+                          if (idim == jdim) then
+                            dfdP_UA(jdim,iA) = dfdP_UA(jdim,iA) +
+     &                          UA(idim, iA)
+     &                              *(one - vectD(idim)*vectD(jdim))
+                          else
+                            dfdP_UA(jdim,iA) = dfdP_UA(jdim,iA) -
+     &                          UA(idim, iA)
+     &                              *(vectD(idim)*vectD(jdim))
+                          endif
+                        enddo
+                    enddo
+                  enddo
+                  dfdP_UA(:,:) = dfdP_UA(:,:)
+     &                       *DENSITY*ADLMAG(nl)**two*R(cp)
+
                   Do iA = 1,nadj
                      gradWext_elem(iA,:,cp) = gradWext_elem(iA,:,cp) 
      &                    + dfdP_UA(:,iA)*Area*detJac
