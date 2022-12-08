@@ -21,6 +21,7 @@ import os
 import sys
 import time
 from copy import deepcopy
+import logging
 
 import numpy as np
 from scipy.sparse import csc_matrix, linalg as sla
@@ -502,7 +503,7 @@ class OPTmodelling:
     # RESPONSE FUNCTIONS
     # 1. Volume/area
     def compute_volume(self, vectX, listpatch=None):
-        print("Compute Volume")
+        logging.info("Compute Volume")
         self._updateCoarseCoords(vectX)
         self._updateFineCoords()
         V = volume.computevolume(
