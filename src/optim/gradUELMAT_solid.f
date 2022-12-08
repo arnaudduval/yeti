@@ -95,7 +95,7 @@ c     For loads
       dimension ind_load_loc(nb_load)
       Double precision :: VectNorm_U,normV
 !     centrifugal load
-      Integer :: loadcount,nl
+      Integer :: loadcount,nl, kload
       Double precision :: pointGP, pointA,pointB,vectD,vectAG,vectR,
      &     scal,loadF,scalFUA,vectDDUA,dfdP_UA
       dimension pointGP(3),pointA(3),pointB(3),vectD(3),vectAG(3),
@@ -390,10 +390,11 @@ c     - computing adjoint solution
          Enddo
          
          loadcount = 1
+         kload = 0
          Do nl = 1,nb_load
-            !! WARNING: i is not initialized (use nl instead ?)
-            If (JDLTYPE(i)==101) then
-            !! WARNING : missing test : .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i))==JELEM)
+            If ((JDLTYPE(nl)==101) .and. 
+     &       ANY(indDLoad(kload+1:kload+load_target_nbelem(nl))==JELEM))
+     &       then
 
 c     - centrifugal load
                ! Gauss point location
@@ -434,7 +435,7 @@ c     - centrifugal load
                      dJdP(:) = dJdP(:) + AIxAJ(:,i)*dRdxi(cp,i)
                   Enddo
                   Do iA = 1,nadj
-                     gradWint_elem(iA,:,cp) = gradWint_elem(iA,:,cp)
+                     gradWext_elem(iA,:,cp) = gradWext_elem(iA,:,cp)
      &                    + scalFUA(iA)*dJdP(:)*detJac
                   Enddo
 
@@ -451,6 +452,7 @@ c     - centrifugal load
                Enddo
                
             Endif
+            kload = kload + load_target_nbelem(nl)
          Enddo
          Endif  ! test computeWext is True
          
