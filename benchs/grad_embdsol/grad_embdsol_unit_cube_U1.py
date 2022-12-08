@@ -68,8 +68,14 @@ x0 = np.zeros((6))
 print(optPB.compute_volume(x0))                     
 print(optPB.compute_compliance_discrete(x0))
 
-print("FD : ", optPB.compute_gradCompliance_FD(x0))
-print("AN : ", optPB.compute_gradCompliance_AN(x0))
+gradFD = optPB.compute_gradCompliance_FD(x0)
+gradAN = optPB.compute_gradCompliance_AN(x0)
+gradSAN = optPB.compute_gradCompliance_semiAN(x0)
+
+
+print("FD : ", gradFD)
+print("AN : ", gradAN)
+print("SAN : ", gradSAN)
 
 #print(optPB.compute_gradVolume_AN(x0))
 
