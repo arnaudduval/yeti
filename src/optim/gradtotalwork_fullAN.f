@@ -225,6 +225,7 @@ c     Compute initial elementary matrix and load vector
      &                      COORDS_elem,
      &                      COORDS3D, TENSOR_patch, MAT_patch,
      &                      gradWint_elem(:,:,:nnode_patch), 
+     &                      computeWint, computeWext,
      &                      gradWext_elem(:,:,:nnode_patch))
                     Do numcp = 1,nnode_patch
                     If (computeWint) then

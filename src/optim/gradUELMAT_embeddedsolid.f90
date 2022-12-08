@@ -19,9 +19,12 @@
 !! TODO : should be adapted to work with 2D case
 
 subroutine gradUELMAT10adj(Uelem, UAelem,               &
-                    &      nadj, mcrd, nnode, nnodemap, nb_cp, nbint, &
+                    &      nadj, mcrd, nnode, nnodemap, nb_cp, jelem, nbint, &
                     &      coords, coordsall, &
                     &      tensor, material_properties,     &
+                    &      density, nb_load, indDload, load_target_nbelem, jdltype,        &
+                    &      adlmag, load_additionalInfos, nb_load_additionalInfos, &
+                    &      computeWint, computeWext,    &
                     &      gradWint_elem, gradWext_elem)
 
     use parameters
@@ -34,17 +37,27 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! DE L'ENVELOPPE OU POUR L'ENVELOPPE ENTIÈRE ?
 
     !! Input arguments
-    integer, intent(in) :: nadj, mcrd, nnode, nnodemap, nb_cp, nbint
+    integer, intent(in) :: nadj, mcrd, nnode, nnodemap, nb_cp, nbint, jelem
     double precision, intent(in) :: coords
     dimension coords(mcrd, nnode)
     double precision, intent(in) :: coordsall
     dimension coordsall(3, nb_cp)
     character(len=*), intent(in) :: tensor
-    double precision, intent(in) :: material_properties
+    double precision, intent(in) :: material_properties, density
     dimension material_properties(2)
 
     double precision, intent(in) :: Uelem, UAelem
     dimension Uelem(3, nnode), UAelem(3, nnode, nadj)
+
+    logical, intent(in) :: computeWint, computeWext
+
+    integer, intent(in) :: nb_load, indDload, load_target_nbelem, jdltype
+    integer, intent(in) :: nb_load_additionalInfos
+    dimension load_target_nbelem(nb_load), jdltype(nb_load)
+    dimension indDLoad(sum(load_target_nbelem))
+
+    double precision, intent(in) :: adlmag, load_additionalInfos
+    dimension adlmag(nb_load), load_additionalInfos(nb_load_additionalInfos)
 
     !! Outputs
     double precision, intent(out) :: gradWint_elem, gradWext_elem
@@ -115,6 +128,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision :: coef1, coef2
     double precision :: work
     dimension work(nadj)
+    double precision :: UA
+    dimension UA(3, nadj)
 
     !! Derivatives w.r.t embbeded control points P
     double precision :: DdxdxiDP, DdxidthetaDP      !! mappings
@@ -135,6 +150,14 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision :: dEAdP_S, dSdP_EA
     dimension dEAdP_S(3, nadj), dSdP_EA(3, nadj)
 
+    !! loading
+    integer :: loadcount, kload
+    double precision :: pointGP, vectR, vectAG, vectD, pointA, pointB, scal
+    dimension pointGP(mcrd), vectR(mcrd), vectAG(mcrd), vectD(mcrd), pointA(mcrd), pointB(mcrd)
+    double precision :: dvectRdP, dFdP, dxdP, dxdP_x_D
+    dimension dvectRdP(mcrd, mcrd), dFdP(mcrd, mcrd), dxdP(mcrd, mcrd), dxdP_x_D(mcrd)
+    
+
 
     !! Voigt convention
     integer :: voigt
@@ -145,7 +168,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension temp(3, 3), temp1(nnode, 3), temp2(nnode, 3)
 
     !! Various loop variables
-    integer :: i, j, k, ij, icp, inodemap, iA, b
+    integer :: i, j, k, ij, icp, inodemap, iA, b, idim, jdim, iload
 
     !! Initialization
 
@@ -464,6 +487,87 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                  & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
             enddo
         enddo   !! End loop on control point icp
+
+
+        !! Body loads
+
+        if(computeWext) then
+            !! Compute adjoint solution
+            UA(:,:) = zero
+            do iA = 1, nadj
+                do icp = 1, nnode
+                    UA(:, iA) = UA(:, iA) + R(icp)*UAelem(:, icp, iA)
+                enddo
+            enddo
+
+            loadcount = 1
+            kload = 0
+            do iload = 1, nb_load
+                if((JDLTYPE(iload) == 101) .and.        &
+                    &   any(indDLoad(kload+1: kload+load_target_nbelem(iload)) == JELEM)) then
+                    !! Centrifugal body force
+                    !! Gauss point location in physical space
+                    pointGP(:) = zero
+                    do icp = 1, nnodemap
+                        pointGP(:) = pointGP(:) + N(icp)*COORDSmap(:, icp)
+                    enddo
+                    !! Distance to rotation axis
+                    pointA(:) = zero
+                    pointA(:mcrd) = load_additionalInfos(loadcount:loadcount+mcrd)
+                    loadcount = loadcount + mcrd
+                    pointB(:) = zero
+                    pointB(:mcrd) = load_additionalInfos(loadcount:loadcount+mcrd)
+                    loadcount = loadcount + mcrd
+
+                    vectD(:) = pointB(:) - pointA(:)
+                    vectD(:) = vectD(:)/sqrt(sum(vectD(:)*vectD(:)))
+                    vectAG(:) = pointGP(:) - pointA(:)
+                    call dot(vectAG(:), vectD(:), scal)
+                    vectR(:) = vectAG(:) - scal*vectD(:)
+
+
+                    !! Derivatives / control points of embedded entity
+                    do icp = 1, nnode
+
+                        dxdP(:,:) = R(icp) * dxdxi(:,:)
+                        do idim = 1, dim_patch
+                            dxdP_x_D(:) = dxdP_x_D(:) + dxdP(idim,:)*vectD(idim)
+                        enddo
+
+                        do idim = 1, dim_patch
+                            dvectRdP(idim,:) = dxdP(idim,:) - dxdP_x_D(:)*vectD(idim)
+                        enddo
+
+                        do idim = 1, dim_patch
+                            do jdim = 1, dim_patch
+                                dFdP(idim,jdim) = density*(adlmag(iload)**two)*        &
+                                    &   (dvectRdP(idim,jdim)*R(icp)*detjac + vectR(idim)*R(icp)*dJdP(jdim))
+                            enddo
+                        enddo
+
+                    enddo
+
+
+
+
+                    ! loadF(:) = DENSITY * vectR(:) * ADLMAG(iload)**two 
+
+                    ! scalFUA(:) = zero
+                    ! vectDDUA(:) = zero
+
+                    ! do iA = 1, nadj
+                    !     call dot(loadF(:), UA(:,iA), scalFUA(iA))
+                    !     call dot(vectD(:), UA(:, iA), coef1)
+                    !     vectDDUA(:, iA) = vectD(:)*coef1
+                    ! enddo
+
+                endif
+                kload = kload + load_target_nbelem(iload)
+            enddo
+
+
+        endif
+
     enddo       !! End loop on Gauss point igp
 end subroutine gradUELMAT10adj
 
