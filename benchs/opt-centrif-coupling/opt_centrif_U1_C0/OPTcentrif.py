@@ -131,13 +131,10 @@ res = minimize(compIGA, x0, method='SLSQP',
 
 # Verify results
 # Numerical reference result
-x_ref = np.array([7.16402311e-01, 6.94203856e-01, 3.37998525e-01, 0.0, 0.0])
+x_ref = np.array([1.0, 0.843, 0.0, 0.0, 0.0])
 
-error = np.sqrt(sum((res['x']-x_ref)**2.))
+error = np.linalg.norm(res['x']-x_ref)
 
 print(error)
 
-if error > 1.e-2:
-    sys.exit(-1)
-else:
-    sys.exit(0)
+assert error < 1.e2
