@@ -168,9 +168,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension temp(3, 3), temp1(nnode, 3), temp2(nnode, 3)
 
     !! Various loop variables
-    integer :: i, j, k, ij, icp, inodemap, iA, b, idim, jdim, iload
-
-    write(*,*) "DEBUT"
+    integer :: i, j, k, ij, icp, inodemap, iA, b, idim, jdim, kdim, iload
 
     !! Initialization
 
@@ -184,15 +182,9 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Compute Gauss pts coordinates and weights
     call Gauss(nbPtInt, mcrd, GaussPdsCoord, 0)
 
-    write(*,*) "REP A"
-    write(*,*) shape(gradWint_elem)
-    write(*,*) shape(gradWext_elem)
-
     !! Gradients
     gradWint_elem(:,:,:) = zero
     gradWext_elem(:,:,:) = zero
-
-    write(*,*) "REP A.1"
 
     !! Material behaviour
     !! TODO : use material_lib subroutine
@@ -210,13 +202,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Computation
     isave = 0
 
-    write(*,*) "REP B"
-
     !! Loop on integration points
     do igp = 1, nbint
-
-        write(*,*) "igp : ", igp
-
         !! Embedded solid
         !! ==============
 
@@ -504,7 +491,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         !! Body loads
 
         if(computeWext) then
-            write(*,*) "computeWext = .TRUE."
             !! Compute adjoint solution
             UA(:,:) = zero
             do iA = 1, nadj
@@ -516,7 +502,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             loadcount = 1
             kload = 0
             do iload = 1, nb_load
-                write(*,*) "iload : ", iload, '/', nb_load
                 if((JDLTYPE(iload) == 101) .and.        &
                     &   any(indDLoad(kload+1: kload+load_target_nbelem(iload)) == JELEM)) then
                     !! Centrifugal body force
@@ -542,8 +527,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
                     !! Derivatives / control points of embedded entity
                     do icp = 1, nnode
-                        write(*,*) 'icp : ', icp, '/', nnode
-
                         !! Compute mapping derivatives
                         DdxidthetaDP(:,:,:) = zero
                         do i = 1, 3
@@ -597,7 +580,19 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                         enddo
                         dJdP(:) = dJdP(:) * detjac
 
-                        dxdP(:,:) = R(icp) * dxdxi(:,:)
+                        dxdP(:,:) = zero
+                        do idim = 1, mcrd
+                            do jdim = 1, mcrd
+                                do kdim = 1, mcrd
+                                    !! Note : peut se simplifier en enlevant une boucle
+                                    if (jdim == kdim) then
+                                        dxdP(idim, jdim) = dxdP(idim, jdim) + R(icp)*dxdxi(idim, kdim)
+                                    endif
+                                enddo
+                            enddo
+                        enddo
+                        
+                        dxdP_x_D(:) = zero
                         do idim = 1, dim_patch
                             dxdP_x_D(:) = dxdP_x_D(:) + dxdP(idim,:)*vectD(idim)
                         enddo
@@ -606,38 +601,23 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                             dvectRdP(idim,:) = dxdP(idim,:) - dxdP_x_D(:)*vectD(idim)
                         enddo
 
+                       
                         do idim = 1, dim_patch
                             do jdim = 1, dim_patch
-                                dFdP(idim,jdim) = density*(adlmag(iload)**two)*        &
-                                    &   (dvectRdP(idim,jdim)*R(icp)*detjac + vectR(idim)*R(icp)*dJdP(jdim)) &
+                                dFdP(idim,jdim) = density*(adlmag(iload)**two)*       &
+                                    &   (dvectRdP(idim,jdim)*detjac + vectR(idim)*dJdP(jdim)) &
                                     &       * GaussPdsCoord(1,igp)
                             enddo
                         enddo
 
                         do iA = 1, nadj
-                            do i = 1, mcrd
+                            do idim = 1, mcrd
                                 gradWext_elem(iA,:,icp) = gradWext_elem(iA,:,icp) + &
                                     &   UA(idim, iA)*dFdP(idim, :)
                             enddo
                         enddo
 
-
-
                     enddo
-
-
-
-
-                    ! loadF(:) = DENSITY * vectR(:) * ADLMAG(iload)**two 
-
-                    ! scalFUA(:) = zero
-                    ! vectDDUA(:) = zero
-
-                    ! do iA = 1, nadj
-                    !     call dot(loadF(:), UA(:,iA), scalFUA(iA))
-                    !     call dot(vectD(:), UA(:, iA), coef1)
-                    !     vectDDUA(:, iA) = vectD(:)*coef1
-                    ! enddo
 
                 endif
                 kload = kload + load_target_nbelem(iload)
