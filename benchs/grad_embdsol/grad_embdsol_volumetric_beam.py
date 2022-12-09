@@ -96,6 +96,15 @@ x0 = np.block([4.5/8.5*np.ones(topcps.size), 1.5/6.5*np.ones(topcps.size)])
 V0 = optPB.compute_volume(x0, listpatch=[0, 1])
 c0 = optPB.compute_compliance_discrete(x0)
 
+gradC_AN = optPB.compute_gradCompliance_AN(x0)
+gradC_FD = optPB.compute_gradCompliance_FD(x0)
+
+print(c0)
+print(gradC_AN)
+print(gradC_FD)
+
+exit()
+
 
 def comp(xC,gradC):
     ci = optPB.compute_compliance_discrete(xC)/c0
