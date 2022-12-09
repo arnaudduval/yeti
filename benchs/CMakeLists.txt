@@ -98,6 +98,12 @@ add_test(NAME centrif_U1_cpl_U10_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PA
 add_test(NAME opt_centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0)
 add_test(NAME opt_centrif_U1_cplg_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1)
 
+# Solid element sensibilities
+# 1 - centrifugal body force loading
+add_test(NAME grad_solid_unit_cube_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_solid/grad_solid_unit_cube_centrif.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_solid
+)
 
 # Embedded solid element sensibilities
 # 1 - volume gradient
@@ -153,6 +159,7 @@ set_tests_properties(
                      centrif_U1_cpl_U10_2loads
                      opt_centrif_U1_C0
                      opt_centrif_U1_cplg_U1
+                     grad_solid_unit_cube_centrif
                      gradvol_embdsol_cube_nonli_hull
                      gradvol_embdsol_cube_nonli_embd
                      gradvol_embdsol_cube_nonli_hull_embd
