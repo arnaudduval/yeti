@@ -17,7 +17,7 @@
 # CMakeLists.txt file for /src/optim directory
 
 # Optim library
-set(optim_src_file ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_solid.f
+set(optim_src_file ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_solid.f90
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_shell.f
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradUELMAT_embeddedshell.f
                      ${CMAKE_CURRENT_SOURCE_DIR}/gradCPLGMAT_disp.f
