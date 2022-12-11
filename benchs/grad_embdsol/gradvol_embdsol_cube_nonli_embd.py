@@ -28,7 +28,7 @@ from preprocessing.igaparametrization import OPTmodelling
 
 if __name__ == "__main__":
 
-    modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd')
+    modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd_press')
 
     # Set arguments for model refinement
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)

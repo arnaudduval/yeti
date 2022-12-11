@@ -74,7 +74,7 @@ def static_study():
 
 if __name__ == "__main__":
 
-    modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_embd')
+    modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_embd_press')
 
     # Set arguments for model refinement
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)

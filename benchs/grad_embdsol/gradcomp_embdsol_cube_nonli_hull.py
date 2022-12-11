@@ -23,6 +23,7 @@ A test to validate compliance gradient computation for embedded solid element.
 
 import numpy as np
 import scipy.sparse as sp
+from termcolor import colored
 
 from preprocessing.igaparametrization import IGAparametrization
 from preprocessing.igaparametrization import OPTmodelling
@@ -35,7 +36,12 @@ import postprocessing.postproc as pp
 
 if __name__ == "__main__":
 
-    modeleIGA = IGAparametrization(filename='unit_square')
+    # modeleIGA = IGAparametrization(filename='embd_cube_lin_press')
+    # modeleIGA = IGAparametrization(filename='unit_square')
+    # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_press')
+    # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_unit_embd')
+    # modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd_press')
+    modeleIGA = IGAparametrization(filename='test')
 
     # Set arguments for model refinement
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
@@ -45,7 +51,11 @@ if __name__ == "__main__":
                         "2": np.array([]),
                         "3": np.array([])}
 
-    nb_deg[:, 1] = [1, 1, 1]
+    # nb_deg[:, 0] = [1, 1, 1]
+    # nb_ref[:, 0] = [1, 1, 1]
+    
+    # nb_deg[:, 1] = [1, 1, 1]
+    # nb_ref[:, 1] = [1, 1, 1]
     modeleIGA.refine(nb_ref, nb_deg, additional_knots)
 
     # # Static study
@@ -120,11 +130,18 @@ if __name__ == "__main__":
     print(f"Compliance : {c0:.02E}")
     print(f"Error : {error:.02E}")
 
-    for i in range(nb_var):
-        print(i, int(i/3)+1, gradC_AN[i], gradC_DF[i],
-              (abs(gradC_DF[i]/c0) < 1.e-6) or
-              (abs((gradC_AN[i]-gradC_DF[i])/gradC_DF[i]) < 1.e-4))
+    for i_var in range(nb_var):
+        success = (abs(gradC_DF[i_var]/c0) < 1.e-5) or          \
+                    (abs((gradC_AN[i_var]-gradC_DF[i_var])/gradC_DF[i_var]) < 1.e-3)
+        if success:
+            print(i_var, int(i_var/3)+1, gradC_AN[i_var], gradC_DF[i_var])
+        else:
+            print(colored((i_var, int(i_var/3)+1, gradC_AN[i_var], gradC_DF[i_var]),'red'))
 
-    print(modeleIGA._IEN)
-    print(modeleIGA._ind_dof_bloq)
+    error = np.linalg.norm(gradC_DF - gradC_AN)/c0
+
+    print(error)              
+
+    # print(modeleIGA._IEN)
+    # print(modeleIGA._ind_dof_bloq)
     # assert error < 1.e-6
