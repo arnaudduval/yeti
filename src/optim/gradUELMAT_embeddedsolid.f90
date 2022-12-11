@@ -353,6 +353,9 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                         if (i == k) then
                             DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
                         endif
+                        ! if (i == j) then
+                        !     DdxidthetaDP(i,j,k) = dRdtheta(icp, k)
+                        ! endif
                     enddo
                 enddo
             enddo
@@ -366,6 +369,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                                 DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
                             else
                                 DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k+1) * coordsmap(i, inodemap)
+                                ! DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k) * coordsmap(i, inodemap)
                             endif
                         enddo
                     enddo
@@ -548,6 +552,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                                             DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
                                         else
                                             DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k+1) * coordsmap(i, inodemap)
+                                            ! DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k) * coordsmap(i, inodemap)
                                         endif
                                     enddo
                                 enddo
