@@ -100,6 +100,8 @@
 *MATERIAL,NAME=MAT
 *Elastic
 210000, 0.3
+*Density
+1.2
 *MATERIAL,NAME=MATvoid
 *Elastic
 0.0, 0.0
@@ -113,7 +115,7 @@ I1.CPcubeX0, 2, 2, 0.0
 I1.CPcubeX0, 3, 3, 0.0
 **
 *Dload
-I1.EltToLoad, U60, 2.0
+I1.EltToLoad, U101, 66., 0., 1., 2., 3., 7., 4.
 ** OUTPUT REQUESTS
 *node file, frequency=1
 U,RF,CF
