@@ -75,10 +75,209 @@ Sensitivities
 In order to solve an optimization problem aimed at minimizing an objective function, we want to use a gradient-based algorithm.
 To do this, we seek to express the gradients analytically.
 
-We define an objective function :math:`f`;, function of the design variables :math:`x` and the state variable :math:`u`:
+We define an objective function :math:`f`, function of the design variables :math:`x` and the state variable :math:`u`:
 
 .. math::
 
     f := g \left( x, u\left( x \right) \right)
 
 where u is the discrete solution of the linear system :math:`Ku=F`.
+
+The derivative of the objectif function with respect to the design variables can be written as:
+
+.. math::
+
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial g}{\partial x_i} + \frac{\partial g}{\partial u} \cdot \frac{\mathrm{d} u}{\mathrm{d} x_i}
+
+We define :math:`u^*` as the solution of the adjoint problem :math:`K u^* = \frac{\partial g}{\partial u}`. The derivative of the objective function becomes:
+
+.. math::
+
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial g}{\partial x_i} + u^* \cdot \left( \frac{\partial F}{\partial x_i} - \frac{\partial K}{\partial x_i} u \right)
+
+From optimization model to analysis model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+TO DO
+
+Embedded formulation
+--------------------
+
+.. list-table:: Notations
+    :widths: 25 25 25
+    :header-rows: 1
+
+    * - 
+      - Embedded solid
+      - Hull
+    * - basis functions
+      - :math:`R`
+      - :math:`N`
+    * - parameter
+      - :math:`\theta`
+      - :math:`\xi`
+    * - physical points
+      - :math:`\xi`
+      - :math:`X`
+    * - control points
+      - :math:`P`
+      - :math:`Q`
+
+**In the embedded solid**, the coordinate :math:`\xi` is expressed as:
+
+.. math::
+
+    \xi = \sum_{a} R_a \left( \theta \right) P_a
+
+And its derivative with respect to the coordinate :math:`\theta`:
+
+.. math::
+    
+    \frac{\partial \xi}{\partial \theta} = \sum_{a} \frac{\partial R_a}{\partial \theta} P_a
+
+and for specific directions :math:`i,j`: 
+
+.. math::
+    \left( \frac{\partial \xi}{\partial \theta} \right)_{ij} = \frac{\partial \xi_i}{\partial \theta_j}
+
+This quantity is stored in variable :code:`dxidtheta(i,j)`
+
+Then, we derive this quantity with respect to the coordinates of a particular control point of the embedded entity :math:`P_a`:
+
+.. math::
+
+    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial}{\partial P_{a_i}} \left( \frac{\partial \xi_j}{\partial \theta_k} \right) = \frac{\partial R_a}{\partial \theta_k} \delta_{ij}
+
+This quantity is stored in variable :code:`DdxidthetaDP(i,j,k)` (**WARNING : potential index error**)
+
+The derivative of :math:`\frac{\partial \xi}{\partial \theta}` with respect tyo the coordinates of the hull's control points equals zero since this quantity does not depend on the control points :math:`Q`.
+
+**In the hull**, the coordinate in the physical space is linked to the parametric coordinate :math:`\xi` by the relation:
+
+.. math::
+
+    X = \sum_{a} N_a \left( \xi \right) Q_a
+
+And its derivative with respect to :math:`\xi`:
+
+.. math::
+
+    \frac{\partial X}{\partial \xi} = \sum_a \frac{\partial N_a}{\partial \xi} Q_a
+
+And for specific directions :math:`i,j`:
+
+.. math::
+
+    \left( \frac{\partial X}{\partial \xi} \right)_{ij} = \frac{\partial X_i}{\partial \xi_j}
+
+This quantity is stored in variable :code:`dxdxi(i,j)`
+
+Its derivative with respect to a specific hull control point :math:`Q_a` reads:
+
+.. math::
+
+    \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = \frac{\partial}{\partial Q_{a_i}} \left( \frac{\partial X_k}{\partial \xi_j} \right) = \frac{\partial N_a}{\partial \xi_j} \delta_{ik}
+
+This quantity is stored in variable :code:`DdxdxiDQ(i,j,k)` (**WARNING: potential index error**)
+
+To express the derivative with respect to embedded entity control point :math:`P_a`, we need to express the NURBS composition:
+
+.. math::
+    \frac{\partial X}{\partial \xi} = \sum_b \frac{\partial N_b \left( \sum_a R_a P_a \right)}{\partial \xi} Q_b
+
+The derivative with respect to :math:`P_a` reads:
+
+.. math::
+
+    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right)\right)_{ijk} = \frac{\partial}{\partial P_{a_i}} \left( \frac{\partial X_k}{\partial \xi_j} \right) = R_a \frac{\partial^2 X_k}{\partial \xi_j \partial \xi_i}
+
+This quantity is stored in variable :code:`DdxdxiDP(i,j,k)` (**WARNING : there may be an index error**)
+
+**As a summary** (**WARNING : indices must be verified**):
+
+.. math::
+
+    \begin{array}{c|c}
+        \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = 0 & \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = \frac{\partial N_a}{\partial \xi_j} \delta_{ik} \\
+        \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial R_a}{\partial \theta_j} \delta_{ik} & \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = R_a \frac{\partial^2 X_k}{\partial \xi_i \partial \xi_j}
+    \end{array}
+
+
+Derivative of inverse mappings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In this part, we express the derivative of inverse mapping :math:`\frac{\partial \xi}{\partial X}` and :math:`\frac{\partial \theta}{\partial \xi}`
+with respect to a quantity named :math:`\Lambda` which can be eitehr the coordinates of control points of the hull or the embedded entity.
+
+We start with: 
+
+.. math::
+
+    \frac{\partial \xi}{\partial X} \cdot \frac{\partial X}{\partial \xi} = I
+
+Which can be derived as:
+
+.. math::
+
+    \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial X} \right) \cdot \frac{\partial X}{\partial \xi} + \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial X}{\partial \xi} \right) = 0
+
+Multiplying by :math:`\frac{\partial \xi}{\partial X}` gives:
+
+.. math::
+
+    \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial X} \right) = - \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial X}{\partial \xi} \right) \cdot \frac{\partial \xi}{\partial X}
+
+The same reads for the derivative of :math:`\frac{\partial \theta}{\partial \xi}`:
+
+.. math::
+
+    \frac{\partial}{\partial \Lambda} \left( \frac{\partial \theta}{\partial \xi} \right) = - \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial \theta} \right) \cdot \frac{\partial \theta}{\partial \xi}
+
+Derivative of the Jacobian determinant
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are several transformation to take into account:
+ - Reference element space :math:`\overline{\xi}` to embedded entity parametric space :math:`\theta`
+ - Embedded entity parametric space :math:`\theta` to hull parametric space :math:`\xi`
+ - Hull paramatric space :math:`\xi` to physical space :math:`X`
+
+.. math::
+    J = \frac{\partial X}{\partial \overline{\xi}} = \frac{\partial X}{\partial \xi} \cdot \frac{\partial \xi}{\partial \theta} \cdot \frac{\partial \theta}{\partial \overline{\xi}}
+
+:math:`\frac{\partial \theta}{\partial \overline{\xi}}` does not depend on control points corrdinates. Thus, derivative of Jacobian determinant with respect to control points coordinates reads:
+
+.. math::
+    \frac{\partial \left| J \right|}{\partial \Lambda} = \frac{\partial}{\partial \Lambda} \left( \left| \frac{\partial X}{\partial \xi} \right| \right) \cdot \left| \frac{\partial \xi}{\partial \theta} \right| \cdot \left| \frac{\partial \theta}{\partial \overline{\xi}} \right| + \left| \frac{\partial X}{\partial \xi} \right| \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial \theta} \right) \cdot \left| \frac{\partial \theta}{\partial \overline{\xi}} \right|
+
+Jacobi's formula give the expression of the derivative of a matrix determinant:
+
+.. math::
+
+    \frac{\mathrm{d}}{\mathrm{d} t} \mathrm{det} \left( A \left( t \right) \right) = \mathrm{det} \left( A \left( t \right) \right) \cdot \mathrm{tr} \left( A \left(t \right)^{-1} \cdot \frac{\mathrm{d} A \left( t \right)}{\mathrm{d} t}\right)
+
+Applying Jocobi's formula top our case gives:
+
+.. math::
+
+    \begin{eqnarray}
+        \frac{\partial}{\partial \Lambda} \left( \left| \frac{\partial X}{\partial \xi} \right|\right) & = & \left| \frac{\partial X}{\partial \xi} \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial X}{\partial \xi} \right) \right) \\
+        \frac{\partial}{\partial \Lambda} \left( \left| \frac{\partial \xi}{\partial \theta} \right|\right) & = & \left| \frac{\partial \xi}{\partial \theta} \right| \cdot \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial \theta} \right) \right)
+    \end{eqnarray}
+
+And the derivative of :math:`\left| J \right|` reads:
+
+.. math::
+    \begin{eqnarray}
+        \frac{\partial \left| J \right|}{\partial \Lambda} & = & \left( \left| \frac{\partial X}{\partial \xi} \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial X}{\partial \xi} \right) \right) \right) \cdot \left| \frac{\partial \xi}{\partial \theta} \right| \cdot \left| \frac{\partial \theta}{\partial \overline{\xi}} \right| \\
+        && + \left| \frac{\partial X}{\partial \xi} \right| \cdot \left( \left| \frac{\partial \xi}{\partial \theta} \right| \cdot \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial \theta} \right) \right) \right) \cdot \left| \frac{\partial \theta}{\partial \overline{\xi}} \right| \\
+        & = & \left| J \right| \cdot \left[ \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial X}{\partial \xi} \right) \right) + \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial \theta} \right) \right) \right]
+    \end{eqnarray}
+
+Applying this to the cases of control points :math:`P` and :math:`Q` gives:
+
+.. math::
+
+    \begin{eqnarray}
+        \frac{\partial \left| J \right|}{\partial P} & = & \left| J \right| \cdot \left[ \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial P} \left( \frac{\partial X}{\partial \xi} \right) \right) + \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial P} \left( \frac{\partial \xi}{\partial \theta} \right) \right) \right] \\
+        \frac{\partial \left| J \right|}{\partial Q} & = & \left| J \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial P} \left( \frac{\partial X}{\partial \xi} \right) \right) 
+    \end{eqnarray}
