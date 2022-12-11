@@ -1,9 +1,10 @@
 build
 venv
 .vscode/settings.json
-src/parameters.mod
+src/*.mod
 *.save
 .vscode/cmake-kits.json
 benchs/*/results/*.vtu
 benchs/*/results/*.vtk
 .coverage
+src/nurbspatch.mod
