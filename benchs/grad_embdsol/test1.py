@@ -41,8 +41,8 @@ if __name__ == "__main__":
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_press')
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_unit_embd')
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd_press')
-    modeleIGA = IGAparametrization(filename='test')
-    # modeleIGA = IGAparametrization(filename='test1')
+    # modeleIGA = IGAparametrization(filename='test')
+    modeleIGA = IGAparametrization(filename='test1')
     # modeleIGA = IGAparametrization(filename='test2')
 
     # Set arguments for model refinement
@@ -80,12 +80,12 @@ if __name__ == "__main__":
     # SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 
     # pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    #     'test_embd_cube',
+    #     'test1',
     #     SOL.transpose(), nb_ref=[3, 3, 3], Flag=[True, False, False]))
     # modeleIGA.generate_vtk4controlMeshVisu(
-    #     'test_embd_cube_map_cp', 0)
+    #     'test1', 0)
     # modeleIGA.generate_vtk4controlMeshVisu(
-    #     'test_embd_cube_embded_cp', 1)
+    #     'test1', 1)
 
     # # Fin static study
 

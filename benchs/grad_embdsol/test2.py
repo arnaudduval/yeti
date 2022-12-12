@@ -41,9 +41,9 @@ if __name__ == "__main__":
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_press')
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_unit_embd')
     # modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd_press')
-    modeleIGA = IGAparametrization(filename='test')
+    # modeleIGA = IGAparametrization(filename='test')
     # modeleIGA = IGAparametrization(filename='test1')
-    # modeleIGA = IGAparametrization(filename='test2')
+    modeleIGA = IGAparametrization(filename='test2')
 
     # Set arguments for model refinement
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
@@ -60,36 +60,36 @@ if __name__ == "__main__":
     # nb_ref[:, 1] = [1, 1, 1]
     modeleIGA.refine(nb_ref, nb_deg, additional_knots)
 
-    # # Static study
-    # ndof = modeleIGA._nb_dof_free
-    # idof = modeleIGA._ind_dof_free[:ndof] - 1
-    # print(idof)
-    # print(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_free)
-    # data, row, col, Fb = build_stiffmatrix(
-    #                         *modeleIGA.get_inputs4system_elemStorage())
-    # Kside = sp.coo_matrix((data, (row, col)),
-    #                     shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
-    #                     dtype='float64').tocsc()
-    # Ktot = Kside + Kside.transpose()
-    # K2solve = Ktot[idof, :][:, idof]
-    # del Kside, data, row, col
+    # Static study
+    ndof = modeleIGA._nb_dof_free
+    idof = modeleIGA._ind_dof_free[:ndof] - 1
+    print(idof)
+    print(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_free)
+    data, row, col, Fb = build_stiffmatrix(
+                            *modeleIGA.get_inputs4system_elemStorage())
+    Kside = sp.coo_matrix((data, (row, col)),
+                        shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
+                        dtype='float64').tocsc()
+    Ktot = Kside + Kside.transpose()
+    K2solve = Ktot[idof, :][:, idof]
+    del Kside, data, row, col
 
-    # x = sp.linalg.spsolve(K2solve, Fb[idof])
+    x = sp.linalg.spsolve(K2solve, Fb[idof])
 
-    # # Solution reconstruction
-    # SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
+    # Solution reconstruction
+    SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 
-    # pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    #     'test_embd_cube',
-    #     SOL.transpose(), nb_ref=[3, 3, 3], Flag=[True, False, False]))
-    # modeleIGA.generate_vtk4controlMeshVisu(
-    #     'test_embd_cube_map_cp', 0)
-    # modeleIGA.generate_vtk4controlMeshVisu(
-    #     'test_embd_cube_embded_cp', 1)
+    pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
+        'test2',
+        SOL.transpose(), nb_ref=[3, 3, 3], Flag=[True, False, False]))
+    modeleIGA.generate_vtk4controlMeshVisu(
+        'test2', 0)
+    modeleIGA.generate_vtk4controlMeshVisu(
+        'test2', 1)
 
-    # # Fin static study
+    # Fin static study
 
-    # exit()
+    exit()
 
 
 
