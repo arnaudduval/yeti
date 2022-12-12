@@ -146,9 +146,9 @@ Then, we derive this quantity with respect to the coordinates of a particular co
 
 .. math::
 
-    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial}{\partial P_{a_i}} \left( \frac{\partial \xi_j}{\partial \theta_k} \right) = \frac{\partial R_a}{\partial \theta_k} \delta_{ij}
+    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial}{\partial P_{a_k}} \left( \frac{\partial \xi_i}{\partial \theta_j} \right) = \frac{\partial R_a}{\partial \theta_j} \delta_{ik}
 
-This quantity is stored in variable :code:`DdxidthetaDP(i,j,k)` (**WARNING : potential index error**)
+This quantity is stored in variable :code:`DdxidthetaDP(i,j,k)`
 
 The derivative of :math:`\frac{\partial \xi}{\partial \theta}` with respect tyo the coordinates of the hull's control points equals zero since this quantity does not depend on the control points :math:`Q`.
 
@@ -176,9 +176,9 @@ Its derivative with respect to a specific hull control point :math:`Q_a` reads:
 
 .. math::
 
-    \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = \frac{\partial}{\partial Q_{a_i}} \left( \frac{\partial X_k}{\partial \xi_j} \right) = \frac{\partial N_a}{\partial \xi_j} \delta_{ik}
+    \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = \frac{\partial}{\partial Q_{a_k}} \left( \frac{\partial X_i}{\partial \xi_j} \right) = \frac{\partial N_a}{\partial \xi_j} \delta_{ik}
 
-This quantity is stored in variable :code:`DdxdxiDQ(i,j,k)` (**WARNING: potential index error**)
+This quantity is stored in variable :code:`DdxdxiDQ(i,j,k)`
 
 To express the derivative with respect to embedded entity control point :math:`P_a`, we need to express the NURBS composition:
 
@@ -189,17 +189,17 @@ The derivative with respect to :math:`P_a` reads:
 
 .. math::
 
-    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right)\right)_{ijk} = \frac{\partial}{\partial P_{a_i}} \left( \frac{\partial X_k}{\partial \xi_j} \right) = R_a \frac{\partial^2 X_k}{\partial \xi_j \partial \xi_i}
+    \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right)\right)_{ijk} = \frac{\partial}{\partial P_{a_k}} \left( \frac{\partial X_i}{\partial \xi_j} \right) = R_a \frac{\partial^2 X_i}{\partial \xi_j \partial \xi_k}
 
-This quantity is stored in variable :code:`DdxdxiDP(i,j,k)` (**WARNING : there may be an index error**)
+This quantity is stored in variable :code:`DdxdxiDP(i,j,k)`
 
-**As a summary** (**WARNING : indices must be verified**):
+**As a summary**
 
 .. math::
 
     \begin{array}{c|c}
         \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = 0 & \left( \frac{\partial}{\partial Q_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = \frac{\partial N_a}{\partial \xi_j} \delta_{ik} \\
-        \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial R_a}{\partial \theta_j} \delta_{ik} & \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = R_a \frac{\partial^2 X_k}{\partial \xi_i \partial \xi_j}
+        \left( \frac{\partial}{\partial P_a} \left( \frac{\partial \xi}{\partial \theta} \right) \right)_{ijk} = \frac{\partial R_a}{\partial \theta_j} \delta_{ik} & \left( \frac{\partial}{\partial P_a} \left( \frac{\partial X}{\partial \xi} \right) \right)_{ijk} = R_a \frac{\partial^2 X_i}{\partial \xi_j \partial \xi_k}
     \end{array}
 
 
@@ -239,7 +239,7 @@ Derivative of the Jacobian determinant
 There are several transformation to take into account:
  - Reference element space :math:`\overline{\xi}` to embedded entity parametric space :math:`\theta`
  - Embedded entity parametric space :math:`\theta` to hull parametric space :math:`\xi`
- - Hull paramatric space :math:`\xi` to physical space :math:`X`
+ - Hull parametric space :math:`\xi` to physical space :math:`X`
 
 .. math::
     J = \frac{\partial X}{\partial \overline{\xi}} = \frac{\partial X}{\partial \xi} \cdot \frac{\partial \xi}{\partial \theta} \cdot \frac{\partial \theta}{\partial \overline{\xi}}
