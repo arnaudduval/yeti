@@ -16,10 +16,10 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = False
+dataExist   = True
 geolist     = ['VB', 'CB']
-# method_list = ['WP', 'C', 'JMC']
-method_list = ['JMC']
+method_list = ['WP', 'C', 'JMC']
+# method_list = ['JMC']
 
 if not dataExist:
 
@@ -125,7 +125,7 @@ else:
 	for geoName in geolist:
 		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
-		for PCGmethod in method_list:
+		for i, PCGmethod in enumerate(method_list):
 			filename = folder + 'ResPCG_' + geoName + '_' + PCGmethod + '.dat'
 			resPCG = np.loadtxt(filename)
 
@@ -136,10 +136,10 @@ else:
 			# Print the first or last
 			step = resPCG[0, 0]; iterNL = resPCG[1, 0]
 			newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]
-			ax.semilogy(np.arange(len(newresidue)), newresidue, 'o-', linewidth=2.5,
+			ax.semilogy(np.arange(len(newresidue)), newresidue, '-', linewidth=2.5, marker=markerSet[i],
 						label=labelmethod)
 
-			ax.legend(loc=0)
+			# ax.legend(loc=0)
 			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 			ax.set_ybound(lower=1e-12, upper=10)

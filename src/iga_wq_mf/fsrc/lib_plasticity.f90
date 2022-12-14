@@ -188,7 +188,7 @@ subroutine compute_stress_vonmises(dimen, nvoigt, tensor, VM)
     call compute_trace(dimen, nvoigt, tensor, trace)
     dev = tensor - 1.d0/3.d0*trace*one 
     
-    call compute_stress_norm(dimen, nvoigt, tensor, VM)
+    call compute_stress_norm(dimen, nvoigt, dev, VM)
     VM = sqrt(3.d0/2.d0)*VM
 
 end subroutine compute_stress_vonmises
