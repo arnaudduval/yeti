@@ -134,6 +134,11 @@ add_test(NAME gradcomp_embdsol_cube_lin_pressure
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
+# linear, centrifugal body force loading
+add_test(NAME gradcomp_embdsol_cube_lin_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_centrif.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
 
 
 
@@ -180,6 +185,7 @@ set_tests_properties(
                      gradvol_embdsol_cube_nonli_embd
                      gradvol_embdsol_cube_nonli_hull_embd
                      gradcomp_embdsol_cube_lin_pressure
+                     gradcomp_embdsol_cube_lin_centrif
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 # Properties for long tests
