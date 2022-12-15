@@ -119,6 +119,17 @@ add_test(NAME gradvol_embdsol_cube_nonli_hull_embd
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull_embd.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
+
+# 2 - compliance gradient
+# linear, pressure loading
+add_test(NAME gradcomp_embdsol_cube_lin_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_pressure.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
+
+
+
+
 # Benchs for sensibilities computation on embedded solid element
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
 
@@ -163,6 +174,7 @@ set_tests_properties(
                      gradvol_embdsol_cube_nonli_hull
                      gradvol_embdsol_cube_nonli_embd
                      gradvol_embdsol_cube_nonli_hull_embd
+                     gradcomp_embdsol_cube_lin_pressure
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 
