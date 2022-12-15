@@ -17,14 +17,20 @@
 
 set(BENCH_PATH ${CMAKE_BINARY_DIR}/benchs)
 
+set(RUN_LONG_TESTS OFF CACHE BOOL "Run long duration tests")
+
 # Compute eigenvalues, 3D solid
 add_test(NAME platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 
 # Optimize with eigenvalues objective function
 # Finitie differences
-add_test(NAME OPTplatevib_FD COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_FD.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+if(RUN_LONG_TESTS)
+    add_test(NAME OPTplatevib_FD COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_FD.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+endif(RUN_LONG_TESTS)
 # Semi analytic
-add_test(NAME OPTplatevib_semi_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_semi_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+if(RUN_LONG_TESTS)
+    add_test(NAME OPTplatevib_semi_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_semi_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+endif(RUN_LONG_TESTS)
 # Full analytic
 add_test(NAME OPTplatevib_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 
@@ -35,7 +41,9 @@ add_test(NAME OPT1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT
 add_test(NAME OPT2-squareShellRoof COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT2-squareShellRoof/OPT2-squareShellRoof.py WORKING_DIRECTORY ${BENCH_PATH}/OPT2-squareShellRoof)
 
 # Optimize compliance with volume kept constant, full analytic gradients, 3D solid
-add_test(NAME OPT3-volumetricBeam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT3-volumetricBeam/OPT3-volumetricBeam.py WORKING_DIRECTORY ${BENCH_PATH}/OPT3-volumetricBeam)
+if(RUN_LONG_TESTS)
+    add_test(NAME OPT3-volumetricBeam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT3-volumetricBeam/OPT3-volumetricBeam.py WORKING_DIRECTORY ${BENCH_PATH}/OPT3-volumetricBeam)
+endif(RUN_LONG_TESTS)
 
 # Optimize max displacement with volume kept constant, full analytic gradients, 2D solid structure
 add_test(NAME OPT4-cantileverBeam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT4-cantileverBeam/OPT4-cantileverBeam.py WORKING_DIRECTORY ${BENCH_PATH}/OPT4-cantileverBeam)
@@ -135,12 +143,9 @@ add_test(NAME gradcomp_embdsol_cube_lin_pressure
 
 set_tests_properties(
                      platevib 
-                     OPTplatevib_FD 
-                     OPTplatevib_semi_AN 
                      OPTplatevib_AN 
                      OPT1-plateWithHole 
                      OPT2-squareShellRoof 
-                     OPT3-volumetricBeam 
                      OPT4-cantileverBeam 
                      OPT5-squareShellRoofDisp 
                      OPT6-tensileSpecimen 
@@ -176,6 +181,15 @@ set_tests_properties(
                      gradvol_embdsol_cube_nonli_hull_embd
                      gradcomp_embdsol_cube_lin_pressure
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
+
+# Properties for long tests
+if(RUN_LONG_TESTS)
+    set_tests_properties(OPTplatevib_semi_AN
+                         OPTplatevib_FD
+                         OPT3-volumetricBeam
+                         PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH}
+                         )
+endif(RUN_LONG_TESTS)
 
 
 
