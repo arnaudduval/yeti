@@ -204,6 +204,8 @@ subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
 
 end subroutine wq_get_forceint_3d
 
+! -----------------
+
 subroutine mf_wq_get_su_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -261,7 +263,6 @@ subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
     
-    use omp_lib
     implicit none
     ! Input / output  data 
     !---------------------
