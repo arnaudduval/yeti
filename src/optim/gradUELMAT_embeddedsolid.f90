@@ -208,7 +208,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
     !! Loop on integration points
     do igp = 1, nbint
-        write(*,*) "Gauss pt : ", igp
         !! Embedded solid
         !! ==============
 
@@ -353,7 +352,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         !! ===========
 
         do icp = 1, nnode
-            write(*,*) "CP : ", icp
             !! Compute mapping derivatives
             DdxidthetaDP(:,:,:) = zero
             do i = 1, 3
@@ -382,17 +380,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
             DdxdxiDP(:,:,:) = DdxdxiDP(:,:,:) * R(icp)
 
-            !! Debug GP 11 and CP 13
-            if ((igp == 11) .and. (icp == 13)) then
-                write(*,*) "DdxdxiDP : "
-                do k = 1, 3
-                    do j = 1, 3
-                        write(*,*) DdxdxiDP(:,j,k)
-                    enddo
-                    write(*,*) "-------"
-                enddo
-            endif
-
             !! Compute inverse mapping derivatives
             DdxidxDP(:,:,:) = zero
             DdthetadxiDP(:,:,:) = zero
@@ -405,29 +392,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
             DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
             DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
-
-            !! Debug GP 11 and CP 13
-            if ((igp == 11) .and. (icp == 13)) then
-                write(*,*) "DdxidxDP : "
-                do k = 1, 3
-                    do j = 1, 3
-                        write(*,*) DdxidxDP(:,j,k)
-                    enddo
-                    write(*,*) "-------"
-                enddo
-            endif
-
-            !! Debug GP 11 and CP 13
-            if ((igp == 11) .and. (icp == 13)) then
-                write(*,*) "DdthetadxiDP : "
-                do k = 1, 3
-                    do j = 1, 3
-                        write(*,*) DdthetadxiDP(:,j,k)
-                    enddo
-                    write(*,*) "-------"
-                enddo
-            endif
-
             
             !! Compute derivative of jacobian determinant
             dJdP(:) = zero
@@ -439,11 +403,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 enddo
             enddo
             dJdP(:) = dJdP(:) * detjac
-
-            !! Debug GP 11 and CP 13
-            if ((igp == 11) .and. (icp == 13)) then
-                write(*,*) "dJdP : ", dJdP(:)
-            endif
 
             do iA = 1, nadj
                 gradWint_elem(iA, : , icp) &
@@ -529,10 +488,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
                 dkronkdP(:,:,k) = dkronkdP(:,:,k) + tempd(:,:)
 
-                write(*,*) "---"
-                do i = 1, 3
-                    write(*,*) dkronkdP(i,:,k)
-                enddo
             enddo
 
 
@@ -576,8 +531,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 enddo
             enddo
 
-            write(*,*) "Contrib : ", dSdP_EA
-            
             do iA = 1, nadj
                 gradWint_elem(iA, : , icp) = gradWint_elem(iA, : , icp) &
                     & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
