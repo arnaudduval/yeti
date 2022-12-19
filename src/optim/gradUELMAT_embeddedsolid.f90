@@ -33,15 +33,12 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
     implicit none
 
-    !! TODO : DOCUMENTER À QUOI CORRESPOND nb_cp -> EST-CE POUR UN ELEMENT 
-    !! DE L'ENVELOPPE OU POUR L'ENVELOPPE ENTIÈRE ?
-
     !! Input arguments
     integer, intent(in) :: nadj, mcrd, nnode, nnodemap, nb_cp, nbint, jelem
     double precision, intent(in) :: coords
     dimension coords(mcrd, nnode)
     double precision, intent(in) :: coordsall
-    dimension coordsall(3, nb_cp)
+    dimension coordsall(3, nb_cp)       !! nb_cp = total number of control points
     character(len=*), intent(in) :: tensor
     double precision, intent(in) :: material_properties, density
     dimension material_properties(2)
@@ -221,7 +218,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
         !! Compute parametric coordinates in embedded element from parent element
         !!theta(:) = zero
         do i = 1, mcrd
-            theta(i) = ((Ukv_elem(2,i) - Ukv_elem(1,i)) * PtGauss(i)  &
+            theta(i) = ((Ukv_elem(2,i) - Ukv_elem(1,i)) * ptGauss(i)  &
                 &     + (Ukv_elem(2,i) + Ukv_elem(1,i))) * 0.5
         enddo
 
@@ -406,8 +403,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 call MulMat(dthetadxi(:,:), DdxidthetaDP(:, :, k), temp(:,:), 3, 3, 3)
                 call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), 3, 3, 3)
             enddo
-
-            DdxidxDP(:, :, :) = -1.D0 * DdxdxiDP(:, :, :)
+            DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
             DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
 
             !! Debug GP 11 and CP 13
@@ -499,7 +495,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             do ij = 1, ntens
                 i = voigt(ij, 1)
                 j = voigt(ij, 2)
-                do k = 1, 3
+                do k = 1, 3     !! Loop on cordinates of current CP
                     if (i == j) then
                         dEdP(ij, k) = DdUdxDP(i, i, k)
                         do iA = 1, nadj
