@@ -386,13 +386,15 @@ Cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       
       implicit none
       
-      integer MCRD
-      double precision AA, BB
+      integer, intent(in) :: MCRD
+      double precision, intent(out) :: AA
+      double precision, intent(in) :: BB
+      double precision, intent(out) :: DetBB
             
       dimension AA(MCRD,MCRD)
       dimension BB(MCRD,MCRD)
       
-      double precision DetBB
+      
 
       if (MCRD==2) then
         DetBB=(BB(1,1)*BB(2,2))-(BB(2,1)*BB(1,2))
