@@ -137,7 +137,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision :: DdxidxDP, DdthetadxiDP      !! inverse mappings
     dimension DdxidxDP(3, 3, 3), DdthetadxiDP(3, 3, 3)
     double precision :: dJdP        !! jacobian determinant
-    dimension dJdP(3)
+    dimension dJdP(3, nnode)
     double precision :: DdRdxDP
     dimension DdRdxDP(nnode, 3, 3)
 
@@ -394,19 +394,20 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
             
             !! Compute derivative of jacobian determinant
-            dJdP(:) = zero
+            !! Value of dJdP is stored for each control point for later use in gradWext computation
+            dJdP(:, icp) = zero
             do i = 1, 3
                 do j = 1, 3
                     do k = 1, 3
-                        dJdP(k) = dJdP(k) + dxidx(i, j)*DdxdxiDP(j, i, k) + dthetadxi(i, j)*DdxidthetaDP(j, i, k)
+                        dJdP(k, icp) = dJdP(k, icp) + dxidx(i, j)*DdxdxiDP(j, i, k) + dthetadxi(i, j)*DdxidthetaDP(j, i, k)
                     enddo
                 enddo
             enddo
-            dJdP(:) = dJdP(:) * detjac
+            dJdP(:, icp) = dJdP(:, icp) * detjac
 
             do iA = 1, nadj
                 gradWint_elem(iA, : , icp) &
-                 & = gradWint_elem(iA, : , icp) - work(iA)*dJdP(:)*GaussPdsCoord(1, igp)
+                 & = gradWint_elem(iA, : , icp) - work(iA)*dJdP(:, icp)*GaussPdsCoord(1, igp)
             enddo
 
             !! Compute derivative of embbeded element shape function gradient
@@ -580,58 +581,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
                     !! Derivatives / control points of embedded entity
                     do icp = 1, nnode
-                        !! Compute mapping derivatives
-                        DdxidthetaDP(:,:,:) = zero
-                        do i = 1, 3
-                            do j = 1, 3
-                                do k = 1, 3
-                                    if (i == k) then
-                                        DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
-                                    endif
-                                enddo
-                            enddo
-                        enddo
-
-                        DdxdxiDP(:,:,:) = zero
-                        do inodemap = 1, nnodemap
-                            do i = 1, 3
-                                do j = 1, 3
-                                    do k = 1, 3
-                                        if (j==k) then
-                                            DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
-                                        else
-                                            DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k+1) * coordsmap(i, inodemap)
-                                        endif
-                                    enddo
-                                enddo
-                            enddo
-                        enddo
-                        DdxdxiDP(:,:,:) = DdxdxiDP(:,:,:) * R(icp)
-
-                        !! Compute inverse mapping derivatives
-                        DdxidxDP(:,:,:) = zero
-                        DdthetadxiDP(:,:,:) = zero
-
-                        do k = 1, 3    !! Loop on CP coordinates
-                            call MulMat(dxidx(:,:), DdxdxiDP(:, :, k), temp(:,:), 3, 3, 3)
-                            call mulmat(temp(:,:), dxidx(:,:), DdxidxDP(:, :, k), 3, 3, 3)
-                            call MulMat(dthetadxi(:,:), DdxidthetaDP(:, :, k), temp(:,:), 3, 3, 3)
-                            call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), 3, 3, 3)
-                        enddo
-
-                        DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
-                        DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
-                        
-                        !! Compute derivative of jacobian determinant
-                        dJdP(:) = zero
-                        do i = 1, 3
-                            do j = 1, 3
-                                do k = 1, 3
-                                    dJdP(k) = dJdP(k) + dxidx(i, j)*DdxdxiDP(j, i, k) + dthetadxi(i, j)*DdxidthetaDP(j, i, k)
-                                enddo
-                            enddo
-                        enddo
-                        dJdP(:) = dJdP(:) * detjac
 
                         dxdP(:,:) = zero
                         do idim = 1, mcrd
@@ -658,7 +607,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                         do idim = 1, dim_patch
                             do jdim = 1, dim_patch
                                 dFdP(idim,jdim) = density*(adlmag(iload)**two)*       &
-                                    &   (dvectRdP(idim,jdim)*detjac + vectR(idim)*dJdP(jdim)) &
+                                    &   (dvectRdP(idim,jdim)*detjac + vectR(idim)*dJdP(jdim, icp)) &
                                     &       * GaussPdsCoord(1,igp)
                             enddo
                         enddo
