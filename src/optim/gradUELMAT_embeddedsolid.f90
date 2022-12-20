@@ -161,12 +161,35 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
     double precision dkronkdP, DdxdthetaDP
     dimension dkronkdP(3, 3, 3), DdxdthetaDP(3, 3, 3)
 
+    !! Derivatives w.r.t hull control points Q
+    double precision :: DdxdxiDQ, DdxidxDQ
+    dimension DdxdxiDQ(3, 3, 3), DdxidxDQ(3, 3, 3)
+
+    double precision :: dJdQ        !! jacobian determinant
+    dimension dJdQ(3, nnodemap)
+    double precision :: DdRdxDQ
+    dimension DdRdxDQ(nnode, 3, 3)
+
+    double precision :: DdUAdxDQ, DdUdxDQ
+    dimension DdUAdxDQ(3, 3, 3, nadj), DdUdxDQ(3, 3, 3)
+
+    double precision dkronkdQ
+    dimension dkronkdQ(3, 3, 3)
+
+    double precision :: dEAdQ, dEdQ, dSdQ
+    dimension dEAdQ(2*mcrd, 3, nadj), dEdQ(2*mcrd, 3), dSdQ(2*mcrd, 3)
+
+    double precision :: dEAdQ_S, dSdQ_EA
+    dimension dEAdQ_S(3, nadj), dSdQ_EA(3, nadj)
+
     !! loading
     integer :: loadcount, kload
     double precision :: pointGP, vectR, vectAG, vectD, pointA, pointB, scal
     dimension pointGP(mcrd), vectR(mcrd), vectAG(mcrd), vectD(mcrd), pointA(mcrd), pointB(mcrd)
     double precision :: dvectRdP, dFdP, dxdP, dxdP_x_D
     dimension dvectRdP(mcrd, mcrd), dFdP(mcrd, mcrd), dxdP(mcrd, mcrd), dxdP_x_D(mcrd)
+    double precision :: dxdQ, dxdQ_x_D, dvectRdQ, dFdQ
+    dimension dxdQ(mcrd, mcrd), dxdQ_x_D(mcrd), dvectRdQ(mcrd, mcrd), dFdQ(mcrd, mcrd)
 
 
 
@@ -181,6 +204,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
     !! Various loop variables
     integer :: i, j, k, ij, icp, inodemap, iA, b, idim, jdim, kdim, iload
+    integer :: imcp
 
     !! Initialization
 
@@ -356,8 +380,8 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             work(:) = work(:) + strainAdj(ij, :)*stress(ij)
         enddo
 
-        !! Derivatives
-        !! ===========
+        !! Derivatives w.r.t embedded CP
+        !! =============================
 
         do icp = 1, nnode
             !! Compute mapping derivatives
@@ -421,13 +445,10 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! Compute derivative of embbeded element shape function gradient
             DdRdxDP(:, :, :) = zero
             do k = 1, 3     !! Loop on coordinates of current CP
-                ! DdRbdthetaDP x dthetadxi x dxidx  ==> zero
-                ! + dRbdtheta x DdthetadxiDP x dxidx
-                ! + dRbdtheta x dthetadxi x DdxidxDP
-
                 call MulMat(dRdtheta(:,:), DdthetadxiDP(:,:,k), temp1(:,:), nnode, 3, 3)
                 call MulMat(temp1(:,:), dxidx(:,:), DdRdxDP(:,:,k), nnode, 3, 3)
 
+                !! TO DO : this line does not depend on k and can be computed outside of the loop
                 call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1(:,:), nnode, 3, 3)
                 call MulMat(temp1(:,:), DdxidxDP(:,:,k), temp2(:,:), nnode, 3, 3)
                 DdRdxDP(:,:,k) = DdRdxDP(:,:,k) + temp2(:,:)
@@ -450,7 +471,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! Compute derivative of displacement gradient
             DdUdxDP(:, :, :) = zero
             do k = 1, 3     !! Loop on coordinates of current CP
-                do b = 1, nnode     !! Loop on CP where adjoint disp is supported
+                do b = 1, nnode     !! Loop on CP where disp is supported
                     do i = 1, 3
                         do j = 1, 3
                             DdUdxDP(i, j, k) = DdUdxDP(i, j, k) + DdRdxDP(b, j, k) * Uelem(i, b)
@@ -459,7 +480,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                 enddo
             enddo
 
-            !! Compute strain, adjoint strain and their derivatives
+            !! Compute strain and adjoint strain derivatives
             do ij = 1, ntens
                 i = voigt(ij, 1)
                 j = voigt(ij, 2)
@@ -544,10 +565,159 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                 gradWint(iA, : , sctr(icp)) = gradWint(iA, : , sctr(icp)) &
                     & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
             enddo
+        enddo   !! End loop on embedded control points icp
 
+        !! Derivatives w.r.t hull CP
+        !! =========================
 
+        do imcp = 1, nnode_map
+            !! Compute mapping derivatives
+            DdxdxiDQ(:,:,:) = zero
+            do i = 1, 3
+                do j = 1, 3
+                    do k = 1, 3
+                        if (i == k) then
+                            DdxdxiDQ(i,j,k) = dNdxi(imcp, j)
+                        endif
+                    enddo
+                enddo
+            enddo
 
-        enddo   !! End loop on control point icp
+            !! Compute inverse mapping derivatives
+            DdxidxDQ(:,:,:) = zero
+            do k = 1, 3     !! Loop on CP coordinates
+                call MulMat(dxidx(:,:), DdxdxiDQ(:, :, k), temp(:,:), 3, 3, 3)
+                call mulmat(temp(:,:), dxidx(:,:), DdxidxDQ(:, :, k), 3, 3, 3)
+            enddo
+            DdxidxDQ(:, :, :) = -1.D0 * DdxidxDQ(:, :, :)
+
+            !! Compute derivative of jacobian determinant
+            !! Value of dJdQ is storef for each control point for later use in gradWext computation
+            dJdQ(:, imcp) = zero
+            do i =1, 3
+                do j =1, 3
+                    do k = 1, 3
+                        dJdQ(k, imcp) = dJdQ(k, imcp) + dxidx(i, j) * DdxdxiDQ(j, i, k)
+                    enddo
+                enddo
+            enddo
+            dJdQ(:, imcp) = dJdQ(:, imcp) * detjac
+
+            do iA = 1, nadj
+                gradWint(iA, : , sctr_map(imcp)) &
+                 & = gradWint(iA, : , sctr_map(imcp)) - work(iA)*dJdQ(:, imcp)*GaussPdsCoord(1, igp)
+            enddo
+
+            !! Compute derivative of embedded element shape function gradient
+            DdRdxDQ(:, :, :) = zero
+            call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1, nnode, 3, 3)
+            do k = 1, 3 !! Loop on coordinates of current hull CP
+                call MulMat(temp1(:,:), DdxidxDQ(:,:,k), DdRdxDQ(:,:,k), nnode, 3, 3)
+            enddo
+
+            !! Compute derivative of adjoint displacement gradient
+            DdUAdxDQ(:, :, :, :) = zero
+            do iA = 1, nadj
+                do k = 1, 3     !! Loop on coordinates of current hull CP
+                    do b = 1, nnode     !! Loop on CP where adjoint disp is supported
+                        do i = 1, 3
+                            do j = 1, 3
+                                DdUAdxDQ(i, j, k, iA) = DdUAdxDQ(i, j, k, iA) + DdRdxDQ(b, j, k) * UAelem(i, b, iA)
+                            enddo
+                        enddo
+                    enddo
+                enddo
+            enddo
+
+            !! Compute derivative of displacement gradient
+            do k = 1, 3     !! Loop on coordinates of current CP
+                do b = 1, nnode     !! Loop on CP where disp is supported
+                    do i = 1, 3
+                        do j = 1, 3
+                            DdUdxDQ(i, j, k) = DdUdxDQ(i, j, k) + DdRdxDQ(b, j, k) * Uelem(i, b)
+                        enddo
+                    enddo
+                enddo
+            enddo
+
+            !! Compute strain and adjoint strain derivatives
+            do ij = 1, ntens
+                i = voigt(ij, 1)
+                j = voigt(ij, 2)
+                do k = 1, 3     !! Loop on cordinates of current CP
+                    if (i == j) then
+                        dEdQ(ij, k) = DdUdxDQ(i, i, k)
+                        do iA = 1, nadj
+                            dEAdQ(ij, k, iA) =  DdUAdxDQ(i, i, k, iA)
+                        enddo
+                    else
+                        dEdQ(ij, k) = DdUdxDQ(i, j, k) + DdUdxDQ(j, i, k)
+                        do iA = 1, nadj
+                            dEAdQ(ij, k, iA) =  DdUAdxDQ(i, j, k, iA) + DdUAdxDQ(j, i, k, iA)
+                        enddo
+                    endif
+                enddo
+            enddo
+
+            !! Compute derivative of kronecker operator for material law
+            dkronkdQ(:,:,:) = zero
+
+            do k = 1, 3
+                call MulMat(dthetadxi(:,:), DdxidxDQ(:,:,k), tempa(:,:), 3, 3, 3)
+                call MulMat(tempa(:,:), dxdtheta(:,:), dkronkdQ(:,:,k), 3, 3, 3)
+
+                call MulMat(dthetadx(:,:), DdxdxiDQ(:,:,k), tempb, 3, 3, 3)
+                call MulMat(tempb(:,:), dxidtheta(:,:), tempc(:,:), 3, 3, 3)
+
+                dkronkdQ(:,:,k) = dkronkdQ(:,:,k) + tempc(:,:)
+            enddo
+
+            !! Compute stress and its derivative
+            do k = 1, 3
+                call MulVect(ddsdde(:,:), dEdQ(:, k), dSdQ(:, k), ntens, ntens)
+            enddo
+
+            dEAdQ_S(:,:) = zero
+            dSdQ_EA(:,:) = zero
+            do iA = 1, nadj
+                do k = 1, 3
+                    do ij = 1, ntens
+                        dEAdQ_S(k, iA) = dEAdQ_S(k, iA) + dEAdQ(ij, k, iA)*stress(ij)
+                        dSdQ_EA(k, iA) = dSdQ_EA(k, iA) + strainAdj(ij, iA)*dSdQ(ij, k)
+                    enddo
+                enddo
+            enddo
+
+            do iA = 1, nadj
+                gradWint(iA, : , sctr_map(imcp)) = gradWint(iA, : , sctr_map(imcp)) &
+                 & - dEAdQ_S(:, iA) * detJac * GaussPdsCoord(1, igp) &
+                 & - dSdQ_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
+            enddo
+
+            !! Add contribution of the derivative of material law
+            !! re-use variable dSdQ_EA
+            !! TODO : verify if dkronk is symmetric (if it's the case, voigt notation should be used)
+            dSdQ_EA(:,:) = zero
+            do iA = 1, nadj
+                do k = 1, 3
+                    do i = 1, 3
+                        do j =1, 3
+                            if (i == j) then
+                                dSdQ_EA(k, iA) = dSdQ_EA(k, iA) + strainAdj(i, iA)*lambda*tr_strain*dkronkdQ(i,j,k)
+                            else
+                                dSdQ_EA(k, iA) = dSdQ_EA(k, iA) + 0.5*strainAdj(i+j+1, iA)*lambda*tr_strain*dkronkdQ(i,j,k)
+                            endif
+                        enddo
+                    enddo
+                enddo
+            enddo
+
+            do iA = 1, nadj
+                gradWint(iA, : , sctr_map(imcp)) = gradWint(iA, : , sctr_map(imcp)) &
+                    & - dSdQ_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
+            enddo
+
+        enddo
 
 
         !! Body loads
@@ -588,6 +758,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
 
                     !! Derivatives / control points of embedded entity
+                    !! -----------------------------------------------
                     do icp = 1, nnode
 
                         dxdP(:,:) = zero
@@ -624,6 +795,40 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                             do idim = 1, mcrd
                                 gradWext(iA,:,sctr(icp)) = gradWext(iA,:,sctr(icp)) + &
                                     &   UA(idim, iA)*dFdP(idim, :)
+                            enddo
+                        enddo
+
+                    enddo
+
+                    !! Derivative / control points of hull
+                    !! -----------------------------------
+                    do imcp = 1, nnode_map
+                        dxdQ(:,:) = zero
+                        do idim = 1, mcrd
+                            dxdQ(i,i) = N(imcp)
+                        enddo
+
+                        dxdQ_x_D(:) = zero
+                        do idim = 1, dim_map
+                            dxdQ_x_D(:) = dxdQ_x_D(:) + dxdQ(idim,:)*vectD(idim)
+                        enddo
+
+                        do idim = 1, dim_map
+                            dvectRdQ(idim,:) = dxdQ(idim,:) - dxdQ_x_D(:)*vectD(idim)
+                        enddo
+
+                        do idim = 1, dim_patch
+                            do jdim = 1, dim_map
+                                dFdQ(idim,jdim) = density*(adlmag(iload)**two)*       &
+                                    &   (dvectRdQ(idim,jdim)*detjac + vectR(idim)*dJdQ(jdim, imcp)) &
+                                    &       * GaussPdsCoord(1,igp)
+                            enddo
+                        enddo
+
+                        do iA = 1, nadj
+                            do idim = 1, mcrd
+                                gradWext(iA,:,sctr_map(imcp)) = gradWext(iA,:,sctr_map(imcp)) + &
+                                    &   UA(idim, iA)*dFdQ(idim, :)
                             enddo
                         enddo
 
