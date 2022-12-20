@@ -47,7 +47,7 @@ Galerkin weak form gives the following equation after integration:
 We set up a discrete formulation from the Galerkin weak form, given by:
 
 .. math::
-    
+
     K \, u = F
 
 where :math:`K` is the the stiffness matrix, :math:`u` the discrete displacements defined at control points and :math:`F` the load vector.
@@ -107,7 +107,7 @@ Embedded formulation
     :widths: 25 25 25
     :header-rows: 1
 
-    * - 
+    * -
       - Embedded solid
       - Hull
     * - basis functions
@@ -132,10 +132,10 @@ Embedded formulation
 And its derivative with respect to the coordinate :math:`\theta`:
 
 .. math::
-    
+
     \frac{\partial \xi}{\partial \theta} = \sum_{a} \frac{\partial R_a}{\partial \theta} P_a
 
-and for specific directions :math:`i,j`: 
+and for specific directions :math:`i,j`:
 
 .. math::
     \left( \frac{\partial \xi}{\partial \theta} \right)_{ij} = \frac{\partial \xi_i}{\partial \theta_j}
@@ -209,7 +209,7 @@ Derivative of inverse mappings
 In this part, we express the derivative of inverse mapping :math:`\frac{\partial \xi}{\partial X}` and :math:`\frac{\partial \theta}{\partial \xi}`
 with respect to a quantity named :math:`\Lambda` which can be eitehr the coordinates of control points of the hull or the embedded entity.
 
-We start with: 
+We start with:
 
 .. math::
 
@@ -279,5 +279,5 @@ Applying this to the cases of control points :math:`P` and :math:`Q` gives:
 
     \begin{eqnarray}
         \frac{\partial \left| J \right|}{\partial P} & = & \left| J \right| \cdot \left[ \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial P} \left( \frac{\partial X}{\partial \xi} \right) \right) + \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial P} \left( \frac{\partial \xi}{\partial \theta} \right) \right) \right] \\
-        \frac{\partial \left| J \right|}{\partial Q} & = & \left| J \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial P} \left( \frac{\partial X}{\partial \xi} \right) \right) 
+        \frac{\partial \left| J \right|}{\partial Q} & = & \left| J \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial Q} \left( \frac{\partial X}{\partial \xi} \right) \right)
     \end{eqnarray}
