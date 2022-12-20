@@ -139,14 +139,20 @@ add_test(NAME gradcomp_embdsol_cube_lin_centrif
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
-# linear embedded entity, non linear huill, pressure loading
+# linear mapping ot embedded entity, non linear hull, pressure loading
 add_test(NAME gradcomp_embdsol_cube_nonli_hull_pressure
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
-# linear embedded entity, non linear huill, centrifiugal body force loading
+# linear mapping of embedded entity, non linear hull, centrifugal body force loading
 add_test(NAME gradcomp_embdsol_cube_nonli_hull_centrif
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_centrif.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
+
+# nonlinear embedded entity, linear mapping of huill, centrifugal body force loading
+add_test(NAME gradcomp_embdsol_cube_nonli_embd_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_embd_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 
@@ -196,6 +202,7 @@ set_tests_properties(
                      gradcomp_embdsol_cube_lin_centrif
                      gradcomp_embdsol_cube_nonli_hull_pressure
                      gradcomp_embdsol_cube_nonli_hull_centrif
+                     gradcomp_embdsol_cube_nonli_embd_centrif
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 # Properties for long tests
