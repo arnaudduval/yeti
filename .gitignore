@@ -8,3 +8,4 @@ benchs/*/results/*.vtu
 benchs/*/results/*.vtk
 .coverage
 src/nurbspatch.mod
+benchs/*/test.py
