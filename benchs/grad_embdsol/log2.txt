@@ -1,1249 +1,0 @@
-
-Reading Abaqus inp file from test2.inp...
-
-Reading number of nodes by element...
-
-Reading parameters defining the user elements...
-
-Reading model name...
-No model name.
-
-Reading parameters...
-
-Reading distributions...
-0 distributions read.
-
-Reading materials...
-	Reading material MAT...
-		Type isotropic.
-		Elastic modulus = 210000.0
-		Poisson = 0.0
-		Density = 1.2
-	Material MAT successfully read.
-	Reading material MATvoid...
-		Type isotropic.
-		Elastic modulus = 0.0
-		Poisson = 0.0
-	Material MATvoid successfully read.
-2 materials read.
-
-Reading parts...
-	Reading part Cube...
-		54 nodes read.
-		1 elements read.
-		2 elements read.
-		5 groups read.
-		2 properties read.
-	Part Cube successfully read.
-1 parts read.
-
-Saving part objects...
-Parts successfully saved.
-
-Reading assembly...
-Creating instance I1 of part Cube...
-Successfully created.
-0 nodes read.
-1 instances created.
-
-Reading initial boundary conditions...
-	Initial step created.
-Initial boundary conditions read.
-
-Reading steps...
-	Reading step ... No name
-		Reading boundary condition...
-		 - Boundary condition (bc with no name1) successfully added.
-		 - Boundary condition (bc with no name2) successfully added.
-		 - Boundary condition (bc with no name3) successfully added.
-		 - Boundary condition (bc with no name4) successfully added.
-		Reading Dload ...
-		 - Distributed load (no name) successfully added.
-	Step No name successfully read with 4 bcs and 1 loads.
-2 steps read.
-
-Abaqus inp file test2.inp successfully read.
-Compute compliance
- Linear elasticity analysis...
-Compute FD gradient of the compliance
-Compute compliance
- numVar:  1/162Compute compliance
- Linear elasticity analysis...
- numVar:  2/162Compute compliance
- Linear elasticity analysis...
- numVar:  3/162Compute compliance
- Linear elasticity analysis...
- numVar:  4/162Compute compliance
- Linear elasticity analysis...
- numVar:  5/162Compute compliance
- Linear elasticity analysis...
- numVar:  6/162Compute compliance
- Linear elasticity analysis...
- numVar:  7/162Compute compliance
- Linear elasticity analysis...
- numVar:  8/162Compute compliance
- Linear elasticity analysis...
- numVar:  9/162Compute compliance
- Linear elasticity analysis...
- numVar: 10/162Compute compliance
- Linear elasticity analysis...
- numVar: 11/162Compute compliance
- Linear elasticity analysis...
- numVar: 12/162Compute compliance
- Linear elasticity analysis...
- numVar: 13/162Compute compliance
- Linear elasticity analysis...
- numVar: 14/162Compute compliance
- Linear elasticity analysis...
- numVar: 15/162Compute compliance
- Linear elasticity analysis...
- numVar: 16/162Compute compliance
- Linear elasticity analysis...
- numVar: 17/162Compute compliance
- Linear elasticity analysis...
- numVar: 18/162Compute compliance
- Linear elasticity analysis...
- numVar: 19/162Compute compliance
- Linear elasticity analysis...
- numVar: 20/162Compute compliance
- Linear elasticity analysis...
- numVar: 21/162Compute compliance
- Linear elasticity analysis...
- numVar: 22/162Compute compliance
- Linear elasticity analysis...
- numVar: 23/162Compute compliance
- Linear elasticity analysis...
- numVar: 24/162Compute compliance
- Linear elasticity analysis...
- numVar: 25/162Compute compliance
- Linear elasticity analysis...
- numVar: 26/162Compute compliance
- Linear elasticity analysis...
- numVar: 27/162Compute compliance
- Linear elasticity analysis...
- numVar: 28/162Compute compliance
- Linear elasticity analysis...
- numVar: 29/162Compute compliance
- Linear elasticity analysis...
- numVar: 30/162Compute compliance
- Linear elasticity analysis...
- numVar: 31/162Compute compliance
- Linear elasticity analysis...
- numVar: 32/162Compute compliance
- Linear elasticity analysis...
- numVar: 33/162Compute compliance
- Linear elasticity analysis...
- numVar: 34/162Compute compliance
- Linear elasticity analysis...
- numVar: 35/162Compute compliance
- Linear elasticity analysis...
- numVar: 36/162Compute compliance
- Linear elasticity analysis...
- numVar: 37/162Compute compliance
- Linear elasticity analysis...
- numVar: 38/162Compute compliance
- Linear elasticity analysis...
- numVar: 39/162Compute compliance
- Linear elasticity analysis...
- numVar: 40/162Compute compliance
- Linear elasticity analysis...
- numVar: 41/162Compute compliance
- Linear elasticity analysis...
- numVar: 42/162Compute compliance
- Linear elasticity analysis...
- numVar: 43/162Compute compliance
- Linear elasticity analysis...
- numVar: 44/162Compute compliance
- Linear elasticity analysis...
- numVar: 45/162Compute compliance
- Linear elasticity analysis...
- numVar: 46/162Compute compliance
- Linear elasticity analysis...
- numVar: 47/162Compute compliance
- Linear elasticity analysis...
- numVar: 48/162Compute compliance
- Linear elasticity analysis...
- numVar: 49/162Compute compliance
- Linear elasticity analysis...
- numVar: 50/162Compute compliance
- Linear elasticity analysis...
- numVar: 51/162Compute compliance
- Linear elasticity analysis...
- numVar: 52/162Compute compliance
- Linear elasticity analysis...
- numVar: 53/162Compute compliance
- Linear elasticity analysis...
- numVar: 54/162Compute compliance
- Linear elasticity analysis...
- numVar: 55/162Compute compliance
- Linear elasticity analysis...
- numVar: 56/162Compute compliance
- Linear elasticity analysis...
- numVar: 57/162Compute compliance
- Linear elasticity analysis...
- numVar: 58/162Compute compliance
- Linear elasticity analysis...
- numVar: 59/162Compute compliance
- Linear elasticity analysis...
- numVar: 60/162Compute compliance
- Linear elasticity analysis...
- numVar: 61/162Compute compliance
- Linear elasticity analysis...
- numVar: 62/162Compute compliance
- Linear elasticity analysis...
- numVar: 63/162Compute compliance
- Linear elasticity analysis...
- numVar: 64/162Compute compliance
- Linear elasticity analysis...
- numVar: 65/162Compute compliance
- Linear elasticity analysis...
- numVar: 66/162Compute compliance
- Linear elasticity analysis...
- numVar: 67/162Compute compliance
- Linear elasticity analysis...
- numVar: 68/162Compute compliance
- Linear elasticity analysis...
- numVar: 69/162Compute compliance
- Linear elasticity analysis...
- numVar: 70/162Compute compliance
- Linear elasticity analysis...
- numVar: 71/162Compute compliance
- Linear elasticity analysis...
- numVar: 72/162Compute compliance
- Linear elasticity analysis...
- numVar: 73/162Compute compliance
- Linear elasticity analysis...
- numVar: 74/162Compute compliance
- Linear elasticity analysis...
- numVar: 75/162Compute compliance
- Linear elasticity analysis...
- numVar: 76/162Compute compliance
- Linear elasticity analysis...
- numVar: 77/162Compute compliance
- Linear elasticity analysis...
- numVar: 78/162Compute compliance
- Linear elasticity analysis...
- numVar: 79/162Compute compliance
- Linear elasticity analysis...
- numVar: 80/162Compute compliance
- Linear elasticity analysis...
- numVar: 81/162Compute compliance
- Linear elasticity analysis...
- numVar: 82/162Compute compliance
- Linear elasticity analysis...
- numVar: 83/162Compute compliance
- Linear elasticity analysis...
- numVar: 84/162Compute compliance
- Linear elasticity analysis...
- numVar: 85/162Compute compliance
- Linear elasticity analysis...
- numVar: 86/162Compute compliance
- Linear elasticity analysis...
- numVar: 87/162Compute compliance
- Linear elasticity analysis...
- numVar: 88/162Compute compliance
- Linear elasticity analysis...
- numVar: 89/162Compute compliance
- Linear elasticity analysis...
- numVar: 90/162Compute compliance
- Linear elasticity analysis...
- numVar: 91/162Compute compliance
- Linear elasticity analysis...
- numVar: 92/162Compute compliance
- Linear elasticity analysis...
- numVar: 93/162Compute compliance
- Linear elasticity analysis...
- numVar: 94/162Compute compliance
- Linear elasticity analysis...
- numVar: 95/162Compute compliance
- Linear elasticity analysis...
- numVar: 96/162Compute compliance
- Linear elasticity analysis...
- numVar: 97/162Compute compliance
- Linear elasticity analysis...
- numVar: 98/162Compute compliance
- Linear elasticity analysis...
- numVar: 99/162Compute compliance
- Linear elasticity analysis...
- numVar:100/162Compute compliance
- Linear elasticity analysis...
- numVar:101/162Compute compliance
- Linear elasticity analysis...
- numVar:102/162Compute compliance
- Linear elasticity analysis...
- numVar:103/162Compute compliance
- Linear elasticity analysis...
- numVar:104/162Compute compliance
- Linear elasticity analysis...
- numVar:105/162Compute compliance
- Linear elasticity analysis...
- numVar:106/162Compute compliance
- Linear elasticity analysis...
- numVar:107/162Compute compliance
- Linear elasticity analysis...
- numVar:108/162Compute compliance
- Linear elasticity analysis...
- numVar:109/162Compute compliance
- Linear elasticity analysis...
- numVar:110/162Compute compliance
- Linear elasticity analysis...
- numVar:111/162Compute compliance
- Linear elasticity analysis...
- numVar:112/162Compute compliance
- Linear elasticity analysis...
- numVar:113/162Compute compliance
- Linear elasticity analysis...
- numVar:114/162Compute compliance
- Linear elasticity analysis...
- numVar:115/162Compute compliance
- Linear elasticity analysis...
- numVar:116/162Compute compliance
- Linear elasticity analysis...
- numVar:117/162Compute compliance
- Linear elasticity analysis...
- numVar:118/162Compute compliance
- Linear elasticity analysis...
- numVar:119/162Compute compliance
- Linear elasticity analysis...
- numVar:120/162Compute compliance
- Linear elasticity analysis...
- numVar:121/162Compute compliance
- Linear elasticity analysis...
- numVar:122/162Compute compliance
- Linear elasticity analysis...
- numVar:123/162Compute compliance
- Linear elasticity analysis...
- numVar:124/162Compute compliance
- Linear elasticity analysis...
- numVar:125/162Compute compliance
- Linear elasticity analysis...
- numVar:126/162Compute compliance
- Linear elasticity analysis...
- numVar:127/162Compute compliance
- Linear elasticity analysis...
- numVar:128/162Compute compliance
- Linear elasticity analysis...
- numVar:129/162Compute compliance
- Linear elasticity analysis...
- numVar:130/162Compute compliance
- Linear elasticity analysis...
- numVar:131/162Compute compliance
- Linear elasticity analysis...
- numVar:132/162Compute compliance
- Linear elasticity analysis...
- numVar:133/162Compute compliance
- Linear elasticity analysis...
- numVar:134/162Compute compliance
- Linear elasticity analysis...
- numVar:135/162Compute compliance
- Linear elasticity analysis...
- numVar:136/162Compute compliance
- Linear elasticity analysis...
- numVar:137/162Compute compliance
- Linear elasticity analysis...
- numVar:138/162Compute compliance
- Linear elasticity analysis...
- numVar:139/162Compute compliance
- Linear elasticity analysis...
- numVar:140/162Compute compliance
- Linear elasticity analysis...
- numVar:141/162Compute compliance
- Linear elasticity analysis...
- numVar:142/162Compute compliance
- Linear elasticity analysis...
- numVar:143/162Compute compliance
- Linear elasticity analysis...
- numVar:144/162Compute compliance
- Linear elasticity analysis...
- numVar:145/162Compute compliance
- Linear elasticity analysis...
- numVar:146/162Compute compliance
- Linear elasticity analysis...
- numVar:147/162Compute compliance
- Linear elasticity analysis...
- numVar:148/162Compute compliance
- Linear elasticity analysis...
- numVar:149/162Compute compliance
- Linear elasticity analysis...
- numVar:150/162Compute compliance
- Linear elasticity analysis...
- numVar:151/162Compute compliance
- Linear elasticity analysis...
- numVar:152/162Compute compliance
- Linear elasticity analysis...
- numVar:153/162Compute compliance
- Linear elasticity analysis...
- numVar:154/162Compute compliance
- Linear elasticity analysis...
- numVar:155/162Compute compliance
- Linear elasticity analysis...
- numVar:156/162Compute compliance
- Linear elasticity analysis...
- numVar:157/162Compute compliance
- Linear elasticity analysis...
- numVar:158/162Compute compliance
- Linear elasticity analysis...
- numVar:159/162Compute compliance
- Linear elasticity analysis...
- numVar:160/162Compute compliance
- Linear elasticity analysis...
- numVar:161/162Compute compliance
- Linear elasticity analysis...
- numVar:162/162 Gauss pt :            1
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            2
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            3
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            4
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            5
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            6
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            7
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            8
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :            9
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           10
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           11
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- DdxdxiDP : 
-   0.0000000000000000        0.0000000000000000        0.0000000000000000     
-  -8.3266726846886737E-018   0.0000000000000000        0.0000000000000000     
-   0.0000000000000000        0.0000000000000000        0.0000000000000000     
- -------
-  -8.3266726846886737E-018   0.0000000000000000        0.0000000000000000     
-   0.0000000000000000        4.9999999999999975E-002   1.3877787807814456E-018
-   0.0000000000000000        6.9388939039072278E-019   4.1633363423443369E-018
- -------
-   0.0000000000000000        0.0000000000000000        0.0000000000000000     
-   0.0000000000000000        6.9388939039072278E-019   4.1633363423443369E-018
-  -1.9428902930940238E-017  -1.8041124150158791E-017  -2.0816681711721682E-017
- -------
- DdxidxDP : 
-  -0.0000000000000000       -0.0000000000000000       -0.0000000000000000     
-   8.3266726846886737E-018  -0.0000000000000000       -0.0000000000000000     
-  -0.0000000000000000       -0.0000000000000000       -0.0000000000000000     
- -------
-   8.3266726846886737E-018  -0.0000000000000000       -0.0000000000000000     
-  -0.0000000000000000       -4.9999999999999975E-002  -1.3877787807814456E-018
-  -0.0000000000000000       -6.9388939039072278E-019  -4.1633363423443369E-018
- -------
-  -0.0000000000000000       -0.0000000000000000       -0.0000000000000000     
-  -0.0000000000000000       -6.9388939039072278E-019  -4.1633363423443369E-018
-   1.9428902930940238E-017   1.8041124150158791E-017   2.0816681711721682E-017
- -------
- DdthetadxiDP : 
- -0.39999999999999974       -0.0000000000000000       -0.0000000000000000     
- -0.77459666924148318       -0.0000000000000000       -0.0000000000000000     
-   5.2383051635816479E-017  -0.0000000000000000       -0.0000000000000000     
- -------
-  -1.1102230246251564E-017 -0.39999999999999986        4.4408920985006233E-017
-  -2.1499376424746298E-017 -0.77459666924148340        8.5997505698985142E-017
-   1.4539217506552990E-033   5.2383051635816485E-017  -5.8156870026211925E-033
- -------
-   3.8857805861880452E-017   5.5511151231257792E-018 -0.39999999999999974     
-   7.5247817486611996E-017   1.0749688212373143E-017 -0.77459666924148318     
-  -5.0887261272935431E-033  -7.2696087532764907E-034   5.2383051635816479E-017
- -------
- dJdP :    3.2658770817240709E-002   6.6368437741389050E-002  -5.9331652013015345E-018
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           12
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           13
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           14
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           15
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           16
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           17
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           18
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           19
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           20
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           21
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           22
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           23
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           24
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           25
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           26
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
- Gauss pt :           27
- CP :            1
- CP :            2
- CP :            3
- CP :            4
- CP :            5
-Compute compliance
- Linear elasticity analysis...
- Done.          
-Compute AN gradient of the compliance
- Linear elasticity analysis...
-Compliance : 2.14E-05
-Error : 5.53E+00
-81 28 -1.2649756855813138e-05 -1.26497747383002e-05
-82 28 6.07132715175189e-06 6.071341298902622e-06
-83 28 1.1681587251646849e-05 1.1681602242458308e-05
-84 29 -1.276394070294958e-06 -1.276395269588903e-06
-85 29 2.8620976227262835e-06 2.862100561027781e-06
-86 29 4.424571600320282e-06 4.424573832588919e-06
-87 30 -7.098693659893898e-07 -7.098684433239771e-07
-88 30 1.1646954635318232e-06 1.1646968552634935e-06
-89 30 1.7141780846654583e-06 1.7141790103255422e-06
-90 31 -1.3799734751796153e-05 -1.3799746603402035e-05
-91 31 1.5963515017545183e-21 2.812149384884277e-13
-92 31 1.2743549729069276e-05 1.2743563494765128e-05
-93 32 -1.392429894867224e-06 -1.3924307602666657e-06
-94 32 5.361960081477892e-22 2.1684043449710089e-13
-95 32 4.826805382167573e-06 4.826807444675233e-06
-96 33 -7.744029447157013e-07 -7.744022437194964e-07
-97 33 1.2491478112677626e-22 1.0503208545953324e-13
-98 33 1.8700124559986856e-06 1.8700132249443134e-06
-99 34 -1.4949712647779173e-05 -1.4949732200602011e-05
-100 34 -8.499858012452643e-06 -8.49983579410984e-06
-101 34 1.3805512206491733e-05 1.3805532512670008e-05
-102 35 -1.5084657194394973e-06 -1.5084671928450658e-06
-103 35 -4.006936671816797e-06 -4.006932037282614e-06
-104 35 5.2290391640148786e-06 5.229042225667014e-06
-105 36 -8.389365234420144e-07 -8.389353529361307e-07
-106 36 -1.630573648944552e-06 -1.6305715593934247e-06
-107 36 2.0258468273319076e-06 2.025848042650543e-06
-108 37 -4.698881862418295e-06 -4.698901986640355e-06
-109 37 5.438003241844581e-06 5.4380091670468665e-06
-110 37 7.016287970574906e-07 7.016275852412407e-07
-111 38 1.2309596079421025e-06 1.2309587011272334e-06
-112 38 2.766975945726645e-06 2.766979147298147e-06
-113 38 -1.2933134869356236e-07 -1.2933283052374636e-07
-114 39 -5.8841779877424e-07 -5.884158076421581e-07
-115 39 1.4947382523460465e-06 1.4947413830767795e-06
-116 39 5.638288959066854e-08 5.6382670206951355e-08
-117 40 -5.126052940819961e-06 -5.126068094844262e-06
-118 40 -1.4754645134390372e-22 1.0503208545953324e-13
-119 40 7.654132331536245e-07 7.654123137439215e-07
-120 41 1.3428650268459278e-06 1.342864350533518e-06
-121 41 -3.1589714157639004e-22 1.1519648082658485e-13
-122 41 -1.4108874402934085e-07 -1.4108987144833413e-07
-123 42 -6.419103259355393e-07 -6.419088283376832e-07
-124 42 -1.07344505634602e-22 1.8973538018496328e-13
-125 42 6.150860682618253e-08 6.150843926528392e-08
-126 43 -5.553224019221624e-06 -5.553248202808721e-06
-127 43 -7.613204538582417e-06 -7.613195145784795e-06
-128 43 8.291976692497619e-07 8.291961681086008e-07
-129 44 1.4547704457497604e-06 1.4547693290897085e-06
-130 44 -3.873766324017298e-06 -3.873761391954417e-06
-131 44 -1.5284613936511484e-07 -1.5284797285817185e-07
-132 45 -6.954028530968267e-07 -6.954003243739033e-07
-133 45 -2.0926335532844647e-06 -2.092628777509639e-06
-134 45 6.663432406170002e-08 6.66340490814224e-08
-5.5293859701733945
- CP :            6
- CP :            7
- CP :            8
- CP :            9
- CP :           10
- CP :           11
- CP :           12
- CP :           13
- CP :           14
- CP :           15
- CP :           16
- CP :           17
- CP :           18
- CP :           19
- CP :           20
- CP :           21
- CP :           22
- CP :           23
- CP :           24
- CP :           25
- CP :           26
- CP :           27
