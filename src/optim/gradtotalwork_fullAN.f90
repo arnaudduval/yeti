@@ -203,34 +203,68 @@ subroutine gradLinElastWork_AN(     &
             elseif(ELT_TYPE_patch == 'U10') then
                 !! Embedded solid element
                 if (activeElement(jelem) == 1) then
-                    kk = int(PROPS_patch(2))
-                    call gradUELMAT10adj(U_elem(:,:nnode_patch),                            &
-                        &                UA_elem(:,:nnode_patch,:), nadj, mcrd,             &
-                        &                nnode_patch,                                       &
-                        &                nnode(kk), nb_cp, jelem, nbint(numpatch),          &
-                        &                COORDS_elem,                                       &
-                        &                COORDS3D, TENSOR_patch, MAT_patch,                 &
-                        &                RHO(numpatch),                                     &
-                        &                nb_load, indDload, load_target_nbelem,             &
-                        &                JDLType,                                           &
-                        &                ADLMAG, load_additionalInfos,                      &
-                        &                size(load_additionalInfos),                        &
-                        &                computeWint, computeWext,                          &
-                        &                gradWint_elem(:,:,:nnode_patch),                   &
-                        &                gradWext_elem(:,:,:nnode_patch))
+                    ! kk = int(PROPS_patch(2))
+                    ! call gradUELMAT10adj(U_elem(:,:nnode_patch),                            &
+                    !     &                UA_elem(:,:nnode_patch,:), nadj, mcrd,             &
+                    !     &                nnode_patch,                                       &
+                    !     &                nnode(kk), nb_cp, jelem, nbint(numpatch),          &
+                    !     &                COORDS_elem,                                       &
+                    !     &                COORDS3D, TENSOR_patch, MAT_patch,                 &
+                    !     &                RHO(numpatch),                                     &
+                    !     &                nb_load, indDload, load_target_nbelem,             &
+                    !     &                JDLType,                                           &
+                    !     &                ADLMAG, load_additionalInfos,                      &
+                    !     &                size(load_additionalInfos),                        &
+                    !     &                computeWint, computeWext,                          &
+                    !     &                gradWint_elem(:,:,:nnode_patch),                   &
+                    !     &                gradWext_elem(:,:,:nnode_patch))
 
-                    do numcp = 1,nnode_patch
-                        if (computeWint) then
-                            gradWint(:,:,sctr(numcp)) =             &
-                                &       gradWint(:,:,sctr(numcp))   &
-                                &       + gradWint_elem(:,:,numcp)
-                        endif
-                        if (computeWext) then
-                            gradWext(:,:,sctr(numcp)) =             &
-                                &       gradWext(:,:,sctr(numcp))   &
-                                &       + gradWext_elem(:,:,numcp)
-                        endif
+                    ! do numcp = 1,nnode_patch
+                    !     if (computeWint) then
+                    !         gradWint(:,:,sctr(numcp)) =             &
+                    !             &       gradWint(:,:,sctr(numcp))   &
+                    !             &       + gradWint_elem(:,:,numcp)
+                    !     endif
+                    !     if (computeWext) then
+                    !         gradWext(:,:,sctr(numcp)) =             &
+                    !             &       gradWext(:,:,sctr(numcp))   &
+                    !             &       + gradWext_elem(:,:,numcp)
+                    !     endif
+                    ! enddo
+
+                    !! New version with global computation to take into account derivatives
+                    !! w.r.t hulle control points
+                    kk = int(PROPS_patch(2))
+                    write(*,*) "nb_elem_patch : ", nb_elem_patch
+                    n = nb_elem_patch(kk)
+                    write(*,*) "n : ", n
+                    j = 0
+                    do ll = 1, kk
+                        i = j+1
+                        j = j + nb_elem_patch(ll)
                     enddo
+                    activeElementMap(:n) = activeElement(i:j)
+                    write(*,*) "activeElement : ", activeElement
+                    write(*,*) "sum(activeElementMap(:n)) : ", sum(activeElementMap(:n))
+                    ! if (sum(activeElementMap(:n)) > 0) then
+                        call gradUELMAT10adj(activeElementMap, n,                               &
+                            &                sctr(:nnode_patch),  &
+                            &                U_elem(:,:nnode_patch),                            &
+                            &                UA_elem(:,:nnode_patch,:), nadj, mcrd,             &
+                            &                nnode_patch,                                       &
+                            &                nnode(kk), nb_cp, jelem, nbint(numpatch),          &
+                            &                COORDS_elem,                                       &
+                            &                COORDS3D, TENSOR_patch, MAT_patch,                 &
+                            &                RHO(numpatch),                                     &
+                            &                nb_load, indDload, load_target_nbelem,             &
+                            &                JDLType,                                           &
+                            &                ADLMAG, load_additionalInfos,                      &
+                            &                size(load_additionalInfos),                        &
+                            &                computeWint, computeWext,                          &
+                            &                gradWint(:,:,:),                   &
+                            &                gradWext(:,:,:))
+
+                    ! endif
                 endif
 
             elseif (ELT_TYPE_patch == 'U30') then
@@ -247,7 +281,7 @@ subroutine gradLinElastWork_AN(     &
                     j = j+nb_elem_patch(ll)
                 enddo
                 activeElementMap(:n) = activeElement(i:j)
-                if (SUM(activeElementMap(:n))>0) then
+                if (sum(activeElementMap(:n))>0) then
                     call gradUELMAT30gloAdj(activeDir,activeElementMap,n,                       &
                         &                   U_elem(:,:nnode_patch),UA_elem(:,:nnode_patch,:),   &
                         &                   NADJ,NDOFEL,MCRD,nnode_patch,NNODE(kk),nb_cp,       &

@@ -2,15 +2,15 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 
@@ -18,14 +18,16 @@
 !! Implemented for 3D case
 !! TODO : should be adapted to work with 2D case
 
-subroutine gradUELMAT10adj(Uelem, UAelem,               &
+subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
+                    &      sctr,        &
+                    &      Uelem, UAelem,               &
                     &      nadj, mcrd, nnode, nnodemap, nb_cp, jelem, nbint, &
                     &      coords, coordsall, &
                     &      tensor, material_properties,     &
                     &      density, nb_load, indDload, load_target_nbelem, jdltype,        &
                     &      adlmag, load_additionalInfos, nb_load_additionalInfos, &
                     &      computeWint, computeWext,    &
-                    &      gradWint_elem, gradWext_elem)
+                    &      gradWint, gradWext)
 
     use parameters
     use nurbspatch
@@ -43,8 +45,14 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     double precision, intent(in) :: material_properties, density
     dimension material_properties(2)
 
+    integer, intent(in) :: sctr
+    dimension sctr(nnode)
+
     double precision, intent(in) :: Uelem, UAelem
     dimension Uelem(3, nnode), UAelem(3, nnode, nadj)
+
+    integer, intent(in) :: activeElementMap, nb_elemMap
+    dimension activeElementMap(nb_elemMap)
 
     logical, intent(in) :: computeWint, computeWext
 
@@ -57,9 +65,9 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension adlmag(nb_load), load_additionalInfos(nb_load_additionalInfos)
 
     !! Outputs
-    double precision, intent(out) :: gradWint_elem, gradWext_elem
-    dimension gradWint_elem(nadj, 3, nnode)
-    dimension gradWext_elem(nadj, 3, nnode)
+    double precision, intent(out) :: gradWint, gradWext
+    dimension gradWint(nadj, 3, nb_cp)
+    dimension gradWext(nadj, 3, nb_cp)
 
     !! local variables
     integer :: ntens
@@ -87,7 +95,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     !! Hull
     double precision :: N, dNdxi, ddNddxi
     dimension N(nnodemap), dNdxi(nnodemap, 3), ddNddxi(nnodemap, 6)
-    
+
     double precision :: xi
     dimension xi(3)
 
@@ -143,7 +151,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
     double precision :: DdUAdxDP, DdUdxDP
     dimension DdUAdxDP(3, 3, 3, nadj), DdUdxDP(3, 3, 3)
-    
+
     double precision :: dEAdP, dEdP, dSdP
     dimension dEAdP(2*mcrd, 3, nadj), dEdP(2*mcrd, 3), dSdP(2*mcrd, 3)
 
@@ -159,7 +167,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     dimension pointGP(mcrd), vectR(mcrd), vectAG(mcrd), vectD(mcrd), pointA(mcrd), pointB(mcrd)
     double precision :: dvectRdP, dFdP, dxdP, dxdP_x_D
     dimension dvectRdP(mcrd, mcrd), dFdP(mcrd, mcrd), dxdP(mcrd, mcrd), dxdP_x_D(mcrd)
-    
+
 
 
     !! Voigt convention
@@ -187,8 +195,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
     call Gauss(nbPtInt, mcrd, GaussPdsCoord, 0)
 
     !! Gradients
-    gradWint_elem(:,:,:) = zero
-    gradWext_elem(:,:,:) = zero
+    ! gradWint(:,:,:) = zero
+    ! gradWext(:,:,:) = zero
 
     !! Material behaviour
     !! TODO : use material_lib subroutine
@@ -201,7 +209,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
     !! Material behavior
     call material_lib(MATERIAL_PROPERTIES, TENSOR, MCRD, ddsdde)
-      
+
 
     !! Computation
     isave = 0
@@ -392,7 +400,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
             DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
             DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
-            
+
             !! Compute derivative of jacobian determinant
             !! Value of dJdP is stored for each control point for later use in gradWext computation
             dJdP(:, icp) = zero
@@ -406,8 +414,8 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             dJdP(:, icp) = dJdP(:, icp) * detjac
 
             do iA = 1, nadj
-                gradWint_elem(iA, : , icp) &
-                 & = gradWint_elem(iA, : , icp) - work(iA)*dJdP(:, icp)*GaussPdsCoord(1, igp)
+                gradWint(iA, : , sctr(icp)) &
+                 & = gradWint(iA, : , sctr(icp)) - work(iA)*dJdP(:, icp)*GaussPdsCoord(1, igp)
             enddo
 
             !! Compute derivative of embbeded element shape function gradient
@@ -416,7 +424,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                 ! DdRbdthetaDP x dthetadxi x dxidx  ==> zero
                 ! + dRbdtheta x DdthetadxiDP x dxidx
                 ! + dRbdtheta x dthetadxi x DdxidxDP
-                    
+
                 call MulMat(dRdtheta(:,:), DdthetadxiDP(:,:,k), temp1(:,:), nnode, 3, 3)
                 call MulMat(temp1(:,:), dxidx(:,:), DdRdxDP(:,:,k), nnode, 3, 3)
 
@@ -450,7 +458,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                     enddo
                 enddo
             enddo
-            
+
             !! Compute strain, adjoint strain and their derivatives
             do ij = 1, ntens
                 i = voigt(ij, 1)
@@ -509,7 +517,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
 
             do iA = 1, nadj
-                gradWint_elem(iA, : , icp) = gradWint_elem(iA, : , icp) &
+                gradWint(iA, : , sctr(icp)) = gradWint(iA, : , sctr(icp)) &
                  & - dEAdP_S(:, iA) * detJac * GaussPdsCoord(1, igp) &
                  & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
             enddo
@@ -533,7 +541,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             enddo
 
             do iA = 1, nadj
-                gradWint_elem(iA, : , icp) = gradWint_elem(iA, : , icp) &
+                gradWint(iA, : , sctr(icp)) = gradWint(iA, : , sctr(icp)) &
                     & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
             enddo
 
@@ -593,7 +601,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                                 enddo
                             enddo
                         enddo
-                        
+
                         dxdP_x_D(:) = zero
                         do idim = 1, dim_patch
                             dxdP_x_D(:) = dxdP_x_D(:) + dxdP(idim,:)*vectD(idim)
@@ -603,7 +611,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                             dvectRdP(idim,:) = dxdP(idim,:) - dxdP_x_D(:)*vectD(idim)
                         enddo
 
-                       
+
                         do idim = 1, dim_patch
                             do jdim = 1, dim_patch
                                 dFdP(idim,jdim) = density*(adlmag(iload)**two)*       &
@@ -614,7 +622,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
 
                         do iA = 1, nadj
                             do idim = 1, mcrd
-                                gradWext_elem(iA,:,icp) = gradWext_elem(iA,:,icp) + &
+                                gradWext(iA,:,sctr(icp)) = gradWext(iA,:,sctr(icp)) + &
                                     &   UA(idim, iA)*dFdP(idim, :)
                             enddo
                         enddo
