@@ -61,7 +61,7 @@ CreateF2PYModule(NAME gradcompliance
 #                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
                  
 CreateF2PYModule(NAME gradadjointwork
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradtotalwork_fullAN.f
+                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradtotalwork_fullAN.f90
                  LINK_LIBRARIES optim base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
                  
