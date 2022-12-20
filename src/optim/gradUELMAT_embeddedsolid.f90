@@ -630,6 +630,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             enddo
 
             !! Compute derivative of displacement gradient
+            DdUdxDQ(:,:,:) = zero
             do k = 1, 3     !! Loop on coordinates of current CP
                 do b = 1, nnode     !! Loop on CP where disp is supported
                     do i = 1, 3
@@ -805,7 +806,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                     do imcp = 1, nnode_map
                         dxdQ(:,:) = zero
                         do idim = 1, mcrd
-                            dxdQ(i,i) = N(imcp)
+                            dxdQ(idim, idim) = N(imcp)
                         enddo
 
                         dxdQ_x_D(:) = zero
