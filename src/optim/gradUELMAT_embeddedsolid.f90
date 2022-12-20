@@ -534,7 +534,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
             do iA = 1, nadj
                 gradWint_elem(iA, : , icp) = gradWint_elem(iA, : , icp) &
                     & - dSdP_EA(:, iA) * detJac * GaussPdsCoord(1, igp)
-        enddo
+            enddo
 
 
 
@@ -601,7 +601,6 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                                             DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
                                         else
                                             DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k+1) * coordsmap(i, inodemap)
-                                            ! DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j+k) * coordsmap(i, inodemap)
                                         endif
                                     enddo
                                 enddo
@@ -620,7 +619,7 @@ subroutine gradUELMAT10adj(Uelem, UAelem,               &
                             call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), 3, 3, 3)
                         enddo
 
-                        DdxidxDP(:, :, :) = -1.D0 * DdxdxiDP(:, :, :)
+                        DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
                         DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
                         
                         !! Compute derivative of jacobian determinant
