@@ -19,7 +19,8 @@
 
 """
 A test to validate compliance gradient computation for embedded solid element.
-A degree 2 cube is embedded in a degree 2 cube with non linear mapping
+A degree 2 cube with non linear mapping is embedded in a degree 2 cube with
+linear mapping
 Loading is a centrifugal body force with any axis
 Control points located at minimal x value are locked in all directions
 Analytical compliance gradient is compared with the one computed with finite
