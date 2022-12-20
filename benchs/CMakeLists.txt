@@ -159,6 +159,17 @@ add_test(NAME gradcomp_embdsol_cube_nonli_embd_centrif
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_embd_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
+# nonlinear embedded entity, non linear mapping of hull, pressure loading
+add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_embd_pressure.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
+# nonlinear embedded entity, non linear mapping of hull, centrifugal body force loading
+add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_embd_centrif.py
+         WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
+)
+
 
 
 # Benchs for sensibilities computation on embedded solid element
@@ -208,6 +219,8 @@ set_tests_properties(
                      gradcomp_embdsol_cube_nonli_hull_centrif
                      gradcomp_embdsol_cube_nonli_embd_pressure
                      gradcomp_embdsol_cube_nonli_embd_centrif
+                     gradcomp_embdsol_cube_nonli_hull_embd_pressure
+                     gradcomp_embdsol_cube_nonli_hull_embd_centrif
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 # Properties for long tests
