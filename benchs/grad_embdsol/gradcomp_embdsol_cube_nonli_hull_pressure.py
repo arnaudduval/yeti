@@ -21,7 +21,7 @@
 A test to validate compliance gradient computation for embedded solid element.
 A degree 2 cube is embedded in a degree 2 cube with non linear mapping
 Loading is a constant pressure applied on face 6
-symmetry boundary condition are applied on faces 1,3 and 5
+Control points located at minimal x value are locked in all directions
 Analytical compliance gradient is compared with the one computed with finite
 differences
 Design variables drive the control points of embedded entity except the loaded
