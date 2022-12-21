@@ -25,7 +25,7 @@ Loading is a centrifugal body force with any axis
 Control points located at minimal x value are locked in all directions
 Analytical compliance gradient is compared with the one computed with finite
 differences.
-Design variables drive the control points of embedded entity.
+Design variables drive the control points of both hull and embedded entity.
 """
 
 import numpy as np
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         dim = coords0.shape[0]
         i = 0
 
-        for i_cp in range(27, 54):
+        for i_cp in range(np.shape(igapara.coords)[1]):
             for i_dim in range(dim):
                 igapara.coords[i_dim, i_cp] = initcoords[i_dim, i_cp] + var[i]
                 i += 1
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
     nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
-    NB_VAR = 27 * 3      # 27 control points x 3 directions
+    NB_VAR = 2 * 27 * 3      # 2 patches * 27 control points x 3 directions
     optPB = OPTmodelling(modeleIGA, NB_VAR, shapemodif,
                          nb_degreeElevationByDirection=nb_deg,
                          nb_refinementByDirection=nb_ref)
