@@ -235,17 +235,13 @@ subroutine gradLinElastWork_AN(     &
                     !! New version with global computation to take into account derivatives
                     !! w.r.t hulle control points
                     kk = int(PROPS_patch(2))
-                    write(*,*) "nb_elem_patch : ", nb_elem_patch
                     n = nb_elem_patch(kk)
-                    write(*,*) "n : ", n
                     j = 0
                     do ll = 1, kk
                         i = j+1
                         j = j + nb_elem_patch(ll)
                     enddo
                     activeElementMap(:n) = activeElement(i:j)
-                    write(*,*) "activeElement : ", activeElement
-                    write(*,*) "sum(activeElementMap(:n)) : ", sum(activeElementMap(:n))
                     ! if (sum(activeElementMap(:n)) > 0) then
                         call gradUELMAT10adj(activeElementMap, n,                               &
                             &                sctr(:nnode_patch),  &
