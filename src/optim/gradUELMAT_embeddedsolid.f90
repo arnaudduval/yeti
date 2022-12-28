@@ -223,7 +223,6 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
     ! gradWext(:,:,:) = zero
 
     !! Material behaviour
-    !! TODO : use material_lib subroutine
     E = material_properties(1)
     nu = material_properties(2)
     lambda = E*nu/(one+nu)/(one-two*nu)
