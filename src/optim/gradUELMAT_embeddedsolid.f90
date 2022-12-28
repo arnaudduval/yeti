@@ -269,7 +269,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             dthetadtildexi(i,i) = 0.5d0 * (Ukv_elem(2, i) - Ukv_elem(1, i))
         enddo
 
-        call MatrixDet(dthetadtildexi, det_dthetadtildexi, 3)
+        call MatrixDet(dthetadtildexi, det_dthetadtildexi, mcrd)
 
         !! Gradient of mapping : embedded parametric space -> hull parametric space
         dxidtheta(:,:) = zero
@@ -279,7 +279,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             enddo
         enddo
 
-        call MatrixInv(dthetadxi, dxidtheta, det_dxidtheta, 3)
+        call MatrixInv(dthetadxi, dxidtheta, det_dxidtheta, mcrd)
 
         !! Hull
         !! ====
@@ -307,21 +307,21 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             enddo
         enddo
 
-        call MatrixInv(dxidx, dxdxi, det_dxdxi, 3)
+        call MatrixInv(dxidx, dxdxi, det_dxdxi, mcrd)
 
         !! Composition : hull x embedded solid
         !! ===================================
 
         !! Mapping
-        call MulMat(dthetadxi, dxidx, dthetadx, 3, 3, 3)
+        call MulMat(dthetadxi, dxidx, dthetadx, mcrd, mcrd, mcrd)
 
         !! Basis functions composition
-        call Mulmat(dRdtheta, dthetadx, dRdx, nnode, 3, 3)
+        call Mulmat(dRdtheta, dthetadx, dRdx, nnode, mcrd, mcrd)
 
         !! Compute product of all mapping determinants
         detjac = det_dxdxi * det_dxidtheta * det_dthetadtildexi
 
-        call MulMat(dxdxi(:,:), dxidtheta(:,:), dxdtheta(:,:), 3, 3, 3)
+        call MulMat(dxdxi(:,:), dxidtheta(:,:), dxdtheta(:,:), mcrd, mcrd, mcrd)
 
         !! Compute disp and adjoint derivatives
         dUdtheta(:,:) = zero
@@ -386,9 +386,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
         do icp = 1, nnode
             !! Compute mapping derivatives
             DdxidthetaDP(:,:,:) = zero
-            do i = 1, 3
-                do j = 1, 3
-                    do k = 1, 3
+            do i = 1, mcrd
+                do j = 1, mcrd
+                    do k = 1, mcrd
                         if (i == k) then
                             DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
                         endif
@@ -398,9 +398,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             DdxdxiDP(:,:,:) = zero
             do inodemap = 1, nnodemap
-                do i = 1, 3
-                    do j = 1, 3
-                        do k = 1, 3
+                do i = 1, mcrd
+                    do j = 1, mcrd
+                        do k = 1, mcrd
                             if (j==k) then
                                 DdxdxiDP(i,j,k) = DdxdxiDP(i,j,k) + ddNddxi(inodemap, j) * coordsmap(i, inodemap)
                             else
@@ -416,11 +416,11 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             DdxidxDP(:,:,:) = zero
             DdthetadxiDP(:,:,:) = zero
 
-            do k = 1, 3    !! Loop on CP coordinates
-                call MulMat(dxidx(:,:), DdxdxiDP(:, :, k), temp(:,:), 3, 3, 3)
-                call mulmat(temp(:,:), dxidx(:,:), DdxidxDP(:, :, k), 3, 3, 3)
-                call MulMat(dthetadxi(:,:), DdxidthetaDP(:, :, k), temp(:,:), 3, 3, 3)
-                call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), 3, 3, 3)
+            do k = 1, mcrd    !! Loop on CP coordinates
+                call MulMat(dxidx(:,:), DdxdxiDP(:, :, k), temp(:,:), mcrd, mcrd, mcrd)
+                call mulmat(temp(:,:), dxidx(:,:), DdxidxDP(:, :, k), mcrd, mcrd, mcrd)
+                call MulMat(dthetadxi(:,:), DdxidthetaDP(:, :, k), temp(:,:), mcrd, mcrd, mcrd)
+                call MulMat(temp(:,:), dthetadxi(:,:), DdthetadxiDP(:, :, k), mcrd, mcrd, mcrd)
             enddo
             DdxidxDP(:, :, :) = -1.D0 * DdxidxDP(:, :, :)
             DdthetadxiDP(:, :, :) = -1.D0 * DdthetadxiDP(:, :, :)
@@ -428,9 +428,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! Compute derivative of jacobian determinant
             !! Value of dJdP is stored for each control point for later use in gradWext computation
             dJdP(:, icp) = zero
-            do i = 1, 3
-                do j = 1, 3
-                    do k = 1, 3
+            do i = 1, mcrd
+                do j = 1, mcrd
+                    do k = 1, mcrd
                         dJdP(k, icp) = dJdP(k, icp) + dxidx(i, j)*DdxdxiDP(j, i, k) + dthetadxi(i, j)*DdxidthetaDP(j, i, k)
                     enddo
                 enddo
@@ -444,23 +444,23 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             !! Compute derivative of embbeded element shape function gradient
             DdRdxDP(:, :, :) = zero
-            do k = 1, 3     !! Loop on coordinates of current CP
-                call MulMat(dRdtheta(:,:), DdthetadxiDP(:,:,k), temp1(:,:), nnode, 3, 3)
-                call MulMat(temp1(:,:), dxidx(:,:), DdRdxDP(:,:,k), nnode, 3, 3)
+            do k = 1, mcrd     !! Loop on coordinates of current CP
+                call MulMat(dRdtheta(:,:), DdthetadxiDP(:,:,k), temp1(:,:), nnode, mcrd, mcrd)
+                call MulMat(temp1(:,:), dxidx(:,:), DdRdxDP(:,:,k), nnode, mcrd, mcrd)
 
                 !! TO DO : this line does not depend on k and can be computed outside of the loop
-                call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1(:,:), nnode, 3, 3)
-                call MulMat(temp1(:,:), DdxidxDP(:,:,k), temp2(:,:), nnode, 3, 3)
+                call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1(:,:), nnode, mcrd, mcrd)
+                call MulMat(temp1(:,:), DdxidxDP(:,:,k), temp2(:,:), nnode, mcrd, mcrd)
                 DdRdxDP(:,:,k) = DdRdxDP(:,:,k) + temp2(:,:)
             enddo
 
             !! Compute derivative of adjoint displacement gradient
             DdUAdxDP(:, :, :, :) = zero
             do iA = 1, nadj
-                do k = 1, 3     !! Loop on coordinates of current CP
+                do k = 1, mcrd     !! Loop on coordinates of current CP
                     do b = 1, nnode     !! Loop on CP where adjoint disp is supported
-                        do i = 1, 3
-                            do j = 1, 3
+                        do i = 1, mcrd
+                            do j = 1, mcrd
                                 DdUAdxDP(i, j, k, iA) = DdUAdxDP(i, j, k, iA) + DdRdxDP(b, j, k) * UAelem(i, b, iA)
                             enddo
                         enddo
@@ -470,10 +470,10 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             !! Compute derivative of displacement gradient
             DdUdxDP(:, :, :) = zero
-            do k = 1, 3     !! Loop on coordinates of current CP
+            do k = 1, mcrd     !! Loop on coordinates of current CP
                 do b = 1, nnode     !! Loop on CP where disp is supported
-                    do i = 1, 3
-                        do j = 1, 3
+                    do i = 1, mcrd
+                        do j = 1, mcrd
                             DdUdxDP(i, j, k) = DdUdxDP(i, j, k) + DdRdxDP(b, j, k) * Uelem(i, b)
                         enddo
                     enddo
@@ -484,7 +484,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             do ij = 1, ntens
                 i = voigt(ij, 1)
                 j = voigt(ij, 2)
-                do k = 1, 3     !! Loop on cordinates of current CP
+                do k = 1, mcrd     !! Loop on cordinates of current CP
                     if (i == j) then
                         dEdP(ij, k) = DdUdxDP(i, i, k)
                         do iA = 1, nadj
@@ -504,17 +504,17 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             DdxdthetadP(:,:,:) = zero
             dkronkdP(:,:,:) = zero
 
-            do k = 1, 3
-                call MulMat(DdxdxiDP(:,:,k), dxidtheta(:,:), tempa(:,:), 3, 3, 3)
-                call MulMat(dxdxi, DdxidthetaDP(:,:,k), tempb(:,:), 3, 3, 3)
-                call MulMat(dthetadx(:,:), tempa(:,:) + tempb(:,:), dkronkdP(:,:,k), 3, 3, 3)
+            do k = 1, mcrd
+                call MulMat(DdxdxiDP(:,:,k), dxidtheta(:,:), tempa(:,:), mcrd, mcrd, mcrd)
+                call MulMat(dxdxi, DdxidthetaDP(:,:,k), tempb(:,:), mcrd, mcrd, mcrd)
+                call MulMat(dthetadx(:,:), tempa(:,:) + tempb(:,:), dkronkdP(:,:,k), mcrd, mcrd, mcrd)
 
-                call MulMat(dthetadxi(:,:), DdxidthetaDP(:,:,k), tempa(:,:), 3, 3, 3)
-                call MulMat(tempa(:,:), dthetadx(:,:), tempb(:,:), 3, 3, 3)
+                call MulMat(dthetadxi(:,:), DdxidthetaDP(:,:,k), tempa(:,:), mcrd, mcrd, mcrd)
+                call MulMat(tempa(:,:), dthetadx(:,:), tempb(:,:), mcrd, mcrd, mcrd)
 
-                call MulMat(dthetadx(:,:), DdxdxiDP(:,:,k), tempa(:,:), 3, 3, 3)
-                call MulMat(tempa(:,:), dxidx(:,:), tempc(:,:), 3, 3, 3)
-                call MulMat(-1.0*(tempb(:,:)+tempc(:,:)), dxdtheta(:,:), tempd(:,:), 3, 3, 3)
+                call MulMat(dthetadx(:,:), DdxdxiDP(:,:,k), tempa(:,:), mcrd, mcrd, mcrd)
+                call MulMat(tempa(:,:), dxidx(:,:), tempc(:,:), mcrd, mcrd, mcrd)
+                call MulMat(-1.0*(tempb(:,:)+tempc(:,:)), dxdtheta(:,:), tempd(:,:), mcrd, mcrd, mcrd)
 
                 dkronkdP(:,:,k) = dkronkdP(:,:,k) + tempd(:,:)
 
@@ -522,14 +522,14 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
 
             !! Compute stress and its derivative
-            do k = 1, 3
+            do k = 1, mcrd
                 call MulVect(ddsdde(:,:), dEdP(:, k), dSdP(:, k), ntens, ntens)
             enddo
 
             dEAdP_S(:,:) = zero
             dSdP_EA(:,:) = zero
             do iA = 1, nadj
-                do k = 1, 3
+                do k = 1, mcrd
                     do ij = 1, ntens
                         dEAdP_S(k, iA) = dEAdP_S(k, iA) + dEAdP(ij, k, iA)*stress(ij)
                         dSdP_EA(k, iA) = dSdP_EA(k, iA) + strainAdj(ij, iA)*dSdP(ij, k)
@@ -548,9 +548,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! TODO : verify if dkronk is symmetric (if it's the case, voigt notation should be used)
             dSdP_EA(:,:) = zero
             do iA = 1, nadj
-                do k = 1, 3
-                    do i = 1, 3
-                        do j =1, 3
+                do k = 1, mcrd
+                    do i = 1, mcrd
+                        do j =1, mcrd
                             if (i == j) then
                                 dSdP_EA(k, iA) = dSdP_EA(k, iA) + strainAdj(i, iA)*lambda*tr_strain*dkronkdP(i,j,k)
                             else
@@ -573,9 +573,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
         do imcp = 1, nnode_map
             !! Compute mapping derivatives
             DdxdxiDQ(:,:,:) = zero
-            do i = 1, 3
-                do j = 1, 3
-                    do k = 1, 3
+            do i = 1, mcrd
+                do j = 1, mcrd
+                    do k = 1, mcrd
                         if (i == k) then
                             DdxdxiDQ(i,j,k) = dNdxi(imcp, j)
                         endif
@@ -585,18 +585,18 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             !! Compute inverse mapping derivatives
             DdxidxDQ(:,:,:) = zero
-            do k = 1, 3     !! Loop on CP coordinates
-                call MulMat(dxidx(:,:), DdxdxiDQ(:, :, k), temp(:,:), 3, 3, 3)
-                call mulmat(temp(:,:), dxidx(:,:), DdxidxDQ(:, :, k), 3, 3, 3)
+            do k = 1, mcrd     !! Loop on CP coordinates
+                call MulMat(dxidx(:,:), DdxdxiDQ(:, :, k), temp(:,:), mcrd, mcrd, mcrd)
+                call mulmat(temp(:,:), dxidx(:,:), DdxidxDQ(:, :, k), mcrd, mcrd, mcrd)
             enddo
             DdxidxDQ(:, :, :) = -1.D0 * DdxidxDQ(:, :, :)
 
             !! Compute derivative of jacobian determinant
             !! Value of dJdQ is storef for each control point for later use in gradWext computation
             dJdQ(:, imcp) = zero
-            do i =1, 3
-                do j =1, 3
-                    do k = 1, 3
+            do i =1, mcrd
+                do j =1, mcrd
+                    do k = 1, mcrd
                         dJdQ(k, imcp) = dJdQ(k, imcp) + dxidx(i, j) * DdxdxiDQ(j, i, k)
                     enddo
                 enddo
@@ -610,18 +610,18 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             !! Compute derivative of embedded element shape function gradient
             DdRdxDQ(:, :, :) = zero
-            call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1, nnode, 3, 3)
-            do k = 1, 3 !! Loop on coordinates of current hull CP
-                call MulMat(temp1(:,:), DdxidxDQ(:,:,k), DdRdxDQ(:,:,k), nnode, 3, 3)
+            call MulMat(dRdtheta(:,:), dthetadxi(:,:), temp1, nnode, mcrd, mcrd)
+            do k = 1, mcrd !! Loop on coordinates of current hull CP
+                call MulMat(temp1(:,:), DdxidxDQ(:,:,k), DdRdxDQ(:,:,k), nnode, mcrd, mcrd)
             enddo
 
             !! Compute derivative of adjoint displacement gradient
             DdUAdxDQ(:, :, :, :) = zero
             do iA = 1, nadj
-                do k = 1, 3     !! Loop on coordinates of current hull CP
+                do k = 1, mcrd     !! Loop on coordinates of current hull CP
                     do b = 1, nnode     !! Loop on CP where adjoint disp is supported
-                        do i = 1, 3
-                            do j = 1, 3
+                        do i = 1, mcrd
+                            do j = 1, mcrd
                                 DdUAdxDQ(i, j, k, iA) = DdUAdxDQ(i, j, k, iA) + DdRdxDQ(b, j, k) * UAelem(i, b, iA)
                             enddo
                         enddo
@@ -631,10 +631,10 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
 
             !! Compute derivative of displacement gradient
             DdUdxDQ(:,:,:) = zero
-            do k = 1, 3     !! Loop on coordinates of current CP
+            do k = 1, mcrd     !! Loop on coordinates of current CP
                 do b = 1, nnode     !! Loop on CP where disp is supported
-                    do i = 1, 3
-                        do j = 1, 3
+                    do i = 1, mcrd
+                        do j = 1, mcrd
                             DdUdxDQ(i, j, k) = DdUdxDQ(i, j, k) + DdRdxDQ(b, j, k) * Uelem(i, b)
                         enddo
                     enddo
@@ -645,7 +645,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             do ij = 1, ntens
                 i = voigt(ij, 1)
                 j = voigt(ij, 2)
-                do k = 1, 3     !! Loop on cordinates of current CP
+                do k = 1, mcrd     !! Loop on cordinates of current CP
                     if (i == j) then
                         dEdQ(ij, k) = DdUdxDQ(i, i, k)
                         do iA = 1, nadj
@@ -663,25 +663,25 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! Compute derivative of kronecker operator for material law
             dkronkdQ(:,:,:) = zero
 
-            do k = 1, 3
-                call MulMat(dthetadxi(:,:), DdxidxDQ(:,:,k), tempa(:,:), 3, 3, 3)
-                call MulMat(tempa(:,:), dxdtheta(:,:), dkronkdQ(:,:,k), 3, 3, 3)
+            do k = 1, mcrd
+                call MulMat(dthetadxi(:,:), DdxidxDQ(:,:,k), tempa(:,:), mcrd, mcrd, mcrd)
+                call MulMat(tempa(:,:), dxdtheta(:,:), dkronkdQ(:,:,k), mcrd, mcrd, mcrd)
 
-                call MulMat(dthetadx(:,:), DdxdxiDQ(:,:,k), tempb, 3, 3, 3)
-                call MulMat(tempb(:,:), dxidtheta(:,:), tempc(:,:), 3, 3, 3)
+                call MulMat(dthetadx(:,:), DdxdxiDQ(:,:,k), tempb, mcrd, mcrd, mcrd)
+                call MulMat(tempb(:,:), dxidtheta(:,:), tempc(:,:), mcrd, mcrd, mcrd)
 
                 dkronkdQ(:,:,k) = dkronkdQ(:,:,k) + tempc(:,:)
             enddo
 
             !! Compute stress and its derivative
-            do k = 1, 3
+            do k = 1, mcrd
                 call MulVect(ddsdde(:,:), dEdQ(:, k), dSdQ(:, k), ntens, ntens)
             enddo
 
             dEAdQ_S(:,:) = zero
             dSdQ_EA(:,:) = zero
             do iA = 1, nadj
-                do k = 1, 3
+                do k = 1, mcrd
                     do ij = 1, ntens
                         dEAdQ_S(k, iA) = dEAdQ_S(k, iA) + dEAdQ(ij, k, iA)*stress(ij)
                         dSdQ_EA(k, iA) = dSdQ_EA(k, iA) + strainAdj(ij, iA)*dSdQ(ij, k)
@@ -700,9 +700,9 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             !! TODO : verify if dkronk is symmetric (if it's the case, voigt notation should be used)
             dSdQ_EA(:,:) = zero
             do iA = 1, nadj
-                do k = 1, 3
-                    do i = 1, 3
-                        do j =1, 3
+                do k = 1, mcrd
+                    do i = 1, mcrd
+                        do j =1, mcrd
                             if (i == j) then
                                 dSdQ_EA(k, iA) = dSdQ_EA(k, iA) + strainAdj(i, iA)*lambda*tr_strain*dkronkdQ(i,j,k)
                             else
