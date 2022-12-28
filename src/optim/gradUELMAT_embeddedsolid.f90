@@ -388,11 +388,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             DdxidthetaDP(:,:,:) = zero
             do i = 1, mcrd
                 do j = 1, mcrd
-                    do k = 1, mcrd
-                        if (i == k) then
-                            DdxidthetaDP(i,j,k) = dRdtheta(icp, j)
-                        endif
-                    enddo
+                    DdxidthetaDP(i,j,i) = dRdtheta(icp, j)
                 enddo
             enddo
 
@@ -575,11 +571,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
             DdxdxiDQ(:,:,:) = zero
             do i = 1, mcrd
                 do j = 1, mcrd
-                    do k = 1, mcrd
-                        if (i == k) then
-                            DdxdxiDQ(i,j,k) = dNdxi(imcp, j)
-                        endif
-                    enddo
+                    DdxdxiDQ(i,j,i) = dNdxi(imcp, j)
                 enddo
             enddo
 
@@ -765,12 +757,7 @@ subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                         dxdP(:,:) = zero
                         do idim = 1, mcrd
                             do jdim = 1, mcrd
-                                do kdim = 1, mcrd
-                                    !! Note : peut se simplifier en enlevant une boucle
-                                    if (jdim == kdim) then
-                                        dxdP(idim, jdim) = dxdP(idim, jdim) + R(icp)*dxdxi(idim, kdim)
-                                    endif
-                                enddo
+                                dxdP(idim, jdim) = dxdP(idim, jdim) + R(icp)*dxdxi(idim, jdim)
                             enddo
                         enddo
 
