@@ -87,7 +87,7 @@ nb_ref_visu = np.array([1, 1, 1])       # Refinement for visu: [xi, eta, zeta]
 output = np.array([True, True, False])  # Output type: [disp, stress, VM]
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'test_embd_cube',
-    SOL.transpose(), nb_ref=3*nb_ref_visu, Flag=output))
+    SOL.transpose(), nb_ref=3*nb_ref_visu, flag=output))
 modeleIGA.generate_vtk4controlMeshVisu(
     'test_embd_cube_map_cp', 0)
 modeleIGA.generate_vtk4controlMeshVisu(

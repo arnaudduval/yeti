@@ -62,7 +62,7 @@ class OPTmodelling:
         self._fineParametrization = deepcopy(initialParametrization)
 
         self._transformationMatrices_coarse2fine = \
-            self._fineParametrization.refine_and_getTransformationMatrices(
+            self._fineParametrization.refine_and_get_transformation_matrices(
                 nb_refinementByDirection, nb_degreeElevationByDirection)
         
         self._nb_DesignVar = int(nb_DesignVar)

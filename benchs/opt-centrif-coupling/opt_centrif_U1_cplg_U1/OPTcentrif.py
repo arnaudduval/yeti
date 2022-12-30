@@ -116,7 +116,7 @@ def saveXk(xk):
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
     pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
             'OPT3-fine%0.2d'%iopt,  SOL.transpose(), nb_ref=3*np.array([1,1,1]),
-            Flag=np.array([True, False, False])))
+            flag=np.array([True, False, False])))
     
     iopt += 1
     

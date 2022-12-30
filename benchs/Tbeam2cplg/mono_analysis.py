@@ -138,7 +138,7 @@ print(('\n Time for monolithique solving : %.2f s\n\n' % (time.time() - t2)))
 SOL,u = rsol.reconstruction(*modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'coupling_mono',SOL.transpose(),nb_ref=np.array([3,3,1]),
-    Flag=np.array([True,True,False])))
+    flag=np.array([True,True,False])))
 
 print(('Total time for Mono analysis : %.2f s' % (time.time() - ti)))
 
@@ -316,7 +316,7 @@ if False:
     SOL,u = rsol.reconstruction(*modeleIGA.get_inputs4solution(utot[idof]))
     pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
         'coupling_pcpg',SOL.transpose(),nb_ref=np.array([4,4,1]),
-        Flag=np.array([True,True,False])))
+        flag=np.array([True,True,False])))
 
 
 
@@ -436,7 +436,7 @@ print '\n Time for DD solving : %.2f s\n\n' % (time.time() - time2)
 SOL,u = rsol.reconstruction(*modeleIGA.get_inputs4solution(xDD))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'coupling',SOL.transpose(),nb_ref=3*np.array([1,1,1]),
-    Flag=np.array([True,True,False])))
+    flag=np.array([True,True,False])))
 
 '''
 

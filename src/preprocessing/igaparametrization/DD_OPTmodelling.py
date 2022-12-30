@@ -51,7 +51,7 @@ class DDOPTmodelling:
         self._fineSubDomain   = deepcopy(initialSubDomain)
         
         self._transformationMatrices_coarse2fine \
-            = self._fineSubDomain._modeleIGA.refine_and_getTransformationMatrices(
+            = self._fineSubDomain._modeleIGA.refine_and_get_transformation_matrices(
                 nb_refinementByDirection, nb_degreeElevationByDirection)
         self._fineSubDomain.set_dofInfos()
 

@@ -108,13 +108,13 @@ def dispNorm(xD,gradD):
         # postprocessing
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT4-coarse%0.2d'%i,np.zeros((2,optPB._coarseParametrization._nb_cp)),
-            nb_ref=2*ref_plot,Flag=np.array([False]*3)))
+            nb_ref=2*ref_plot,flag=np.array([False]*3)))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT4-coarse%0.2d'%i,0)
         
         SOL,u = rsol.reconstruction(
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-            'OPT4-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, Flag=Output))
+            'OPT4-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, flag=Output))
     return ni/n0
 
 

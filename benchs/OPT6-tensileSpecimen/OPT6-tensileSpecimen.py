@@ -111,13 +111,13 @@ def vonmisesAggregate(xVM,gradVM):
             currentmin = phi
             pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
                 'OPT6-coarse%0.2d'%iplt,np.zeros_like(optPB._coarseParametrization._COORDS)[:2],
-                nb_ref=2*ref_plot,Flag=Output))
+                nb_ref=2*ref_plot,flag=Output))
             optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT6-coarse%0.2d'%iplt,0)
             
             SOL,u = rsol.reconstruction(
                 **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
             pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-                'OPT6-fine%0.2d'%iplt,  SOL.transpose(), nb_ref=1*ref_plot, Flag=Output))
+                'OPT6-fine%0.2d'%iplt,  SOL.transpose(), nb_ref=1*ref_plot, flag=Output))
     return phi/phi0
 
 

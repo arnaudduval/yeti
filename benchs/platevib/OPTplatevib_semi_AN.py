@@ -164,7 +164,7 @@ if __name__ == "__main__":
             (2, 1)).flatten('C')
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             f'vibOpt{iopt:02}', ticknessfield,
-            nb_ref=np.array([4, 4, 1]), Flag=np.array([True, False, False])))
+            nb_ref=np.array([4, 4, 1]), flag=np.array([True, False, False])))
         np.savetxt(f'results/cps{iopt:02}.txt',
                    optPB._coarseParametrization.coords.T,
                    delimiter=',')
@@ -175,7 +175,7 @@ if __name__ == "__main__":
             **optPB._fineParametrization.get_inputs4solution(vecti))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
             f'vibAn%0.2d{iopt:02}',  sol.transpose(),
-            nb_ref=np.array([2, 2, 2]), Flag=np.array([True, False, False])))
+            nb_ref=np.array([2, 2, 2]), flag=np.array([True, False, False])))
 
         iopt += 1
 

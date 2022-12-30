@@ -82,7 +82,7 @@ Output = np.array([True, False, False])
 for i in range(nb_frq):
     SOL,U = rsol.reconstruction( **modeleIGA.get_inputs4solution(vecs[:,i]) )
     pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-            'vib%0.2d' % i,SOL.transpose(),nb_ref=np.array([2,2,2]),Flag=Output) )
+            'vib%0.2d' % i,SOL.transpose(),nb_ref=np.array([2,2,2]),flag=Output) )
 
 # Reference eigenfrequencies computed in Abaqus
 ref_frq = np.array([0.23088, 0.56354, 1.4185, 1.7967, 2.0466, 3.5630, 4.0492, 4.2456, 4.6715, 6.0879])

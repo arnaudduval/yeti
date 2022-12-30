@@ -141,7 +141,7 @@ def saveXk(xk):
                                    (2,1)).flatten('C')
     pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
         'vibOpt%0.2d'%iopt,ticknessfield,
-        nb_ref=np.array([4,4,1]),Flag=np.array([True, False, False])))
+        nb_ref=np.array([4,4,1]),flag=np.array([True, False, False])))
     np.savetxt('results/cps%0.2d.txt'%iopt,optPB._coarseParametrization._COORDS.T,delimiter=',')
 
     # - Plot Analysis
@@ -150,7 +150,7 @@ def saveXk(xk):
         **optPB._fineParametrization.get_inputs4solution(vecti))
     pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
         'vibAn%0.2d'%iopt,  SOL.transpose(),
-        nb_ref=np.array([2,2,2]), Flag=np.array([True, False, False])))
+        nb_ref=np.array([2,2,2]), flag=np.array([True, False, False])))
     
     iopt += 1
     

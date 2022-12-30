@@ -105,13 +105,13 @@ def momentAggregate(xM,gradM):
         # postprocessing
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT7-coarse%0.2d'%i,np.zeros_like(optPB._coarseParametrization._COORDS),
-            nb_ref=2*ref_plot,Flag=Output))
+            nb_ref=2*ref_plot,flag=Output))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT7-coarse%0.2d'%i,0)
         
         SOL,u = rsol.reconstruction(
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-            'OPT7-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, Flag=Output))
+            'OPT7-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, flag=Output))
     return phi/phi0
 
 

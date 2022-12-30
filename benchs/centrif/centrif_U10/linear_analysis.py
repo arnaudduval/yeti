@@ -82,7 +82,7 @@ pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'centrif_U10',
     SOL.transpose(),
     nb_ref=np.array([2, 2, 2]),
-    Flag=np.array([True, False, False])))
+    flag=np.array([True, False, False])))
     
 # Get solution at interpolating control points and compare with Abaqus reference result
 # Tolerance = max 2% on quasi-radial component

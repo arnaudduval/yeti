@@ -118,7 +118,7 @@ print(('\n Time for monolithique solving : %.2f s\n\n' % (time.time() - t2)))
 SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'coupling_mono', SOL.transpose(), nb_ref=np.array([3, 3, 3]),
-    Flag=np.array([True, False, False])))
+    flag=np.array([True, False, False])))
 
 print(('Total time for Mono analysis : %.2f s' % (time.time() - ti)))
 

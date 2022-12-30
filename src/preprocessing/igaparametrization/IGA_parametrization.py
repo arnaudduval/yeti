@@ -4,16 +4,18 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms
-# of the GNU Lesser General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later version.
+# Yeti is free software: you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option)
+# any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-# PURPOSE. See the GNU Lesser General Public License for more details.
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Lesser General Public License along
-# with Yeti. If not, see <https://www.gnu.org/licenses/>
+# You should have received a copy of the GNU Lesser General Public License
+# along with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 """
 CONTAINS:
@@ -31,7 +33,6 @@ from ..mechanicalmodel import MechanicalModel as INPfile
 from .IGA_refinementFcts import iga_refinement
 
 
-
 class IGAparametrization:
     """A class containing the necessary parameters for IGA."""
 
@@ -39,9 +40,12 @@ class IGAparametrization:
                  filename=None):
         """Initialise IGA parametrization class object.
 
-        :param str filename: short name (without exetension) of input files to read, defaults to ``None``
-        :param list mechanicalSettings: list containing mechanical settings, defaults to ``None``
-        :param list geometricSettings: list containing geometric settings, defaults to ``None``
+        :param str filename: short name (without exetension) of input files to
+        read, defaults to ``None``
+        :param list mechanicalSettings: list containing mechanical settings,
+        defaults to ``None``
+        :param list geometricSettings: list containing geometric settings,
+        defaults to ``None``
         
         Raises
         ------
@@ -208,8 +212,7 @@ class IGAparametrization:
         mechSet.append(self._MATERIAL_PROPERTIES[:, listpatch])
         PROPS = [self._PROPS[i].copy() for i in listpatch]
         if updatePROPS:
-            for i in range(0, len(listpatch)):
-                patch = listpatch[i]
+            for i, patch in enumerate(listpatch):
                 PROPS[i][0] = i+1
                 if (self._ELT_TYPE[patch] == 'U10' or
                         self._ELT_TYPE[patch] == 'U30'):
@@ -217,8 +220,8 @@ class IGAparametrization:
                     if np.size(test) > 0:
                         PROPS[i][1] = test[0]+1
                     else:
-                        print('Warning: props of patch%i cannot be updated' +
-                              ' (no corresponding volume).' % (i+1))
+                        print(f'Warning: props of patch {i+1} cannot be \
+                              updated (no corresponding volume).')
                 if self._ELT_TYPE[patch] == 'U00':
                     test1 = np.where(listpatch+1 == PROPS[i][1])
                     test2 = np.where(listpatch+1 == PROPS[i][2])
@@ -226,14 +229,14 @@ class IGAparametrization:
                         PROPS[i][1] = test1[0] + 1
                     else:
                         PROPS[i][1] = 0
-                        print('Warning: props of curve%i cannot be updated' +
-                              ' (no corresponding patch).' % (i+1))
+                        print(f'Warning: props of curve {i+1} cannot be \
+                              updated (no corresponding patch).')
                     if np.size(test2) > 0:
                         PROPS[i][2] = test2[0] + 1
                     else:
                         PROPS[i][2] = 0
-                        print('Warning: props of curve%i cannot be updated' +
-                              ' (no corresponding lgrge).' % (i+1))
+                        print(f'Warning: props of curve {i+1} cannot be \
+                              updated (no corresponding lgrge).')
         mechSet.append([PROPS, self._JPROPS[listpatch]])
 
         if withBC:
@@ -489,7 +492,10 @@ class IGAparametrization:
         return None
 
     def _autoset_indCPbyPatch(self):
-        """Automatic computation of control point indices by patch."""
+        """
+        Automatic computation of control point indices by patch.
+        """
+
         indCPbyPatch = np.zeros(self._nb_patch, dtype=object)
         JELEM = -1
         for num_patch in range(0, self._nb_patch):
@@ -694,13 +700,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3),
-                               Flag=np.array([True, True, True])):
+    def get_inputs4postprocVTU(self, filename, sol, nb_ref=np.ones(3),
+                               flag=np.array([True, True, True])):
         """Get the necessary inputs for .vtu file generation.
 
         Parameters
         ----------
-        FILENAME : str
+        filename : str
             Name of the output .vtu file.
         sol : numpy array
             Displacement field to plot. The function `get_inputs4solution` can
@@ -708,7 +714,7 @@ class IGAparametrization:
         nb_ref : numpy array, optional
             Mesh refinement for visualisation. It takes the form:
             np.array([xi-dir., eta-dir., zeta-dir.]. The default is np.ones(3).
-        Flag : numpy array, optional
+        flag : numpy array, optional
             Field ouput to save. Three are available: Nodal displacement,
             stresses, and Von Mises stresses.
             The default is np.array([True, True, True]).
@@ -719,7 +725,7 @@ class IGAparametrization:
             Necessary inputs for generating the .vtu file.
         """
         nb_ref = np.maximum(nb_ref, np.ones(3))
-        inputs = [FILENAME, Flag, nb_ref, sol,
+        inputs = [filename, flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat,
@@ -765,8 +771,7 @@ class IGAparametrization:
                    'nb_patch': self._nb_patch,
                    'nb_elem': self._nb_elem,
                    'nb_cp': self._nb_cp,
-                   'mcrd': self._mcrd }
-
+                   'mcrd': self._mcrd}
 
         return inputs
 
@@ -789,8 +794,7 @@ class IGAparametrization:
 
         """
         if not (numpatch > 0 and numpatch < self._nb_patch + 1):
-            print('Error: numpatch should be between 1'
-                  'and {}'.format(self._nb_patch))
+            print(f'Error: numpatch should be between 1 and {self._nb_patch}')
             return None
 
         inputs = [numpatch, xi, sol,
@@ -822,8 +826,7 @@ class IGAparametrization:
 
         """
         if not (numpatch > 0 and numpatch < self._nb_patch + 1):
-            print('Error: numpatch should be between 1'
-                  'and {}'.format(self._nb_patch))
+            print(f'Error: numpatch should be between 1 and {self._nb_patch}')
             return None
 
         ntens = 2*self._mcrd
@@ -1992,7 +1995,7 @@ class IGAparametrization:
 
         return inputs
 
-    def refine_and_getTransformationMatrices(
+    def refine_and_get_transformation_matrices(
             self, nb_refinementByDirection,
             nb_degreeElevationByDirection=[0, 0, 0], additional_knots=None):
         """Refinement by degree elevation and knot insertion.
@@ -2128,11 +2131,11 @@ class IGAparametrization:
         """Refinement by degree elevation and knot insertion.
 
         For more details on the function's arguments see the function
-        ``refine_and_getTransformationMatrices``. The present function does not
+        ``refine_and_get_transformation_matrices``. The present function does not
         return the transformation matrices for refinement.
 
         """
-        self.refine_and_getTransformationMatrices(
+        self.refine_and_get_transformation_matrices(
           nb_refinementByDirection, nb_degreeElevationByDirection,
           additional_knots)
 
@@ -2163,7 +2166,7 @@ class IGAparametrization:
         transformationMatrices : list of sparse matrices
             The matrices that transform the control points from a coarser to
             a finer mesh. Those matrices are considered to be as given by the
-            function `refine_and_getTransformationMatrices`.
+            function `refine_and_get_transformation_matrices`.
         """
         for ipatch in range(self._nb_patch):
             M0 = transformationMatrices[ipatch][0] * \
@@ -2267,4 +2270,3 @@ class IGAparametrization:
         Total number of patchs in the model
         """
         return self._nb_patch
-

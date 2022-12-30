@@ -116,7 +116,7 @@ def maxdisp(x_d, grad_d):
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             f"OPT5-coarse{i:02}",
             optPB._coarseParametrization._COORDS - optPB._initialCOORDS,
-            nb_ref=2*ref_plot, Flag=Output))
+            nb_ref=2*ref_plot, flag=Output))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu(
             f"OPT5-coarse{i:02}", 0)
 
@@ -125,7 +125,7 @@ def maxdisp(x_d, grad_d):
                 optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
             f"OPT5-fine{i:02}",  sol.transpose(),
-            nb_ref=1*ref_plot, Flag=Output))
+            nb_ref=1*ref_plot, flag=Output))
     return n_i/n0
 
 

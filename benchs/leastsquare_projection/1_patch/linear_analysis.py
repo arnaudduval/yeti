@@ -75,7 +75,7 @@ SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 # leading to NaN values
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'linear_analysis',SOL.transpose(),nb_ref=3*np.array([0,0,0]),
-    Flag=np.array([True,False,False])))
+    flag=np.array([True,False,False])))
 
 # Postprocessing with least square projection
 # -------------------------------------------

@@ -84,7 +84,7 @@ print("Resolution done ", t3-t2, " seconds")
 SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'couplingU5',SOL.transpose(),nb_ref=np.array([1,1,1]),
-    Flag=np.array([True,True,False])))
+    flag=np.array([True,True,False])))
 
 # Verify result
 xtest = np.array([6.,0.,2.])

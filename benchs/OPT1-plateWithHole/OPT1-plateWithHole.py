@@ -100,13 +100,13 @@ def comp(xC,gradC):
         # postprocessing
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT1-coarse%0.2d'%i,np.zeros_like(optPB._coarseParametrization._COORDS)[:2],
-            nb_ref=2*ref_plot,Flag=np.array([False]*3) ))
+            nb_ref=2*ref_plot,flag=np.array([False]*3) ))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT1-coarse%0.2d'%i,0)
         
         SOL,u = rsol.reconstruction(
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-            'OPT1-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, Flag=Output))
+            'OPT1-fine%0.2d'%i,  SOL.transpose(), nb_ref=1*ref_plot, flag=Output))
     return ci
 
 def vol(xV,gradV):

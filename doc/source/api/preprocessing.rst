@@ -7,7 +7,7 @@ Temporary documentation for the content of IGAparametrization class.
 
 ``mechanicalSettings`` corresponds to the content of :file:`.inp` file
 
-This latter is a list with the following components :
+``mechanicalSettings`` is a list with the following components:
 
  - [0] : parameters ???
  - [1] : boundary conditions
@@ -18,6 +18,19 @@ This latter is a list with the following components :
  - [6] : properties ???
  - [7] : tables ???
  - [8] : shapeparametrization ????
+
+ ``geometricSettings`` is a list with the following components:
+
+ - [0] : dimensions of patchs
+ - [1] : number of compoennts of knot vectors
+ - [2] : components of knot vectors
+ - [3] : degrees
+ - [4] : knot spans
+ - [5] : weights
+ - [6] : number of elements per patch
+ - [7] : number of patchs
+ - [8] : number of nodes (total or per patch ???)
+ - [9] : number of elements (total or per patch ???)
 
 
 

@@ -132,7 +132,7 @@ if __name__ == "__main__":
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
                         f'OPT3-fine{iopt:02}',  sol.transpose(),
                         nb_ref=3*np.array([1, 1, 1]),
-                        Flag=np.array([True, False, False])))
+                        flag=np.array([True, False, False])))
         iopt += 1
 
     # Bounds for design variables

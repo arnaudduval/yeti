@@ -122,7 +122,7 @@ def vibration(xV,gradV):
         
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT8-coarse%0.2d'%i,optPB._coarseParametrization._COORDS,
-            nb_ref=2*ref_plot,Flag=Output ))
+            nb_ref=2*ref_plot,flag=Output ))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu(
             'OPT8-coarse%0.2d'%i,0)
         
@@ -131,7 +131,7 @@ def vibration(xV,gradV):
             SOL,u = rsol.reconstruction(
                 **optPB._fineParametrization.get_inputs4solution(ampl*vecti[:,n]))
             pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-                'OPT8-fine-m%0.1d-%0.2d'%(n,i),  SOL.transpose(), nb_ref=ref_plot,Flag=Output ))
+                'OPT8-fine-m%0.1d-%0.2d'%(n,i),  SOL.transpose(), nb_ref=ref_plot,flag=Output ))
         freqHistory = np.block([[freqHistory],[valsi]])
     return mi/m0
 

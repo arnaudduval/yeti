@@ -53,7 +53,7 @@ print(' - design variable: %s = %f'%(designvar_name,designvar_value))
 nb_ref_visu = np.array([2, 2, 0])         # Refinement for visu: [xi, eta, zeta]
 output = np.array([False, False, False])  # Output type: [disp, stress, VM]
 pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
-    'initialgeom',np.zeros((2,modelIGA._nb_cp),order='F'), nb_ref=nb_ref_visu, Flag=output))
+    'initialgeom',np.zeros((2,modelIGA._nb_cp),order='F'), nb_ref=nb_ref_visu, flag=output))
 
 # b. Shape modified geometry
 # The shape modification is done in two steps:
@@ -67,7 +67,7 @@ print(' - design variable: %s = %f'%(designvar_name,designvar_value))
 nb_ref_visu = np.array([2, 2, 0])         # Refinement for visu: [xi, eta, zeta]
 output = np.array([False, False, False])  # Output type: [disp, stress, VM]
 pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
-    'modifiedgeom',np.zeros((2,modelIGA._nb_cp),order='F'), nb_ref=nb_ref_visu, Flag=output))
+    'modifiedgeom',np.zeros((2,modelIGA._nb_cp),order='F'), nb_ref=nb_ref_visu, flag=output))
 
 
 
@@ -280,15 +280,15 @@ for designvar_value in sample:
     Uiga = refsolution(designvar_value)
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Uiga))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
-        'igasolution%02d'%i,SOL.T, nb_ref=nb_ref_visu, Flag=output))
+        'igasolution%02d'%i,SOL.T, nb_ref=nb_ref_visu, flag=output))
     
     Urom = romsolution(designvar_value)
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Urom))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
-        'romsolution%02d'%i,SOL.T, nb_ref=nb_ref_visu, Flag=output))
+        'romsolution%02d'%i,SOL.T, nb_ref=nb_ref_visu, flag=output))
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Urom-Uiga))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
-        'romerror%02d'%i,SOL.T, nb_ref=nb_ref_visu, Flag=np.array([True,False,False])))
+        'romerror%02d'%i,SOL.T, nb_ref=nb_ref_visu, flag=np.array([True,False,False])))
     
     errorROM.append(np.linalg.norm(Uiga - Urom)/np.linalg.norm(Uiga))
     i += 1
