@@ -481,14 +481,14 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, arr
     ! Local data
     ! ----------
     type(cgsolver), pointer :: solv
-    double precision :: diag_temp
-    dimension :: diag_temp(nr_total) 
+    double precision :: temp
+    dimension :: temp(nr_total) 
     integer :: i
 
     allocate(solv)
     do i = 1, dimen 
-        diag_temp = diag(i, :)
-        call setup_eigendiag(solv, nr_total, diag_temp)
+        temp = diag(i, :)
+        call setup_eigendiag(solv, nr_total, temp)
         call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
                                 array_in(i, :), array_out(i, :))
     end do

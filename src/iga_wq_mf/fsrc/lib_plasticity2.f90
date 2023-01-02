@@ -10,7 +10,7 @@
 ! In this way, we try to avoid some misconceptions when using Voigt notation
 ! ==========================
 
-subroutine tensor2array(dimen, nvoigt, matrix, array)
+subroutine symtensor2array(dimen, nvoigt, matrix, array)
 
     implicit none
     ! Input / output data
@@ -38,9 +38,9 @@ subroutine tensor2array(dimen, nvoigt, matrix, array)
         end do
     end do
 
-end subroutine tensor2array
+end subroutine symtensor2array
 
-subroutine array2tensor(dimen, nvoigt, array, matrix)
+subroutine array2symtensor(dimen, nvoigt, array, matrix)
 
     implicit none
     ! Input / output data
@@ -69,7 +69,42 @@ subroutine array2tensor(dimen, nvoigt, array, matrix)
         end do
     end do
 
-end subroutine array2tensor
+end subroutine array2symtensor
+
+subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
+    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+    !! Applied to elasticity problems
+    !! by G. Sanaglli and M. Tani
+    
+    use heat_solver
+    implicit none
+    ! Input / output  data 
+    !---------------------
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
+    double precision, intent(in) :: U_u, U_v, U_w, diag, array_in
+    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
+                    diag(dimen, nr_total), array_in(dimen, nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(dimen, nr_total)
+
+    ! Local data
+    ! ----------
+    type(cgsolver), pointer :: solv
+    double precision :: temp
+    dimension :: temp(nr_total) 
+    integer :: i
+
+    allocate(solv)
+    do i = 1, dimen 
+        temp = diag(i, :)
+        call setup_eigendiag(solv, nr_total, temp)
+        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
+                                array_in(i, :), array_out(i, :))
+    end do
+    
+end subroutine fd_elasticity_3d
 
 ! ==========================
 
@@ -171,6 +206,9 @@ module linearelastoplasticity
         
         ! Outputs
         double precision :: lambda, mu, bulk
+
+        ! Local
+        logical :: isElastic = .false.
     
     end type mecamat
 
@@ -197,22 +235,25 @@ contains
         end do
     end subroutine setupGeo
 
-    subroutine setupArgs(mat, nr, nc, kwargs)
+    subroutine setupArgs(mat, nc, kwargs)
         implicit none
         type(mecamat), pointer :: mat
-        integer, intent(in) :: nr, nc
+        integer, intent(in) :: nc
         double precision, target, intent(in) :: kwargs
-        dimension :: kwargs(nr, nc)
+        dimension :: kwargs(mat%nvoigt+3, nc)
 
         double precision :: NN(mat%dimen, mat%dimen)
         integer :: i
 
         mat%kwargs => kwargs(:3, :)
         allocate(mat%JJnn(mat%dimen, mat%dimen, nc))
+        mat%JJnn = 0.d0
+        if (mat%isElastic) return
         do i = 1, nc
-            call array2tensor(mat%dimen, mat%nvoigt, kwargs(4:, i), NN)
+            call array2symtensor(mat%dimen, mat%nvoigt, kwargs(4:, i), NN)
             mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
         end do
+
     end subroutine setupArgs
 
     subroutine initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
@@ -260,9 +301,9 @@ contains
         double precision :: traceStrain, norm_trial, f_trial, dgamma, c1, c2
         integer :: i
 
-        call array2tensor(mat%dimen, mat%nvoigt, strain, Tstrain)
-        call array2tensor(mat%dimen, mat%nvoigt, pls, Tpls)
-        call array2tensor(mat%dimen, mat%nvoigt, b, Tb)
+        call array2symtensor(mat%dimen, mat%nvoigt, strain, Tstrain)
+        call array2symtensor(mat%dimen, mat%nvoigt, pls, Tpls)
+        call array2symtensor(mat%dimen, mat%nvoigt, b, Tb)
         call compute_trace(mat%dimen, Tstrain, traceStrain)
         devStrain = Tstrain
         do i = 1, mat%dimen
@@ -288,25 +329,25 @@ contains
 
         ! Compute df/dsigma
         NN = eta_trial/norm_trial
-        call tensor2array(mat%dimen, mat%nvoigt, NN, kwargs(4:))
+        call symtensor2array(mat%dimen, mat%nvoigt, NN, kwargs(4:))
 
         ! Compute plastic-strain increment        
         dgamma = 3.d0*f_trial/(6.d0*mat%mu+2.d0*mat%H)
 
         ! Update stress
         sigma = sigma - 2*mat%mu*dgamma*NN
-        call tensor2array(mat%dimen, mat%nvoigt, sigma, stress)
+        call symtensor2array(mat%dimen, mat%nvoigt, sigma, stress)
 
         ! Update plastic strain
         Tpls = Tpls + dgamma*NN
-        call tensor2array(mat%dimen, mat%nvoigt, Tpls, pls_new)
+        call symtensor2array(mat%dimen, mat%nvoigt, Tpls, pls_new)
         
         ! Update internal hardening variable
         a_new  = a + sqrt(2.d0/3.d0)*dgamma
         
         ! Update back stress
         Tb  = Tb + 2.d0/3.d0*(1 - mat%beta)*mat%H*dgamma*NN
-        call tensor2array(mat%dimen, mat%nvoigt, tb, b_new)
+        call symtensor2array(mat%dimen, mat%nvoigt, tb, b_new)
 
         ! Compute some coefficients
         c1 = 2.d0*mat%mu*dgamma/norm_trial
@@ -433,7 +474,7 @@ contains
         if (nr_total.eq.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
         
         do i = 1, nc_total
-            call array2tensor(mat%dimen, mat%nvoigt, sigma(:, i), Tstress)
+            call array2symtensor(mat%dimen, mat%nvoigt, sigma(:, i), Tstress)
             t1(:, :, i) =  matmul(mat%invJJ(:, :, i), Tstress)*mat%detJJ(i)
         end do
         
@@ -468,8 +509,8 @@ contains
         integer :: i, j, k, l, genPos, pos
         integer :: ind_u, ind_v, ind_w, sample
         dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
-        double precision :: DD, coefs, s
-        dimension :: DD(dimen, samplesize), coefs(dimen, dimen, samplesize), s(3)
+        double precision :: DD, coefs, mean
+        dimension :: DD(dimen, samplesize), coefs(dimen, dimen, samplesize), mean(3)
     
         pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
         pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
@@ -500,198 +541,158 @@ contains
                 call gemm_AWB(1, 3, 3, mat%invJJ(:, :, l), 3, 3, mat%invJJ(:, :, l), DD(:, k), 3, 3, coefs(:, :, k))
             end do
 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), s(1))
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), s(2))
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), s(3))
-            mat%mean(i, :) = s
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), mean(1))
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), mean(2))
+            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), mean(3))
+            mat%mean(i, :) = mean
         end do
 
     end subroutine compute_coef_mean_3d
-
-end module linearelastoplasticity
-
-subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to elasticity problems
-    !! by G. Sanaglli and M. Tani
     
-    use heat_solver
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, diag, array_in
-    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
-                    diag(dimen, nr_total), array_in(dimen, nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_total)
-
-    ! Local data
-    ! ----------
-    type(cgsolver), pointer :: solv
-    double precision :: diag_temp
-    dimension :: diag_temp(nr_total) 
-    integer :: i
-
-    allocate(solv)
-    do i = 1, dimen 
-        diag_temp = diag(i, :)
-        call setup_eigendiag(solv, nr_total, diag_temp)
-        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                array_in(i, :), array_out(i, :))
-    end do
+    subroutine mf_wq_elasticity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, &
+                                nbIterPCG, threshold, isPrecond, x, resPCG)
+        !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
+        !! This algorithm solve S x = F, where S is the stiffness matrix
+        !! Moreover, it considers Dirichlet boundaries are zero
+        !! IN CSR FORMAT    
     
-end subroutine fd_elasticity_3d
-
-subroutine mf_wq_elasticity_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, &
-                            nbIterPCG, threshold, isPrecond, x, resPCG)
-    !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
-    !! This algorithm solve S x = F, where S is the stiffness matrix
-    !! Moreover, it considers Dirichlet boundaries are zero
-    !! IN CSR FORMAT    
-
-    use linearelastoplasticity
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 3    
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(dimen*dimen, dimen*dimen, nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    double precision, intent(in) :: U_u, U_v, U_w, Deigen
-    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), Deigen(dimen, nr_total)
-    integer, intent(in) :: ndu, ndv, ndw
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
-
-    integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold
-    logical, intent(in) :: isPrecond 
-
-    double precision, intent(in) :: b
-    dimension :: b(dimen, nr_total)
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2  
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+        dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                        indi_v(nr_v+1), indj_v(nnz_v), &
+                        indi_w(nr_w+1), indj_w(nnz_w)
+        double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+        dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                        data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                        data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+        double precision, intent(in) :: U_u, U_v, U_w, Deigen
+        dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), Deigen(dimen, nr_total)
+        integer, intent(in) :: ndu, ndv, ndw
+        integer, intent(in) :: dod_u, dod_v, dod_w
+        dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
-
-    ! Local data
-    ! ----------
-    type(mecamat), pointer :: mat
-    double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb
-    double precision, dimension(dimen, nr_total) :: r, rhat, p, s, Aptilde, Astilde
-    double precision, allocatable, dimension(:, :) :: ptilde, stilde
-    integer :: iter
-
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold
+        logical, intent(in) :: isPrecond 
     
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    allocate(mat)
-    call setupArgs(mat, dimen, nc_total, coefs)
-    x = 0.d0; r = b
-    call cleanDirichlet3ddl(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-    rhat = r; p = r
-    call block_dot_product(dimen, nr_total, r, rhat, rsold)
-    normb = maxval(abs(r))
-    resPCG = 0.d0; resPCG(1) = 1.d0
-    if (normb.lt.threshold) return
-
-    if (.not.isPrecond) then ! Conjugate gradient algorithm
+        double precision, intent(in) :: b
+        dimension :: b(dimen, nr_total)
         
-        do iter = 1, nbIterPCG
-            call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, p, Aptilde)
-
-            call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
-            alpha = rsold/prod
-            s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
-
-            call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, s, Astilde)
-            call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call block_dot_product(dimen, nr_total, Astilde, s, prod)
-            call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
-            omega = prod/prod2
-            x = x + alpha*p + omega*s ! Normally x is alrady Dirichlet updated
-            r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
-
-            resPCG(iter+1) = maxval(abs(r))/normb
-            if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(dimen, nr_total, r, rhat, rsnew)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Aptilde)
-            rsold = rsnew
-        end do
-
-    else ! Preconditioned Conjugate Gradient algorithm
-
-        allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
-        do iter = 1, nbIterPCG
-            call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
-            call cleanDirichlet3ddl(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-            call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
-            alpha = rsold/prod
-            s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+    
+        ! Local data
+        ! ----------
+        double precision :: rsold, rsnew, alpha, omega, beta, prod, prod2, normb
+        double precision, dimension(dimen, nr_total) :: r, rhat, p, s, Aptilde, Astilde
+        double precision, allocatable, dimension(:, :) :: ptilde, stilde
+        integer :: iter
+    
+        integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+        
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+        call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+        call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+        call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    
+        x = 0.d0; r = b
+        call cleanDirichlet3ddl(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+        rhat = r; p = r
+        call block_dot_product(dimen, nr_total, r, rhat, rsold)
+        normb = maxval(abs(r))
+        resPCG = 0.d0; resPCG(1) = 1.d0
+        if (normb.lt.threshold) return
+    
+        if (.not.isPrecond) then ! Conjugate gradient algorithm
             
-            call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
-            call cleanDirichlet3ddl(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, stilde, Astilde)
-            call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-
-            call block_dot_product(dimen, nr_total, Astilde, s, prod)
-            call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
-
-            omega = prod/prod2
-            x = x + alpha*ptilde + omega*stilde ! Normally x is alrady Dirichlet updated
-            r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
-            
-            resPCG(iter+1) = maxval(abs(r))/normb
-            if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(dimen, nr_total, r, rhat, rsnew)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Aptilde)
-            rsold = rsnew
-
-        end do
-
-    end if
-
-end subroutine mf_wq_elasticity_3d
+            do iter = 1, nbIterPCG
+                call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, Aptilde)
+    
+                call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
+                alpha = rsold/prod
+                s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
+    
+                call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, s, Astilde)
+                call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call block_dot_product(dimen, nr_total, Astilde, s, prod)
+                call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
+                omega = prod/prod2
+                x = x + alpha*p + omega*s ! Normally x is alrady Dirichlet updated
+                r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
+    
+                resPCG(iter+1) = maxval(abs(r))/normb
+                if (resPCG(iter+1).le.threshold) exit
+                call block_dot_product(dimen, nr_total, r, rhat, rsnew)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Aptilde)
+                rsold = rsnew
+            end do
+    
+        else ! Preconditioned Conjugate Gradient algorithm
+    
+            allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
+            do iter = 1, nbIterPCG
+                call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
+                call cleanDirichlet3ddl(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
+                call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
+                alpha = rsold/prod
+                s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
+                
+                call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
+                call cleanDirichlet3ddl(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, stilde, Astilde)
+                call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+    
+                call block_dot_product(dimen, nr_total, Astilde, s, prod)
+                call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
+    
+                omega = prod/prod2
+                x = x + alpha*ptilde + omega*stilde ! Normally x is alrady Dirichlet updated
+                r = s - omega*Astilde ! Normally r is alrady Dirichlet updated
+                
+                resPCG(iter+1) = maxval(abs(r))/normb
+                if (resPCG(iter+1).le.threshold) exit
+                call block_dot_product(dimen, nr_total, r, rhat, rsnew)
+                beta = (alpha/omega)*(rsnew/rsold)
+                p = r + beta*(p - omega*Aptilde)
+                rsold = rsnew
+    
+            end do
+    
+        end if
+    
+    end subroutine mf_wq_elasticity_3d
+    
+end module linearelastoplasticity

@@ -131,16 +131,11 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 			ddisp += np.linalg.solve(Sdof, dF)
 
 		# Verify energy conservation
-		for k in range(nb_qp):
-			Cep[k] = properties[0]
 		S = compute_tangent_static_matrix_1D(JJ, DB, W, Cep)
 		Fd = np.dot(Fstep, d_n1)
 		dKd = np.dot(d_n1, np.dot(S, d_n1))
 		energy[i-1] = 0.5*dKd - Fd
-
-		# Compare energy
 		internal[i-1] = np.dot(W, sigma*(eps-ep_n1)) - dKd
-		print('Delta energy: %.5e' %internal[i-1])
 
 		# Update values in output
 		disp[:, i]   = d_n1

@@ -1,4 +1,4 @@
-from lib.timoshenko import *
+from lib.StructAnalysis import *
 from lib.base_functions import eval_basis_python
 
 # Select folder

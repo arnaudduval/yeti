@@ -3,7 +3,7 @@ from lib.base_functions import (eval_basis_python,
 								iga_find_positions_weights,
 								create_knotvector
 )
-from lib.D1viscoplasticity import *
+from lib.D1PlasticityIGA import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
