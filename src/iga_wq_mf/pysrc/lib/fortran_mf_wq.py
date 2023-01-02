@@ -188,14 +188,13 @@ class fortran_mf_wq(thermoMechaModel):
 
 		return result, timeCPU
 
-	def eval_Su(self, u, coefs=None):
+	def eval_Su(self, u):
 		" Computes S u where S is stiffness matrix "
-
+		
 		if self._dim != 3: raise Warning('Until now not done')
-		if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 		super()._verify_mechanics()
-		inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW]
-
+		prop = [self._youngModule, self._poissonCoef]
+		inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, self._invJ, self._detJ, prop]
 		result = elastoplasticity.mf_wq_get_su_3d_py(*inputs, u)
 
 		return result
@@ -398,35 +397,13 @@ class fortran_mf_wq(thermoMechaModel):
 	# ----------------------------------
 	# ELASTO-PLASTICITY (IN FORTRAN)
 	# ----------------------------------
-
-	def MFplasticity_fortran(self, Fext=None, indi=None):
-		" Solves a plasticity problem "
-
-		if self._dim != 3: raise Warning('Not yet')
-		super()._verify_mechanics()
-		if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-		if indi is None or Fext is None: raise Warning('Impossible')
-
-		dod = deepcopy(indi)
-		for i in range(len(dod)):
-			dod_t = np.array(dod[i])
-			dod_t += 1
-			dod[i] = list(dod_t)
-
-		prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
-		inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
-					self._mechanicalDirichlet, self._invJ, self._detJ, prop]
-		displacement, stress_vm = elastoplasticity.mf_wq_plasticity_3d(*inputs)
-
-		return displacement, stress_vm
 	
-	def MFelasticity_fortran(self, coefs=None, Fext=None, indi=None, nbIterPCG=100, threshold=1e-8, methodPCG='JMC'):
+	def MFelasticity_fortran(self, Fext=None, indi=None, nbIterPCG=100, threshold=1e-8, methodPCG='JMC'):
 		" Solves a elasticity problem "
 		
 		if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
 		if indi is None or Fext is None: raise Warning('Impossible')
 		super()._verify_mechanics()
-		if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 
 		dod = deepcopy(indi)
 		for i in range(len(dod)):
@@ -434,292 +411,234 @@ class fortran_mf_wq(thermoMechaModel):
 			dod_t += 1
 			dod[i] = list(dod_t)
 
-		inputs = [coefs, *self._nb_qp, *self._indices, *self._DB, *self._DW, Fext,
-				*dod, self._mechanicalDirichlet, nbIterPCG, threshold, methodPCG]
+		prop = [self._youngModule, self._poissonCoef]
+		inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, self._mechanicalDirichlet, 
+					self._invJ, self._detJ, prop, nbIterPCG, threshold, methodPCG]
 		displacement, residue = elastoplasticity.mf_wq_elasticity_3d_py(*inputs)
 
 		return displacement, residue
-
-	# ----------------------------------
-	# ELASTO-PLASTICITY (IN PYTHON)
-	# ---------------------------------- 
-
-	def compute_eigen_all(self, table=None, nddl=3, coefs=np.ones((3, 3))):
-		""" Computes the eigen values and vectors considering Robin condition
-			If Dirichlet condition is needed, then is better to try other function
-		"""
-
-		Deig     = np.zeros((3, self._nb_ctrlpts_total))
-		eigvec_U = np.zeros((self._nb_ctrlpts[0], self._nb_ctrlpts[0], 3))
-		eigvec_V = np.zeros((self._nb_ctrlpts[1], self._nb_ctrlpts[1], 3))
-		eigvec_W = np.zeros((self._nb_ctrlpts[2], self._nb_ctrlpts[2], 3))
-
-		for iddl in range(nddl):
-			list_eig, list_vectors = [], []
-			for dim in range(self._dim):
-				indit = self._indices[2*dim]
-				indjt = self._indices[2*dim+1]
-				B = self._DB[dim]
-				W = self._DW[dim]
-				datat = [B[:, 0], B[:, 1], W[:, 0], W[:, -1]]
-				robin = table[dim, :, iddl]
-				eigt, Ut = eigen_decomposition(indit, indjt, datat, robin_condition=robin)
-				list_eig.append(eigt)
-				list_vectors.append(Ut)
-
-			Deig[iddl, :] = compute_eig_diag(*list_eig, coefs=coefs[iddl, :])
-			eigvec_U[:, :, iddl] = list_vectors[0]
-			eigvec_V[:, :, iddl] = list_vectors[1]
-			eigvec_W[:, :, iddl] = list_vectors[2]
-		
-		DU = [eigvec_U, eigvec_V, eigvec_W, Deig]
-
-		return DU
-
-	def compute_strain(self, u=None):
-		" Compute strain field from displacement field "
-
-		if self._dim != 3: raise Warning('Not yet')
-		if u is None: raise Warning('Insert displacement')
-
-		inputs = [*self._nb_qp, *self._indices, *self._DB, self._invJ, u]
-		eps = elastoplasticity.interpolate_strain_3d(*inputs)
-
-		return eps
-
-	def compute_internal_force(self, coefs=None):
-		"Compute internal force using sigma coefficients "
-
-		if self._dim != 3: raise Warning('Not yet')
-		if coefs is None: raise Warning('Insert coefficients')
-
-		inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
-		Fint = elastoplasticity.wq_get_forceint_3d(*inputs)
-
-		return Fint
-
-	def MFelasticity_py(self, coefs=None, DU=None, Fext=None, indi=None, 
-							nbIterPCG=100, threshold=1e-8, isPrecond=True):
-		" Solve linear system using Bi-CG Stab algorithm for elasticity problems "
-
-		if self._dim != 3: raise Warning('Not yet')
-		super()._verify_mechanics()
-		if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
-
-		x = np.zeros(np.shape(Fext)); r = Fext
-		clean_dirichlet_3d(r, indi)
-		rhat, p = r, r
-		rsold   = block_dot_product(self._dim, r, rhat)
-		norm2b  = np.amax(np.absolute(r))
-
-		if not isPrecond: # Without preconditioner 
-			
-			for i in range(nbIterPCG):
-				Ap = self.eval_Su(p, coefs=coefs)
-				clean_dirichlet_3d(Ap, indi)
-
-				alpha = rsold/block_dot_product(self._dim, Ap, rhat)
-				s = r -alpha*Ap
-
-				As = self.eval_Su(s, coefs=coefs)
-				clean_dirichlet_3d(As, indi)
-
-				omega = block_dot_product(self._dim, As, s)/block_dot_product(self._dim, As, As)
-				x += alpha*p + omega*s
-				r = s - omega*As
-
-				resPCG = np.amax(np.absolute(r))/norm2b
-				print(resPCG)
-				if resPCG <= threshold: break
-
-				rsnew = block_dot_product(self._dim, r, rhat)
-				beta = (alpha/omega)*(rsnew/rsold)
-				p = r + beta*(p - omega*Ap)
-				rsold = rsnew
-
-		else: # With preconditioner
-
-			if DU is None: 
-				eigencoefs = np.ones((self._dim, self._dim))
-				for i in range(3):
-					su = compute_mean_3d(*self._nb_qp, coefs[i*self._dim, i*self._dim, :])
-					sv = compute_mean_3d(*self._nb_qp, coefs[i*self._dim+1, i*self._dim+1, :])
-					sw = compute_mean_3d(*self._nb_qp, coefs[i*self._dim+2, i*self._dim+2, :])
-					eigencoefs[i, :] = [su, sv, sw] 
-				DU = self.compute_eigen_all(table=self._mechanicalDirichlet, coefs=eigencoefs)
-			U, V, W, D = DU[0], DU[1], DU[2], DU[3]
-
-			for i in range(nbIterPCG):
-				ptilde = fast_diagonalization(U, V, W, D, p, fdtype='elastic')
-				clean_dirichlet_3d(ptilde, indi)
-
-				Aptilde = self.eval_Su(ptilde, coefs=coefs)
-				clean_dirichlet_3d(Aptilde, indi)
-
-				alpha = rsold/block_dot_product(self._dim, Aptilde, rhat)
-				s = r - alpha*Aptilde
-
-				stilde = fast_diagonalization(U, V, W, D, s, fdtype='elastic')
-				clean_dirichlet_3d(stilde, indi)
-
-				Astilde = self.eval_Su(stilde, coefs=coefs)
-				clean_dirichlet_3d(Astilde, indi)
-
-				omega = block_dot_product(self._dim, Astilde, s)/block_dot_product(self._dim, Astilde, Astilde)
-				x += alpha*ptilde + omega*stilde
-				r = s - omega*Astilde
-
-				resPCG = np.amax(np.absolute(r))/norm2b
-				if resPCG <= threshold: break
-
-				rsnew = block_dot_product(self._dim, r, rhat)
-				beta = (alpha/omega)*(rsnew/rsold)
-				p = r + beta*(p - omega*Aptilde)
-				rsold = rsnew
-
-		print('After %d iteration, the relative residue is %e' %(i, resPCG))
-
-		return x
-
-	def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-8, nbIterNL=10, d=3):
-		" Solves plasticity problem "
-
-		if self._dim != 3: raise Warning('Only for 3D')
-		super()._verify_mechanics()
-
-		ddl = int(d*(d+1)/2)
-		ep_n0 = np.zeros((ddl, self._nb_qp_total))
-		a_n0  = np.zeros(self._nb_qp_total)
-		b_n0  = np.zeros((ddl, self._nb_qp_total))
-		ep_n1 = np.zeros((ddl, self._nb_qp_total))
-		a_n1  = np.zeros(self._nb_qp_total)
-		b_n1  = np.zeros((ddl, self._nb_qp_total))
-		sigma = np.zeros((ddl, self._nb_qp_total))
-		Cep   = np.zeros((ddl, ddl, self._nb_qp_total))
-		disp  = np.zeros(np.shape(Fext))
-
-		one      = create_second_order_identity(d)
-		identity = create_fourth_order_identity(d)
-		inputs   = [self._Ctensor, self._sigmaY, self._lame_bulk, self._lame_mu, 
-					self._betaHard, self._hardening, identity, self._Idev, one]
-
-		DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
-
-		for i in range(1, np.shape(Fext)[2]):
-
-			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
-			Fstep = Fext[:, :, i]
-
-			for j in range(nbIterNL): # Solver Newton-Raphson
-				print('Step %d, iteration %d' %(i+1, j+1))
-
-				# Compute strain as function of displacement
-				d_n1 = disp[:, :, i-1] + ddisp
-				eps = self.compute_strain(d_n1)
 	
-				# Closest point projection in perfect plasticity
-				for k in range(self._nb_qp_total):
-					sigmat, ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
-					sigma[:, k], ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, ep_n1t, a_n1t, b_n1t, Cept
+	# def MFplasticity_fortran(self, Fext=None, indi=None):
+	# 	" Solves a plasticity problem "
 
-				# Compute coefficients to compute Fint and Stiffness
-				coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
+	# 	if self._dim != 3: raise Warning('Not yet')
+	# 	super()._verify_mechanics()
+	# 	if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+	# 	if indi is None or Fext is None: raise Warning('Impossible')
 
-				# Compute Fint 
-				Fint = self.compute_internal_force(coef_Fint)
-				dF = Fstep - Fint
-				clean_dirichlet_3d(dF, indi) 
-				prod1 = block_dot_product(d, dF, dF)
-				resNL = np.sqrt(prod1)
-				print('Relative error: %.5e' %resNL)
-				if resNL <= threshold: break
-				
-				delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
-				ddisp += delta_disp 
+	# 	dod = deepcopy(indi)
+	# 	for i in range(len(dod)):
+	# 		dod_t = np.array(dod[i])
+	# 		dod_t += 1
+	# 		dod[i] = list(dod_t)
+
+	# 	prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
+	# 	inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
+	# 				self._mechanicalDirichlet, self._invJ, self._detJ, prop]
+	# 	displacement, stress_vm = elastoplasticity.mf_wq_plasticity_3d(*inputs)
+
+	# 	return displacement, stress_vm
+
+	# # ----------------------------------
+	# # ELASTO-PLASTICITY (IN PYTHON)
+	# # ---------------------------------- 
+
+	# def compute_eigen_all(self, table=None, nddl=3, coefs=np.ones((3, 3))):
+	# 	""" Computes the eigen values and vectors considering Robin condition
+	# 		If Dirichlet condition is needed, then is better to try other function
+	# 	"""
+
+	# 	Deig     = np.zeros((3, self._nb_ctrlpts_total))
+	# 	eigvec_U = np.zeros((self._nb_ctrlpts[0], self._nb_ctrlpts[0], 3))
+	# 	eigvec_V = np.zeros((self._nb_ctrlpts[1], self._nb_ctrlpts[1], 3))
+	# 	eigvec_W = np.zeros((self._nb_ctrlpts[2], self._nb_ctrlpts[2], 3))
+
+	# 	for iddl in range(nddl):
+	# 		list_eig, list_vectors = [], []
+	# 		for dim in range(self._dim):
+	# 			indit = self._indices[2*dim]
+	# 			indjt = self._indices[2*dim+1]
+	# 			B = self._DB[dim]
+	# 			W = self._DW[dim]
+	# 			datat = [B[:, 0], B[:, 1], W[:, 0], W[:, -1]]
+	# 			robin = table[dim, :, iddl]
+	# 			eigt, Ut = eigen_decomposition(indit, indjt, datat, robin_condition=robin)
+	# 			list_eig.append(eigt)
+	# 			list_vectors.append(Ut)
+
+	# 		Deig[iddl, :] = compute_eig_diag(*list_eig, coefs=coefs[iddl, :])
+	# 		eigvec_U[:, :, iddl] = list_vectors[0]
+	# 		eigvec_V[:, :, iddl] = list_vectors[1]
+	# 		eigvec_W[:, :, iddl] = list_vectors[2]
 		
-			disp[:, :, i] = d_n1			
-			ep_n0 = np.copy(ep_n1)
-			a_n0 = np.copy(a_n1)
-			b_n0 = np.copy(b_n1)
+	# 	DU = [eigvec_U, eigvec_V, eigvec_W, Deig]
 
-		return disp
+	# 	return DU
 
-	# def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-8, nbIterNL=10, d=3, new=True):
-		# " Solves plasticity problem "
+	# def compute_strain(self, u=None):
+	# 	" Compute strain field from displacement field "
 
-		# if self._dim != 3: raise Warning('Only for 3D')
-		# super()._verify_mechanics()
+	# 	if self._dim != 3: raise Warning('Not yet')
+	# 	if u is None: raise Warning('Insert displacement')
 
-		# ddl = int(d*(d+1)/2)
-		# ep_n0 = np.zeros((ddl, self._nb_qp_total))
-		# a_n0  = np.zeros(self._nb_qp_total)
-		# b_n0  = np.zeros((ddl, self._nb_qp_total))
-		# ep_n1 = np.zeros((ddl, self._nb_qp_total))
-		# a_n1  = np.zeros(self._nb_qp_total)
-		# b_n1  = np.zeros((ddl, self._nb_qp_total))
-		# sigma = np.zeros((ddl, self._nb_qp_total))
-		# Cep   = np.zeros((ddl, ddl, self._nb_qp_total))
-		# disp  = np.zeros(np.shape(Fext))
-		# one = create_second_order_identity(d)
-		# I = create_fourth_order_identity(d)
+	# 	inputs = [*self._nb_qp, *self._indices, *self._DB, self._invJ, u]
+	# 	eps = elastoplasticity.interpolate_strain_3d(*inputs)
 
-		# if new:
-		# 	inputs = [self._Ctensor, self._sigmaY, self._lame_bulk, self._lame_mu, 
-		# 			self._betaHard, self._hardening, I, self._Idev, one]
-		# else:
-		# 	inputs = [self._Ctensor, self._sigmaY, self._lame_mu, 
-		# 			self._betaHard, self._hardening, self._Idev]
+	# 	return eps
 
-		# DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
+	# def compute_internal_force(self, coefs=None):
+	# 	"Compute internal force using sigma coefficients "
 
-		# for i in range(1, np.shape(Fext)[2]):
+	# 	if self._dim != 3: raise Warning('Not yet')
+	# 	if coefs is None: raise Warning('Insert coefficients')
 
-		# 	ddisp = np.zeros(np.shape(disp[:, :, i-1]))
-		# 	Fstep = Fext[:, :, i]
+	# 	inputs = [coefs, *self._nb_qp, *self._indices, *self._DW]
+	# 	Fint = elastoplasticity.wq_get_forceint_3d(*inputs)
 
-		# 	for j in range(nbIterNL): # Solver Newton-Raphson
-		# 		print('Step %d, iteration %d' %(i+1, j+1))
+	# 	return Fint
 
-		# 		# Compute strain as function of displacement
-		# 		if new:
-		# 			d_n1 = disp[:, :, i-1] + ddisp
-		# 			eps = self.compute_strain(d_n1)
-		# 		else:
-		# 			eps = self.compute_strain(ddisp)
-	
-		# 		a = 1
+	# def MFelasticity_py(self, coefs=None, DU=None, Fext=None, indi=None, 
+	# 						nbIterPCG=100, threshold=1e-8, isPrecond=True):
+	# 	" Solve linear system using Bi-CG Stab algorithm for elasticity problems "
 
-		# 		# Closest point projection in perfect plasticity
-		# 		for k in range(self._nb_qp_total):
-		# 			if new:
-		# 				sigmat, ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening_2(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
-		# 				sigma[:, k], ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, ep_n1t, a_n1t, b_n1t, Cept
+	# 	if self._dim != 3: raise Warning('Not yet')
+	# 	super()._verify_mechanics()
+	# 	if coefs is None: coefs = super().eval_elastic_coefficient(self._invJ, self._detJ)
 
-		# 			else:
-		# 				ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
-		# 				ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = ep_n1t, a_n1t, b_n1t, Cept
+	# 	x = np.zeros(np.shape(Fext)); r = Fext
+	# 	clean_dirichlet_3d(r, indi)
+	# 	rhat, p = r, r
+	# 	rsold   = block_dot_product(self._dim, r, rhat)
+	# 	norm2b  = np.amax(np.absolute(r))
 
-		# 		# Compute coefficients to compute Fint and Stiffness
-		# 		if not new: sigma = ep_n1
-		# 		coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
-
-		# 		# Compute Fint 
-		# 		Fint = self.compute_internal_force(coef_Fint)
-		# 		dF = Fstep - Fint
-		# 		clean_dirichlet_3d(dF, indi) 
-		# 		prod1 = block_dot_product(d, dF, dF)
-		# 		resNL = np.sqrt(prod1)
-		# 		print('Relative error: %.5e' %resNL)
-		# 		if resNL <= threshold: break
-				
-		# 		delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
-		# 		ddisp += delta_disp 
-		
-		# 	if new: disp[:, :, i] = d_n1
-		# 	else: disp[:, :, i] = disp[:, :, i-1] + ddisp
+	# 	if not isPrecond: # Without preconditioner 
 			
-		# 	ep_n0 = np.copy(ep_n1)
-		# 	a_n0 = np.copy(a_n1)
-		# 	b_n0 = np.copy(b_n1)
+	# 		for i in range(nbIterPCG):
+	# 			Ap = self.eval_Su(p, coefs=coefs)
+	# 			clean_dirichlet_3d(Ap, indi)
 
-		# return disp
+	# 			alpha = rsold/block_dot_product(self._dim, Ap, rhat)
+	# 			s = r -alpha*Ap
+
+	# 			As = self.eval_Su(s, coefs=coefs)
+	# 			clean_dirichlet_3d(As, indi)
+
+	# 			omega = block_dot_product(self._dim, As, s)/block_dot_product(self._dim, As, As)
+	# 			x += alpha*p + omega*s
+	# 			r = s - omega*As
+
+	# 			resPCG = np.amax(np.absolute(r))/norm2b
+	# 			print(resPCG)
+	# 			if resPCG <= threshold: break
+
+	# 			rsnew = block_dot_product(self._dim, r, rhat)
+	# 			beta = (alpha/omega)*(rsnew/rsold)
+	# 			p = r + beta*(p - omega*Ap)
+	# 			rsold = rsnew
+
+	# 	else: # With preconditioner
+
+	# 		if DU is None: 
+	# 			eigencoefs = np.ones((self._dim, self._dim))
+	# 			for i in range(3):
+	# 				su = compute_mean_3d(*self._nb_qp, coefs[i*self._dim, i*self._dim, :])
+	# 				sv = compute_mean_3d(*self._nb_qp, coefs[i*self._dim+1, i*self._dim+1, :])
+	# 				sw = compute_mean_3d(*self._nb_qp, coefs[i*self._dim+2, i*self._dim+2, :])
+	# 				eigencoefs[i, :] = [su, sv, sw] 
+	# 			DU = self.compute_eigen_all(table=self._mechanicalDirichlet, coefs=eigencoefs)
+	# 		U, V, W, D = DU[0], DU[1], DU[2], DU[3]
+
+	# 		for i in range(nbIterPCG):
+	# 			ptilde = fast_diagonalization(U, V, W, D, p, fdtype='elastic')
+	# 			clean_dirichlet_3d(ptilde, indi)
+
+	# 			Aptilde = self.eval_Su(ptilde, coefs=coefs)
+	# 			clean_dirichlet_3d(Aptilde, indi)
+
+	# 			alpha = rsold/block_dot_product(self._dim, Aptilde, rhat)
+	# 			s = r - alpha*Aptilde
+
+	# 			stilde = fast_diagonalization(U, V, W, D, s, fdtype='elastic')
+	# 			clean_dirichlet_3d(stilde, indi)
+
+	# 			Astilde = self.eval_Su(stilde, coefs=coefs)
+	# 			clean_dirichlet_3d(Astilde, indi)
+
+	# 			omega = block_dot_product(self._dim, Astilde, s)/block_dot_product(self._dim, Astilde, Astilde)
+	# 			x += alpha*ptilde + omega*stilde
+	# 			r = s - omega*Astilde
+
+	# 			resPCG = np.amax(np.absolute(r))/norm2b
+	# 			if resPCG <= threshold: break
+
+	# 			rsnew = block_dot_product(self._dim, r, rhat)
+	# 			beta = (alpha/omega)*(rsnew/rsold)
+	# 			p = r + beta*(p - omega*Aptilde)
+	# 			rsold = rsnew
+
+	# 	print('After %d iteration, the relative residue is %e' %(i, resPCG))
+
+	# 	return x
+
+	# def MFplasticity_py(self, Fext=None, indi=None, threshold=1e-8, nbIterNL=10, d=3):
+	# 	" Solves plasticity problem "
+
+	# 	if self._dim != 3: raise Warning('Only for 3D')
+	# 	super()._verify_mechanics()
+
+	# 	ddl = int(d*(d+1)/2)
+	# 	ep_n0 = np.zeros((ddl, self._nb_qp_total))
+	# 	a_n0  = np.zeros(self._nb_qp_total)
+	# 	b_n0  = np.zeros((ddl, self._nb_qp_total))
+	# 	ep_n1 = np.zeros((ddl, self._nb_qp_total))
+	# 	a_n1  = np.zeros(self._nb_qp_total)
+	# 	b_n1  = np.zeros((ddl, self._nb_qp_total))
+	# 	sigma = np.zeros((ddl, self._nb_qp_total))
+	# 	Cep   = np.zeros((ddl, ddl, self._nb_qp_total))
+	# 	disp  = np.zeros(np.shape(Fext))
+
+	# 	one      = create_second_order_identity(d)
+	# 	identity = create_fourth_order_identity(d)
+	# 	inputs   = [self._Ctensor, self._sigmaY, self._lame_bulk, self._lame_mu, 
+	# 				self._betaHard, self._hardening, identity, self._Idev, one]
+
+	# 	DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
+
+	# 	for i in range(1, np.shape(Fext)[2]):
+
+	# 		ddisp = np.zeros(np.shape(disp[:, :, i-1]))
+	# 		Fstep = Fext[:, :, i]
+
+	# 		for j in range(nbIterNL): # Solver Newton-Raphson
+	# 			print('Step %d, iteration %d' %(i+1, j+1))
+
+	# 			# Compute strain as function of displacement
+	# 			d_n1 = disp[:, :, i-1] + ddisp
+	# 			eps = self.compute_strain(d_n1)
+	
+	# 			# Closest point projection in perfect plasticity
+	# 			for k in range(self._nb_qp_total):
+	# 				sigmat, ep_n1t, a_n1t, b_n1t, Cept = cpp_combined_hardening(inputs, eps[:, k], ep_n0[:, k], a_n0[k], b_n0[:, k])
+	# 				sigma[:, k], ep_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, ep_n1t, a_n1t, b_n1t, Cept
+
+	# 			# Compute coefficients to compute Fint and Stiffness
+	# 			coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
+
+	# 			# Compute Fint 
+	# 			Fint = self.compute_internal_force(coef_Fint)
+	# 			dF = Fstep - Fint
+	# 			clean_dirichlet_3d(dF, indi) 
+	# 			prod1 = block_dot_product(d, dF, dF)
+	# 			resNL = np.sqrt(prod1)
+	# 			print('Relative error: %.5e' %resNL)
+	# 			if resNL <= threshold: break
+				
+	# 			delta_disp = self.MFelasticity_py(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+	# 			ddisp += delta_disp 
+		
+	# 		disp[:, :, i] = d_n1			
+	# 		ep_n0 = np.copy(ep_n1)
+	# 		a_n0 = np.copy(a_n1)
+	# 		b_n0 = np.copy(b_n1)
+
+	# 	return disp

@@ -425,9 +425,9 @@ contains
         integer :: i, j, k, l, r, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: kt1, t1, t2, t3, t4, t5, t6
-        dimension :: kt1(dimen, nc_total), t1(nc_total), t2(nc_total), t3(nr_total), t4(nr_total), t5(nr_total), t6(nr_total)
+        dimension :: kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), t4(nc_total), t5(nc_total), t6(nr_total)
 
-        if (nr_total.eq.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
         array_out = 0.d0
         do j = 1, dimen
             do l = 1, dimen
@@ -441,7 +441,7 @@ contains
                 do r = 1, dimen
                     kt1(r, :) = mat%kwargs(r, :)*t1*mat%detJJ
                 end do
-                    
+
                 t2 = kt1(1, :)*mat%invJJ(l, j, :)
                 t4 = kt1(3, :)*mat%JJnn(l, j, :)
 
@@ -499,7 +499,7 @@ contains
         dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
         integer :: i, k, alpha(dimen), zeta(dimen)
         
-        if (nr_total.eq.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
         
         do i = 1, nc_total
             call array2symtensor(mat%dimen, mat%nvoigt, sigma(:, i), Tstress)
@@ -590,15 +590,14 @@ contains
         if (normb.lt.threshold) return
     
         if (.not.isPrecond) then ! Conjugate gradient algorithm
-            
             do iter = 1, nbIterPCG
+                
                 call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, Aptilde)
-    
                 call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
-    
+                
                 call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
                 alpha = rsold/prod
                 s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
