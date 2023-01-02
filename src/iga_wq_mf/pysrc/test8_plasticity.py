@@ -65,10 +65,3 @@ displacement_ref = np.load(folder+'Elasto.npy')
 displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=dod)
 error = relativeError(displacement[:,:,-1], displacement_ref)
 print(error)
-
-# # Interpolate displacement
-# modelPhy.export_results(u_ctrlpts=displacement[:,:,-1], nbDOF=3, folder=folder)
-
-# # Interpolate Von Mises field
-# stress_ctrlpts = modelPhy.interpolate_ControlPoints(datafield=stress_vm[:, -1])
-# modelPhy.export_results(u_ctrlpts=stress_ctrlpts, nbDOF=1)

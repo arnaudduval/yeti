@@ -60,7 +60,7 @@ def compute_static_Fint_1D(DW, sigma):
 		Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 		But in 1D: detJ times J^-1 get cancelled.
 	"""
-	Fint = DW[0] @ sigma.T
+	Fint = DW[-1] @ sigma.T
 	return Fint
 
 def compute_volForce_1D(DW, b): 
@@ -77,9 +77,9 @@ def compute_tangent_static_matrix_1D(JJ, DB, DW, Cep):
 	S = DW[-1] @ np.diag(Scoefs) @ DB[1].T 
 	return S
 
-def interpolate_strain_1D(JJ, DW, disp):
+def interpolate_strain_1D(JJ, DB, disp):
 	" Computes strain field from a given displacement field "
-	eps = DW[-1].T @ disp / JJ
+	eps = DB[1].T @ disp / JJ
 	return eps
 
 def solve_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
@@ -150,5 +150,5 @@ def interpolate_controlPoints_1D(DB, DW, u_ref):
 	" Interpolate control point field (from parametric to physical space) "
 	masse = DW[0] @ DB[0].T
 	force = DW[0] @ u_ref
-	u_ctrlpts = np.linalg.solve(masse, force)
+	u_ctrlpts = np.linalg.solve(masse.toarray(), force)
 	return u_ctrlpts
