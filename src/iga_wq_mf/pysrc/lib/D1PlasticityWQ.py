@@ -55,34 +55,34 @@ def cpp_combined_hardening_1D_s2(properties, strain, pls, a, b):
 
 	return Cep
 
-def compute_static_Fint_1D(DB, W, sigma):
+def compute_static_Fint_1D(DW, sigma):
 	""" Computes internal force Fint. 
 		Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 		But in 1D: detJ times J^-1 get cancelled.
 	"""
-	Fint = DB[1] @ np.diag(W) @ sigma.T
+	Fint = DW[0] @ sigma.T
 	return Fint
 
-def compute_volForce_1D(DB, W, b): 
+def compute_volForce_1D(DW, b): 
 	" Computes volumetric force in 1D. Usualy b = rho*g*L (Weight) "
-	F = DB[0] @ np.diag(W) @ b.T
+	F = DW[0] @ b.T
 	return F
 
-def compute_tangent_static_matrix_1D(JJ, DB, W, Cep):
+def compute_tangent_static_matrix_1D(JJ, DB, DW, Cep):
 	""" Computes stiffness matrix in elastoplasticity
 		S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 		But in 1D: detJ times J^-1 get cancelled.
 	"""
-	Scoefs = W*Cep*1.0/JJ
-	S = DB[1] @ np.diag(Scoefs) @ DB[1].T 
+	Scoefs = Cep*1.0/JJ
+	S = DW[-1] @ np.diag(Scoefs) @ DB[1].T 
 	return S
 
-def interpolate_strain_1D(JJ, DB, disp):
+def interpolate_strain_1D(JJ, DW, disp):
 	" Computes strain field from a given displacement field "
-	eps = DB[1].T @ disp / JJ
+	eps = DW[-1].T @ disp / JJ
 	return eps
 
-def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10, update=1):
+def solve_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]
@@ -120,22 +120,22 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 				Cep[k] = result2
 
 			# Compute Fint
-			Fint = compute_static_Fint_1D(DB, W, sigma)
+			Fint = compute_static_Fint_1D(DW, sigma)
 			dF 	 = Fstep[dof] - Fint[dof]
 			relerror = np.sqrt(np.dot(dF, dF))
 			print('Rhapson with error %.5e' %relerror)
 			if relerror <= tol: break
 
 			# Compute stiffness
-			Sdof = compute_tangent_static_matrix_1D(JJ, DB, W, Cep)[np.ix_(dof, dof)]
+			Sdof = compute_tangent_static_matrix_1D(JJ, DB, DW, Cep)[np.ix_(dof, dof)]
 			ddisp += np.linalg.solve(Sdof, dF)
 
-		# Verify energy conservation
-		S = compute_tangent_static_matrix_1D(JJ, DB, W, Cep)
-		Fd = np.dot(Fstep, d_n1)
-		dKd = np.dot(d_n1, np.dot(S, d_n1))
-		energy[i-1] = 0.5*dKd - Fd
-		internal[i-1] = np.dot(W, sigma*(eps-ep_n1)) - dKd
+		# # Verify energy conservation
+		# S = compute_tangent_static_matrix_1D(JJ, DB, DW, Cep)
+		# Fd = np.dot(Fstep, d_n1)
+		# dKd = np.dot(d_n1, np.dot(S, d_n1))
+		# energy[i-1] = 0.5*dKd - Fd
+		# internal[i-1] = np.dot(W, sigma*(eps-ep_n1)) - dKd
 
 		# Update values in output
 		disp[:, i]   = d_n1
@@ -146,9 +146,9 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 
 	return disp, strain, stress, energy, internal
 
-def interpolate_controlPoints_1D(DB, W, u_ref):
+def interpolate_controlPoints_1D(DB, DW, u_ref):
 	" Interpolate control point field (from parametric to physical space) "
-	masse = DB[0] @ np.diag(W) @ DB[0].T
-	force = DB[0] @ np.diag(W) @ u_ref
+	masse = DW[0] @ DB[0].T
+	force = DW[0] @ u_ref
 	u_ctrlpts = np.linalg.solve(masse, force)
 	return u_ctrlpts

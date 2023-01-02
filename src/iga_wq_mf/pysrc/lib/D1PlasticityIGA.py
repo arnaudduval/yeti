@@ -82,7 +82,7 @@ def interpolate_strain_1D(JJ, DB, disp):
 	eps = DB[1].T @ disp / JJ
 	return eps
 
-def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10, update=1):
+def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]

@@ -200,6 +200,58 @@ subroutine linspace(x0, xf, nnz, array)
 
 end subroutine linspace
 
+subroutine eval_trace(dimen, matrix, result)
+    !! Computes the trace (sum of diagonal terms) of a square matrix
+    
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen
+    double precision, intent(in) :: matrix
+    dimension :: matrix(dimen, dimen)
+
+    double precision, intent(out) :: result
+
+    ! Local data
+    ! ----------
+    integer :: i
+
+    result = 0.d0
+    do i = 1, dimen
+        result = result + matrix(i, i)
+    end do   
+
+end subroutine eval_trace
+
+subroutine eval_frobenius_norm(dimen, matrix, result)
+    !! Returns Frobenius norm of a square matrix M 
+    !! The definition is norm = sqrt(M_ij M_ij)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen
+    double precision, intent(in) :: matrix
+    dimension :: matrix(dimen, dimen)
+
+    double precision, intent(out) :: result
+
+    ! Local data
+    ! ----------
+    integer :: i, j
+
+    result = 0.d0
+
+    do i = 1, dimen
+        do j = 1, dimen
+            result = result + matrix(i, j)*matrix(i, j)
+        end do
+    end do
+
+    result = sqrt(result)
+    
+end subroutine eval_frobenius_norm
+
 subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
     !! General matrix multiplication of the kind A diag(W) B
     !! 1: R = A.diag(W).BT
