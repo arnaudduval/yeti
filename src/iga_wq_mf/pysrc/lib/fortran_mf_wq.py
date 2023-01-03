@@ -418,30 +418,30 @@ class fortran_mf_wq(thermoMechaModel):
 
 		return displacement, residue
 	
-	# def MFplasticity_fortran(self, Fext=None, indi=None):
-	# 	" Solves a plasticity problem "
+	def MFplasticity_fortran(self, Fext=None, indi=None):
+		" Solves a plasticity problem "
 
-	# 	if self._dim != 3: raise Warning('Not yet')
-	# 	super()._verify_mechanics()
-	# 	if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-	# 	if indi is None or Fext is None: raise Warning('Impossible')
+		if self._dim != 3: raise Warning('Not yet')
+		super()._verify_mechanics()
+		if self._mechanicalDirichlet is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
+		if indi is None or Fext is None: raise Warning('Impossible')
 
-	# 	dod = deepcopy(indi)
-	# 	for i in range(len(dod)):
-	# 		dod_t = np.array(dod[i])
-	# 		dod_t += 1
-	# 		dod[i] = list(dod_t)
+		dod = deepcopy(indi)
+		for i in range(len(dod)):
+			dod_t = np.array(dod[i])
+			dod_t += 1
+			dod[i] = list(dod_t)
 
-	# 	prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
-	# 	inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
-	# 				self._mechanicalDirichlet, self._invJ, self._detJ, prop]
-	# 	displacement, stress_vm = elastoplasticity.mf_wq_plasticity_3d(*inputs)
+		prop = np.array([self._youngModule, self._hardening, self._betaHard, self._poissonCoef, self._sigmaY])       
+		inputs = [*self._nb_qp, *self._indices, *self._DB, *self._DW, Fext, *dod, 
+					self._mechanicalDirichlet, self._invJ, self._detJ, prop]
+		displacement, stress_vm = elastoplasticity.mf_wq_plasticity_3d(*inputs)
 
-	# 	return displacement, stress_vm
+		return displacement, stress_vm
 
-	# # ----------------------------------
-	# # ELASTO-PLASTICITY (IN PYTHON)
-	# # ---------------------------------- 
+	# ----------------------------------
+	# ELASTO-PLASTICITY (IN PYTHON)
+	# ---------------------------------- 
 
 	# def compute_eigen_all(self, table=None, nddl=3, coefs=np.ones((3, 3))):
 	# 	""" Computes the eigen values and vectors considering Robin condition

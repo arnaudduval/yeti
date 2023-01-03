@@ -57,11 +57,12 @@ nbStep = 6; dt = 1/nbStep
 Fext = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-# Elasticity
-displacement_ref = np.load(folder+'Elasto.npy')
-
 # Solve in fortran
-# displacement, stress_vm = modelPhy.MFplasticity_py(Fext=Fext, indi=dod)
 displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=dod)
-error = relativeError(displacement[:,:,-1], displacement_ref)
-print(error)
+# displacement, stress_vm = modelPhy.MFplasticity_py(Fext=Fext, indi=dod)
+
+
+# # Elasticity
+# displacement_ref = np.load(folder+'Elasto.npy')
+# error = relativeError(displacement[:,:,-1], displacement_ref)
+# print(error)

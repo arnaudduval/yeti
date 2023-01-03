@@ -12,7 +12,7 @@
 
 subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, invJ, u, eps)
+                                data_B_u, data_B_v, data_B_w, invJ, u, strain)
     !! Computes strain in 3D (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -30,8 +30,8 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     double precision, intent(in) :: invJ, u
     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
 
-    double precision, intent(out) :: eps
-    dimension :: eps(nvoigt, nc_total)
+    double precision, intent(out) :: strain
+    dimension :: strain(nvoigt, nc_total)
 
     ! Local data
     !-----------
@@ -66,10 +66,76 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     do j = 1, nc_total
         dersx = matmul(dersu(:, :, j), invJ(:, :, j))
         dersx = 0.5*(dersx + transpose(dersx))
-        call symtensor2array(dimen, nvoigt, dersx, eps(:, j))
+        call symtensor2array(dimen, nvoigt, dersx, strain(:, j))
     end do
 
 end subroutine interpolate_strain_3d
+
+! subroutine interpolate_strain_3d2(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+!                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+!                                 data_B_u, data_B_v, data_B_w, invJ, u, eps)
+!     !! Computes strain in 3D (from parametric space to physical space)
+!     !! IN CSR FORMAT
+
+!     implicit none 
+!     ! Input / output data
+!     ! -------------------  
+!     integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
+!     integer, intent(in) :: nc_total, nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
+!     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+!     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+!                     indi_v(nr_v+1), indj_v(nnz_v), &
+!                     indi_w(nr_w+1), indj_w(nnz_w)
+!     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
+!     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
+!     double precision, intent(in) :: invJ, u
+!     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
+
+!     double precision, intent(out) :: eps
+!     dimension :: eps(nvoigt, nc_total)
+
+!     ! Local data
+!     !-----------
+!     integer :: indi_T_u, indi_T_v, indi_T_w
+!     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+!     integer :: indj_T_u, indj_T_v, indj_T_w
+!     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+!     double precision :: data_BT_u, data_BT_v, data_BT_w
+!     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+!     integer :: i, j, k, beta(dimen)
+!     double precision :: EE, ders, eps_temp
+!     dimension :: EE(nvoigt, dimen, dimen), ders(dimen*dimen, nc_total), eps_temp(nvoigt)
+
+!     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+!     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+!     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+!     call create_incidence_matrix(dimen, nvoigt, EE)
+
+!     ! Compute derivatives of displacement field with respect to u (in parametric space)
+!     do j = 1, dimen
+!         do i = 1, dimen
+!             beta = 1; beta(i) = 2
+!             call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+!                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
+!                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
+!                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
+!                             u(j, :), ders(i+(j-1)*dimen, :))
+!         end do
+!     end do
+
+!     ! Compute symetric derivatives (strain) 
+!     do k = 1, nc_total
+
+!         eps_temp = 0.d0
+!         do i = 1, dimen
+!             eps_temp = eps_temp + matmul(EE(:, :, i), matmul(transpose(invJ(:, :, k)), ders((i-1)*dimen+1:i*dimen, k)))
+!         end do
+!         eps(:, k) = eps_temp
+
+!     end do
+
+! end subroutine interpolate_strain_3d2
 
 subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
@@ -438,7 +504,6 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
     call setupGeo(mat, nc_total, invJ, detJ)
-    call setup_combinedHard_kwargs(mat, nc_total, kwargs)
     disp = 0.d0; ep_n0 = 0.d0; a_n0 = 0.d0; b_n0 = 0.d0; kwargs = 0.d0
     
     do i = 2, sizeF
@@ -460,6 +525,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 call cpp_combinedHard(mat, eps(:, k), ep_n0(:, k), a_n0(k), b_n0(:, k), &
                                             ep_n1(:, k), a_n1(k), b_n1(:, k), sigma(:, k), kwargs(:, k))
             end do
+            call setup_combinedHard_kwargs(mat, nc_total, kwargs)
 
             ! Compute Deigen
             call compute_mean_combinedHard_3d(mat, nc_u, nc_v, nc_w)
@@ -468,7 +534,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, k), D_v(:, k), D_w(:, k), &
                                             mean(1), mean(2), mean(3), Deigen(k, :))
             end do
-            
+
             ! Compute Fint
             call wq_get_forceint_3d(mat, sigma, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)

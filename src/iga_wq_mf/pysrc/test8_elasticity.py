@@ -23,8 +23,8 @@ folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 4
-geoName = 'VB'
+degree, cuts = 4, 3
+geoName = 'CB'
 
 # Create model 
 geometry = {'degree':[degree, degree, degree]}
@@ -34,7 +34,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7800, 'young': 210e9, 'poisson': 0.3, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
+material = {'density': 7800, 'young': 1e9, 'poisson': 0.0, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
@@ -51,29 +51,36 @@ forces[1] = [1e8, 2e8, 0.0]
 modelPhy._set_neumann_condition({'mechanical': forces})
 Fsurf = modelPhy.eval_force_surf()
 
-# -------------
-# ELASTICITY
-# -------------
-fig, ax = plt.subplots(nrows=1, ncols=1)
+disp  = np.ones((3, modelPhy._nb_ctrlpts_total))
+Su1   = modelPhy.eval_Su(disp)
+Su1   = np.ndarray.flatten(Su1)
+Stiff = modelPhy.eval_stiffness_matrix()
+Su2   = Stiff @ np.ndarray.flatten(disp)
+err   = relativeError(Su1, Su2)
+print(err)
 
-# Solve in fortran 
-for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
-    displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, methodPCG=methodPCG)
-    resPCG = resPCG[resPCG>0]
-    ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
+# # -------------
+# # ELASTICITY
+# # -------------
+# fig, ax = plt.subplots(nrows=1, ncols=1)
 
-ax.set_ybound(lower=1e-8, upper=10)
-ax.legend()
-ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-fig.tight_layout()
-fig.savefig(folder + geoName + 'ElasRes.png')
+# # Solve in fortran 
+# for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
+#     displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, methodPCG=methodPCG)
+#     resPCG = resPCG[resPCG>0]
+#     ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
+
+# ax.set_ybound(lower=1e-8, upper=10)
+# ax.legend()
+# ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+# fig.tight_layout()
+# fig.savefig(folder + geoName + 'ElasRes.png')
 
 # displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG=100)
-# np.save(folder+'Elasto',displacement)
-# # strain = modelPhy.compute_strain(displacement)
-# # strain_cp = []
-# # for _ in range(6):
-# # 	strain_cp.append(modelPhy.interpolate_ControlPoints(datafield=strain[_, :]))
-# # strain_cp = np.array(strain_cp)
-# # modelPhy.export_results(u_ctrlpts=strain_cp, nbDOF=6)
+# strain = modelPhy.compute_strain(displacement)
+# strain_cp = []
+# for _ in range(6):
+# 	strain_cp.append(modelPhy.interpolate_ControlPoints(datafield=strain[_, :]))
+# strain_cp = np.array(strain_cp)
+# modelPhy.export_results(u_ctrlpts=strain_cp, nbDOF=6)
