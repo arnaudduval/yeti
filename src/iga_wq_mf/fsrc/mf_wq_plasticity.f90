@@ -12,7 +12,7 @@
 
 subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, invJ, u, strain)
+                                data_B_u, data_B_v, data_B_w, invJ, u, isvoigt, strain)
     !! Computes strain in 3D (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -29,6 +29,7 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: invJ, u
     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
+    logical, intent(in) :: isvoigt
 
     double precision, intent(out) :: strain
     dimension :: strain(nvoigt, nc_total)
@@ -67,6 +68,11 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
         dersx = matmul(dersu(:, :, j), invJ(:, :, j))
         dersx = 0.5*(dersx + transpose(dersx))
         call symtensor2array(dimen, nvoigt, dersx, strain(:, j))
+    end do
+
+    if (.not.isvoigt) return
+    do i = dimen+1, nvoigt
+        strain(i, :) = 2*strain(i, :)
     end do
 
 end subroutine interpolate_strain_3d
@@ -403,7 +409,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2, nbIterNL = 30, nbIterPCG = 200
+    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2, nbIterNL = 5, nbIterPCG = 200
     double precision, parameter :: tolNL = 1d-8, tolPCG = 1d-8
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, sizeF
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
@@ -489,7 +495,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     do i = 2, sizeF
         
         ddisp = 0.d0
-        Fstep = Fext(:, :, i)        
+        Fstep = Fext(:, :, i)      
 
         print*, 'Step: ', i - 1
         do j = 1, nbIterNL ! Newton-Raphson solver
@@ -498,7 +504,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             d_n1 = disp(:, :, i-1) + ddisp
             call interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                            invJ, d_n1, strain)
+                            invJ, d_n1, .false., strain)
 
             ! Closest point projection in perfect plasticity 
             do k = 1, nc_total
@@ -518,14 +524,14 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             ! Compute Fint
             call wq_get_forceint_3d(mat, sigma, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
-
             dF = Fstep - Fint
+
             call cleanDirichlet3ddl(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)
             print*, "Raphson with error: ", resNL
             if (resNL.le.tolNL) exit
-    
+
             ! Solve
             call mf_wq_elasticity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -533,6 +539,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                                 U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, dF, &
                                 nbIterPCG, tolPCG, .true., delta_disp, resPCG)
             ddisp = ddisp + delta_disp
+
         end do
         
         ! Save values

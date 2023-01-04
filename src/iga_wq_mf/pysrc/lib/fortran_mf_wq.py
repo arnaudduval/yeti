@@ -482,7 +482,7 @@ class fortran_mf_wq(thermoMechaModel):
 		if self._dim != 3: raise Warning('Not yet')
 		if u is None: raise Warning('Insert displacement')
 
-		inputs = [*self._nb_qp, *self._indices, *self._DB, self._invJ, u]
+		inputs = [*self._nb_qp, *self._indices, *self._DB, self._invJ, u, True]
 		eps = elastoplasticity.interpolate_strain_3d(*inputs)
 
 		return eps

@@ -268,7 +268,7 @@ contains
         
         ! Local data
         ! ----------
-        double precision, dimension(mat%dimen, mat%dimen) :: Tstrain, Tpls, Tb, devStrain, s_trial, eta_trial, sigma, NN
+        double precision, dimension(mat%dimen, mat%dimen) :: Tstrain, Tpls, Tb, e_trial, s_trial, eta_trial, sigma, NN
         double precision :: traceStrain, norm_trial, f_trial, dgamma, c1, c2
         integer :: i
 
@@ -276,13 +276,13 @@ contains
         call array2symtensor(mat%dimen, mat%nvoigt, pls, Tpls)
         call array2symtensor(mat%dimen, mat%nvoigt, b, Tb)
         call eval_trace(mat%dimen, Tstrain, traceStrain)
-        devStrain = Tstrain
+        e_trial = Tstrain
         do i = 1, mat%dimen
-            devStrain(i, i) = devStrain(i, i) - 1.d0/3.d0*traceStrain
+            e_trial(i, i) = e_trial(i, i) - 1.d0/3.d0*traceStrain
         end do
 
         ! Compute trial stress
-        s_trial = 2*mat%mu*(devStrain - Tpls)
+        s_trial = 2*mat%mu*(e_trial - Tpls)
 
         ! Compute shifted stress
         eta_trial = s_trial - Tb
@@ -290,7 +290,10 @@ contains
         ! Check yield condition
         call eval_frobenius_norm(mat%dimen, eta_trial, norm_trial)
         f_trial = norm_trial - sqrt(2.d0/3.d0)*(mat%sigma_Y + mat%beta*mat%H*a)  
-        sigma = s_trial + mat%bulk*Tstrain
+        sigma = s_trial
+        do i = 1, mat%dimen
+            sigma(i, i) = sigma(i, i) + mat%bulk*traceStrain
+        end do
         kwargs = 0.d0; kwargs(1) = mat%lambda; kwargs(2) = mat%mu; 
         
         if (f_trial.le.0.d0) then ! Elastic point
