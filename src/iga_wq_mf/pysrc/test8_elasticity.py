@@ -23,7 +23,7 @@ folder = os.path.dirname(full_path) + '/results/test8/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 3
+degree, cuts = 2, 3
 geoName = 'CB'
 
 # Create model 
@@ -34,7 +34,7 @@ modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7800, 'young': 1e9, 'poisson': 0.0, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
+material = {'density': 7800, 'young': 1e9, 'poisson': 0.3, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
@@ -44,6 +44,10 @@ table_Dir[1, 0, 1] = 1
 table_Dir[2, 0, 2] = 1
 modelPhy._set_dirichlet_boundaries({'mechanical': table_Dir})
 dod = modelPhy._mechanical_dod
+dof = modelPhy._mechanical_dof
+dof_gen = []
+for i in range(3):
+    dof_gen.extend(np.array(dof[i]) + i*modelPhy._nb_ctrlpts_total)
 
 # Set Neumann boundaries
 forces = [[0 for i in range(3)] for j in range(6)]
@@ -51,17 +55,13 @@ forces[1] = [1e8, 2e8, 0.0]
 modelPhy._set_neumann_condition({'mechanical': forces})
 Fsurf = modelPhy.eval_force_surf()
 
-disp  = np.ones((3, modelPhy._nb_ctrlpts_total))
-Su1   = modelPhy.eval_Su(disp)
-Su1   = np.ndarray.flatten(Su1)
-Stiff = modelPhy.eval_stiffness_matrix()
-Su2   = Stiff @ np.ndarray.flatten(disp)
-err   = relativeError(Su1, Su2)
-print(err)
+A = modelPhy.eval_stiffness_matrix()[dof_gen, :][:, dof_gen]
+b = np.ndarray.flatten(Fsurf)[dof_gen]
+disp_th = sclin.solve(A.todense(), b)
 
-# # -------------
-# # ELASTICITY
-# # -------------
+# -------------
+# ELASTICITY
+# -------------
 # fig, ax = plt.subplots(nrows=1, ncols=1)
 
 # # Solve in fortran 
@@ -77,10 +77,14 @@ print(err)
 # fig.tight_layout()
 # fig.savefig(folder + geoName + 'ElasRes.png')
 
-# displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG=100)
-# strain = modelPhy.compute_strain(displacement)
-# strain_cp = []
-# for _ in range(6):
-# 	strain_cp.append(modelPhy.interpolate_ControlPoints(datafield=strain[_, :]))
-# strain_cp = np.array(strain_cp)
-# modelPhy.export_results(u_ctrlpts=strain_cp, nbDOF=6)
+displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG=100)
+disp_app = np.ndarray.flatten(displacement)[dof_gen]
+relerror = relativeError(disp_app, disp_th)
+print(relerror)
+
+# # strain = modelPhy.compute_strain(displacement)
+# # strain_cp = []
+# # for _ in range(6):
+# # 	strain_cp.append(modelPhy.interpolate_ControlPoints(datafield=strain[_, :]))
+# # strain_cp = np.array(strain_cp)
+# # modelPhy.export_results(u_ctrlpts=strain_cp, nbDOF=6)

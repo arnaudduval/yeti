@@ -128,7 +128,7 @@ class thermoMechaModel():
 
 			# Create material tensor
 			Idev = identity - 1.0/3.0*onekronone
-			C = lamb*onekronone + 2*mu*identity
+			C = lamb*onekronone + 2*mu*identity 
 			S = 1.0/(9.0*bulk)*onekronone + 1.0/(2.0*mu)*Idev
 
 			# Update
@@ -527,7 +527,6 @@ class thermoMechaModel():
 					ETCE = EE[:, :, i].T @ self._Ctensor @ EE[:, :, j]
 					Dij = invJt @ ETCE @ invJt.T
 					coefs[i*d:(i+1)*d, j*d:(j+1)*d, k] = Dij*detJt
-
 		return coefs
 
 	# ===========================

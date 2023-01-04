@@ -220,6 +220,7 @@ contains
         mat%mu      = E/(2*(1+nu))
         mat%bulk    = mat%lambda + 2.d0/3.d0*mat%mu
         allocate(mat%mean(mat%dimen, mat%dimen))
+        mat%mean    = 1.d0
 
     end subroutine initialize_mecamat
 
@@ -244,6 +245,8 @@ contains
         mat%nc_total = nc
 
         allocate(mat%JJjj(mat%dimen, mat%dimen, nc))
+        allocate(mat%JJnn(mat%dimen, mat%dimen, nc))
+        mat%JJnn = 0.d0
         do i = 1, nc
             mat%JJjj(:,:,i) = matmul(mat%invJJ(:,:,i), transpose(mat%invJJ(:,:,i)))
         end do
@@ -345,11 +348,10 @@ contains
 
         mat%kwargs => kwargs(:3, :)
         mat%nn     => kwargs(4:, :)
-        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, nc))
-        mat%JJnn = 0.d0
+        mat%JJnn   = 0.d0
         if (mat%isElastic) return
         do i = 1, nc
-            call array2symtensor(mat%dimen, mat%nvoigt, kwargs(4:, i), NN)
+            call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
             mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
         end do
 
@@ -402,16 +404,19 @@ contains
                 DD(j, :) = mat%kwargs(2, sample) + mat%kwargs(3, sample)*(Tnn(i, j, :)**2)
             end do
             DD(i, :) = DD(i, :) + mat%kwargs(1, sample) + mat%kwargs(2, sample) 
+            
 
             do k = 1, samplesize
                 l = sample(k)
                 call gemm_AWB(1, 3, 3, mat%invJJ(:,:,l), 3, 3, mat%invJJ(:,:,l), DD(:, k), 3, 3, coefs(:,:,k))
             end do
 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), mean(1))
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), mean(2))
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), mean(3))
+
+            call compute_mean_3d(3, 3, 3, coefs(1, 1, :), mean(1))
+            call compute_mean_3d(3, 3, 3, coefs(2, 2, :), mean(2))
+            call compute_mean_3d(3, 3, 3, coefs(3, 3, :), mean(3))
             mat%mean(i, :) = mean
+
         end do
 
     end subroutine compute_mean_combinedHard_3d
@@ -422,7 +427,7 @@ contains
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
         !! Computes S.u in 3D where S is stiffness matrix
         !! IN CSR FORMAT
-
+        use heat_spmf
         implicit none 
         ! Input / output data 
         ! -------------------
@@ -452,13 +457,14 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, r, alpha, beta, zeta
+        integer :: i, j, k, l, r, alpha, beta, zeta!, info
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision :: kt1, t1, t2, t3, t4, t5, t6
-        dimension :: kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), t4(nc_total), t5(nc_total), t6(nr_total)
+        double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
+        dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
+                        t4(nc_total), t5(nc_total), t6(nr_total), t7(nr_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
-        array_out = 0.d0
+        array_out = 0.d0       
         do j = 1, dimen
             do l = 1, dimen
                 beta = 1; beta(l) = 2
@@ -477,30 +483,29 @@ contains
 
                 do i = 1, dimen
                     t3 = kt1(2, :)*mat%invJJ(l, i, :)
+                    t7 = 0.d0
 
                     do k = 1, dimen
                         alpha = 1; alpha(k) = 2
-                        zeta = beta + (alpha - 1)*2
-
-                        t5 = t2*mat%invJJ(k, i, :) + t3*mat%invJJ(k, j, :) + t4*mat%JJnn(k, i, :)
+                        zeta  = beta + (alpha - 1)*2
+                        t5    = t2*mat%invJJ(k, i, :) + t3*mat%invJJ(k, j, :) + t4*mat%JJnn(k, i, :)
                         if (i.eq.j) t5 = t5 + kt1(2, :)*mat%JJjj(k, l, :)
-
                         call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                 nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t5, t6)
-                        array_out(i, :) = array_out(i, :) + t6
+                        t7 = t7 + t6
 
                     end do
 
+                    array_out(i, :) = array_out(i, :) + t7
                 end do
-
             end do
         end do
-
+            
     end subroutine mf_wq_get_su_3d
 
-    subroutine wq_get_forceint_3d(mat, sigma, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine wq_get_forceint_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
         !! Computes internal force vector in 3D 
         !! IN CSR FORMAT
@@ -511,8 +516,8 @@ contains
         integer, parameter :: dimen = 3
         type(mecamat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        double precision, intent(in) :: sigma
-        dimension :: sigma(mat%nvoigt, nc_total)
+        double precision, intent(in) :: stress
+        dimension :: stress(mat%nvoigt, nc_total)
         integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
         dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                         indi_v(nr_v+1), indj_v(nnz_v), &
@@ -532,15 +537,15 @@ contains
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
         
         do i = 1, nc_total
-            call array2symtensor(mat%dimen, mat%nvoigt, sigma(:, i), Tstress)
-            t1(:,:,i) =  matmul(mat%invJJ(:,:,i), Tstress)*mat%detJJ(i)
+            call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
+            t1(:,:,i) = matmul(mat%invJJ(:,:,i), Tstress)*mat%detJJ(i)
         end do
         
         array_out = 0.d0
         do i = 1, dimen
             do k = 1, dimen
                 alpha = 1; alpha(k) = 2
-                zeta = 1 + (alpha - 1)*2
+                zeta  = 1 + (alpha - 1)*2
 
                 call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &

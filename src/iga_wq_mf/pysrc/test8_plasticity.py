@@ -27,13 +27,13 @@ degree, cuts = 4, 4
 
 # Create model 
 geometry = {'degree':[degree, degree, degree]}
-modelGeo = geomdlModel('VB', **geometry)
+modelGeo = geomdlModel('CB', **geometry)
 modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
 											np.array([cuts, cuts, cuts]))
 modelPhy = fortran_mf_wq(modelIGA)
 
 # Add material 
-material = {'density': 7800, 'young': 210e9, 'poisson': 0.0, 'sigmaY': 500e9, 'hardening':50e9, 'betahard':0.5}
+material = {'density': 7800, 'young': 210e9, 'poisson': 0.0, 'sigmaY': 500e12, 'hardening':50e9, 'betahard':0.5}
 modelPhy._set_material(material)
 
 # Set Dirichlet boundaries
@@ -60,7 +60,6 @@ for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 # Solve in fortran
 displacement, stress_vm = modelPhy.MFplasticity_fortran(Fext=Fext, indi=dod)
 # displacement, stress_vm = modelPhy.MFplasticity_py(Fext=Fext, indi=dod)
-
 
 # # Elasticity
 # displacement_ref = np.load(folder+'Elasto.npy')

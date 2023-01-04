@@ -71,72 +71,6 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
 
 end subroutine interpolate_strain_3d
 
-! subroutine interpolate_strain_3d2(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-!                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                                 data_B_u, data_B_v, data_B_w, invJ, u, eps)
-!     !! Computes strain in 3D (from parametric space to physical space)
-!     !! IN CSR FORMAT
-
-!     implicit none 
-!     ! Input / output data
-!     ! -------------------  
-!     integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
-!     integer, intent(in) :: nc_total, nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
-!     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-!     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-!                     indi_v(nr_v+1), indj_v(nnz_v), &
-!                     indi_w(nr_w+1), indj_w(nnz_w)
-!     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-!     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-!     double precision, intent(in) :: invJ, u
-!     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
-
-!     double precision, intent(out) :: eps
-!     dimension :: eps(nvoigt, nc_total)
-
-!     ! Local data
-!     !-----------
-!     integer :: indi_T_u, indi_T_v, indi_T_w
-!     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-!     integer :: indj_T_u, indj_T_v, indj_T_w
-!     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-!     double precision :: data_BT_u, data_BT_v, data_BT_w
-!     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-!     integer :: i, j, k, beta(dimen)
-!     double precision :: EE, ders, eps_temp
-!     dimension :: EE(nvoigt, dimen, dimen), ders(dimen*dimen, nc_total), eps_temp(nvoigt)
-
-!     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-!     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-!     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-!     call create_incidence_matrix(dimen, nvoigt, EE)
-
-!     ! Compute derivatives of displacement field with respect to u (in parametric space)
-!     do j = 1, dimen
-!         do i = 1, dimen
-!             beta = 1; beta(i) = 2
-!             call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-!                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
-!                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-!                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-!                             u(j, :), ders(i+(j-1)*dimen, :))
-!         end do
-!     end do
-
-!     ! Compute symetric derivatives (strain) 
-!     do k = 1, nc_total
-
-!         eps_temp = 0.d0
-!         do i = 1, dimen
-!             eps_temp = eps_temp + matmul(EE(:, :, i), matmul(transpose(invJ(:, :, k)), ders((i-1)*dimen+1:i*dimen, k)))
-!         end do
-!         eps(:, k) = eps_temp
-
-!     end do
-
-! end subroutine interpolate_strain_3d2
-
 subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
     !! Computes volumetric force vector in 3D 
@@ -217,6 +151,53 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
     end do
     
 end subroutine wq_get_forcesurf_3d
+
+subroutine wq_get_forceint_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
+    !! Computes internal force vector in 3D 
+    !! Probably correct (?)
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(dimen*dimen, nc_total)
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(dimen, nr_u*nr_v*nr_w)
+
+    ! Local data
+    ! ----------
+    double precision :: array_temp
+    dimension :: array_temp(nr_u*nr_v*nr_w)
+    integer :: i, j, r, zeta(dimen)
+    
+    array_out = 0.d0
+    do i = 1, dimen
+        do j = 1, dimen
+        
+            r = j + (i-1)*dimen
+            zeta = 1; zeta(j) = 3
+            call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
+                                coefs(r, :), array_temp)
+            array_out(i, :) = array_out(i, :) + array_temp
+            
+        end do
+    end do
+
+end subroutine wq_get_forceint_3d_py
 
 subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -390,11 +371,10 @@ subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
     call setup_combinedHard_kwargs(mat, nc_total, kwargs)
-
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
     if (methodPCG.eq.'JMC') call compute_mean_combinedHard_3d(mat, nc_u, nc_v, nc_w)
-    
+
     do i = 1, dimen
         mean = 1.d0
         if (methodPCG.eq.'JMC') mean = mat%mean(i, :)
@@ -459,9 +439,9 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen), Deigen(dimen, nr_total)
     double precision :: mean(3)
 
-    double precision :: a_n0, a_n1, b_n0, b_n1, ep_n0, ep_n1, eps, sigma, kwargs
+    double precision :: a_n0, a_n1, b_n0, b_n1, pls_n0, pls_n1, strain, sigma, kwargs
     dimension ::    a_n0(nc_total), a_n1(nc_total), b_n0(nvoigt, nc_total), b_n1(nvoigt, nc_total), &
-                    ep_n0(nvoigt, nc_total), ep_n1(nvoigt, nc_total), eps(nvoigt, nc_total), sigma(nvoigt, nc_total), &
+                    pls_n0(nvoigt, nc_total), pls_n1(nvoigt, nc_total), strain(nvoigt, nc_total), sigma(nvoigt, nc_total), &
                     kwargs(nvoigt+3, nc_total)
     
     double precision, dimension(dimen, nr_total) :: Fint, dF, ddisp, delta_disp, Fstep, d_n1
@@ -504,7 +484,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
     call setupGeo(mat, nc_total, invJ, detJ)
-    disp = 0.d0; ep_n0 = 0.d0; a_n0 = 0.d0; b_n0 = 0.d0; kwargs = 0.d0
+    disp = 0.d0; pls_n0 = 0.d0; a_n0 = 0.d0; b_n0 = 0.d0; kwargs = 0.d0
     
     do i = 2, sizeF
         
@@ -518,12 +498,12 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             d_n1 = disp(:, :, i-1) + ddisp
             call interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                            invJ, d_n1, eps)
+                            invJ, d_n1, strain)
 
             ! Closest point projection in perfect plasticity 
             do k = 1, nc_total
-                call cpp_combinedHard(mat, eps(:, k), ep_n0(:, k), a_n0(k), b_n0(:, k), &
-                                            ep_n1(:, k), a_n1(k), b_n1(:, k), sigma(:, k), kwargs(:, k))
+                call cpp_combinedHard(mat, strain(:, k), pls_n0(:, k), a_n0(k), b_n0(:, k), &
+                                    pls_n1(:, k), a_n1(k), b_n1(:, k), sigma(:, k), kwargs(:, k))
             end do
             call setup_combinedHard_kwargs(mat, nc_total, kwargs)
 
@@ -557,7 +537,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         
         ! Save values
         disp(:, :, i) = d_n1
-        ep_n0 = ep_n1
+        pls_n0 = pls_n1
         a_n0  = a_n1
         b_n0  = b_n1
 
