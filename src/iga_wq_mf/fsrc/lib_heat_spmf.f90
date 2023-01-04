@@ -228,7 +228,7 @@ contains
         call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
         call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-        call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
@@ -273,7 +273,7 @@ contains
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
 
-        call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+        call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
@@ -281,7 +281,7 @@ contains
 
         array_temp = array_temp * mat%Ccoefs
 
-        call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
@@ -335,7 +335,7 @@ contains
         array_out = 0.d0
         do j = 1, dimen
             beta = 1; beta(j) = 2
-            call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                                 nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                                 nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                                 nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
@@ -344,7 +344,7 @@ contains
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
                 array_temp_1 = array_temp_0 * mat%Kcoefs(i, j, :)
-                call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                     nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), & 

@@ -39,7 +39,7 @@ filename = folder + 'disp_iga' + '.dat'
 np.savetxt(filename, disp)
 
 # fig, ax = plt.subplots(nrows=1, ncols=1)
-# ax.loglog(np.arange(1, 1+len(internal)), abs(internal))
+# ax.loglog(np.arange(len(internal)), abs(internal))
 # fig.tight_layout()
 # fig.savefig(folder + 'Energy.png')
 

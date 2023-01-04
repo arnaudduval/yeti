@@ -550,7 +550,7 @@ subroutine spMdotdV(nr, nc, nnz, indi, indj, A, array_in, array_out)
 
 end subroutine spMdotdV
 
-subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
+subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     !! Computes an integral inside a unitary cube using trapezoidal rule.
     !! It supposes that points are equidistant
 
@@ -558,8 +558,8 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     ! Input / output data
     ! --------------------
     integer :: nru, nrv, nrw
-    double precision, intent(in) :: C
-    dimension :: C(nru, nrv, nrw)
+    double precision, intent(in) :: tensor
+    dimension :: tensor(nru, nrv, nrw)
 
     double precision, intent(out) :: integral
     
@@ -576,7 +576,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                integral = integral + C(iu, iv, iw)
+                integral = integral + tensor(iu, iv, iw)
             end do
         end do
     end do
@@ -585,7 +585,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 1, 2
-                integral = integral + C(indu(iu), iv, iw)/2.d0
+                integral = integral + tensor(indu(iu), iv, iw)/2.d0
             end do
         end do
     end do
@@ -593,7 +593,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 2, nru-1
-                integral = integral + C(iu, indv(iv), iw)/2.d0
+                integral = integral + tensor(iu, indv(iv), iw)/2.d0
             end do
         end do
     end do
@@ -601,7 +601,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                integral = integral + C(iu, iv, indw(iw))/2.d0
+                integral = integral + tensor(iu, iv, indw(iw))/2.d0
             end do
         end do
     end do
@@ -610,7 +610,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 2, nru-1
-                integral = integral + C(iu, indv(iv), indw(iw))/4.d0
+                integral = integral + tensor(iu, indv(iv), indw(iw))/4.d0
             end do
         end do
     end do
@@ -618,7 +618,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 1, 2
-                integral = integral + C(indu(iu), iv, indw(iw))/4.d0
+                integral = integral + tensor(indu(iu), iv, indw(iw))/4.d0
             end do
         end do
     end do
@@ -626,7 +626,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 1, 2
-                integral = integral + C(indu(iu), indv(iv), iw)/4.d0
+                integral = integral + tensor(indu(iu), indv(iv), iw)/4.d0
             end do
         end do
     end do
@@ -635,7 +635,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, C, integral)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 1, 2
-                integral = integral + C(indu(iu), indv(iv), indw(iw))/8.d0
+                integral = integral + tensor(indu(iu), indv(iv), indw(iw))/8.d0
             end do
         end do
     end do

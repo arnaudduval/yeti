@@ -151,7 +151,7 @@ contains
         end if  
     
         ! Compute (Uw x Uv x Uu)'.array_in
-        call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                         transpose(U_u), transpose(U_v), transpose(U_w), dummy, array_temp)
         
         if (solv%withdiag) then
@@ -166,7 +166,7 @@ contains
         end if
     
         ! Compute (Uw x Uv x Uu).array_temp
-        call sumproduct3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, dummy)
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, dummy)
 
         if (solv%withscaling) then
             !$OMP PARALLEL 

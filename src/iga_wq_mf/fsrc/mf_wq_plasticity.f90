@@ -55,7 +55,7 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     do i = 1, dimen
         do k = 1, dimen
             beta = 1; beta(k) = 2
-            call sumproduct3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
@@ -104,7 +104,7 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     integer :: i
 
     do i = 1, dimen
-        call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
@@ -151,7 +151,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
 
     ! Compute force
     do i = 1, dimen
-        call sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
+        call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         coefs(i, :), array_out(i, :))
     end do
@@ -193,7 +193,7 @@ subroutine wq_get_forceint_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         
             r = j + (i-1)*dimen
             zeta = 1; zeta(j) = 3
-            call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                 nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &

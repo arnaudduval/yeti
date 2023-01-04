@@ -230,7 +230,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, X, nrU, nnzU, dataU, indi
 
 end subroutine tensor_n_mode_product_spM
 
-subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
+subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     !! Evaluates a dot product between a tensor 2D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -260,9 +260,9 @@ subroutine sumproduct2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     call tensor_n_mode_product_dM(nr_u, nc_v, 1, R1, nr_v, nc_v, Mv, 2, size(array_out), array_out)
     deallocate(R1)
 
-end subroutine sumproduct2d_dM
+end subroutine sumfacto2d_dM
 
-subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_in, array_out)
+subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
@@ -297,9 +297,9 @@ subroutine sumproduct3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array
     call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
     deallocate(R2)   
 
-end subroutine sumproduct3d_dM
+end subroutine sumfacto3d_dM
 
-subroutine sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
+subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
                             nnz_v, indi_v, indj_v, data_v, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
     !! Based on "Preconditioners for IGA" by Montardini
@@ -335,9 +335,9 @@ subroutine sumproduct2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_
                                 data_v, indi_v, indj_v, 2, size(array_out), array_out)
     deallocate(R1)
 
-end subroutine sumproduct2d_spM
+end subroutine sumfacto2d_spM
 
-subroutine sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
+subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
                         nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector 
     !! Based on "Preconditioners for IGA" by Montardini
@@ -379,11 +379,11 @@ subroutine sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, i
                                 data_w, indi_w, indj_w, 3, size(array_out), array_out)
     deallocate(R2)
 
-end subroutine sumproduct3d_spM
+end subroutine sumfacto3d_spM
 
-! --------------------------------
-! Sum product to compute matrices 
-! --------------------------------
+! -------------------------------------
+! Sum factorization to compute matrices 
+! -------------------------------------
 
 subroutine csr_get_row_2d(coefs, nr_u, nc_u, nr_v, nc_v, row_u, row_v, &
                         nnz_row_u, nnz_row_v, i_nnz_u, i_nnz_v, &
@@ -447,7 +447,7 @@ subroutine csr_get_row_2d(coefs, nr_u, nc_u, nr_v, nc_v, row_u, row_v, &
     deallocate(Bt, Wt)
 
     ! Compute non zero values of the row
-    call sumproduct2d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, BW_u, BW_v, Ci0, data_row)
+    call sumfacto2d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, BW_u, BW_v, Ci0, data_row)
 
 end subroutine csr_get_row_2d 
 
@@ -638,7 +638,7 @@ subroutine csr_get_row_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, row_u, row_
     deallocate(Bt, Wt)
 
     ! Compute non zero values of the row
-    call sumproduct3d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
+    call sumfacto3d_dM(nnz_row_u, nnz_col_u, nnz_row_v, nnz_col_v, &
                             nnz_row_w, nnz_col_w, BW_u, BW_v, BW_w, Ci0, data_row)
 
 end subroutine csr_get_row_3d 
@@ -810,7 +810,7 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
     data_BW_v = data_B_v*data_W_v
     data_BW_w = data_B_w*data_W_w
 
-    call sumproduct3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_BW_u, &
+    call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_BW_u, &
                     nnz_v, indi_v, indj_v, data_BW_v, nnz_w, indi_w, indj_w, data_BW_w, coefs, diag)
 
 end subroutine csr_get_diag_3d
@@ -832,7 +832,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     implicit none 
     ! Input / output data
     ! -------------------
-    double precision, parameter :: penalty = 1001.0
+    double precision, parameter :: penalty = 100.0d0
     integer, intent(in) :: nr, nc, nnz
     double precision, intent(in) :: Mcoefs, Kcoefs
     dimension :: Mcoefs(nc), Kcoefs(nc)
