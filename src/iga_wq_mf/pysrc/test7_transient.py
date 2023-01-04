@@ -16,7 +16,7 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = True
+dataExist   = False
 geolist     = ['VB', 'CB']
 method_list = ['WP', 'C', 'JMC']
 # method_list = ['JMC']

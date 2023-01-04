@@ -2,6 +2,67 @@
 ! module :: Heat transfer 
 ! author :: Joaquin Cornejo
 ! ==========================
+
+subroutine eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, mean, doDeigen, &
+                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    dimension ::    Mcoef_u(nr_u), Mcoef_v(nr_v), Mcoef_w(nr_w), &
+                    Kcoef_u(nr_u), Kcoef_v(nr_v), Kcoef_w(nr_w)
+    double precision, intent(in) :: mean
+    dimension :: mean(3)
+    logical, intent(in) :: doDeigen
+
+    double precision, intent(out) :: U_u, U_v, U_w, Deigen
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_u*nr_v*nr_w)
+    double precision, intent(out) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
+    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
+
+    ! Local data
+    ! -----------
+    double precision :: D_u, D_v, D_w
+    dimension :: D_u(nr_u), D_v(nr_v), D_w(nr_w)
+    double precision, dimension(:), allocatable :: I_u, I_v, I_w
+
+    ! Eigen decomposition
+    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                            data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+
+    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                            data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
+
+    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                            data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
+
+    ! Find diagonal
+    if (.not.doDeigen) return
+    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
+    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, mean, Deigen)
+    deallocate(I_u, I_v, I_w)
+
+end subroutine eigen_decomposition_3d
+
+
 module heat_spmf
 
     implicit none

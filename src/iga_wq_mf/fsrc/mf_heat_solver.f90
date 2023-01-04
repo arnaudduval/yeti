@@ -291,7 +291,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean(1), kmean(2), kmean(3), Dparametric)
+                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
             
             ! Find diagonal of real matrix
             allocate(Dphysical(nr_total))
@@ -430,7 +430,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             ! Find diagonal of preconditioner
             allocate(Dparametric(nr_total))
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean(1), kmean(2), kmean(3), Dparametric)
+                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
             
             ! Find diagonal of real matrix
             allocate(Dphysical(nr_total))
@@ -563,7 +563,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
             Dtemp = 0.d0
             call kronvec3d(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cmean)
             call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean(1), kmean(2), kmean(3), Dparametric)
+                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
             Dparametric = Dtemp + thetadt*Dparametric
 
             ! Find diagonal of real matrix 

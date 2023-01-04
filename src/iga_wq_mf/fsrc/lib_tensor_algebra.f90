@@ -923,17 +923,16 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
 
 end subroutine eigen_decomposition
 
-subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, cu, cv, cw, diag)
+subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coefs, diag)
     !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)
                         
     implicit none
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr_u, nr_v, nr_w
-    double precision, intent(in) :: Mu, Mv, Mw, Ku, Kv, Kw
+    double precision, intent(in) :: Mu, Mv, Mw, Ku, Kv, Kw, coefs
     dimension :: Mu(nr_u), Mv(nr_v), Mw(nr_w), &
-                Ku(nr_u), Kv(nr_v), Kw(nr_w)
-    double precision :: cu, cv, cw
+                Ku(nr_u), Kv(nr_v), Kw(nr_w), coefs(3)
 
     double precision, intent(out) :: diag
     dimension :: diag(nr_u*nr_v*nr_w)
@@ -941,13 +940,13 @@ subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, cu,
     diag = 0.d0
 
     ! Mw x Mv x Ku
-    call kronvec3d(nr_w, Mw, nr_v, Mv, nr_u, Ku, diag, cu)
+    call kronvec3d(nr_w, Mw, nr_v, Mv, nr_u, Ku, diag, coefs(1))
 
     ! Mw x Kv x Mu
-    call kronvec3d(nr_w, Mw, nr_v, Kv, nr_u, Mu, diag, cv)
+    call kronvec3d(nr_w, Mw, nr_v, Kv, nr_u, Mu, diag, coefs(2))
 
     ! Kw x Mv x Mu
-    call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, cw)
+    call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, coefs(3))
     
 end subroutine find_parametric_diag_3d
 
@@ -1067,66 +1066,6 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
 
 end subroutine tensor_decomposition_3d
 
-subroutine eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, doDeigen, &
-                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension ::    Mcoef_u(nr_u), Mcoef_v(nr_v), Mcoef_w(nr_w), &
-                    Kcoef_u(nr_u), Kcoef_v(nr_v), Kcoef_w(nr_w)
-    double precision, intent(in) :: kmean
-    dimension :: kmean(3)
-    logical, intent(in) :: doDeigen
-
-    double precision, intent(out) :: U_u, U_v, U_w, Deigen
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_u*nr_v*nr_w)
-    double precision, intent(out) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
-    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
-
-    ! Local data
-    ! -----------
-    double precision :: D_u, D_v, D_w
-    dimension :: D_u(nr_u), D_v(nr_v), D_w(nr_w)
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w
-
-    ! Eigen decomposition
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                            data_W_u(:, 4), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
-
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                            data_W_v(:, 4), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
-
-    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                            data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
-
-    if (doDeigen) then
-        ! Find diagonal
-        allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, kmean(1), kmean(2), kmean(3), Deigen)
-        deallocate(I_u, I_v, I_w)
-    end if
-
-end subroutine eigen_decomposition_3d
-
 subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
     !! Compute the "mean" of a given vector in Fast Diagonalization method 
 
@@ -1172,12 +1111,12 @@ subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean,
     implicit none
     ! Input /  output data
     ! --------------------
-    integer, parameter :: d = 3
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nnz
     double precision, intent(in) :: Kcoefs, Ccoefs
-    dimension :: Kcoefs(d, d, nnz), Ccoefs(nnz)
+    dimension :: Kcoefs(dimen, dimen, nnz), Ccoefs(nnz)
     double precision, intent(in) :: Kmean, Cmean
-    dimension :: Kmean(d)
+    dimension :: Kmean(dimen)
 
     double precision, intent(out) :: kappa
     
@@ -1185,31 +1124,31 @@ subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean,
     ! ----------
     integer :: i, j, k, info
     double precision :: wr, wi, vl, vr, work, KK, Kmean2
-    dimension :: wr(d), wi(d), vl(d, d), vr(1, d), work(5*d), KK(d, d), Kmean2(d)
+    dimension :: wr(dimen), wi(dimen), vl(dimen, dimen), vr(1, dimen), work(5*dimen), KK(dimen, dimen), Kmean2(dimen)
     double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
 
-    do i = 1, d
+    do i = 1, dimen
         kmean2(i) = 1.0/sqrt(Kmean(i))
     end do
     KK = Kcoefs(:, :, 1)
-    do i = 1, d
-        do j = 1, d
+    do i = 1, dimen
+        do j = 1, dimen
             KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
         end do
     end do
-    call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+    call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
     supKold = maxval(wr); infKold = minval(wr)
     supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
 
     do k = 2, nnz
         
         KK = Kcoefs(:, :, k)
-        do i = 1, d
-            do j = 1, d
+        do i = 1, dimen
+            do j = 1, dimen
                 KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
             end do
         end do
-        call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+        call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
         supKnew = maxval(wr); infKnew = minval(wr)
         supK = max(supKold, supKnew); infK = min(infKold, infKnew)
         
@@ -1230,12 +1169,12 @@ subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
     implicit none
     ! Input /  output data
     ! --------------------
-    integer, parameter :: d = 3
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nnz
     double precision, intent(in) :: Kcoefs
-    dimension :: Kcoefs(d, d, nnz)
+    dimension :: Kcoefs(dimen, dimen, nnz)
     double precision, intent(in) :: Kmean
-    dimension :: Kmean(d)
+    dimension :: Kmean(dimen)
 
     double precision, intent(out) :: kappa
     
@@ -1243,30 +1182,30 @@ subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
     ! ----------
     integer :: i, j, k, info
     double precision :: wr, wi, vl, vr, work, KK, Kmean2
-    dimension :: wr(d), wi(d), vl(d, d), vr(1, d), work(5*d), KK(d, d), Kmean2(d)
+    dimension :: wr(dimen), wi(dimen), vl(dimen, dimen), vr(1, dimen), work(5*dimen), KK(dimen, dimen), Kmean2(dimen)
     double precision :: supKold, infKold, supKnew, infKnew, supK, infK
 
-    do i = 1, d
+    do i = 1, dimen
         kmean2(i) = 1.0/sqrt(Kmean(i))
     end do
     KK = Kcoefs(:, :, 1)
-    do i = 1, d
-        do j = 1, d
+    do i = 1, dimen
+        do j = 1, dimen
             KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
         end do
     end do
-    call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+    call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
     supKold = maxval(wr); infKold = minval(wr)
 
     do k = 2, nnz
         
         KK = Kcoefs(:, :, k)
-        do i = 1, d
-            do j = 1, d
+        do i = 1, dimen
+            do j = 1, dimen
                 KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
             end do
         end do
-        call dgeev('V', 'N', d, KK, d, wr, wi, vl, d, vr, 1, work, size(work), info)
+        call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
         supKnew = maxval(wr); infKnew = minval(wr)
         supK = max(supKold, supKnew); infK = min(infKold, infKnew)
 

@@ -384,8 +384,7 @@ subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     do i = 1, dimen
         mean = 1.d0
         if (methodPCG.eq.'JMC') mean = mat%mean(i, :)
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), &
-                                    mean(1), mean(2), mean(3), Deigen(i, :))
+        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), mean, Deigen(i, :))
     end do
     deallocate(I_u, I_v, I_w)
 
@@ -517,8 +516,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call compute_mean_combinedHard_3d(mat, nc_u, nc_v, nc_w)
             do k = 1, dimen
                 mean = mat%mean(i, :)
-                call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, k), D_v(:, k), D_w(:, k), &
-                                            mean(1), mean(2), mean(3), Deigen(k, :))
+                call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, k), D_v(:, k), D_w(:, k), mean, Deigen(k, :))
             end do
 
             ! Compute Fint

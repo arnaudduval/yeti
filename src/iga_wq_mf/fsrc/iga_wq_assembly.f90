@@ -388,7 +388,6 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     !! Computes conductivity matrix in 2D 
     !! IN CSR FORMAT
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
