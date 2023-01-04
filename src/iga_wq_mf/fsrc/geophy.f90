@@ -249,9 +249,11 @@ subroutine eval_conductivity_coefficient(dimen, nnz, invJJ, detJJ, nnz_K, Kprop,
     type(thermomat), pointer :: mat
 
     allocate(mat)
+    mat%dimen = dimen
+    call setup_geo(mat, nnz, invJJ, detJJ)
     mat%Kprop => Kprop
     allocate(mat%Kcoefs(dimen, dimen, nnz))
-    call update_conductivity_coefs(mat, dimen, nnz, invJJ, detJJ, info)
+    call update_conductivity_coefs(mat, info)
     Kcoefs = mat%Kcoefs
     
 end subroutine eval_conductivity_coefficient
@@ -276,11 +278,14 @@ subroutine eval_capacity_coefficient(nnz, detJJ, nnz_C, Cprop, Ccoefs, info)
     ! Local data
     ! ----------
     type(thermomat), pointer :: mat
-
+    double precision :: invJJ(1, 1, nnz)
+    
     allocate(mat)
+    mat%dimen = 1; invJJ = 0.d0
+    call setup_geo(mat, nnz, invJJ, detJJ)
     mat%Cprop => Cprop
     allocate(mat%Ccoefs(nnz))
-    call update_capacity_coefs(mat, nnz, detJJ, info)
+    call update_capacity_coefs(mat, info)
     Ccoefs = mat%Ccoefs
 
 end subroutine eval_capacity_coefficient

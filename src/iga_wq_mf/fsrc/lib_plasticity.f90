@@ -224,7 +224,7 @@ contains
 
     end subroutine initialize_mecamat
 
-    subroutine setupGeo(mat, nc, invJJ, detJJ)
+    subroutine setup_geo(mat, nc, invJJ, detJJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
         !! It also computes and saves inv(JJ) inv(JJ).transpose
 
@@ -251,7 +251,7 @@ contains
             mat%JJjj(:,:,i) = matmul(mat%invJJ(:,:,i), transpose(mat%invJJ(:,:,i)))
         end do
 
-    end subroutine setupGeo
+    end subroutine setup_geo
 
     subroutine cpp_combinedHard(mat, strain, pls, a, b, pls_new, a_new, b_new, stress, kwargs)
         !! Return closest point proyection (cpp) in combined hardening criteria
@@ -408,12 +408,10 @@ contains
             end do
             DD(i, :) = DD(i, :) + mat%kwargs(1, sample) + mat%kwargs(2, sample) 
             
-
             do k = 1, samplesize
                 l = sample(k)
                 call gemm_AWB(1, 3, 3, mat%invJJ(:,:,l), 3, 3, mat%invJJ(:,:,l), DD(:, k), 3, 3, coefs(:,:,k))
             end do
-
 
             call compute_mean_3d(3, 3, 3, coefs(1, 1, :), mean(1))
             call compute_mean_3d(3, 3, 3, coefs(2, 2, :), mean(2))
@@ -430,7 +428,7 @@ contains
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
         !! Computes S.u in 3D where S is stiffness matrix
         !! IN CSR FORMAT
-        use heat_spmf
+
         implicit none 
         ! Input / output data 
         ! -------------------

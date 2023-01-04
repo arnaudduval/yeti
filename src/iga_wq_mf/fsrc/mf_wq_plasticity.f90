@@ -273,7 +273,7 @@ subroutine mf_wq_get_su_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     call initialize_mecamat(mat, dimen, properties(1), properties(1), 1.d0, properties(2), huge(0.0d0))
-    call setupGeo(mat, nc_total, invJ, detJ)
+    call setup_geo(mat, nc_total, invJ, detJ)
     mat%isElastic = .true.
 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
@@ -349,7 +349,7 @@ subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     if (methodPCG.eq.'WP') isPrecond = .false.
 
     call initialize_mecamat(mat, dimen, properties(1), properties(1), 1.d0, properties(2), huge(0.0d0))
-    call setupGeo(mat, nc_total, invJ, detJ)
+    call setup_geo(mat, nc_total, invJ, detJ)
     mat%isElastic = .true.
 
     ! Eigen decomposition
@@ -488,7 +488,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     ! ------------------------
     E = properties(1); H = properties(2);  beta = properties(3); nu = properties(4); sigma_Y = properties(5)
     call initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
-    call setupGeo(mat, nc_total, invJ, detJ)
+    call setup_geo(mat, nc_total, invJ, detJ)
     disp = 0.d0; pls_n0 = 0.d0; a_n0 = 0.d0; b_n0 = 0.d0; kwargs = 0.d0
     
     do i = 2, sizeF

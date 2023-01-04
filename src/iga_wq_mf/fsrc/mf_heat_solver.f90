@@ -65,7 +65,7 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-    call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
@@ -150,7 +150,7 @@ subroutine mf_iga_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v,
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-    call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
@@ -232,7 +232,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     allocate(mat, solv)
-    call setupKcoefs(mat, 3, nc_total, coefs)
+    mat%dimen = 3
+    call setupKcoefs(mat, nc_total, coefs)
     solv%matrixfreetype = 2
 
     if (methodPCG.eq.'WP') then ! CG algorithm
@@ -278,7 +279,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
         ! Eigen decomposition
         allocate(Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
-        call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, .true., &
@@ -380,7 +381,8 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
                 data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
 
     allocate(mat, solv)
-    call setupKcoefs(mat, 3, nc_total, coefs)
+    mat%dimen = 3
+    call setupKcoefs(mat, nc_total, coefs)
     solv%matrixfreetype = 2
 
     if (methodPCG.eq.'WP') then 
@@ -417,7 +419,7 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
 
         ! Eigen decomposition
         allocate(Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
-        call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, .true., &
@@ -513,8 +515,9 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     allocate(mat, solv)
+    mat%dimen = 3
     call setupCcoefs(mat, nc_total, Ccoefs)
-    call setupKcoefs(mat, 3, nc_total, Kcoefs)
+    call setupKcoefs(mat, nc_total, Kcoefs)
     mat%scalars = (/1.d0, thetadt/)
     solv%matrixfreetype = 3
 
@@ -546,7 +549,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
 
         ! Eigen decomposition
         allocate(Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
-        call eigen_decomposition_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, .true., &
@@ -687,9 +690,11 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     solution(dod, :) = GG
 
     allocate(mat)
+    mat%dimen = 3
+    call setup_geo(mat, nc_total, invJJ, detJJ)
     Ccoefs = 0.d0; Kcoefs = 0.d0
     call setupCcoefs(mat, nc_total, Ccoefs)
-    call setupKcoefs(mat, 3, nc_total, Kcoefs)
+    call setupKcoefs(mat, nc_total, Kcoefs)
     
     ! Compute initial velocity from boundary conditions
     allocate(ddGG(ndod))
@@ -734,16 +739,16 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         print*, 'Step: ', i - 1
         do j = 1, nbIterNL ! Newton-Raphson algorithm
             ! Compute temperature and properties at each quadrature point
-            call interp_temperature(nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, nnz_u_t, nnz_v_t, nnz_w_t, &
+            call interpolate_temperature(nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, nnz_u_t, nnz_v_t, nnz_w_t, &
                                         indi_u_t, indj_u_t, indi_v_t, indj_v_t, indi_w_t, indj_w_t, &
                                         data_B_u_t, data_B_v_t, data_B_w_t, TTn1, TTinterp)
-            call interp_isotropic_prop(nbpts, table_cap, nc_total, TTinterp, Cprop)
-            call interp_isotropic_prop(nbpts, table_cond, nc_total, TTinterp, Kprop)
+            call interpolate_isotropic_prop(nbpts, table_cap, nc_total, TTinterp, Cprop)
+            call interpolate_isotropic_prop(nbpts, table_cond, nc_total, TTinterp, Kprop)
             CpropT(:, k) = Cprop
             KpropT(:, k) = Kprop
             
             ! Compute coefficients to compute tangent matrix
-            call eval_isotropic_coefs(nc_total, Kprop, Cprop, invJJ, detJJ, Kcoefs, Ccoefs)
+            call eval_isotropic_coefs(mat, nc_total, Kprop, Cprop, Kcoefs, Ccoefs)
 
             ! Compute internal force = C dT + K T
             call mf_wq_get_cu_3d(mat, nr_total_t, nc_total, nr_u_t, nc_u, nr_v_t, nc_v, nr_w_t, nc_w, &
