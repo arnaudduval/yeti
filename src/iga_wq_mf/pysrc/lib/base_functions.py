@@ -746,15 +746,15 @@ def wq_find_basis_weights_opt(degree, knotvector, r):
 
 	return xwq, B0, B1, W00, W01, W10, W11
 
-def wq_find_basis_weights_fortran(degree, knotvector): 
+def wq_find_basis_weights_fortran(degree, knotvector, method=1): 
 	" Computes basis and weights in WQ approach using Fortran "
 
 	# Set guessed size of data 
-	nnz_B, nb_qp = basis_weights.wq_get_size_data(degree, knotvector)
+	nnz_B, nb_qp = basis_weights.wq_get_size_data(degree, knotvector, method)
 
 	# Get basis and weights from fortran
 	qp_position, basis, weights, indi, indj, nnz_I = basis_weights.wq_get_data_csr(
-													degree, knotvector, nnz_B, nb_qp)
+													degree, knotvector, nnz_B, nb_qp, method)
 
 	return nnz_I, qp_position, basis, weights, indi, indj
 

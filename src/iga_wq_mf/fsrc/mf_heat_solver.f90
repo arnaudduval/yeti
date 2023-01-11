@@ -261,11 +261,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             end do
 
         else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
-
-            ! Jacobian mean
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), kmean(1)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), kmean(2)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), kmean(3)) 
+            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            kmean = mat%mean(:3)
         
         end if
 
@@ -309,7 +306,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
-
     end if
 
 end subroutine mf_wq_steady_heat_3d
@@ -409,11 +405,8 @@ subroutine mf_iga_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc
             end do
 
         else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
-
-            ! Jacobian mean
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(1, 1, :), kmean(1)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(2, 2, :), kmean(2)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, coefs(3, 3, :), kmean(3)) 
+            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            kmean = mat%mean(:3)
         
         end if
 
@@ -538,12 +531,9 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
         kmean = 1.d0; cmean = 1.d0
 
         if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
-            
-            ! Jacobian mean 
-            call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(1, 1, :), kmean(1)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(2, 2, :), kmean(2)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, Kcoefs(3, 3, :), kmean(3)) 
-            call compute_mean_3d(nc_u, nc_v, nc_w, Ccoefs(:), cmean)
+            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            kmean = mat%mean(:3)
+            cmean = mat%mean(4)
         
         end if
 

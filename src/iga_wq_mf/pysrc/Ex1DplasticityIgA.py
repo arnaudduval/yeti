@@ -38,10 +38,12 @@ stress_cp 	= interpolate_controlPoints_1D(basis_cgg, weight_cgg, stress)
 filename = folder + 'disp_iga' + '.dat'
 np.savetxt(filename, disp)
 
-# fig, ax = plt.subplots(nrows=1, ncols=1)
-# ax.loglog(np.arange(len(internal)), abs(internal))
-# fig.tight_layout()
-# fig.savefig(folder + 'Energy.png')
+fig, ax = plt.subplots(nrows=1, ncols=1)
+ax.loglog(np.arange(len(internal)), abs(internal))
+ax.set_ylabel(r'$\int \sigma\epsilon d\Omega - u^T S u$')
+ax.set_xlabel('Step')
+fig.tight_layout()
+fig.savefig(folder + 'Energy.png')
 
 # ------------------
 # RESULTS

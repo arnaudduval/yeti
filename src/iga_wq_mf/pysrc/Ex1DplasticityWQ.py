@@ -46,6 +46,7 @@ error    = disp_ref - disp
 relerror = np.linalg.norm(error, np.inf, axis=0)/np.linalg.norm(disp_ref, np.inf, axis=0)
 fig, ax = plt.subplots(nrows=1, ncols=1)
 ax.semilogy(relerror*100)
+ax.set_ylim([1e-14, 1e-10])
 ax.set_ylabel('Relative error')
 ax.set_xlabel('Step')
 fig.tight_layout()

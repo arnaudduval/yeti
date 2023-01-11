@@ -17,11 +17,12 @@ folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist    = False
+dataExist    = True
 isIGA        = False
 degree_list  = np.arange(6, 7)
 cuts_list    = np.arange(5, 6)
 method_list  = ["WP", "C", "JMC", "TDC"]
+# method_list  = ["JMC", "TDC"]
 geoName_list = ['CB', 'VB', 'TR', 'RQA']
 
 for cuts in cuts_list:
@@ -42,8 +43,8 @@ for cuts in cuts_list:
 				conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
 				Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
 				material = {'capacity':1.0, 'conductivity': conductivity}
-				Simulation.run_simulation(material=material, Dirichlet=Dirichlet)
+				Simulation.run_simulation(material=material, Dirichlet=Dirichlet, overwrite=False)
 
 			else :
 				inputs = SimulationData(filename)._dataSimulation
-				plot_iterative_solver(filename, inputs, extension= '.pdf')
+				plot_iterative_solver(filename, inputs, extension= '.png')

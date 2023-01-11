@@ -60,8 +60,8 @@ def compute_static_Fint_1D(DW, sigma):
 		Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 		But in 1D: detJ times J^-1 get cancelled.
 	"""
-	Fint = DW[2] @ sigma.T
-	# Fint = DW[-1] @ sigma.T
+	# Fint = DW[2] @ sigma.T
+	Fint = DW[-1] @ sigma.T
 	return Fint
 
 def compute_volForce_1D(DW, b): 

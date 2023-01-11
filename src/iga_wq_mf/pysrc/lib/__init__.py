@@ -32,7 +32,7 @@ mpl.rcParams['figure.figsize'] = (6.0, 4.0)
 mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
-mpl.rcParams["axes.grid"] =True
+mpl.rcParams["axes.grid"] = True
 mpl.rcParams['axes.prop_cycle'] = cycler('color', colorSet)
 
 import pyvista as pv

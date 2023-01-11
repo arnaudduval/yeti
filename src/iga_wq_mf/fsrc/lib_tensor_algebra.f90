@@ -1080,29 +1080,12 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
     
     ! Local data
     ! ----------
-    integer :: i, j, k, genPos, pos
-    integer :: ind_u, ind_v, ind_w
-    dimension :: ind_u(3), ind_v(3), ind_w(3)
-    double precision :: coefs_set
-    dimension :: coefs_set(3, 3, 3)
-
-    pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-    pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-    pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
-
-    ! Select a set of coefficients
-    coefs_set = 0.d0
-    do k = 1, 3
-        do j = 1, 3
-            do i = 1, 3
-                genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
-                coefs_set(i, j, k) = coefs(genPos)
-            end do
-        end do
-    end do
+    double precision :: coefs_tensor
+    dimension :: coefs_tensor(nc_u, nc_v, nc_w)
 
     ! Compute integral
-    call trapezoidal_rule_3d(3, 3, 3, coefs_set, integral)
+    coefs_tensor = reshape(coefs, (/nc_u, nc_v, nc_w/))
+    call trapezoidal_rule_3d(nc_u, nc_v, nc_w, coefs_tensor, integral)
 
 end subroutine compute_mean_3d
 

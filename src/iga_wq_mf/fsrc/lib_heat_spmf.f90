@@ -131,8 +131,8 @@ module heat_spmf
         integer :: dimen = 3
         double precision :: scalars(2) = (/1.d0, 1.d0/)
 
-        double precision, dimension(:), pointer :: Cprop, Ccoefs, detJJ
-        double precision, dimension(:,:,:), pointer :: Kprop, Kcoefs, invJJ
+        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJJ
+        double precision, dimension(:,:,:), pointer :: Kprop=>null(), Kcoefs=>null(), invJJ
         double precision, dimension(:), allocatable :: mean
 
         ! Local
@@ -358,7 +358,7 @@ contains
         end if
         if (associated(mat%Ccoefs)) then
             call compute_mean_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
-        end if      
+        end if   
 
     end subroutine compute_mean_heat_3d
 

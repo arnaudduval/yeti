@@ -16,7 +16,7 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = False
+dataExist   = True
 geolist     = ['VB', 'CB']
 method_list = ['WP', 'C', 'JMC']
 # method_list = ['JMC']
@@ -123,7 +123,7 @@ else:
 			
 
 	for geoName in geolist:
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
 
 		for i, PCGmethod in enumerate(method_list):
 			filename = folder + 'ResPCG_' + geoName + '_' + PCGmethod + '.dat'
@@ -134,16 +134,17 @@ else:
 			elif PCGmethod == "JMC": labelmethod = 'This work'
 
 			# Print the first or last
-			step = resPCG[0, 0]; iterNL = resPCG[1, 0]
-			newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]
+			step = resPCG[0, -1]; iterNL = resPCG[1, -1]
+			newresidue = resPCG[2:, -1]; newresidue = newresidue[newresidue>0]
 			ax.semilogy(np.arange(len(newresidue)), newresidue, '-', linewidth=2.5, marker=markerSet[i],
 						label=labelmethod)
 
 			# ax.legend(loc=0)
+			ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 			ax.set_ybound(lower=1e-12, upper=10)
 
-		filename = folder + 'TransientNL_' + geoName + '.pdf'
+		filename = folder + 'TransientNL_' + geoName + '2.png'
 		fig.tight_layout()
 		fig.savefig(filename)

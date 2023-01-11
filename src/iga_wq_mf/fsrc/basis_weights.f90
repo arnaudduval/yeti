@@ -154,14 +154,14 @@ subroutine iga_get_data_csr(degree, size_kv, knotvector, nb_qp, qp_position, qp_
 
 end subroutine iga_get_data_csr
 
-subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
+subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp, method)
     !! Gets the size of non-zeros of matrices that will be used in wq_get_data
     
     use basis_weights
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv
+    integer, intent(in) :: degree, size_kv, method
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
     integer, intent(out) :: size_data, nb_qp
@@ -169,7 +169,6 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
     ! Local data
     ! ----------
     type(wq), pointer :: obj
-    integer, parameter :: method = 1 ! Method 2 is possible
     logical :: ismaxregular, isuniform
 
     call wq_initialize(obj, degree, size_kv, knotvector, method)
@@ -184,14 +183,14 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp)
 end subroutine wq_get_size_data
 
 subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, &
-                        data_basis, data_weights, indices, nnz_I)
+                        data_basis, data_weights, indices, nnz_I, method)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
     use basis_weights
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, nb_qp
+    integer, intent(in) :: degree, size_kv, size_data, nb_qp, method
     double precision, intent(in) :: knotvector
     dimension :: knotvector(size_kv)
 
@@ -204,7 +203,6 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_positio
     ! Local data
     ! ----------
     type(wq), pointer :: obj
-    integer, parameter :: method = 1 ! Method 2 is possible
 
     call wq_initialize(obj, degree, size_kv, knotvector, method)
     call wq_basis_weights_dense2coo(obj)  
@@ -223,13 +221,13 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_positio
 end subroutine wq_get_data
 
 subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, nb_qp, qp_position, &
-                            data_basis, data_weights, indi, indj, nnz_I)
+                            data_basis, data_weights, indi, indj, nnz_I, method)
     !! Gets in CSR format basis and weights in IGA-WQ approach
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, nb_qp
+    integer, intent(in) :: degree, size_kv, size_data, nb_qp, method
     double precision :: knotvector
     dimension :: knotvector(size_kv)
 
@@ -245,7 +243,7 @@ subroutine wq_get_data_csr(degree, size_kv, knotvector, size_data, nb_qp, qp_pos
     dimension :: data_ind(size_data, 2)
     double precision, dimension(:,:), allocatable :: data_dummy
     
-    call wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, data_basis, data_weights, data_ind, nnz_I)
+    call wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_position, data_basis, data_weights, data_ind, nnz_I, method)
 
     ! Convert COO to CSR format
     allocate(data_dummy(size_data, 2))

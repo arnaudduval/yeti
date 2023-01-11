@@ -23,6 +23,7 @@ class fortran_mf_wq(thermoMechaModel):
 
 		super().__init__(modelIGA, material=material, Dirichlet=Dirichlet, Neumann=Neumann)
 
+		self._WQmethod = 1
 		self._nb_qp, self._nb_qp_total = np.ones(self._dim, dtype=int), None
 		self.eval_basis_weigths()
 		self.eval_jacobien_physicalPosition()
@@ -38,7 +39,7 @@ class fortran_mf_wq(thermoMechaModel):
 		self._nnz_I, self._qp_dim, self._DB, self._DW, self._indices = [], [], [], [], []
 		for dim in range(self._dim):  
 			nnz_I, qp_position, basis, \
-			weights, indi, indj = wq_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim])
+			weights, indi, indj = wq_find_basis_weights_fortran(self._degree[dim], self._knotvector[dim], method=self._WQmethod)
 			self._nb_qp[dim] = len(qp_position)
 			self._nnz_I.append(nnz_I); self._qp_dim.append(qp_position)
 			self._DB.append(basis); self._DW.append(weights)

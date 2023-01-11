@@ -99,8 +99,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 10
-extension = '.pdf'
+CASE      = 2
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -162,7 +162,7 @@ elif CASE == 1: # Univariate functions
 elif CASE == 2: # Bivariate functions
 
 	# Set filename
-	filename = folder + 'BivariateFunctions' + extension
+	filename = folder + 'BivariateFunctions2' + extension
 
 	# B-Spline properties
 	degree, nbel = 3, 1
@@ -176,30 +176,44 @@ elif CASE == 2: # Bivariate functions
 	X, Y = np.meshgrid(knots, knots)
 	Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
 
-	fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
-							gridspec_kw=dict(height_ratios=[1,3],
-											width_ratios=[3,1]))
-	axs[0,1].set_visible(False)
-	axs[0,0].set_box_aspect(1/3)
-	axs[1,0].set_box_aspect(1)
-	axs[1,1].set_box_aspect(3/1)
-	axs[1,0].grid(None)
-	axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
-	axs[1,0].set_yticks([0, 0.5, 1])
+	# fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
+	# 						gridspec_kw=dict(height_ratios=[1,3],
+	# 										width_ratios=[3,1]))
+	# axs[0,1].set_visible(False)
+	# axs[0,0].set_box_aspect(1/3)
+	# axs[1,0].set_box_aspect(1)
+	# axs[1,1].set_box_aspect(3/1)
+	# axs[1,0].grid(None)
+	# axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
+	# axs[1,0].set_yticks([0, 0.5, 1])
 
-	for i in range(degree+nbel): 
-		axs[0, 0].plot(knots, B0[i, :], color="0.8")
-		axs[1, 1].plot(B0[i, :], knots, color="0.8")
+	# for i in range(degree+nbel): 
+	# 	axs[0, 0].plot(knots, B0[i, :], color="0.8")
+	# 	axs[1, 1].plot(B0[i, :], knots, color="0.8")
 
-	axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
-	axs[0,0].set_xlabel(r'$\xi_1$')
-	axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
-	axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
-	axs[1,1].set_ylabel(r'$\xi_2$')
-	axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
-	axs[1,1].set_xticks([0, 1])
+	# axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
+	# axs[0,0].set_xlabel(r'$\xi_1$')
+	# axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
+	# axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
+	# axs[1,1].set_ylabel(r'$\xi_2$')
+	# axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
+	# axs[1,1].set_xticks([0, 1])
+	# fig.tight_layout()
+	# fig.savefig(filename, dpi=300) 
+
+	fig = plt.figure()
+	ax = plt.axes(projection='3d')
+	ax.plot_surface(X, Y, Z, rstride=1, cstride=1,
+                cmap='GnBu', edgecolor='none')
+	ax.grid(False)
+	ax.set_xticks([0, 0.5, 1])
+	ax.set_yticks([0, 0.5, 1])
+	ax.set_zticks([0, 0.1, 0.2])
+	ax.set_xlabel(r'$\xi_1$')
+	ax.set_ylabel(r'$\xi_2$')
+	ax.set_zlabel(r'$B_{i,p}(\xi)$')
 	fig.tight_layout()
-	fig.savefig(filename, dpi=300) 
+	fig.savefig(filename) 
 
 elif CASE == 3: # Quadrature points in IGA
 

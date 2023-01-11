@@ -153,7 +153,7 @@ class ThermalSimulation():
 
 		return un, time_assembly, time_solver
 
-	def run_simulation(self, material=None, Dirichlet=None):
+	def run_simulation(self, material=None, Dirichlet=None, overwrite=True):
 		" Runs simulation using given input information "
 
 		doDirect = True
@@ -185,7 +185,7 @@ class ThermalSimulation():
 		# Write file
 		output = {'Methods': self._method_list, 'TimeAssembly': timeAssembly, 'TimeDirect': timeDirect, 
 				'TimeNoIter':timeNoIter, 'TimeIter': timeIter, 'resPCG': resPCG}
-		self.write_text_file(output)
+		if overwrite: self.write_text_file(output)
 
 		return 
 
