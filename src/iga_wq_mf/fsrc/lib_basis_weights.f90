@@ -181,9 +181,7 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
 
     ! Verify if knot-vector has max regularity
     ismaxreg = .false.
-    if (nbel+degree.eq.nb_ctrlpts) then 
-        ismaxreg = .true.
-    end if
+    if (nbel+degree.eq.nb_ctrlpts)  ismaxreg = .true.
 
     ! Verify if knot vector is uniform
     isuniform = .true.
@@ -192,10 +190,7 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
     call diff_array(2, size(unique_kv), unique_kv, diffknot)
 
     do i = 1, size(unique_kv)
-        if (abs(diffknot(i)).gt.span_tol) then
-            isuniform = .false.
-            exit
-        end if
+        if (abs(diffknot(i)).gt.span_tol) isuniform = .false.; exit
     end do
 
 end subroutine verify_regularity_uniformity
@@ -458,18 +453,12 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
     do i = 1, nb_ctrlpts
         min_span = 1
         do j = 1, nbel
-            if (any(table_functions_span(j, :).eq.i)) then
-                    min_span = j
-                    exit 
-            end if
+            if (any(table_functions_span(j, :).eq.i)) min_span = j; exit 
         end do 
 
         max_span = nbel
         do j = nbel, 1, -1
-            if (any(table_functions_span(j, :).eq.i)) then
-                    max_span = j
-                    exit 
-            end if
+            if (any(table_functions_span(j, :).eq.i)) max_span = j; exit 
         end do 
 
         table_spans_function(i, :) = [min_span, max_span]
@@ -521,18 +510,12 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
 
         Fmin = 1
         do j = 1, nr_test
-            if (IIshape(j, i).gt.0) then
-                Fmin = j
-                exit 
-            end if
+            if (IIshape(j, i).gt.0) Fmin = j; exit 
         end do 
 
         Fmax = nr_test
         do j = nr_test, 1, -1
-            if (IIshape(j, i).gt.0) then
-                Fmax = j
-                exit 
-            end if
+            if (IIshape(j, i).gt.0) Fmax = j; exit 
         end do 
         
         call solve_linear_system(Fmax-Fmin+1, Pmax-Pmin+1, BBtest(Fmin:Fmax, Pmin:Pmax), &
@@ -657,6 +640,8 @@ contains
 
     end subroutine iga_basis_weights_dense2coo
 
+    ! -----------------------
+
     subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
         !! Initialize IGA-WQ approach
 
@@ -736,15 +721,14 @@ contains
         end do
         
         ! Inner spans
-        if (size(nodes).ge.4) then
-            do i = 2, size(nodes)-2
-                call linspace(nodes(i), nodes(i+1), size(QPI), QPI)
-                do j = 1, size(QPI) 
-                    k = size(QPB) + (size(QPI) - 1)*(i - 2) + j - 1    
-                    obj%qp_position(k) = QPI(j)
-                end do
+        if (size(nodes).lt.4) return
+        do i = 2, size(nodes)-2
+            call linspace(nodes(i), nodes(i+1), size(QPI), QPI)
+            do j = 1, size(QPI) 
+                k = size(QPB) + (size(QPI) - 1)*(i - 2) + j - 1    
+                obj%qp_position(k) = QPI(j)
             end do
-        end if
+        end do
     
     end subroutine wq_get_qp_positions  
     
@@ -789,18 +773,12 @@ contains
         do i = 1, nb_ctrlpts
             min_span = 1
             do j = 1, nbel
-                if (any(table_functions_span(j, :).eq.i)) then
-                        min_span = j
-                        exit 
-                end if
+                if (any(table_functions_span(j, :).eq.i)) min_span = j; exit 
             end do 
     
             max_span = nbel
             do j = nbel, 1, -1
-                if (any(table_functions_span(j, :).eq.i)) then
-                        max_span = j
-                        exit 
-                end if
+                if (any(table_functions_span(j, :).eq.i)) max_span = j; exit 
             end do 
     
             table_spans_function(i, :) = [min_span, max_span]
@@ -1123,10 +1101,10 @@ contains
             do i = 1, obj%nb_ctrlpts
                 do j = obj%B1shape(i, 1), obj%B1shape(i, 2)
                     c = c + 1
-                    obj%data_B0(c) = B0(i, j)
+                    obj%data_B0(c)  = B0(i, j)
                     obj%data_W00(c) = W00(i, j)
                     obj%data_W01(c) = W01(i, j)
-                    obj%data_B1(c) = B1(i, j)
+                    obj%data_B1(c)  = B1(i, j)
                     obj%data_W10(c) = W10(i, j)
                     obj%data_W11(c) = W11(i, j)
                     obj%indices(c, :) = [i, j]
@@ -1155,7 +1133,7 @@ contains
                 call wq_basis_weights_method2(obj_m, B0_m, B1_m, W00_m, W01_m, W10_m, W11_m)
             end if
 
-            B1_m = B1_m * nbel/nbel_m
+            B1_m  = B1_m * nbel/nbel_m
             W00_m = W00_m * nbel_m/nbel
             W01_m = W01_m * nbel_m/nbel
                             
@@ -1166,10 +1144,10 @@ contains
             do i = 1, obj%degree + 1
                 do j = obj%B1shape(i, 1), obj%B1shape(i, 2)
                     c = c + 1
-                    obj%data_B0(c) = B0_m(i, j)
+                    obj%data_B0(c)  = B0_m(i, j)
                     obj%data_W00(c) = W00_m(i, j)
                     obj%data_W01(c) = W01_m(i, j)
-                    obj%data_B1(c) = B1_m(i, j)
+                    obj%data_B1(c)  = B1_m(i, j)
                     obj%data_W10(c) = W10_m(i, j)
                     obj%data_W11(c) = W11_m(i, j)
                     obj%indices(c, :) = [i, j]
@@ -1180,10 +1158,10 @@ contains
             do i = obj%degree+2, obj%nb_ctrlpts-obj%degree-1
                 do j = 1, obj_m%B0shape(obj%degree+2, 2) - obj_m%B0shape(obj%degree+2, 1) + 1 
                     c = c + 1
-                    obj%data_B0(c) = B0_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
+                    obj%data_B0(c)  = B0_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
                     obj%data_W00(c) = W00_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
                     obj%data_W01(c) = W01_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_B1(c) = B1_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
+                    obj%data_B1(c)  = B1_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
                     obj%data_W10(c) = W10_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
                     obj%data_W11(c) = W11_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
                     obj%indices(c, :) = [i, obj%B1shape(i, 1) + j - 1]
@@ -1194,10 +1172,10 @@ contains
             do i = obj%degree + 1, 1, -1 
                 do j = obj%B1shape(i, 2), obj%B1shape(i, 1), -1
                     c = c + 1
-                    obj%data_B0(c) = B0_m(i, j)
+                    obj%data_B0(c)  = B0_m(i, j)
                     obj%data_W00(c) = W00_m(i, j)
                     obj%data_W01(c) = W01_m(i, j)
-                    obj%data_B1(c) = -B1_m(i, j)
+                    obj%data_B1(c)  = -B1_m(i, j)
                     obj%data_W10(c) = -W10_m(i, j)
                     obj%data_W11(c) = -W11_m(i, j)
                     obj%indices(c, :) = [obj%nb_ctrlpts - i + 1, obj%nb_qp_wq - j + 1]
