@@ -13,7 +13,7 @@ Sensibilities of embedded solid element
 Problem formulation
 -------------------
 
-We consider a domain :math:`\Omega \in \mathbb{R}^3` with a boudary :math:`\Gamma`.
+We consider a domain :math:`\Omega \in \mathbb{R}^3` with a boundary :math:`\Gamma`.
 This domain is subjected to body force :math:`g`, boundary traction :math:`t` and prescribed
 displacement :math:`g`. Its material bheviour is isotropic and linear elastic. The problem can be
 expressed as:
@@ -79,7 +79,7 @@ We define an objective function :math:`f`, function of the design variables :mat
 
 .. math::
 
-    f := g \left( x, u\left( x \right) \right)
+    f := f \left( x, u\left( x \right) \right)
 
 where u is the discrete solution of the linear system :math:`Ku=F`.
 
@@ -87,18 +87,75 @@ The derivative of the objectif function with respect to the design variables can
 
 .. math::
 
-    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial g}{\partial x_i} + \frac{\partial g}{\partial u} \cdot \frac{\mathrm{d} u}{\mathrm{d} x_i}
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial f}{\partial x_i} + \frac{\partial f}{\partial u} \cdot \frac{\mathrm{d} u}{\mathrm{d} x_i}
 
 We define :math:`u^*` as the solution of the adjoint problem :math:`K u^* = \frac{\partial g}{\partial u}`. The derivative of the objective function becomes:
 
 .. math::
 
-    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial g}{\partial x_i} + u^* \cdot \left( \frac{\partial F}{\partial x_i} - \frac{\partial K}{\partial x_i} u \right)
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial f}{\partial x_i} + u^* \cdot \left( \frac{\partial F}{\partial x_i} - \frac{\partial K}{\partial x_i} u \right)
 
 From optimization model to analysis model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TO DO
+The derivatives of stiffness matrix :math:`K` and load vector :math:`F` with respect to the design variables are computed on the analysis model and propagated on the optimization model using the refinement operator :math:`R`, which is kept constant during the optimization process.
+
+:math:`\tilde{Q}` and :math:`\tilde{P}` are the control points coordinates on respectively the analysis and optimization model. Derivatives can be expressed as:
+
+.. math::
+
+    \frac{\partial \bullet}{\partial \tilde{P}} = R^T \frac{\partial \bullet}{\partial \tilde{Q}}
+
+Sensitivities of the objective function can be expressed as:
+
+.. math::
+
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial f}{\partial x_i} + \frac{\partial \tilde{P}}{\partial x_i} : R^T \left(  u^* \cdot \frac{\partial F}{\partial \tilde{Q}} - u^* \cdot\frac{\partial K}{\partial \tilde{Q}} u \right)
+
+where :math:`\frac{\partial \tilde{P}}{\partial x_i}` is an operator linking the control points of the optimization model with the design variables.
+
+Total virtual work
+~~~~~~~~~~~~~~~~~~
+
+Let us introduce a function :math:`W` that takes as input arguments the state variable :math:`u`, the adjoint variable :math:`u^*` and the control points :math:`\tilde{Q}` of the analysis model:
+
+.. math::
+
+    \begin{align}
+        W \left( u, u^*, \tilde{Q} \right) & = W_{\mathrm{ext}} \left( u^*, \tilde{Q} \right) + W_{\mathrm{int}} \left( u, u^*, \tilde{Q} \right) \\
+        & = u^* \cdot F \left( \tilde{Q} \right) - u^* \cdot K \left( \tilde{Q} \right) u
+    \end{align}
+
+Sensitivities of the objective function becomes:
+
+.. math::
+
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial f}{\partial x_i} + \frac{\partial \tilde{P}}{\partial x_i} : R^T \frac{\partial W}{\partial \tilde{Q}}
+
+with:
+
+.. math::
+
+    \frac{\partial W}{\partial \tilde{Q}} = u^* \cdot \frac{\partial F}{\partial \tilde{Q}} - u^* \cdot\frac{\partial K}{\partial \tilde{Q}} u
+
+Depending on the formulation of the response function :math:`f`, the partial derivative :math:`\frac{\partial f}{\partial x_i}` can be changed using the chain rule of differenciation. The sensitivities reads as:
+
+.. math::
+
+    \frac{\mathrm{d} f}{\mathrm{d} x_i} = \frac{\partial \tilde{P}}{\partial x_i} : R^T \left( \frac{\partial f}{\partial \tilde{Q}} + \frac{\partial W}{\partial \tilde{Q}} \right)
+
+Differenciation of the IGA operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We need to to compute the derivatives of the internal and external works:
+
+.. math::
+
+    \begin{align}
+        \frac{\partial W_{\mathrm{ext}}}{\partial \tilde{Q}} & = u^* \cdot \frac{\partial F}{\partial \tilde{Q}} \\
+        \frac{\partial W_{\mathrm{int}}}{\partial \tilde{Q}} & = u^* \cdot \frac{\partial K}{\partial \tilde{Q}} u
+    \end{align}
+
 
 Embedded formulation
 --------------------
