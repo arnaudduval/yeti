@@ -9,3 +9,7 @@ benchs/*/results/*.vtk
 .coverage
 src/nurbspatch.mod
 benchs/*/test.py
+benchs/grad_cplg/results/verif_proj_patch00003.txt
+benchs/grad_cplg/results/warnings_proj_patch00003.txt
+benchs/grad_embdsol/results/verif_proj_patch00003.txt
+benchs/grad_embdsol/results/warnings_proj_patch00003.txt
