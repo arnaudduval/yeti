@@ -1,0 +1,115 @@
+** Copyright 2022 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms
+** of the GNU Lesser General Public License as published by the Free Software
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*HEADING
+*Part, name=fillet
+*USER ELEMENT, NODES=27, TYPE=U0, COORDINATES=3, INTEGRATION=27, TENSOR=NONE
+1,2,3
+*USER ELEMENT, NODES=27, TYPE=U10, COORDINATES=3, INTEGRATION=27, TENSOR=THREED
+1,2,3
+*Node,nset=AllNode
+1,  20.0, 0.0,  0.0
+2,  25.0, 0.0,  0.0
+3,  30.0, 0.0,  0.0
+4,  20.0, 20.0, 0.0
+5,  25.0, 25.0, 0.0
+6,  30.0, 30.0, 0.0
+7,  0.0,  20.0, 0.0
+8,  0.0,  25.0, 0.0
+9,  0.0,  30.0, 0.0
+10, 20.0, 0.0,  5.0
+11, 25.0, 0.0,  5.0
+12, 30.0, 0.0,  5.0
+13, 20.0, 20.0, 5.0
+14, 25.0, 25.0, 5.0
+15, 30.0, 30.0, 5.0
+16, 0.0,  20.0, 5.0
+17, 0.0,  25.0, 5.0
+18, 0.0,  30.0, 5.0
+19, 20.0, 0.0,  10.0
+20, 25.0, 0.0,  10.0
+21, 30.0, 0.0,  10.0
+22, 20.0, 20.0, 10.0
+23, 25.0, 25.0, 10.0
+24, 30.0, 30.0, 10.0
+25, 0.0,  20.0, 10.0
+26, 0.0,  25.0, 10.0
+27, 0.0,  30.0, 10.0
+28, 0.0, 0.0, 0.0
+29, 0.15, 0.0, 0.0
+30, 1.0, 0.0, 0.0
+31, 0.0, 1.0, 0.0
+32, 0.15, 1.0, 0.0
+33, 1.0, 1.0, 0.0
+34, 0.0, 0.0, 0.15
+35, 0.15, 0.0, 0.15
+36, 0.5857864376269049, 0.0, 0.0
+37, 0.0, 1.0, 0.15
+38, 0.15, 1.0, 0.15
+39, 0.5857864376269049, 1.0, 0.0
+40, 0.0, 0.0, 1.0
+41, 0.0, 0.0, 0.5857864376269049
+42, 0.29289321881345254, 0.0, 0.29289321881345254
+43, 0.0, 1.0, 1.0
+44, 0.0, 1.0, 0.5857864376269049
+45, 0.29289321881345254, 1.0, 0.29289321881345254
+*Element,type=U0,elset=MappingEls
+1,    27,26,25,24,23,22,21,20,19,18,17,16, 15, 14, 13, 12,11,10,9,8,7,6,5,4,3,2,1
+*Element,type=U10,elset=VolumeEls
+2, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28
+*ELSET,ELSET=EltPatch1
+1
+*ELSET,ELSET=EltPatch2
+2
+*ELSET,ELSET=EltToLoad
+2
+*NSET,NSET=MapCP,generate
+1,27,1
+*NSET,NSET=CPcubeX0
+28, 31, 34, 37, 40, 43
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=MATvoid
+1
+*UEL PROPERTY, ELSET=EltPatch2, MATERIAL=MAT
+2, 1
+*End Part
+*Assembly, name=Assembly
+*Instance, name=I1, part=fillet
+*End Instance
+*End Assembly
+*MATERIAL,NAME=MAT
+*Elastic
+210000, 0.3
+*Density
+7.8E-9
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.0, 0.0
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+**
+*Boundary
+I1.MapCP, 1, 3, 0.0
+I1.CPcubeX0, 1, 1, 0.0
+I1.CPcubeX0, 2, 2, 0.0
+I1.CPcubeX0, 3, 3, 0.0
+**
+*Dload
+I1.EltToLoad, U101, 100., 0., 0., 0., 0., 0., 1.
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
