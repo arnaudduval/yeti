@@ -156,9 +156,69 @@ We need to to compute the derivatives of the internal and external works:
         \frac{\partial W_{\mathrm{int}}}{\partial \tilde{Q}} & = u^* \cdot \frac{\partial K}{\partial \tilde{Q}} u
     \end{align}
 
+The stiffness matrix :math:`K` and load vector :math:`F` are built element-wise. Focusing on the stiffness matrix, the sensitivity analysis gives:
+
+.. math::
+
+    u^* \cdot \frac{\partial K}{\partial \tilde{Q}} u = \sum_e \left( u^{e*} \cdot \frac{\partial K^e}{\partial \tilde{Q}} u^e \right)
+
+Only the control points associated to the current element :math:`e` give non-zero derivatives in the term :math:`\frac{\partial K^e}{\partial \tilde{Q}}`. Thus, for each element, only the corresponding component of the gradient are updated.
+Full matrix :math:`\frac{\partial K^e}{\partial \tilde{Q}}` is not built. Instead, the following development is used:
+
+.. math::
+    :label: sumkl
+
+    u^{e*} \cdot \frac{\partial K^e}{\partial \tilde{Q}} u^e = \sum_k \sum_l u^{e*}_k \cdot \frac{\partial K^e_{kl}}{\partial \tilde{Q}} u_l^e
+
+where :math:`k` and :math:`l` are the two control point indices associated to the current element :math:`e`.
+
+The derviatives of the components of the elementary stiffness matrix with respect to the control points read:
+
+.. math::
+
+    \frac{\partial K^e_{kl}}{\partial \tilde{Q}} = \int_{\overline{\Omega}^e}  \frac{\partial}{\partial \tilde{Q}} \left( B_k^T D B_l \left| J \right| \right) \mathrm{d}\overline{\Omega}
+
+It can be developped as:
+
+.. math::
+
+    \frac{\partial K^e_{kl}}{\partial \tilde{Q}} = \int_{\overline{\Omega}^e} \left( \frac{\partial B_ k^T}{\partial \tilde{Q}} D B_l + B_k^T \frac{\partial D}{\partial \tilde{Q}} B_l + B_k^T D \frac{\partial B_l}{\partial \tilde{Q}} \right) \left| J \right| \mathrm{d}\overline{\Omega} + \int_{\overline{\Omega}^e} B_k^T D B_l \frac{\partial \left| J \right|}{\partial \tilde{Q}} \mathrm{d}\overline{\Omega}
+
+Commuting the double sum and the integral of equation :eq:`sumkl` gives:
+
+.. math::
+
+    u^{e*} \cdot \frac{\partial K^e}{\partial \tilde{Q}} u^e = \int_{\overline{\Omega}^e} \left( \frac{\partial \varepsilon^*}{\partial \tilde{Q}} : \sigma + \varepsilon^* : \frac{\partial \sigma}{\partial \tilde{Q}} \right) \left| J \right|
+    + \int_{\overline{\Omega}^e} \left( \varepsilon^* : \sigma \right) \frac{\partial \left| J \right|}{\partial \tilde{Q}} \mathrm{d}\overline{\Omega}
+
+We can identify the following terms :
+
+ - Derivative of the Jacobian
+
+.. math::
+    \left( \varepsilon^* : \sigma \right) \frac{\partial \left| J \right|}{\partial \tilde{Q}}
+
+where :math:`\varepsilon^* = \sum_k B_k u^*_k` and :math:`\sigma = \sum_l D B_l u_l`
+
+
+ - Derivative of the adjoint strain
+
+.. math::
+
+    \frac{\partial \varepsilon^*}{\partial \tilde{Q}} = \sum_k \frac{\partial B_k}{\partial \tilde{Q}} u^*_k
+..
+
+ - Derivative of the stress
+
+.. math::
+
+    \frac{\partial \sigma}{\partial \tilde{Q}} = \sum_l \left( \frac{\partial D}{\partial \tilde{Q}} B_l + D \frac{\partial B_l}{\partial \tilde{Q}} \right) u_l
 
 Embedded formulation
 --------------------
+
+Derivative of mappings
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table:: Notations
     :widths: 25 25 25
@@ -264,7 +324,7 @@ Derivative of inverse mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In this part, we express the derivative of inverse mapping :math:`\frac{\partial \xi}{\partial X}` and :math:`\frac{\partial \theta}{\partial \xi}`
-with respect to a quantity named :math:`\Lambda` which can be eitehr the coordinates of control points of the hull or the embedded entity.
+with respect to a quantity named :math:`\Lambda` which can be either the coordinates of control points of the hull or the embedded entity.
 
 We start with:
 
@@ -338,3 +398,40 @@ Applying this to the cases of control points :math:`P` and :math:`Q` gives:
         \frac{\partial \left| J \right|}{\partial P} & = & \left| J \right| \cdot \left[ \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial P} \left( \frac{\partial X}{\partial \xi} \right) \right) + \mathrm{tr} \left( \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial P} \left( \frac{\partial \xi}{\partial \theta} \right) \right) \right] \\
         \frac{\partial \left| J \right|}{\partial Q} & = & \left| J \right| \cdot \mathrm{tr} \left( \frac{\partial \xi}{\partial X} \cdot \frac{\partial}{\partial Q} \left( \frac{\partial X}{\partial \xi} \right) \right)
     \end{eqnarray}
+
+Derivative of the adjoint strain
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The adjoint strain is computed from the derivatives of adjoint displacement:
+
+.. math::
+
+    \varepsilon_{ij}^* = \frac{1}{2} \left( \frac{\partial u^*_i}{\partial X_j} + \frac{\partial u^*_j}{\partial X_i} \right)
+
+And the derivative of adjoint displacement gradient w.r.t control points can be expressed as:
+
+.. math::
+
+    \frac{\partial}{\partial \Lambda} \left(\frac{\partial u^*}{\partial X} \right) = \frac{\partial u^*}{\partial \theta} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \theta}{\partial \xi} \right) \cdot \frac{\partial \xi}{\partial X}
+    + \frac{\partial u^*}{\partial \theta} \cdot \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial \Lambda} \left( \frac{\partial \xi}{\partial X} \right)
+
+Applying this to the cas of control points :math:`P` and :math:`Q` gives:
+
+.. math::
+
+    \begin{align}
+        \frac{\partial}{\partial P} \left(\frac{\partial u^*}{\partial X} \right) & = \frac{\partial u^*}{\partial \theta} \cdot \frac{\partial}{\partial P} \left( \frac{\partial \theta}{\partial \xi} \right) \cdot \frac{\partial \xi}{\partial X}
+        + \frac{\partial u^*}{\partial \theta} \cdot \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial P} \left( \frac{\partial \xi}{\partial X} \right) \\
+        \frac{\partial}{\partial Q} \left(\frac{\partial u^*}{\partial X} \right) & = \frac{\partial u^*}{\partial \theta} \cdot \frac{\partial \theta}{\partial \xi} \cdot \frac{\partial}{\partial Q} \left( \frac{\partial \xi}{\partial X} \right)
+    \end{align}
+
+
+Derivative of the stress
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the case of istropic linear elasticity, stress components can be expressed as:
+
+.. math::
+
+    \sigma_{ij} = \lambda \varepsilon_{kk} \delta_{ij} + 2 \mu \varepsilon_{ij}
+
