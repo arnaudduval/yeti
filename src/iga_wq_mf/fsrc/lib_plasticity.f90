@@ -175,9 +175,9 @@ module linearelastoplasticity
         ! Inputs 
         integer :: dimen=3, nvoigt=6
         double precision :: E, H, beta, poisson, sigma_Y
-        double precision, dimension(:), pointer :: detJJ
-        double precision, dimension(:, :), pointer :: kwargs, nn
-        double precision, dimension(:, :, :), pointer :: invJJ
+        double precision, dimension(:), pointer :: detJJ=>null()
+        double precision, dimension(:, :), pointer :: kwargs=>null(), nn=>null()
+        double precision, dimension(:, :, :), pointer :: invJJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
         double precision, dimension(:, :), allocatable :: mean
         

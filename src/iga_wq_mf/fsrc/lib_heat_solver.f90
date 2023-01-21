@@ -5,7 +5,7 @@ module heat_solver
         logical :: withscaling = .false., withdiag = .false.
         integer :: matrixfreetype = 1
         double precision, dimension(:), allocatable :: factor
-        double precision, dimension(:), pointer :: diag
+        double precision, dimension(:), pointer :: diag=>null()
     end type cgsolver
 
 contains

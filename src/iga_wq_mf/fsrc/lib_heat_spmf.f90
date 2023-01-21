@@ -131,8 +131,8 @@ module heat_spmf
         integer :: dimen = 3
         double precision :: scalars(2) = (/1.d0, 1.d0/)
 
-        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJJ
-        double precision, dimension(:,:,:), pointer :: Kprop=>null(), Kcoefs=>null(), invJJ
+        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJJ=>null()
+        double precision, dimension(:,:,:), pointer :: Kprop=>null(), Kcoefs=>null(), invJJ=>null()
         double precision, dimension(:), allocatable :: mean
 
         ! Local
