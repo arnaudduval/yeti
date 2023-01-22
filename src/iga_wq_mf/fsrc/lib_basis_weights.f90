@@ -181,7 +181,7 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
 
     ! Verify if knot-vector has max regularity
     ismaxreg = .false.
-    if (nbel+degree.eq.nb_ctrlpts)  ismaxreg = .true.
+    if (nbel+degree.eq.nb_ctrlpts) ismaxreg = .true.
 
     ! Verify if knot vector is uniform
     isuniform = .true.
@@ -190,7 +190,10 @@ subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, i
     call diff_array(2, size(unique_kv), unique_kv, diffknot)
 
     do i = 1, size(unique_kv)
-        if (abs(diffknot(i)).gt.span_tol) isuniform = .false.; exit
+        if (abs(diffknot(i)).gt.span_tol) then
+            isuniform = .false.
+            exit
+        end if
     end do
 
 end subroutine verify_regularity_uniformity
@@ -453,12 +456,18 @@ subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
     do i = 1, nb_ctrlpts
         min_span = 1
         do j = 1, nbel
-            if (any(table_functions_span(j, :).eq.i)) min_span = j; exit 
+            if (any(table_functions_span(j, :).eq.i)) then
+                    min_span = j
+                    exit 
+            end if
         end do 
 
         max_span = nbel
         do j = nbel, 1, -1
-            if (any(table_functions_span(j, :).eq.i)) max_span = j; exit 
+            if (any(table_functions_span(j, :).eq.i)) then
+                    max_span = j
+                    exit 
+            end if
         end do 
 
         table_spans_function(i, :) = [min_span, max_span]
@@ -510,18 +519,23 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
 
         Fmin = 1
         do j = 1, nr_test
-            if (IIshape(j, i).gt.0) Fmin = j; exit 
+            if (IIshape(j, i).gt.0) then
+                Fmin = j
+                exit 
+            end if
         end do 
 
         Fmax = nr_test
         do j = nr_test, 1, -1
-            if (IIshape(j, i).gt.0) Fmax = j; exit 
+            if (IIshape(j, i).gt.0) then
+                Fmax = j
+                exit 
+            end if
         end do 
         
         call solve_linear_system(Fmax-Fmin+1, Pmax-Pmin+1, BBtest(Fmin:Fmax, Pmin:Pmax), &
                                 II(Fmin:Fmax, i), weights_obj(i, Pmin:Pmax))
     end do
-
 end subroutine wq_solve_weights
 
 ! ------------------------------------------------------------------------
@@ -640,8 +654,6 @@ contains
 
     end subroutine iga_basis_weights_dense2coo
 
-    ! -----------------------
-
     subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
         !! Initialize IGA-WQ approach
 
@@ -729,7 +741,7 @@ contains
                 obj%qp_position(k) = QPI(j)
             end do
         end do
-    
+
     end subroutine wq_get_qp_positions  
     
     subroutine wq_get_B_shape(obj)
@@ -773,12 +785,18 @@ contains
         do i = 1, nb_ctrlpts
             min_span = 1
             do j = 1, nbel
-                if (any(table_functions_span(j, :).eq.i)) min_span = j; exit 
+                if (any(table_functions_span(j, :).eq.i)) then
+                        min_span = j
+                        exit 
+                end if
             end do 
     
             max_span = nbel
             do j = nbel, 1, -1
-                if (any(table_functions_span(j, :).eq.i)) max_span = j; exit 
+                if (any(table_functions_span(j, :).eq.i)) then
+                        max_span = j
+                        exit 
+                end if
             end do 
     
             table_spans_function(i, :) = [min_span, max_span]
@@ -1086,7 +1104,6 @@ contains
                 obj%indices(obj%nnz_B, 2))
 
         if ((nbel.le.obj%degree+3).or.(.not.obj%isuniform)) then 
-            print*, 'aqui1'
             
             allocate(B0(obj%size_kv-obj%degree-1, obj%nb_qp_wq), B1(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
             W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
@@ -1117,6 +1134,7 @@ contains
             ! ---------
             nbel_m = obj%degree + 3
             size_kv_m = nbel_m + 2*obj%degree +  1
+            
             allocate(nodes_m(size_kv_m+1), knotvector_m(size_kv_m))
             call create_uniform_knotvector(obj%degree, nbel_m, nodes_m, knotvector_m)
             call wq_initialize(obj_m, obj%degree, size_kv_m, knotvector_m, method)
