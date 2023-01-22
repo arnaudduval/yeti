@@ -204,3 +204,10 @@ def powden(P:list, dim=1):
 	elif dim == 3: x = P[0, :]
 	f = 0.0*np.sin(np.pi*x)
 	return f
+
+# ------------------
+
+def forceVol(P:list):
+	force = 1e2*np.sin(np.pi*P)
+	# force = 1e2*np.ones(len(P))
+	return force

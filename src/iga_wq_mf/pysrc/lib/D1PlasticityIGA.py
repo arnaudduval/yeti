@@ -93,8 +93,6 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 
 	strain = np.zeros((nb_qp, np.shape(Fext)[1]))
 	stress = np.zeros((nb_qp, np.shape(Fext)[1]))
-	energy = np.zeros(np.shape(Fext)[1]-1)
-	internal =  np.zeros(np.shape(Fext)[1]-1)
 
 	for i in range(1, np.shape(Fext)[1]):
 
@@ -129,14 +127,7 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 			# Compute stiffness
 			Sdof = compute_tangent_static_matrix_1D(JJ, DB, W, Cep)[np.ix_(dof, dof)]
 			ddisp += np.linalg.solve(Sdof, dF)
-
-		# Verify energy conservation
-		S = compute_tangent_static_matrix_1D(JJ, DB, W, Cep)
-		Fd = np.dot(Fstep, d_n1)
-		dKd = np.dot(d_n1, np.dot(S, d_n1))
-		energy[i-1] = 0.5*dKd - Fd
-		internal[i-1] = np.dot(W, sigma*eps) - dKd
-
+			
 		# Update values in output
 		disp[:, i]   = d_n1
 		strain[:, i] = eps
@@ -144,7 +135,7 @@ def solve_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e
 
 		ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-	return disp, strain, stress, energy, internal
+	return disp, strain, stress
 
 def interpolate_controlPoints_1D(DB, W, u_ref):
 	" Interpolate control point field (from parametric to physical space) "

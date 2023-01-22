@@ -1086,6 +1086,7 @@ contains
                 obj%indices(obj%nnz_B, 2))
 
         if ((nbel.le.obj%degree+3).or.(.not.obj%isuniform)) then 
+            print*, 'aqui1'
             
             allocate(B0(obj%size_kv-obj%degree-1, obj%nb_qp_wq), B1(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
             W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
@@ -1116,7 +1117,6 @@ contains
             ! ---------
             nbel_m = obj%degree + 3
             size_kv_m = nbel_m + 2*obj%degree +  1
-            
             allocate(nodes_m(size_kv_m+1), knotvector_m(size_kv_m))
             call create_uniform_knotvector(obj%degree, nbel_m, nodes_m, knotvector_m)
             call wq_initialize(obj_m, obj%degree, size_kv_m, knotvector_m, method)

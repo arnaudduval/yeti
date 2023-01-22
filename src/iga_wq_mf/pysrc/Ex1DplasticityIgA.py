@@ -4,6 +4,7 @@ from lib.base_functions import (eval_basis_python,
 								create_knotvector
 )
 from lib.D1PlasticityIGA import *
+from lib.physics import forceVol
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -12,7 +13,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 E, H, sigma_Y, beta, JJ = 200e3, 50e3, 100, 0.5, 1.0
-degree, nbel            = 5, 32
+degree, nbel            = 5, 128
 
 nb_ctrlpts = degree + nbel
 ctrlpts    = np.linspace(0, 1, nb_ctrlpts)
@@ -28,22 +29,17 @@ N = 101
 time_list   = np.linspace(0, 1, N)
 dof         = np.arange(1, nb_ctrlpts, dtype=int)
 Fext        = np.zeros((nb_ctrlpts, N))
-Fext[-1, :] = 400*time_list
+Fext[:, -1] = compute_volForce_1D(basis_cgg, weight_cgg, forceVol(qp_cgg))
+Fext[-1,-1] += 400
+for i in range(1, N-1): Fext[:, i] = i/(N-1)*Fext[:, -1]
 
 # Solve 
-disp, strain, stress, energy, internal = solve_plasticity_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
+disp, strain, stress = solve_plasticity_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
 strain_cp   = interpolate_controlPoints_1D(basis_cgg, weight_cgg, strain)
 stress_cp 	= interpolate_controlPoints_1D(basis_cgg, weight_cgg, stress)
 
 filename = folder + 'disp_iga' + '.dat'
 np.savetxt(filename, disp)
-
-fig, ax = plt.subplots(nrows=1, ncols=1)
-ax.loglog(np.arange(len(internal)), abs(internal))
-ax.set_ylabel(r'$\int \sigma\epsilon d\Omega - u^T S u$')
-ax.set_xlabel('Step')
-fig.tight_layout()
-fig.savefig(folder + 'Energy.png')
 
 # ------------------
 # RESULTS

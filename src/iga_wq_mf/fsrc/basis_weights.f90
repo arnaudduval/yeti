@@ -178,7 +178,7 @@ subroutine wq_get_size_data(degree, size_kv, knotvector, size_data, nb_qp, metho
 
     ! Save information
     size_data = obj%nnz_B
-    nb_qp = obj%nb_qp_wq
+    nb_qp     = obj%nb_qp_wq
 
 end subroutine wq_get_size_data
 
@@ -205,18 +205,18 @@ subroutine wq_get_data(degree, size_kv, knotvector, size_data, nb_qp, qp_positio
     type(wq), pointer :: obj
 
     call wq_initialize(obj, degree, size_kv, knotvector, method)
-    call wq_basis_weights_dense2coo(obj)  
+    call wq_basis_weights_dense2coo(obj)
 
     ! Save information 
-    qp_position = obj%qp_position
-    data_basis(:, 1) = obj%data_B0
-    data_basis(:, 2) = obj%data_B1
+    qp_position        = obj%qp_position
+    data_basis(:, 1)   = obj%data_B0
+    data_basis(:, 2)   = obj%data_B1
     data_weights(:, 1) = obj%data_W00
     data_weights(:, 2) = obj%data_W01
     data_weights(:, 3) = obj%data_W10
     data_weights(:, 4) = obj%data_W11
     indices = obj%indices
-    nnz_I = obj%nnz_I
+    nnz_I   = obj%nnz_I
 
 end subroutine wq_get_data
 
