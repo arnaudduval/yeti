@@ -605,25 +605,24 @@ class IGAparametrization:
             i0 = np.zeros(1, dtype=np.intp)
             return [np.zeros((2, 1), dtype=np.float64), i0, i0, 1]
 
-    """
-    ---------------------------------------------------------------------------
-    Les methodes suivantes renvoient les donnees necessaires pour les
-    differentes analyses et les calculs des grandeurs d'interet.
+    # ---------------------------------------------------------------------------
+    # Les methodes suivantes renvoient les donnees necessaires pour les
+    # differentes analyses et les calculs des grandeurs d'interet.
 
-    Principales methodes :
-     * get_inputs4analysis() ........................ Calcul lineaire elastique
-     * get_inputs4indDOF() ............ Determination des ddl bloques et libres
-     * get_inputs4solution() ........... Reconstruction des Deplacements Nodaux
-     * get_inputs4postproc() .. Postprocessing : ecriture de fichiers de sortie
-     * get_inputs4vtu() .................... Fichier VTU pour le postprocessing
-     * get_inputs4controlMesh() ............ Ficher VTK du polygone de controle
-     * get_inputs4area() ..................... Calcul de l'aire de la structure
-     * get_inputs4system() ............... Construction du systeme lineaire IGA
-     * get_inputs4dlmmat() ........... Calcul Matrice Diagonale de Masse Lumped
-     * get_inputs4strainExtrmm() ......... Calcul des extremum des deformations
+    # Principales methodes :
+    #  * get_inputs4analysis() ........................ Calcul lineaire elastique
+    #  * get_inputs4indDOF() ............ Determination des ddl bloques et libres
+    #  * get_inputs4solution() ........... Reconstruction des Deplacements Nodaux
+    #  * get_inputs4postproc() .. Postprocessing : ecriture de fichiers de sortie
+    #  * get_inputs4vtu() .................... Fichier VTU pour le postprocessing
+    #  * get_inputs4controlMesh() ............ Ficher VTK du polygone de controle
+    #  * get_inputs4area() ..................... Calcul de l'aire de la structure
+    #  * get_inputs4system() ............... Construction du systeme lineaire IGA
+    #  * get_inputs4dlmmat() ........... Calcul Matrice Diagonale de Masse Lumped
+    #  * get_inputs4strainExtrmm() ......... Calcul des extremum des deformations
 
-    ---------------------------------------------------------------------------
-    """
+    # ---------------------------------------------------------------------------
+
 
     #### Not used anymore ?
     # def get_inputs4analysis(self):
@@ -672,9 +671,12 @@ class IGAparametrization:
         Return the necessary data to evaluate coupling Gauss points coordinates
 
         :param str filename: base name for resulting files
-        :param int npts_u: number of points to compute along u parametric direction
-        :param int npts_v: number of points to compute along v parametric direction
-        :return: the necessary input parameters for Fortran subroutine ``eval_coupling_gpts``
+        :param int npts_u: number of points to compute along u parametric
+        direction
+        :param int npts_v: number of points to compute along v parametric
+        direction
+        :return: the necessary input parameters for Fortran subroutine
+        ``eval_coupling_gpts``
         :rtype: dict
         """
         inputs = {'filename': filename,
