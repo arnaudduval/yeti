@@ -8,12 +8,13 @@ from lib.D1transientheat import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test7/'
+# folder = os.path.dirname(full_path) + '/results/test7/' !!!!!!!!!!!!
+folder = os.path.dirname(full_path) + '/results/stability/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 theta, JJ    = 1.0, 1.0
-degree, nbel = 5, 64
+degree, nbel = 6, 400
 
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
@@ -25,7 +26,7 @@ basis_cgg 	 = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions	
-N = 41
+N = 50
 time_list = np.linspace(0, 10, N)
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
@@ -63,8 +64,8 @@ ax.set_xlabel('Position (m)')
 fig.tight_layout()
 fig.savefig(folder + 'TransientHeat_1D.png')
 
-# Save data to compare with 3D
-pos = int((nbknots-1)/2)
-midpoint_temp = temp_interp[pos, :]
-data2save = np.column_stack((time_list, midpoint_temp))
-np.savetxt(folder + 'data1D.dat', data2save)
+# # Save data to compare with 3D
+# pos = int((nbknots-1)/2)
+# midpoint_temp = temp_interp[pos, :]
+# data2save = np.column_stack((time_list, midpoint_temp))
+# np.savetxt(folder + 'data1D.dat', data2save)

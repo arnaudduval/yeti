@@ -27,6 +27,7 @@ def compute_thermal_Fint_1D(JJ, DB, W, Kprop, Cprop, T, dT):
 	# Compute capacity matrix 
 	Ccoefs = W * Cprop * JJ
 	C = DB[0] @ np.diag(Ccoefs) @ DB[0].T
+	C = np.diag(C.sum(axis=1))
 
 	# Compute internal heat force 
 	Fint = C @ dT + K @ T
@@ -48,6 +49,7 @@ def compute_tangent_thermal_matrix_1D(JJ, DB, W, Kprop, Cprop, theta=0.5, dt=0.1
 	# Compute capacitiy matrix 
 	Ccoefs = W * Cprop * JJ
 	C = DB[0] @ np.diag(Ccoefs) @ DB[0].T
+	C = np.diag(C.sum(axis=1))
 
 	# Compute tangent matrix 
 	M = C + theta*dt*K

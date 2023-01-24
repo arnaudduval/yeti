@@ -124,8 +124,9 @@ def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, to
 	Cep, sigma = np.zeros(nb_qp), np.zeros(nb_qp)
 	disp = np.zeros(np.shape(Fext))
 
-	strain = np.zeros((nb_qp, np.shape(Fext)[1]))
-	stress = np.zeros((nb_qp, np.shape(Fext)[1]))
+	strain  = np.zeros((nb_qp, np.shape(Fext)[1]))
+	plastic = np.zeros((nb_qp, np.shape(Fext)[1]))
+	stress  = np.zeros((nb_qp, np.shape(Fext)[1]))
 
 	for i in range(1, np.shape(Fext)[1]):
 
@@ -165,10 +166,11 @@ def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, to
 		disp[:, i]   = d_n1
 		strain[:, i] = eps
 		stress[:, i] = sigma
+		plastic[:, i] = ep_n1
 
 		ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-	return disp, strain, stress
+	return disp, strain, stress, plastic
 
 def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
@@ -179,8 +181,9 @@ def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, to
 	Cep, sigma = np.zeros(nb_qp), np.zeros(nb_qp)
 	disp = np.zeros(np.shape(Fext))
 
-	strain = np.zeros((nb_qp, np.shape(Fext)[1]))
-	stress = np.zeros((nb_qp, np.shape(Fext)[1]))
+	strain  = np.zeros((nb_qp, np.shape(Fext)[1]))
+	plastic = np.zeros((nb_qp, np.shape(Fext)[1]))
+	stress  = np.zeros((nb_qp, np.shape(Fext)[1]))
 
 	for i in range(1, np.shape(Fext)[1]):
 
@@ -220,10 +223,11 @@ def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, to
 		disp[:, i]   = d_n1
 		strain[:, i] = eps
 		stress[:, i] = sigma
+		plastic[:, i] = ep_n1
 
 		ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-	return disp, strain, stress
+	return disp, strain, stress, plastic
 
 # ----
 
@@ -243,7 +247,7 @@ def interpolate_WQ_CP_1D(DB, DW, u_ref):
 
 # =============
 
-def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=None, method='IGA'):
+def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	knots  = np.linspace(0, 1, 101)
 	DB     = eval_basis_python(degree, knotvector, knots)
 	displacement   = DB[0].T @ disp_cp
@@ -253,7 +257,7 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 	# Plot fields
 	N = np.shape(disp_cp)[1]
 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
-	names = ['Displacement field', 'Total strain field', 'Stress field']
+	names = ['Displacement field', 'Plastic strain field', 'Stress field']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
 	for ax, variable, name in zip([ax1, ax2, ax3], [displacement, strain_interp, stress_interp], names):
 		ax.contourf(XX, STEPS, variable.T, 20)
@@ -263,7 +267,7 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 		ax.set_xlabel('Position (m)')
 
 	fig.tight_layout()
-	fig.savefig(folder + 'ElastoPlasticity' + method + '.png')
+	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
 
 	# Plot stress-strain of single point
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
@@ -273,5 +277,5 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 		ax.set_xlabel('Strain (\%)')
 
 	fig.tight_layout()
-	fig.savefig(folder + 'TractionCurve' + method + '.png')
+	fig.savefig(folder + 'TractionCurve' + method + extension)
 	return

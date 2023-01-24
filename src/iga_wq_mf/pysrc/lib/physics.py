@@ -191,11 +191,13 @@ def powden_annulus(P: list):
 
 def setKprop(T, prop=0.1):
 	# y = prop + prop*np.exp(-0.1*abs(T))
-	y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
+	# y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
+	y   = 1e-5*np.ones(len(T))
 	return y
 
 def setCprop(T, prop=1.0):
-	y = prop + prop*np.exp(-2.0*abs(T))
+	# y = prop + prop*np.exp(-2.0*abs(T))
+	y   = np.ones(len(T))
 	return y
 
 def powden(P:list, dim=1):
@@ -208,6 +210,6 @@ def powden(P:list, dim=1):
 # ------------------
 
 def forceVol(P:list):
-	force = 1e3*np.sin(np.pi*P)
+	force = 5e2*np.sin(2*np.pi*P)
 	# force = 1e2*np.ones(len(P))
 	return force
