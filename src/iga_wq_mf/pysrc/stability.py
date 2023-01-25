@@ -9,7 +9,7 @@ The Laplace problem is:
 
 from lib.__init__ import *
 from lib.base_functions import (create_knotvector,
-								wq_find_basis_weights_fortran,
+								iga_find_basis_weights_fortran,
 								eigen_decomposition,
 								erase_rows_csr
 )
@@ -19,17 +19,15 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/stability/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def build_sparse_matrix(basis, weights, indi_in, indj_in):
+def build_sparse_matrix(basis, indi_in, indj_in):
 	indi = np.copy(indi_in); indj = np.copy(indj_in)
-	indi -= 1; indj -= 1
 	nrows = len(indi) - 1; ncols = np.max(indj)
+	indi -= 1; indj -= 1
 	B0  = sp.csr_matrix((basis[:,0], indj, indi), shape=(nrows, ncols)).toarray()
 	B1  = sp.csr_matrix((basis[:,1], indj, indi), shape=(nrows, ncols)).toarray()
-	W00 = sp.csr_matrix((weights[:,0], indj, indi), shape=(nrows, ncols)).toarray()
-	W11 = sp.csr_matrix((weights[:,3], indj, indi), shape=(nrows, ncols)).toarray()
-	return B0, B1, W00, W11
+	return B0, B1
 
-def scheme_analysis(degree, cuts, prop):
+def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	""" Here, prop = k/rho*Cp (isotropic material)
 		First, we analyse time scheme stability : time step <= time_stab. 
 		We use eigenvalues in such a way that :
@@ -39,62 +37,72 @@ def scheme_analysis(degree, cuts, prop):
 		We build A = M + theta*(time step)*prop*K,
 		All non-diagonal terms of A must be less or equal than 0
 	"""
-	nbel 	   = int(2**cuts)
+
+	if cuts is not None: nbel = int(2**cuts)
 	knotvector = create_knotvector(degree, nbel)
 
 	# Get basis and weights in IgA 
-	qp, basis_in, weights_in, indi_in, indj_in = wq_find_basis_weights_fortran(degree, knotvector)[1:]
-	indi, indj, data = erase_rows_csr([0], indi_in, indj_in, [basis_in, weights_in])
-	basis, weights   = data 
-	data_B0   = basis[:, 0]  ; data_B1  = basis[:, 1]
-	data_W00  = weights[:, 0]; data_W11 = weights[:, -1]
-	data = [data_B0, data_B1, data_W00, data_W11]
+	qp, qp_weight, basis_in, indi_in, indj_in = iga_find_basis_weights_fortran(degree, knotvector)[1:]
+	indi, indj, [basis] = erase_rows_csr([0, -1], indi_in, indj_in, [basis_in])
+	data_B0 = basis[:, 0]; data_B1 = basis[:, 1]
 
 	# Time scheme stability
-	mcoefs = np.ones(len(qp)); kcoefs = prop*np.ones(len(qp)); coefs = [mcoefs, kcoefs]
-	eigenvalues = eigen_decomposition(indi, indj, data, coefs=coefs)[0]
+	mcoefs = np.ones(len(qp)); kcoefs = prop*np.ones(len(qp))
+	eigenvalues, eigenvectors = solver.eigen_decomposition2_py(indi, indj, data_B0, data_B1, 
+										qp_weight, mcoefs, kcoefs, [0, 0])
 	lambda_max  = max(eigenvalues)
 	t_stab      = 2/lambda_max
 
 	# Space oscillations
-	B0, B1, W00, W11 = build_sparse_matrix(basis, weights, indi, indj)
-	Mass  = W00 @ B0.transpose()
-	Stiff = -prop * W11 @ B1.transpose()
+	B0, B1 = build_sparse_matrix(basis, indi, indj)
+	Mass  = B0 @ np.diag(qp_weight) @ B0.transpose()
+	Stiff = -prop * B1 @ np.diag(qp_weight) @ B1.transpose()
 	newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
-	t_osc = newmark_matrix.max()
+	nb_ctrlpts_2 = int((degree + nbel)/2.)
+	t_osc = newmark_matrix[nb_ctrlpts_2, :].max()
 
 	return t_stab, t_osc
 
-def plot_analysis(degree_list, cuts_list, filenumber=0, folder=None, extension='.png'):
+def plot_analysis(degree_list, cuts_list=None, nbel_list=None, filenumber=0, folder=None, extension='.png', option=1):
 	fig, ax   = plt.subplots(nrows=1, ncols=1)
-	nbel_list = [2**i for i in cuts_list]
-	name      = 'time_stab_' + str(filenumber)
-	# name      = 'time_osc_' + str(filenumber)
-	time_plot = np.loadtxt(folder + name + '.dat')
-	plot = ax.contourf(nbel_list, degree_list, time_plot, 
-						norm=mpl.colors.LogNorm(vmin=time_plot.min(), vmax=time_plot.max()))
-	plt.xscale('log')
 	ax.grid(None)
+
+	if cuts_list is not None: nbel_list = [2**i for i in cuts_list]
+	if option == 1: name = 'time_stab_' + str(filenumber); title = 'Maximum time step'
+	if option == 2: name = 'time_osc_' + str(filenumber);  title = 'Minimum time step'
+	time_plot = np.loadtxt(folder + name + '.dat')
+	nbel_new, degree_new = np.meshgrid(nbel_list, degree_list)
+	for i in range(len(degree_new)):
+		nbel_new[i, :] += degree_list[i]
+	plot = ax.pcolormesh(nbel_new, degree_new, time_plot,
+						norm=mpl.colors.LogNorm(vmin=time_plot.min(), vmax=time_plot.max()),
+						cmap='PuBu_r', shading='linear')
+	
+	cbar = fig.colorbar(plot, format='%.1e')
+	cbar.ax.set_ylabel(title)
+	ax.set_xscale('log')
 	ax.set_ylabel('Polynomial degree '+ r'$p$')
-	ax.set_xlabel('Mesh discretization level ' + r'$h$')
-	fig.colorbar(plot)
+	ax.set_xlabel('Number of control points')
 	fig.tight_layout()
 	fig.savefig(folder + name + extension)
 	return
 
 data_exist  = True
-degree_list = range(2, 11)
-cuts_list   = range(3, 10)
-prop_list   = [1e-5, 1e-3, 0.1, 1, 10]
+degree_list = range(1, 11)
+nbel_list   = [i for i in range(8, 32, 2)]
+nbel_list.extend([i for i in range(32, 128, 16)])
+nbel_list.extend([i for i in range(128, 513, 32)])
+prop_list   = [1., 1e-2, 1e-4, 1e-6]
+prop_list   = [1.]
 
 if not data_exist:
 
 	for k, prop in enumerate(prop_list):
-		save_data1 = np.zeros((len(degree_list), len(cuts_list)))
-		save_data2 = np.zeros((len(degree_list), len(cuts_list)))
+		save_data1 = np.zeros((len(degree_list), len(nbel_list)))
+		save_data2 = np.zeros((len(degree_list), len(nbel_list)))
 		for i, degree in enumerate(degree_list):
-			for j, cuts in enumerate(cuts_list):
-				t_stab, t_osc = scheme_analysis(degree, cuts, prop)
+			for j, nbel in enumerate(nbel_list):
+				t_stab, t_osc = scheme_analysis(prop, degree, nbel=nbel)
 				save_data1[i, j] = t_stab
 				save_data2[i, j] = t_osc
 		name = 'time_stab_' + str(k) + '.dat'
@@ -103,5 +111,6 @@ if not data_exist:
 		np.savetxt(folder + name, save_data2)
 else:
 	for filenumber in range(len(prop_list)):
-		plot_analysis(degree_list, cuts_list, filenumber=filenumber, folder=folder)
+		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)
+		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=2)
 

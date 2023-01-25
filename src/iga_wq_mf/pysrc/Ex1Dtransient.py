@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 theta, JJ    = 1.0, 1.0
-degree, nbel = 6, 400
+degree, nbel = 4, 10
 
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
@@ -26,8 +26,10 @@ basis_cgg 	 = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions	
-N = 50
-time_list = np.linspace(0, 10, N)
+N = 3
+time_list = np.linspace(0, 0.02, N)
+time_step = time_list.max()/N
+print('Time step: %3e' %time_step)
 dod = [0, -1]
 dof = np.arange(1, nb_ctrlpts-1, dtype=int)
 Fprop     = powden(qp_cgg)
@@ -46,10 +48,11 @@ solve_transient_heat_1D(properties, DB=basis_cgg, W=weight_cgg, Fext=Fext,
 # ------------------
 # Post-treatement
 # ------------------
-nbknots = 101
+nbknots = 201
 knots = np.linspace(0, 1, nbknots)
 DB    = eval_basis_python(degree, knotvector, knots)
 temp_interp = DB[0].T @ temperature
+print(temp_interp.min())
 
 # Plot
 XX, TIME = np.meshgrid(knots*JJ, time_list)

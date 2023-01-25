@@ -192,7 +192,7 @@ def powden_annulus(P: list):
 def setKprop(T, prop=0.1):
 	# y = prop + prop*np.exp(-0.1*abs(T))
 	# y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
-	y   = 1e-5*np.ones(len(T))
+	y   = np.ones(len(T))
 	return y
 
 def setCprop(T, prop=1.0):

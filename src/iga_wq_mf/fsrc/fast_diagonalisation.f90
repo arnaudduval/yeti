@@ -39,6 +39,51 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
 
 end subroutine eigen_decomposition_py
 
+subroutine eigen_decomposition2_py(nr, nc, nnz, indi, indj, data_B0, data_B1, weights, &
+                                Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
+    !! Eigen decomposition generalized KU = MUD
+    !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    !! M: mass matrix, M = int B0 B0 dx = W00 * B0
+    !! U: eigenvectors matrix
+    !! D: diagonal of eigenvalues
+    !! IN CSR FORMAT
+    
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, nc, nnz
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: data_B0, data_B1, weights
+    dimension :: data_B0(nnz), data_B1(nnz), weights(nc)
+    double precision, intent(in) :: Mcoef, Kcoef
+    dimension :: Mcoef(nc), Kcoef(nc)
+    integer, intent(in) :: robin_condition
+    dimension :: robin_condition(2)
+            
+    double precision, intent(out) :: eigenvalues, eigenvectors
+    dimension :: eigenvalues(nr), eigenvectors(nr, nr)
+
+    ! Local data
+    ! ----------
+    integer :: i
+    double precision :: data_W0, data_W1
+    dimension :: data_W0(nnz), data_W1(nnz)
+    double precision :: Kdiag, Mdiag
+    dimension :: Kdiag(nr), Mdiag(nr)
+
+
+    do i = 1, nnz
+        data_W0(i) = data_B0(i) * weights(indj(i))
+        data_W1(i) = data_B1(i) * weights(indj(i))
+    end do
+
+    call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
+                            data_B0, data_W0, data_B1, data_W1, robin_condition, &
+                            eigenvalues, eigenvectors, Kdiag, Mdiag)
+
+end subroutine eigen_decomposition2_py
+
 subroutine fd_steady_heat_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to steady heat problems
