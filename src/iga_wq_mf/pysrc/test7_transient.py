@@ -17,7 +17,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 dataExist   = True
-geolist     = ['VB', 'CB']
+plotVTK	    = False
+# geolist     = ['VB', 'CB']
+geolist     = ['VB']
 method_list = ['WP', 'C', 'JMC']
 # method_list = ['JMC']
 
@@ -84,67 +86,75 @@ if not dataExist:
 			# modelPhy.export_results(u_ctrlpts=Tsol[:, -1], folder=folder, nbDOF=1)
 
 else:
-	
-	# for geoName in geolist:
-	# 	PCGmethod = 'JMC'
-	# 	folderVTK = folder + geoName + '_' + PCGmethod + '/'
-
-	# 	for i in [0, 1]: # first or last
-	# 		for j in [0, 1]:
-	# 			if j == 0: propName = 'Capacity'
-	# 			if j == 1: propName = 'Conductivity'
-	# 			gridName = 'Iga' + str(i) + str(j) + '.vts'
-	# 			grid = pv.read(folderVTK + gridName)
-
-	# 			sargs = dict(
-	# 				title = propName,
-	# 				title_font_size=50,
-	# 				label_font_size=40,
-	# 				shadow=True,
-	# 				n_labels=2,
-	# 				fmt="%.1f",
-	# 				position_x=0.2, 
-	# 				position_y=0.1,
-	# 			)
-	# 			pv.start_xvfb()
-	# 			plotter = pv.Plotter(off_screen=True)
-	# 			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-	# 			if geoName == 'CB': plotter.camera.zoom(0.6)				
-	# 			if geoName == 'VB': 
-	# 				plotter.camera_position  = 'yz'
-	# 				plotter.camera.elevation = 45
-
-	# 			plotter.background_color = 'white'
-	# 			plotter.window_size = [1600, 1600]
-	# 			filename = folderVTK + 'VTK_Results' + str(i) + str(j) + '.png'
-	# 			plotter.screenshot(filename)
-
-	# 			cropImage(filename)
-			
 
 	for geoName in geolist:
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
+		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))
 
 		for i, PCGmethod in enumerate(method_list):
 			filename = folder + 'ResPCG_' + geoName + '_' + PCGmethod + '.dat'
 			resPCG = np.loadtxt(filename)
 
-			if PCGmethod   == "WP" : labelmethod = 'w.o. preconditioner'
-			elif PCGmethod == "C"  : labelmethod = 'Classic FD method'
+			if PCGmethod   == "WP" : labelmethod = 'w.o. \npreconditioner'
+			elif PCGmethod == "C"  : labelmethod = 'Classic FD \nmethod'
 			elif PCGmethod == "JMC": labelmethod = 'This work'
 
-			# Print the first or last
-			step = resPCG[0, -1]; iterNL = resPCG[1, -1]
-			newresidue = resPCG[2:, -1]; newresidue = newresidue[newresidue>0]
+			# Print the first 
+			step = resPCG[0, 0]; iterNL = resPCG[1, 0]
+			newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]
 			ax.semilogy(np.arange(len(newresidue)), newresidue, '-', linewidth=2.5, marker=markerSet[i],
 						label=labelmethod)
+			
+			# # Print the last
+			# step = resPCG[0, -1]; iterNL = resPCG[1, -1]
+			# newresidue = resPCG[2:, -1]; newresidue = newresidue[newresidue>0]
+			# ax.semilogy(np.arange(len(newresidue)), newresidue, '-', linewidth=2.5, marker=markerSet[i],
+			# 			label=labelmethod)
 
-			# ax.legend(loc=0)
-			ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-			ax.set_ybound(lower=1e-12, upper=10)
 
-		filename = folder + 'TransientNL_' + geoName + '2.png'
-		fig.tight_layout()
+		ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc="lower left",
+                mode="expand", ncol=3)
+		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+		ax.set_ybound(lower=1e-12, upper=10)
+
+		filename = folder + 'TransientNL_' + geoName + '.pdf'
+		# fig.tight_layout()
 		fig.savefig(filename)
+
+if plotVTK:
+
+	for geoName in geolist:
+		PCGmethod = 'JMC'
+		folderVTK = folder + geoName + '_' + PCGmethod + '/'
+
+		for i in [0, 1]: # first or last
+			for j in [0, 1]:
+				if j == 0: propName = 'Capacity'
+				if j == 1: propName = 'Conductivity'
+				gridName = 'Iga' + str(i) + str(j) + '.vts'
+				grid = pv.read(folderVTK + gridName)
+
+				sargs = dict(
+					title = propName,
+					title_font_size=50,
+					label_font_size=40,
+					shadow=True,
+					n_labels=2,
+					fmt="%.1f",
+					position_x=0.2, 
+					position_y=0.1,
+				)
+				pv.start_xvfb()
+				plotter = pv.Plotter(off_screen=True)
+				plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+				if geoName == 'CB': plotter.camera.zoom(0.6)				
+				if geoName == 'VB': 
+					plotter.camera_position  = 'yz'
+					plotter.camera.elevation = 45
+
+				plotter.background_color = 'white'
+				plotter.window_size = [1600, 1600]
+				filename = folderVTK + 'VTK_Results' + str(i) + str(j) + '.png'
+				plotter.screenshot(filename)
+
+				cropImage(filename)
