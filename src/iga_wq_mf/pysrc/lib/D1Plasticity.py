@@ -45,7 +45,7 @@ class MechaBehavior():
 		dgamma = 0.0
 		a_n1   = a_n0 
 		for i in range(nbIter):
-			dH = self.Hfun(a_n1) - self.Hderfun(a_n0) 
+			dH = self.Hfun(a_n1) - self.Hfun(a_n0) 
 			G  = -self.Kfun(a_n1) + np.abs(eta_trial) - (self._young*dgamma + dH)
 			if G <=threshold: break
 			dG = - (self._young + self.Hderfun(a_n1) + self.Kderfun(a_n1))
@@ -60,7 +60,7 @@ class MechaBehavior():
 
 		# Elastic predictor
 		sigma_trial = self._young*(strain - pls)
-		eta_trial = sigma_trial - b
+		eta_trial   = sigma_trial - b
 
 		# Check yield status
 		f_trial = np.abs(eta_trial) - self.Kfun(a)
