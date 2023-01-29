@@ -8,35 +8,82 @@ import numpy as np
 from lib.__init__ import *
 from lib.base_functions import eval_basis_python
 
-def cpp_combined_hardening_1D(properties, strain, pls, a, b):
-	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
-		It uses combined isotropic/kinematic hardening theory.  
-	"""
-	E, H, beta, sigma_Y0 = properties
+class MechaBehavior():
+	
+	def __init__(self, name:str, kwargs:dict):
 
-	# Elastic predictor
-	sigma_trial = E*(strain - pls)
-	eta_trial = sigma_trial - b
+		# General init
+		self._young = kwargs.get('young', 1.0)
+		self.Hfun, self.Hderfun = None, None
+		self.Kfun, self.Kderfun = None, None
 
-	# Check yield status
-	f_trial = abs(eta_trial) - (sigma_Y0 + beta*H*a)
+		# Specific init
+		if name.lower() == 'linear':
+			self._init_linear(kwargs)
 
-	if f_trial <= sigma_Y0*1e-6: # Elastic
-		stress = sigma_trial
-		pls_new = pls
-		a_new = a
-		b_new = b
-		Cep = E
-	else: # Plastic
-		N = np.sign(eta_trial)
-		dgamma = f_trial/(E + H)
-		stress = sigma_trial - dgamma*E*N
-		pls_new = pls + dgamma*N
-		a_new = a + dgamma
-		b_new = b + (1-beta)*H*dgamma*N
-		Cep = E*H/(E + H)
+		if name.lower() == 'swift':
+			self._init_swift(kwargs)
 
-	return [stress, pls_new, a_new, b_new, Cep]
+		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
+		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
+		return
+	
+	def _init_linear(self, kwargs:dict):
+		sigma_y0  = kwargs.get('sigma_Y0', 1.0)
+		theta	  = kwargs.get('theta', 1.0)
+		H_bar     = kwargs.get('H_bar', 1.0)
+		self.Kfun = lambda a: sigma_y0 + theta*H_bar*a 
+		self.Hfun = lambda a: (1-theta)*H_bar*a
+		self.Kderfun = lambda a: theta*H_bar
+		self.Hderfun = lambda a: (1-theta)*H_bar
+		return
+	
+	def _init_swift(self, kwargs:dict):
+		return
+	
+	def compute_deltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-6):
+		dgamma = 0.0
+		a_n1   = a_n0 
+		for i in range(nbIter):
+			dH = self.Hfun(a_n1) - self.Hderfun(a_n0) 
+			G  = -self.Kfun(a_n1) + np.abs(eta_trial) - (self._young*dgamma + dH)
+			if G <=threshold: break
+			dG = - (self._young + self.Hderfun(a_n1) + self.Kderfun(a_n1))
+			dgamma = dgamma - G/dG
+			a_n1   = a_n0 + dgamma 
+		return dgamma
+	
+	def return_mapping(self, strain, pls, a, b, threshold=1e-6):
+		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
+			It uses combined isotropic/kinematic hardening theory.  
+		"""
+
+		# Elastic predictor
+		sigma_trial = self._young*(strain - pls)
+		eta_trial = sigma_trial - b
+
+		# Check yield status
+		f_trial = np.abs(eta_trial) - self.Kfun(a)
+
+		if f_trial <= threshold: # Elastic
+			stress = sigma_trial
+			pls_new = pls
+			a_new = a
+			b_new = b
+			Cep = self._young
+
+		else: # Plastic
+			N = np.sign(eta_trial)
+			dgamma = self.compute_deltaGamma(eta_trial, a)
+			stress = sigma_trial - dgamma*self._young*N
+			pls_new = pls + dgamma*N
+			a_new = a + dgamma
+			b_new = b + (self.Hfun(a_new)-self.Hfun(a))*N
+			somme = self.Kderfun(a_new) + self.Hderfun(a_new)
+			Cep = self._young*somme/(self._young + somme)
+
+		return [stress, pls_new, a_new, b_new, Cep]
+
 
 def interpolate_strain_1D(JJ, DB, disp):
 	" Computes strain field from a given displacement field "
@@ -96,7 +143,7 @@ def compute_WQ_tangent_matrix_1D(JJ, DB, DW, Cep):
 
 # ----
 
-def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
+def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]
@@ -123,9 +170,7 @@ def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, to
 
 			# Find closest point projection 
 			for k in range(nb_qp):
-				result1 = cpp_combined_hardening_1D(properties[1:-1], 
-							eps[k], ep_n0[k], a_n0[k], b_n0[k])
-
+				result1 = matlaw.return_mapping(eps[k], ep_n0[k], a_n0[k], b_n0[k])
 				sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
 
 			# Compute Fint
@@ -149,7 +194,7 @@ def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, to
 
 	return disp, strain, stress, plastic
 
-def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
+def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]
@@ -176,9 +221,7 @@ def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, to
 
 			# Find closest point projection 
 			for k in range(nb_qp):
-				result1 = cpp_combined_hardening_1D(properties[1:-1], 
-							eps[k], ep_n0[k], a_n0[k], b_n0[k])
-
+				result1 = matlaw.return_mapping(eps[k], ep_n0[k], a_n0[k], b_n0[k])
 				sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
 
 			# Compute Fint
