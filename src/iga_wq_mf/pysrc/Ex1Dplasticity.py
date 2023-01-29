@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 E, H, sigma_Y, beta, JJ = 200e3, 50e3, 100, 0.5, 1.0
-degree, nbel            = 10, 64
+degree, nbel            = 6, 125
 
 method     = 1
 nb_ctrlpts = degree + nbel
@@ -35,38 +35,48 @@ properties_wq  = [JJ, E, H, beta, sigma_Y, len(qp_wq)]
 
 # Define boundaries conditions
 nbSteps = 101
-time_list   = np.linspace(0, 1, nbSteps)
 dof         = np.arange(1, nb_ctrlpts, dtype=int)
 Fext        = np.zeros((nb_ctrlpts, nbSteps))
 Fext[:, -1] = compute_IGA_Fvol_1D(basis_cgg, weight_cgg, forceVol(qp_cgg))
-Fext[-1,-1] += 400
+# Fext[-1,-1] += 400
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve using IGA
-disp_iga, strain, stress, plastic = solve_IGA_plasticity_1D(properties_iga, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
-strain_cp   = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, strain)
-plastic_cp  = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, plastic)
-stress_cp 	= interpolate_IGA_CP_1D(basis_cgg, weight_cgg, stress)
+disp_iga, strain_iga, stress_iga, plastic_iga = solve_IGA_plasticity_1D(properties_iga, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
+strain_cp   = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, strain_iga)
+plastic_cp  = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, plastic_iga)
+stress_cp 	= interpolate_IGA_CP_1D(basis_cgg, weight_cgg, stress_iga)
 plot_results(degree, knotvector, JJ, disp_iga, plastic_cp, 
-                stress_cp, folder=folder, method='IGA', extension='.pdf')
+                stress_cp, folder=folder, method='IGA')
+
+sigma_ref = np.max(np.abs(stress_iga[:, 1:]), axis=0)
 
 # Solve using WQ
-disp_wq, strain, stress, plastic = solve_WQ_plasticity_1D(properties_wq, DB=DB, DW=DW, Fext=Fext, dof=dof)
-strain_cp   = interpolate_WQ_CP_1D(DB, DW, strain)
-plastic_cp  = interpolate_WQ_CP_1D(DB, DW, plastic)
-stress_cp   = interpolate_WQ_CP_1D(DB, DW, stress)
+disp_wq, strain_wq, stress_wq, plastic_wq = solve_WQ_plasticity_1D(properties_wq, DB=DB, DW=DW, Fext=Fext, dof=dof)
+strain_cp   = interpolate_WQ_CP_1D(DB, DW, strain_wq)
+plastic_cp  = interpolate_WQ_CP_1D(DB, DW, plastic_wq)
+stress_cp   = interpolate_WQ_CP_1D(DB, DW, stress_wq)
 plot_results(degree, knotvector, JJ, disp_wq, plastic_cp, 
                 stress_cp, folder=folder, method='WQ')
 
 # ------------------
 # RESULTS
 # ------------------
+error    = np.abs(stress_iga[int((len(qp_cgg)-1)/2), 1:] - stress_wq[int((len(qp_wq)-1)/2), 1:])
+fig, ax  = plt.subplots(nrows=1, ncols=1)
+ax.semilogy(np.abs(error)/sigma_ref*100)
+ax.set_ylim(bottom=1e-12, top=1e0)
+ax.set_ylabel('Relative error (\%)')
+ax.set_xlabel('Step')
+fig.tight_layout()
+fig.savefig(folder + 'Relative_error_stress.png')
+
 error    = disp_iga[:, 1:] - disp_wq[:, 1:]
-relerror = np.linalg.norm(error, np.inf, axis=0)/np.linalg.norm(disp_iga[:, 1:], np.inf, axis=0)
+relerror = np.linalg.norm(error, axis=0)/np.linalg.norm(disp_iga[:, 1:], axis=0)
 fig, ax  = plt.subplots(nrows=1, ncols=1)
 ax.semilogy(relerror*100)
 ax.set_ylim(bottom=1e-12, top=1e0)
 ax.set_ylabel('Relative error (\%)')
 ax.set_xlabel('Step')
 fig.tight_layout()
-fig.savefig(folder + 'Relative_error.png')
+fig.savefig(folder + 'Relative_error_distance.png')

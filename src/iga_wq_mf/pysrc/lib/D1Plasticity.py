@@ -8,7 +8,7 @@ import numpy as np
 from lib.__init__ import *
 from lib.base_functions import eval_basis_python
 
-def cpp_combined_hardening_1D_s1(properties, strain, pls, a, b):
+def cpp_combined_hardening_1D(properties, strain, pls, a, b):
 	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 		It uses combined isotropic/kinematic hardening theory.  
 	"""
@@ -26,7 +26,7 @@ def cpp_combined_hardening_1D_s1(properties, strain, pls, a, b):
 		pls_new = pls
 		a_new = a
 		b_new = b
-		
+		Cep = E
 	else: # Plastic
 		N = np.sign(eta_trial)
 		dgamma = f_trial/(E + H)
@@ -34,28 +34,9 @@ def cpp_combined_hardening_1D_s1(properties, strain, pls, a, b):
 		pls_new = pls + dgamma*N
 		a_new = a + dgamma
 		b_new = b + (1-beta)*H*dgamma*N
-
-	return [stress, pls_new, a_new, b_new]
-
-def cpp_combined_hardening_1D_s2(properties, strain, pls, a, b):
-	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
-		It uses combined isotropic/kinematic hardening theory.  
-	"""
-	E, H, beta, sigma_Y0 = properties
-
-	# Elastic predictor
-	sigma_trial = E*(strain - pls)
-	eta_trial = sigma_trial - b
-
-	# Check yield status
-	f_trial = abs(eta_trial) - (sigma_Y0 + beta*H*a)
-
-	if f_trial <= sigma_Y0*1e-6: # Elastic
-		Cep = E
-	else: # Plastic
 		Cep = E*H/(E + H)
 
-	return Cep
+	return [stress, pls_new, a_new, b_new, Cep]
 
 def interpolate_strain_1D(JJ, DB, disp):
 	" Computes strain field from a given displacement field "
@@ -142,14 +123,10 @@ def solve_IGA_plasticity_1D(properties, DB=None, W=None, Fext=None, dof=None, to
 
 			# Find closest point projection 
 			for k in range(nb_qp):
-				result1 = cpp_combined_hardening_1D_s1(properties[1:-1], 
+				result1 = cpp_combined_hardening_1D(properties[1:-1], 
 							eps[k], ep_n0[k], a_n0[k], b_n0[k])
 
-				result2 = cpp_combined_hardening_1D_s2(properties[1:-1], 
-							eps[k], ep_n0[k], a_n0[k], b_n0[k])
-
-				sigma[k], ep_n1[k], a_n1[k], b_n1[k] = result1
-				Cep[k] = result2
+				sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
 
 			# Compute Fint
 			Fint = compute_IGA_Fint_1D(DB, W, sigma)
@@ -199,14 +176,10 @@ def solve_WQ_plasticity_1D(properties, DB=None, DW=None, Fext=None, dof=None, to
 
 			# Find closest point projection 
 			for k in range(nb_qp):
-				result1 = cpp_combined_hardening_1D_s1(properties[1:-1], 
+				result1 = cpp_combined_hardening_1D(properties[1:-1], 
 							eps[k], ep_n0[k], a_n0[k], b_n0[k])
 
-				result2 = cpp_combined_hardening_1D_s2(properties[1:-1], 
-							eps[k], ep_n0[k], a_n0[k], b_n0[k])
-
-				sigma[k], ep_n1[k], a_n1[k], b_n1[k] = result1
-				Cep[k] = result2
+				sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
 
 			# Compute Fint
 			Fint = compute_WQ_Fint_1D(DW, sigma)
@@ -260,11 +233,11 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
 	for ax, variable, name in zip([ax1, ax2, ax3], [displacement, strain_interp, stress_interp], names):
-		ax.contourf(XX, STEPS, variable.T, 20)
-		ax.grid(None)
+		ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
 		ax.set_title(name)
 		ax.set_ylabel('Step')
 		ax.set_xlabel('Position (m)')
+		ax.grid(False)
 
 	fig.tight_layout()
 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)

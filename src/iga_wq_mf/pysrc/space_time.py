@@ -91,7 +91,7 @@ im = ax.contourf(XX, TT, UU.T, 20)
 cbar = plt.colorbar(im)
 cbar.set_label('Temperature (K)')
 
-ax.grid(None)
+ax.grid(False)
 ax.set_ylabel('Time (s)')
 ax.set_xlabel('Position (m)')
 fig.tight_layout()
