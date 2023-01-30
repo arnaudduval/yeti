@@ -24,6 +24,9 @@ class MechaBehavior():
 		if name.lower() == 'swift':
 			self._init_swift(kwargs)
 
+		if name.lower() == 'voce':
+			self._init_voce(kwargs)
+
 		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return
@@ -39,6 +42,19 @@ class MechaBehavior():
 		return
 	
 	def _init_swift(self, kwargs:dict):
+		return
+	
+	def _init_voce(self, kwargs:dict):
+		sigma_y0  = kwargs.get('sigma_Y0', 1.0)
+		theta	  = kwargs.get('theta', 1.0)
+		H_bar     = kwargs.get('H_bar', 1.0)
+		K_inf     = kwargs.get('K_inf', 1.0)
+		K_0       = kwargs.get('K_zero', 0.0)
+		delta     = kwargs.get('delta', 1.0)
+		self.Kfun = lambda a: sigma_y0 + theta*H_bar*a + (K_inf - K_0)*(1.0 - np.exp(-delta*a))
+		self.Hfun = lambda a: (1-theta)*H_bar*a
+		self.Kderfun = lambda a: theta*H_bar + (K_inf - K_0)*delta*np.exp(-delta*a)
+		self.Hderfun = lambda a: (1-theta)*H_bar
 		return
 	
 	def compute_deltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-6):
@@ -83,7 +99,6 @@ class MechaBehavior():
 			Cep = self._young*somme/(self._young + somme)
 
 		return [stress, pls_new, a_new, b_new, Cep]
-
 
 def interpolate_strain_1D(JJ, DB, disp):
 	" Computes strain field from a given displacement field "
