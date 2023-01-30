@@ -9,3 +9,5 @@ benchs/*/results/*.vtk
 .coverage
 src/nurbspatch.mod
 benchs/*/test.py
+examples/OPT_stiffPanel/results/*.vtk
+examples/OPT_stiffPanel/results/*.vtu
