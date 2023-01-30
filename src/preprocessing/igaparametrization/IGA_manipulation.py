@@ -131,7 +131,7 @@ def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0):
         Index of the boundary face.
         Must be ``1``, ``2``, ``3``, ``4``, ``5`` or ``6``.
     num_patch : int, optional
-        Index of the patch. The default is 0.
+        Index of the patch (python numbering). The default is 0.
     offset : int, optional
         Offset to get the indices of a following row of control points.
         The default is 0.
@@ -450,9 +450,26 @@ def get_edgeCPindice(Nkv, Jpqr, dim, num_patch=0):
 
 
 def get_vertexCPindice(Nkv, Jpqr, dim, num_patch=0):
-    '''
-    Retourne les indices des points de controle decrivant les noeuds du patch #num_patch#
-    '''
+    """
+    Return indices of control points describing the corners of a given patch
+
+    Parameters
+    ----------
+    Nkv : 2D array of float
+        knot vectors size for all patches
+    Jpqr : 2D array of int
+        degrees for all patches
+    dim : array of int
+        dimension for all patches
+    num_patch : int, optional
+        Index of the patch. The default is 0
+
+    Returns
+    -------
+    vertex : array
+        corner points of the patch
+    """
+
     nb_cpD = np.maximum(Nkv[:, num_patch] - (Jpqr[:, num_patch] + 1), 1)
     nb_cpD01 = nb_cpD[0] * nb_cpD[1]
 
