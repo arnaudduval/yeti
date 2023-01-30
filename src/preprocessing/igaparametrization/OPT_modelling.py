@@ -4,16 +4,18 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
-# Foundation, either version 3 of the License, or (at your option) any later version.
+# Yeti is free software: you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option)
+# any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-# PURPOSE. See the GNU Lesser General Public License for more details.
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
-# with Yeti. If not, see <https://www.gnu.org/licenses/>
+# You should have received a copy of the GNU Lesser General Public License
+# along with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 # -*- coding: utf-8 -*-
 
@@ -38,6 +40,7 @@ from optim import volume as vol
 #from optim import gradvolume as gvol
 from optim.gradadjointwork import gradlinelastwork_an
 from optim import disp, stress, vibration, volume
+from optim.gradcoupling import gradcplg_an
 
 
 class OPTmodelling:
@@ -64,7 +67,7 @@ class OPTmodelling:
         self._transformationMatrices_coarse2fine = \
             self._fineParametrization.refine_and_getTransformationMatrices(
                 nb_refinementByDirection, nb_degreeElevationByDirection)
-        
+
         self._nb_DesignVar = int(nb_DesignVar)
         self._special_updateCoarseCoords = fct_updateCoarseCoords
         self._fct_dervShapeParametrization = fct_dervShapeParam
@@ -81,9 +84,9 @@ class OPTmodelling:
         self._movable_patch = self.get_movablePatchesInd()
 
         self._useSPLU=useSPLU
-        
+
         return None
-    
+
     def get_indCPbyDesignVar(self):
         '''Get the indices of the C.P. linked with each Design Variable.'''
         self._updateCoarseCoords(np.zeros(self._nb_DesignVar))
@@ -145,7 +148,7 @@ class OPTmodelling:
         self._updateFineCoords()
 
         return elem_by_var
-    
+
     def get_movablePatchesInd(self):
         if not hasattr(self, '_cp_by_var'):
             self._cp_by_var = self.get_indCPbyDesignVar()
@@ -157,7 +160,7 @@ class OPTmodelling:
                 ipatch.append(p)
 
         return np.array(ipatch, dtype=np.intp)
-    
+
     def differentiateShapeParametrization(self, vectX, numVar):
         # size (n_cp x 3)
         dShape_coarse = np.zeros_like(self._coarseParametrization._COORDS)
@@ -170,26 +173,26 @@ class OPTmodelling:
                     self._initialCOORDS, self._coarseParametrization, vectX,
                     numVar)
         return dShape_coarse
-    
+
     def _updateCoarseCoords(self, vectX):
         self._special_updateCoarseCoords(self._initialCOORDS,
                                          self._coarseParametrization, vectX)
         return None
-    
+
     def _updateFineCoords(self):
         self._fineParametrization._COORDS[:,:] = self._mapCoarse2Fine(
             self._coarseParametrization._COORDS.T).T
         return None
-    
+
     def _mapCoarse2Fine(self, coarseQ):
         vectWeight_coarse = self._coarseParametrization._vectWeight
         vectWeight_fine = self._fineParametrization._vectWeight
         fineQ = np.zeros(self._fineParametrization._COORDS.shape[::-1])
         indCPbyPatch_coarse = self._coarseParametrization._indCPbyPatch
         indCPbyPatch_fine = self._fineParametrization._indCPbyPatch
-        
+
         for num_patch in range(0, self._coarseParametrization._nb_patch):
-            
+
             nb_cp_thisPatch = np.size(indCPbyPatch_coarse[num_patch], 0)
             Pwi_thisPatch = np.zeros((nb_cp_thisPatch, 3))
             Pwi_thisPatch[:, 0] = \
@@ -203,7 +206,7 @@ class OPTmodelling:
                 vectWeight_coarse[indCPbyPatch_coarse[num_patch] - 1]
             #Pwi_thisPatch[:, 3] = \
             #    vectWeight_coarse[indCPbyPatch_coarse[num_patch] - 1]
-            
+
             Qwi_xi_thisPatch = \
                 self._transformationMatrices_coarse2fine[num_patch][0] * \
                 Pwi_thisPatch
@@ -213,18 +216,18 @@ class OPTmodelling:
             Qwi_thisPatch = \
                 self._transformationMatrices_coarse2fine[num_patch][2] * \
                 Qwi_xi_eta_thisPatch
-            
+
             nb_cp_fine_thisPatch = np.size(Qwi_thisPatch, 0)
             Qi_thisPatch = np.zeros((nb_cp_fine_thisPatch, 3))
             wi_thisPatch = vectWeight_fine[indCPbyPatch_fine[num_patch]-1]
             Qi_thisPatch[:, 0] = Qwi_thisPatch[:, 0] / wi_thisPatch[:]
             Qi_thisPatch[:, 1] = Qwi_thisPatch[:, 1] / wi_thisPatch[:]
             Qi_thisPatch[:, 2] = Qwi_thisPatch[:, 2] / wi_thisPatch[:]
-            
+
             fineQ[indCPbyPatch_fine[num_patch]-1, :] = Qi_thisPatch[:, :]
-            
+
         return fineQ
-    
+
     def _transposeFine2Coarse(self, fineQ):
         vectWeight_coarse = self._coarseParametrization._vectWeight
         vectWeight_fine = self._fineParametrization._vectWeight
@@ -240,14 +243,14 @@ class OPTmodelling:
             Qwi_thisPatch[0,:] = fineQ[0,ind_cp_fine_thisPatch] / vectWeight_fine_thisPatch
             Qwi_thisPatch[1,:] = fineQ[1,ind_cp_fine_thisPatch] / vectWeight_fine_thisPatch
             Qwi_thisPatch[2,:] = fineQ[2,ind_cp_fine_thisPatch] / vectWeight_fine_thisPatch
-            
+
             Pwi_zeta_thisPatch = \
                 Qwi_thisPatch*self._transformationMatrices_coarse2fine[num_patch][2]
             Pwi_eta_zeta_thisPatch = \
                 Pwi_zeta_thisPatch*self._transformationMatrices_coarse2fine[num_patch][1]
             Pwi_thisPatch = \
                 Pwi_eta_zeta_thisPatch*self._transformationMatrices_coarse2fine[num_patch][0]
-            
+
             nb_cp_coarse_thisPatch = np.size(Pwi_thisPatch, 1)
             ind_cp_coarse_thisPatch = indCPbyPatch_coarse[num_patch]-1
             vectWeight_coarse_thisPatch = vectWeight_coarse[ind_cp_coarse_thisPatch]
@@ -255,11 +258,11 @@ class OPTmodelling:
             Pi_thisPatch[0,:] = Pwi_thisPatch[0,:] * vectWeight_coarse_thisPatch
             Pi_thisPatch[1,:] = Pwi_thisPatch[1,:] * vectWeight_coarse_thisPatch
             Pi_thisPatch[2,:] = Pwi_thisPatch[2,:] * vectWeight_coarse_thisPatch
-            
+
             coarseQ[:,ind_cp_coarse_thisPatch] = Pi_thisPatch[:, :]
         return coarseQ
-    
-    
+
+
     # --
     # ANALYSIS
     def get_LinElastSystem(self, vectX, activeelem=None):
@@ -329,7 +332,7 @@ class OPTmodelling:
             self._current_vectX[:] = vectX[:]
 
             return sol_fine
-    
+
     def compute_LinElastAdjWork(self,vectX,stateSOL,adjointSOL,activeelem=None,
                                 return_internalWork=True,return_externalWork=True):
         if not (return_internalWork or return_externalWork):
@@ -346,13 +349,13 @@ class OPTmodelling:
             if not return_internalWork:
                 return Wext
         return Wint,Wext
-        
+
     def get_NaturalFrqSystem(self, vectX):
         self._updateCoarseCoords(vectX)
         self._updateFineCoords()
         ndof = self._fineParametrization._nb_dof_free
         idof = self._fineParametrization._ind_dof_free[: ndof] - 1
-        
+
         data, row, col, Fb = build_stiffmatrix(
             *self._fineParametrization.get_inputs4system_elemStorage())
         Kside = sp.coo_matrix((data, (row, col)),
@@ -362,7 +365,7 @@ class OPTmodelling:
         Ktot = Kside + Kside.transpose()
         K2solve = Ktot[idof, :][:, idof]
         del Kside, data, row, col, Ktot
-        
+
         data, row, col = build_cmassmatrix(
             *self._fineParametrization.get_inputs4massmat())
         Mside = sp.coo_matrix((data, (row, col)),
@@ -372,7 +375,7 @@ class OPTmodelling:
         Mtot = Mside + Mside.transpose()
         M2solve = Mtot[idof, :][:, idof]
         del Mside, data, row, col, Mtot
-        
+
         return K2solve, M2solve
 
     def compute_vibrationMode(self, vectX, nb_frq=1):
@@ -400,7 +403,7 @@ class OPTmodelling:
             Wint.append(-np.dot(veci,K.dot(veci)))
             Wcin.append(-np.dot(veci,M.dot(veci))*vals[ifrq])
         return np.array(Wcin)-np.array(Wint)
-    
+
 
     # --
     # SENSITIVITY
@@ -430,9 +433,9 @@ class OPTmodelling:
                 fR = fctF(vectX_thisVar)
                 gradF[numVar] = (fL-fR)/2./eps
         print(' Done.          ')
-        
+
         return gradF
-    
+
     def _propagateSensitivityAnalysis(self,vectX,gradFine):
         gradDV = np.zeros(self._nb_DesignVar)
         gradCoarse = self._transposeFine2Coarse(gradFine)
@@ -440,7 +443,7 @@ class OPTmodelling:
             dShape = self.differentiateShapeParametrization(vectX, numVar)
             gradDV[numVar] = np.tensordot(dShape,gradCoarse,axes=2)
         return gradDV
-    
+
     def compute_dervLinElastAdjWork(self,vectX,U0,UA,computeWint=True,computeWext=True):
         self._updateCoarseCoords(vectX)
         self._updateFineCoords()
@@ -449,7 +452,7 @@ class OPTmodelling:
         if UA.ndim == 1:
             UA = np.vstack(UA)
         nbAdj = np.size(UA,1)
-        
+
         SOL, u = rsol.reconstruction(
             **self._fineParametrization.get_inputs4solution(U0))
         ADJ = np.zeros((nbAdj, mcrd, nb_cp), dtype=np.float64)
@@ -457,7 +460,7 @@ class OPTmodelling:
             adjiA, u = rsol.reconstruction(
                 **self._fineParametrization.get_inputs4solution(UA[:, iA]))
             ADJ[iA, :, :] = adjiA[:, :].T
-            
+
         activeElem = np.zeros(self._fineParametrization._nb_elem,
                               dtype=np.intp)
         activeElem[np.where(np.sum(self._elem_by_var) > 0)[0]] = 1
@@ -466,17 +469,17 @@ class OPTmodelling:
         for var in self._dir_by_var:
             savemax = np.maximum(savemax, np.max(np.abs(var), axis=1))
         activeDir[np.where(savemax > 0)[0]] = 1
-        
-        
+
+
         dervWint,dervWext = gradlinelastwork_an(
             *self._fineParametrization._get_inputs4gradTotalwork(
                 SOL.T, ADJ, activeElem=activeElem, activeDir=activeDir,computeWint=computeWint,
                 computeWext=computeWext))
-        
+
         self._updateCoarseCoords(self._current_vectX)
         self._updateFineCoords()
         return dervWint,dervWext
-    
+
     def _set_greville(self):
         from fitting.interpolate import grevilleabscissae
         pts = []
@@ -491,14 +494,14 @@ class OPTmodelling:
                 np.block([[np.tile(ptspatch[0],ptspatch[1].size*ptspatch[2].size)],
                           [np.tile(np.repeat(ptspatch[1],ptspatch[0].size),ptspatch[2].size)],
                           [np.repeat(ptspatch[2],ptspatch[0].size*ptspatch[1].size)]]) )
-        self._grevillepts = pts 
+        self._grevillepts = pts
         return None
-    
+
     def _get_greville(self):
         if not hasattr(self,'_grevillepts'):
             self._set_greville()
         return self._grevillepts
-    
+
     # --
     # RESPONSE FUNCTIONS
     # 1. Volume/area
@@ -510,13 +513,13 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4area(
                 activepatch=listpatch))
         return V
-    
+
     def compute_gradVolume_DF(self, vectX, eps=1.e-6, centerFD=False, listpatch=None):
         print("Compute FD gradient of the volume")
         fctF = lambda x: self.compute_volume(x,listpatch=listpatch)
         gradV = self._sensitivityFD(fctF,vectX,eps=eps,centerFD=centerFD)
         return gradV
-    
+
     def compute_gradVolume_AN(self, vectX, listpatch=None):
         print("Compute AN gradient of the volume")
         self._updateCoarseCoords(vectX)
@@ -526,7 +529,7 @@ class OPTmodelling:
                     activepatch=listpatch))
         gradV = self._propagateSensitivityAnalysis(vectX,dVol_fine)
         return gradV
-        
+
     # 2. Compliance
     def compute_compliance_discrete(self, vectX):
         print("Compute compliance")
@@ -535,13 +538,13 @@ class OPTmodelling:
         comp = 0.5 * np.dot(U0, F0)
         self._saveComp = comp
         return comp
-    
+
     def compute_gradCompliance_FD(self, vectX, eps=1.e-6, centerFD=False):
         print("Compute FD gradient of the compliance")
         fctF = lambda x: self.compute_compliance_discrete(x)
         gradF = self._sensitivityFD(fctF,vectX,eps=eps,centerFD=centerFD)
         return gradF
-    
+
     def compute_gradCompliance_semiAN(self, vectX, eps=1.e-6, centerFD=False):
         print("Compute semiAN gradient of the compliance")
         U0 = self.compute_analysisSol(vectX)
@@ -560,7 +563,7 @@ class OPTmodelling:
         dervW = dervWint[0]+2*dervWext[0]
         gradC = self._propagateSensitivityAnalysis(vectX,dervW)
         return gradC
-        
+
     # 3. Displacement
     def compute_displacement(self, vectX, xi, numpatch=1):
         print("Compute displacement")
@@ -571,13 +574,13 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4evaldisp(SOL.T, xi,
                                                            numpatch=numpatch))
         return disp
-    
+
     def compute_gradDisplacement_FD(self, vectX, xi, eps=1.e-6, centerFD=False):
         print("Compute FD gradient of the displacement")
         fctF = lambda x: self.compute_displacement(x,xi)
         gradF = self._sensitivityFD(fctF,vectX,eps=eps,centerFD=centerFD)
         return gradF
-    
+
     def compute_gradDisplacement_semiAN(self, vectX, xi, eps=1.e-6, centerFD=False):
         print("Compute semiAN gradient of the displacement")
         U0 = self.compute_analysisSol(vectX) # state solution
@@ -603,7 +606,7 @@ class OPTmodelling:
         for i in np.arange(nA):
             gradD[:,i] = self._propagateSensitivityAnalysis(vectX,dervW[i])
         return gradD
-    
+
     def compute_displacementAggreg(self,vectX,pnorm=10,ptseval=None):
         print("Compute maximal displacement (approximated through P-Norm)")
         if ptseval is None:
@@ -614,7 +617,7 @@ class OPTmodelling:
         dispAggreg = disp.pnormdispmagn(
             *self._fineParametrization.get_inputs4dispaggregDiscrete(SOL.T,ptseval,pnorm=pnorm) )
         return dispAggreg
-    
+
     def compute_gradDisplacementAggreg_FD(self, vectX, pnorm=10, ptseval=None,
                                           eps=1.e-6, centerFD=False):
         print("Compute FD gradient of the maximal displacement")
@@ -655,7 +658,7 @@ class OPTmodelling:
         dervW = dervWint+derWext
         gradD = self._propagateSensitivityAnalysis(vectX,dervW[0])
         return gradD
-    
+
     # 4. Stress
     def compute_stressAggreg(self, vectX, pnorm=10, ptseval=None):
         print("Compute maximal stress (approximated through P-Norm)")
@@ -668,14 +671,14 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4stressaggregDiscrete(
                 SOL.T,ptseval,pnorm=pnorm) )
         return stressAggreg
-    
+
     def compute_gradStressAggreg_FD(self, vectX, pnorm=10, ptseval=None,
                                      eps=1.e-6, centerFD=False):
         print("Compute FD gradient of the maximal stress")
         fctF = lambda x: self.compute_stressAggreg(x,pnorm=pnorm,ptseval=ptseval)
         gradF = self._sensitivityFD(fctF,vectX,eps=eps,centerFD=centerFD)
         return gradF
-    
+
     def compute_gradStressAggreg_semiAN(self, vectX, pnorm=10, ptseval=None,
                                            eps=1.e-6, centerFD=False):
         print("Compute semiAN gradient of the maximal stress")
@@ -690,7 +693,7 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4stressaggregDiscrete(
                 SOL.T,ptseval,pnorm=pnorm) ).T
         UA = self._save_LU.solve(FA[idof]) # adjoint solution
-        
+
         workW = lambda x: np.sum(self.compute_LinElastAdjWork(x,U0,UA),axis=0)
         def partW(x):
             self._updateCoarseCoords(x)
@@ -704,7 +707,7 @@ class OPTmodelling:
         gradW = self._sensitivityFD(workW,vectX,eps=eps,centerFD=centerFD)
         gradW+= self._sensitivityFD(partW,vectX,eps=eps,centerFD=centerFD)
         return gradW
-    
+
     def compute_gradStressAggreg_AN(self, vectX, pnorm=10, ptseval=None):
         print("Compute semiAN gradient of the maximal stress")
         if ptseval is None:
@@ -718,19 +721,19 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4stressaggregDiscrete(
                 SOL.T,ptseval,pnorm=pnorm) ).T
         UA = self._save_LU.solve(FA[idof]) # adjoint solution
-        
+
         dervWint,derWext = self.compute_dervLinElastAdjWork(vectX,U0,UA)
         dervW = dervWint+derWext
         dervW+= stress.partialdervcppnormstress(
             *self._fineParametrization.get_inputs4stressaggregDiscrete(
                 SOL.T,ptseval,pnorm=pnorm) )
-        
+
         nDV = self._nb_DesignVar;nA = np.size(UA,1)
         gradW = np.zeros((nDV,nA))
         for i in np.arange(nA):
             gradW[:,i] = self._propagateSensitivityAnalysis(vectX,dervW[i])
         return gradW
-    
+
     def compute_vonmisesAggreg(self, vectX, pnorm=10, ptseval=None):
         print("Compute maximal von-mises stress (approximated through P-Norm)")
         if ptseval is None:
@@ -749,7 +752,7 @@ class OPTmodelling:
         fctF = lambda x: self.compute_vonmisesAggreg(x,pnorm=pnorm,ptseval=ptseval)
         gradF = self._sensitivityFD(fctF,vectX,eps=eps,centerFD=centerFD)
         return gradF
-    
+
     def compute_gradVonMisesAggreg_semiAN(self, vectX, pnorm=10, ptseval=None,
                                            eps=1.e-6, centerFD=False):
         print("Compute semiAN gradient of the maximal von-mises stress")
@@ -764,7 +767,7 @@ class OPTmodelling:
             *self._fineParametrization.get_inputs4stressaggregDiscrete(
                 SOL.T,ptseval,pnorm=pnorm) )
         UA = self._save_LU.solve(FA[idof]) # adjoint solution
-        
+
         workW = lambda x: np.sum(self.compute_LinElastAdjWork(x,U0,UA),axis=0)
         def partW(x):
             self._updateCoarseCoords(x)
@@ -778,8 +781,8 @@ class OPTmodelling:
         gradW = self._sensitivityFD(workW,vectX,eps=eps,centerFD=centerFD)
         gradW+= self._sensitivityFD(partW,vectX,eps=eps,centerFD=centerFD)
         return gradW
-    
-    
+
+
     def compute_gradVonMisesAggreg_AN(self, vectX, pnorm=10, ptseval=None):
         print("Compute AN gradient of the maximal von-mises stress")
         if ptseval is None:
@@ -816,7 +819,7 @@ class OPTmodelling:
         workW = lambda x: self.compute_NaturalFrqWork(x,vals0,vecs0)
         gradW = self._sensitivityFD(workW,vectX,eps=eps,centerFD=centerFD)
         return gradW
-    
+
     def compute_gradVibration_AN(self, vectX, nb_frq=1):
         print("Compute AN gradient of the natural frequencies")
         nbVar = self._nb_DesignVar
@@ -841,11 +844,11 @@ class OPTmodelling:
         dMode_fine = vibration.gradvibration_an(
             *self._fineParametrization.get_inputs4gradVibration(
                 VECT, w0, activeElem=activeElem, activeDir=activeDir))
-        
+
         dMode = np.zeros((nbVar,nb_frq),np.float64)
         for i in np.arange(nb_frq):
             dMode[:,i] = self._propagateSensitivityAnalysis(vectX,dMode_fine[i])
-            
+
         return dMode
 
 
@@ -853,7 +856,7 @@ class OPTmodelling:
 
     # ---------------------------------------------------------------------
     # Old stuff
-    
+
     def compute_gradCompliance_cplgOnly_AN(self, vectX, listpatch=None):
 
         print("Calcul Gradient analytique compliance "
@@ -884,19 +887,19 @@ class OPTmodelling:
 
         return dComp
 
-    
+
     def _compute_gradCoupling_semiAN(self, vectX, eps=1.e-6, centerFD=False):
         U0 = self.compute_analysisSol(vectX) # state solution
         stateSOL   = U0.copy()
         adjointSOL = 0.5*U0.copy()
-        
+
         ndof = self._fineParametrization._nb_dof_free
         idof = self._fineParametrization._ind_dof_free[:ndof] - 1
-        
+
         def workWcplg(x):
             self._updateCoarseCoords(x)
             self._updateFineCoords()
-            
+
             Cdata, Crow, Ccol = \
                 cplg_matrix(*self._fineParametrization.get_inputs4cplgmatrix())
             Cside = sp.coo_matrix(
@@ -906,13 +909,13 @@ class OPTmodelling:
                 dtype='float64').tocsc()
             Ctot = Cside + Cside.transpose()
             C2solve = Ctot[idof, :][:, idof]
-            
+
             Wcplg = -np.dot(adjointSOL.T,C2solve.dot(stateSOL))
-            
+
             self._updateCoarseCoords(self._current_vectX)
             self._updateFineCoords()
-            
+
             return Wcplg
-        
+
         gradW = self._sensitivityFD(workWcplg,vectX,eps=eps,centerFD=centerFD)
         return gradW
