@@ -22,7 +22,7 @@ folder_data = os.path.dirname(full_path) + '/data/'
 dataExist     = False
 withReference = True
 degree_list   = range(2, 4)
-cut_list      = range(9, 10)
+cut_list      = range(8, 10)
 
 # Set filename
 filename_data = folder_data + 'FD_time.dat' 
@@ -52,8 +52,9 @@ if not dataExist:
 
 			eig_t, U_t = eigen_decomposition(indi_t, indj_t, data_t)
 			eig_diag = np.random.random(nb_ctrlpts**3)
-			fast_diagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
-			
+			array_out = fast_diagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
+			print(array_out[:10])
+
 			stop = time.process_time()
 			time_t = stop - start
 
