@@ -42,6 +42,13 @@ class MechaBehavior():
 		return
 	
 	def _init_swift(self, kwargs:dict):
+		K = kwargs.get('K', 1.0)
+		eps_0 = kwargs.get('eps_0', 1.0)
+		n = kwargs.get('exp', 1.0)
+		self.Kfun = lambda a: K*(eps_0 + a)**n
+		self.Hfun = lambda a: 0.0
+		self.Kderfun = lambda a: K*n*(eps_0 + a)**(n-1)
+		self.Hderfun = lambda a: 0.0
 		return
 	
 	def _init_voce(self, kwargs:dict):
@@ -49,11 +56,10 @@ class MechaBehavior():
 		theta	  = kwargs.get('theta', 1.0)
 		H_bar     = kwargs.get('H_bar', 1.0)
 		K_inf     = kwargs.get('K_inf', 1.0)
-		K_0       = kwargs.get('K_zero', 0.0)
 		delta     = kwargs.get('delta', 1.0)
-		self.Kfun = lambda a: sigma_y0 + theta*H_bar*a + (K_inf - K_0)*(1.0 - np.exp(-delta*a))
+		self.Kfun = lambda a: sigma_y0 + theta*H_bar*a + K_inf*(1.0 - np.exp(-delta*a))
 		self.Hfun = lambda a: (1-theta)*H_bar*a
-		self.Kderfun = lambda a: theta*H_bar + (K_inf - K_0)*delta*np.exp(-delta*a)
+		self.Kderfun = lambda a: theta*H_bar + K_inf*delta*np.exp(-delta*a)
 		self.Hderfun = lambda a: (1-theta)*H_bar
 		return
 	
@@ -306,6 +312,7 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
 		ax.set_ylabel('Stress (MPa)')
 		ax.set_xlabel('Strain (\%)')
+		ax.set_ylim(bottom=0.0, top=3000)
 
 	fig.tight_layout()
 	fig.savefig(folder + 'TractionCurve' + method + extension)

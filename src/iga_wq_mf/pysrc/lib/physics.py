@@ -210,6 +210,7 @@ def powden(P:list, dim=1):
 # ------------------
 
 def forceVol(P:list):
-	force = 2e3*np.sin(np.pi*P)
+	# force = 5e3*np.sin(np.pi*P)
+	force = 5e3*P
 	# force = 1e2*np.ones(len(P))
 	return force

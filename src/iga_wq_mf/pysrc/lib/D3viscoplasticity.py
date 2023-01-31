@@ -129,52 +129,6 @@ def create_incidence_matrix(d=3):
 
 	return EE
 
-# def cpp_combined_hardening(inputs, deps, sigma_n, a_n, b_n, d=3):
-# 	" Returns closest point proyection (cpp) in combined hardening plasticity criteria"
-
-# 	def yield_function(sigma_Y, beta, H, sigma, a, b, d=3):
-# 		" Computes the value of f (consistency condition) in plasticity criteria"
-
-# 		eta = compute_deviatoric(d, sigma) - b
-# 		norm = compute_stress_norm(d, eta)
-# 		f = norm - np.sqrt(2.0/3.0)*(sigma_Y + (1 - beta)*H*a)
-# 		if norm > 0.0: N = 1.0/norm*eta
-# 		else: N = np.zeros(np.shape(eta))
-
-# 		return f, N, norm
-
-# 	CC, sigma_Y, mu, beta, H, Idev = inputs
-# 	sigma_trial = sigma_n + CC@deps
-# 	f, N, norm = yield_function(sigma_Y, beta, H, sigma_trial, a_n, b_n, d=d)
-
-# 	# Check status
-# 	if f < 0:
-# 		# Copy old variables
-# 		sigma_n1 = sigma_trial
-# 		a_n1 = a_n
-# 		b_n1 = b_n
-# 		Cep = CC
-# 	else:
-# 		# Consistency parameter
-# 		dgamma = f/(2.0*mu+2.0/3.0*H)
-
-# 		# Update stress
-# 		sigma_n1 = sigma_trial - 2*mu*dgamma*N
-
-# 		# Update effective plastic strain
-# 		a_n1 = a_n + np.sqrt(2.0/3.0)*dgamma
-
-# 		# Update back stress
-# 		b_n1 = b_n + 2.0/3.0*beta*H*dgamma*N
-
-# 		# Compute consistent tangent matrix
-# 		c1 = 4.0*mu**2.0/(2.0*mu+2.0/3.0*H)
-# 		c2 = 4.0*mu**2.0*dgamma/norm
-# 		NNT = stkronst(N, N)
-# 		Cep = CC - (c1 - c2)*NNT - c2*Idev
-
-# 	return sigma_n1, a_n1, b_n1, Cep
-
 def cpp_combined_hardening(inputs, eps, ep_n, a_n, b_n, d=3):
 	" Returns closest point proyection (cpp) in combined hardening plasticity criteria"
 
