@@ -13,6 +13,7 @@ from lib.base_functions import (create_knotvector,
 								eigen_decomposition,
 								erase_rows_csr
 )
+from scipy import interpolate
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -54,42 +55,68 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	t_stab      = 2/lambda_max
 
 	# Space oscillations
-	B0, B1 = build_sparse_matrix(basis, indi, indj)
+	dof = np.arange(1, len(indi_in)-2)
+	B0, B1 = build_sparse_matrix(basis_in, indi_in, indj_in)
 	Mass  = B0 @ np.diag(qp_weight) @ B0.transpose()
+	Mass  = Mass[dof, :][:, :]
 	Stiff = -prop * B1 @ np.diag(qp_weight) @ B1.transpose()
+	Stiff = Stiff[dof, :][:, :]
+	# newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
+	# nb_ctrlpts_2 = int((degree + nbel)/2.)
+	# t_osc = newmark_matrix[nb_ctrlpts_2, :].max()
+
 	newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
-	nb_ctrlpts_2 = int((degree + nbel)/2.)
-	t_osc = newmark_matrix[nb_ctrlpts_2, :].max()
+	t_osc = newmark_matrix.max()
 
 	return t_stab, t_osc
 
 def plot_analysis(degree_list, cuts_list=None, nbel_list=None, filenumber=0, folder=None, extension='.png', option=1):
 	fig, ax   = plt.subplots(nrows=1, ncols=1)
-	ax.grid(None)
 
 	if cuts_list is not None: nbel_list = [2**i for i in cuts_list]
 	if option == 1: name = 'time_stab_' + str(filenumber); title = 'Maximum time step'
 	if option == 2: name = 'time_osc_' + str(filenumber);  title = 'Minimum time step'
 	time_plot = np.loadtxt(folder + name + '.dat')
 	nbel_new, degree_new = np.meshgrid(nbel_list, degree_list)
-	for i in range(len(degree_new)):
-		nbel_new[i, :] += degree_list[i]
+	# for i in range(len(degree_new)):
+	# 	nbel_new[i, :] += degree_list[i]
 	plot = ax.pcolormesh(nbel_new, degree_new, time_plot,
 						norm=mpl.colors.LogNorm(vmin=time_plot.min(), vmax=time_plot.max()),
-						cmap='PuBu_r', shading='linear')
-	
+						cmap='viridis', shading='auto')
 	cbar = fig.colorbar(plot, format='%.1e')
 	cbar.ax.set_ylabel(title)
 	ax.set_xscale('log')
 	ax.set_ylabel('Polynomial degree '+ r'$p$')
-	ax.set_xlabel('Number of control points')
+	ax.set_xlabel('Number of elements')
 	fig.tight_layout()
 	fig.savefig(folder + name + extension)
 	return
 
+def plot_variable_degree(nbel, degree_list, cuts_list=None, nbel_list=None, filenumber=0, folder=None, extension='.png'):
+	
+	fig, ax   = plt.subplots(nrows=1, ncols=1)
+
+	if cuts_list is not None: nbel_list = [2**i for i in cuts_list]
+	name = 'time_osc_' + str(filenumber);  title = 'Minimum time step'
+	time_plot = np.loadtxt(folder + name + '.dat')
+
+	f = interpolate.interp2d(degree_list, nbel_list, time_plot.T, kind='linear')
+	xnew = degree_list
+	ynew = np.array([nbel])
+	znew = f(xnew, ynew)
+
+	ax.semilogy(xnew, znew)
+	ax.set_xlabel('Polynomial degree '+ r'$p$')
+	ax.set_ylabel(title)
+	ax.set_ylim(bottom=1e-3, top=1e-1)
+	fig.tight_layout()
+	fig.savefig(folder + name + '_' + str(nbel) + '_' + extension)
+	return
+
 data_exist  = True
-degree_list = range(1, 11)
-nbel_list   = [i for i in range(8, 32, 2)]
+degree_list = range(1, 9)
+nbel_list = [i for i in range(4, 8)]
+nbel_list.extend([i for i in range(8, 32, 2)])
 nbel_list.extend([i for i in range(32, 128, 16)])
 nbel_list.extend([i for i in range(128, 513, 32)])
 prop_list   = [1., 1e-2, 1e-4, 1e-6]
@@ -110,7 +137,8 @@ if not data_exist:
 		name = 'time_osc_'  + str(k) + '.dat'
 		np.savetxt(folder + name, save_data2)
 else:
-	for filenumber in range(len(prop_list)):
-		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)
-		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=2)
+	# for filenumber in range(len(prop_list)):
+	# 	plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)
+	# 	plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=2)
 
+	plot_variable_degree(10, degree_list, nbel_list=nbel_list, filenumber=0, folder=folder,)

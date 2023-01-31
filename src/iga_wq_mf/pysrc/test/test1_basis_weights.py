@@ -18,7 +18,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test1/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-nbel_list = [2**i for i in np.arange(1, 6)]
+nbel_list = [2**i for i in np.arange(2, 6)]
 
 for varName in ['I00', 'I01', 'I10', 'I11']:
 	
@@ -50,6 +50,9 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# Calculate I
 			I00f = W00f @ B0f.T; I01f = W01f @ B1f.T
 			I10f = W10f @ B0f.T; I11f = W11f @ B1f.T
+
+			print(10**3*I00f.todense())
+			print(I11f.todense())
 
 			# ---------
 			# PYTHON

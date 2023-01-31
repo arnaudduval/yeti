@@ -6,6 +6,7 @@
         - Is a linear problem
 """
 from fem.__init__ import *
+from scipy import interpolate
 
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/'
@@ -94,9 +95,9 @@ density      = 1.0
 
 # Discretization
 theta = 1.0
-nbel  = 8; dh = 1/nbel
+nbel  = 10; dh = 1/nbel
 T     = 0.02
-N     = 10
+N     = 31
 time_list = np.linspace(0, T, N)
 step_min  = ((dh**2)*capacity*density)/(6*theta*conductivity); 
 print('Step time min: %.3e' %step_min)
@@ -113,19 +114,28 @@ temperature = np.zeros((nbel+1, len(time_list)))
 temperature[0, :] = 0.0
 temperature[-1,:] = 1.0
 dod = [0, -1]; dof = np.arange(1, nbel, dtype=int)
-solve_transient_heat_1D(C, K, time_list=time_list, dof=dof, dod=dod, Tinout=temperature, theta=0.5)
+solve_transient_heat_1D(C, K, time_list=time_list, dof=dof, dod=dod, Tinout=temperature, theta=1)
 
 # ------------------
 # Post-treatement
 # ------------------
 # Plot
-XX, TIME = np.meshgrid(np.linspace(0, 1, nbel+1), time_list)
+f = interpolate.interp2d(np.linspace(0, 1, nbel+1), time_list, temperature.T, kind='linear')
+xnew = np.linspace(0, 1, 101)
+ynew = np.linspace(0, T, 101)
+znew = f(xnew, ynew)
+
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
-im = ax.contourf(XX, TIME, temperature.T, 20)
-cbar = plt.colorbar(im)
+ax.grid(False)
+levels = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))
+norm = mpl.colors.BoundaryNorm(levels, len(levels))
+colors = list(plt.cm.Greys(np.linspace(0, 1, len(levels)-1)))
+colors[0] = "red"
+cmap = mpl.colors.ListedColormap(colors,"", len(colors))
+im = ax.contourf(xnew, ynew, znew, norm=norm, cmap=cmap)
+cbar = fig.colorbar(im)
 cbar.set_label('Temperature (K)')
 
-ax.grid(None)
 ax.set_ylabel('Time (s)')
 ax.set_xlabel('Position (m)')
 fig.tight_layout()

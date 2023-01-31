@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 theta, JJ    = 1.0, 1.0
-degree, nbel = 4, 10
+degree, nbel = 5, 10
 
 nb_ctrlpts = degree + nbel
 ctrlpts = np.linspace(0, 1, nb_ctrlpts)
@@ -26,7 +26,7 @@ basis_cgg 	 = eval_basis_python(degree, knotvector, qp_cgg)
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions	
-N = 3
+N = 5
 time_list = np.linspace(0, 0.02, N)
 time_step = time_list.max()/N
 print('Time step: %3e' %time_step)
@@ -57,7 +57,12 @@ print(temp_interp.min())
 # Plot
 XX, TIME = np.meshgrid(knots*JJ, time_list)
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
-im = ax.contourf(XX, TIME, temp_interp.T, 20)
+levels = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))
+norm = mpl.colors.BoundaryNorm(levels, len(levels))
+colors = list(plt.cm.Greys(np.linspace(0, 1, len(levels)-1)))
+colors[0] = "red"
+cmap = mpl.colors.ListedColormap(colors,"", len(colors))
+im = ax.contourf(XX, TIME, temp_interp.T, norm=norm, cmap=cmap)
 cbar = plt.colorbar(im)
 cbar.set_label('Temperature (K)')
 
