@@ -25,7 +25,7 @@ length 		   = 1.0
 Tspan          = 0.02
 
 # Space discretization
-p_sp, nbel    = 4, 20; nbctrlpts_sp = p_sp + nbel
+p_sp, nbel    = 1, 10; nbctrlpts_sp = p_sp + nbel
 knotvector_sp = create_knotvector(p_sp, nbel)
 qp_sp, wgt_sp = iga_find_positions_weights(p_sp, knotvector_sp)
 basis_sp      = eval_basis_python(p_sp, knotvector_sp, qp_sp)
@@ -38,7 +38,7 @@ Kcfs     = wgt_sp * Cond * 1.0/length
 Stiff_sp = basis_sp[1] @ np.diag(Kcfs) @ basis_sp[1].T 
 
 # Time discretization
-p_t, nsteps  = 1, 10; nbctrlpts_t = p_t + nsteps
+p_t, nsteps  = 1, 4; nbctrlpts_t = p_t + nsteps
 knotvector_t = create_knotvector(p_t, nsteps)
 qp_t, wgt_t  = iga_find_positions_weights(p_t, knotvector_t)
 basis_t      = eval_basis_python(p_t, knotvector_t, qp_t)
@@ -56,8 +56,6 @@ for i in range(1, nbctrlpts_sp - 1):
         all_dof.append(k)
 all_dof = set(all_dof); all_dod = all_ctrlpts.difference(all_dof)
 all_dof = list(all_dof); all_dod = list(all_dod)
-print(nbctrlpts_sp*nbctrlpts_t)
-print(max(all_dof))
 
 spe_dod = []
 for i in [nbctrlpts_sp-1]:
@@ -77,17 +75,24 @@ u_n = np.linalg.solve(Ann, bn)
 u[all_dof] = u_n
 
 # Interpolate solution
-qp_sp, qp_t = np.linspace(0, 1, 100), np.linspace(0, 1, 100)
+qp_sp, qp_t = np.linspace(0, 1, 101), np.linspace(0, 1, 101)
 basis_sp  = eval_basis_python(p_sp, knotvector_sp, qp_sp) 
 basis_t   = eval_basis_python(p_t, knotvector_t, qp_t)
 spt_basis = sp.kron(basis_t[0], basis_sp[0])
 u_interp  = spt_basis.T @ u
 UU = np.reshape(u_interp, (len(qp_sp), len(qp_t)), order='F')
+print(UU.min())
 
 # Plot
 XX, TT = np.meshgrid(qp_sp*length, qp_t*Tspan)
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
-im = ax.contourf(XX, TT, UU.T, 20)
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
+levels = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))
+norm = mpl.colors.BoundaryNorm(levels, len(levels))
+colors = list(plt.cm.Greys(np.linspace(0, 1, len(levels)-1)))
+colors[0] = "red"
+cmap = mpl.colors.ListedColormap(colors,"", len(colors))
+im = ax.contourf(XX, TT, UU.T, norm=norm, cmap=cmap)
 cbar = plt.colorbar(im)
 cbar.set_label('Temperature (K)')
 

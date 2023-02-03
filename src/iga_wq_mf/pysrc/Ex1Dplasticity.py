@@ -14,9 +14,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 length        = 1.0
-degree, nbel  = 6, 125
-
-# mechaprop     = {'young':200e3, 'sigma_Y0':500, 'H_bar':50e3, 'theta':1.0}
+degree, nbel  = 4, 51
+# mechaprop     = {'young':200e3, 'sigma_Y0':506, 'H_bar':1445, 'theta':1.0}
 # mechabehavior = MechaBehavior('linear', kwargs=mechaprop)
 
 mechaprop     = {'young':200e3, 'sigma_Y0':506, 'H_bar':1445, 'delta':65.8, 'K_inf': 272, 'theta':1.0}
@@ -47,23 +46,34 @@ nbSteps = 101
 dof         = np.arange(1, nb_ctrlpts, dtype=int)
 Fext        = np.zeros((nb_ctrlpts, nbSteps))
 Fext[:, -1] = compute_IGA_Fvol_1D(basis_cgg, weight_cgg, forceVol(qp_cgg))
-# Fext[-1,-1] += 1000
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve using IGA
-disp_iga, strain_iga, stress_iga, plastic_iga = solve_IGA_plasticity_1D(properties_iga, mechabehavior, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
+disp_iga, strain_iga, stress_iga, plastic_iga, Cep_iga = solve_IGA_plasticity_1D(properties_iga, mechabehavior, DB=basis_cgg, W=weight_cgg, Fext=Fext, dof=dof)
 strain_cp   = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, strain_iga)
 plastic_cp  = interpolate_IGA_CP_1D(basis_cgg, weight_cgg, plastic_iga)
 stress_cp 	= interpolate_IGA_CP_1D(basis_cgg, weight_cgg, stress_iga)
-plot_results(degree, knotvector, length, disp_iga, plastic_cp, 
+plot_results(degree, knotvector, length, disp_iga, plastic_cp,
                 stress_cp, folder=folder, method='IGA')
 
+# fig, [ax0, ax1] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
+# ax0.plot(qp_cgg, stress_iga[:, 51])
+# ax0.set_ylabel('Stress (MPa)')
+# ax1.plot(qp_cgg, Cep_iga[:, 51])
+# ax1.set_ylabel('Tangent modulus (MPa)')
+# for ax in [ax0, ax1]:
+#     ax.set_ylim(bottom=0.0)
+#     ax.set_xlim(left=0.0, right=1.0)
+#     ax.set_xlabel('Quadrature point position')
+# fig.tight_layout()
+# fig.savefig(folder+'data_step51')
+
 # Solve using WQ
-disp_wq, strain_wq, stress_wq, plastic_wq = solve_WQ_plasticity_1D(properties_wq, mechabehavior, DB=DB, DW=DW, Fext=Fext, dof=dof)
+disp_wq, strain_wq, stress_wq, plastic_wq, Cep_wq = solve_WQ_plasticity_1D(properties_wq, mechabehavior, DB=DB, DW=DW, Fext=Fext, dof=dof)
 strain_cp   = interpolate_WQ_CP_1D(DB, DW, strain_wq)
 plastic_cp  = interpolate_WQ_CP_1D(DB, DW, plastic_wq)
 stress_cp   = interpolate_WQ_CP_1D(DB, DW, stress_wq)
-plot_results(degree, knotvector, length, disp_wq, plastic_cp, 
+plot_results(degree, knotvector, length, disp_wq, plastic_cp,
                 stress_cp, folder=folder, method='WQ')
 
 # ------------------
@@ -83,7 +93,7 @@ relerror = np.linalg.norm(error, axis=0)/np.linalg.norm(disp_iga[:, 1:], axis=0)
 fig, ax  = plt.subplots(nrows=1, ncols=1)
 ax.semilogy(relerror*100)
 ax.set_ylim(bottom=1e-12, top=1e0)
-ax.set_ylabel('Relative error (\%)')
+ax.set_ylabel('L2 Relative error (\%)')
 ax.set_xlabel('Step')
 fig.tight_layout()
 fig.savefig(folder + 'Relative_error_distance.png')

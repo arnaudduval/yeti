@@ -7,6 +7,7 @@
 import numpy as np
 from lib.__init__ import *
 from lib.base_functions import eval_basis_python
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class MechaBehavior():
 	
@@ -63,7 +64,7 @@ class MechaBehavior():
 		self.Hderfun = lambda a: (1-theta)*H_bar
 		return
 	
-	def compute_deltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-6):
+	def compute_deltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-8):
 		dgamma = 0.0
 		a_n1   = a_n0 
 		for i in range(nbIter):
@@ -75,7 +76,7 @@ class MechaBehavior():
 			a_n1   = a_n0 + dgamma 
 		return dgamma
 	
-	def return_mapping(self, strain, pls, a, b, threshold=1e-6):
+	def return_mapping(self, strain, pls, a, b, threshold=1e-8):
 		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
@@ -164,7 +165,7 @@ def compute_WQ_tangent_matrix_1D(JJ, DB, DW, Cep):
 
 # ----
 
-def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
+def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, Fext=None, dof=None, threshold=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]
@@ -176,6 +177,7 @@ def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, F
 	strain  = np.zeros((nb_qp, np.shape(Fext)[1]))
 	plastic = np.zeros((nb_qp, np.shape(Fext)[1]))
 	stress  = np.zeros((nb_qp, np.shape(Fext)[1]))
+	moduleE = np.zeros((nb_qp, np.shape(Fext)[1]))
 
 	for i in range(1, np.shape(Fext)[1]):
 
@@ -199,7 +201,7 @@ def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, F
 			dF 	 = Fstep[dof] - Fint[dof]
 			relerror = np.sqrt(np.dot(dF, dF))
 			print('Rhapson with error %.5e' %relerror)
-			if relerror <= tol: break
+			if relerror <= threshold: break
 
 			# Compute stiffness
 			Sdof = compute_IGA_tangent_matrix_1D(JJ, DB, W, Cep)[np.ix_(dof, dof)]
@@ -210,12 +212,13 @@ def solve_IGA_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, W=None, F
 		strain[:, i] = eps
 		stress[:, i] = sigma
 		plastic[:, i] = ep_n1
+		moduleE[:, i] = Cep
 
 		ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-	return disp, strain, stress, plastic
+	return disp, strain, stress, plastic, moduleE
 
-def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, Fext=None, dof=None, tol=1e-8, nbIterNL=10):
+def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, Fext=None, dof=None, threshold=1e-8, nbIterNL=10):
 	" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 	JJ, nb_qp = properties[0], properties[-1]
@@ -227,6 +230,7 @@ def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, F
 	strain  = np.zeros((nb_qp, np.shape(Fext)[1]))
 	plastic = np.zeros((nb_qp, np.shape(Fext)[1]))
 	stress  = np.zeros((nb_qp, np.shape(Fext)[1]))
+	moduleE = np.zeros((nb_qp, np.shape(Fext)[1]))
 
 	for i in range(1, np.shape(Fext)[1]):
 
@@ -250,7 +254,7 @@ def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, F
 			dF 	 = Fstep[dof] - Fint[dof]
 			relerror = np.sqrt(np.dot(dF, dF))
 			print('Rhapson with error %.5e' %relerror)
-			if relerror <= tol: break
+			if relerror <= threshold: break
 
 			# Compute stiffness
 			Sdof = compute_WQ_tangent_matrix_1D(JJ, DB, DW, Cep)[np.ix_(dof, dof)]
@@ -261,10 +265,11 @@ def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, F
 		strain[:, i] = eps
 		stress[:, i] = sigma
 		plastic[:, i] = ep_n1
+		moduleE[:, i] = Cep
 
 		ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-	return disp, strain, stress, plastic
+	return disp, strain, stress, plastic, moduleE
 
 # ----
 
@@ -284,24 +289,30 @@ def interpolate_WQ_CP_1D(DB, DW, u_ref):
 
 # =============
 
-def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=None, method='IGA', extension='.png'):
+def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	knots  = np.linspace(0, 1, 101)
 	DB     = eval_basis_python(degree, knotvector, knots)
 	displacement   = DB[0].T @ disp_cp
-	strain_interp  = DB[0].T @ strain_cp
+	strain_interp  = DB[1].T @ disp_cp
+	plastic_interp = DB[0].T @ plastic_cp
 	stress_interp  = DB[0].T @ stress_cp
 
 	# Plot fields
 	N = np.shape(disp_cp)[1]
 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
-	for ax, variable, name in zip([ax1, ax2, ax3], [displacement, strain_interp, stress_interp], names):
-		ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+	units = ['m', '\%', 'MPa']
+	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
+		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
 		ax.set_title(name)
 		ax.set_ylabel('Step')
 		ax.set_xlabel('Position (m)')
 		ax.grid(False)
+		divider = make_axes_locatable(ax)
+		cax = divider.append_axes('right', size='5%', pad=0.05)
+		cbar = fig.colorbar(im, cax=cax)
+		cbar.ax.set_title(unit)
 
 	fig.tight_layout()
 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
@@ -312,7 +323,8 @@ def plot_results(degree, knotvector, JJ, disp_cp, strain_cp, stress_cp, folder=N
 		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
 		ax.set_ylabel('Stress (MPa)')
 		ax.set_xlabel('Strain (\%)')
-		ax.set_ylim(bottom=0.0, top=3000)
+		ax.set_ylim(bottom=0.0, top=1500)
+		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
 
 	fig.tight_layout()
 	fig.savefig(folder + 'TractionCurve' + method + extension)

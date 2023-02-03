@@ -94,14 +94,14 @@ capacity     = 1.0
 density      = 1.0
 
 # Discretization
-theta = 1.0
+theta = 0.5
 nbel  = 10; dh = 1/nbel
 T     = 0.02
-N     = 31
+N     = 9
 time_list = np.linspace(0, T, N)
-step_min  = ((dh**2)*capacity*density)/(6*theta*conductivity); 
-print('Step time min: %.3e' %step_min)
-print('Time used    : %.3e' %np.diff(time_list).min())
+# step_min  = ((dh**2)*capacity*density)/(6*theta*conductivity); 
+# print('Step time min: %.3e' %step_min)
+# print('Time used    : %.3e' %np.diff(time_list).min())
 
 # Assembly
 C = np.zeros((nbel+1, nbel+1))
