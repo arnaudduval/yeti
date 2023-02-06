@@ -265,9 +265,10 @@ subroutine gradLinElastWork_AN(     &
 
             elseif (ELT_TYPE_patch == 'U30') then
                 !! Embedded shell element
-                if (activeElement(JELEM)==1) then
-                    print*,'Elt type U30 not available yet. (gradtotalwork_fullAN)'
-                endif
+                !! Disable warning
+                ! if (activeElement(JELEM)==1) then
+                !     print*,'Elt type U30 not available yet. (gradtotalwork_fullAN)'
+                ! endif
 
                 kk = int(PROPS_patch(2))
                 n  = nb_elem_patch(kk)
