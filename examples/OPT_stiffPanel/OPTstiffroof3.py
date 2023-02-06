@@ -51,6 +51,33 @@ modeleIGA.refine(nb_ref, nb_deg)
 cp5 = manip.get_directionCP(modeleIGA, 5, 0, 0)
 cp6 = manip.get_directionCP(modeleIGA, 6, 0, 0)
 
+# Get corner point of the hull
+vertex = modeleIGA._indCPbyPatch[0][
+    manip.get_vertexCPindice(modeleIGA._Nkv, modeleIGA._Jpqr,
+                             modeleIGA._dim, 0)]
+
+# Set control points wher shape change can be applied
+cp5moveZ = np.setxor1d(vertex[:4], cp5)
+cp6moveZ = np.setxor1d(vertex[4:], cp6)
+
+# Set number of design variables controlling the plate shape
+nb_varP = cp5moveZ.size
+
+
+def altitude(coords0, igapara, var):
+    """
+    Shape modification function : move points of hull and plate patch
+    (except corners) along Z axis
+    """
+
+    igapara._COORDS[:, :] = coords0[:, :]
+
+    igapara._COORDS[2, cp5moveZ[:]-1] += var[:]*5.
+    igapara._COORDS[2, cp6moveZ[:]-1] += var[:]*5.
+
+    return None
+
+
 # Get the control points of stiffener located at v=0
 cpS = manip.get_boundCPindice_wEdges(modeleIGA._Nkv, modeleIGA._Jpqr,
                                      modeleIGA._dim, 3, num_patch=2)
@@ -61,6 +88,8 @@ def movestiffener(coords0, igapara, var):
     """
     Shape modification function : move stiffeners control points
     """
+
+    print("var in movestiffener : ", var)
 
     igapara._COORDS[:, :] = coords0[:, :]
 
@@ -79,6 +108,22 @@ def movestiffener(coords0, igapara, var):
     return None
 
 
+nb_var = nb_varP + nb_varS
+
+
+def moveall(coords0, igapara, var):
+    """
+    Shape modification function : change shape of plate, then move stiffeners
+    """
+    print("appel moveall")
+    altitude(coords0, igapara, var[:nb_varP])
+    movestiffener(igapara._COORDS, igapara, var[nb_varP:])
+    return None
+
+
+# Set initial geometry
+# altitude(modeleIGA._COORDS,modeleIGA,np.ones(nb_varP)*0.5)
+# movestiffener(modeleIGA._COORDS.copy(),modeleIGA,np.array([0.3,1.,0.3,0.3,1.,0.3]))
 movestiffener(modeleIGA._COORDS.copy(), modeleIGA,
               np.array([0., 0.7, 0., 0., 0.7, 0.]))
 
@@ -106,6 +151,11 @@ nb_ref[0, np.array([5, 7, 12, 14])-1] = 6
 nb_deg[0, np.array([8, 15])-1] = 2
 nb_deg[0, np.array([9, 16])-1] = 1
 nb_ref[0, np.array([8, 9, 15, 16])-1] = 5
+
+
+# optPB = OPTmodelling(modeleIGA, nb_varP, altitude,
+#                      nb_degreeElevationByDirection=nb_deg,
+#                      nb_refinementByDirection=nb_ref)
 
 
 optPB = OPTmodelling(modeleIGA, nb_varS, movestiffener,
@@ -145,6 +195,7 @@ def comp(xC, gradC):
     Compliance and gradient of compliance computation
     (relative to initial value)
     """
+    print("xC in comp : ", xC)
     ci = optPB.compute_compliance_discrete(xC)/c0
     if gradC.size > 0:
         global i, listpatch, compprev, iplt
@@ -167,7 +218,7 @@ def comp(xC, gradC):
                 nb_ref=np.array([5,5,1]),Flag=np.array([True, False, False])) )
 
             icps = optPB._coarseParametrization._indCPbyPatch[0]-1
-            # np.savetxt('temp/cpsStiffRoof%0.2d.txt'%iplt,
+            #np.savetxt('temp/cpsStiffRoof%0.2d.txt'%iplt,
             #           optPB._coarseParametrization._COORDS[:,icps].transpose(),delimiter=',')
             optPB._coarseParametrization.generate_vtk4controlMeshVisu('opt2coarse%0.2d'%iplt,0)
 
@@ -190,6 +241,7 @@ def vol(xV, gradV):
     Volume and gradient of volume computation
     (relative to initial value)
     """
+    print("xV in vol : ", xV)
     global listpatch
     if gradV.size > 0:
         gradV[:] = optPB.compute_gradVolume_AN(xV, listpatch)/V0
@@ -206,6 +258,9 @@ minimize.add_inequality_constraint(vol, 1e-5)
 minimize.set_ftol_rel(1.0e-06)
 minimize.set_xtol_rel(1.0e-06)
 minimize.set_maxeval(400)
+
+# minimize.set_lower_bounds(0.*np.ones(nb_varP))
+# minimize.set_upper_bounds(1.*np.ones(nb_varP))
 
 minimize.set_lower_bounds(0.*np.ones(nb_varS))
 minimize.set_upper_bounds(1.*np.ones(nb_varS))

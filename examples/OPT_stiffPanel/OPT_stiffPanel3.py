@@ -138,10 +138,13 @@ def comp(xC,gradC):
         print('\n--')
         print('Iter %3i' % i)
         gradC[:] = optPB.compute_gradCompliance_cplgOnly_AN(xC)/c0
-        #gradC[:]+= optPB.compute_gradCompliance_AN(xC)/c0
+        print(gradC)
+        print("===================")
+        gradC[:]+= optPB.compute_gradCompliance_AN(xC)/c0
+        print(gradC)
 
         SOL,u = rsol.reconstruction(
-            *optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
+            **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
             'stiff%0.2d'%i,  SOL.transpose(),
             nb_ref=np.array([3,3,0]), Flag=np.array([True,False,False])))
