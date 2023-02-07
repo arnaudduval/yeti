@@ -59,7 +59,7 @@ modeleIGA.refine(nb_refDV, nb_degDV)
 # --
 # Shape Parametrization
 
-nb_var = np.int64((modeleIGA._Nkv[2, 0] - modeleIGA._Jpqr[2, 0] - 1)*2)
+nb_var = int((modeleIGA._Nkv[2, 0] - modeleIGA._Jpqr[2, 0] - 1)*2)
 
 
 def dilatation(coords0, igapara, var):

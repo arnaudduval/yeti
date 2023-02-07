@@ -42,7 +42,7 @@ class IGAparametrization:
         :param str filename: short name (without exetension) of input files to read, defaults to ``None``
         :param list mechanicalSettings: list containing mechanical settings, defaults to ``None``
         :param list geometricSettings: list containing geometric settings, defaults to ``None``
-        
+
         Raises
         ------
         Exception
@@ -472,9 +472,9 @@ class IGAparametrization:
         """Set degrees of freedom information."""
         self._flatten_data()
         self._COUPLG_flag = False
-        self._nb_dof_tot = np.int(self._mcrd * self._nb_cp)
-        self._nb_dof_bloq = np.int(np.sum(self._bc_target_nbelem))
-        self._nb_dof_free = np.int(self._nb_dof_tot - self._nb_dof_bloq)
+        self._nb_dof_tot = int(self._mcrd * self._nb_cp)
+        self._nb_dof_bloq = int(np.sum(self._bc_target_nbelem))
+        self._nb_dof_free = int(self._nb_dof_tot - self._nb_dof_bloq)
         if self._nb_dof_free == 0:
             self._ind_dof_bloq = np.arange(1, self._nb_dof_tot+1)
             self._ind_dof_free = np.array([])
@@ -678,15 +678,15 @@ class IGAparametrization:
                   'ien': self._IEN_flat,
                   'nb_elem_patch': self._elementsByPatch,
                   'nkv': self._Nkv,
-                  'ukv': self._Ukv_flat, 
+                  'ukv': self._Ukv_flat,
                   'nijk': self._Nijk,
-                  'weight': self._weight_flat, 
+                  'weight': self._weight_flat,
                   'jpqr': self._Jpqr,
                   'elt_type': self._ELT_TYPE_flat,
                   'props': self._PROPS_flat,
-                  'jprops': self._JPROPS, 
-                  'tensor': self._TENSOR_flat, 
-                  'mcrd': self._mcrd, 
+                  'jprops': self._JPROPS,
+                  'tensor': self._TENSOR_flat,
+                  'mcrd': self._mcrd,
                   'nb_patch': self._nb_patch,
                   'nb_elem': self._nb_elem,
                   'nnode': self._nnode,

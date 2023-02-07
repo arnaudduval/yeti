@@ -3,18 +3,18 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
-from preprocessing.mechanicalmodel.read   import *  
+from preprocessing.mechanicalmodel.read   import *
 from preprocessing.mechanicalmodel.write  import *
 from preprocessing.mechanicalmodel.common import Container
 import numpy as np
@@ -26,7 +26,7 @@ class PART(object):
         self.elements   = Container()
         self.properties = Container()
         self.groups     = Container()
-        
+
 class MechanicalModel(PART):
     def __init__(self, name=None):
         PART.__init__(self, name)
@@ -36,7 +36,7 @@ class MechanicalModel(PART):
         #self.properties = Container()
         self.steps      = Container()
         self.info       = {}
-            
+
     def read(self, format, filename, config=default):
         if format == "ABAQUS":
             parser = AbaqusParser(model=self, filename=filename)
@@ -45,7 +45,7 @@ class MechanicalModel(PART):
             return
         parser.configure(**config)
         parser.parse()
-        
+
     def write(self, format, filename, config=default):
         if   format == "NASTRAN":
             writer = NastranWriter(model=self, filename=filename)
@@ -56,30 +56,30 @@ class MechanicalModel(PART):
         else:
             print('Writer %s not supported, only NASTRAN, ABAQUS and IDEAS are available' % format)
             return
-        
+
         writer.configure(**config)
         writer.write()
-    
+
     def get_nodes(self):
         nb_cp = 0
         for node in self.nodes:
             x,y,z = node.get_coordinates()
             if nb_cp==0:
-                COORDS = np.array([x,y,z]) 
+                COORDS = np.array([x,y,z])
             else:
                 COORDS = np.vstack((COORDS,np.array([x,y,z])))
             nb_cp += 1
         return COORDS.transpose(),nb_cp
-        
+
     def get_ien_patch(self,num_patch):
         for grp in self.groups:
             if 'ELTPATCH%i'%num_patch in grp.get_name().upper():
                 break
-            
+
         #print grp.get_elts_labels()
         for num_elem in np.sort(grp.get_elts_labels()):
             eleme = self.elements.get(num_elem)
-            
+
             try:
                 IEN_patch = np.vstack((IEN_patch,np.array(eleme.get_node_labels())))
             except:
@@ -96,7 +96,7 @@ class MechanicalModel(PART):
         for num_patch in range(1,nb_patch+1):
             IEN.append(self.get_ien_patch(num_patch))
         return IEN
-        
+
     def get_bc(self,num_step=2):
         nb_bc = 0
         bc_target = []
@@ -117,7 +117,7 @@ class MechanicalModel(PART):
                     else:
                         bc_values = np.vstack([[ddl+1],[disp]])
         return bc_target, bc_values, np.array(bc_target_nbelem,dtype=np.intp), nb_bc
-    
+
     def get_load(self,num_step=2):
         nb_load = 0
         inddload= []
@@ -143,12 +143,12 @@ class MechanicalModel(PART):
             additionalLoadInfos.append(load.get_additionalLoadInfos())
         return np.array(inddload),np.array(jdltype),np.array(adlmag),np.array(load_target_nbelem),\
             nb_load,additionalLoadInfos
-    
-        
+
+
     def get_parameters(self):
         idx      = []
         nnode    = []
-        tensor   = [] 
+        tensor   = []
         mcrd     = []
         elt_type = []
         nbint    = []
@@ -156,7 +156,7 @@ class MechanicalModel(PART):
             grp_name = grp.get_name()
             i = grp_name.upper().find('ELTPATCH')
             if i>=0:
-                num_patch = np.int(grp_name[i+len('ELTPATCH'):])
+                num_patch = int(grp_name[i+len('ELTPATCH'):])
                 idx.append(num_patch)
                 elt_type_patch = grp.elements.get_one().get_type()
                 for elem in grp.elements:
@@ -175,25 +175,25 @@ class MechanicalModel(PART):
         elt_type = np.array(elt_type)[idx]
         nbint    = np.array(nbint   )[idx]
         return elt_type,nbint,tensor,mcrd,nnode
-        
-    
+
+
     def get_material_properties(self):
         """
         Return material properties for each patche read from inp file
-        
+
         Parameters
         ----------
-        
-        
+
+
         Returns
         -------
         material_properties : numpy.ndarray(float)
             Bidimensional array containing material properties for each patch.
             First index is property index (size = size of the material with max value of material properties)
             Second index is patch index
-        
+
         n_mat_props : numpy.array(int)
-            Array containing the number of effective material properties for each patch       
+            Array containing the number of effective material properties for each patch
         """
         from operator import itemgetter
         MAT_all = []
@@ -235,27 +235,27 @@ class MechanicalModel(PART):
                                         c[0], c[1], c[2], rho])
                     else:
                         MAT_all.append([num_patch, E, nu, rho])
-                    
+
         # If there are several materials with different number of properties
         # dimension array as the largest number of props and save number of
         # used properties in array n_mat_props
-        
+
         # sort by patych number
         MAT_all = sorted(MAT_all, key=itemgetter(0))
         n_mat_props = np.array([len(mat)-1 for mat in MAT_all], dtype=int)
         material_properties = np.zeros((max(n_mat_props), len(MAT_all)), dtype=float)
         for ipatch in range(len(MAT_all)):
             material_properties[:n_mat_props[ipatch],ipatch] = MAT_all[ipatch][1:]
-            
-        
+
+
         # OLD VERSION FOR ONLY ELASTIC MATERIALS WITH ALL THE SAME NUMBER OF PROPS
         #MAT_all = np.array(MAT_all)
         #MAT_all = MAT_all[MAT_all[:,0].argsort()] # --sort by patch number
         #material_properties = MAT_all[:,1:].transpose()
-        
+
         return material_properties, n_mat_props
-    
-    
+
+
     def get_properties(self):
         properties  = []
         jproperties = []
@@ -270,15 +270,15 @@ class MechanicalModel(PART):
                     idx.append(num_patch)
                     jproperties.append(props.get_jprops())
                     properties.append( props.get_props())
-        
+
         jproperties = np.array(jproperties)
         properties  = np.array(properties, dtype=object)
         idx = np.array(idx).argsort()
         return list(properties[idx]),jproperties[idx]
-        
+
     def get_tables(self):
         return list(self.tables)
-    
+
     def _updateshape(self):
         if not hasattr(self,'_design_parameters'):
             return None
@@ -310,14 +310,14 @@ class MechanicalModel(PART):
         shapeparam_str = 'from math import *\nimport numpy as np\n'
         if hasattr(self,'_parameters_def'):
             shapeparam_str += self._parameters_def
-        
+
         return designvar,shapeparam_str+coords_str
-    
+
     def __str__(self):
         return '\nModel is composed of :\n - %i nodes\n - %i elements\n - %i properties\n' + \
             ' - %i materials\n - %i groups\n - %i tables\n - %i steps\n' % \
             (len(self.nodes), len(self.elements), len(self.properties),
              len(self.materials), len(self.groups), len(self.tables), len(self.steps))
-        
-    
-            
+
+
+
