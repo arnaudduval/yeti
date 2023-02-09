@@ -43,12 +43,12 @@ class MechaBehavior():
 		return
 	
 	def _init_swift(self, kwargs:dict):
+		sigma_y0 = kwargs.get('sigma_Y0', 1.0)
 		K = kwargs.get('K', 1.0)
-		eps_0 = kwargs.get('eps_0', 1.0)
 		n = kwargs.get('exp', 1.0)
-		self.Kfun = lambda a: K*(eps_0 + a)**n
+		self.Kfun = lambda a: sigma_y0 + self._young*(a/K)**n
 		self.Hfun = lambda a: 0.0
-		self.Kderfun = lambda a: K*n*(eps_0 + a)**(n-1)
+		self.Kderfun = lambda a: (self._young/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._young
 		self.Hderfun = lambda a: 0.0
 		return
 	
@@ -60,7 +60,7 @@ class MechaBehavior():
 		delta     = kwargs.get('delta', 1.0)
 		self.Kfun = lambda a: sigma_y0 + theta*H_bar*a + K_inf*(1.0 - np.exp(-delta*a))
 		self.Hfun = lambda a: (1-theta)*H_bar*a
-		self.Kderfun = lambda a: theta*H_bar + K_inf*delta*np.exp(-delta*a)
+		self.Kderfun = lambda a: theta*H_bar + K_inf*delta*np.exp(-delta*a) 
 		self.Hderfun = lambda a: (1-theta)*H_bar
 		return
 	

@@ -18,11 +18,11 @@ degree, nbel  = 4, 51
 # mechaprop     = {'young':200e3, 'sigma_Y0':506, 'H_bar':1445, 'theta':1.0}
 # mechabehavior = MechaBehavior('linear', kwargs=mechaprop)
 
-mechaprop     = {'young':200e3, 'sigma_Y0':506, 'H_bar':1445, 'delta':65.8, 'K_inf': 272, 'theta':1.0}
-mechabehavior = MechaBehavior('voce', kwargs=mechaprop)
+# mechaprop     = {'young':200e3, 'sigma_Y0':506, 'H_bar':1445, 'delta':65.8, 'K_inf': 272, 'theta':1.0}
+# mechabehavior = MechaBehavior('voce', kwargs=mechaprop)
 
-# mechaprop     = {'young':200e3, 'K':1294, 'eps_0':0.000486, 'exp':0.145}
-# mechabehavior = MechaBehavior('swift', kwargs=mechaprop)
+mechaprop     = {'young':200e3, 'sigma_Y0':506, 'K':2e4, 'exp':0.5}
+mechabehavior = MechaBehavior('swift', kwargs=mechaprop)
 
 method     = 1
 nb_ctrlpts = degree + nbel
@@ -56,17 +56,17 @@ stress_cp 	= interpolate_IGA_CP_1D(basis_cgg, weight_cgg, stress_iga)
 plot_results(degree, knotvector, length, disp_iga, plastic_cp,
                 stress_cp, folder=folder, method='IGA')
 
-# fig, [ax0, ax1] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
-# ax0.plot(qp_cgg, stress_iga[:, 51])
-# ax0.set_ylabel('Stress (MPa)')
-# ax1.plot(qp_cgg, Cep_iga[:, 51])
-# ax1.set_ylabel('Tangent modulus (MPa)')
-# for ax in [ax0, ax1]:
-#     ax.set_ylim(bottom=0.0)
-#     ax.set_xlim(left=0.0, right=1.0)
-#     ax.set_xlabel('Quadrature point position')
-# fig.tight_layout()
-# fig.savefig(folder+'data_step51')
+fig, [ax0, ax1] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
+ax0.plot(qp_cgg, stress_iga[:, 51])
+ax0.set_ylabel('Stress (MPa)')
+ax1.plot(qp_cgg, Cep_iga[:, 51])
+ax1.set_ylabel('Tangent modulus (MPa)')
+for ax in [ax0, ax1]:
+    ax.set_ylim(bottom=0.0)
+    ax.set_xlim(left=0.0, right=1.0)
+    ax.set_xlabel('Quadrature point position')
+fig.tight_layout()
+fig.savefig(folder+'data_step51')
 
 # Solve using WQ
 disp_wq, strain_wq, stress_wq, plastic_wq, Cep_wq = solve_WQ_plasticity_1D(properties_wq, mechabehavior, DB=DB, DW=DW, Fext=Fext, dof=dof)
