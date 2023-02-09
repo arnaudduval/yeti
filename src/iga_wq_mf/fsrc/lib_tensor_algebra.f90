@@ -928,11 +928,9 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
 
     ! Local data
     ! ----------
-    integer :: i, j, info, lwork, liwork, idum(1)
+    integer :: i, j
     double precision, allocatable, dimension(:) :: data_B0t, data_B1t
     double precision, allocatable, dimension(:,:) :: BB0, WW0, MM, BB1, WW1, KK
-    double precision, allocatable, dimension(:) :: work, iwork
-    double precision :: dummy(1)
     
     ! Masse matrix
     allocate(data_B0t(nnz))
@@ -988,16 +986,8 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! -----------------------------------
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
-    ! Get optimal size
-    call dsygvd(1, 'V', 'L', nr, KK, nr, MM, nr, eigenvalues, dummy, -1, idum, -1, info)
-    lwork = max(1+(6+2*nr)*nr, nint(dummy(1)))
-    liwork = max(3+5*nr, idum(1))
-    allocate (work(lwork), iwork(liwork))
-
-    ! Get eigen decomposition
-    eigenvectors = KK
-    call dsygvd(1, 'V', 'L', nr, eigenvectors, nr, MM, nr, eigenvalues, work, lwork, iwork, liwork, info)
-    deallocate(KK, MM, work, iwork)
+    call compute_eigs(nr, KK, MM, eigenvalues, eigenvectors)
+    deallocate(KK, MM)
 
 end subroutine eigen_decomposition
 
