@@ -810,15 +810,11 @@ contains
             min_knot = table_points_span(min_span, 1)
             max_knot = table_points_span(max_span, 2)
     
-            if (i.eq.1) then 
-                max_knot = max_knot - 1
-            else if (i.eq.nb_ctrlpts) then
-                min_knot = min_knot + 1
-            else
-                max_knot = max_knot - 1
-                min_knot = min_knot + 1
-            end if
-    
+            max_knot = max_knot - 1
+            min_knot = min_knot + 1
+            if (i.eq.1) min_knot = min_knot - 1
+            if (i.eq.nb_ctrlpts) max_knot = max_knot + 1
+            
             obj%B0shape(i, :) = [min_knot, max_knot]
         end do
         
@@ -828,15 +824,11 @@ contains
     
             min_knot = table_points_span(min_span, 1)
             max_knot = table_points_span(max_span, 2)
-    
-            if ((i.eq.1).or.(i.eq.2)) then 
-                max_knot = max_knot - 1
-            else if ((i.eq.nb_ctrlpts).or.(i.eq.nb_ctrlpts-1)) then
-                min_knot = min_knot + 1
-            else
-                max_knot = max_knot - 1
-                min_knot = min_knot + 1
-            end if
+
+            max_knot = max_knot - 1
+            min_knot = min_knot + 1
+            if ((i.eq.1).or.(i.eq.2)) min_knot = min_knot - 1
+            if ((i.eq.nb_ctrlpts).or.(i.eq.nb_ctrlpts-1)) max_knot = max_knot + 1
     
             obj%B1shape(i, :) = [min_knot, max_knot]
         end do
@@ -884,7 +876,7 @@ contains
         ! Integrals and weights
         double precision, allocatable, dimension(:,:) :: II
         integer, allocatable, dimension(:,:) :: IIshape
-    
+
         ! ------------
         ! Space S^p_r
         ! ------------   
@@ -899,7 +891,7 @@ contains
     
         ! Find basis at WQ quadrature points
         call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_wq, obj%qp_position, B0, B1, span_tol) 
-    
+        
         ! -----------------------
         ! For space S^{p-1}_{r-1}
         ! -----------------------
@@ -965,11 +957,11 @@ contains
         ! Compute B0_p1 * W * B1_p0'
         call gemm_AWB(1, nb_ctrlpts_p1, obj%nb_qp_cgg, B0cgg_p1, obj%nb_ctrlpts, obj%nb_qp_cgg, &
                     B1cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, obj%nb_ctrlpts, II)
-                        
+
         ! Compute W11
         call wq_solve_weights(obj%nb_ctrlpts, obj%B1shape, nb_ctrlpts_p1, obj%nb_qp_wq, B0wq_p1, II, IIshape, W11)               
         deallocate(IIshape, II)
-    
+
     end subroutine wq_basis_weights_method1
 
     subroutine wq_basis_weights_method2(obj, B0, B1, W00, W01, W10, W11)
@@ -1098,6 +1090,7 @@ contains
         nbel = obj%size_nodes - 1
         call wq_get_qp_positions(obj)
         call wq_get_B_shape(obj)
+
         allocate(obj%data_B0(obj%nnz_B), obj%data_B1(obj%nnz_B), &
                 obj%data_W00(obj%nnz_B), obj%data_W01(obj%nnz_B), &
                 obj%data_W10(obj%nnz_B), obj%data_W11(obj%nnz_B), &

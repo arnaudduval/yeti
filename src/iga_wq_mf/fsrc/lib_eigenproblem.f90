@@ -63,7 +63,7 @@ subroutine power_iteration(nr, A, nbIter, x, rho)
         x    = x1/norm
     end do
 
-    rho = dot_product(x, matmul(A, x))/dot_product(x, x)
+    rho  = dot_product(x, matmul(A, x))
     
 end subroutine power_iteration
 
@@ -117,9 +117,9 @@ subroutine rayleighquotient_max(nr, A, B, C, x, rho, nbIter, threshold)
     integer :: k, ii
     double precision, dimension(dimen, nr) :: RM1, RM2, RM3
     double precision, dimension(dimen, dimen) :: AA1, BB1, qq
-    double precision, dimension(dimen) :: ll
+    double precision, dimension(dimen) :: ll, delta
     double precision, dimension(nr) :: u, v, g, gtil, p
-    double precision :: q, norm, delta
+    double precision :: q, norm
 
     call random_number(x)
     norm = norm2(x)
@@ -148,21 +148,20 @@ subroutine rayleighquotient_max(nr, A, B, C, x, rho, nbIter, threshold)
 
         call compute_eigs(dimen, AA1, BB1, ll, qq)
         rho = maxval(ll); ii = maxloc(ll, dim=1)
-        delta = qq(2, ii)/qq(1, ii)
+        delta = qq(:, ii)
 
-        x = x + delta*p
+        x = x*delta(1) + p*delta(2)
         u = matmul(B, x)
         q = sqrt(dot_product(x, u))
         x = x/q; u = u/q
         v = matmul(A, x)
         norm = norm2(g)
-
     end do
 
 end subroutine rayleighquotient_max
 
-subroutine locally_optimal_pcg(nr, A, B, C, x, rho, nbIter, threshold)
-    !! Locally optimal preconditioned conjugate gradient algorithm for 
+subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
+    !! Locally optimal block preconditioned conjugate gradient algorithm (LOBCPG) for 
     !! computing the greatest eigenvalue of A x = lambda B x
     !! C is a preconditioner
 
@@ -170,6 +169,7 @@ subroutine locally_optimal_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     ! Input / output data
     ! ------------------- 
     integer, parameter :: dimen = 3
+    double precision, parameter :: tol_singular = 1.d-10
     integer, intent(in) :: nr, nbIter
     double precision, intent(in) :: A, B, C, threshold
     dimension :: A(nr, nr), B(nr, nr), C(nr, nr)
@@ -214,7 +214,7 @@ subroutine locally_optimal_pcg(nr, A, B, C, x, rho, nbIter, threshold)
         call rayleigh_submatrix(dimen, nr, RM1, RM2, AA1)
         call rayleigh_submatrix(dimen, nr, RM1, RM3, BB1)
 
-        if (k.eq.1) then
+        if (norm2(p).lt.tol_singular) then
             qq = 0.d0; ll = 0.d0
             call compute_eigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
         else
@@ -231,7 +231,6 @@ subroutine locally_optimal_pcg(nr, A, B, C, x, rho, nbIter, threshold)
         x = x/q; u = u/q
         v = matmul(A, x)
         norm = norm2(g)
-
     end do
 
-end subroutine locally_optimal_pcg
+end subroutine locally_optimal_block_pcg

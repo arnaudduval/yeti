@@ -467,4 +467,125 @@ contains
 
     end subroutine PBiCGSTAB
 
+    subroutine eigenstability3d(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+        data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, x, rho)
+        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: dimen = 3
+        type(cgsolver), pointer :: solv
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: U_u, U_v, U_w
+        dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w)
+
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold
+        
+        double precision, intent(out) :: x, rho
+        dimension :: x(nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: k, ii
+        double precision, dimension(dimen, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(dimen, dimen) :: AA1, BB1, qq
+        double precision, dimension(dimen) :: ll, delta
+        double precision, dimension(nr_total) :: u, v, g, gtil, p
+        double precision :: q, norm
+
+        call random_number(x)
+        norm = norm2(x)
+        x = x/norm
+
+        call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, x, u)
+        q = sqrt(dot_product(x, u))
+        x = x/q; u = u/q
+        call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, x, v)
+        rho = dot_product(x, v)
+        p = 0.d0
+        norm = 1.d0
+
+        do k = 1, nbIterPCG
+            if (norm.le.threshold) return
+    
+            g = v - rho*u
+            norm = norm2(g)
+            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, g, gtil)
+            g = gtil
+
+            RM1(1, :) = x; RM1(2, :) = -g; RM1(3, :) = p
+            RM2(1, :) = v; RM3(1, :) = u;
+            call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, RM2(2, :))
+            call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, RM2(3, :))
+                        
+            call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, RM3(2, :))
+            call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, RM3(3, :))
+
+            call rayleigh_submatrix(dimen, nr_total, RM1, RM2, AA1)
+            call rayleigh_submatrix(dimen, nr_total, RM1, RM3, BB1)
+
+            if (norm2(p).lt.1.d-8) then
+                qq = 0.d0; ll = 0.d0
+                call compute_eigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+            else
+                call compute_eigs(dimen, AA1, BB1, ll, qq)
+            end if
+    
+            rho = maxval(ll); ii = maxloc(ll, dim=1)
+            delta = qq(:, ii)
+    
+            p = -g*delta(2) + p*delta(3)
+            x = x*delta(1) + p
+            call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, x, u)
+            q = sqrt(dot_product(x, u))
+            x = x/q; u = u/q
+            call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, x, v)
+            norm = norm2(g)
+        end do
+
+    end subroutine eigenstability3d
+
 end module heat_solver
