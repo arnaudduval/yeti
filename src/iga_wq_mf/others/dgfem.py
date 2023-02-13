@@ -2,6 +2,7 @@
 This file contains Discontinue Galerkin Finite Elements Methods algorithms
 The strong form of the equation to be solved looks like:
 du/dt + a df/dx = 0
+where f depends on u which depends on x and t
 The discretization of the weak form looks like:
 duj/dt + a (f_j+1 - f_j-1)/(2*Deltaj) = 0
 for each element j of size Deltaj. Here f_k (for k = j-1 and j+1) 
@@ -123,7 +124,7 @@ def dgGetMass(degree, nodes):
 		mass[np.ix_(rang, rang)] += massel
 	return mass
 
-def genfun_FUx(xs, kwargs:dict):
+def dgGenFunFUx(xs, kwargs:dict):
 	"Defines the function F which depends on U. At the same time U depends on x"
 	
 	def fun_Ux(degree, xi, xf, x, Udof):
@@ -147,7 +148,7 @@ def genfun_FUx(xs, kwargs:dict):
 		for sp in span:
 			xi = nodes[sp]
 			xf = nodes[sp+1]
-			Uctrlpt = Uctrlpts[sp, :]
+			Uctrlpt = Uctrlpts[sp*(degree+1):(sp+1)*(degree+1)]
 			Uinterp = fun_Ux(degree, xi, xf, x, Uctrlpt)
 			sumo   += funFU(Uinterp)
 		sumo = sumo/len(span)
@@ -176,14 +177,14 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 		x = np.atleast_1d(x)
 		
 		# Compute elementary mass and force
-		force = b1.T @ (gaussWeight*genfun_FUx(x, kwargs))*2.0/deltaj
+		force = b1.T @ (gaussWeight*dgGenFunFUx(x, kwargs))*2.0/deltaj
 		force = np.atleast_2d(force)
 
 		# Add elements of the forces
 		basisLeft = dgEvalPolyBasis([-1], degree)[0]
 		basisRight = dgEvalPolyBasis([1], degree)[0]
 
-		force += genfun_FUx([xij], kwargs)*basisLeft - genfun_FUx([xfj], kwargs)*basisRight
+		force += dgGenFunFUx([xij], kwargs)*basisLeft - dgGenFunFUx([xfj], kwargs)*basisRight
 
 		return force
 
@@ -197,7 +198,89 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 		force[rang] += np.ndarray.flatten(forceel)
 	return force
 
-degree, nbel = 2, 4
+def dgGetU0(degree, nodes, funU0):
+
+	def dgGetElementU0(degree, nodes, j, funU0):
+		"Considers a uniform discretization. Maybe later it will be adapted to use knotvector"
+
+		xij, xfj = nodes[j], nodes[j+1]
+		deltaj   = xfj - xij
+		xj       = 0.5*(xfj + xij)
+
+		# Get quadrature points and weights in parametric space
+		gaussPos, gaussWeight = gaussTable(degree+1)
+		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
+
+		# Get quadrature points in physical space
+		x = []
+		for xi in gaussPos:
+			temp = 0.5*xi*deltaj + xj
+			x.append(temp)
+		x = np.array(x)
+		
+		# Compute elementary U0
+		U0  = (b0.T @ np.diag(gaussWeight)*funU0(x))*deltaj*0.5
+		return U0
+	
+	nbel  = len(nodes)-1
+	U0  = np.zeros(nbel*(degree+1))
+	for j in range(nbel):
+		U0el = dgGetElementU0(degree, nodes, j, funU0)
+		rang = range(j*(degree+1), (j+1)*(degree+1))
+		U0[rang] += U0el
+	return U0
+
+def rungekutta3(Utilde0, Tspan, kwargs:dict):
+	""" This algorithm solves a partial diferential equation given by:
+		M dU/dt = L(U), M U(0) = Utilde0 in th interval [0, Tspan].
+		It uses Runge-Kutta order 3 method
+	"""
+	nbSteps = kwargs.get('nsteps', 2)  # At least 2 steps
+	degree  = kwargs.get('degree')
+	nodes   = kwargs.get('nodes')
+	funFU   = kwargs.get('funFU')
+
+	# Get mass matrix
+	M = dgGetMass(degree, nodes)
+
+	# Get real U0
+	U  = np.zeros((nbel*(degree+1), nbSteps))
+	U[:, 0] = np.linalg.solve(M, Utilde0)
+
+	if nbSteps < 2: raise Warning('At least 2 steps')
+	dt = Tspan/(nbSteps-1)
+	for step in range(1, nbSteps):
+		U_n0 = U[:, step-1]
+		FU_n_tilde = dgGetForce(degree, nodes, U_n0, funFU)
+		FU_n = np.linalg.solve(M, FU_n_tilde)
+		w1   = U_n0 + dt*FU_n
+		Fw1_tilde  = dgGetForce(degree, nodes, w1, funFU)
+		Fw1  = np.linalg.solve(M, Fw1_tilde)
+		w2   = 0.75*U_n0 + 0.25*(w1 + dt*Fw1)
+		Fw2_tilde  = dgGetForce(degree, nodes, w2, funFU)
+		Fw2  = np.linalg.solve(M, Fw2_tilde)
+		U_n1 = 1.0/3.0*U_n0 + 2.0/3.0*(w2 + dt*Fw2)
+		U[:, step] = U_n1
+
+	return U
+
+def interpolate(degree, nodes, Uctrlpts):
+
+	return
+
+# Problem data 
 length = 1.0
+alpha  = 2.0
+
+# Galerkin discretisation
+nbSteps = 10 
+Tspan   = 0.2
+degree, nbel = 2, 4
 nodes  = np.linspace(0, length, nbel+1)
-span = find_span(nodes, 1.0)
+
+# Define function of F(U) and U(x)
+funFU  = lambda u: alpha*u
+funU0  = lambda x: x*(x-1)
+Utilde0  = dgGetU0(degree, nodes, funU0)
+kwargs   = {'nsteps': nbSteps, 'degree': degree, 'nodes': nodes, 'funFU': funFU}
+Uctrlpts = rungekutta3(Utilde0, Tspan, kwargs) 

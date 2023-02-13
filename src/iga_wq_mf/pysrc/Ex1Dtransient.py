@@ -26,7 +26,7 @@ basis_cgg 	 = eval_basis_python(degree, knotvector, qp_cgg, multiplicity=multipl
 properties   = [JJ, setKprop, setCprop, theta]
 
 # Define boundaries conditions	
-N = 10
+N = 1000
 time_list = np.linspace(0, 0.02, N)
 time_step = time_list.max()/N
 print('Time step: %3e' %time_step)
