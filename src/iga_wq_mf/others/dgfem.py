@@ -40,7 +40,19 @@ def gaussTable(order):
 		wgt = [ 0.3478548451374539,
 				0.6521451548625461,
 				0.6521451548625461,
-				0.3478548451374539]
+				0.3478548451374539]	
+	elif order == 5:
+		pos = [ -0.9061798459386640,
+				-0.5384693101056831,
+				0.0,
+				0.5384693101056831,
+				0.9061798459386640]
+
+		wgt = [ 0.2369268850561891,
+				0.4786286704993665,
+				0.5688888888888889,
+				0.4786286704993665,
+				0.2369268850561891]
 	else: raise Warning('Not degree found')
 
 	# Change type of arrays
@@ -74,6 +86,38 @@ def find_span(array, x, threshold=1e-8):
 		span = span -1
 
 	return np.atleast_1d(span)
+
+def funUx(degree, xi, xf, x, Udof):
+		# Interpolate x in parametric space
+		xj = 0.5*(xi + xf)
+		delta = xf - xi
+		xi = 2.0*(x - xj)/delta
+		b0 = dgEvalPolyBasis([xi], degree)[0]
+		Ufun = np.dot(Udof, np.ravel(b0))
+		return Ufun
+
+def genFunFUx(xs, kwargs:dict):
+	"Defines the function F which depends on U. At the same time U depends on x"
+		
+	degree   = kwargs.get('degree')
+	nodes    = kwargs.get('nodes')
+	Uctrlpts = kwargs.get('Uctrlpts')
+	funFU    = kwargs.get('funFU')
+
+	FUx = []
+	for x in xs:
+		spans = find_span(nodes, x)
+		sumo = 0.0
+		for j in spans:
+			xi = nodes[j]
+			xf = nodes[j+1]
+			Uctrlpt = Uctrlpts[j*(degree+1):(j+1)*(degree+1)]
+			Uinterp = funUx(degree, xi, xf, x, Uctrlpt)
+			sumo   += funFU(Uinterp)
+		sumo = sumo/len(spans)
+		FUx.append(sumo)
+
+	return np.atleast_1d(FUx)
 
 def dgEvalPolyBasis(xis, degree):
 	""" Returns the values of the basis functions evaluated at xi.
@@ -124,38 +168,6 @@ def dgGetMass(degree, nodes):
 		mass[np.ix_(rang, rang)] += massel
 	return mass
 
-def dgGenFunFUx(xs, kwargs:dict):
-	"Defines the function F which depends on U. At the same time U depends on x"
-	
-	def fun_Ux(degree, xi, xf, x, Udof):
-		# Interpolate x in parametric space
-		xj = 0.5*(xi + xf)
-		delta = xf - xi
-		xi = 2.0*(x - xj)/delta
-		b0 = dgEvalPolyBasis([xi], degree)[0]
-		Ufun = Udof @ b0
-		return Ufun
-	
-	degree   = kwargs.get('degree')
-	nodes    = kwargs.get('nodes')
-	Uctrlpts = kwargs.get('Uctrlpts')
-	funFU    = kwargs.get('funFU')
-
-	FUx = []
-	for x in xs:
-		span = find_span(nodes, x)
-		sumo = 0.0
-		for sp in span:
-			xi = nodes[sp]
-			xf = nodes[sp+1]
-			Uctrlpt = Uctrlpts[sp*(degree+1):(sp+1)*(degree+1)]
-			Uinterp = fun_Ux(degree, xi, xf, x, Uctrlpt)
-			sumo   += funFU(Uinterp)
-		sumo = sumo/len(span)
-		FUx.append(sumo)
-
-	return np.atleast_1d(FUx)
-
 def dgGetForce(degree, nodes, Uctrlpts, funFU):
 
 	def dgGetElementForce(degree, nodes, j, kwargs):
@@ -176,15 +188,18 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 			x.append(temp)
 		x = np.atleast_1d(x)
 		
-		# Compute elementary mass and force
-		force = b1.T @ (gaussWeight*dgGenFunFUx(x, kwargs))*2.0/deltaj
-		force = np.atleast_2d(force)
+		# Compute elementary force
+		funFUx = genFunFUx(x, kwargs)
+		coefs  = gaussWeight*funFUx*2.0/deltaj
+		force = b1.T @ coefs
 
 		# Add elements of the forces
-		basisLeft = dgEvalPolyBasis([-1], degree)[0]
-		basisRight = dgEvalPolyBasis([1], degree)[0]
+		basisLeft  = np.ravel(dgEvalPolyBasis([-1], degree)[0])
+		basisRight = np.ravel(dgEvalPolyBasis([1],  degree)[0])
 
-		force += dgGenFunFUx([xij], kwargs)*basisLeft - dgGenFunFUx([xfj], kwargs)*basisRight
+		FUxij = np.ravel(genFunFUx([xij], kwargs))
+		FUxfj = np.ravel(genFunFUx([xfj], kwargs))
+		force += FUxij*basisLeft - FUxfj*basisRight
 
 		return force
 
@@ -219,11 +234,13 @@ def dgGetU0(degree, nodes, funU0):
 		x = np.array(x)
 		
 		# Compute elementary U0
-		U0  = (b0.T @ np.diag(gaussWeight)*funU0(x))*deltaj*0.5
+		funU0x = funU0(x)
+		coefs  = gaussWeight*funU0x*deltaj*0.5
+		U0  = b0.T @ coefs
 		return U0
 	
-	nbel  = len(nodes)-1
-	U0  = np.zeros(nbel*(degree+1))
+	nbel = len(nodes)-1
+	U0   = np.zeros(nbel*(degree+1))
 	for j in range(nbel):
 		U0el = dgGetElementU0(degree, nodes, j, funU0)
 		rang = range(j*(degree+1), (j+1)*(degree+1))
@@ -264,9 +281,18 @@ def rungekutta3(Utilde0, Tspan, kwargs:dict):
 
 	return U
 
-def interpolate(degree, nodes, Uctrlpts):
+def dgInterpolate(degree, nodes, Uctrlpts, nbPts=101):
+	nbel = len(nodes) - 1
+	xinterp = np.array([])
+	for j in range(nbel):
+		xi = nodes[j]
+		xf = nodes[j+1]
+		x = np.linspace(xi, xf, nbPts)
+		xinterp = np.append(xinterp, x[1:-1])	
+		Uctrlpt = Uctrlpts[j*(degree+1):(j+1)*(degree+1)]
+		Uinterp = funUx(degree, xi, xf, x, Uctrlpt)
 
-	return
+	return xinterp, Uinterp
 
 # Problem data 
 length = 1.0
@@ -275,7 +301,7 @@ alpha  = 2.0
 # Galerkin discretisation
 nbSteps = 10 
 Tspan   = 0.2
-degree, nbel = 2, 4
+degree, nbel = 3, 4
 nodes  = np.linspace(0, length, nbel+1)
 
 # Define function of F(U) and U(x)
