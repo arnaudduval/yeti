@@ -10,8 +10,7 @@ The Laplace problem is:
 from lib.__init__ import *
 from lib.base_functions import (create_knotvector,
 								iga_find_basis_weights_fortran,
-								eigen_decomposition,
-								erase_rows_csr
+								erase_rows_csr,
 )
 from scipy import interpolate
 
@@ -40,7 +39,7 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	"""
 
 	if cuts is not None: nbel = int(2**cuts)
-	knotvector = create_knotvector(degree, nbel)
+	knotvector = create_knotvector(degree, nbel, multiplicity=degree)
 
 	# Get basis and weights in IgA 
 	qp, qp_weight, basis_in, indi_in, indj_in = iga_find_basis_weights_fortran(degree, knotvector)[1:]
@@ -58,14 +57,16 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	dof = np.arange(1, len(indi_in)-2)
 	B0, B1 = build_sparse_matrix(basis_in, indi_in, indj_in)
 	Mass  = B0 @ np.diag(qp_weight) @ B0.transpose()
-	Mass  = Mass[dof, :][:, :]
 	Stiff = -prop * B1 @ np.diag(qp_weight) @ B1.transpose()
-	Stiff = Stiff[dof, :][:, :]
-	# newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
-	# nb_ctrlpts_2 = int((degree + nbel)/2.)
-	# t_osc = newmark_matrix[nb_ctrlpts_2, :].max()
 
-	newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
+	# for i in range(np.shape(Mass)[0]):
+	# 	for j in range(i, np.shape(Mass)[1]):
+	# 		if np.abs(Stiff[i, j]) < 1.e-12:
+	# 			print(i, j, Mass[i, j], Stiff[i, j])
+
+	Mass  = Mass[dof, :][:, :]; Stiff = Stiff[dof, :][:, :]
+	# newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
+	newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=np.abs(Stiff)>1.e-12)
 	t_osc = newmark_matrix.max()
 
 	return t_stab, t_osc
@@ -94,7 +95,7 @@ def plot_analysis(degree_list, cuts_list=None, nbel_list=None, filenumber=0, fol
 
 def plot_variable_degree(nbel, degree_list, cuts_list=None, nbel_list=None, filenumber=0, folder=None, extension='.png'):
 	
-	fig, ax   = plt.subplots(nrows=1, ncols=1)
+	fig, ax = plt.subplots(nrows=1, ncols=1)
 
 	if cuts_list is not None: nbel_list = [2**i for i in cuts_list]
 	name = 'time_osc_' + str(filenumber);  title = 'Minimum time step'
@@ -114,7 +115,7 @@ def plot_variable_degree(nbel, degree_list, cuts_list=None, nbel_list=None, file
 	return
 
 data_exist  = True
-degree_list = range(1, 9)
+degree_list = range(1, 8)
 nbel_list = [i for i in range(4, 8)]
 nbel_list.extend([i for i in range(8, 32, 2)])
 nbel_list.extend([i for i in range(32, 128, 16)])
@@ -137,8 +138,8 @@ if not data_exist:
 		name = 'time_osc_'  + str(k) + '.dat'
 		np.savetxt(folder + name, save_data2)
 else:
-	# for filenumber in range(len(prop_list)):
-	# 	plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)
-	# 	plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=2)
+	for filenumber in range(len(prop_list)):
+		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)
+		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=2)
 
 	plot_variable_degree(10, degree_list, nbel_list=nbel_list, filenumber=0, folder=folder,)

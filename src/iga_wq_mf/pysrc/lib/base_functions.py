@@ -113,7 +113,6 @@ def eval_basis_python(degree, knotvector, knots, multiplicity=1):
 	B1 = sp.lil_matrix((nb_ctrlpts, nbknots))
 
 	for i, knot in enumerate(knots):
-	
 		knot_span = helpers.find_span_linear(degree, knotvector, nb_ctrlpts, knot)
 		element = np.where(table_functions_element[:, 0] == knot_span)[0].tolist()
 		functions_element = table_functions_element[element, 1:][0]
@@ -440,7 +439,7 @@ def wq_get_shape_B(degree, nbel, r, multiplicity=1, maxrule=1):
 	tableOfFunctionsOnElement[0, :] = np.arange(degree + 1) 
 
 	for _ in range(1, nbel): 
-		tableOfFunctionsOnElement[_, 0] = tableOfFunctionsOnElement[_-1, 0] + multiplicity
+		tableOfFunctionsOnElement[_, 0]  = tableOfFunctionsOnElement[_-1, 0] + multiplicity
 		tableOfFunctionsOnElement[_, 1:] = tableOfFunctionsOnElement[_, 0] + np.arange(1, degree + 1) 
 
 	# Set table of knot-span for every function
@@ -457,8 +456,7 @@ def wq_get_shape_B(degree, nbel, r, multiplicity=1, maxrule=1):
 		spanOfFunction = tableOfSpansForFunction[i]
 		spanLeft = np.min(spanOfFunction)
 		spanRight = np.max(spanOfFunction)
-
-		support = np.arange(tableOfPointsOnSpan[spanLeft,0], \
+		support = np.arange(tableOfPointsOnSpan[spanLeft,0],
 							tableOfPointsOnSpan[spanRight,1] + 1, dtype=int)
 		
 		support_B0 = support

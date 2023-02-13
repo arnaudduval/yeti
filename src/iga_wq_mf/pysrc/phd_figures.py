@@ -99,8 +99,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 2
-extension = '.png'
+CASE      = 1
+extension = '.pdf'
 
 if CASE == 0: # B-spline curve
 
@@ -139,15 +139,15 @@ elif CASE == 1: # Univariate functions
 	filename = folder + 'UnivariateFunctions' + extension
 
 	# B-spline properties 
-	degree, nbel = 2, 4
-	knotvector   = create_knotvector(degree, nbel)
-	knots        = np.linspace(0, 1, 201)
-	qp_position  = wq_find_positions(degree, knotvector, 2)
-	B0, B1       = eval_basis_python(degree, knotvector, knots)
+	degree, nbel = 8, 2
+	multiplicity = degree
+	knotvector   = create_knotvector(degree, nbel, multiplicity=multiplicity)
+	knots        = np.linspace(0, 1, 257)
+	B0, B1       = eval_basis_python(degree, knotvector, knots, multiplicity=multiplicity)
 	B0 = B0.toarray(); B1 = B1.toarray()
 
 	fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10,4))
-	for i in range(degree+nbel): 
+	for i in range(np.shape(B0)[0]): 
 		ax1.plot(knots, B0[i, :], linewidth=2)
 		ax2.plot(knots, B1[i, :], linewidth=2)
 
@@ -158,6 +158,29 @@ elif CASE == 1: # Univariate functions
 	ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
 	fig.tight_layout()
 	fig.savefig(filename)
+
+	# from scipy.interpolate import InterpolatedUnivariateSpline
+	# B0a2B0a4 = B0[2, :] * B0[4, :]
+	# B1a2B1a4 = B1[2, :] * B1[4, :]
+	# f = InterpolatedUnivariateSpline(knots, B0a2B0a4, k=1)
+	# g = InterpolatedUnivariateSpline(knots, B1a2B1a4, k=1)
+	# intf = f.integral(0.0, 1.0)
+	# intg = g.integral(0.0, 1.0)
+	# print(intf, intg)
+
+	# fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10,4))
+	# ax[0].plot(knots, B0[2, :], label='B02')
+	# ax[0].plot(knots, B0[4, :], label='B04')
+	# ax[0].plot(knots, B0a2B0a4, label='PROD')
+	# ax[0].legend()
+
+	# ax[1].plot(knots, B1[2, :], label='B12')
+	# ax[1].plot(knots, B1[4, :], label='B14')
+	# ax[1].plot(knots, B1a2B1a4, label='PROD')
+	# ax[1].legend()
+	
+	# fig.tight_layout()
+	# fig.savefig('Multiply_functions')
 
 elif CASE == 2: # Bivariate functions
 

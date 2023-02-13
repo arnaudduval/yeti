@@ -273,7 +273,6 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
         call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
         call find_parametric_span(size_kv, nodes, knots(i), span(2), span_tol)
         functions_span = table_functions_span(span(2), :)
-
         call dersbasisfuns(span(1), degree, nb_ctrlpts, knots(i), knotvector, B0t, B1t)
         
         ! Save in COO format
@@ -891,7 +890,7 @@ contains
     
         ! Find basis at WQ quadrature points
         call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_wq, obj%qp_position, B0, B1, span_tol) 
-        
+
         ! -----------------------
         ! For space S^{p-1}_{r-1}
         ! -----------------------

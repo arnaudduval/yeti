@@ -38,7 +38,7 @@ Kcfs     = wgt_sp * Cond * 1.0/length
 Stiff_sp = basis_sp[1] @ np.diag(Kcfs) @ basis_sp[1].T 
 
 # Time discretization
-p_t, nsteps  = 1, 4; nbctrlpts_t = p_t + nsteps
+p_t, nsteps  = 1, 9; nbctrlpts_t = p_t + nsteps
 knotvector_t = create_knotvector(p_t, nsteps)
 qp_t, wgt_t  = iga_find_positions_weights(p_t, knotvector_t)
 basis_t      = eval_basis_python(p_t, knotvector_t, qp_t)
@@ -84,15 +84,14 @@ UU = np.reshape(u_interp, (len(qp_sp), len(qp_t)), order='F')
 print(UU.min())
 
 # Plot
-XX, TT = np.meshgrid(qp_sp*length, qp_t*Tspan)
+XX, TT  = np.meshgrid(qp_sp*length, qp_t*Tspan)
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))
-levels = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))
-norm = mpl.colors.BoundaryNorm(levels, len(levels))
-colors = list(plt.cm.Greys(np.linspace(0, 1, len(levels)-1)))
-colors[0] = "red"
+levels  = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))
+norm    = mpl.colors.BoundaryNorm(levels, len(levels))
+colors  = list(plt.cm.Greys(np.linspace(0, 1, len(levels)-1))); colors[0] = "red"
 cmap = mpl.colors.ListedColormap(colors,"", len(colors))
-im = ax.contourf(XX, TT, UU.T, norm=norm, cmap=cmap)
+im   = ax.contourf(XX, TT, UU.T, norm=norm, cmap=cmap)
 cbar = plt.colorbar(im)
 cbar.set_label('Temperature (K)')
 
