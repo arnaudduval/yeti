@@ -5,7 +5,7 @@
         - There is no heat source, f = 0
         - Is a linear problem
 """
-from fem.__init__ import *
+from others.__init__ import *
 from scipy import interpolate
 
 full_path = os.path.realpath(__file__)
