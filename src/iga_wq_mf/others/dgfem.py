@@ -11,6 +11,9 @@ represents the flux at one of the boundaries (left if j-1 and right if j+1)
 
 from others.__init__ import *
 
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/'
+
 def gaussTable(order):
 	" Computes Gauss weights and positions in isoparametric space for a given degree "
 
@@ -87,13 +90,13 @@ def find_span(array, x, threshold=1e-8):
 
 	return np.atleast_1d(span)
 
-def funUx(degree, xi, xf, x, Udof):
+def funUx(degree, xi, xf, x, Uctrlpt):
 		# Interpolate x in parametric space
 		xj = 0.5*(xi + xf)
 		delta = xf - xi
 		xi = 2.0*(x - xj)/delta
 		b0 = dgEvalPolyBasis([xi], degree)[0]
-		Ufun = np.dot(Udof, np.ravel(b0))
+		Ufun = np.dot(Uctrlpt, np.ravel(b0))
 		return Ufun
 
 def genFunFUx(xs, kwargs:dict):
@@ -107,7 +110,7 @@ def genFunFUx(xs, kwargs:dict):
 	FUx = []
 	for x in xs:
 		spans = find_span(nodes, x)
-		sumo = 0.0
+		sumo  = 0.0
 		for j in spans:
 			xi = nodes[j]
 			xf = nodes[j+1]
@@ -126,14 +129,15 @@ def dgEvalPolyBasis(xis, degree):
 	
 	b0, b1 = [], []
 	for xi in xis:
-		temp = [1.0, 0.5*xi]
-		temp.extend([(xi/2.0)**n for n in range(2, degree+1)])
-		b0.append(temp)
-		temp = [0.0, 0.5]
-		temp.extend([0.5*n*(0.5*xi)**(n-1) for n in range(2, degree+1)])
-		b1.append(temp)
+		temp1 = [1.0, 0.5*xi]
+		temp1.extend([(0.5*xi)**n for n in range(2, degree+1)])
+		b0.append(temp1)
+		temp2 = [0.0, 0.5]
+		temp2.extend([0.5*n*(0.5*xi)**(n-1) for n in range(2, degree+1)])
+		b1.append(temp2)
 	
-	return [np.array(b0), np.array(b1)]
+	b0, b1 = np.array(b0, dtype=float), np.array(b1, dtype=float)
+	return [b0, b1]
 
 def dgGetMass(degree, nodes):
 
@@ -145,15 +149,12 @@ def dgGetMass(degree, nodes):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+1)
-		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
+		gaussPos, gaussWeight = gaussTable(degree+2)
+		b0 = dgEvalPolyBasis(gaussPos, degree)[0]
 
 		# Get quadrature points in physical space
-		x = []
-		for xi in gaussPos:
-			temp = 0.5*xi*deltaj + xj
-			x.append(temp)
-		x = np.array(x)
+		x = [0.5*xi*deltaj + xj for xi in gaussPos]
+		x = np.array(x, dtype=float)
 		
 		# Compute elementary mass
 		mass  = (b0.T @ np.diag(gaussWeight) @ b0)*deltaj*0.5
@@ -178,19 +179,16 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+1)
+		gaussPos, gaussWeight = gaussTable(degree+2)
 		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
 
 		# Get quadrature points in physical space
-		x = []
-		for xi in gaussPos:
-			temp = 0.5*xi*deltaj + xj
-			x.append(temp)
-		x = np.atleast_1d(x)
+		x = [0.5*xi*deltaj + xj for xi in gaussPos]
+		x = np.array(x, dtype=float)
 		
 		# Compute elementary force
 		funFUx = genFunFUx(x, kwargs)
-		coefs  = gaussWeight*funFUx*2.0/deltaj
+		coefs  = gaussWeight*funFUx
 		force = b1.T @ coefs
 
 		# Add elements of the forces
@@ -223,15 +221,12 @@ def dgGetU0(degree, nodes, funU0):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+1)
+		gaussPos, gaussWeight = gaussTable(degree+2)
 		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
 
 		# Get quadrature points in physical space
-		x = []
-		for xi in gaussPos:
-			temp = 0.5*xi*deltaj + xj
-			x.append(temp)
-		x = np.array(x)
+		x = [0.5*xi*deltaj + xj for xi in gaussPos]
+		x = np.array(x, dtype=float)
 		
 		# Compute elementary U0
 		funU0x = funU0(x)
@@ -284,13 +279,15 @@ def rungekutta3(Utilde0, Tspan, kwargs:dict):
 def dgInterpolate(degree, nodes, Uctrlpts, nbPts=101):
 	nbel = len(nodes) - 1
 	xinterp = np.array([])
+	Uinterp = np.array([])
 	for j in range(nbel):
 		xi = nodes[j]
 		xf = nodes[j+1]
-		x = np.linspace(xi, xf, nbPts)
-		xinterp = np.append(xinterp, x[1:-1])	
+		x = np.linspace(xi, xf, nbPts)[1:-1]
+		xinterp = np.append(xinterp, x)	
 		Uctrlpt = Uctrlpts[j*(degree+1):(j+1)*(degree+1)]
-		Uinterp = funUx(degree, xi, xf, x, Uctrlpt)
+		Uin     = funUx(degree, xi, xf, x, Uctrlpt)
+		Uinterp = np.append(Uinterp, Uin)
 
 	return xinterp, Uinterp
 
@@ -299,9 +296,9 @@ length = 1.0
 alpha  = 2.0
 
 # Galerkin discretisation
-nbSteps = 10 
+nbSteps = 100 
 Tspan   = 0.2
-degree, nbel = 3, 4
+degree, nbel = 3, 10
 nodes  = np.linspace(0, length, nbel+1)
 
 # Define function of F(U) and U(x)
@@ -310,3 +307,13 @@ funU0  = lambda x: x*(x-1)
 Utilde0  = dgGetU0(degree, nodes, funU0)
 kwargs   = {'nsteps': nbSteps, 'degree': degree, 'nodes': nodes, 'funFU': funFU}
 Uctrlpts = rungekutta3(Utilde0, Tspan, kwargs) 
+# xinterp, Uinterp = dgInterpolate(degree, nodes, Uctrlpts[:, 1])
+
+# # Plot
+# fig, ax  = plt.subplots(nrows=1, ncols=1)
+# ax.plot(xinterp, Uinterp)
+# ax.set_ylabel('Position (m)')
+# ax.set_xlabel('Solution field')
+# fig.tight_layout()
+# fig.savefig(folder + 'DiscreteGalerkin.png')
+# # 

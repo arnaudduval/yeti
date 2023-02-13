@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 theta, JJ    = 1, 1.0
-degree, nbel = 8, 10
+degree, nbel = 10, 10
 multiplicity = degree
 
 knotvector = create_knotvector(degree, nbel, multiplicity=multiplicity)
