@@ -10,7 +10,6 @@ represents the flux at one of the boundaries (left if j-1 and right if j+1)
 
 from others.__init__ import *
 
-
 def gaussTable(order):
 	" Computes Gauss weights and positions in isoparametric space for a given degree "
 
@@ -124,6 +123,38 @@ def dgGetMass(degree, nodes):
 		mass[np.ix_(rang, rang)] += massel
 	return mass
 
+def genfun_FUx(xs, kwargs:dict):
+	"Defines the function F which depends on U. At the same time U depends on x"
+	
+	def fun_Ux(degree, xi, xf, x, Udof):
+		# Interpolate x in parametric space
+		xj = 0.5*(xi + xf)
+		delta = xf - xi
+		xi = 2.0*(x - xj)/delta
+		b0 = dgEvalPolyBasis([xi], degree)[0]
+		Ufun = Udof @ b0
+		return Ufun
+	
+	degree   = kwargs.get('degree')
+	nodes    = kwargs.get('nodes')
+	Uctrlpts = kwargs.get('Uctrlpts')
+	funFU    = kwargs.get('funFU')
+
+	FUx = []
+	for x in xs:
+		span = find_span(nodes, x)
+		sumo = 0.0
+		for sp in span:
+			xi = nodes[sp]
+			xf = nodes[sp+1]
+			Uctrlpt = Uctrlpts[sp, :]
+			Uinterp = fun_Ux(degree, xi, xf, x, Uctrlpt)
+			sumo   += funFU(Uinterp)
+		sumo = sumo/len(span)
+		FUx.append(sumo)
+
+	return np.atleast_1d(FUx)
+
 def dgGetForce(degree, nodes, Uctrlpts, funFU):
 
 	def dgGetElementForce(degree, nodes, j, kwargs):
@@ -165,38 +196,6 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 		rang = range(j*(degree+1), (j+1)*(degree+1))
 		force[rang] += np.ndarray.flatten(forceel)
 	return force
-
-def genfun_FUx(xs, kwargs:dict):
-	"Defines the function F which depends on U. At the same time U depends on x"
-	
-	def fun_Ux(degree, xi, xf, x, Udof):
-		# Interpolate x in parametric space
-		xj = 0.5*(xi + xf)
-		delta = xf - xi
-		xi = 2.0*(x - xj)/delta
-		b0 = dgEvalPolyBasis([xi], degree)[0]
-		Ufun = Udof @ b0
-		return Ufun
-	
-	degree   = kwargs.get('degree')
-	nodes    = kwargs.get('nodes')
-	Uctrlpts = kwargs.get('Uctrlpts')
-	funFU    = kwargs.get('funFU')
-
-	FUx = []
-	for x in xs:
-		span = find_span(nodes, x)
-		sumo = 0.0
-		for sp in span:
-			xi = nodes[sp]
-			xf = nodes[sp+1]
-			Uctrlpt = Uctrlpts[sp, :]
-			Uinterp = fun_Ux(degree, xi, xf, x, Uctrlpt)
-			sumo   += funFU(Uinterp)
-		sumo = sumo/len(span)
-		FUx.append(sumo)
-
-	return np.atleast_1d(FUx)
 
 degree, nbel = 2, 4
 length = 1.0
