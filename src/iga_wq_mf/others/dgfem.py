@@ -277,17 +277,27 @@ def rungekutta3(Utilde0, Tspan, kwargs:dict):
 	return U
 
 def dgInterpolate(degree, nodes, Uctrlpts, nbPts=101):
+	Uctrlpts_copy = np.atleast_2d(Uctrlpts)
 	nbel = len(nodes) - 1
 	xinterp = np.array([])
-	Uinterp = np.array([])
 	for j in range(nbel):
 		xi = nodes[j]
 		xf = nodes[j+1]
 		xs = np.linspace(xi, xf, nbPts)[1:-1]
-		xinterp = np.append(xinterp, xs)	
-		Uctrlpt = Uctrlpts[j*(degree+1):(j+1)*(degree+1)]
-		Uin     = [funUx(degree, xi, xf, x, Uctrlpt) for x in xs]
-		Uinterp = np.append(Uinterp, Uin)
+		xinterp = np.append(xinterp, xs)
+
+	Uinterp = np.zeros((len(xinterp), np.shape(Uctrlpts)[1]))
+	for i in range(np.shape(Uctrlpts)[1]):
+		Uinterpi = np.array([])
+		for j in range(nbel):	
+			xi = nodes[j]
+			xf = nodes[j+1]
+			xs = np.linspace(xi, xf, nbPts)[1:-1]
+			
+			Uctrlpt = Uctrlpts[j*(degree+1):(j+1)*(degree+1), i]
+			Uin     = [funUx(degree, xi, xf, x, Uctrlpt) for x in xs]
+			Uinterpi = np.append(Uinterpi, Uin)
+		Uinterp[:, i] = Uinterpi
 
 	return xinterp, Uinterp
 
@@ -296,7 +306,7 @@ length = 1.0
 alpha  = 2.0
 
 # Galerkin discretisation
-nbSteps = 100 
+nbSteps = 101 
 Tspan   = 0.2
 degree, nbel = 2, 10
 nodes  = np.linspace(0, length, nbel+1)
@@ -307,13 +317,17 @@ funU0  = lambda x: -x*(x-1)
 Utilde0  = dgGetU0(degree, nodes, funU0)
 kwargs   = {'nsteps': nbSteps, 'degree': degree, 'nodes': nodes, 'funFU': funFU}
 Uctrlpts = rungekutta3(Utilde0, Tspan, kwargs) 
-xinterp, Uinterp = dgInterpolate(degree, nodes, Uctrlpts[:, 10])
+tinterp  = np.linspace(0, Tspan, nbSteps)
+xinterp, Uinterp = dgInterpolate(degree, nodes, Uctrlpts)
 
 # Plot
 fig, ax  = plt.subplots(nrows=1, ncols=1)
-ax.plot(xinterp, Uinterp)
+ax.grid(False)
+im   = ax.contourf(xinterp, tinterp, Uinterp.T)
+cbar = fig.colorbar(im)
 ax.set_xlabel('Position (m)')
-ax.set_ylabel('Solution field')
+ax.set_ylabel('Time (s)')
+cbar.set_label('Solution field')
 fig.tight_layout()
 fig.savefig(folder + 'DiscreteGalerkin.png')
 # 
