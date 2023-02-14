@@ -1,5 +1,5 @@
 ! ==========================
-! module :: assembly for IGA-Galerkin 
+! module :: Assembly for IGA-Galerkin
 ! author :: Joaquin Cornejo
 ! 
 ! This module computes matrices and vectors using sum-factorization algorithms. 
