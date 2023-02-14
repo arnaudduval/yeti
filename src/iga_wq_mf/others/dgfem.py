@@ -303,17 +303,17 @@ def dgInterpolate(degree, nodes, Uctrlpts, nbPts=101):
 
 # Problem data 
 length = 1.0
-alpha  = 2.0
+alpha  = 1.0
 
 # Galerkin discretisation
 nbSteps = 101 
-Tspan   = 0.2
-degree, nbel = 2, 10
+Tspan   = 0.4
+degree, nbel = 3, 20
 nodes  = np.linspace(0, length, nbel+1)
 
 # Define function of F(U) and U(x)
 funFU  = lambda u: alpha*u
-funU0  = lambda x: -x*(x-1)
+funU0  = lambda x: -np.sin(np.pi*x)
 Utilde0  = dgGetU0(degree, nodes, funU0)
 kwargs   = {'nsteps': nbSteps, 'degree': degree, 'nodes': nodes, 'funFU': funFU}
 Uctrlpts = rungekutta3(Utilde0, Tspan, kwargs) 
@@ -330,4 +330,3 @@ ax.set_ylabel('Time (s)')
 cbar.set_label('Solution field')
 fig.tight_layout()
 fig.savefig(folder + 'DiscreteGalerkin.png')
-# 
