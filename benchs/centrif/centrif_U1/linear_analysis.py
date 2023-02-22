@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -44,7 +44,7 @@ nb_ref[:, 0] = np.array([2, 2, 2])
 nb_deg[:, 0] = np.array([1, 1, 1])
 
 # Initial refinement (none)
-modeleIGA.refine(nb_deg, nb_ref)
+modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
 ndof = modeleIGA._nb_dof_free
@@ -78,7 +78,7 @@ pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     SOL.transpose(),
     nb_ref=np.array([2, 2, 2]),
     Flag=np.array([True, False, False])))
-    
+
 # Get solution at interpolating control points and compare with Abaqus reference result
 # Tolerance = max 2% on quasi-radial component
 pt_coords = np.array([12.0, 1.5, 0.0])
@@ -90,14 +90,14 @@ for idx in range(np.shape(modeleIGA._COORDS)[1]):
     if np.all(modeleIGA._COORDS[:,idx] == pt_coords):
         found = True
         break
-        
+
 if not found:
     sys.exit(-1)
 
 print("yeti solution : ", SOL[idx,:])
 print("reference solution : ", ref_aba)
 print("error / component : ", np.abs((SOL[idx,:]-ref_aba)/ref_aba))
-    
+
 if np.abs((SOL[idx,:]-ref_aba)/ref_aba)[0] < 0.02:
     sys.exit(0)
 else:
