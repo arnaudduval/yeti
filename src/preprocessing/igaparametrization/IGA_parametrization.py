@@ -694,7 +694,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3),
+    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3, dtype=int),
                                Flag=np.array([True, True, True])):
         """Get the necessary inputs for .vtu file generation.
 
@@ -718,7 +718,7 @@ class IGAparametrization:
         inputs : list
             Necessary inputs for generating the .vtu file.
         """
-        nb_ref = np.maximum(nb_ref, np.ones(3))
+        nb_ref = np.maximum(nb_ref, np.ones(3, dtype=int))
         inputs = [FILENAME, Flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
