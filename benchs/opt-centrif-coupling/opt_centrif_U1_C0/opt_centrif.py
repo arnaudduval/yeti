@@ -79,8 +79,9 @@ if __name__ == "__main__":
 
     # Refinement from optim model to analysis model
     nb_deg = np.array([1, 0, 1])
-    nb_ref = np.array([2, 2, 2])    # Define optim problem
+    nb_ref = np.array([2, 2, 2])
 
+    # Define optim problem
     optPB = OPTmodelling(modeleIGA, nb_var, shapemodif,
                          nb_degreeElevationByDirection=nb_deg,
                          nb_refinementByDirection=nb_ref)
