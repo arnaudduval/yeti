@@ -8,7 +8,7 @@ from .base_functions import create_knotvector
 
 class geomdlModel(): 
 
-	def __init__(self, name=None, **geometry): 
+	def __init__(self, name=None, filename=None, **kwargs): 
 
 		if name is None: raise Warning('Insert the name of the part')
 		else: self._name = name
@@ -19,46 +19,46 @@ class geomdlModel():
 		start = time.process_time()
 		if name == 'quarter_annulus' or name == 'QA':
 			self._dim = 2
-			Rin = geometry.get('Rin', 1.0)
-			Rout = geometry.get('Rout', 2.0)
-			degree_xi, degree_nu, _ = geometry.get('degree', [2, 3, 2])
+			Rin = kwargs.get('Rin', 1.0)
+			Rout = kwargs.get('Rout', 2.0)
+			degree_xi, degree_nu, _ = kwargs.get('degree', [2, 3, 2])
 			self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
 
 		elif name == 'quadrilateral' or name == 'SQ':
 			self._dim = 2
-			XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
-			degree_xi, degree_nu, _ = geometry.get('degree', [2, 2, 2])
+			XY = kwargs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			degree_xi, degree_nu, _ = kwargs.get('degree', [2, 2, 2])
 			self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
 
 		elif name == 'parallelepiped' or name == 'CB': 
 			self._dim = 3
-			Lx = geometry.get('Lx', 1.0)
-			Ly = geometry.get('Ly', 1.0)
-			Lz = geometry.get('Lz', 1.0)
-			degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
+			Lx = kwargs.get('Lx', 1.0)
+			Ly = kwargs.get('Ly', 1.0)
+			Lz = kwargs.get('Lz', 1.0)
+			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [2, 2, 2])
 			self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_xi, degree_nu, degree_eta) 
 
 		elif name == 'thick_ring' or name == 'TR':
 			self._dim = 3
-			Rin = geometry.get('Rin', 1.0)
-			Rout = geometry.get('Rout', 2.0)
-			Height = geometry.get('Height', 1.0)
-			degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
+			Rin = kwargs.get('Rin', 1.0)
+			Rout = kwargs.get('Rout', 2.0)
+			Height = kwargs.get('Height', 1.0)
+			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [4, 4, 4])
 			self._geometry = self.create_thick_ring(Rin, Rout, Height, degree_xi, degree_nu, degree_eta) 
 
 		elif name == 'rotated_quarter_annulus' or name == 'RQA':
 			self._dim = 3
-			Rin = geometry.get('Rin', 1.0)
-			Rout = geometry.get('Rout', 2.0)
-			exc = geometry.get('Rout', 1.0) 
-			degree_xi, degree_nu, degree_eta = geometry.get('degree', [4, 4, 4])
+			Rin = kwargs.get('Rin', 1.0)
+			Rout = kwargs.get('Rout', 2.0)
+			exc = kwargs.get('Rout', 1.0) 
+			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [4, 4, 4])
 			self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
 
 		elif name == 'prism' or name == 'VB':
 			self._dim = 3
-			XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-			Height = geometry.get('Height', 1)
-			degree_xi, degree_nu, degree_eta = geometry.get('degree', [2, 2, 2])
+			XY = kwargs.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			Height = kwargs.get('Height', 1)
+			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [2, 2, 2])
 			self._geometry = self.create_prism(XY, Height, degree_xi, degree_nu, degree_eta) 
 
 		else: raise Warning("It is not a shape in this library")
