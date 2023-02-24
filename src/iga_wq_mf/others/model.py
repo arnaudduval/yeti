@@ -4,10 +4,10 @@
 .. Joaquin Cornejo
 """
 
-from .__init__ import *
+from . import *
 
 # My libraries
-from .create_material import *
+from .material import *
 
 # class thermoMechaModel(): 
 
