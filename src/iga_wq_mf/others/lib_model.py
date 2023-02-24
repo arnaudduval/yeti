@@ -7,7 +7,7 @@
 from . import *
 
 # My libraries
-from .material import *
+from .lib_material import *
 
 # class thermoMechaModel(): 
 
