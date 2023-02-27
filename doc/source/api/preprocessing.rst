@@ -16,7 +16,7 @@ Temporary documentation for the content of IGAparametrization class.
  - [4] : IEN connectivity
  - [5] : material properties
  - [6] : properties ???
- - [7] : tables ???
+ - [7] : tables, used for nodal distributions
  - [8] : shapeparametrization ????
 
 ``geometricSettings`` is a list with the following components :
@@ -36,3 +36,4 @@ Temporary documentation for the content of IGAparametrization class.
 
 .. autoclass:: preprocessing.igaparametrization.IGAparametrization
     :members:
+    :private-members:
