@@ -6,7 +6,7 @@
 
 import numpy as np
 from lib.__init__ import *
-from lib.base_functions import eval_basis_python
+from lib.base_functions import eval_basis_python, iga_find_positions_weights
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 class MechaBehavior():
@@ -275,9 +275,9 @@ def solve_WQ_plasticity_1D(properties, matlaw:MechaBehavior, DB=None, DW=None, F
 
 def interpolate_IGA_CP_1D(DB, W, u_ref):
 	" Interpolate control point field (from parametric to physical space) "
-	masse = DB[0] @ np.diag(W) @ DB[0].T
+	mass = DB[0] @ np.diag(W) @ DB[0].T
 	force = DB[0] @ np.diag(W) @ u_ref
-	u_ctrlpts = np.linalg.solve(masse, force)
+	u_ctrlpts = np.linalg.solve(mass, force)
 	return u_ctrlpts
 
 def interpolate_WQ_CP_1D(DB, DW, u_ref):
@@ -286,6 +286,32 @@ def interpolate_WQ_CP_1D(DB, DW, u_ref):
 	force = DW[0] @ u_ref
 	u_ctrlpts = np.linalg.solve(masse.toarray(), force)
 	return u_ctrlpts
+
+def relativeNormL2(degree, kv1, kv2, u1, u2):
+	if len(kv1) >= len(kv2): 
+		qp_cgg, weight_cgg = iga_find_positions_weights(degree, kv1)
+	else:
+		qp_cgg, weight_cgg = iga_find_positions_weights(degree, kv2)
+
+	basis_cgg1 = eval_basis_python(degree, kv1, qp_cgg)
+	basis_cgg2 = eval_basis_python(degree, kv2, qp_cgg)
+
+
+	mass = basis_cgg1[0] @ np.diag(weight_cgg) @ basis_cgg1[0].T
+	t1 = np.dot(u1, np.dot(mass, u1))
+
+	mass = basis_cgg2[0] @ np.diag(weight_cgg) @ basis_cgg2[0].T
+	t2 = np.dot(u2, np.dot(mass, u2))
+
+	mass = basis_cgg1[0] @ np.diag(weight_cgg) @ basis_cgg2[0].T
+	t3 = np.dot(u1, np.dot(mass, u2))
+
+	mass = basis_cgg2[0] @ np.diag(weight_cgg) @ basis_cgg1[0].T
+	t4 = np.dot(u2, np.dot(mass, u1))
+	
+	diff = np.abs(t1 + t2 - t3 - t4)
+
+	return diff/t1
 
 # =============
 
