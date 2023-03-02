@@ -919,3 +919,24 @@ class OPTmodelling:
 
         gradW = self._sensitivityFD(workWcplg,vectX,eps=eps,centerFD=centerFD)
         return gradW
+
+    @property
+    def fine_parametrization(self):
+        """
+        IGAparametrization object containing analysis model
+        """
+        return self._fineParametrization
+
+    @property
+    def coarse_parametrization(self):
+        """
+        IGA parametrization object containing optimization model
+        """
+        return self._coarseParametrization
+
+    @property
+    def save_sol_fine(self):
+        """
+        Saved solution computed on analysis model
+        """
+        return self._save_sol_fine
