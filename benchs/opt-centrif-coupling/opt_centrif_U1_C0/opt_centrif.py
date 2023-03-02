@@ -98,25 +98,25 @@ if __name__ == "__main__":
     # Define functions and gradients
     def vol_iga(x_k):
         """
-        Compute volume of the structure
+        Compute relative volume variation of the structure
         """
         return (optPB.compute_volume(x_k)-V0)/V0
 
     def grad_vol_iga(x_k):
         """
-        Compute gradient of the volume with respect to the design variables
+        Compute gradient of the relative volume variation with respect to the design variables
         """
         return optPB.compute_gradVolume_AN(x_k)/V0
 
     def comp_iga(x_k):
         """
-        Compute complianbce of the structure
+        Compute relative compliance of the structure
         """
         return optPB.compute_compliance_discrete(x_k)/C0
 
     def grad_comp_iga(x_k):
         """
-        Compute gradient of the compliance with respect to the design variables
+        Compute gradient of the relative compliance with respect to the design variables
         """
         return optPB.compute_gradCompliance_AN(x_k)/C0
 
