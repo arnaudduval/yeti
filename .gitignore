@@ -14,3 +14,4 @@ examples/OPT_stiffPanel/results/*.vtu
 examples/OPT_tube_pressure/results/*.vtu
 examples/OPT_tube_pressure/results/*.vtk
 examples/OPT_tube_pressure/results/*.txt
+examples/OPT_tube_pressure/results/*.png
