@@ -37,7 +37,7 @@ if __name__ == "__main__":
     ALLOWED_VOLUME_VAR = 0.025
     ALLOWED_COMP_VAR = 0.05
     INIT_THICKNESS = 10.        # Thickness in the initial model
-    MIN_THICKNESS = 5.
+    MIN_THICKNESS = 2.
     MAX_THICKNESS = 25.
 
     modeleIGA = IGAparametrization(filename='tube')
