@@ -39,7 +39,7 @@ nb_ref[:2, 0:2] = 2
 
 # Stiffeners and linked curves
 nb_deg[0, np.array([3, 4, 6, 10, 11, 13])-1] = 1
-# nb_ref[0,np.array([3,4,6,10,11,13])-1] = 1
+# nb_ref[0, np.array([3, 4, 6, 10, 11, 13])-1] = 1
 
 modeleIGA.refine(nb_ref, nb_deg)
 
