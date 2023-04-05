@@ -188,7 +188,7 @@ subroutine linspace(x0, xf, nnz, array)
     integer :: i
     double precision :: h 
 
-    if (nnz.le.1) stop 'Size of array can not be 0 or less'
+    if (nnz.le.1) stop 'Size of array can not be 1 or less'
 
     array(1) = x0; array(nnz) = xf
 
@@ -200,15 +200,15 @@ subroutine linspace(x0, xf, nnz, array)
 
 end subroutine linspace
 
-subroutine eval_trace(dimen, matrix, result)
+subroutine eval_trace(nr, matrix, result)
     !! Computes the trace (sum of diagonal terms) of a square matrix
     
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen
+    integer, intent(in) :: nr
     double precision, intent(in) :: matrix
-    dimension :: matrix(dimen, dimen)
+    dimension :: matrix(nr, nr)
 
     double precision, intent(out) :: result
 
@@ -217,22 +217,22 @@ subroutine eval_trace(dimen, matrix, result)
     integer :: i
 
     result = 0.d0
-    do i = 1, dimen
+    do i = 1, nr
         result = result + matrix(i, i)
     end do   
 
 end subroutine eval_trace
 
-subroutine eval_frobenius_norm(dimen, matrix, result)
+subroutine eval_frobenius_norm(nr, matrix, result)
     !! Returns Frobenius norm of a square matrix M 
     !! The definition is norm = sqrt(M_ij M_ij)
 
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen
+    integer, intent(in) :: nr
     double precision, intent(in) :: matrix
-    dimension :: matrix(dimen, dimen)
+    dimension :: matrix(nr, nr)
 
     double precision, intent(out) :: result
 
@@ -242,8 +242,8 @@ subroutine eval_frobenius_norm(dimen, matrix, result)
 
     result = 0.d0
 
-    do i = 1, dimen
-        do j = 1, dimen
+    do i = 1, nr
+        do j = 1, nr
             result = result + matrix(i, j)*matrix(i, j)
         end do
     end do
@@ -475,7 +475,7 @@ subroutine kronvec2d(nnz_A, A, nnz_B, B, R, alpha)
     do iA = 1, nnz_A
         do iB = 1, nnz_B
             genPos = iB + (iA-1)*nnz_B
-            R(genPos) = R(genPos) + alpha * A(iA) * B(iB)
+            R(genPos) = R(genPos) + alpha*A(iA)*B(iB)
         end do 
     end do
     !$OMP END DO NOWAIT
@@ -508,7 +508,7 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
         do iB = 1, nnz_B
             do iC = 1, nnz_C
                 genPos = iC + (iB-1)*nnz_C + (iA-1)*nnz_C*nnz_B
-                R(genPos) = R(genPos) + alpha * A(iA) * B(iB) * C(iC)
+                R(genPos) = R(genPos) + alpha*A(iA)*B(iB)*C(iC)
             end do
         end do 
     end do
@@ -517,7 +517,7 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
 
 end subroutine kronvec3d
 
-subroutine spMdotdV(nr, nc, nnz, indi, indj, A, array_in, array_out)
+subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
     !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
     !! Sparse matrix in CSR format
 
@@ -548,9 +548,9 @@ subroutine spMdotdV(nr, nc, nnz, indi, indj, A, array_in, array_out)
         array_out(i) = sum
     end do
 
-end subroutine spMdotdV
+end subroutine spmat_dot_dvec
 
-subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
+subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     !! Computes an integral inside a unitary cube using trapezoidal rule.
     !! It supposes that points are equidistant
 
@@ -561,7 +561,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     double precision, intent(in) :: tensor
     dimension :: tensor(nru, nrv, nrw)
 
-    double precision, intent(out) :: integral
+    double precision, intent(out) :: result
     
     ! Local data
     ! ----------
@@ -569,14 +569,14 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     integer :: indu, indv, indw
     dimension :: indu(2), indv(2), indw(2)
 
-    integral = 0.d0
+    result = 0.d0
     indu = (/1, nru/); indv = (/1, nrv/); indw = (/1, nrw/)
 
     ! Get internal points
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                integral = integral + tensor(iu, iv, iw)
+                result = result + tensor(iu, iv, iw)
             end do
         end do
     end do
@@ -585,7 +585,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 1, 2
-                integral = integral + tensor(indu(iu), iv, iw)/2.d0
+                result = result + tensor(indu(iu), iv, iw)/2.d0
             end do
         end do
     end do
@@ -593,7 +593,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 2, nru-1
-                integral = integral + tensor(iu, indv(iv), iw)/2.d0
+                result = result + tensor(iu, indv(iv), iw)/2.d0
             end do
         end do
     end do
@@ -601,7 +601,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                integral = integral + tensor(iu, iv, indw(iw))/2.d0
+                result = result + tensor(iu, iv, indw(iw))/2.d0
             end do
         end do
     end do
@@ -610,7 +610,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 2, nru-1
-                integral = integral + tensor(iu, indv(iv), indw(iw))/4.d0
+                result = result + tensor(iu, indv(iv), indw(iw))/4.d0
             end do
         end do
     end do
@@ -618,7 +618,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 1, 2
-                integral = integral + tensor(indu(iu), iv, indw(iw))/4.d0
+                result = result + tensor(indu(iu), iv, indw(iw))/4.d0
             end do
         end do
     end do
@@ -626,7 +626,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 1, 2
-                integral = integral + tensor(indu(iu), indv(iv), iw)/4.d0
+                result = result + tensor(indu(iu), indv(iv), iw)/4.d0
             end do
         end do
     end do
@@ -635,17 +635,17 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, integral)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 1, 2
-                integral = integral + tensor(indu(iu), indv(iv), indw(iw))/8.d0
+                result = result + tensor(indu(iu), indv(iv), indw(iw))/8.d0
             end do
         end do
     end do
 
     ! Update integral
-    integral = integral/((nru - 1)*(nrv - 1)*(nrw - 1))
+    result = result/((nru - 1)*(nrv - 1)*(nrw - 1))
 
 end subroutine trapezoidal_rule_3d
 
-subroutine cleanDirichlet3ddl(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+subroutine reset_dirichletbound3(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
     !! A is actually a vector arranged following each dimension [Au, Av, Aw]
 
@@ -663,9 +663,9 @@ subroutine cleanDirichlet3ddl(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     A(2, dod_v) = 0.d0 
     A(3, dod_w) = 0.d0 
 
-end subroutine cleanDirichlet3ddl
+end subroutine reset_dirichletbound3
 
-subroutine block_dot_product(ddl, nr, A, B, result)
+subroutine block_dot_product(nm, nr, A, B, result)
     !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
     !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
     !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
@@ -673,9 +673,9 @@ subroutine block_dot_product(ddl, nr, A, B, result)
     implicit none
     ! Input/ output data
     ! ------------------
-    integer, intent(in) :: ddl, nr
+    integer, intent(in) :: nm, nr
     double precision, intent(in) :: A, B
-    dimension :: A(ddl, nr), B(ddl, nr)
+    dimension :: A(nm, nr), B(nm, nr)
 
     double precision :: result
 
@@ -685,7 +685,7 @@ subroutine block_dot_product(ddl, nr, A, B, result)
     double precision :: rtemp
 
     result = 0.d0
-    do i = 1, ddl 
+    do i = 1, nm 
         rtemp = dot_product(A(i, :), B(i, :))
         result = result + rtemp
     end do
@@ -901,7 +901,7 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
 
 end subroutine dense2csr
 
-subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
+subroutine get_indices_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                                     nr_B, nc_B, nnz_B, indi_B, indj_B, &  
                                     nnz_C, indi_C, indj_C)
     !! Gets indices of the kronecker product A x B = C 
@@ -971,9 +971,9 @@ subroutine get_indexes_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
     
-end subroutine get_indexes_kron2_product
+end subroutine get_indices_kron2_product
 
-subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
+subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                                     nr_B, nc_B, nnz_B, indi_B, indj_B, &  
                                     nr_C, nc_C, nnz_C, indi_C, indj_C, &
                                     nnz_D, indi_D, indj_D)
@@ -1054,7 +1054,7 @@ subroutine get_indexes_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     !$OMP END DO NOWAIT
     !$OMP END PARALLEL 
     
-end subroutine get_indexes_kron3_product
+end subroutine get_indices_kron3_product
 
 subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)
     !! Creates the block matrix L of size nrxnc. 
@@ -1063,8 +1063,8 @@ subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT
     !! In this matrix, the number of nonzero values is equal to the number of rows (nc = nr + ndod, nr = ndof)
 
     implicit none
-    ! Input/output data
-    ! -----------------
+    ! Input / output data
+    ! -------------------
     integer, intent(in) :: nr, ndod, dod
     dimension :: dod(ndod)
 

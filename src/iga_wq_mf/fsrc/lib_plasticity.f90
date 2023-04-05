@@ -618,7 +618,7 @@ contains
         call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
         x = 0.d0; r = b
-        call cleanDirichlet3ddl(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+        call reset_dirichletbound3(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         rhat = r; p = r
         call block_dot_product(dimen, nr_total, r, rhat, rsold)
         normb = maxval(abs(r))
@@ -632,7 +632,7 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, Aptilde)
-                call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
                 
                 call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
                 alpha = rsold/prod
@@ -642,7 +642,7 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, s, Astilde)
-                call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call block_dot_product(dimen, nr_total, Astilde, s, prod)
                 call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)
@@ -663,26 +663,26 @@ contains
             allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
             do iter = 1, nbIterPCG
                 call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
-                call cleanDirichlet3ddl(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-                call cleanDirichlet3ddl(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, Aptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call block_dot_product(dimen, nr_total, Aptilde, rhat, prod)
                 alpha = rsold/prod
                 s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
                 
                 call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
-                call cleanDirichlet3ddl(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, stilde, Astilde)
-                call cleanDirichlet3ddl(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+                call reset_dirichletbound3(nr_total, Astilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call block_dot_product(dimen, nr_total, Astilde, s, prod)
                 call block_dot_product(dimen, nr_total, Astilde, Astilde, prod2)

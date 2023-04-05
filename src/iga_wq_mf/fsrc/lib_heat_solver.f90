@@ -563,9 +563,9 @@ contains
 
             if (norm2(p).lt.1.d-8) then
                 qq = 0.d0; ll = 0.d0
-                call compute_eigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+                call compute_geneigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
             else
-                call compute_eigs(dimen, AA1, BB1, ll, qq)
+                call compute_geneigs(dimen, AA1, BB1, ll, qq)
             end if
     
             rho = maxval(ll); ii = maxloc(ll, dim=1)

@@ -269,7 +269,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         ! Condition number 
         if ((methodPCG.eq.'C').or.(methodPCG.eq.'JMC')) then
             
-            call compute_steady_condition_number(nc_total, coefs, kmean, kappa)
+            call compute_steadyheat_cond(nc_total, coefs, kmean, kappa)
             print*, 'Method: ', methodPCG, ', condition number: ', kappa
 
         end if
@@ -574,7 +574,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
         ! Condition number P^-1 A
-        call compute_transient_condition_number(nc_total, Kcoefs, Ccoefs, kmean, cmean, kappa)
+        call compute_transientheat_cond(nc_total, Kcoefs, Ccoefs, kmean, cmean, kappa)
         if (methodPCG.eq.'JMS') then
             Dtemp = Dparametric/Dphysical
             kappa = kappa*maxval(Dtemp)/minval(Dtemp)
@@ -757,7 +757,7 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
 
             ! Compute residue
             ddFF = Fstep - KTCdT
-            call spMdotdV(ndof, nr_total_t, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
+            call spmat_dot_dvec(ndof, nr_total_t, ndof, indi_L, indj_L, L, ddFF, ddFFdof)
             resNL = maxval(abs(ddFFdof))
             print*, 'Raphson error:', resNL
             if (resNL.le.thresholdNL) exit
@@ -769,7 +769,7 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                         ddFFdof, theta*dt, nbIterPCG, thresholdPCG, methodPCG, ddVVdof, resPCG(3:, k))
             ! Update values
-            call spMdotdV(nr_total_t, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)
+            call spmat_dot_dvec(nr_total_t, ndof, ndof, indi_LT, indj_LT, LT, ddVVdof, ddVV)
             VVn1 = VVn1 + ddVV
             TTn1 = TTn1i0 + theta*dt*VVn1
             k = k + 1

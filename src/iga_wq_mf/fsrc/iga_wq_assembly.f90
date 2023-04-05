@@ -61,7 +61,7 @@ subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
     call get_I_csr(nr_w, nc_w, nnz_w, indi_w, indj_w, nnz_I_w_t, indi_I_w, indj_I_w)
 
-    call get_indexes_kron3_product(nr_w, nr_w, nnz_I_w, indi_I_w, indj_I_w, &
+    call get_indices_kron3_product(nr_w, nr_w, nnz_I_w, indi_I_w, indj_I_w, &
                                 nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
@@ -136,7 +136,7 @@ subroutine wq_get_conductivity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
     call get_I_csr(nr_w, nc_w, nnz_w, indi_w, indj_w, nnz_I_w_t, indi_I_w, indj_I_w)
 
-    call get_indexes_kron3_product(nr_w, nr_w, nnz_I_w, indi_I_w, indj_I_w, &
+    call get_indices_kron3_product(nr_w, nr_w, nnz_I_w, indi_I_w, indj_I_w, &
                                 nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
@@ -363,7 +363,7 @@ subroutine wq_get_capacity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
 
-    call get_indexes_kron2_product(nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
+    call get_indices_kron2_product(nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
                                 nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                 size(data_result), indi_result, indj_result)
 
@@ -431,7 +431,7 @@ subroutine wq_get_conductivity_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
     call get_I_csr(nr_u, nc_u, nnz_u, indi_u, indj_u, nnz_I_u_t, indi_I_u, indj_I_u)
     call get_I_csr(nr_v, nc_v, nnz_v, indi_v, indj_v, nnz_I_v_t, indi_I_v, indj_I_v)
 
-    call get_indexes_kron2_product(nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
+    call get_indices_kron2_product(nr_v, nr_v, nnz_I_v, indi_I_v, indj_I_v, &
                                     nr_u, nr_u, nnz_I_u, indi_I_u, indj_I_u, &
                                     size(data_result), indi_result, indj_result)
 

@@ -4,7 +4,10 @@
 !! More information on "Lecture Notes on Solving Large Scale Eigenvalue Problems" by Arbenz, P. 
 !! Author: Joaquin Cornejo
 
-subroutine compute_eigs(nr, A, B, rho, x)
+subroutine compute_geneigs(nr, A, B, rho, x)
+    !! Computes all the eigenvalues of the generalized eigenproblem A x = rho B x
+    !! using dsygvd from LAPACK libraries. 
+    !! Matrix A is must be positive definite and B could be semi-positive definite
 
     implicit none 
     ! Input / output data
@@ -33,9 +36,11 @@ subroutine compute_eigs(nr, A, B, rho, x)
     call dsygvd(1, 'V', 'L', nr, x, nr, B, nr, rho, work, lwork, iwork, liwork, info)
     deallocate(work, iwork)
 
-end subroutine compute_eigs
+end subroutine compute_geneigs
 
 subroutine power_iteration(nr, A, nbIter, x, rho)
+    !! Computes the maximum eigenvalue of A and its eigenvector. 
+    !! The matrix A could be any matrix
 
     implicit none
     ! Input / output data
@@ -68,6 +73,8 @@ subroutine power_iteration(nr, A, nbIter, x, rho)
 end subroutine power_iteration
 
 subroutine rayleigh_submatrix(d, nr, VV1, VV2, MM)
+    !! Computes the Rayleigh submatrix from vectors VV1 and VV2
+    !! MM_ij = dot_product(VV1_i, VV2_j)
 
     implicit none
     ! Input / output data
@@ -96,10 +103,12 @@ subroutine rayleigh_submatrix(d, nr, VV1, VV2, MM)
 
 end subroutine rayleigh_submatrix
 
-subroutine rayleighquotient_max(nr, A, B, C, x, rho, nbIter, threshold)
+subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
     !! Preconditioned conjugate gradient - Rayleigh quotient maximization for the computation 
-    !! of the greatest eigenvalue of A x = lambda B x
+    !! of the greatest eigenvalue of A x = rho B x
     !! C is a preconditioner
+    !! Matrix A must be positive definite (PD) and B could be semi-positive definite
+    !! Some papers shows that even if A is not symetric (and then not necessarily PD) the algorithm converges
 
     implicit none
     ! Input / output data
@@ -146,7 +155,7 @@ subroutine rayleighquotient_max(nr, A, B, C, x, rho, nbIter, threshold)
         call rayleigh_submatrix(dimen, nr, RM1, RM2, AA1)
         call rayleigh_submatrix(dimen, nr, RM1, RM3, BB1)
 
-        call compute_eigs(dimen, AA1, BB1, ll, qq)
+        call compute_geneigs(dimen, AA1, BB1, ll, qq)
         rho = maxval(ll); ii = maxloc(ll, dim=1)
         delta = qq(:, ii)
 
@@ -158,12 +167,14 @@ subroutine rayleighquotient_max(nr, A, B, C, x, rho, nbIter, threshold)
         norm = norm2(g)
     end do
 
-end subroutine rayleighquotient_max
+end subroutine rayleighquotient
 
 subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     !! Locally optimal block preconditioned conjugate gradient algorithm (LOBCPG) for 
-    !! computing the greatest eigenvalue of A x = lambda B x
+    !! computing the greatest eigenvalue of A x = rho B x
     !! C is a preconditioner
+    !! Matrix A must be positive definite (PD) and B could be semi-positive definite
+    !! Some papers shows that even if A is not symetric (and then not necessarily PD) the algorithm converges
 
     implicit none
     ! Input / output data
@@ -216,9 +227,9 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
 
         if (norm2(p).lt.tol_singular) then
             qq = 0.d0; ll = 0.d0
-            call compute_eigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+            call compute_geneigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
         else
-            call compute_eigs(dimen, AA1, BB1, ll, qq)
+            call compute_geneigs(dimen, AA1, BB1, ll, qq)
         end if
 
         rho = maxval(ll); ii = maxloc(ll, dim=1)

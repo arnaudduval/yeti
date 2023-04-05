@@ -6,6 +6,26 @@
 ! for IGA-Galerkin and IGA-WQ approaches.   
 ! ==========================
 
+subroutine gauss_quadrature_table(order, position, weight)
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: order
+    double precision, intent(out) :: position, weight
+    dimension :: position(order), weight(order)
+
+    ! Local data
+    ! ----------
+    double precision :: GaussPdsCoord
+    dimension :: GaussPdsCoord(2, order)
+
+    ! Find position and weight in isoparametric space
+    call Gauss(order, 1, GaussPdsCoord, 0)
+    weight = GaussPdsCoord(1, :)
+    position = GaussPdsCoord(2, :)
+    
+end subroutine gauss_quadrature_table
+
 subroutine get_basis_generalized(degree, size_kv, knotvector, nb_knots, knots, data_basis, indices)
     !! Gets in COO format the basis at given knots 
 

@@ -524,7 +524,7 @@ subroutine mf_wq_plasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, Fint)
             dF = Fstep - Fint
 
-            call cleanDirichlet3ddl(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
+            call reset_dirichletbound3(nr_total, dF, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call block_dot_product(dimen, nr_total, dF, dF, prod)
             resNL = sqrt(prod)
             print*, "Raphson with error: ", resNL

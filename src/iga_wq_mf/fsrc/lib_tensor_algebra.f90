@@ -406,11 +406,9 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
     double precision, allocatable, dimension(:) :: R1
 
     allocate(R1(nr_u*nc_v))
-    call tensor_n_mode_product_spM(nc_u, nc_v, 1, 1, array_in, nr_u, nnz_u, &
-                                data_u, indi_u, indj_u, 1, size(R1), R1)
+    call tensor_n_mode_product_spM(nc_u, nc_v, 1, 1, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    call tensor_n_mode_product_spM(nr_u, nc_v, 1, 1, R1, nr_v, nnz_v, &
-                                data_v, indi_v, indj_v, 2, size(array_out), array_out)
+    call tensor_n_mode_product_spM(nr_u, nc_v, 1, 1, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(array_out), array_out)
     deallocate(R1)
 
 end subroutine sumfacto2d_spM
@@ -445,16 +443,13 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
     double precision, allocatable, dimension(:) :: R1, R2
 
     allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nnz_u, &
-                                data_u, indi_u, indj_u, 1, size(R1), R1)
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
 
     allocate(R2(nr_u*nr_v*nc_w))
-    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, 1, R1, nr_v, nnz_v, &
-                                data_v, indi_v, indj_v, 2, size(R2), R2)
+    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, 1, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(R2), R2)
     deallocate(R1)
 
-    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, 1, R2, nr_w, nnz_w, &
-                                data_w, indi_w, indj_w, 3, size(array_out), array_out)
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, 1, R2, nr_w, nnz_w, data_w, indi_w, indj_w, 3, size(array_out), array_out)
     deallocate(R2)
 
 end subroutine sumfacto3d_spM
@@ -970,11 +965,11 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
 
     ! Modify K to avoid singular matrix (using Robin boundary condition)
     if (robin_condition(1).eq.1) then 
-        KK(1, 1) = penalty*KK(1,1)
+        KK(1, 1) = penalty*KK(1, 1)
     end if
 
     if (robin_condition(2).eq.1) then 
-        KK(nr,nr) = penalty*KK(nr, nr)
+        KK(nr, nr) = penalty*KK(nr, nr)
     end if
 
     ! Save diagonal of M and K
@@ -986,7 +981,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! -----------------------------------
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
-    call compute_eigs(nr, KK, MM, eigenvalues, eigenvectors)
+    call compute_geneigs(nr, KK, MM, eigenvalues, eigenvectors)
     deallocate(KK, MM)
 
 end subroutine eigen_decomposition
@@ -1157,7 +1152,7 @@ subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
 
 end subroutine compute_mean_3d
 
-subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
+subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
 
     implicit none
     ! Input /  output data
@@ -1173,22 +1168,29 @@ subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean,
     
     ! Local data
     ! ----------
-    integer :: i, j, k, info
-    double precision :: wr, wi, vl, vr, work, KK, Kmean2
-    dimension :: wr(dimen), wi(dimen), vl(dimen, dimen), vr(1, dimen), work(5*dimen), KK(dimen, dimen), Kmean2(dimen)
+    integer :: i, j, k
+    double precision :: eye, KK, Kmean2, rho, x
+    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
     double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
+
+    eye = 0.d0
+    do i = 1, dimen
+        eye(i, i) = 1.d0
+    end do
 
     do i = 1, dimen
         kmean2(i) = 1.0/sqrt(Kmean(i))
     end do
+
     KK = Kcoefs(:, :, 1)
     do i = 1, dimen
         do j = 1, dimen
             KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
         end do
     end do
-    call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
-    supKold = maxval(wr); infKold = minval(wr)
+
+    call compute_geneigs(dimen, KK, eye, rho, x)
+    supKold = maxval(rho); infKold = minval(rho)
     supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
 
     do k = 2, nnz
@@ -1199,10 +1201,10 @@ subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean,
                 KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
             end do
         end do
-        call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
-        supKnew = maxval(wr); infKnew = minval(wr)
+
+        call compute_geneigs(dimen, KK, eye, rho, x)
+        supKnew = maxval(rho); infKnew = minval(rho)
         supK = max(supKold, supKnew); infK = min(infKold, infKnew)
-        
         Cnew = Ccoefs(k)/Cmean
         supC = max(supCold, Cnew); infC = min(infCold, Cnew)
 
@@ -1213,9 +1215,9 @@ subroutine compute_transient_condition_number(nnz, Kcoefs, Ccoefs, Kmean, Cmean,
     
     kappa = max(supK, supC)/min(infK, infC)
 
-end subroutine compute_transient_condition_number
+end subroutine compute_transientheat_cond
 
-subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
+subroutine compute_steadyheat_cond(nnz, Kcoefs, Kmean, kappa)
     
     implicit none
     ! Input /  output data
@@ -1231,22 +1233,29 @@ subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
     
     ! Local data
     ! ----------
-    integer :: i, j, k, info
-    double precision :: wr, wi, vl, vr, work, KK, Kmean2
-    dimension :: wr(dimen), wi(dimen), vl(dimen, dimen), vr(1, dimen), work(5*dimen), KK(dimen, dimen), Kmean2(dimen)
+    integer :: i, j, k
+    double precision :: eye, KK, Kmean2, rho, x
+    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
     double precision :: supKold, infKold, supKnew, infKnew, supK, infK
+
+    eye = 0.d0
+    do i = 1, dimen
+        eye(i, i) = 1.d0
+    end do
 
     do i = 1, dimen
         kmean2(i) = 1.0/sqrt(Kmean(i))
     end do
+
     KK = Kcoefs(:, :, 1)
     do i = 1, dimen
         do j = 1, dimen
             KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
         end do
     end do
-    call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
-    supKold = maxval(wr); infKold = minval(wr)
+
+    call compute_geneigs(dimen, KK, eye, rho, x)
+    supKold = maxval(rho); infKold = minval(rho)
 
     do k = 2, nnz
         
@@ -1256,8 +1265,9 @@ subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
                 KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
             end do
         end do
-        call dgeev('V', 'N', dimen, KK, dimen, wr, wi, vl, dimen, vr, 1, work, size(work), info)
-        supKnew = maxval(wr); infKnew = minval(wr)
+
+        call compute_geneigs(dimen, KK, eye, rho, x)
+        supKnew = maxval(rho); infKnew = minval(rho)
         supK = max(supKold, supKnew); infK = min(infKold, infKnew)
 
         supKold = supK; infKold = infK
@@ -1266,4 +1276,4 @@ subroutine compute_steady_condition_number(nnz, Kcoefs, Kmean, kappa)
     
     kappa = supK/infK
 
-end subroutine compute_steady_condition_number
+end subroutine compute_steadyheat_cond 
