@@ -70,7 +70,7 @@ class MechaBehavior():
 		for i in range(nbIter):
 			dH = self.Hfun(a_n1) - self.Hfun(a_n0) 
 			G  = -self.Kfun(a_n1) + np.abs(eta_trial) - (self._young*dgamma + dH)
-			if G <=threshold: break
+			if np.abs(G) <=threshold: break
 			dG = - (self._young + self.Hderfun(a_n1) + self.Kderfun(a_n1))
 			dgamma = dgamma - G/dG
 			a_n1   = a_n0 + dgamma 
