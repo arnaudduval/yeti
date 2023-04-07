@@ -28,6 +28,7 @@
 
 subroutine find_knotvector_span(degree, size_kv, knotvector, x, span, span_tol)
     !! Finds the knot-vector span of a given knot. 
+    !! It is a variation of "find_interpolation_span" in linear_algebra library
     !! Ex: Given the knot-vector {0, 0, 0, 0.5, 1, 1, 1} and x = 0.25, the knot-vector span is 3.
 
     implicit none 
@@ -48,29 +49,6 @@ subroutine find_knotvector_span(degree, size_kv, knotvector, x, span, span_tol)
     span = span - 1 
 
 end subroutine find_knotvector_span
-
-subroutine find_parametric_span(size_kv, nodes, x, span, span_tol)
-    !! Finds the parametric span of the given knot. 
-    !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the parametric span is 1
-
-    implicit none 
-    ! Input / output data
-    ! ------------------- 
-    integer, intent(in) :: size_kv
-    double precision, intent(in) :: nodes, x, span_tol
-    dimension :: nodes(size_kv+1)
-
-    integer, intent(out) :: span 
-
-    span = 2
-    
-    do while ((span.lt.int(nodes(size_kv+1))).and.((nodes(span)-x).le.span_tol))
-        span = span + 1
-    end do
-    
-    span = span - 1 
-
-end subroutine find_parametric_span
 
 subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
     !! Finds the multiplicity of a given knot.
@@ -152,92 +130,7 @@ subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out,
 
 end subroutine increase_multiplicity
 
-subroutine verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, isuniform, span_tol)
-    !! Verifies if a knot-vector is uniform and if it has maximum regularity. 
-    !! This is important because all WQ methods works only with knot-vectors with rgeularity r = p-1. 
-    !! Ex: The given knot-vector {0, 0, 0, 0.5, 1, 1, 1} works for us but {0, 0, 0, 0.5, 0.5, 1, 1, 1} does not. 
-    !! Furthermore, if the knot-vector is uniform, it is possible to reduce computation time.
-    !! But the latter is not mandatory for our algorithms. 
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: degree, size_kv
-    double precision, intent(in) :: knotvector, span_tol
-    dimension :: knotvector(size_kv)
-
-    logical, intent(out) :: ismaxreg, isuniform
-    
-    ! Local data
-    ! ----------
-    integer :: nbel, nb_ctrlpts, i
-    double precision :: nodes
-    dimension :: nodes(size_kv+1)
-    double precision, dimension(:), allocatable :: unique_kv, diffknot 
-
-    call find_unique_array(size_kv, knotvector, nodes)
-    nbel = int(nodes(size_kv+1)) - 1
-    nb_ctrlpts = size_kv - degree - 1
-
-    ! Verify if knot-vector has max regularity
-    ismaxreg = .false.
-    if (nbel+degree.eq.nb_ctrlpts) ismaxreg = .true.
-
-    ! Verify if knot vector is uniform
-    isuniform = .true.
-    allocate(unique_kv(nbel+1), diffknot(nbel+1))
-    unique_kv = nodes(:nbel+1)
-    call diff_array(2, size(unique_kv), unique_kv, diffknot)
-
-    do i = 1, size(unique_kv)
-        if (abs(diffknot(i)).gt.span_tol) then
-            isuniform = .false.
-            exit
-        end if
-    end do
-
-end subroutine verify_regularity_uniformity
-
-subroutine set_table_functions_spans(degree, size_kv, nodes, knotvector, table, span_tol)
-    !! Sets a table of functions on every span given a knot-vector.
-    !! Ex. Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} (degree 2), the unique nodes are {0, 0.5, 1}. 
-    !! On the first span [0, 0.5], there are the functions N1, N2, N3, and on the second span [0.5, 1], 
-    !! there are the functions N3, N4, N5
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: degree, size_kv
-    double precision, intent(in) :: nodes, knotvector, span_tol
-    dimension :: nodes(size_kv+1), knotvector(size_kv)
-
-    integer, intent(out) :: table
-    dimension :: table(int(nodes(size_kv+1))-1, degree+1)
-
-    ! Local data
-    ! ----------
-    integer :: i, j, nbel, multiplicity
-
-    ! Get the number of elements
-    nbel = int(nodes(size_kv+1)) - 1
-
-    ! Set table of functions 
-    table = 0
-    do j = 1, degree+1
-        table(1, j) = j 
-    end do
-
-    do i = 2, nbel
-        call find_multiplicity(size_kv, knotvector, nodes(i), multiplicity, span_tol)
-        table(i, 1) = table(i-1, 1) + multiplicity
-        do j = 2, degree+1
-            table(i, j) = table(i, 1) + j - 1
-        end do
-    end do
-
-end subroutine set_table_functions_spans
-
-subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1, span_tol)
+subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, span_tol)
     !! Finds the basis B0 and B1 for every given knot. 
     !! The algorithm computes by itself the knot-vector span of a given knot and 
     !! returns the value of the basis B0 and B1 for that knot. 
@@ -246,49 +139,59 @@ subroutine get_basis(degree, size_kv, nodes, knotvector, nb_knots, knots, B0, B1
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, nb_knots
-    double precision, intent(in) :: nodes, knotvector, knots, span_tol
-    dimension :: nodes(size_kv+1), knotvector(size_kv), knots(nb_knots)
-    
-    double precision, intent(out) :: B0, B1
-    dimension :: B0(size_kv-degree-1, nb_knots), B1(size_kv-degree-1, nb_knots)
+    integer, intent(in) :: degree, size_ukv, size_kv, nb_knots
+    double precision, intent(in) :: ukv, knotvector, knots, span_tol
+    dimension :: ukv(size_ukv), knotvector(size_kv), knots(nb_knots)
+
+    integer, intent(out) :: indices
+    dimension :: indices((degree+1)*nb_knots, 2)
+    double precision, intent(out) :: basis
+    dimension :: basis((degree+1)*nb_knots, 2)
 
     ! Local data
     ! ----------
-    integer :: i, j, k, nb_ctrlpts, nbel
-    integer :: functions_span, span, indices
-    dimension :: functions_span(degree+1), span(2), indices((degree+1)*nb_knots, 2)
+    integer :: i, j, k, nbctrlpts, nbel, multiplicity
+    integer :: functions_span, span
+    dimension :: functions_span(degree+1), span(2)
     integer, allocatable, dimension(:, :) :: table_functions_span
-    double precision :: B0t, B1t, data_B0, data_B1
-    dimension :: B0t(degree+1), B1t(degree+1), data_B0((degree+1)*nb_knots), data_B1((degree+1)*nb_knots)
+    double precision :: B0t, B1t
+    dimension :: B0t(degree+1), B1t(degree+1)
 
-    nb_ctrlpts = size_kv - degree - 1
-    nbel = int(nodes(size_kv+1)) - 1
+    nbctrlpts = size_kv - degree - 1
+    nbel      = size_ukv - 1
 
+    ! Set table of functions 
     allocate(table_functions_span(nbel, degree+1))
-    call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
+    table_functions_span = 0
+    do j = 1, degree+1
+        table_functions_span(1, j) = j 
+    end do
 
-    do i = 1, nb_knots
-        ! Computes B0 and B1 using a YETI function
-        call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
-        call find_parametric_span(size_kv, nodes, knots(i), span(2), span_tol)
-        functions_span = table_functions_span(span(2), :)
-        call dersbasisfuns(span(1), degree, nb_ctrlpts, knots(i), knotvector, B0t, B1t)
-        
-        ! Save in COO format
-        do j = 1, degree+1
-            k = (i - 1)*(degree + 1) + j
-            data_B0(k) = B0t(j)
-            data_B1(k) = B1t(j)
-            indices(k, :) = [functions_span(j), i]                                
+    do i = 2, size_ukv-1
+        call find_multiplicity(size_kv, knotvector, ukv(i), multiplicity, span_tol)
+        table_functions_span(i, 1) = table_functions_span(i-1, 1) + multiplicity
+        do j = 2, degree+1
+            table_functions_span(i, j) = table_functions_span(i, 1) + j - 1
         end do
     end do
 
-    ! Convert COO format to dense matrix
-    call coo2dense(size(data_B0), indices(:, 1), indices(:, 2), data_B0, nb_ctrlpts, nb_knots, B0)
-    call coo2dense(size(data_B1), indices(:, 1), indices(:, 2), data_B1, nb_ctrlpts, nb_knots, B1)
+    do i = 1, nb_knots
 
-end subroutine get_basis
+        ! Computes B0 and B1 using a YETI function
+        call find_knotvector_span(degree, size_kv, knotvector, knots(i), span(1), span_tol)
+        call find_interpolation_span(size_ukv, ukv, knots(i), span(2), span_tol)
+        functions_span = table_functions_span(span(2), :)
+        call dersbasisfuns(span(1), degree, nbctrlpts, knots(i), knotvector, B0t, B1t)
+
+        ! Save in COO format
+        do j = 1, degree+1
+            k = (i - 1)*(degree + 1) + j
+            basis(k, :) = [B0t(j), B1t(j)]
+            indices(k, :)   = [functions_span(j), i]                                
+        end do
+    end do
+
+end subroutine get_basis_coo
 
 subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     !! Gets the indices i and j of all non-zero values of matrix I = B * B.T 
@@ -326,164 +229,6 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     end if
 
 end subroutine get_I_csr
-
-subroutine create_uniform_knotvector(degree, nbel, nodes, knotvector)
-    !! Gets an open uniform with maximum regularity knot-vector 
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in):: degree, nbel
-
-    double precision, intent(out) :: nodes, knotvector 
-    dimension :: knotvector(nbel+2*degree+1), nodes(nbel+2*degree+2)
-
-    ! Local data
-    ! ----------
-    integer ::  i, c
-
-    ! Create nodes 
-    nodes = 0.d0; nodes(1) = 0.d0; nodes(nbel+1) = 1.d0
-
-    do i = 2, nbel 
-        nodes(i) = dble(i - 1)/dble(nbel) 
-    end do
-
-    nodes(size(nodes)) = nbel + 1
-
-    ! Create knotvector 
-    knotvector = 0.d0
-
-    c = 1
-    do i = 1, degree+1
-        knotvector(c) = 0.d0
-        c = c + 1
-    end do
-
-    do i = 2, nbel
-        knotvector(c) = dble(i - 1)/dble(nbel) 
-        c = c + 1
-    end do
-
-    do i = 1, degree+1
-        knotvector(c) = 1.d0
-        c = c + 1
-    end do
-        
-end subroutine create_uniform_knotvector
-
-! --------------------------------------------------------
-! IGA FUNCTIONS: expected to work in IGA-Galerkin approach
-! --------------------------------------------------------
-
-subroutine iga_get_qp_positions_weights(degree, size_kv, nodes, qp_nnz, qp_position, qp_weight)
-    !! Gets quadrature points' positions and weights in IGA approach 
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: degree, size_kv, qp_nnz
-    double precision, intent(in) :: nodes
-    dimension :: nodes(size_kv+1)
-
-    double precision, intent(out) :: qp_position, qp_weight
-    dimension :: qp_position(qp_nnz), qp_weight(qp_nnz)
-
-    ! Local data 
-    ! ----------
-    double precision :: GaussPdsCoord, pg, wg
-    dimension :: GaussPdsCoord(2, degree+1), pg(degree+1), wg(degree+1)
-    integer :: nbel, i, j, k
-
-    ! Find position and weight in isoparametric space
-    call Gauss(size(pg), 1, GaussPdsCoord, 0)
-    wg = GaussPdsCoord(1, :)
-    pg = GaussPdsCoord(2, :)
-
-    ! From isoparametric to parametric space
-    nbel = int(nodes(size_kv+1)) - 1 
-    do i = 1, nbel
-        do j = 1, size(pg)
-            k = (i - 1)*size(pg) + j
-            qp_position(k) = 0.5d0*(pg(j)/dble(nbel) + nodes(i+1) + nodes(i))
-            qp_weight(k) = 0.5d0/dble(nbel)*wg(j)
-        end do
-    end do
-
-end subroutine iga_get_qp_positions_weights 
-
-subroutine iga_get_B_shape(degree, size_kv, nodes, knotvector, Bshape, span_tol)
-    !! Gets non zeros positions of B0 and B1 in IGA-Galerkin approach 
-    
-    implicit none 
-    ! Input / output data 
-    ! -------------------
-    integer, intent(in) :: degree, size_kv
-    double precision :: knotvector, nodes, span_tol
-    dimension :: knotvector(size_kv), nodes(size_kv+1)
-
-    integer, intent(out) :: Bshape
-    dimension :: Bshape(size_kv-degree-1, 2)
-
-    ! Local data 
-    ! ----------
-    integer :: nbel, nb_ctrlpts, min_span, max_span, min_knot, max_knot
-    integer, allocatable, dimension(:, :) :: table_points_span, table_functions_span, table_spans_function
-    integer :: i, j    
-
-    ! Set number of elements and control points
-    nbel = int(nodes(size_kv+1)) - 1 
-    nb_ctrlpts = size_kv - degree - 1
-
-    allocate(table_points_span(nbel, 2), &
-            table_functions_span(nbel, degree+1), &
-            table_spans_function(nb_ctrlpts, 2))
-
-    ! Get table of points over the span
-    table_points_span = 1
-    table_points_span(1, 2) = degree + 1 
-    
-    do i = 2, nbel 
-        table_points_span(i, 1) = table_points_span(i-1, 2) + 1
-        table_points_span(i, 2) = table_points_span(i, 1) + degree
-    end do
-    
-    ! Get table of functions on span 
-    call set_table_functions_spans(degree, size_kv, nodes, knotvector, table_functions_span, span_tol)
-
-    ! Get table of spans for each function
-    do i = 1, nb_ctrlpts
-        min_span = 1
-        do j = 1, nbel
-            if (any(table_functions_span(j, :).eq.i)) then
-                    min_span = j
-                    exit 
-            end if
-        end do 
-
-        max_span = nbel
-        do j = nbel, 1, -1
-            if (any(table_functions_span(j, :).eq.i)) then
-                    max_span = j
-                    exit 
-            end if
-        end do 
-
-        table_spans_function(i, :) = [min_span, max_span]
-    end do 
-            
-    ! Set shape of B0 and B1
-    do i = 1, nb_ctrlpts
-        min_span = table_spans_function(i, 1)
-        max_span = table_spans_function(i, 2)
-
-        min_knot = table_points_span(min_span, 1)
-        max_knot = table_points_span(max_span, 2)
-
-        Bshape(i, :) = [min_knot, max_knot]
-    end do
-
-end subroutine iga_get_B_shape
 
 ! ---------------------------------------------------------------
 ! WQ FUNCTIONS: expected to work in weighted-quadrature approach
@@ -537,311 +282,235 @@ subroutine wq_solve_weights(nr_obj, Bshape_obj, nr_test, nc, BBtest, II, IIshape
     end do
 end subroutine wq_solve_weights
 
-! ------------------------------------------------------------------------
-! MODULES: In order to have a class structure to compute basis and weights
-! ------------------------------------------------------------------------
-module basis_weights
+module quadrature_rules
 
-    implicit none
-    integer, parameter :: r = 2
-    double precision, parameter :: tol = 1.d-14, span_tol = 1.d-8
+    type :: genquadrature
+        ! Inputs
+        integer :: degree
+        double precision, dimension(:), pointer :: knotvector=>null()
 
-    type :: iga
-        ! Input
-        integer :: degree, size_kv
-        double precision, dimension(:), allocatable :: knotvector
+        ! Locals
+        double precision :: span_tol = 1.d-8, tol = 1.d-12
+        integer :: nbctrlpts, nbel, size_ukv, size_kv
+        double precision, dimension(:), allocatable :: ukv
+
+    end type genquadrature
+
+    type :: gaussquadrature
+
+        ! Inputs
+        type(genquadrature), allocatable :: genquad
+        integer :: order = 0
+
+        ! Outputs
+        integer :: nbqp
+        double precision, dimension(:), allocatable :: quadptspos, parametricweights
         
-        ! Output
-        double precision, dimension(:), allocatable :: qp_position, qp_weight, data_B0, data_B1
-        integer, dimension(:,:), allocatable :: indices
-        integer :: nnz_B, nnz_I
+        ! Locals
+        double precision, dimension(:), allocatable :: isopositions, isoweights
         
-        ! Local 
-        integer :: nb_ctrlpts, nb_qp, size_nodes
-        integer, dimension(:,:), allocatable :: Bshape
-        double precision, dimension(:), allocatable :: nodes
+    end type gaussquadrature
 
-    end type iga
+    type ::  weightedquadrature
 
-    type :: wq
-        ! Input
-        integer :: degree, size_kv, method
-        double precision, dimension(:), allocatable :: knotvector 
+        ! Inputs
+        type(genquadrature), allocatable :: genquad
+        double precision, dimension(:), pointer :: quadptspos=>null()
+        integer :: method = 1
+        integer, dimension(:, :), pointer :: B0shape=>null(), B1shape=>null()
 
-        ! Output
-        double precision, dimension(:), allocatable ::  qp_position, data_B0, data_B1, & 
-                                                    data_W00, data_W01, data_W10, data_W11
-        integer, dimension(:,:), allocatable :: indices
-        integer :: nnz_B, nnz_I
+        ! Outputs
+        integer :: nbqp
 
-        ! Local
-        integer :: maxrule, size_nodes, nb_ctrlpts, nb_qp_wq, nb_qp_cgg
-        integer, dimension(:, :), allocatable :: B0shape, B1shape
-        double precision, dimension(:), allocatable :: nodes 
-        logical :: isuniform
-    
-    end type wq
+    end type weightedquadrature
 
 contains
 
-    subroutine iga_initialize(obj, degree, size_kv, knotvector)
-        !! Initialize IGA-Galerkin approach
+    subroutine init_genquad(obj, degree, knotvector)
 
         implicit none
         ! Input / output data
         ! -------------------
-        integer, intent(in) :: degree, size_kv
-        double precision, intent(in) :: knotvector
-        dimension :: knotvector(size_kv)
-        type(iga), pointer :: obj
+        integer, intent(in) :: degree
+        double precision, dimension(:), target, intent(in) :: knotvector
+        type(genquadrature), allocatable :: obj
 
-        ! Set properties
-        allocate(obj)
-        allocate(obj%knotvector(size_kv))
-        obj%degree = degree
-        obj%size_kv = size_kv
-        obj%nb_ctrlpts = size_kv - degree - 1 
-        obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1)
-        obj%knotvector = knotvector
+        ! local data
+        ! ----------
+        double precision, allocatable, dimension(:) :: nodes
 
-        allocate(obj%nodes(size_kv+1))
-        call find_unique_array(obj%size_kv, obj%knotvector, obj%nodes)
-        obj%size_nodes = int(obj%nodes(size_kv+1))
-        obj%nb_qp = (degree + 1)*(obj%size_nodes - 1)
-        obj%nnz_B = obj%nb_qp*(obj%degree + 1) 
-        
-        ! Get quadrature points positions
-        allocate(obj%qp_position(obj%nb_qp), obj%qp_weight(obj%nb_qp))
-        call iga_get_qp_positions_weights(obj%degree, obj%size_kv, obj%nodes, & 
-                                    obj%nb_qp, obj%qp_position, obj%qp_weight)
+        if (.not.allocated(obj)) allocate(obj)
+        obj%degree   = degree
+        obj%knotvector => knotvector
+        obj%size_kv   = size(knotvector) 
+        obj%nbctrlpts = obj%size_kv - obj%degree - 1
 
-        ! Set nonzero values of B0 and B1
-        allocate(obj%Bshape(obj%nb_ctrlpts, 2))
-        call iga_get_B_shape(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%Bshape, span_tol)  
+        allocate(nodes(obj%size_kv+1))
+        call find_unique_array(obj%size_kv, obj%knotvector, nodes)
+        obj%size_ukv  = int(nodes(obj%size_kv+1))
+        obj%nbel      = obj%size_ukv - 1
+        allocate(obj%ukv(obj%size_ukv))
+        obj%ukv = nodes(:obj%size_ukv)
 
-    end subroutine iga_initialize
+    end subroutine init_genquad
 
-    subroutine iga_basis_weights_dense2coo(obj)
-        !! Computes the basis and the weights in IGA-Galerkin approach
-            
-        implicit none 
+    subroutine get_basis_simplified_coo(obj, nb_knots, knots, basis, indices)
+
+        implicit none
         ! Input / output data
-        ! --------------------
-        type(iga), pointer :: obj
+        ! -------------------
+        integer, intent(in) :: nb_knots
+        double precision, intent(in) :: knots
+        dimension :: knots(nb_knots)
+        type(genquadrature), allocatable :: obj
+
+        double precision, intent(out) :: basis
+        dimension :: basis((obj%degree+1)*nb_knots, 2)
+
+        integer, intent(out) :: indices
+        dimension :: indices((obj%degree+1)*nb_knots, 2)
+
+        call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
+                            nb_knots, knots, basis, indices, obj%span_tol)
+
+    end subroutine get_basis_simplified_coo
+
+    subroutine get_basis_simplified_dense(obj, nb_knots, knots, B0, B1)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, intent(in) :: nb_knots
+        double precision, intent(in) :: knots
+        dimension :: knots(nb_knots)
+        type(genquadrature), allocatable :: obj
+        double precision, intent(out) :: B0, B1
+        dimension :: B0(obj%nbctrlpts, nb_knots), B1(obj%nbctrlpts, nb_knots)
+
+        ! Local data
+        ! ----------
+        double precision :: basis
+        dimension :: basis((obj%degree+1)*nb_knots, 2)
+        integer :: indices
+        dimension :: indices((obj%degree+1)*nb_knots, 2)
+
+        call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
+                            nb_knots, knots, basis, indices, obj%span_tol)
+
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0, 1), size(B0, 2), B0)
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 2), size(B1, 1), size(B1, 2), B1)
+
+    end subroutine get_basis_simplified_dense
+
+    ! ------------
+
+    subroutine init_gaussquad(obj, degree, knotvector)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, intent(in) :: degree
+        double precision, dimension(:), target, intent(in) :: knotvector
+        type(gaussquadrature), allocatable :: obj
+
+        if (.not.allocated(obj)) allocate(obj)
+        call init_genquad(obj%genquad, degree, knotvector)
+
+    end subroutine init_gaussquad
+
+    subroutine getisoinfo_gaussquad(obj)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(gaussquadrature), allocatable :: obj
         
         ! Local data
         ! ----------
-        double precision, dimension(:,:), allocatable :: B0, B1
-        integer :: i, j, c
+        double precision, allocatable, dimension(:, :) :: GaussPdsCoord
 
-        ! Get basis and weights 
-        allocate(B0(obj%nb_ctrlpts, obj%nb_qp), B1(obj%nb_ctrlpts, obj%nb_qp))
-        call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, &
-                        obj%nb_qp, obj%qp_position, B0, B1, span_tol)
+        if (obj%order.eq.0) obj%order = obj%genquad%degree + 1
+        if (.not.allocated(obj%isopositions)) allocate(obj%isopositions((obj%order)))
+        if (.not.allocated(obj%isoweights))   allocate(obj%isoweights((obj%order)))
+        allocate(GaussPdsCoord(2, obj%order))
+        
+        call Gauss(obj%order, 1, GaussPdsCoord, 0)
+        obj%isoweights   = GaussPdsCoord(1, :)
+        obj%isopositions = GaussPdsCoord(2, :)
 
-        ! Save values
-        allocate(obj%data_B0(obj%nnz_B), obj%data_B1(obj%nnz_B), obj%indices(obj%nnz_B, 2))
-        c = 0
-        do i = 1, obj%nb_ctrlpts
-            do j = obj%Bshape(i, 1), obj%Bshape(i, 2)
-                c = c + 1
-                obj%data_B0(c) = B0(i, j)
-                obj%data_B1(c) = B1(i, j)
-                obj%indices(c, :) = [i, j]
+    end subroutine getisoinfo_gaussquad
+
+    subroutine findquadpos_gaussquad(obj)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(gaussquadrature), allocatable :: obj
+
+        ! Local data
+        ! ----------
+        integer :: i, j, k, nbel
+        double precision, dimension(:), allocatable :: nodes
+
+        allocate(nodes(obj%genquad%size_ukv))
+        nbel     = obj%genquad%nbel
+        nodes    = obj%genquad%ukv 
+        obj%nbqp = nbel*obj%order
+
+        if (.not.allocated(obj%quadptspos)) allocate(obj%quadptspos(obj%nbqp))
+        do i = 1, nbel
+            do j = 1, obj%order
+                k = (i - 1)*obj%order + j
+                obj%quadptspos(k) = 0.5d0*(obj%isopositions(j)/dble(nbel) + nodes(i+1) + nodes(i))
             end do
         end do
+        
+    end subroutine findquadpos_gaussquad
 
-    end subroutine iga_basis_weights_dense2coo
-
-    subroutine wq_initialize(obj, degree, size_kv, knotvector, method)
-        !! Initialize IGA-WQ approach
-
+    subroutine findparametricweights_gaussquad(obj)
         implicit none
         ! Input / output data
         ! -------------------
-        integer, intent(in) :: degree, size_kv, method
-        double precision, intent(in) :: knotvector
-        dimension :: knotvector(size_kv)
-        type(wq), pointer :: obj
+        type(gaussquadrature), allocatable :: obj
 
-        ! Local data
-        ! -----------
-        logical :: ismaxreg, isuniform
-
-        ! Verify regularity and uniformity of knot-vector
-        call verify_regularity_uniformity(degree, size_kv, knotvector, ismaxreg, isuniform, span_tol)
-        if (.not.ismaxreg) stop 'Maximum regularity not respected'
-
-        ! Set properties
-        allocate(obj)
-        allocate(obj%knotvector(size_kv))
-        obj%degree = degree
-        obj%size_kv = size_kv
-        obj%nb_ctrlpts = size_kv - degree - 1
-        obj%nnz_I = (2*obj%degree+1)*obj%nb_ctrlpts - obj%degree*(obj%degree+1) 
-        obj%knotvector = knotvector
-        obj%isuniform = isuniform
-
-        allocate(obj%nodes(size_kv+1))
-        call find_unique_array(obj%size_kv, obj%knotvector, obj%nodes)
-        obj%size_nodes = int(obj%nodes(obj%size_kv+1))
-
-        if (method.eq.1) obj%maxrule = 1
-        if (method.eq.2) obj%maxrule = 2
-        
-        obj%method = method
-        obj%nb_qp_wq = 2*(obj%degree + r) + (obj%size_nodes - 1)*(obj%maxrule + 1) - 2*obj%maxrule - 3  
-        obj%nb_qp_cgg = (obj%degree + 1)*(obj%size_nodes - 1)
-
-        allocate(obj%qp_position(obj%nb_qp_wq), &
-                obj%B0shape(obj%nb_ctrlpts, 2), &
-                obj%B1shape(obj%nb_ctrlpts, 2))
-        obj%qp_position = 0.d0
-        obj%B0shape = 0
-        obj%B1shape = 0
-
-    end subroutine wq_initialize
-
-    subroutine wq_get_qp_positions(obj)
-        !! Gets quadrature points' positions (QP) in WQ approach 
-    
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(wq), pointer :: obj
-        
         ! Local data
         ! ----------
-        integer :: i, j, k
-        double precision, allocatable, dimension(:) :: nodes, QPB, QPI
-        
-        allocate(QPB(obj%degree+r), QPI(2+obj%maxrule))
-        allocate(nodes(obj%size_nodes))
-        nodes = obj%nodes(1:obj%size_nodes)
-    
-        ! First span
-        call linspace(nodes(1), nodes(2), size(QPB), QPB)
-        do j = 1, size(QPB)
-            obj%qp_position(j) = QPB(j)
-        end do
-    
-        ! Last span 
-        call linspace(nodes(size(nodes)-1), nodes(size(nodes)), size(QPB), QPB)
-        do j = 1, size(QPB)
-            obj%qp_position(size(obj%qp_position)-size(QPB)+j) = QPB(j)
-        end do
-        
-        ! Inner spans
-        if (size(nodes).lt.4) return
-        do i = 2, size(nodes)-2
-            call linspace(nodes(i), nodes(i+1), size(QPI), QPI)
-            do j = 1, size(QPI) 
-                k = size(QPB) + (size(QPI) - 1)*(i - 2) + j - 1    
-                obj%qp_position(k) = QPI(j)
+        integer :: i, j, k, nbel
+
+        nbel     = obj%genquad%nbel
+        obj%nbqp = nbel*obj%order
+
+        if (.not.allocated(obj%quadptspos)) allocate(obj%quadptspos(obj%nbqp))
+        do i = 1, nbel
+            do j = 1, obj%order
+                k = (i - 1)*obj%order + j
+                obj%parametricweights(k) = 0.5d0/dble(nbel)*obj%isoweights(j)
             end do
         end do
+        
+    end subroutine findparametricweights_gaussquad
 
-    end subroutine wq_get_qp_positions  
-    
-    subroutine wq_get_B_shape(obj)
-        !! Gets non-zero positions of B0 and B1 in WQ approach
-    
-        implicit none 
-        ! Input / output data 
+    ! -----------
+
+    subroutine init_wq(obj, degree, knotvector, quadptspos, B0shape, B1shape, method)
+        implicit none
+        ! Input / output data
         ! -------------------
-        type(wq), pointer :: obj
-    
-        ! Local data 
-        ! ----------
-        integer :: degree, nbel, nb_ctrlpts, min_span, max_span, min_knot, max_knot
-        integer, allocatable, dimension(:, :) :: table_points_span, table_functions_span, table_spans_function
-        integer :: i, j, c
-    
-        degree = obj%degree
-        nbel = obj%size_nodes - 1
-        nb_ctrlpts = obj%nb_ctrlpts
-    
-        allocate(table_points_span(nbel, 2), &
-                table_functions_span(nbel, degree+1), &
-                table_spans_function(nb_ctrlpts, 2))
-    
-        ! Get table of points over the span
-        table_points_span = 1
-        table_points_span(1, 2) = degree + r 
+        integer, intent(in) :: degree, method
+        double precision, dimension(:), target, intent(in) :: knotvector, quadptspos
+        integer, dimension(:, :), target, intent(in) :: B0shape, B1shape
+        type(weightedquadrature), allocatable :: obj
+
+        ! Local data
+        ! ---------- 
+        if (.not.allocated(obj)) allocate(obj)
+        call init_genquad(obj%genquad, degree, knotvector)
+        if ((method.ge.1).and.(method.le.2)) obj%method = method
+        obj%nbqp       = size(quadptspos)
+        obj%quadptspos => quadptspos
+        obj%B0shape    => B0shape
+        obj%B1shape    => B1shape
         
-        do i = 2, nbel - 1
-            table_points_span(i, 1) = table_points_span(i-1, 2)
-            table_points_span(i, 2) = table_points_span(i, 1) + 1 + obj%maxrule
-        end do
-    
-        table_points_span(nbel, 1) = table_points_span(nbel-1, 2)
-        table_points_span(nbel, 2) = table_points_span(nbel, 1) + degree + r - 1
-    
-        ! Get table of functions on span 
-        call set_table_functions_spans(degree, obj%size_kv, obj%nodes, obj%knotvector, table_functions_span, span_tol)
-    
-        ! Get table of spans for each function
-        do i = 1, nb_ctrlpts
-            min_span = 1
-            do j = 1, nbel
-                if (any(table_functions_span(j, :).eq.i)) then
-                        min_span = j
-                        exit 
-                end if
-            end do 
-    
-            max_span = nbel
-            do j = nbel, 1, -1
-                if (any(table_functions_span(j, :).eq.i)) then
-                        max_span = j
-                        exit 
-                end if
-            end do 
-    
-            table_spans_function(i, :) = [min_span, max_span]
-        end do 
-                
-        ! Set shape of B0 and B1
-        do i = 1, nb_ctrlpts
-            min_span = table_spans_function(i, 1)
-            max_span = table_spans_function(i, 2)
-    
-            min_knot = table_points_span(min_span, 1)
-            max_knot = table_points_span(max_span, 2)
-    
-            max_knot = max_knot - 1
-            min_knot = min_knot + 1
-            if (i.eq.1) min_knot = min_knot - 1
-            if (i.eq.nb_ctrlpts) max_knot = max_knot + 1
-            
-            obj%B0shape(i, :) = [min_knot, max_knot]
-        end do
-        
-        do i = 1, nb_ctrlpts
-            min_span = table_spans_function(i, 1)
-            max_span = table_spans_function(i, 2)
-    
-            min_knot = table_points_span(min_span, 1)
-            max_knot = table_points_span(max_span, 2)
+    end subroutine init_wq
 
-            max_knot = max_knot - 1
-            min_knot = min_knot + 1
-            if ((i.eq.1).or.(i.eq.2)) min_knot = min_knot - 1
-            if ((i.eq.nb_ctrlpts).or.(i.eq.nb_ctrlpts-1)) max_knot = max_knot + 1
-    
-            obj%B1shape(i, :) = [min_knot, max_knot]
-        end do
-
-        ! Get number of non zero values of B
-        c = 0
-        do i = 1, nb_ctrlpts
-            c = c + obj%B1shape(i, 2) - obj%B1shape(i, 1) + 1
-        end do
-        obj%nnz_B = c
-    
-    end subroutine wq_get_B_shape
-
-    subroutine wq_basis_weights_method1(obj, B0, B1, W00, W01, W10, W11)
+    subroutine findbasisweightrules_md1_wq(obj, basis, weights, indices)
         !! Returns the basis and weights data at the quadrature points in WQ approach 
         !! The ouput of this first method is 4 quadrature rules: 
         !! - For integrals of the form int N(x) f(x) dx
@@ -853,117 +522,143 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(wq), pointer :: obj
-        double precision, intent(out) :: B0, B1, W00, W01, W10, W11 
-        dimension ::    B0(obj%size_kv-obj%degree-1, obj%nb_qp_wq), B1(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-                        W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-                        W10(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W11(obj%size_kv-obj%degree-1, obj%nb_qp_wq)
+        type(weightedquadrature), allocatable :: obj
+        double precision, intent(out) :: basis, weights
+        dimension :: basis((obj%genquad%degree+1)*obj%nbqp, 2), weights((obj%genquad%degree+1)*obj%nbqp, 4)
+
+        integer, intent(out) :: indices
+        dimension :: indices((obj%genquad%degree+1)*obj%nbqp, 2)
 
         ! Local data
-        ! ----------       
+        ! ----------      
+        integer :: i, j, c
+        double precision :: B0wq_p0, B1wq_p0, W00, W01, W10, W11 
+        dimension ::    B0wq_p0(obj%genquad%nbctrlpts,  obj%nbqp), B1wq_p0(obj%genquad%nbctrlpts,  obj%nbqp), &
+                        W00(obj%genquad%nbctrlpts, obj%nbqp), W01(obj%genquad%nbctrlpts, obj%nbqp), &
+                        W10(obj%genquad%nbctrlpts, obj%nbqp), W11(obj%genquad%nbctrlpts, obj%nbqp)
+        
         ! For space S^p_r
-        double precision, allocatable, dimension(:) :: qp_cgg_pos, qp_cgg_weights
-        double precision, allocatable, dimension(:,:) :: B0cgg_p0, B1cgg_p0    
-        integer, allocatable, dimension(:,:) :: Bcgg_p0_int
+        type(gaussquadrature), allocatable :: gauss_p0
+        double precision, allocatable, dimension(:, :) :: B0cgg_p0, B1cgg_p0    
+        integer, allocatable, dimension(:, :) :: Bcgg_p0_int
     
         ! For space S^{p-1}_{r-1}
-        integer :: size_kv_p1, degree_p1, nb_ctrlpts_p1
-        double precision, allocatable, dimension(:) :: knotvector_p1, nodes_p1
-        double precision, allocatable, dimension(:,:) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
-        integer, dimension(:,:), allocatable :: Bcgg_p1_int
+        type(gaussquadrature), allocatable :: gauss_p1
+        integer :: size_kv_p1, degree_p1
+        double precision, allocatable, dimension(:) :: knotvector_p1
+        double precision, allocatable, dimension(:, :) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
+        integer, dimension(:, :), allocatable :: Bcgg_p1_int
     
         ! Integrals and weights
-        double precision, allocatable, dimension(:,:) :: II
-        integer, allocatable, dimension(:,:) :: IIshape
+        double precision, allocatable, dimension(:, :) :: II
+        integer, allocatable, dimension(:, :) :: IIshape
 
         ! ------------
         ! Space S^p_r
         ! ------------   
         ! Find positions and weights in IGA approach
-        allocate(qp_cgg_pos(obj%nb_qp_cgg), qp_cgg_weights(obj%nb_qp_cgg))
-        call iga_get_qp_positions_weights(obj%degree, obj%size_kv, obj%nodes, obj%nb_qp_cgg, qp_cgg_pos, qp_cgg_weights)
-    
+        call init_gaussquad(gauss_p0, obj%genquad%degree, obj%genquad%knotvector)
+        call getisoinfo_gaussquad(gauss_p0)
+        call findquadpos_gaussquad(gauss_p0)
+        call findparametricweights_gaussquad(gauss_p0)
+
         ! Find basis at Gauss quadrature points
-        allocate(B0cgg_p0(obj%nb_ctrlpts, obj%nb_qp_cgg), B1cgg_p0(obj%nb_ctrlpts, obj%nb_qp_cgg))
-        call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_cgg, &
-                        qp_cgg_pos, B0cgg_p0, B1cgg_p0, span_tol)
+        allocate(B0cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp), &
+                B1cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
+        call get_basis_simplified_dense(gauss_p0%genquad, gauss_p0%nbqp, gauss_p0%quadptspos, B0cgg_p0, B1cgg_p0)
     
         ! Find basis at WQ quadrature points
-        call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_wq, obj%qp_position, B0, B1, span_tol) 
+        call get_basis_simplified_coo(gauss_p0%genquad, obj%nbqp, obj%quadptspos, basis, indices) 
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0wq_p0, 1), size(B0wq_p0, 2), B0wq_p0)
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 2), size(B1wq_p0, 1), size(B1wq_p0, 2), B1wq_p0)
 
         ! -----------------------
         ! For space S^{p-1}_{r-1}
         ! -----------------------
         ! Set properties of new space
-        degree_p1 = obj%degree - 1
-        size_kv_p1 = obj%size_kv - 2
-        allocate(knotvector_p1(size_kv_p1), nodes_p1(size_kv_p1+1))
-        knotvector_p1 = obj%knotvector(2:obj%size_kv-1)
-        call find_unique_array(size_kv_p1, knotvector_p1, nodes_p1)
-        nb_ctrlpts_p1 = size_kv_p1 - degree_p1 - 1 
-    
+        degree_p1  = obj%genquad%degree - 1
+        size_kv_p1 = obj%genquad%size_kv - 2
+        allocate(knotvector_p1(size_kv_p1))
+        knotvector_p1 = obj%genquad%knotvector(2:obj%genquad%size_kv-1)
+        call init_gaussquad(gauss_p1, degree_p1, knotvector_p1)
+
         ! Find basis function values at Gauss points
-        allocate(B0cgg_p1(nb_ctrlpts_p1, obj%nb_qp_cgg), B1cgg_p1(nb_ctrlpts_p1, obj%nb_qp_cgg))
-        call get_basis(degree_p1, size_kv_p1, nodes_p1, knotvector_p1, obj%nb_qp_cgg, qp_cgg_pos, B0cgg_p1, B1cgg_p1, span_tol) 
+        allocate(B0cgg_p1(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp), B1cgg_p1(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
+        call get_basis_simplified_dense(gauss_p1%genquad, gauss_p0%nbqp, gauss_p0%quadptspos, B0cgg_p1, B1cgg_p1) 
         deallocate(B1cgg_p1)
     
         ! Find basis function values at WQ points
-        allocate(B0wq_p1(nb_ctrlpts_p1, obj%nb_qp_wq), B1wq_p1(nb_ctrlpts_p1, obj%nb_qp_wq))
-        call get_basis(degree_p1, size_kv_p1, nodes_p1, knotvector_p1, obj%nb_qp_wq, obj%qp_position, B0wq_p1, B1wq_p1, span_tol) 
+        allocate(B0wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp), B1wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp))
+        call get_basis_simplified_dense(gauss_p1%genquad, obj%nbqp, obj%quadptspos, B0wq_p1, B1wq_p1) 
         deallocate(B1wq_p1)
     
         ! ---------------------
         ! Integrals and Weights
         ! ---------------------
-        allocate(Bcgg_p0_int(obj%nb_ctrlpts, obj%nb_qp_cgg))
-        allocate(Bcgg_p1_int(nb_ctrlpts_p1, obj%nb_qp_cgg))
+        allocate(Bcgg_p0_int(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
+        allocate(Bcgg_p1_int(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
-        where (abs(B0cgg_p0).gt.tol) Bcgg_p0_int = 1
-        where (abs(B0cgg_p1).gt.tol) Bcgg_p1_int = 1
+        where (abs(B0cgg_p0).gt.obj%genquad%tol) Bcgg_p0_int = 1
+        where (abs(B0cgg_p1).gt.obj%genquad%tol) Bcgg_p1_int = 1
     
         ! --------------
-        allocate(IIshape(obj%nb_ctrlpts, obj%nb_ctrlpts))
+        allocate(IIshape(gauss_p0%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
         IIshape = matmul(Bcgg_p0_int, transpose(Bcgg_p0_int))
     
         ! Compute B0_p0 * W * B0_p0'
-        allocate(II(obj%nb_ctrlpts, obj%nb_ctrlpts))
-        call gemm_AWB(1, obj%nb_ctrlpts, obj%nb_qp_cgg, B0cgg_p0, obj%nb_ctrlpts, obj%nb_qp_cgg, &
-                    B0cgg_p0, qp_cgg_weights, obj%nb_ctrlpts, obj%nb_ctrlpts, II)
+        allocate(II(gauss_p0%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
+        call gemm_AWB(1, size(B0cgg_p0, 1), size(B0cgg_p0, 2), B0cgg_p0, &
+                    size(B0cgg_p0, 1), size(B0cgg_p0, 2), B0cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II)
 
         ! Compute W00
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B0shape, obj%nb_ctrlpts, obj%nb_qp_wq, B0, II, IIshape, W00)
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B0shape, gauss_p0%genquad%nbctrlpts, &
+                            obj%nbqp, B0wq_p0, II, IIshape, W00)
     
         ! Compute  B0_p0 * W * B1_p0'
-        call gemm_AWB(1, obj%nb_ctrlpts, obj%nb_qp_cgg, B0cgg_p0, obj%nb_ctrlpts, obj%nb_qp_cgg, & 
-                    B1cgg_p0, qp_cgg_weights, obj%nb_ctrlpts, obj%nb_ctrlpts, II)
+        call gemm_AWB(1, size(B0cgg_p0, 1), size(B0cgg_p0, 2), B0cgg_p0, &
+                    size(B1cgg_p0, 1), size(B1cgg_p0, 2), B1cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II)
     
         ! Compute W10
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B1shape, obj%nb_ctrlpts, obj%nb_qp_wq, B0, II, IIshape, W10)
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B1shape, gauss_p0%genquad%nbctrlpts, &
+                            obj%nbqp, B0wq_p0, II, IIshape, W10)
         deallocate(IIshape, II)
     
         ! --------------
-        allocate(IIshape(nb_ctrlpts_p1, obj%nb_ctrlpts))
+        allocate(IIshape(gauss_p1%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
         IIshape = matmul(Bcgg_p1_int, transpose(Bcgg_p0_int))
     
         ! Compute B0_p1 * W * B0_p0'
-        allocate(II(nb_ctrlpts_p1, obj%nb_ctrlpts))
-        call gemm_AWB(1, nb_ctrlpts_p1, obj%nb_qp_cgg, B0cgg_p1, obj%nb_ctrlpts, obj%nb_qp_cgg, & 
-                    B0cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, obj%nb_ctrlpts, II)
+        allocate(II(gauss_p1%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
+        call gemm_AWB(1, size(B0cgg_p1, 1), size(B0cgg_p1, 2), B0cgg_p1, &
+                    size(B0cgg_p0, 1), size(B0cgg_p0, 2), B0cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II)
     
         ! Compute W01
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B0shape, nb_ctrlpts_p1, obj%nb_qp_wq, B0wq_p1, II, IIshape, W01)
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B0shape, gauss_p1%genquad%nbctrlpts, &
+                            obj%nbqp, B0wq_p1, II, IIshape, W01)
         
         ! Compute B0_p1 * W * B1_p0'
-        call gemm_AWB(1, nb_ctrlpts_p1, obj%nb_qp_cgg, B0cgg_p1, obj%nb_ctrlpts, obj%nb_qp_cgg, &
-                    B1cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, obj%nb_ctrlpts, II)
+        call gemm_AWB(1, size(B0cgg_p1, 1), size(B0cgg_p1, 2), B0cgg_p1, &
+                    size(B1cgg_p0, 1), size(B1cgg_p0, 2), B1cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II)
 
         ! Compute W11
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B1shape, nb_ctrlpts_p1, obj%nb_qp_wq, B0wq_p1, II, IIshape, W11)               
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B1shape, gauss_p1%genquad%nbctrlpts, &
+                            obj%nbqp, B0wq_p1, II, IIshape, W11) 
         deallocate(IIshape, II)
 
-    end subroutine wq_basis_weights_method1
+        weights = 0.d0
+        do c = 1, size(indices, 1)
+            i = indices(c, 1)
+            j = indices(c, 1)
+            if ((i.gt.0).and.(j.gt.0)) weights(c, :) = [W00(i, j), W01(i, j), W10(i, j), W11(i, j)]
+        end do
 
-    subroutine wq_basis_weights_method2(obj, B0, B1, W00, W01, W10, W11)
+    end subroutine findbasisweightrules_md1_wq
+
+    subroutine findbasisweightrules_md2_wq(obj, basis, weights, indices)
         !! Returns the basis and weights data at the quadrature points in WQ approach 
         !! The ouput of the second method is 2 quadrature rules: 
         !! - For integrals of the form int N(x) f(x) dx
@@ -973,301 +668,116 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(wq), pointer :: obj
-        double precision, intent(out) :: B0, B1, W00, W01, W10, W11 
-        dimension ::    B0(obj%size_kv-obj%degree-1, obj%nb_qp_wq), B1(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-                        W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-                        W10(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W11(obj%size_kv-obj%degree-1, obj%nb_qp_wq)
+        type(weightedquadrature), allocatable :: obj
+        double precision, intent(out) :: basis, weights
+        dimension :: basis((obj%genquad%degree+1)*obj%nbqp, 2), weights((obj%genquad%degree+1)*obj%nbqp, 4)
+
+        integer, intent(out) :: indices
+        dimension :: indices((obj%genquad%degree+1)*obj%nbqp, 2)
 
         ! Local data
-        ! ----------      
+        ! ----------
+        integer :: i, j, c
+        double precision :: B0wq_p0, B1wq_p0, W00, W11 
+        dimension ::    B0wq_p0(obj%genquad%nbctrlpts,  obj%nbqp), B1wq_p0(obj%genquad%nbctrlpts,  obj%nbqp), &
+                        W00(obj%genquad%nbctrlpts, obj%nbqp), W11(obj%genquad%nbctrlpts, obj%nbqp)
+
         ! For space S^p_r
-        double precision, allocatable, dimension(:) :: qp_cgg_pos, qp_cgg_weights
-        double precision, allocatable, dimension(:,:) :: B0cgg_p0, B1cgg_p0    
-        integer, allocatable, dimension(:,:) :: Bcgg_p0_int
+        type(gaussquadrature), allocatable :: gauss_p0
+        double precision, allocatable, dimension(:, :) :: B0cgg_p0, B1cgg_p0    
+        integer, allocatable, dimension(:, :) :: Bcgg_p0_int
     
         ! For space S^p_{r-1}
-        integer :: size_kv_p1, degree_p1, nb_ctrlpts_p1
-        double precision, allocatable, dimension(:) :: knotvector_p1, nodes_p1
-        double precision, allocatable, dimension(:,:) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
-        integer, dimension(:,:), allocatable :: Bcgg_p1_int
+        type(gaussquadrature), allocatable :: gauss_p1
+        integer :: size_kv_p1, degree_p1
+        double precision, allocatable, dimension(:) :: knotvector_p1
+        double precision, allocatable, dimension(:, :) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
+        integer, dimension(:, :), allocatable :: Bcgg_p1_int
     
         ! Integrals and weights
-        double precision, allocatable, dimension(:,:) :: II
-        integer, allocatable, dimension(:,:) :: IIshape
+        double precision, allocatable, dimension(:, :) :: II
+        integer, allocatable, dimension(:, :) :: IIshape
     
         ! -----------
         ! Space S^p_r
         ! -----------   
         ! Find positions and weights in IGA approach
-        allocate(qp_cgg_pos(obj%nb_qp_cgg), qp_cgg_weights(obj%nb_qp_cgg))
-        call iga_get_qp_positions_weights(obj%degree, obj%size_kv, obj%nodes, obj%nb_qp_cgg, qp_cgg_pos, qp_cgg_weights)
-    
+        call init_gaussquad(gauss_p0, obj%genquad%degree, obj%genquad%knotvector)
+        call getisoinfo_gaussquad(gauss_p0)
+        call findquadpos_gaussquad(gauss_p0)
+        call findparametricweights_gaussquad(gauss_p0)
+
         ! Find basis at Gauss quadrature points
-        allocate(B0cgg_p0(obj%nb_ctrlpts, obj%nb_qp_cgg), B1cgg_p0(obj%nb_ctrlpts, obj%nb_qp_cgg))
-        call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_cgg, &
-                        qp_cgg_pos, B0cgg_p0, B1cgg_p0, span_tol)
+        allocate(B0cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp), &
+                B1cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
+        call get_basis_simplified_dense(gauss_p0%genquad, gauss_p0%nbqp, gauss_p0%quadptspos, B0cgg_p0, B1cgg_p0)
     
         ! Find basis at WQ quadrature points
-        call get_basis(obj%degree, obj%size_kv, obj%nodes, obj%knotvector, obj%nb_qp_wq, obj%qp_position, B0, B1, span_tol) 
+        call get_basis_simplified_coo(gauss_p0%genquad, obj%nbqp, obj%quadptspos, basis, indices) 
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0wq_p0, 1), size(B0wq_p0, 2), B0wq_p0)
+        call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 2), size(B1wq_p0, 1), size(B1wq_p0, 2), B1wq_p0)
 
         ! ---------------
         ! Space S^p_{r-1}
         ! ---------------
         ! Set properties of new space
-        degree_p1 = obj%degree
+        degree_p1  = obj%genquad%degree 
         size_kv_p1 = -1
-        call increase_multiplicity(1, degree_p1, obj%size_kv, obj%knotvector, size_kv_p1, knotvector_p1, span_tol)
-        allocate(knotvector_p1(size_kv_p1), nodes_p1(size_kv_p1+1))
-        call increase_multiplicity(1, degree_p1, obj%size_kv, obj%knotvector, size_kv_p1, knotvector_p1, span_tol)
-        call find_unique_array(size_kv_p1, knotvector_p1, nodes_p1)
-        nb_ctrlpts_p1 = size_kv_p1 - degree_p1 - 1
+        call increase_multiplicity(1, degree_p1, obj%genquad%size_kv, obj%genquad%knotvector, &
+                                size_kv_p1, knotvector_p1, obj%genquad%span_tol)
+        allocate(knotvector_p1(size_kv_p1))
+        call increase_multiplicity(1, degree_p1, obj%genquad%size_kv, obj%genquad%knotvector, &
+                                size_kv_p1, knotvector_p1, obj%genquad%span_tol)
+        call init_gaussquad(gauss_p1, degree_p1, knotvector_p1)
 
         ! Find basis function values at Gauss points
-        allocate(B0cgg_p1(nb_ctrlpts_p1, obj%nb_qp_cgg), B1cgg_p1(nb_ctrlpts_p1, obj%nb_qp_cgg))
-        call get_basis(degree_p1, size_kv_p1, nodes_p1, knotvector_p1, obj%nb_qp_cgg, qp_cgg_pos, B0cgg_p1, B1cgg_p1, span_tol) 
+        allocate(B0cgg_p1(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp), B1cgg_p1(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
+        call get_basis_simplified_dense(gauss_p1%genquad, gauss_p0%nbqp, gauss_p0%quadptspos, B0cgg_p1, B1cgg_p1) 
         deallocate(B1cgg_p1)
     
         ! Find basis function values at WQ points
-        allocate(B0wq_p1(nb_ctrlpts_p1, obj%nb_qp_wq), B1wq_p1(nb_ctrlpts_p1, obj%nb_qp_wq))
-        call get_basis(degree_p1, size_kv_p1, nodes_p1, knotvector_p1, obj%nb_qp_wq, obj%qp_position, B0wq_p1, B1wq_p1, span_tol) 
+        allocate(B0wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp), B1wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp))
+        call get_basis_simplified_dense(gauss_p1%genquad, obj%nbqp, obj%quadptspos, B0wq_p1, B1wq_p1) 
         deallocate(B1wq_p1)
 
-        ! ------------------------------------
+        ! ---------------------
         ! Integrals and Weights
-        ! ------------------------------------
-        allocate(Bcgg_p0_int(obj%nb_ctrlpts, obj%nb_qp_cgg))
-        allocate(Bcgg_p1_int(nb_ctrlpts_p1, obj%nb_qp_cgg))
+        ! ---------------------
+        allocate(Bcgg_p0_int(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
+        allocate(Bcgg_p1_int(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
-        where (abs(B0cgg_p0).gt.tol) Bcgg_p0_int = 1
-        where (abs(B0cgg_p1).gt.tol) Bcgg_p1_int = 1
+        where (abs(B0cgg_p0).gt.obj%genquad%tol) Bcgg_p0_int = 1
+        where (abs(B0cgg_p1).gt.obj%genquad%tol) Bcgg_p1_int = 1
 
-        allocate(IIshape(nb_ctrlpts_p1, obj%nb_ctrlpts))
+        allocate(IIshape(gauss_p1%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
         IIshape = matmul(Bcgg_p1_int, transpose(Bcgg_p0_int))
 
         ! Compute B0_p1 * W * B0_p0'
-        allocate(II(nb_ctrlpts_p1, obj%nb_ctrlpts))
-        call gemm_AWB(1, nb_ctrlpts_p1, obj%nb_qp_cgg, B0cgg_p1, obj%nb_ctrlpts, obj%nb_qp_cgg, &
-                        B0cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, obj%nb_ctrlpts, II) 
+        allocate(II(gauss_p1%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
+        call gemm_AWB(1, size(B0cgg_p1, 1),size(B0cgg_p1, 2), B0cgg_p1, &
+                    size(B0cgg_p0, 1), size(B0cgg_p0, 2), B0cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II) 
 
         ! Compute W0
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B0shape, nb_ctrlpts_p1, obj%nb_qp_wq, B0wq_p1, II, IIshape, W00)
-        W01 = W00
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B0shape, &
+                                gauss_p1%genquad%nbctrlpts, obj%nbqp, B0wq_p1, II, IIshape, W00)
 
         ! Compute = B0_p1 * W * B1_p0'
-        call gemm_AWB(1, nb_ctrlpts_p1, obj%nb_qp_cgg, B0cgg_p1, obj%nb_ctrlpts, obj%nb_qp_cgg, &
-                            B1cgg_p0, qp_cgg_weights, nb_ctrlpts_p1, obj%nb_ctrlpts, II)
+        call gemm_AWB(1, size(B0cgg_p1, 1),size(B0cgg_p1, 2), B0cgg_p1, &
+                    size(B0cgg_p0, 1), size(B0cgg_p0, 2), B1cgg_p0, &
+                    gauss_p0%parametricweights, size(II, 1), size(II, 2), II)
                         
         ! Compute W1
-        call wq_solve_weights(obj%nb_ctrlpts, obj%B1shape, nb_ctrlpts_p1, obj%nb_qp_wq, B0wq_p1, II, IIshape, W11)   
-        W10 = W11            
-    
-    end subroutine wq_basis_weights_method2
-
-    subroutine wq_basis_weights_dense2coo(obj)
-        !! Computes basis and weights in COO format.
-        !! Object needs to be initialized
-            
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(wq), pointer :: obj
+        call wq_solve_weights(gauss_p0%genquad%nbctrlpts, obj%B1shape, &
+                                gauss_p1%genquad%nbctrlpts, obj%nbqp, B0wq_p1, II, IIshape, W11)   
         
-        ! Local data
-        ! ----------
-        integer :: i, j, c, nbel, method
-        double precision, dimension(:,:), allocatable :: B0, B1, W00, W01, W10, W11
+        weights = 0.d0
+        do c = 1, size(indices, 1)
+            i = indices(c, 1)
+            j = indices(c, 1)
+            if ((i.gt.0).and.(j.gt.0)) weights(c, :) = [W00(i, j), W00(i, j), W11(i, j), W11(i, j)]
+        end do
+    
+    end subroutine findbasisweightrules_md2_wq
 
-        type(wq), pointer :: obj_m
-        integer :: nbel_m, size_kv_m
-        double precision, allocatable, dimension(:) :: knotvector_m, nodes_m
-        double precision, allocatable, dimension(:,:) :: B0_m, B1_m, W00_m, W01_m, W10_m, W11_m
-
-        method = obj%method
-        if (.not.any((/1, 2/).eq.method)) stop 'Only method 1 or 2 are allowed'
-
-        nbel = obj%size_nodes - 1
-        call wq_get_qp_positions(obj)
-        call wq_get_B_shape(obj)
-
-        allocate(obj%data_B0(obj%nnz_B), obj%data_B1(obj%nnz_B), &
-                obj%data_W00(obj%nnz_B), obj%data_W01(obj%nnz_B), &
-                obj%data_W10(obj%nnz_B), obj%data_W11(obj%nnz_B), &
-                obj%indices(obj%nnz_B, 2))
-
-        if ((nbel.le.obj%degree+3).or.(.not.obj%isuniform)) then 
-            
-            allocate(B0(obj%size_kv-obj%degree-1, obj%nb_qp_wq), B1(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-            W00(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W01(obj%size_kv-obj%degree-1, obj%nb_qp_wq), &
-            W10(obj%size_kv-obj%degree-1, obj%nb_qp_wq), W11(obj%size_kv-obj%degree-1, obj%nb_qp_wq))
-
-            if (method.eq.1) then
-                call wq_basis_weights_method1(obj, B0, B1, W00, W01, W10, W11)
-            else if (method.eq.2) then
-                call wq_basis_weights_method2(obj, B0, B1, W00, W01, W10, W11)
-            end if
-
-            c = 0
-            do i = 1, obj%nb_ctrlpts
-                do j = obj%B1shape(i, 1), obj%B1shape(i, 2)
-                    c = c + 1
-                    obj%data_B0(c)  = B0(i, j)
-                    obj%data_W00(c) = W00(i, j)
-                    obj%data_W01(c) = W01(i, j)
-                    obj%data_B1(c)  = B1(i, j)
-                    obj%data_W10(c) = W10(i, j)
-                    obj%data_W11(c) = W11(i, j)
-                    obj%indices(c, :) = [i, j]
-                end do
-            end do
-            
-        else
-            ! Get model 
-            ! ---------
-            nbel_m = obj%degree + 3
-            size_kv_m = nbel_m + 2*obj%degree +  1
-            
-            allocate(nodes_m(size_kv_m+1), knotvector_m(size_kv_m))
-            call create_uniform_knotvector(obj%degree, nbel_m, nodes_m, knotvector_m)
-            call wq_initialize(obj_m, obj%degree, size_kv_m, knotvector_m, method)
-            call wq_get_qp_positions(obj_m)
-            call wq_get_B_shape(obj_m)
-
-            allocate(B0_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), B1_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), &
-                    W00_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W01_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), &
-                    W10_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq), W11_m(obj_m%nb_ctrlpts, obj_m%nb_qp_wq))
-
-            if (method.eq.1) then
-                call wq_basis_weights_method1(obj_m, B0_m, B1_m, W00_m, W01_m, W10_m, W11_m)
-            else if (method.eq.2) then
-                call wq_basis_weights_method2(obj_m, B0_m, B1_m, W00_m, W01_m, W10_m, W11_m)
-            end if
-
-            B1_m  = B1_m * nbel/nbel_m
-            W00_m = W00_m * nbel_m/nbel
-            W01_m = W01_m * nbel_m/nbel
-                            
-            ! Transfer data 
-            ! ----------------
-            ! Set p + 1 first functions
-            c = 0
-            do i = 1, obj%degree + 1
-                do j = obj%B1shape(i, 1), obj%B1shape(i, 2)
-                    c = c + 1
-                    obj%data_B0(c)  = B0_m(i, j)
-                    obj%data_W00(c) = W00_m(i, j)
-                    obj%data_W01(c) = W01_m(i, j)
-                    obj%data_B1(c)  = B1_m(i, j)
-                    obj%data_W10(c) = W10_m(i, j)
-                    obj%data_W11(c) = W11_m(i, j)
-                    obj%indices(c, :) = [i, j]
-                end do
-            end do
-
-            ! Set repeated functions 
-            do i = obj%degree+2, obj%nb_ctrlpts-obj%degree-1
-                do j = 1, obj_m%B0shape(obj%degree+2, 2) - obj_m%B0shape(obj%degree+2, 1) + 1 
-                    c = c + 1
-                    obj%data_B0(c)  = B0_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_W00(c) = W00_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_W01(c) = W01_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_B1(c)  = B1_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_W10(c) = W10_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%data_W11(c) = W11_m(obj%degree+2, obj_m%B0shape(obj%degree+2, 1) + j - 1)
-                    obj%indices(c, :) = [i, obj%B1shape(i, 1) + j - 1]
-                end do
-            end do
-
-            ! Set p + 1 last functions
-            do i = obj%degree + 1, 1, -1 
-                do j = obj%B1shape(i, 2), obj%B1shape(i, 1), -1
-                    c = c + 1
-                    obj%data_B0(c)  = B0_m(i, j)
-                    obj%data_W00(c) = W00_m(i, j)
-                    obj%data_W01(c) = W01_m(i, j)
-                    obj%data_B1(c)  = -B1_m(i, j)
-                    obj%data_W10(c) = -W10_m(i, j)
-                    obj%data_W11(c) = -W11_m(i, j)
-                    obj%indices(c, :) = [obj%nb_ctrlpts - i + 1, obj%nb_qp_wq - j + 1]
-                end do
-            end do
-
-        end if
-
-    end subroutine wq_basis_weights_dense2coo
-
-end module basis_weights
-
-subroutine iga2wq2d(nc_u, nc_v, nnz_u, nnz_v, indj_u, indj_v, &
-                    data_B_u, data_B_v, W_u, W_v, data_W_u, data_W_v)
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nc_u, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indj_u, indj_v
-    dimension ::    indj_u(nnz_u), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
-    double precision, intent(in) :: W_u, W_v
-    dimension :: W_u(nc_u), W_v(nc_v)
-    double precision, intent(out) :: data_W_u, data_W_v
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-    ! Local data
-    ! ----------
-    integer :: i
-
-    do i = 1, nnz_u
-        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
-        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
-    end do
-    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
-
-    do i = 1, nnz_v
-        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
-        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
-    end do
-    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
-
-end subroutine iga2wq2d
-
-subroutine iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
-                    data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indj_u, indj_v, indj_w
-    dimension ::    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-    double precision, intent(in) :: W_u, W_v, W_w
-    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
-    double precision, intent(out) :: data_W_u, data_W_v, data_W_w
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-    ! Local data
-    ! ----------
-    integer :: i
-
-    do i = 1, nnz_u
-        data_W_u(i, 1) = data_B_u(i, 1) * W_u(indj_u(i))
-        data_W_u(i, 4) = data_B_u(i, 2) * W_u(indj_u(i))
-    end do
-    data_W_u(i, 2) = data_W_u(i, 1); data_W_u(i, 3) = data_W_u(i, 4)
-
-    do i = 1, nnz_v
-        data_W_v(i, 1) = data_B_v(i, 1) * W_v(indj_v(i))
-        data_W_v(i, 4) = data_B_v(i, 2) * W_v(indj_v(i))
-    end do
-    data_W_v(i, 2) = data_W_v(i, 1); data_W_v(i, 3) = data_W_v(i, 4)
-
-    do i = 1, nnz_w
-        data_W_w(i, 1) = data_B_w(i, 1) * W_w(indj_w(i))
-        data_W_w(i, 4) = data_B_w(i, 2) * W_w(indj_w(i))
-    end do
-    data_W_w(i, 2) = data_W_w(i, 1); data_W_w(i, 3) = data_W_w(i, 4)
-
-end subroutine iga2wq3d
+end module quadrature_rules
