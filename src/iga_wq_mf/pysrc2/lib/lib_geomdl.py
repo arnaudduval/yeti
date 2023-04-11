@@ -3,142 +3,83 @@
 .. Joaquin Cornejo
 """
 
-from .__init__ import *
+from . import *
 from .lib_base import createKnotVector
 
-class geomdlModel(): 
-
-	def __init__(self, name=None, **geometry): 
-
-		if name is None: raise Warning('Insert the name of the part')
-		self._name = name
-		self._sample_size = 101
-		self._geometry = None
-
-		print('\nCreating geometry: ' + name + '...')
-		start = time.process_time()
-		if name == 'quarter_annulus' or name == 'QA':
-			self._dim = 2
-			Rin = geometry.get('Rin', 1.0)
-			Rex = geometry.get('Rex', 2.0)
-			degree_u, degree_v, _ = geometry.get('degree', [2, 3, 2])
-			self._geometry = self.create_quarterAnnulus(Rin, Rex, degree_u, degree_v) 
-
-		elif name == 'quadrilateral' or name == 'SQ':
-			self._dim = 2
-			XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
-			degree_u, degree_v, _ = geometry.get('degree', [2, 2, 2])
-			self._geometry = self.create_quadrilateral(XY, degree_u, degree_v) 
-
-		elif name == 'parallelepiped' or name == 'CB': 
-			self._dim = 3
-			Lx = geometry.get('Lx', 1.0)
-			Ly = geometry.get('Ly', 1.0)
-			Lz = geometry.get('Lz', 1.0)
-			degree_u, degree_v, degree_w = geometry.get('degree', [2, 2, 2])
-			self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_u, degree_v, degree_w) 
-
-		elif name == 'thick_ring' or name == 'TR':
-			self._dim = 3
-			Rin = geometry.get('Rin', 1.0)
-			Rex = geometry.get('Rex', 2.0)
-			height = geometry.get('Height', 1.0)
-			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
-			self._geometry = self.create_thickRing(Rin, Rex, height, degree_u, degree_v, degree_w) 
-
-		elif name == 'rotated_quarter_annulus' or name == 'RQA':
-			self._dim = 3
-			Rin = geometry.get('Rin', 1.0)
-			Rex = geometry.get('Rex', 2.0)
-			exc = geometry.get('exc', 1.0) 
-			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
-			self._geometry = self.create_rotatedQuarterAnnulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
-
-		elif name == 'prism' or name == 'VB':
-			self._dim = 3
-			XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-			height = geometry.get('Height', 1)
-			degree_u, degree_v, degree_w = geometry.get('degree', [2, 2, 2])
-			self._geometry = self.create_prism(XY, height, degree_u, degree_v, degree_w) 
-
-		else: raise Warning("Not developped in this library")
-		
-		stop = time.process_time()
-		print('\tBasic geometry created in: %.3e s' %(stop-start))
-
-		self.updateGeometry()
-
+class Geomdl():
+	def __init__(self, **kwargs):
+		self._kwargs     = kwargs
+		self._name       = kwargs.get('Name', 'cb').lower()
+		self._samplesize = kwargs.get('samplesize', 101)
 		return
-
-	def updateGeometry(self): 
+	
+	def getPartInfo(self, obj, dimen=3): 
 		" Updates and saves important properties of the geometry created "
 
-		start = time.process_time()
-
-		obj = self._geometry
+		info = {}
 		if obj is None: raise Warning('Geometry unknown')
 
 		# Set degree
-		self._degree = np.ones(3, dtype= int)
-		self._degree[:self._dim] = np.array(obj._degree)
-		if any(p == 1 for p in self._degree[:self._dim]): 
+		degree = np.ones(3, dtype= int)
+		degree[:dimen] = np.array(obj._degree)
+		if any(p == 1 for p in degree[:dimen]): 
 			raise Warning('Model must have at least degree 2')
+		info['degree'] = degree
 
 		# Set knot vector
-		self._knotvector = [np.array(obj._knot_vector[dim]) for dim in range(self._dim)]
+		knotvector = [np.array(obj._knot_vector[dim]) for dim in range(dimen)]
+		info['knotvector'] = knotvector
 
 		# Set size knot-vector in each dimension
-		self._size_kv = np.ones(3, dtype= int)  
-		for dim in range(self._dim):
-			self._size_kv[dim] = np.size(self._knotvector[dim])
-
-		# Set number of elements in each dimension
-		self._nbel = np.ones(3, dtype= int)  
-		for dim in range(self._dim):
-			self._nbel[dim] = len(np.unique(self._knotvector[dim])) - 1
-		self._nb_el_total = np.product(self._nbel)
+		size_kv = np.ones(3, dtype= int)  
+		for i in range(dimen):
+			size_kv[i] = np.size(knotvector[i])
 
 		# Set number of quadrature points in each dimension
-		self._nb_ctrlpts = np.ones(3, dtype= int)  
-		for dim in range(self._dim):
-			self._nb_ctrlpts[dim] = self._size_kv[dim] - self._degree[dim] - 1
-		self._nb_ctrlpts_total = np.product(self._nb_ctrlpts)
+		nbctrlpts = np.ones(3, dtype= int)  
+		for i in range(dimen):
+			nbctrlpts[i] = size_kv[i] - degree[i] - 1
+		nbctrlpts_total = np.product(nbctrlpts)
+		info['nbctrlpts'] = nbctrlpts
 
-		if self._dim == 2: 
+		if dimen == 2: 
 			c = 0
 			ctrlpts_old = obj._control_points
-			ctrlpts_new = np.zeros((3, self._nb_ctrlpts_total))
-			for j in range(self._nb_ctrlpts[1]):
-				for i in range(self._nb_ctrlpts[0]):
-					pos = j + i*self._nb_ctrlpts[1]
-					ctrlpts_new[:, c] = ctrlpts_old[pos]
+			ctrlpts = np.zeros((3, nbctrlpts_total))
+			for j in range(nbctrlpts[1]):
+				for i in range(nbctrlpts[0]):
+					pos = j + i*nbctrlpts[1]
+					ctrlpts[:, c] = ctrlpts_old[pos]
 					c += 1 
 
-		elif self._dim == 3: 
+		elif dimen == 3: 
 			c =  0
 			ctrlpts_old = obj._control_points
-			ctrlpts_new = np.zeros((3, self._nb_ctrlpts_total))
-			for k in range(self._nb_ctrlpts[2]):
-				for j in range(self._nb_ctrlpts[1]):
-					for i in range(self._nb_ctrlpts[0]):
-						pos = j + i*self._nb_ctrlpts[1] + k*self._nb_ctrlpts[1]*self._nb_ctrlpts[0]
-						ctrlpts_new[:, c] = ctrlpts_old[pos]
+			ctrlpts = np.zeros((3, nbctrlpts_total))
+			for k in range(nbctrlpts[2]):
+				for j in range(nbctrlpts[1]):
+					for i in range(nbctrlpts[0]):
+						pos = j + i*nbctrlpts[1] + k*nbctrlpts[1]*nbctrlpts[0]
+						ctrlpts[:, c] = ctrlpts_old[pos]
 						c += 1 
-		self._ctrlpts = ctrlpts_new
 
-		stop = time.process_time()
-		print('\tGeometry properties updated in: %.3e s\n' %(stop-start))
+		info['ctrlpts'] = ctrlpts
+		return info
 
-		return
-
-	def writeAbaqusFile(self, filename):
+	def writeAbaqusFile(self, info, dimen=3):
 		" Writes an inp and NB file. By the moment, it only works with one patch"
 
 		def array2txt(array: np.array, format= '%.2f'):
 			return ','.join([format %(i) for i in array])
+		
+		degree     = info['degree']
+		knotvector = info['knotvector']
+		nbctrlpts  = info['nbctrlpts']
+		ctrlpts    = info['ctrlpts']
+		nbctrlpts_total = np.product(nbctrlpts)
 
 		# .inp file
-		inpfile = filename + '.inp'
+		inpfile = self._name + '.inp'
 		introduction =  [
 			'** Copyright 2020 Thibaut Hirschler',
 			'** Copyright 2020 Arnaud Duval',
@@ -163,14 +104,14 @@ class geomdlModel():
 			f.write('\n')
 			f.write('*Part, name=%s\n' %self._name)
 			f.write('*USER ELEMENT, NODES=%d, TYPE=U1, COORDINATES=%d, INTEGRATION=%d\n' 
-					%(self._nb_ctrlpts_total, self._dim, self._nb_ctrlpts_total))
-			f.write(array2txt(np.arange(self._dim)+1, format='%d'))
+					%(nbctrlpts_total, dimen, nbctrlpts_total))
+			f.write(array2txt(np.arange(dimen)+1, format='%d'))
 			f.write('\n*Node,nset=AllNode\n')
-			for i in range(self._nb_ctrlpts_total):
-				CP = self._ctrlpts[:, i]
+			for i in range(nbctrlpts_total):
+				CP = ctrlpts[:, i]
 				f.write('%d, %.15f, %.15f, %.15f\n' %(i+1, CP[0], CP[1], CP[2]))
 			f.write('*Element,type=U1,elset=AllEls\n1,\t')
-			f.write(array2txt(np.arange(self._nb_ctrlpts_total, 0, -1), format='%d'))
+			f.write(array2txt(np.arange(nbctrlpts_total, 0, -1), format='%d'))
 			f.write('\n')
 			f.write('*ELSET,ELSET=EltPatch1,generate\n1,1,1\n')
 			f.write('*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=Mat\n1\n')
@@ -184,7 +125,7 @@ class geomdlModel():
 			f.write('** OUTPUT REQUESTS\n*node file,frequency=1\nU,RF,CF\n*el file,frequency=1\nSDV\n*End Step')
 
 		# .NB file
-		NBfile = filename + '.NB'
+		NBfile = self._name + '.NB'
 		introduction =  [
 			'** Copyright 2020 Thibaut Hirschler',
 			'** Copyright 2020 Arnaud Duval',
@@ -204,63 +145,80 @@ class geomdlModel():
 		with open(NBfile, 'w') as f:
 			f.write('\n'.join(introduction))
 			f.write('\n\n')
-			f.write('*Dimension\n%d\n' %(self._dim))
-			f.write('*Number of CP by element\n%d\n' %(self._nb_ctrlpts_total))
+			f.write('*Dimension\n%d\n' %(dimen))
+			f.write('*Number of CP by element\n%d\n' %(nbctrlpts_total))
 			f.write('*Number of patch\n%d\n' %(1))
 			f.write('*Total number of element \n%d\n' %(1))
 			f.write('*Number of element by patch\n%d\n' %(1))
 			f.write('*Patch(1)\n')
-			for i in range(self._dim):
-				kv = self._knotvector[i]
+			for i in range(dimen):
+				kv = knotvector[i]
 				f.write('%d\n' %(len(kv)))
 				f.write(array2txt(kv))
 				f.write('\n')
 			f.write('*Jpqr\n')
-			f.write(array2txt(self._degree[:self._dim], format='%d'))
+			f.write(array2txt(degree[:dimen], format='%d'))
 			f.write('\n')
 			f.write('*Nijk\n1,\t')
-			f.write(array2txt(self._nb_ctrlpts[:self._dim], format='%d'))
+			f.write(array2txt(nbctrlpts[:dimen], format='%d'))
 			f.write('\n')
 			f.write('*Weight\n1,\t')
-			f.write(array2txt(np.ones(self._nb_ctrlpts_total)))
+			f.write(array2txt(np.ones(nbctrlpts_total)))
 			
 		return
 
-	def knotRefinement(self, nb_refinementByDirection=np.array([0,0,0])):
-		""" Refine geometry following each dimension. 
-			It is slow because it uses python methods. 
-			This functions is deprecated. Instead use YETI functions. 
-		"""
+	def getIGAParametrization(self):
 
-		start = time.process_time()
+		nb_refinementByDirection = self._kwargs.get('nb_refinementByDirection', np.array([1, 1, 1]))
 
-		geometry = deepcopy(self._geometry)
-		cuts = nb_refinementByDirection
-		nbel = [2**cuts[dim]*self._nbel[dim] for dim in range(self._dim)]
-		knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
+		print('\nCreating geometry: ' + self._name + '...')
+		if self._name == 'quarter_annulus' or self._name == 'qa':
+			dimen = 2
+			Rin = self._kwargs.get('Rin', 1.0)
+			Rex = self._kwargs.get('Rex', 2.0)
+			degree_u, degree_v, _ = self._kwargs.get('degree', [2, 3, 2])
+			part = self.create_quarterAnnulus(Rin, Rex, degree_u, degree_v) 
 
-		for i in range(self._dim):
-			multiplicity = np.zeros(self._dim, dtype= int)
-			multiplicity[i] = 1
-			for knot in knotvector_insert[i]: 
-				knot_insert = np.zeros(self._dim)
-				knot_insert[i] = knot
-				operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
-		self._geometry = geometry
+		elif self._name == 'quadrilateral' or self._name == 'sq':
+			dimen = 2
+			XY = self._kwargs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			degree_u, degree_v, _ = self._kwargs.get('degree', [2, 2, 2])
+			part = self.create_quadrilateral(XY, degree_u, degree_v) 
 
-		stop = time.process_time()
-		print('Knot refinement in: %.3e s' %(stop-start))
+		elif self._name == 'cube' or self._name == 'cb': 
+			dimen = 3
+			Lx = self._kwargs.get('Lx', 1.0)
+			Ly = self._kwargs.get('Ly', 1.0)
+			Lz = self._kwargs.get('Lz', 1.0)
+			degree_u, degree_v, degree_w = self._kwargs.get('degree', [2, 2, 2])
+			part = self.create_parallelepiped(Lx, Ly, Lz, degree_u, degree_v, degree_w) 
 
-		self.updateGeometry()
+		elif self._name == 'thick_ring' or self._name == 'tr':
+			dimen = 3
+			Rin = self._kwargs.get('Rin', 1.0)
+			Rex = self._kwargs.get('Rex', 2.0)
+			height = self._kwargs.get('height', 1.0)
+			degree_u, degree_v, degree_w = self._kwargs.get('degree', [4, 4, 4])
+			part = self.create_thickRing(Rin, Rex, height, degree_u, degree_v, degree_w) 
 
-		return
+		elif self._name == 'rotated_quarter_annulus' or self._name == 'rqa':
+			dimen = 3
+			Rin = self._kwargs.get('Rin', 1.0)
+			Rex = self._kwargs.get('Rex', 2.0)
+			exc = self._kwargs.get('exc', 1.0) 
+			degree_u, degree_v, degree_w = self._kwargs.get('degree', [4, 4, 4])
+			part = self.create_rotatedQuarterAnnulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
 
-	def fastKnotRefinement(self, nb_refinementByDirection=np.array([0,0,0])):
-		""" Refine geometry following each dimension. 
-			It has a better performance than knot-refinement function
-		"""
+		elif self._name == 'prism' or self._name == 'vb':
+			dimen = 3
+			XY     = self._kwargs.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			height = self._kwargs.get('height', 1)
+			degree_u, degree_v, degree_w = self._kwargs.get('degree', [2, 2, 2])
+			part = self.create_prism(XY, height, degree_u, degree_v, degree_w) 
 
-		self.writeAbaqusFile(filename=self._name)
+		else: raise Warning("Not developped in this library")
+		
+		self.writeAbaqusFile(self.getPartInfo(part, dimen=dimen), dimen=dimen)
 		modelIGA = IGAparametrization(filename=self._name)
 		modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
 
@@ -577,3 +535,4 @@ class geomdlModel():
 		obj.sample_size = self._sample_size
 
 		return obj
+
