@@ -71,14 +71,14 @@ class GaussQuadrature(QuadratureRules):
 	
 	def evalDersBasisWeights(self):
 		B, indi, indj = basis_weights.get_genbasis_csr(self._degree, self._knotvector, self._quadPtsPos)
-		self._dersBasis = B
+		self._dersBasis   = B
 		self._dersIndices = [indi, indj]
 		nnz = np.shape(B)[0]
 		W = np.zeros((nnz, 4))
 		for i in range(nnz):
 			W[i, 0]  = B[i, 0]*self._parametricWeights[indj[i]-1] # -1 because indj is in fortran notation
-			W[i, -1] = B[i, -1]*self._parametricWeights[indj[i]-1]
-		W[:, 1] = W[i, 0]; W[:, 2] = W[i, -1]
+			W[i, 3]  = B[i, 1]*self._parametricWeights[indj[i]-1]
+		W[:, 1] = W[:, 0]; W[:, 2] = W[:, 3]
 		self._dersWeights = W
 		return
 	
