@@ -82,7 +82,7 @@ subroutine get_genbasis_csr(degree, size_kv, knotvector, nb_knots, knots, basis,
 
 end subroutine get_genbasis_csr
 
-subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos, &
+subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos, nbctrlpts, &
                                 B0shape, B1shape, size_data, basis, weights, indices, method)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
@@ -90,11 +90,11 @@ subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos,
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, nbqp, method
+    integer, intent(in) :: degree, size_kv, size_data, nbctrlpts, nbqp, method
     double precision, intent(in) :: knotvector, quadptspos
     dimension :: knotvector(size_kv), quadptspos(nbqp)
     integer, intent(in) :: B0shape, B1shape
-    dimension :: B0shape(size_kv-degree-1, 2), B1shape(size_kv-degree-1, 2)
+    dimension :: B0shape(nbctrlpts, 2), B1shape(nbctrlpts, 2)
 
     double precision, intent(out) :: basis, weights
     dimension :: basis(size_data, 2), weights(size_data, 4)
@@ -105,6 +105,7 @@ subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos,
     ! ----------
     type(weightedquadrature), allocatable :: obj
 
+    if (nbctrlpts.ne.size_kv-degree-1) stop 'Size problem'
     call init_wq(obj, degree, knotvector, quadptspos, B0shape, B1shape, method)
     if (method.eq.1) then
         call findbasisweightrules_md1_wq(obj, basis, weights, indices)
@@ -116,7 +117,7 @@ subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos,
 
 end subroutine wq_getbasisweights_coo
 
-subroutine wq_get_data_csr(degree, size_kv, knotvector, nbqp, quadptspos, &
+subroutine wq_getbasisweights_csr(degree, size_kv, knotvector, nbqp, quadptspos, nbctrlpts, &
                         B0shape, B1shape, size_data, basis, weights, indi, indj, method)
     !! Gets in COO format basis and weights in IGA-WQ approach
 
@@ -124,29 +125,31 @@ subroutine wq_get_data_csr(degree, size_kv, knotvector, nbqp, quadptspos, &
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: degree, size_kv, size_data, nbqp, method
+    integer, intent(in) :: degree, size_kv, size_data, nbctrlpts, nbqp, method
     double precision, intent(in) :: knotvector, quadptspos
     dimension :: knotvector(size_kv), quadptspos(nbqp)
     integer, intent(in) :: B0shape, B1shape
-    dimension :: B0shape(size_kv-degree-1, 2), B1shape(size_kv-degree-1, 2)
+    dimension :: B0shape(nbctrlpts, 2), B1shape(nbctrlpts, 2)
 
-    double precision, intent(out) :: basis, weights
+    double precision, intent(out), target :: basis, weights
     dimension :: basis(size_data, 2), weights(size_data, 4)
     integer, intent(out) :: indi, indj
     dimension :: indi(size_kv-degree), indj(size_data)
 
     ! Local data
     ! ----------
-    integer :: indices
-    dimension :: indices(size_data, 2)
-    double precision, dimension(:,:), allocatable :: dummy
+    integer :: indices(size_data, 2)
+    double precision, dimension(:, :), allocatable :: dummy1, dummy2
     
-    call wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos, &
+    call wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos, nbctrlpts, &
                         B0shape, B1shape, size_data, basis, weights, indices, method)
 
     ! Convert COO to CSR format
-    allocate(dummy(size_data, 2))
-    call coo2csr(2, size_kv-degree-1, size_data, basis, indices(:, 1), indices(:, 2), dummy, indj, indi)
-    deallocate(dummy)
+    allocate(dummy1(size_data, 6), dummy2(size_data, 6))
+    dummy1(:, :2) = basis; dummy1(:, 3:) = weights; dummy2 = 0.d0
+    call coo2csr(6, size_kv-degree-1, size_data, dummy1(1:size_data, 1:6), &
+                indices(:, 1), indices(:, 2), dummy2, indj, indi)
+    basis = dummy2(:, :2); weights = dummy2(:, 3:)
+    deallocate(dummy1, dummy2)
 
-end subroutine wq_get_data_csr
+end subroutine wq_getbasisweights_csr

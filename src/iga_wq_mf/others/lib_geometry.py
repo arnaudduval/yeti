@@ -4,14 +4,14 @@
 """
 
 from .__init__ import *
-from .lib_base import create_knotvector
+from .lib_base import createKnotVector
 
 class geomdlModel(): 
 
-	def __init__(self, name=None, filename=None, **kwargs): 
+	def __init__(self, name=None, **geometry): 
 
 		if name is None: raise Warning('Insert the name of the part')
-		else: self._name = name
+		self._name = name
 		self._sample_size = 101
 		self._geometry = None
 
@@ -19,49 +19,49 @@ class geomdlModel():
 		start = time.process_time()
 		if name == 'quarter_annulus' or name == 'QA':
 			self._dim = 2
-			Rin = kwargs.get('Rin', 1.0)
-			Rout = kwargs.get('Rout', 2.0)
-			degree_xi, degree_nu, _ = kwargs.get('degree', [2, 3, 2])
-			self._geometry = self.create_quarter_annulus(Rin, Rout, degree_xi, degree_nu) 
+			Rin = geometry.get('Rin', 1.0)
+			Rex = geometry.get('Rex', 2.0)
+			degree_u, degree_v, _ = geometry.get('degree', [2, 3, 2])
+			self._geometry = self.create_quarter_annulus(Rin, Rex, degree_u, degree_v) 
 
 		elif name == 'quadrilateral' or name == 'SQ':
 			self._dim = 2
-			XY = kwargs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
-			degree_xi, degree_nu, _ = kwargs.get('degree', [2, 2, 2])
-			self._geometry = self.create_quadrilateral(XY, degree_xi, degree_nu) 
+			XY = geometry.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			degree_u, degree_v, _ = geometry.get('degree', [2, 2, 2])
+			self._geometry = self.create_quadrilateral(XY, degree_u, degree_v) 
 
 		elif name == 'parallelepiped' or name == 'CB': 
 			self._dim = 3
-			Lx = kwargs.get('Lx', 1.0)
-			Ly = kwargs.get('Ly', 1.0)
-			Lz = kwargs.get('Lz', 1.0)
-			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [2, 2, 2])
-			self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_xi, degree_nu, degree_eta) 
+			Lx = geometry.get('Lx', 1.0)
+			Ly = geometry.get('Ly', 1.0)
+			Lz = geometry.get('Lz', 1.0)
+			degree_u, degree_v, degree_w = geometry.get('degree', [2, 2, 2])
+			self._geometry = self.create_parallelepiped(Lx, Ly, Lz, degree_u, degree_v, degree_w) 
 
 		elif name == 'thick_ring' or name == 'TR':
 			self._dim = 3
-			Rin = kwargs.get('Rin', 1.0)
-			Rout = kwargs.get('Rout', 2.0)
-			Height = kwargs.get('Height', 1.0)
-			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [4, 4, 4])
-			self._geometry = self.create_thick_ring(Rin, Rout, Height, degree_xi, degree_nu, degree_eta) 
+			Rin = geometry.get('Rin', 1.0)
+			Rex = geometry.get('Rex', 2.0)
+			height = geometry.get('Height', 1.0)
+			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
+			self._geometry = self.create_thick_ring(Rin, Rex, height, degree_u, degree_v, degree_w) 
 
 		elif name == 'rotated_quarter_annulus' or name == 'RQA':
 			self._dim = 3
-			Rin = kwargs.get('Rin', 1.0)
-			Rout = kwargs.get('Rout', 2.0)
-			exc = kwargs.get('Rout', 1.0) 
-			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [4, 4, 4])
-			self._geometry = self.create_rotated_quarter_annulus(Rin, Rout, exc, degree_xi, degree_nu, degree_eta) 
+			Rin = geometry.get('Rin', 1.0)
+			Rex = geometry.get('Rex', 2.0)
+			exc = geometry.get('exc', 1.0) 
+			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
+			self._geometry = self.create_rotated_quarter_annulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
 
 		elif name == 'prism' or name == 'VB':
 			self._dim = 3
-			XY = kwargs.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-			Height = kwargs.get('Height', 1)
-			degree_xi, degree_nu, degree_eta = kwargs.get('degree', [2, 2, 2])
-			self._geometry = self.create_prism(XY, Height, degree_xi, degree_nu, degree_eta) 
+			XY = geometry.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			height = geometry.get('Height', 1)
+			degree_u, degree_v, degree_w = geometry.get('degree', [2, 2, 2])
+			self._geometry = self.create_prism(XY, height, degree_u, degree_v, degree_w) 
 
-		else: raise Warning("It is not a shape in this library")
+		else: raise Warning("Not developped in this library")
 		
 		stop = time.process_time()
 		print('\tBasic geometry created in: %.3e s' %(stop-start))
@@ -82,7 +82,7 @@ class geomdlModel():
 		self._degree = np.ones(3, dtype= int)
 		self._degree[:self._dim] = np.array(obj._degree)
 		if any(p == 1 for p in self._degree[:self._dim]): 
-			raise Warning('Model must have at least degree p = 2')
+			raise Warning('Model must have at least degree 2')
 
 		# Set knot vector
 		self._knotvector = [np.array(obj._knot_vector[dim]) for dim in range(self._dim)]
@@ -96,8 +96,6 @@ class geomdlModel():
 		self._nbel = np.ones(3, dtype= int)  
 		for dim in range(self._dim):
 			self._nbel[dim] = len(np.unique(self._knotvector[dim])) - 1
-
-		# Set total number of elements
 		self._nb_el_total = np.product(self._nbel)
 
 		# Set number of quadrature points in each dimension
@@ -113,8 +111,7 @@ class geomdlModel():
 			for j in range(self._nb_ctrlpts[1]):
 				for i in range(self._nb_ctrlpts[0]):
 					pos = j + i*self._nb_ctrlpts[1]
-					ctrlpts_temp = ctrlpts_old[pos]
-					ctrlpts_new[:, c] = ctrlpts_temp
+					ctrlpts_new[:, c] = ctrlpts_old[pos]
 					c += 1 
 
 		elif self._dim == 3: 
@@ -125,8 +122,7 @@ class geomdlModel():
 				for j in range(self._nb_ctrlpts[1]):
 					for i in range(self._nb_ctrlpts[0]):
 						pos = j + i*self._nb_ctrlpts[1] + k*self._nb_ctrlpts[1]*self._nb_ctrlpts[0]
-						ctrlpts_temp = ctrlpts_old[pos]
-						ctrlpts_new[:, c] = ctrlpts_temp
+						ctrlpts_new[:, c] = ctrlpts_old[pos]
 						c += 1 
 		self._ctrlpts = ctrlpts_new
 
@@ -243,12 +239,12 @@ class geomdlModel():
 		nbel = [2**cuts[dim]*self._nbel[dim] for dim in range(self._dim)]
 		knotvector_insert = [np.linspace(0.0, 1.0, i+1)[1:-1] for i in nbel]
 
-		for dim in range(self._dim):
+		for i in range(self._dim):
 			multiplicity = np.zeros(self._dim, dtype= int)
-			multiplicity[dim] = 1
-			for knot in knotvector_insert[dim]: 
+			multiplicity[i] = 1
+			for knot in knotvector_insert[i]: 
 				knot_insert = np.zeros(self._dim)
-				knot_insert[dim] = knot
+				knot_insert[i] = knot
 				operations.insert_knot(geometry, knot_insert, multiplicity.tolist())
 		self._geometry = geometry
 
@@ -259,7 +255,7 @@ class geomdlModel():
 
 		return
 
-	def export_IGAparametrization(self, nb_refinementByDirection=np.array([0,0,0])):
+	def fast_knot_refinement(self, nb_refinementByDirection=np.array([0,0,0])):
 		""" Refine geometry following each dimension. 
 			It has a better performance than knot-refinement function
 		"""
@@ -279,17 +275,17 @@ class geomdlModel():
 	# CREATE GEOMETRY
 	# ----------------
 	# 2D
-	def create_quarter_annulus(self, Rin, Rout, degree_xi, degree_nu):
+	def create_quarter_annulus(self, Rin, Rex, degree_u, degree_v):
 		" Creates a quarter of a ring (or annulus) "
 
 		# -------------------------------------
 		# First part : construction of the arc
 		# -------------------------------------
-		nb_ctrlpts_nu = degree_nu + 1 
-		knot_vector_nu = create_knotvector(degree_nu, 1)
+		nb_ctrlpts_v  = degree_v + 1 
+		knot_vector_v = createKnotVector(degree_v, 1)
 
 		# Construct points to be interpolated
-		theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
+		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_v)
 		radius = 1.0
 		pts_interp = [[radius, 0.0]]
 		for angle in theta[1:-1]: 
@@ -298,40 +294,40 @@ class geomdlModel():
 			pts_interp.append([x, y])
 		pts_interp.append([0.0, radius])
 
-		curve = fitting.interpolate_curve(pts_interp, degree_nu)
+		curve = fitting.interpolate_curve(pts_interp, degree_v)
 		ctrlpts_arc = np.asarray(curve.ctrlpts)
 
 		# -------------------------------------
 		# Second part : construction of line
 		# -------------------------------------
-		nb_ctrlpts_xi = degree_xi + 1 
-		ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-		knot_vector_xi = create_knotvector(degree_xi, 1)
+		nb_ctrlpts_u = degree_u + 1 
+		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
+		knot_vector_u = createKnotVector(degree_u, 1)
 
 		# -------------------------------------------
 		# Third part : construction of annulus sector
 		# -------------------------------------------
 		# Set control points
 		ctrlpts = []
-		for i in range(nb_ctrlpts_xi): 
+		for x_line in ctrlpts_line: 
 			for x_arc, y_arc in ctrlpts_arc:
-				x = ctrlpts_x[i] * x_arc
-				y = ctrlpts_x[i] * y_arc
+				x = x_line * x_arc
+				y = x_line * y_arc
 				ctrlpts.append([x, y, 0])
 
 		# Create surface
-		srf = BSpline.Surface()
-		srf.degree_u = degree_xi
-		srf.degree_v = degree_nu
-		srf.ctrlpts_size_u, srf.ctrlpts_size_v = nb_ctrlpts_xi, nb_ctrlpts_nu
-		srf.ctrlpts = ctrlpts
-		srf.knotvector_u = knot_vector_xi
-		srf.knotvector_v = knot_vector_nu
-		srf.sample_size = self._sample_size
+		obj = BSpline.Surface()
+		obj.degree_u = degree_u
+		obj.degree_v = degree_v
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v = nb_ctrlpts_u, nb_ctrlpts_v
+		obj.ctrlpts = ctrlpts
+		obj.knotvector_u = knot_vector_u
+		obj.knotvector_v = knot_vector_v
+		obj.sample_size  = self._sample_size
 
-		return srf
+		return obj
 
-	def create_quadrilateral(self, XY, degree_xi, degree_nu):
+	def create_quadrilateral(self, XY, degree_u, degree_v):
 		" Creates a quadrilateral given coordinates in counterclockwise direction "
 
 		# Set reference position and real position
@@ -341,22 +337,19 @@ class geomdlModel():
 		# Transformation of control points
 		# x1 = ax1 x0 + ax2 y0 + ax3 x0 y0 + ax4
 		# y1 = ay1 x0 + ay2 y0 + ay3 x0 y0 + ay4
-		T = []
-		for i in range(4): T.append([x0[i], y0[i], x0[i] * y0[i], 1])
+		T = [[x0[i], y0[i], x0[i]*y0[i], 1] for i in range(4)]
 		ax = np.linalg.solve(T, x1)
 		ay = np.linalg.solve(T, y1)
 		
 		# Set control points
-		nb_ctrlpts_xi = degree_xi + 1 
-		ctrlpts_xi = np.linspace(0, 1, nb_ctrlpts_xi)
-		nb_ctrlpts_nu = degree_nu + 1 
-		ctrlpts_nu = np.linspace(0, 1, nb_ctrlpts_nu)
+		nb_ctrlpts_u = degree_u + 1 
+		ctrlpts_u = np.linspace(0, 1, nb_ctrlpts_u)
+		nb_ctrlpts_v = degree_v + 1 
+		ctrlpts_v = np.linspace(0, 1, nb_ctrlpts_v)
 		
 		ctrlpts = []
-		for i in range(nb_ctrlpts_xi): 
-			for j in range(nb_ctrlpts_nu):    
-				xt = ctrlpts_xi[i]
-				yt = ctrlpts_nu[j]
+		for xt in ctrlpts_u: 
+			for yt in ctrlpts_v:   
 
 				x = ax[0]*xt + ax[1]*yt + ax[2]*xt*yt + ax[3]
 				y = ay[0]*xt + ay[1]*yt + ay[2]*xt*yt + ay[3]
@@ -364,149 +357,146 @@ class geomdlModel():
 				ctrlpts.append([x, y, 0])
 
 		# Create surface
-		srf = BSpline.Surface() 
-		srf.degree_u = degree_xi
-		srf.degree_v = degree_nu
-		srf.ctrlpts_size_u, srf.ctrlpts_size_v = nb_ctrlpts_xi, nb_ctrlpts_nu
-		srf.ctrlpts = ctrlpts
-		srf.knotvector_u = create_knotvector(degree_xi, 1)
-		srf.knotvector_v = create_knotvector(degree_nu, 1)
-		srf.sample_size = self._sample_size
+		obj = BSpline.Surface() 
+		obj.degree_u = degree_u
+		obj.degree_v = degree_v
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v = nb_ctrlpts_u, nb_ctrlpts_v
+		obj.ctrlpts = ctrlpts
+		obj.knotvector_u = createKnotVector(degree_u, 1)
+		obj.knotvector_v = createKnotVector(degree_v, 1)
+		obj.sample_size = self._sample_size
 
-		return srf
+		return obj
 
 	# 3D
-	def create_parallelepiped(self, Lx, Ly, Lz, degree_xi, degree_nu, degree_eta):
+	def create_parallelepiped(self, Lx, Ly, Lz, degree_u, degree_v, degree_w):
 		" Creates a brick (or parallelepiped) "
 
 		# Set number of control points
-		nb_ctrlpts_xi = degree_xi + 1 
-		nb_ctrlpts_nu = degree_nu + 1 
-		nb_ctrlpts_eta = degree_eta + 1 
+		nb_ctrlpts_u = degree_u + 1 
+		nb_ctrlpts_v = degree_v + 1 
+		nb_ctrlpts_w = degree_w + 1 
 
 		# Get uniform control points
-		ctrlpts_u = np.linspace(0.0, Lx, nb_ctrlpts_xi)
-		ctrlpts_v = np.linspace(0.0, Ly, nb_ctrlpts_nu)
-		ctrlpts_w = np.linspace(0.0, Lz, nb_ctrlpts_eta)
+		ctrlpts_u = np.linspace(0.0, Lx, nb_ctrlpts_u)
+		ctrlpts_v = np.linspace(0.0, Ly, nb_ctrlpts_v)
+		ctrlpts_w = np.linspace(0.0, Lz, nb_ctrlpts_w)
 
 		# Create control points of the volume
 		control_points = []
-		for k in range(nb_ctrlpts_eta):
-			for i in range(nb_ctrlpts_xi): 
-				for j in range(nb_ctrlpts_nu): 
-					control_points.append([ctrlpts_u[i], ctrlpts_v[j], ctrlpts_w[k]])
+		for cptw in ctrlpts_w:
+			for cptv in ctrlpts_v: 
+				for cptu in ctrlpts_u: 
+					control_points.append([cptu, cptv, cptw])
 
 		# Create a B-spline volume
-		vol = BSpline.Volume()
-		vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
-		vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-			int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-		vol.ctrlpts = control_points
-		vol.knotvector_u = create_knotvector(degree_xi, 1)
-		vol.knotvector_v = create_knotvector(degree_nu, 1)
-		vol.knotvector_w = create_knotvector(degree_eta, 1)
-		vol.sample_size = self._sample_size
+		obj = BSpline.Volume()
+		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_v), int(nb_ctrlpts_w)
+		obj.ctrlpts = control_points
+		obj.knotvector_u = createKnotVector(degree_u, 1)
+		obj.knotvector_v = createKnotVector(degree_v, 1)
+		obj.knotvector_w = createKnotVector(degree_w, 1)
+		obj.sample_size = self._sample_size
 
-		return vol
+		return obj
 
-	def create_thick_ring(self, Rin, Rout, Height, degree_xi, degree_nu, degree_eta):
+	def create_thick_ring(self, Rin, Rex, height, degree_u, degree_v, degree_w):
 		" Creates a thick ring (quarter of annulus extruded) "
 
 		# -------------------------------------
 		# First part : construction of the arc
 		# -------------------------------------
-		nb_ctrlpts_nu = degree_nu + 1 
-		knot_vector_nu = create_knotvector(degree_nu, 1)
+		nb_ctrlpts_u = degree_v + 1 
+		knot_vector_u = createKnotVector(degree_v, 1)
 
 		# Construct points to be interpolated
-		theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
+		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_u)
 		radius = 1.0
 		pts_interp = [[radius, 0.0]]
 		for angle in theta[1:-1]: 
-			x = radius * np.cos(angle)
-			y = radius * np.sin(angle)
+			x = radius*np.cos(angle)
+			y = radius*np.sin(angle)
 			pts_interp.append([x, y])
 		pts_interp.append([0.0, radius])
 
-		curve = fitting.interpolate_curve(pts_interp, degree_nu)
+		curve = fitting.interpolate_curve(pts_interp, degree_v)
 		ctrlpts_arc = np.asarray(curve.ctrlpts)
 
 		# -------------------------------------
 		# Second part : construction of line
 		# -------------------------------------
-		# Define degree in xi direction
-		nb_ctrlpts_xi = degree_xi + 1 
-		ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-		knot_vector_xi = create_knotvector(degree_xi, 1)
+		# Define degree in u direction
+		nb_ctrlpts_u = degree_u + 1 
+		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
+		knot_vector_u = createKnotVector(degree_u, 1)
 
-		# Define degree in eta direction
-		nb_ctrlpts_eta = degree_eta + 1 
-		ctrlpts_z = np.linspace(0, Height, nb_ctrlpts_eta)
-		knot_vector_eta = create_knotvector(degree_eta, 1)
+		# Define degree in w direction
+		nb_ctrlpts_w = degree_w + 1 
+		ctrlpts_height = np.linspace(0, height, nb_ctrlpts_w)
+		knot_vector_w = createKnotVector(degree_w, 1)
 
 		# -------------------------------------------
 		# Third part : construction of annulus sector
 		# -------------------------------------------
 		# Get control points
 		ctrlpts = []
-		for k in range(nb_ctrlpts_eta):
-			for i in range(nb_ctrlpts_xi): 
+		for z in ctrlpts_height:
+			for x_line in ctrlpts_line: 
 				for x_arc, y_arc in ctrlpts_arc:
-					x = ctrlpts_x[i] * x_arc
-					y = ctrlpts_x[i] * y_arc
-					z = ctrlpts_z[k]
+					x = x_line*x_arc
+					y = x_line*y_arc
 					ctrlpts.append([x, y, z])
 
 		# Create volume
-		vol = BSpline.Volume()
-		vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
-		vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-			int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-		vol.ctrlpts = ctrlpts
-		vol.knotvector_u = knot_vector_xi
-		vol.knotvector_v = knot_vector_nu
-		vol.knotvector_w = knot_vector_eta
-		vol.sample_size = self._sample_size
+		obj = BSpline.Volume()
+		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_u), int(nb_ctrlpts_w)
+		obj.ctrlpts = ctrlpts
+		obj.knotvector_u = knot_vector_u
+		obj.knotvector_v = knot_vector_u
+		obj.knotvector_w = knot_vector_w
+		obj.sample_size = self._sample_size
 
-		return vol
+		return obj
 
-	def create_rotated_quarter_annulus(self, Rin, Rout, exc, degree_xi, degree_nu, degree_eta):
+	def create_rotated_quarter_annulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w):
 		" Creates a quarter of a ring rotated (or revolted) "
 
 		# -------------------------------------
 		# First part : construction of the arc 1
 		# -------------------------------------
-		nb_ctrlpts_nu = degree_nu + 1 
-		knot_vector_nu = create_knotvector(degree_nu, 1)
+		nb_ctrlpts_v = degree_v + 1 
+		knot_vector_v = createKnotVector(degree_v, 1)
 
 		# Construct points to be interpolated
-		theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_nu)
+		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_v)
 		radius = 1.0
 		pts_interp = [[radius, 0.0]]
 		for angle in theta[1:-1]: 
-			x = radius * np.cos(angle)
-			y = radius * np.sin(angle)
+			x = radius*np.cos(angle)
+			y = radius*np.sin(angle)
 			pts_interp.append([x, y])
 		pts_interp.append([0.0, radius])
 
-		curve = fitting.interpolate_curve(pts_interp, degree_nu)
+		curve = fitting.interpolate_curve(pts_interp, degree_v)
 		ctrlpts_arc_1 = np.asarray(curve.ctrlpts)
 
 		# -------------------------------------
 		# Second part : construction of line
 		# -------------------------------------
-		nb_ctrlpts_xi = degree_xi + 1 
-		ctrlpts_x = np.linspace(Rin, Rout, nb_ctrlpts_xi)
-		knot_vector_xi = create_knotvector(degree_xi, 1)
+		nb_ctrlpts_u = degree_u + 1 
+		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
+		knot_vector_u = createKnotVector(degree_u, 1)
 
 		# -------------------------------------
 		# Third part : construction of the arc 2
 		# -------------------------------------
-		nb_ctrlpts_eta = degree_eta + 1 
-		knot_vector_eta = create_knotvector(degree_eta, 1)
+		nb_ctrlpts_w = degree_w + 1 
+		knot_vector_w = createKnotVector(degree_w, 1)
 
 		# Construct points to be interpolated
-		theta = np.linspace(0.0, math.pi/2.0, nb_ctrlpts_eta)
+		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_w)
 		radius = 1.0
 		pts_interp = [[radius, 0.0]]
 		for angle in theta[1:-1]: 
@@ -515,7 +505,7 @@ class geomdlModel():
 			pts_interp.append([x, y])
 		pts_interp.append([0.0, radius])
 
-		curve = fitting.interpolate_curve(pts_interp, degree_eta)
+		curve = fitting.interpolate_curve(pts_interp, degree_w)
 		ctrlpts_arc_2 = np.asarray(curve.ctrlpts)
 
 		# -------------------------------------------
@@ -524,28 +514,27 @@ class geomdlModel():
 		# Get control points
 		ctrlpts = []
 		for y_arc_2, z_arc_2 in ctrlpts_arc_2:
-			for i in range(nb_ctrlpts_xi): 
+			for x_line in ctrlpts_line: 
 				for x_arc_1, y_arc_1 in ctrlpts_arc_1:
 					# ctrlpts_x[i] = radius_1
-					x = ctrlpts_x[i] * x_arc_1
-					y = (ctrlpts_x[i] * y_arc_1 + exc)*y_arc_2 
-					z = (ctrlpts_x[i] * y_arc_1 + exc)*z_arc_2
+					x = x_line*x_arc_1
+					y = (x_line*y_arc_1 + exc)*y_arc_2 
+					z = (x_line*y_arc_1 + exc)*z_arc_2
 					ctrlpts.append([x, y, z])
 
 		# Create volume
-		vol = BSpline.Volume()
-		vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
-		vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-			int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-		vol.ctrlpts = ctrlpts
-		vol.knotvector_u = knot_vector_xi
-		vol.knotvector_v = knot_vector_nu
-		vol.knotvector_w = knot_vector_eta
-		vol.sample_size = self._sample_size
+		obj = BSpline.Volume()
+		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_v), int(nb_ctrlpts_w)
+		obj.ctrlpts = ctrlpts
+		obj.knotvector_u = knot_vector_u
+		obj.knotvector_v = knot_vector_v
+		obj.knotvector_w = knot_vector_w
+		obj.sample_size = self._sample_size
 
-		return vol
+		return obj
 
-	def create_prism(self, XY, Height, degree_xi, degree_nu, degree_eta):
+	def create_prism(self, XY, height, degree_u, degree_v, degree_w):
 		""" Creates a prism using a quadrilateral as a base.
 		The quadrilateral coordinates are given in counterclockwise direction """
 
@@ -556,41 +545,35 @@ class geomdlModel():
 		# Transformation of control points
 		# x1 = ax1 x0 + ax2 y0 + ax3 x0 y0 + ax4
 		# y1 = ay1 x0 + ay2 y0 + ay3 x0 y0 + ay4
-		T = []
-		for i in range(4): T.append([x0[i], y0[i], x0[i] * y0[i], 1])
+		T = [[x0[i], y0[i], x0[i]*y0[i], 1] for i in range(4)]
 		ax = np.linalg.solve(T, x1)
 		ay = np.linalg.solve(T, y1)
 
 		# Set control points
-		nb_ctrlpts_xi = degree_xi + 1 
-		ctrlpts_xi = np.linspace(0, 1, nb_ctrlpts_xi)
-		nb_ctrlpts_nu = degree_nu + 1 
-		ctrlpts_nu = np.linspace(0, 1, nb_ctrlpts_nu)
-		nb_ctrlpts_eta = degree_eta + 1 
-		ctrlpts_eta = np.linspace(0, 1, nb_ctrlpts_eta)
+		nb_ctrlpts_u = degree_u + 1 
+		ctrlpts_u = np.linspace(0, 1, nb_ctrlpts_u)
+		nb_ctrlpts_v = degree_v + 1 
+		ctrlpts_v = np.linspace(0, 1, nb_ctrlpts_v)
+		nb_ctrlpts_w = degree_w + 1 
+		ctrlpts_w = np.linspace(0, 1, nb_ctrlpts_w)
 		
 		ctrlpts = []
-		for k in range(nb_ctrlpts_eta):
-			for i in range(nb_ctrlpts_xi): 
-				for j in range(nb_ctrlpts_nu):    
-					xt = ctrlpts_xi[i]
-					yt = ctrlpts_nu[j]
-					z = ctrlpts_eta[k]*Height
-
+		for zt in ctrlpts_w:
+			for xt in ctrlpts_u: 
+				for yt in ctrlpts_v:      
+					z = zt*height
 					x = ax[0]*xt + ax[1]*yt + ax[2]*xt*yt + ax[3]
 					y = ay[0]*xt + ay[1]*yt + ay[2]*xt*yt + ay[3]
-
 					ctrlpts.append([x, y, z])
 
 		# Create volume
-		vol = BSpline.Volume()
-		vol.degree_u, vol.degree_v, vol.degree_w = degree_xi, degree_nu, degree_eta
-		vol.ctrlpts_size_u, vol.ctrlpts_size_v, vol.ctrlpts_size_w = \
-			int(nb_ctrlpts_xi), int(nb_ctrlpts_nu), int(nb_ctrlpts_eta)
-		vol.ctrlpts = ctrlpts
-		vol.knotvector_u = create_knotvector(degree_xi, 1)
-		vol.knotvector_v = create_knotvector(degree_nu, 1)
-		vol.knotvector_w = create_knotvector(degree_eta, 1)
-		vol.sample_size = self._sample_size
+		obj = BSpline.Volume()
+		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_v), int(nb_ctrlpts_w)
+		obj.ctrlpts = ctrlpts
+		obj.knotvector_u = createKnotVector(degree_u, 1)
+		obj.knotvector_v = createKnotVector(degree_v, 1)
+		obj.knotvector_w = createKnotVector(degree_w, 1)
+		obj.sample_size = self._sample_size
 
-		return vol
+		return obj

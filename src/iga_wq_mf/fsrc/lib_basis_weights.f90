@@ -230,6 +230,42 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
 
 end subroutine get_I_csr
 
+subroutine create_uniformmaxregular_knotvector(degree, nbel, knotvector)
+    !! Gets an open uniform with maximum regularity knot-vector 
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer, intent(in):: degree, nbel
+
+    double precision, intent(out) :: knotvector 
+    dimension :: knotvector(nbel+2*degree+1)
+
+    ! Local data
+    ! ----------
+    integer ::  i, c
+
+    ! Create knotvector 
+    knotvector = 0.d0
+
+    c = 1
+    do i = 1, degree+1
+        knotvector(c) = 0.d0
+        c = c + 1
+    end do
+
+    do i = 2, nbel
+        knotvector(c) = dble(i - 1)/dble(nbel) 
+        c = c + 1
+    end do
+
+    do i = 1, degree+1
+        knotvector(c) = 1.d0
+        c = c + 1
+    end do
+        
+end subroutine create_uniformmaxregular_knotvector
+
 ! ---------------------------------------------------------------
 ! WQ FUNCTIONS: expected to work in weighted-quadrature approach
 ! ---------------------------------------------------------------
@@ -477,7 +513,7 @@ contains
         nbel     = obj%genquad%nbel
         obj%nbqp = nbel*obj%order
 
-        if (.not.allocated(obj%quadptspos)) allocate(obj%quadptspos(obj%nbqp))
+        if (.not.allocated(obj%parametricweights)) allocate(obj%parametricweights(obj%nbqp))
         do i = 1, nbel
             do j = 1, obj%order
                 k = (i - 1)*obj%order + j
@@ -566,7 +602,7 @@ contains
         allocate(B0cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp), &
                 B1cgg_p0(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
         call get_basis_simplified_dense(gauss_p0%genquad, gauss_p0%nbqp, gauss_p0%quadptspos, B0cgg_p0, B1cgg_p0)
-    
+
         ! Find basis at WQ quadrature points
         call get_basis_simplified_coo(gauss_p0%genquad, obj%nbqp, obj%quadptspos, basis, indices) 
         call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0wq_p0, 1), size(B0wq_p0, 2), B0wq_p0)
@@ -591,7 +627,7 @@ contains
         allocate(B0wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp), B1wq_p1(gauss_p1%genquad%nbctrlpts, obj%nbqp))
         call get_basis_simplified_dense(gauss_p1%genquad, obj%nbqp, obj%quadptspos, B0wq_p1, B1wq_p1) 
         deallocate(B1wq_p1)
-    
+
         ! ---------------------
         ! Integrals and Weights
         ! ---------------------
@@ -652,7 +688,7 @@ contains
         weights = 0.d0
         do c = 1, size(indices, 1)
             i = indices(c, 1)
-            j = indices(c, 1)
+            j = indices(c, 2)
             if ((i.gt.0).and.(j.gt.0)) weights(c, :) = [W00(i, j), W01(i, j), W10(i, j), W11(i, j)]
         end do
 
@@ -774,7 +810,7 @@ contains
         weights = 0.d0
         do c = 1, size(indices, 1)
             i = indices(c, 1)
-            j = indices(c, 1)
+            j = indices(c, 2)
             if ((i.gt.0).and.(j.gt.0)) weights(c, :) = [W00(i, j), W00(i, j), W11(i, j), W11(i, j)]
         end do
     
