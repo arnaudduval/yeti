@@ -22,7 +22,7 @@ class geomdlModel():
 			Rin = geometry.get('Rin', 1.0)
 			Rex = geometry.get('Rex', 2.0)
 			degree_u, degree_v, _ = geometry.get('degree', [2, 3, 2])
-			self._geometry = self.create_quarter_annulus(Rin, Rex, degree_u, degree_v) 
+			self._geometry = self.create_quarterAnnulus(Rin, Rex, degree_u, degree_v) 
 
 		elif name == 'quadrilateral' or name == 'SQ':
 			self._dim = 2
@@ -44,7 +44,7 @@ class geomdlModel():
 			Rex = geometry.get('Rex', 2.0)
 			height = geometry.get('Height', 1.0)
 			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
-			self._geometry = self.create_thick_ring(Rin, Rex, height, degree_u, degree_v, degree_w) 
+			self._geometry = self.create_thickRing(Rin, Rex, height, degree_u, degree_v, degree_w) 
 
 		elif name == 'rotated_quarter_annulus' or name == 'RQA':
 			self._dim = 3
@@ -52,7 +52,7 @@ class geomdlModel():
 			Rex = geometry.get('Rex', 2.0)
 			exc = geometry.get('exc', 1.0) 
 			degree_u, degree_v, degree_w = geometry.get('degree', [4, 4, 4])
-			self._geometry = self.create_rotated_quarter_annulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
+			self._geometry = self.create_rotatedQuarterAnnulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
 
 		elif name == 'prism' or name == 'VB':
 			self._dim = 3
@@ -66,11 +66,11 @@ class geomdlModel():
 		stop = time.process_time()
 		print('\tBasic geometry created in: %.3e s' %(stop-start))
 
-		self.update_geometry()
+		self.updateGeometry()
 
 		return
 
-	def update_geometry(self): 
+	def updateGeometry(self): 
 		" Updates and saves important properties of the geometry created "
 
 		start = time.process_time()
@@ -131,7 +131,7 @@ class geomdlModel():
 
 		return
 
-	def write_abaqus_file(self, filename):
+	def writeAbaqusFile(self, filename):
 		" Writes an inp and NB file. By the moment, it only works with one patch"
 
 		def array2txt(array: np.array, format= '%.2f'):
@@ -226,7 +226,7 @@ class geomdlModel():
 			
 		return
 
-	def knot_refinement(self, nb_refinementByDirection=np.array([0,0,0])):
+	def knotRefinement(self, nb_refinementByDirection=np.array([0,0,0])):
 		""" Refine geometry following each dimension. 
 			It is slow because it uses python methods. 
 			This functions is deprecated. Instead use YETI functions. 
@@ -251,16 +251,16 @@ class geomdlModel():
 		stop = time.process_time()
 		print('Knot refinement in: %.3e s' %(stop-start))
 
-		self.update_geometry()
+		self.updateGeometry()
 
 		return
 
-	def fast_knot_refinement(self, nb_refinementByDirection=np.array([0,0,0])):
+	def fastKnotRefinement(self, nb_refinementByDirection=np.array([0,0,0])):
 		""" Refine geometry following each dimension. 
 			It has a better performance than knot-refinement function
 		"""
 
-		self.write_abaqus_file(filename=self._name)
+		self.writeAbaqusFile(filename=self._name)
 		modelIGA = IGAparametrization(filename=self._name)
 		modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
 
@@ -275,7 +275,7 @@ class geomdlModel():
 	# CREATE GEOMETRY
 	# ----------------
 	# 2D
-	def create_quarter_annulus(self, Rin, Rex, degree_u, degree_v):
+	def create_quarterAnnulus(self, Rin, Rex, degree_u, degree_v):
 		" Creates a quarter of a ring (or annulus) "
 
 		# -------------------------------------
@@ -401,7 +401,7 @@ class geomdlModel():
 
 		return obj
 
-	def create_thick_ring(self, Rin, Rex, height, degree_u, degree_v, degree_w):
+	def create_thickRing(self, Rin, Rex, height, degree_u, degree_v, degree_w):
 		" Creates a thick ring (quarter of annulus extruded) "
 
 		# -------------------------------------
@@ -460,7 +460,7 @@ class geomdlModel():
 
 		return obj
 
-	def create_rotated_quarter_annulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w):
+	def create_rotatedQuarterAnnulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w):
 		" Creates a quarter of a ring rotated (or revolted) "
 
 		# -------------------------------------
