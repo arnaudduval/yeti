@@ -1,4 +1,4 @@
-from . import *
+from lib.__init__ import *
 	
 class thermomat():
 	def __init__(self, **kwargs):

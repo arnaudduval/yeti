@@ -3,17 +3,16 @@
 .. Joaquin Cornejo
 """
 
-from . import *
-from .lib_base import createKnotVector
+from lib.__init__ import *
+from lib.lib_base import createKnotVector
 
 class Geomdl():
 	def __init__(self, **kwargs):
 		self._kwargs     = kwargs
-		self._name       = kwargs.get('Name', 'cb').lower()
-		self._samplesize = kwargs.get('samplesize', 101)
+		self._name       = kwargs.get('name', 'cb').lower()
 		return
 	
-	def getPartInfo(self, obj, dimen=3): 
+	def __setPartInfo(self, obj, dimen=3): 
 		" Updates and saves important properties of the geometry created "
 
 		info = {}
@@ -218,7 +217,7 @@ class Geomdl():
 
 		else: raise Warning("Not developped in this library")
 		
-		self.writeAbaqusFile(self.getPartInfo(part, dimen=dimen), dimen=dimen)
+		self.writeAbaqusFile(self.__setPartInfo(part, dimen=dimen), dimen=dimen)
 		modelIGA = IGAparametrization(filename=self._name)
 		modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
 

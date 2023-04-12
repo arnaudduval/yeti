@@ -33,7 +33,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# FORTRAN
 			# --------
 			weightedQuad = WeightedQuadrature(degree, knotvector)
-			info = weightedQuad.getQuadratureRules()[1:]
+			info = weightedQuad.getQuadratureRulesInfo()[1:]
 			[indi, indj], basis, weights = info
 			nb_qp = np.max(indj); indi -= 1; indj -= 1
 
@@ -52,7 +52,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# REFERENCE
 			# ----------
 			gaussQuad = GaussQuadrature(degree, knotvector)
-			info = gaussQuad.getQuadratureRules()[1:]
+			info = gaussQuad.getQuadratureRulesInfo()[1:]
 			[indi, indj], basis, weights = info
 			nb_qp = np.max(indj); indi -= 1; indj -= 1
 

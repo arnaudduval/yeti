@@ -85,44 +85,6 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
 
 end subroutine wq_find_conductivity_diagonal_3d
 
-subroutine iga_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                        data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, diag)
-    !! Computes the diagonal of conductivity matrix using sum-factorization algorithm
-    !! IN CSR FORMAT
-    
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nc_total,nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(3, 3, nc_total)
-    double precision, intent(in) :: W_u, W_v, W_w
-    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
-
-    integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-    dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-    
-    double precision, intent(out) :: diag
-    dimension :: diag(nr_u*nr_v*nr_w)
-
-    ! Local data
-    ! ----------
-    double precision :: data_W_u, data_W_v, data_W_w
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-    call iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
-                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
-
-    call wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, diag)
-
-end subroutine iga_find_conductivity_diagonal_3d
-
 ! ---------------------------------
 ! Matrix free product in 3D 
 ! ---------------------------------
@@ -288,47 +250,3 @@ subroutine mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, n
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
 end subroutine mf_wq_get_kcu_3d_py
-
-! ------------------
-
-subroutine mf_iga_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, array_in, array_out)
-    !! Computes K.u where K is conductivity matrix in 3D 
-    !! This function is adapted to python
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! ---------------------
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(3, 3, nc_total)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
-    double precision, intent(in) :: W_u, W_v, W_w
-    dimension :: W_u(nc_u), W_v(nc_v), W_w(nc_w)
-    double precision, intent(in) :: array_in
-    dimension :: array_in(nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! ----------
-    double precision :: data_W_u, data_W_v, data_W_w
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-    call iga2wq3d(nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, indj_u, indj_v, indj_w, &
-                data_B_u, data_B_v, data_B_w, W_u, W_v, W_w, data_W_u, data_W_v, data_W_w)
-
-    call mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                        array_in, array_out)
-
-end subroutine mf_iga_get_ku_3d_py

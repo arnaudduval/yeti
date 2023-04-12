@@ -1,5 +1,5 @@
-from .__init__ import *
-from .lib_base import gaussTable, lobattoTable, findMultiplicity, createKnotVector, insertRowCSR
+from lib.__init__ import *
+from lib.lib_base import gaussTable, lobattoTable, findMultiplicity, createKnotVector, insertRowCSR
 
 class QuadratureRules:
 	def __init__(self, degree, knotvector):
@@ -29,18 +29,22 @@ class QuadratureRules:
 		if np.any(np.abs(diffknot)>=threshold): self._isUniform = False
 		return
 	
-	def getQuadratureRules(self):
+	def getQuadratureRulesInfo(self):
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
 	
 class GaussQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, typeQuad='Leg'):
+	def __init__(self, degree, knotvector, **kwargs):
 		super().__init__(degree, knotvector)
-		if typeQuad == 'Leg': # Legendre 
+		self._kwargs = kwargs
+		self._quadMethod = kwargs.get('quadmethod', 'leg').lower()
+		if self._quadMethod == 'leg': # Legendre 
 			self._order = self._degree + 1
 			self._table = gaussTable
-		if typeQuad == 'Lob': # Lobatto
+		elif self._quadMethod == 'lob': # Lobatto
 			self._order = self._degree + 2
 			self._table = lobattoTable
+		else: 
+			raise Warning('Not found')
 		return
 	
 	def getGaussInfo(self):
@@ -82,7 +86,7 @@ class GaussQuadrature(QuadratureRules):
 		self._dersWeights = W
 		return
 	
-	def getQuadratureRules(self):
+	def getQuadratureRulesInfo(self):
 		self.getGaussInfo()
 		self.findQuadraturePositions()
 		self.findParametricWeights()
@@ -90,10 +94,10 @@ class GaussQuadrature(QuadratureRules):
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
 
 class WeightedQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, kwargs=dict()):
+	def __init__(self, degree, knotvector, **kwargs):
 		super().__init__(degree, knotvector)
 		self._kwargs     = kwargs
-		self._quadMethod = kwargs.get('method', 1)
+		self._quadMethod = kwargs.get('quadmethod', 1)
 		return
 	
 	def findQuadraturePositions(self):
@@ -246,7 +250,7 @@ class WeightedQuadrature(QuadratureRules):
 		self._dersIndices = [indi, indj]
 		return
 	
-	def getQuadratureRules(self):
+	def getQuadratureRulesInfo(self):
 		self.findQuadraturePositions()
 		self.evalDersBasisWeights()
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
