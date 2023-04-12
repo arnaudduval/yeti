@@ -29,6 +29,12 @@ class thermomat():
 		self.__setDensity(density)
 		return
 	
+	def verifyThermalProperties(self):
+		" Verifies if thermal properties exits "
+		if self._heatconductivity is None: raise Warning('Conductivity not defined')
+		if self._heatcapacity is None: raise Warning('Capacity not defined')
+		return
+	
 class mechamat():
 	def __init__(self, **kwargs):
 		self._density = None
@@ -54,6 +60,19 @@ class mechamat():
 		self.__setDensity(val)
 		return
 	
+	def __setExtraMechanicalProperties(self):
+		E  = self._elasticmodulus
+		nu = self._poissonratio
+		self._lame_lambda, self._lame_mu, self._lame_bulk = None, None, None
+		if E is not None and nu is not None:
+			lamb = nu*E/((1+nu)*(1-2*nu))
+			mu = E/(2*(1+nu))
+			bulk = lamb + 2.0/3.0*mu
+			self._lame_lambda = lamb
+			self._lame_mu = mu
+			self._lame_bulk = bulk
+		return
+	
 	def getInfo(self, kwargs:dict):
 		elasticmodulus = kwargs.get('elastic_modulus', None)
 		poissonratio   = kwargs.get('poisson_ratio', None)
@@ -63,6 +82,14 @@ class mechamat():
 		self.__setPoissonRatio(poissonratio)
 		self.__setElasticLimit(elasticlimit)
 		self.__setDensity(density)
+		self.__setExtraMechanicalProperties()
+		return
+	
+	def verifyMechanicalProperties(self):
+		" Verifies if mechanical properties exits "
+		proplist = [self._elasticmodulus, self._elasticlimit, self._poissonratio]
+		if any([prop is None for prop in proplist]): raise Warning('Mechanics not well defined')
+		
 		return
 
 class mechamat1D(mechamat):
@@ -70,10 +97,10 @@ class mechamat1D(mechamat):
 		super().__init__(**kwargs)
 		self.Hfun, self.Hderfun = None, None
 		self.Kfun, self.Kderfun = None, None
-		name = kwargs.get('model', 'linear')
-		if name.lower() == 'linear': self.__setLinearModel(kwargs)
-		if name.lower() == 'swift' : self.__setSwiftModel(kwargs)
-		if name.lower() == 'voce'  : self.__setVoceModel(kwargs)
+		name = kwargs.get('model', 'linear').lower()
+		if name == 'linear': self.__setLinearModel(kwargs)
+		if name == 'swift' : self.__setSwiftModel(kwargs)
+		if name == 'voce'  : self.__setVoceModel(kwargs)
 		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return

@@ -5,8 +5,9 @@
 """
 
 # My libraries
-from .lib_quadrules import *
-from .lib_material import *
+from lib.lib_base import evalDersBasisFortran
+from lib.lib_quadrules import *
+from lib.lib_material import *
 
 class part(): 
 
@@ -119,3 +120,99 @@ class part():
 	# ----------------
 	# POST-PROCESSING 
 	# ----------------
+
+	def interpolateField(self, samplesize=None, u_ctrlpts=None, nbDOF=3):
+
+		# Get basis using fortran
+		if samplesize == None: samplesize = self._sample_size
+		knots = np.linspace(0, 1, samplesize)
+		basis, indices = [], []
+		for i in range(self._dim):
+			dersb, indi, indj = evalDersBasisFortran(self._degree[i], self._knotvector[i], knots)
+			basis.append(dersb); indices.append(indi); indices.append(indj)
+
+
+		# Get position and determinant 
+		inputs = [*self._dim*[samplesize], *indices, *basis, self._ctrlpts]
+		if self._dim == 2:
+			Jinterp, detJinterp = assembly.eval_jacobien_2d(*inputs)[:2]
+			posinterp = assembly.interpolate_fieldphy_2d(*inputs)
+		elif self._dim == 3: 
+			Jinterp, detJinterp = assembly.eval_jacobien_3d(*inputs)[:2]
+			posinterp = assembly.interpolate_fieldphy_3d(*inputs)
+
+		# Get interpolation
+		if u_ctrlpts is not None:
+			u_temp = np.atleast_2d(u_ctrlpts)
+			inputs = [*self._dim*[samplesize], *indices, *basis, u_temp]
+
+			if self._dim == 2:   uinterp = assembly.interpolate_fieldphy_2d(*inputs)    
+			elif self._dim == 3: uinterp = assembly.interpolate_fieldphy_3d(*inputs)
+			if nbDOF == 1: uinterp = np.ravel(uinterp)
+	
+		else: uinterp = None
+
+		return Jinterp, posinterp, detJinterp, uinterp
+
+	def exportResults(self, u_ctrlpts=None, folder=None, name=None, nbDOF=3): 
+		""" Export solution in VTK format. 
+			It is possible to use Paraview to visualize data
+		"""
+
+		if folder == None: 
+			full_path = os.path.realpath(__file__)
+			dirname = os.path.dirname
+			folder = dirname(dirname(full_path)) + '/results/'
+		if not os.path.isdir(folder): os.mkdir(folder)
+		print("File saved in %s" %folder)
+
+		if u_ctrlpts is None: pass
+		elif isinstance(u_ctrlpts, np.ndarray): 
+			if np.size(u_ctrlpts)%self._nb_ctrlpts_total != 0: 
+				raise Warning('Not enough control points')
+		else: raise Warning('Solution must be ndarray type')
+
+		# ------------------
+		# Get interpolation
+		# ------------------
+		qpPhy, detJ, u_interp = self.interpolateField(u_ctrlpts=u_ctrlpts, nbDOF=nbDOF)[1:]
+		mean_detJ = statistics.mean(detJ)
+		detJ /= mean_detJ
+
+		# ------------------
+		# Export results
+		# ------------------
+		shape_pts = [1, 1, 1]
+		for dim in range(self._dim): shape_pts[dim] = self._sample_size
+		shape_pts  = tuple(shape_pts)
+		X1, X2, X3 = np.zeros(shape_pts), np.zeros(shape_pts), np.zeros(shape_pts)
+		U   = np.zeros((nbDOF, *shape_pts))
+		DET = np.zeros(shape_pts)
+
+		for k in range(shape_pts[2]):
+			for j in range(shape_pts[1]):
+				for i in range(shape_pts[0]):
+					pos = i + j * self._sample_size + k * self._sample_size**2
+					X1[i,j,k] = qpPhy[0, pos]
+					X2[i,j,k] = qpPhy[1, pos]
+					DET[i,j,k] = detJ[pos]
+					if self._dim == 3: X3[i,j,k] = qpPhy[2, pos]
+					if u_interp is not None: 
+						u_interp = np.atleast_2d(u_interp)
+						for l in range(nbDOF):
+							U[l,i,j,k] = u_interp[l, pos]
+		
+		# Create point data 
+		pointData = {}
+		if u_interp is not None: 
+			for l in range(nbDOF):
+				varname = 'U' + str(l+1)
+				pointData[varname] = U[l,:,:,:]
+		pointData['detJ'] = DET
+
+		# Export geometry
+		if name is None: name = self._name
+		name = folder + name
+		gridToVTK(name, X1, X2, X3, pointData=pointData)
+		
+		return

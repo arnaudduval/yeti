@@ -8,8 +8,8 @@ from lib.lib_base import createKnotVector
 
 class Geomdl():
 	def __init__(self, **kwargs):
-		self._kwargs     = kwargs
-		self._name       = kwargs.get('name', 'cb').lower()
+		self._kwargs = kwargs
+		self._name   = kwargs.get('name', 'cb').lower()
 		return
 	
 	def __setPartInfo(self, obj, dimen=3): 

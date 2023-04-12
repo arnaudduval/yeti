@@ -35,11 +35,6 @@ mpl.rcParams['font.family'] = 'STIXGeneral'
 mpl.rcParams["axes.grid"] = True
 mpl.rcParams['axes.prop_cycle'] = cycler('color', colorSet)
 
-import pyvista as pv
-pv.rcParams['transparent_background'] = True
-pv.global_theme.font.family = 'times'
-pv.global_theme.font.color = 'black'
-
 # Define size
 SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE = 14, 16, 18
 plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
@@ -49,6 +44,11 @@ plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+import pyvista as pv
+pv.rcParams['transparent_background'] = True
+pv.global_theme.font.family = 'times'
+pv.global_theme.font.color = 'black'
 
 # YETI libraries
 from iga_wq_mf import basis_weights, assembly, solver, elastoplasticity
