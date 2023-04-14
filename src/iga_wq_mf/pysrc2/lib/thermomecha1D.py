@@ -6,11 +6,12 @@
 """
 
 import numpy as np
-from lib.lib_base import array2csr_matrix
+from lib.lib_base import array2csr_matrix, evalDersBasisFortran
 from lib.lib_quadrules import *
 
 class model1D:
 	def __init__(self, **kwargs):
+		self._sampleSize = kwargs.get('sample_size', 101)
 		self._kwargs = kwargs
 		self.set_geometry()
 		self.set_igaparameterization()
@@ -36,11 +37,9 @@ class model1D:
 		quadRule      = None
 		
 		if quadRuleName == 'iga':
-			for i in range(self._dim):
-				quadRule = GaussQuadrature(self._degree, self._knotvector, **kwargs)
+			quadRule = GaussQuadrature(self._degree, self._knotvector, **kwargs)
 		elif quadRuleName == 'wq':
-			for i in range(self._dim):
-				quadRule = WeightedQuadrature(self._degree, self._knotvector, **kwargs)
+			quadRule = WeightedQuadrature(self._degree, self._knotvector, **kwargs)
 		else:
 			raise Warning('Not found')
 
@@ -80,6 +79,16 @@ class model1D:
 		self._elasticlimit   = kwargs.get('elastic_limit', None)
 		self._density        = kwargs.get('density', None)
 		return
+	
+	def interpolate_sample(self, u_ctrlpts):
+		if np.size(u_ctrlpts, axis=0) != self._nbctrlpts: raise Warning('Not possible')
+		nbknots = self._sampleSize
+		knots   = np.linspace(0, 1, nbknots)
+		basis, indi, indj = evalDersBasisFortran(self._degree, self._knotvector, knots)
+		B0       = sp.csr_matrix((basis[:, 0], indj-1, indi-1))
+		u_interp = B0.T @ u_ctrlpts
+		x_interp = self._detJ * knots
+		return u_interp, x_interp
 
 class thermo1D(model1D):
 	def __init__(self, **kwargs):
