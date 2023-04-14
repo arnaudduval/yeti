@@ -23,10 +23,10 @@ class part():
 
 		self._nbqp, self._nbqp_total = [], None
 		self._qpPar, self._basis, self._weights, self._indices = [], [], [], []
-		self.__setQuadratureRules()
+		self.setQuadratureRules()
 
 		self._Jqp, self._detJ, self._invJ, self._qpPhy = None, None, None, None
-		self.__setJacobienPhysicalPoints()
+		self.setJacobienPhysicalPoints()
 
 		return
 	
@@ -66,7 +66,7 @@ class part():
 	
 	# -----------
 
-	def __setQuadratureRules(self):
+	def setQuadratureRules(self):
 
 		def eval_basisWeights(quadRule: WeightedQuadrature):
 			quadPtsPos, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()
@@ -91,7 +91,7 @@ class part():
 		for quadRule in quadRule_list:
 			nbqp, quadPtsPos, dersIndices, dersBasis, dersWeights = eval_basisWeights(quadRule)
 			self._nbqp.append(nbqp); self._qpPar.append(quadPtsPos); self._indices.append(dersIndices)
-			self._basis.append(dersBasis), self._weights(dersWeights)
+			self._basis.append(dersBasis); self._weights(dersWeights)
 		stop = time.process_time()
 		print('\tBasis and weights in : %.5f s' %(stop-start))
 
@@ -100,7 +100,7 @@ class part():
 
 		return
 	
-	def __setJacobienPhysicalPoints(self):
+	def setJacobienPhysicalPoints(self):
 		" Computes jacobien and physical position "
 
 		print('Evaluating jacobien and physical position')

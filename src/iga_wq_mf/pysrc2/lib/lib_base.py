@@ -91,6 +91,22 @@ def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
 
 	return indi_out, indj_out, data_out
 
+def array2csr_matrix(data, indi, indj, isfortran=True):
+	" Computes csr sparse matrix "
+
+	nb_rows = len(indi) - 1
+	if isfortran: 
+		nb_cols  = max(indj)
+		indjcopy = indj - 1
+		indicopy = indi - 1 
+	else: 
+		nb_cols = max(indj) + 1 
+		indjcopy = np.copy(indj)
+		indicopy = np.copy(indi)
+	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy), shape=(nb_rows, nb_cols))
+									
+	return sparse_matrix
+
 # ==========================
 # B-SPLINE FUNCTIONS
 # ==========================

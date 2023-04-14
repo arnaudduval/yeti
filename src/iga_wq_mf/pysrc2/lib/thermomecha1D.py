@@ -1,0 +1,423 @@
+"""
+.. This module contains functions to treat transient heat problems in 1D. 
+.. It also contains functions to treat elastoplasticity problems in 1D. 
+.. It is adapted to IGA problems (using Gauss quadrature)
+.. Joaquin Cornejo
+"""
+
+import numpy as np
+from lib.lib_base import array2csr_matrix
+from lib.lib_quadrules import *
+
+class model1D:
+	def __init__(self, **kwargs):
+		self._kwargs = kwargs
+		self.set_geometry()
+		self.set_igaparameterization()
+		self.set_quadratureRule()
+		return
+	
+	def set_geometry(self):
+		self._J    = self._kwargs.get('length', 1.0)
+		self._detJ = self._J
+		self._invJ = 1.0/self._J
+		return
+	
+	def set_igaparameterization(self):
+		kwargs           = self._kwargs
+		self._degree     = kwargs.get('degree', 2)
+		self._knotvector = kwargs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
+		self._nbctrlpts  = len(self._knotvector) - self._degree - 1
+		return
+
+	def set_quadratureRule(self):
+		kwargs        = self._kwargs
+		quadRuleName  = kwargs.get('quadrule', 'wq').lower()
+		quadRule      = None
+		
+		if quadRuleName == 'iga':
+			for i in range(self._dim):
+				quadRule = GaussQuadrature(self._degree, self._knotvector, **kwargs)
+		elif quadRuleName == 'wq':
+			for i in range(self._dim):
+				quadRule = WeightedQuadrature(self._degree, self._knotvector, **kwargs)
+		else:
+			raise Warning('Not found')
+
+		# nbqp, 
+		info = quadRule.getQuadratureRulesInfo()
+		quadPtsPos, dersIndices, dersBasis, dersWeights = info
+		self._nbqp = len(quadPtsPos); self._qpPar = quadPtsPos; 
+		self._basis, self._weights = [], []
+
+		for i in range(2): self._basis.append(array2csr_matrix(dersBasis[:, i], *dersIndices))
+		for i in range(4): self._weights.append(array2csr_matrix(dersWeights[:, i], *dersIndices))
+		
+		return
+
+	def set_DirichletCondition(self, table=[0, 0]):
+		dod = []
+		dof = [i for i in range(0, self._nbctrlpts)]
+		if table[0] == 1:  
+			dof.pop(0); dod.append(0)
+		if table[-1] == 1: 
+			dof.pop(-1); dod.append(self._nbctrlpts)
+		self._dof = dof
+		self._dod = dod
+		return 
+
+	def activate_thermal(self):
+		kwargs = self._kwargs
+		self._heatconductivity = kwargs.get('conductivity', None)
+		self._heatcapacity     = kwargs.get('capacity', None)
+		self._density          = kwargs.get('density', None)
+		return
+	
+	def activate_mechanical(self):
+		kwargs = self._kwargs
+		self._elasticmodulus = kwargs.get('elastic_modulus', None)
+		self._poissonratio   = kwargs.get('poisson_ratio', None)
+		self._elasticlimit   = kwargs.get('elastic_limit', None)
+		self._density        = kwargs.get('density', None)
+		return
+
+class thermo1D(model1D):
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self.activate_mechanical()
+		self._temporaltheta = kwargs.get('heattheta', 1.0)
+		return
+
+	def interpolate_temperature(self, T_ctrlpts):
+		" Interpolate temperature in 1D "
+		T_interp = self._basis[0].T @ T_ctrlpts
+		return T_interp
+
+	def compute_volForce(self, Fprop):
+		" Computes 'volumetric' source vector in 1D "
+		Fcoefs = Fprop * self._detJ
+		F = self._weights[0] @ Fcoefs 
+		return F
+
+	def compute_intForce(self, Kprop, Cprop, T, dT):
+		"Returns the internal heat force in transient heat"
+
+		# Compute conductivity matrix
+		Kcoefs = Kprop * self._invJ
+		K = self._weights[-1] @ np.diag(Kcoefs) @ self._basis[1].T 
+
+		# Compute capacity matrix 
+		Ccoefs = Cprop * self._detJ
+		C = self._weights[0] @ np.diag(Ccoefs) @ self._basis[0].T
+		# C = np.diag(C.sum(axis=1))
+
+		# Compute internal heat force 
+		Fint = C @ dT + K @ T
+
+		return Fint
+
+	def compute_tangentMatrix(self, Kprop, Cprop, dt):
+		""" Computes tangent matrix in transient heat
+			S = C + theta dt K
+			K = int_Omega dB/dx Kprop dB/dx dx = int_[0, 1] J^-1 dB/dxi Kprop J^-1 dB/dxi detJ dxi.
+			But in 1D: detJ times J^-1 get cancelled.
+			C = int_Omega B Cprop B dx = int [0, 1] B Cprop det J B dxi
+		"""
+
+		# Compute conductivity matrix
+		Kcoefs = Kprop * self._invJ
+		K = self._weights[-1] @ np.diag(Kcoefs) @ self._basis[1].T 
+
+		# Compute capacitiy matrix 
+		Ccoefs = Cprop * self._detJ
+		C =self._weights[0] @ np.diag(Ccoefs) @ self._basis[0].T
+		# C = np.diag(C.sum(axis=1))
+
+		# Compute tangent matrix 
+		M = C + self._temporaltheta*dt*K
+
+		return M
+
+	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-12, nbIterNL=20):
+		" Solves transient heat problem in 1D. "
+
+		theta = self._temporaltheta
+		dod   = self._dod; dof = self._dof
+		ddGG  = np.zeros(len(dod)) # d Temperature/ d time
+		VVn0  = np.zeros(len(dof)+len(dod))
+
+		# Compute initial velocity from boundry conditions (for i = 0)
+		if np.shape(Tinout)[1] == 2:
+			delta_t = time_list[1] - time_list[0]
+			ddGG = (Tinout[dod, 1] - Tinout[dod, 0])/delta_t
+		elif np.shape(Tinout)[1] >= 2:
+			delta_t1 = time_list[1] - time_list[0]
+			delta_t2 = time_list[2] - time_list[0]
+			factor = delta_t2/delta_t1
+			ddGG = 1.0/(delta_t1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		else: raise Warning('We need more than 2 steps')
+		VVn0[dod] = ddGG
+
+		for i in range(1, np.shape(Tinout)[1]):
+			# Get delta time
+			delta_t = time_list[i] - time_list[i-1]
+
+			# Get values of last step
+			TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
+
+			# Get values of new step
+			TTn1 = TTn0 + delta_t*(1-theta)*VVn0; TTn1[dod] = Tinout[dod, i]
+			TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
+			VVn1[dod] = 1.0/theta*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
+			Fstep = Fext[:, i]
+
+			for j in range(nbIterNL): # Newton-Raphson
+
+				# Interpolate temperature
+				T_interp = self.interpolate_temperature(TTn1)
+
+				# Get capacity and conductivity properties
+				Kprop = self._heatconductivity(T_interp)
+				Cprop = self._heatcapacity(T_interp)
+
+				# Compute residue
+				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1)
+				dF = Fstep[dof] - Fint[dof]
+				prod1 = np.dot(dF, dF)
+				relerror = np.sqrt(prod1)
+				if relerror <= threshold: break
+
+				# Compute tangent matrix
+				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=delta_t)[np.ix_(dof, dof)]
+
+				# Compute delta dT 
+				ddVV = np.linalg.solve(MM, dF)
+
+				# Update values
+				VVn1[dof] += ddVV
+				TTn1[dof] = TTn1i0[dof] + theta*delta_t*VVn1[dof]
+
+			# print(j+1, relerror)
+
+			# Update values in output
+			Tinout[:, i] = np.copy(TTn1)
+			VVn0 = np.copy(VVn1)
+
+		return 
+
+class mechamat1D(model1D):
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self.activate_mechanical()
+		self.Hfun, self.Hderfun = None, None
+		self.Kfun, self.Kderfun = None, None
+		lawName = kwargs.get('law', 'linear').lower()
+		if lawName == 'linear': self.__setLinearModel(kwargs)
+		if lawName == 'swift' : self.__setSwiftModel(kwargs)
+		if lawName == 'voce'  : self.__setVoceModel(kwargs)
+		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
+		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
+		return
+	
+	def __setLinearModel(self, kwargs:dict):
+		theta	  = kwargs.get('theta', None)
+		Hbar      = kwargs.get('Hbar', None)
+		self.Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
+		self.Hfun = lambda a: (1-theta)*Hbar*a
+		self.Kderfun = lambda a: theta*Hbar
+		self.Hderfun = lambda a: (1-theta)*Hbar
+		return
+	
+	def __setSwiftModel(self, kwargs:dict):
+		K = kwargs.get('K', None)
+		n = kwargs.get('exp', None)
+		self.Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
+		self.Hfun = lambda a: 0.0
+		self.Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
+		self.Hderfun = lambda a: 0.0
+		return
+	
+	def __setVoceModel(self, kwargs:dict):
+		theta = kwargs.get('theta', None)
+		Hbar  = kwargs.get('Hbar', None)
+		Kinf  = kwargs.get('Kinf', None)
+		delta = kwargs.get('delta', None)
+		self.Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
+		self.Hfun = lambda a: (1-theta)*Hbar*a
+		self.Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
+		self.Hderfun = lambda a: (1-theta)*Hbar
+		return
+
+	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-8):
+		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
+			It uses combined isotropic/kinematic hardening theory.  
+		"""
+
+		def computeDeltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-8):
+			dgamma = 0.0
+			a_n1   = a_n0 
+			for i in range(nbIter):
+				dH = self.Hfun(a_n1) - self.Hfun(a_n0) 
+				G  = -self.Kfun(a_n1) + np.abs(eta_trial) - (self._elasticmodulus*dgamma + dH)
+				if G <=threshold: break
+				dG = - (self._elasticmodulus + self.Hderfun(a_n1) + self.Kderfun(a_n1))
+				dgamma = dgamma - G/dG
+				a_n1   = a_n0 + dgamma 
+			return dgamma
+
+		# Elastic predictor
+		sigma_trial = self._elasticmodulus*(strain - pls)
+		eta_trial   = sigma_trial - b
+
+		# Check yield status
+		f_trial = np.abs(eta_trial) - self.Kfun(a)
+
+		if f_trial <= threshold: # Elastic
+			stress = sigma_trial
+			pls_new = pls
+			a_new = a
+			b_new = b
+			Cep = self._elasticmodulus
+
+		else: # Plastic
+			N = np.sign(eta_trial)
+			dgamma = computeDeltaGamma(eta_trial, a)
+			stress = sigma_trial - dgamma*self._elasticmodulus*N
+			pls_new = pls + dgamma*N
+			a_new = a + dgamma
+			b_new = b + (self.Hfun(a_new)-self.Hfun(a))*N
+			somme = self.Kderfun(a_new) + self.Hderfun(a_new)
+			Cep = self._elasticmodulus*somme/(self._elasticmodulus + somme)
+
+		return [stress, pls_new, a_new, b_new, Cep]
+
+	def interpolate_strain(self, disp):
+		" Computes strain field from a given displacement field "
+		eps = self._basis[1].T @ disp / self._invJ
+		return eps
+	
+	def interpolate_CPfield(self, u_ref):
+		" Interpolate control point field (from parametric to physical space) "
+		masse = self._weights[0] @ self._basis[0].T
+		force = self._weights[0] @ u_ref
+		u_ctrlpts = np.linalg.solve(masse.toarray(), force)
+		return u_ctrlpts
+
+	def compute_volForce(self, b): 
+		" Computes volumetric force in 1D. Usualy b = rho*g*L (Weight) "
+		F = self._weights[0] @ b.T
+		return F
+
+	def compute_intForce(self, sigma):
+		""" Computes internal force Fint. 
+			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
+			But in 1D: detJ times J^-1 get cancelled.
+		"""
+		Fint = self._weights[2] @ sigma.T
+		return Fint
+
+	def compute_tangentMatrix(self, Cep):
+		""" Computes stiffness matrix in elastoplasticity
+			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
+			But in 1D: detJ times J^-1 get cancelled.
+		"""
+		Scoefs = Cep*1.0/self._detJ
+		S = self._weights[-1] @ np.diag(Scoefs) @ self._basis[1].T 
+		return S
+
+	def solve(self, Fext=None, threshold=1e-8, nbIterNL=10):
+		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
+
+		nbqp = self._nbqp
+		dof  = self._dof
+		ep_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
+		ep_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
+		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
+		disp = np.zeros(np.shape(Fext))
+
+		strain  = np.zeros((nbqp, np.shape(Fext)[1]))
+		plastic = np.zeros((nbqp, np.shape(Fext)[1]))
+		stress  = np.zeros((nbqp, np.shape(Fext)[1]))
+		moduleE = np.zeros((nbqp, np.shape(Fext)[1]))
+
+		for i in range(1, np.shape(Fext)[1]):
+
+			d_n1 = np.copy(disp[:, i-1]); ddisp = np.zeros(len(dof)) 
+			Fstep = np.copy(Fext[:, i])
+
+			print('Step %d' %i)
+			for j in range(nbIterNL): # Newton-Raphson
+
+				# Compute strain as function of displacement
+				d_n1[dof] = disp[dof, i-1] + ddisp
+				eps = self.interpolate_strain(d_n1)
+
+				# Find closest point projection 
+				for k in range(nbqp):
+					result1 = self.returnMappingAlgorithm(eps[k], ep_n0[k], a_n0[k], b_n0[k])
+					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
+
+				# Compute Fint
+				Fint = self.compute_intForce(sigma)
+				dF 	 = Fstep[dof] - Fint[dof]
+				relerror = np.sqrt(np.dot(dF, dF))
+				print('Rhapson with error %.5e' %relerror)
+				if relerror <= threshold: break
+
+				# Compute stiffness
+				Sdof = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
+				ddisp += np.linalg.solve(Sdof, dF)
+
+			# Update values in output
+			disp[:, i]   = d_n1
+			strain[:, i] = eps
+			stress[:, i] = sigma
+			plastic[:, i] = ep_n1
+			moduleE[:, i] = Cep
+
+			ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
+
+		return disp, strain, stress, plastic, moduleE
+
+# # =============
+
+# def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
+# 	knots  = np.linspace(0, 1, 101)
+# 	DB     = eval_basis_python(degree, knotvector, knots)
+# 	displacement   = DB[0].T @ disp_cp
+# 	strain_interp  = DB[1].T @ disp_cp
+# 	plastic_interp = DB[0].T @ plastic_cp
+# 	stress_interp  = DB[0].T @ stress_cp
+
+# 	# Plot fields
+# 	N = np.shape(disp_cp)[1]
+# 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
+# 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
+# 	units = ['m', '\%', 'MPa']
+# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+# 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
+# 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+# 		ax.set_title(name)
+# 		ax.set_ylabel('Step')
+# 		ax.set_xlabel('Position (m)')
+# 		ax.grid(False)
+# 		divider = make_axes_locatable(ax)
+# 		cax = divider.append_axes('right', size='5%', pad=0.05)
+# 		cbar = fig.colorbar(im, cax=cax)
+# 		cbar.ax.set_title(unit)
+
+# 	fig.tight_layout()
+# 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
+
+# 	# Plot stress-strain of single point
+# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
+# 	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
+# 		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
+# 		ax.set_ylabel('Stress (MPa)')
+# 		ax.set_xlabel('Strain (\%)')
+# 		ax.set_ylim(bottom=0.0, top=1500)
+# 		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
+
+# 	fig.tight_layout()
+# 	fig.savefig(folder + 'TractionCurve' + method + extension)
+# 	return
