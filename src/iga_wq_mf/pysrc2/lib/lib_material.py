@@ -2,31 +2,15 @@ from lib.__init__ import *
 	
 class thermomat():
 	def __init__(self, **kwargs):
-		self._density = None
-		self._heatconductivity = None
-		self._heatcapacity     = None
-		self.getInfo(kwargs)
+		self._kwargs = kwargs
+		self.getInfo()
 		return
 	
-	def __setConductivity(self, fun):
-		self._heatconductivity = fun
-		return
-	
-	def __setCapacity(self, fun):
-		self._heatcapacity = fun
-		return
-	
-	def __setDensity(self, val):
-		self._density = val
-		return
-
-	def getInfo(self, kwargs:dict):
-		conductivity = kwargs.get('conductivity', None)
-		capacity     = kwargs.get('capacity', None)
-		density      = kwargs.get('density', None)
-		self.__setCapacity(capacity)
-		self.__setConductivity(conductivity)
-		self.__setDensity(density)
+	def getInfo(self):
+		kwargs = self._kwargs
+		self._heatconductivity = kwargs.get('conductivity', None)
+		self._heatcapacity     = kwargs.get('capacity', None)
+		self._density          = kwargs.get('density', None)
 		return
 	
 	def verifyThermalProperties(self):
@@ -37,27 +21,8 @@ class thermomat():
 	
 class mechamat():
 	def __init__(self, **kwargs):
-		self._density = None
-		self._elasticmodulus = None
-		self._poissonratio   = None
-		self._elasticlimit   = None
-		self.getInfo(kwargs)
-		return
-	
-	def __setElasticModulus(self, val):
-		self._elasticmodulus = val
-		return
-	
-	def __setPoissonRatio(self, val):
-		self._poissonratio = val
-		return
-	
-	def __setElasticLimit(self, val):
-		self._elasticlimit = val
-		return
-	
-	def __setDensity(self, val):
-		self.__setDensity(val)
+		self._kwargs = kwargs
+		self.getInfo()
 		return
 	
 	def __setExtraMechanicalProperties(self):
@@ -73,15 +38,12 @@ class mechamat():
 			self._lame_bulk = bulk
 		return
 	
-	def getInfo(self, kwargs:dict):
-		elasticmodulus = kwargs.get('elastic_modulus', None)
-		poissonratio   = kwargs.get('poisson_ratio', None)
-		elasticlimit   = kwargs.get('elastic_limit', None)
-		density        = kwargs.get('density', None)
-		self.__setElasticModulus(elasticmodulus)
-		self.__setPoissonRatio(poissonratio)
-		self.__setElasticLimit(elasticlimit)
-		self.__setDensity(density)
+	def getInfo(self):
+		kwargs = self._kwargs
+		self._elasticmodulus = kwargs.get('elastic_modulus', None)
+		self._poissonratio   = kwargs.get('poisson_ratio', None)
+		self._elasticlimit   = kwargs.get('elastic_limit', None)
+		self._density        = kwargs.get('density', None)
 		self.__setExtraMechanicalProperties()
 		return
 	
