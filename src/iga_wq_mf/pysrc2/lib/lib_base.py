@@ -183,7 +183,7 @@ def evalDersBasisPy(degree, knotvector, knots, multiplicity=1):
 
 def evalDersBasisFortran(degree, knotvector, knots):
 	" Evaluates B-spline functions at given knots using fortran libraries "
-	B, indi, indj = basis_weights.get_basis_generalized_csr(degree, knotvector, knots)
+	B, indi, indj = basis_weights.get_genbasis_csr(degree, knotvector, knots)
 	return B, indi, indj
 
 def gaussTable(order):

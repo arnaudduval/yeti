@@ -81,10 +81,10 @@ class part():
 		start = time.process_time()
 		if quadRuleName == 'iga':
 			for i in range(self._dim):
-				quadRule_list.append(GaussQuadrature(self._degree[i], self._knotvector[i], **kwargs))
+				quadRule_list.append(GaussQuadrature(self._degree[i], self._knotvector[i], kwargs=kwargs))
 		elif quadRuleName == 'wq':
 			for i in range(self._dim):
-				quadRule_list.append(WeightedQuadrature(self._degree[i], self._knotvector[i], **kwargs))
+				quadRule_list.append(WeightedQuadrature(self._degree[i], self._knotvector[i], kwargs=kwargs))
 		else:
 			raise Warning('Not found')
 		

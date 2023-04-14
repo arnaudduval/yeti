@@ -37,9 +37,9 @@ class model1D:
 		quadRule      = None
 		
 		if quadRuleName == 'iga':
-			quadRule = GaussQuadrature(self._degree, self._knotvector, **kwargs)
+			quadRule = GaussQuadrature(self._degree, self._knotvector, kwargs=kwargs)
 		elif quadRuleName == 'wq':
-			quadRule = WeightedQuadrature(self._degree, self._knotvector, **kwargs)
+			quadRule = WeightedQuadrature(self._degree, self._knotvector, kwargs=kwargs)
 		else:
 			raise Warning('Not found')
 
@@ -60,7 +60,7 @@ class model1D:
 		if table[0] == 1:  
 			dof.pop(0); dod.append(0)
 		if table[-1] == 1: 
-			dof.pop(-1); dod.append(self._nbctrlpts)
+			dof.pop(-1); dod.append(self._nbctrlpts-1)
 		self._dof = dof
 		self._dod = dod
 		return 
@@ -93,7 +93,7 @@ class model1D:
 class thermo1D(model1D):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
-		self.activate_mechanical()
+		self.activate_thermal()
 		self._temporaltheta = kwargs.get('heattheta', 1.0)
 		return
 

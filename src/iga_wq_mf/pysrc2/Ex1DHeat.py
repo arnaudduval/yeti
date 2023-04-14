@@ -22,7 +22,7 @@ model.set_DirichletCondition(table=[1, 1])
 # Define boundaries conditions	
 N = 1000
 time_list = np.linspace(0, 0.02, N)
-print('Time step: %3e' %time_list.max()/N)
+print('Time step: %3e' %(time_list.max()/N))
 Fprop     = powden(model._qpPar)
 FFend     = model.compute_volForce(Fprop)
 FFend     = np.atleast_2d(FFend).reshape(-1, 1)
@@ -34,14 +34,12 @@ temperature[-1,:] = 1.0
 
 # Solve
 model.solve(Fext=Fext, time_list=time_list, Tinout=temperature)
+temp_interp, x_interp = model.interpolate_sample(temperature)
+print(temp_interp.min())
 
 # ------------------
 # Post-treatement
 # ------------------
-temp_interp, x_interp = model.interpolate_sample(temperature)
-print(temp_interp.min())
-
-# Plot
 XX, TIME = np.meshgrid(x_interp, time_list)
 fig, ax  = plt.subplots(figsize=(10,4))
 levels   = np.array([-0.2]); levels = np.append(levels, np.linspace(0, 1, 9))

@@ -33,7 +33,7 @@ class QuadratureRules:
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
 	
 class GaussQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, **kwargs):
+	def __init__(self, degree, knotvector, kwargs={}):
 		super().__init__(degree, knotvector)
 		self._kwargs = kwargs
 		self._quadMethod = kwargs.get('quadmethod', 'leg').lower()
@@ -94,7 +94,7 @@ class GaussQuadrature(QuadratureRules):
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
 
 class WeightedQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, **kwargs):
+	def __init__(self, degree, knotvector, kwargs={}):
 		super().__init__(degree, knotvector)
 		self._kwargs     = kwargs
 		self._quadMethod = kwargs.get('quadmethod', 1)
