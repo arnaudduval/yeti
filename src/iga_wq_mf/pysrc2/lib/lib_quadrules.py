@@ -1,15 +1,21 @@
 from lib.__init__ import *
-from lib.lib_base import gaussTable, lobattoTable, findMultiplicity, createKnotVector, insertRowCSR
+from lib.lib_base import (gaussTable, lobattoTable, 
+						findMultiplicity, createKnotVector, 
+						insertRowCSR, evalDersBasisFortran
+)
 
 class QuadratureRules:
 	def __init__(self, degree, knotvector):
-		self._degree      = degree
-		self._knotvector  = knotvector
-		self._nbqp        = None
-		self._quadPtsPos  = None
-		self._dersIndices = None
-		self._dersBasis   = None
-		self._dersWeights = None
+		self._degree       = degree
+		self._knotvector   = knotvector
+		self._nbqp         = None
+		self._quadPtsPos   = None
+		self._dersIndices  = None
+		self._dersBasis    = None
+		self._dersWeights  = None
+		self._denseBasis   = None
+		self._denseWeights = None
+		self._sampleSize   = 101
 		self.getInfoFromKnotvector()
 		self.verifyUniformityRegularity()
 		return
@@ -46,6 +52,16 @@ class QuadratureRules:
 			else: tmp = sp.csr_matrix((self._dersWeights[:, i], indj, indi))
 			self._denseWeights.append(tmp)
 		return
+	
+	def getGeneralizedBasis(self, isFortran=True):
+		basis = []
+		knots = np.linspace(0, 1, self._sampleSize)
+		dersBasis, indi, indj = evalDersBasisFortran(self._degree, self._knotvector, knots)
+		for i in range(np.size(dersBasis, axis=1)):
+			if isFortran: tmp = sp.csr_matrix((dersBasis[:, i], indj-1, indi-1))
+			else: tmp = sp.csr_matrix((self._dersBasis[:, i], indj, indi))
+			basis.append(tmp)
+		return basis, knots
 	
 class GaussQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, kwargs={}):

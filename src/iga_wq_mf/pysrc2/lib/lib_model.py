@@ -18,8 +18,10 @@ class part():
 		self._dim        = self.read_dimension(modelIGA)
 		self._degree     = self.read_degree(modelIGA)
 		self._ctrlpts    = self.read_controlPoints(modelIGA)
+		self._nbctrlpts  = np.ones(3, dtype=int)
 		self._kwargs     = kwargs
 		self._knotvector, self._size_kv = self.read_knotvector(modelIGA)
+		for i in range(self._dim): self._nbctrlpts[i] = len(self._knotvector[i]) - self._degree[i] - 1
 
 		self._nbqp, self._nbqp_total = [], None
 		self._qpPar, self._basis, self._weights, self._indices = [], [], [], []
@@ -90,8 +92,9 @@ class part():
 		
 		for quadRule in quadRule_list:
 			nbqp, quadPtsPos, dersIndices, dersBasis, dersWeights = eval_basisWeights(quadRule)
-			self._nbqp.append(nbqp); self._qpPar.append(quadPtsPos); self._indices.append(dersIndices)
-			self._basis.append(dersBasis); self._weights(dersWeights)
+			indi, indj = dersIndices
+			self._nbqp.append(nbqp); self._qpPar.append(quadPtsPos); self._indices.append(indi); 
+			self._indices.append(indj); self._basis.append(dersBasis); self._weights.append(dersWeights)
 		stop = time.process_time()
 		print('\tBasis and weights in : %.5f s' %(stop-start))
 
@@ -105,14 +108,13 @@ class part():
 
 		print('Evaluating jacobien and physical position')
 		start = time.process_time()
-		
 		inputs = [*self._nbqp, *self._indices, *self._basis, self._ctrlpts]
 		if self._dim == 2:
 			self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
-			self._qp_PS = assembly.interpolate_fieldphy_2d(*inputs)
+			self._qpPhy = assembly.interpolate_fieldphy_2d(*inputs)
 		if self._dim == 3:
 			self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
-			self._qp_PS = assembly.interpolate_fieldphy_3d(*inputs)
+			self._qpPhy = assembly.interpolate_fieldphy_3d(*inputs)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
 		return
@@ -124,7 +126,7 @@ class part():
 	def interpolateField(self, samplesize=None, u_ctrlpts=None, nbDOF=3):
 
 		# Get basis using fortran
-		if samplesize == None: samplesize = self._sample_size
+		if samplesize == None: samplesize = self._sampleSize
 		knots = np.linspace(0, 1, samplesize)
 		basis, indices = [], []
 		for i in range(self._dim):

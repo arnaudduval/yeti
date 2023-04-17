@@ -10,6 +10,7 @@ class Geomdl():
 	def __init__(self, **kwargs):
 		self._kwargs = kwargs
 		self._name   = kwargs.get('name', 'cb').lower()
+		self._sampleSize = 101
 		return
 	
 	def __setPartInfo(self, obj, dimen=3): 
@@ -280,7 +281,7 @@ class Geomdl():
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_v
-		obj.sample_size  = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
@@ -321,7 +322,7 @@ class Geomdl():
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
-		obj.sample_size = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
@@ -354,7 +355,7 @@ class Geomdl():
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
 		obj.knotvector_w = createKnotVector(degree_w, 1)
-		obj.sample_size = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
@@ -413,7 +414,7 @@ class Geomdl():
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_u
 		obj.knotvector_w = knot_vector_w
-		obj.sample_size = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
@@ -487,7 +488,7 @@ class Geomdl():
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_v
 		obj.knotvector_w = knot_vector_w
-		obj.sample_size = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
@@ -531,7 +532,7 @@ class Geomdl():
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
 		obj.knotvector_w = createKnotVector(degree_w, 1)
-		obj.sample_size = self._sample_size
+		obj.sample_size  = self._sampleSize
 
 		return obj
 
