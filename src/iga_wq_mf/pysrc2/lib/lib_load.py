@@ -23,6 +23,12 @@ def powden(P:list, dim=1):
 	f = 0.0*np.sin(np.pi*x)
 	return f
 
+def forceVol(P:list):
+	# force = 5e3*np.sin(np.pi*P)
+	force = 2e3*P
+	# force = 1e2*np.ones(len(P))
+	return force
+
 # def power_density(P: list):
 # 	" Compute power density at point P in physical space"
 # 	f = 1 
@@ -204,17 +210,3 @@ def powden(P:list, dim=1):
 # 	)
 
 # 	return f
-
-# # ------------------
-
-
-
-
-
-# # ------------------
-
-# def forceVol(P:list):
-# 	# force = 5e3*np.sin(np.pi*P)
-# 	force = 2e3*P
-# 	# force = 1e2*np.ones(len(P))
-# 	return force

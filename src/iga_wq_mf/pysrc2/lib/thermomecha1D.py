@@ -6,6 +6,7 @@
 """
 
 import numpy as np
+from lib.__init__ import *
 from lib.lib_base import array2csr_matrix, evalDersBasisFortran
 from lib.lib_quadrules import *
 
@@ -66,18 +67,18 @@ class model1D:
 		return 
 
 	def activate_thermal(self):
-		kwargs = self._kwargs
-		self._heatconductivity = kwargs.get('conductivity', None)
-		self._heatcapacity     = kwargs.get('capacity', None)
-		self._density          = kwargs.get('density', None)
+		prop = self._kwargs.get('property', {})
+		self._heatconductivity = prop.get('conductivity', None)
+		self._heatcapacity     = prop.get('capacity', None)
+		self._density          = prop.get('density', None)
 		return
 	
 	def activate_mechanical(self):
-		kwargs = self._kwargs
-		self._elasticmodulus = kwargs.get('elastic_modulus', None)
-		self._poissonratio   = kwargs.get('poisson_ratio', None)
-		self._elasticlimit   = kwargs.get('elastic_limit', None)
-		self._density        = kwargs.get('density', None)
+		prop = self._kwargs.get('property', {})
+		self._elasticmodulus = prop.get('elastic_modulus', None)
+		self._poissonratio   = prop.get('poisson_ratio', None)
+		self._elasticlimit   = prop.get('elastic_limit', None)
+		self._density        = prop.get('density', None)
 		return
 	
 	def interpolate_sample(self, u_ctrlpts):
@@ -221,9 +222,10 @@ class mechamat1D(model1D):
 		self.Hfun, self.Hderfun = None, None
 		self.Kfun, self.Kderfun = None, None
 		lawName = kwargs.get('law', 'linear').lower()
-		if lawName == 'linear': self.__setLinearModel(kwargs)
-		if lawName == 'swift' : self.__setSwiftModel(kwargs)
-		if lawName == 'voce'  : self.__setVoceModel(kwargs)
+		prop    = kwargs.get('property', {})
+		if lawName == 'linear': self.__setLinearModel(prop)
+		if lawName == 'swift' : self.__setSwiftModel(prop)
+		if lawName == 'voce'  : self.__setVoceModel(prop)
 		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return
@@ -290,7 +292,7 @@ class mechamat1D(model1D):
 
 		else: # Plastic
 			N = np.sign(eta_trial)
-			dgamma = computeDeltaGamma(eta_trial, a)
+			dgamma = computeDeltaGamma(self, eta_trial, a)
 			stress = sigma_trial - dgamma*self._elasticmodulus*N
 			pls_new = pls + dgamma*N
 			a_new = a + dgamma
@@ -389,43 +391,45 @@ class mechamat1D(model1D):
 		return disp, strain, stress, plastic, moduleE
 
 
-# def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
-# 	knots  = np.linspace(0, 1, 101)
-# 	DB     = eval_basis_python(degree, knotvector, knots)
-# 	displacement   = DB[0].T @ disp_cp
-# 	strain_interp  = DB[1].T @ disp_cp
-# 	plastic_interp = DB[0].T @ plastic_cp
-# 	stress_interp  = DB[0].T @ stress_cp
+def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	knots  = np.linspace(0, 1, 101)
+	basis, indi, indj = evalDersBasisFortran(degree, knotvector, knots)
+	B0 = sp.csr_matrix((basis[:, 0], indj-1, indi-1)); B1 = sp.csr_matrix((basis[:, -1], indj-1, indi-1))
+	displacement   = B0.T @ disp_cp
+	strain_interp  = B1.T @ disp_cp
+	plastic_interp = B0.T @ plastic_cp
+	stress_interp  = B0.T @ stress_cp
 
-# 	# Plot fields
-# 	N = np.shape(disp_cp)[1]
-# 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
-# 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-# 	units = ['m', '\%', 'MPa']
-# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
-# 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
-# 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
-# 		ax.set_title(name)
-# 		ax.set_ylabel('Step')
-# 		ax.set_xlabel('Position (m)')
-# 		ax.grid(False)
-# 		divider = make_axes_locatable(ax)
-# 		cax = divider.append_axes('right', size='5%', pad=0.05)
-# 		cbar = fig.colorbar(im, cax=cax)
-# 		cbar.ax.set_title(unit)
+	# Plot fields
+	N = np.shape(disp_cp)[1]
+	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
+	names = ['Displacement field', 'Plastic strain field', 'Stress field']
+	units = ['m', '\%', 'MPa']
+	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
+		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+		ax.set_title(name)
+		ax.set_ylabel('Step')
+		ax.set_xlabel('Position (m)')
+		ax.grid(False)
+		divider = make_axes_locatable(ax)
+		cax = divider.append_axes('right', size='5%', pad=0.05)
+		cbar = fig.colorbar(im, cax=cax)
+		cbar.ax.set_title(unit)
 
-# 	fig.tight_layout()
-# 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
+	fig.tight_layout()
+	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
 
-# 	# Plot stress-strain of single point
-# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
-# 	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-# 		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
-# 		ax.set_ylabel('Stress (MPa)')
-# 		ax.set_xlabel('Strain (\%)')
-# 		ax.set_ylim(bottom=0.0, top=1500)
-# 		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
+	# Plot stress-strain of single point
+	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
+	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
+		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
+		ax.set_ylabel('Stress (MPa)')
+		ax.set_xlabel('Strain (\%)')
+		ax.set_ylim(bottom=0.0, top=1500)
+		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
 
-# 	fig.tight_layout()
-# 	fig.savefig(folder + 'TractionCurve' + method + extension)
-# 	return
+	fig.tight_layout()
+	fig.savefig(folder + 'TractionCurve' + method + extension)
+	return

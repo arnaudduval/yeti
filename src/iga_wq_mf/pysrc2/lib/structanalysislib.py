@@ -11,6 +11,7 @@ class Timoshenko(model1D):
 		return
 	
 	def set_geometry(self):
+		super().set_geometry()
 		kwargs  = self._kwargs
 		name    = kwargs.get('section', 'square').lower()
 		if  name == 'square': 
@@ -67,10 +68,10 @@ class Timoshenko(model1D):
 		if bound in self._dod: raise Warning('Enter non-repeated boundary')
 		if   bound == 0:
 			for i in range(3): 
-				if table[i]: self._dod.append(i*self._nb_ctrlpts)
+				if table[i]: self._dod.append(i*self._nbctrlpts)
 		elif bound == -1:
 			for i in range(3): 
-				if table[i]: self._dod.append(self._nb_ctrlpts + i*self._nb_ctrlpts - 1)
+				if table[i]: self._dod.append(self._nbctrlpts + i*self._nbctrlpts - 1)
 		else: raise Warning('Only possible block first or last control point')
 		for i in range(3): 
 			if table[i]: self._gdod.append(values[i])
@@ -152,6 +153,9 @@ class Timoshenko(model1D):
 
 	def compute_volforce(self, p, q):
 		" Compute Timoshenko force vector "
+		if np.isscalar(p): p = p*np.ones(self._nbqp)
+		if np.isscalar(q): q = q*np.ones(self._nbqp)
+		if len(p) != self._nbqp or len(q) != self._nbqp: raise Warning('Not possible')
 		F1 = compute_sub_force_vector(self._detJ, self._weights, p)
 		F2 = compute_sub_force_vector(self._detJ, self._weights, q)
 

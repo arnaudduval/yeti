@@ -12,9 +12,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 theta        = 1
 degree, nbel = 10, 10
 knotvector   = createKnotVector(degree, nbel)
+heatprop     = {'conductivity': setKprop, 'capacity': setCprop}
 kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector,
-        'quadrule': 'wq', 'heattheta': theta, 'conductivity': setKprop, 
-        'capacity': setCprop}
+        'quadrule': 'wq', 'heattheta': theta, 'property': heatprop}
 
 model = thermo1D(**kwargs)
 model.set_DirichletCondition(table=[1, 1])
