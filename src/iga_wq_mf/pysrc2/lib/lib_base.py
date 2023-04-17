@@ -149,7 +149,7 @@ def evalDersBasisPy(degree, knotvector, knots, multiplicity=1):
 
 	nbknots = len(knots)
 	nbel    = len(np.unique(knotvector)) - 1
-	nb_ctrlpts = nbknots - degree - 1
+	nb_ctrlpts = len(knotvector) - degree - 1
 
 	B0 = sp.lil_matrix((nb_ctrlpts, nbknots))
 	B1 = sp.lil_matrix((nb_ctrlpts, nbknots))

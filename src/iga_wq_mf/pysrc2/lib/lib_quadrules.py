@@ -5,7 +5,7 @@ class QuadratureRules:
 	def __init__(self, degree, knotvector):
 		self._degree      = degree
 		self._knotvector  = knotvector
-		self._nbQP        = None
+		self._nbqp        = None
 		self._quadPtsPos  = None
 		self._dersIndices = None
 		self._dersBasis   = None
@@ -31,6 +31,21 @@ class QuadratureRules:
 	
 	def getQuadratureRulesInfo(self):
 		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
+	
+	def getDenseQuadRules(self, isFortran=True):
+		self._denseBasis   = []
+		self._denseWeights = []
+		indi, indj = self._dersIndices
+		for i in range(np.size(self._dersBasis, axis=1)):
+			if isFortran: tmp = sp.csr_matrix((self._dersBasis[:, i], indj-1, indi-1))
+			else: tmp = sp.csr_matrix((self._dersBasis[:, i], indj, indi))
+			self._denseBasis.append(tmp)
+
+		for i in range(np.size(self._dersWeights, axis=1)):
+			if isFortran: tmp = sp.csr_matrix((self._dersWeights[:, i], indj-1, indi-1))
+			else: tmp = sp.csr_matrix((self._dersWeights[:, i], indj, indi))
+			self._denseWeights.append(tmp)
+		return
 	
 class GaussQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, kwargs={}):
@@ -61,7 +76,7 @@ class GaussQuadrature(QuadratureRules):
 			xg = 0.5*((knots[i+1] - knots[i])*self._isoPositions + knots[i] + knots[i+1])
 			quadPtsInfo = np.append(quadPtsInfo, xg)
 		self._quadPtsPos = np.atleast_1d(quadPtsInfo)
-		self._nbQP = np.size(self._quadPtsPos)
+		self._nbqp = np.size(self._quadPtsPos)
 		return
 	
 	def findParametricWeights(self):
@@ -108,7 +123,7 @@ class WeightedQuadrature(QuadratureRules):
 			self._quadPtsPos = self.QuadPosMidPointRule(s=s, r=r)
 		# Add more methods 
 		self._Bshape = self.getBShape(self._quadPtsPos)
-		self._nbQP   = np.size(self._quadPtsPos)
+		self._nbqp   = np.size(self._quadPtsPos)
 		return
 
 	# Add rules to get the quadrature points
@@ -196,7 +211,7 @@ class WeightedQuadrature(QuadratureRules):
 	def evalDersBasisWeights(self):
 		if self._quadMethod not in [1, 2]: raise Warning('Method unknown')
 		
-		size_data = (self._degree + 1)*self._nbQP
+		size_data = (self._degree + 1)*self._nbqp
 		B = np.zeros((size_data, 2))
 		W = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
@@ -209,7 +224,7 @@ class WeightedQuadrature(QuadratureRules):
 			kv_model     = createKnotVector(degree_model, degree_model + 3)
 			WQmodel      = WeightedQuadrature(degree_model, kv_model, kwargs=self._kwargs)
 			WQmodel.findQuadraturePositions()
-			size_data_model = (degree_model + 1)*WQmodel._nbQP
+			size_data_model = (degree_model + 1)*WQmodel._nbqp
 			Bm, Wm, indim, indjm = basis_weights.wq_getbasisweights_csr(WQmodel._degree, WQmodel._knotvector, WQmodel._quadPtsPos, 
 													WQmodel._Bshape[0], WQmodel._Bshape[1], size_data_model, WQmodel._quadMethod)
 			# Scale the results

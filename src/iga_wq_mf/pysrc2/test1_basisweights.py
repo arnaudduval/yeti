@@ -34,11 +34,11 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# --------
 			weightedQuad = WeightedQuadrature(degree, knotvector)
 			info = weightedQuad.getQuadratureRulesInfo()[1:]
-			[indi, indj], basis, weights = info
+			[indi, indj], tmp, weights = info
 			nb_qp = np.max(indj); indi -= 1; indj -= 1
 
-			B0f  = sp.csr_matrix((basis[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			B1f  = sp.csr_matrix((basis[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			B0f  = sp.csr_matrix((tmp[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			B1f  = sp.csr_matrix((tmp[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W00f = sp.csr_matrix((weights[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W01f = sp.csr_matrix((weights[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W10f = sp.csr_matrix((weights[:, 2], indj, indi), shape=(nb_ctrlpts, nb_qp))
@@ -53,11 +53,11 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# ----------
 			gaussQuad = GaussQuadrature(degree, knotvector)
 			info = gaussQuad.getQuadratureRulesInfo()[1:]
-			[indi, indj], basis, weights = info
+			[indi, indj], tmp, weights = info
 			nb_qp = np.max(indj); indi -= 1; indj -= 1
 
-			B0  = sp.csr_matrix((basis[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			B1  = sp.csr_matrix((basis[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			B0  = sp.csr_matrix((tmp[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			B1  = sp.csr_matrix((tmp[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W00 = sp.csr_matrix((weights[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W01 = sp.csr_matrix((weights[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
 			W10 = sp.csr_matrix((weights[:, 2], indj, indi), shape=(nb_ctrlpts, nb_qp))
