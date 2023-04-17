@@ -10,8 +10,8 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
-    use heat_spmf
-    use heat_solver
+    use matrixfreeheat
+    use solverheat
 
     implicit none 
     ! Input / output data
@@ -59,29 +59,29 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
     ! Eigen decomposition
-    allocate(   Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w), &
-                Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
+    allocate(Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w), &
+            Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
     call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
-                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, (/1.d0, 1.d0, 1.d0/), .false., &
+                            U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
     deallocate( Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, &
                 Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
     ! Set material and solver
     allocate(mat, solv)
-    call setupCcoefs(mat, nc_total, coefs)
+    call setup_capacitycoefs(mat, nc_total, coefs)
     solv%matrixfreetype = 1
 
     call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-            data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
 
 end subroutine mf_wq_interpolate_cp_3d
 
@@ -94,8 +94,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! bn is compute beforehand (In python).
     !! IN CSR FORMAT
 
-    use heat_spmf
-    use heat_solver
+    use matrixfreeheat
+    use solverheat
 
     implicit none 
     ! Input / output data
@@ -148,7 +148,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     allocate(mat, solv)
     mat%dimen = 3
-    call setupKcoefs(mat, nc_total, coefs)
+    call setup_conductivitycoefs(mat, nc_total, coefs)
     solv%matrixfreetype = 2
 
     if (methodPCG.eq.'WP') then ! CG algorithm
@@ -197,7 +197,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                             Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, .true., &
                             U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-        call setup_eigendiag(solv, nr_total, Deigen)
+        call setup_preconditionerdiag(solv, nr_total, Deigen)
 
         if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
 
@@ -212,7 +212,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
 
-            call setup_FDscaling(solv, nr_total, Dparametric, Dphysical)
+            call setup_scaling(solv, nr_total, Dparametric, Dphysical)
         end if
         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
@@ -234,8 +234,8 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
     !! bn is compute beforehand (In python or fortran).
     !! IN CSR FORMAT
 
-    use heat_spmf
-    use heat_solver
+    use matrixfreeheat
+    use solverheat
 
     implicit none 
     ! Input / output data
@@ -287,8 +287,8 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
 
     allocate(mat, solv)
     mat%dimen = 3
-    call setupCcoefs(mat, nc_total, Ccoefs)
-    call setupKcoefs(mat, nc_total, Kcoefs)
+    call setup_capacitycoefs(mat, nc_total, Ccoefs)
+    call setup_conductivitycoefs(mat, nc_total, Kcoefs)
     mat%scalars = (/1.d0, thetadt/)
     solv%matrixfreetype = 3
 
@@ -325,7 +325,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
         Deigen = cmean + thetadt*Deigen
-        call setup_eigendiag(solv, nr_total, Deigen)
+        call setup_preconditionerdiag(solv, nr_total, Deigen)
 
         if (methodPCG.eq.'JMS') then
             allocate(Dparametric(nr_total), Dphysical(nr_total), Dtemp(nr_total))
@@ -347,7 +347,7 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
                                     data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
             Dphysical = Dtemp + thetadt*Dphysical
 
-            call setup_FDscaling(solv, nr_total, Dparametric, Dphysical)
+            call setup_scaling(solv, nr_total, Dparametric, Dphysical)
         end if
         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
@@ -384,8 +384,8 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     !! It assumes that initial temperature equals 0
     !! IN CSR FORMAT
     
-    use heat_spmf
-    use heat_solver
+    use matrixfreeheat
+    use solverheat
 
     implicit none 
     ! Input / output data
@@ -459,10 +459,10 @@ subroutine mf_wq_transient_nonlinear_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
 
     allocate(mat)
     mat%dimen = 3
-    call setup_geo(mat, nc_total, invJJ, detJJ)
+    call setup_geometry(mat, nc_total, invJJ, detJJ)
     Ccoefs = 0.d0; Kcoefs = 0.d0
-    call setupCcoefs(mat, nc_total, Ccoefs)
-    call setupKcoefs(mat, nc_total, Kcoefs)
+    call setup_capacitycoefs(mat, nc_total, Ccoefs)
+    call setup_conductivitycoefs(mat, nc_total, Kcoefs)
     
     ! Compute initial velocity from boundary conditions
     allocate(ddGG(ndod))

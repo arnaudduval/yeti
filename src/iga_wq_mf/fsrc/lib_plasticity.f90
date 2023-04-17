@@ -137,7 +137,7 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, arr
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
     
-    use heat_solver
+    use solverheat
     implicit none
     ! Input / output  data 
     !---------------------
@@ -160,8 +160,8 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, arr
     allocate(solv)
     do i = 1, dimen 
         temp = diag(i, :)
-        call setup_eigendiag(solv, nr_total, temp)
-        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
+        call setup_preconditionerdiag(solv, nr_total, temp)
+        call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
                                 array_in(i, :), array_out(i, :))
     end do
     

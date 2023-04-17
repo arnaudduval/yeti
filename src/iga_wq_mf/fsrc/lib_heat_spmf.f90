@@ -6,7 +6,7 @@
 subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, mean, doDeigen, &
+                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, mean, isDiag, &
                                 U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
     implicit none 
@@ -27,7 +27,7 @@ subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     Kcoef_u(nr_u), Kcoef_v(nr_v), Kcoef_w(nr_w)
     double precision, intent(in) :: mean
     dimension :: mean(3)
-    logical, intent(in) :: doDeigen
+    logical, intent(in) :: isDiag
 
     double precision, intent(out) :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_u*nr_v*nr_w)
@@ -54,7 +54,7 @@ subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             data_W_w(:, 4), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
 
     ! Find diagonal
-    if (.not.doDeigen) return
+    if (.not.isDiag) return
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
     call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, mean, Deigen)
@@ -122,7 +122,7 @@ subroutine interpolate_temperature(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
 
 end subroutine interpolate_temperature
 
-module heat_spmf
+module matrixfreeheat
 
     implicit none
 
@@ -131,18 +131,18 @@ module heat_spmf
         integer :: dimen = 3
         double precision :: scalars(2) = (/1.d0, 1.d0/)
 
-        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJJ=>null()
-        double precision, dimension(:,:,:), pointer :: Kprop=>null(), Kcoefs=>null(), invJJ=>null()
+        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJ=>null()
+        double precision, dimension(:, :, :), pointer :: Kprop=>null(), Kcoefs=>null(), invJ=>null()
         double precision, dimension(:), allocatable :: mean
 
         ! Local
-        integer :: nc_total
+        integer :: ncols
 
     end type thermomat
 
 contains
 
-    subroutine setup_geo(mat, nc, invJJ, detJJ)
+    subroutine setup_geometry(mat, nnz, invJ, detJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
         !! It also computes and saves inv(JJ) inv(JJ).transpose
 
@@ -150,37 +150,41 @@ contains
         ! Input / output data
         ! -------------------
         type(thermomat), pointer :: mat
-        integer, intent(in) :: nc
-        double precision, target, intent(in) :: invJJ, detJJ
-        dimension :: invJJ(mat%dimen, mat%dimen, nc), detJJ(nc)
+        integer, intent(in) :: nnz
+        double precision, target, intent(in) :: invJ, detJ
+        dimension :: invJ(mat%dimen, mat%dimen, nnz), detJ(nnz)
 
-        mat%invJJ => invJJ
-        mat%detJJ => detJJ
-        mat%nc_total = nc
+        mat%invJ => invJ
+        mat%detJ => detJ
+        mat%ncols = nnz
 
-    end subroutine setup_geo
+    end subroutine setup_geometry
 
-    subroutine setupKcoefs(mat, nnz, coefs)
+    subroutine setup_conductivitycoefs(mat, nnz, coefs)
+
         implicit none
         type(thermomat), pointer :: mat
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  coefs
         dimension :: coefs(mat%dimen, mat%dimen, nnz)
         mat%Kcoefs => coefs
-        mat%nc_total = nnz
-    end subroutine setupKcoefs
+        mat%ncols = nnz
 
-    subroutine setupCcoefs(mat, nnz, coefs)
+    end subroutine setup_conductivitycoefs
+
+    subroutine setup_capacitycoefs(mat, nnz, coefs)
+
         implicit none
         type(thermomat), pointer :: mat
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  coefs
         dimension :: coefs(nnz)
         mat%Ccoefs => coefs
-        mat%nc_total = nnz
-    end subroutine setupCcoefs
+        mat%ncols = nnz
 
-    subroutine update_conductivity_coefs(mat, info)
+    end subroutine setup_capacitycoefs
+
+    subroutine update_conductivitycoefs(mat, info)
         !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
         
         use omp_lib
@@ -197,7 +201,7 @@ contains
         dimension :: invJt(mat%dimen, mat%dimen), Kt(mat%dimen, mat%dimen)  
         
         info = 1
-        nnz  = mat%nc_total
+        nnz  = mat%ncols
     
         if (size(mat%Kprop, dim=3).eq.1) then 
     
@@ -206,8 +210,8 @@ contains
             !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
             do i = 1, nnz
                 ! Compute K = invJ * prop * detJ * invJ'
-                invJt = mat%invJJ(:, :, i)
-                Kt = mat%detJJ(i) * matmul(invJt, mat%Kprop(:, :, 1)) 
+                invJt = mat%invJ(:, :, i)
+                Kt = mat%detJ(i) * matmul(invJt, mat%Kprop(:, :, 1)) 
                 mat%Kcoefs(:, :, i) = matmul(Kt, transpose(invJt))
             end do
             !$OMP END DO NOWAIT
@@ -220,8 +224,8 @@ contains
             !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
             do i = 1, nnz
                 ! Compute K = invJ * prop * detJ * invJ'
-                invJt = mat%invJJ(:, :, i)
-                Kt = mat%detJJ(i) * matmul(invJt, mat%Kprop(:, :, i)) 
+                invJt = mat%invJ(:, :, i)
+                Kt = mat%detJ(i) * matmul(invJt, mat%Kprop(:, :, i)) 
                 mat%Kcoefs(:, :, i) = matmul(Kt, transpose(invJt))
             end do
             !$OMP END DO NOWAIT
@@ -231,9 +235,9 @@ contains
             print*, "Error computing thermal coefficient (Conductivity)"
         end if
     
-    end subroutine update_conductivity_coefs
+    end subroutine update_conductivitycoefs
 
-    subroutine update_capacity_coefs(mat, info)
+    subroutine update_capacitycoefs(mat, info)
         !! Computes capacity coefficient coef = sigma * detJ
         
         use omp_lib
@@ -248,7 +252,7 @@ contains
         integer :: i, nnz, nb_tasks
     
         info = 1
-        nnz  = mat%nc_total
+        nnz  = mat%ncols
     
         if (size(mat%Cprop).eq.1) then 
     
@@ -257,7 +261,7 @@ contains
             !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
             do i = 1, nnz
                 ! Compute C = detJ  * prop
-                mat%Ccoefs(i) = mat%detJJ(i) * mat%Cprop(1)
+                mat%Ccoefs(i) = mat%detJ(i) * mat%Cprop(1)
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL 
@@ -269,7 +273,7 @@ contains
             !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
             do i = 1, nnz
                 ! Compute C = detJ  * prop
-                mat%Ccoefs(i) = mat%detJJ(i) * mat%Cprop(i)
+                mat%Ccoefs(i) = mat%detJ(i) * mat%Cprop(i)
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL 
@@ -279,9 +283,7 @@ contains
             print*, "Error computing thermal coefficient (Capacity) "
         end if
     
-    end subroutine update_capacity_coefs
-
-    !! Isotropic functions
+    end subroutine update_capacitycoefs
 
     subroutine eval_isotropic_coefs(mat, nnz, Kprop, Cprop, Kcoefs, Ccoefs)
         !! Computes the coefficients to use to calculate source vector and tangent heat matrix
@@ -307,8 +309,8 @@ contains
 
         do k = 1, nnz
 
-            invJJt = mat%invJJ(:, :, k)
-            detJJt = mat%detJJ(k)
+            invJJt = mat%invJ(:, :, k)
+            detJJt = mat%detJ(k)
             Kcoefs(:, :, k) = Kprop(k) * matmul(invJJt, transpose(invJJt)) * detJJt
             Ccoefs(k) = Cprop(k) * detJJt
 
@@ -332,7 +334,7 @@ contains
         integer :: ind_u, ind_v, ind_w, sample
         dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
         
-        if (nc_u*nc_v*nc_w.ne.mat%nc_total) stop 'Wrong dimensions'
+        if (nc_u*nc_v*nc_w.ne.mat%ncols) stop 'Wrong dimensions'
         pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
         pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
         pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
@@ -537,4 +539,4 @@ contains
         
     end subroutine mf_wq_get_kcu_3d
 
-end module heat_spmf
+end module matrixfreeheat

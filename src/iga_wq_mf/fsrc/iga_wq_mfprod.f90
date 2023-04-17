@@ -85,9 +85,6 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
 
 end subroutine wq_find_conductivity_diagonal_3d
 
-! ---------------------------------
-! Matrix free product in 3D 
-! ---------------------------------
 subroutine mf_wq_get_cu_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
@@ -96,7 +93,7 @@ subroutine mf_wq_get_cu_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     !! This function is adapted to python
     !! IN CSR FORMAT
 
-    use heat_spmf
+    use matrixfreeheat
 
     implicit none 
     ! Input / output data
@@ -134,7 +131,7 @@ subroutine mf_wq_get_cu_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     allocate(mat)
-    call setupCcoefs(mat, nc_total, coefs)
+    call setup_capacitycoefs(mat, nc_total, coefs)
 
     call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
@@ -150,7 +147,7 @@ subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     !! This function is adapted to python
     !! IN CSR FORMAT
 
-    use heat_spmf
+    use matrixfreeheat
 
     implicit none 
     ! Input / output data
@@ -187,7 +184,7 @@ subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     
     allocate(mat)
     mat%dimen = 3
-    call setupKcoefs(mat, nc_total, coefs)
+    call setup_conductivitycoefs(mat, nc_total, coefs)
 
     call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
@@ -203,7 +200,7 @@ subroutine mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, n
     !! This function is adapted to python
     !! IN CSR FORMAT
 
-    use heat_spmf   
+    use matrixfreeheat   
 
     implicit none 
     ! Input / output data
@@ -242,8 +239,8 @@ subroutine mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, n
     allocate(mat)
     mat%dimen   = 3
     mat%scalars = (/alpha, beta/)
-    call setupCcoefs(mat, nc_total, Ccoefs)
-    call setupKcoefs(mat, nc_total, Kcoefs)
+    call setup_capacitycoefs(mat, nc_total, Ccoefs)
+    call setup_conductivitycoefs(mat, nc_total, Kcoefs)
     
     call mf_wq_get_kcu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &

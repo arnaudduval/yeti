@@ -1,6 +1,6 @@
-module heat_solver
+module solverheat
 
-    use heat_spmf
+    use matrixfreeheat
     type cgsolver
         logical :: withscaling = .false., withdiag = .false.
         integer :: matrixfreetype = 1
@@ -66,56 +66,56 @@ contains
 
     end subroutine matrixfree_spMdV
 
-    subroutine setup_eigendiag(solv, nr_total, diag)
+    subroutine setup_preconditionerdiag(solv, nr, diag)
 
         use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr_total
+        integer, intent(in) :: nr
         double precision, target, intent(in) :: diag
-        dimension :: diag(nr_total)
+        dimension :: diag(nr)
 
         solv%withdiag = .true.
         solv%diag => diag
         
-    end subroutine setup_eigendiag
+    end subroutine setup_preconditionerdiag
 
-    subroutine setup_FDscaling(solv, nr_total, factor_up, factor_down)
+    subroutine setup_scaling(solv, nr, factor_up, factor_down)
 
         use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr_total
+        integer, intent(in) :: nr
         double precision, intent(in) :: factor_up, factor_down
-        dimension :: factor_up(nr_total), factor_down(nr_total)
+        dimension :: factor_up(nr), factor_down(nr)
 
         ! Local data
         ! ----------
         integer :: i, nb_tasks
         double precision, target :: factor
-        dimension :: factor(nr_total)
+        dimension :: factor(nr)
         
         solv%withscaling = .true.
         
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-        do i = 1, nr_total
+        !$OMP DO SCHEDULE(STATIC, nr/nb_tasks)
+        do i = 1, nr
             factor(i) = sqrt(factor_up(i)/factor_down(i))
         end do  
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL 
 
-        allocate(solv%factor(nr_total))
+        allocate(solv%factor(nr))
         solv%factor = factor
 
-    end subroutine setup_FDscaling
+    end subroutine setup_scaling
 
-    subroutine fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+    subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
         !! by G. Sanaglli and M. Tani
@@ -180,7 +180,7 @@ contains
         end if
         array_out = dummy
         
-    end subroutine fast_diagonalization
+    end subroutine applyfastdiag
 
     subroutine CG(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -293,7 +293,7 @@ contains
         resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return
 
-        call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
+        call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
         rsold = dot_product(r, z); p = z
         
         do iter = 1, nbIterPCG
@@ -309,7 +309,7 @@ contains
             resPCG(iter+1) = maxval(abs(r))/normb
             if (resPCG(iter+1).le.threshold) exit       
 
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, r, z)
             rsnew = dot_product(r, z)
 
             p = z + rsnew/rsold * p
@@ -439,7 +439,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde)
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -447,7 +447,7 @@ contains
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -467,7 +467,7 @@ contains
 
     end subroutine PBiCGSTAB
 
-    subroutine eigenstability3d(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
         data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, x, rho)
@@ -535,7 +535,7 @@ contains
     
             g = v - rho*u
             norm = norm2(g)
-            call fast_diagonalization(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, g, gtil)
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, g, gtil)
             g = gtil
 
             RM1(1, :) = x; RM1(2, :) = -g; RM1(3, :) = p
@@ -586,6 +586,6 @@ contains
             norm = norm2(g)
         end do
 
-    end subroutine eigenstability3d
+    end subroutine LOBPCGSTAB
 
-end module heat_solver
+end module solverheat
