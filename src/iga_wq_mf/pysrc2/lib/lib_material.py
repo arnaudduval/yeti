@@ -19,6 +19,25 @@ class thermomat():
 		if self._heatcapacity is None: raise Warning('Capacity not defined')
 		return
 	
+	def eval_conductivityCoefficients(self, invJ, detJ, prop):
+		prop = np.atleast_3d(prop)
+		coefs = np.zeros(np.shape(invJ))
+		coefs, info = assembly.eval_conductivity_coefficient(invJ, detJ, prop)
+		if info == 0: raise Warning('It is not possible to compute coefficients')
+		return coefs
+	
+	def eval_capacityCoefficients(self, detJ, prop): 
+		prop = np.atleast_1d(prop)
+		coefs = np.zeros(np.shape(detJ))
+		coefs, info = assembly.eval_capacity_coefficient(detJ, prop)
+		if info == 0: raise Warning('It is not possible to compute coefficients')
+		return coefs
+	
+	def eval_heatForceCoefficients(self, fun, detJ, qp): 
+		qp = np.atleast_2d(qp)
+		coefs = fun(qp)*detJ
+		return coefs
+	
 class mechamat():
 	def __init__(self, **kwargs):
 		self._kwargs = kwargs
@@ -54,21 +73,7 @@ class mechamat():
 		
 		return
 	
-class material:
-	def __init__(self):
-		self._thermomat = None
-		self._mechamat  = None
-		return
-	
-	def addThermalMaterial(self, mat:thermomat):
-		self._thermomat = mat
-		return
-	
-	def addMechanicalMaterial(self, mat:mechamat):
-		self._mechamat = mat
-		return
-	
-	def eraseMaterial(self):
-		self._thermomat = None
-		self._mechamat  = None
-		return
+	def eval_volForceCoefficients(self, fun, detJ, qp):
+		qp = np.atleast_2d(qp)
+		coefs = fun(qp)*detJ*self._density
+		return coefs
