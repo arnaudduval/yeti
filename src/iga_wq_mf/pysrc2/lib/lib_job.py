@@ -46,32 +46,29 @@ class heatproblem():
 
 		return inputs
 
-	def eval_mfConductivity(self, prop, u, table=None):
+	def eval_mfConductivity(self, input, u, table=None):
 
-		self._material.verifyThermalProperties()
 		inputs = self.get_input4MatrixFree(table=table)
-		coefs  = self._material.eval_conductivityCoefficients(self._geometry._invJ, self._geometry._detJ, prop)
+		coefs  = self._material.eval_conductivityCoefficients(self._geometry._invJ, self._geometry._detJ, input)
 		if self._dim == 2: raise Warning('Until now not done')
 		if self._dim == 3: result = solver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
 
 		return result
 	
-	def eval_mfCapacity(self, prop, u, table=None): 
+	def eval_mfCapacity(self, input, u, table=None): 
 
-		self._material.verifyThermalProperties()
-		coefs = self._material.eval_capacityCoefficients(self._geometry._detJ, prop)
+		coefs = self._material.eval_capacityCoefficients(self._geometry._detJ, input)
 		inputs = self.get_input4MatrixFree(table=table)
 		if self._dim == 2: raise Warning('Until now not done')
 		if self._dim == 3: result = solver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
 
 		return result
 	
-	def eval_mfCondCap(self, Kprop, Cprop, u, table=None, alpha=1.0, beta=1.0):
-		self._material.verifyThermalProperties()
-		Kcoefs = self._material.eval_conductivityCoefficients(self._geometry._invJ, self._geometry._detJ, Kprop)
-		Ccoefs = self._material.eval_capacityCoefficients(self._geometry._detJ, Cprop)
+	def eval_mfCondCap(self, Kinput, Cinput, u, table=None, alpha=1.0, beta=1.0):
+
+		Kcoefs = self._material.eval_conductivityCoefficients(self._geometry._invJ, self._geometry._detJ, Kinput)
+		Ccoefs = self._material.eval_capacityCoefficients(self._geometry._detJ, Cinput)
 		inputs = self.get_input4MatrixFree(table=table)
-		
 		if self._dim == 2: raise Warning('Until now not done')
 		if self._dim == 3: result = solver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
 
@@ -109,16 +106,9 @@ class heatproblem():
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblem(self, prop, b):
-		if self._boundary._thDirichletTable is None: raise Warning('Ill conditionned. It needs Dirichlet conditions')
-		self._material.verifyThermalProperties()
-		coefs  = self._material.eval_capacityCoefficients(self._geometry._detJ, prop)
-		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
-		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-
-		if self._dim == 2: raise Warning('Until now not done')
-		if self._dim == 3: sol, residue = solver.mf_wq_steady_heat_3d(*inputs)
-		return sol, residue
+	def solveSteadyHeatProblem(self):
+		
+		return
 	
 	def solveTransientHeatProblem(self):
 
