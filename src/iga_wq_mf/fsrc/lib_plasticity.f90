@@ -103,35 +103,6 @@ subroutine compute_stress_vonmises(dimen, tensor, VM)
 
 end subroutine compute_stress_vonmises
 
-subroutine create_incidence_matrix(dimen, nvoigt, EE)
-    !! Creates incidence matrix E. E is the passage matrix from derivative to actual symetric values. 
-    !! If we multiply a vector of values u_(i, j) with M matrix, one obtains the vector: 
-    !! us_ij = 0.5*(u_(i,j) + u_(j,i))  
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen, nvoigt
-    double precision, intent(out) :: EE
-    dimension :: EE(nvoigt, dimen, dimen)
-
-    if (dimen.eq.3) then 
-        EE = 0.d0
-        EE(1, 1, 1) = 1.d0; EE(5, 3, 1) = 1.d0; EE(6, 2, 1) = 1.d0
-        EE(2, 2, 2) = 1.d0; EE(4, 3, 2) = 1.d0; EE(6, 1, 2) = 1.d0
-        EE(3, 3, 3) = 1.d0; EE(4, 2, 3) = 1.d0; EE(5, 1, 3) = 1.d0
-
-    else if (dimen.eq.2) then
-        EE = 0.d0
-        EE(1, 1, 1) = 1.d0; EE(3, 2, 1) = 1.d0
-        EE(2, 2, 2) = 1.d0; EE(3, 1, 2) = 1.d0
-
-    else 
-        stop 'There is no incende matrix in 1D'
-    end if
-
-end subroutine create_incidence_matrix
-
 subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to elasticity problems

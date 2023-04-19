@@ -226,3 +226,39 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     end do
 
 end subroutine interpolate_fieldphy_2d
+
+subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
+                                Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
+    !! Eigen decomposition generalized KU = MUD
+    !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    !! M: mass matrix, M = int B0 B0 dx = W00 * B0
+    !! U: eigenvectors matrix
+    !! D: diagonal of eigenvalues
+    !! IN CSR FORMAT
+    
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, nc, nnz
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
+    dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
+    double precision, intent(in) :: Mcoef, Kcoef
+    dimension :: Mcoef(nc), Kcoef(nc)
+    integer, intent(in) :: robin_condition
+    dimension :: robin_condition(2)
+            
+    double precision, intent(out) :: eigenvalues, eigenvectors
+    dimension :: eigenvalues(nr), eigenvectors(nr, nr)
+
+    ! Local data
+    ! ----------
+    double precision :: Kdiag, Mdiag
+    dimension :: Kdiag(nr), Mdiag(nr)
+
+    call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
+                            data_B0, data_W0, data_B1, data_W1, robin_condition, &
+                            eigenvalues, eigenvectors, Kdiag, Mdiag)
+
+end subroutine eigen_decomposition_py
