@@ -22,6 +22,7 @@ class part():
 		self._kwargs     = kwargs
 		self._knotvector, self._size_kv = self.read_knotvector(modelIGA)
 		for i in range(self._dim): self._nbctrlpts[i] = len(self._knotvector[i]) - self._degree[i] - 1
+		self._nbctrlpts_total = np.product(self._nbctrlpts)
 
 		self._nbqp, self._nbqp_total = [], None
 		self._qpPar, self._basis, self._weights, self._indices = [], [], [], []

@@ -7,7 +7,7 @@ class step():
 		if self._dim == 1: raise Warning('Not possible')
 		self._nbctrlpts           = nbctrlpts
 
-		self._thDirichletTable    = np.zeros((self._dim, 2, 1), dtype=bool)
+		self._thDirichletTable    = np.zeros((self._dim, 2), dtype=bool)
 		self._thDirichletBound    = None
 		self._thdof  = []
 		self._thdod  = []
@@ -21,13 +21,15 @@ class step():
 	
 	def activate_DirichletThermal(self):
 		nbctrlpts_total = np.product(self._nbctrlpts)
-		self._thDirichletBound = np.zeros(nbctrlpts_total)
+		if self._thDirichletBound is None:
+			self._thDirichletBound = np.zeros(nbctrlpts_total)
 		return
 	
 	def activate_DirichletMechanical(self):
 		nbctrlpts_total = np.product(self._nbctrlpts)
 		dimen = np.size(self._nbctrlpts)
-		self._mchDirichletBound = np.zeros((nbctrlpts_total, dimen))
+		if self._mchDirichletBound is None:
+			self._mchDirichletBound = np.zeros((nbctrlpts_total, dimen))
 		return
 	
 	def clear_Dirichlet(self):
@@ -56,11 +58,11 @@ class step():
 			return table
 
 		# The table of dirichlet boundaries must be at least 3D
-		table = np.atleast_3d(table)
+		tablecopy = np.atleast_3d(np.copy(table))
 
 		# Get number of degree of freedom (DOF) per node
-		nbDOF = np.shape(table)[2]
-		if np.shape(table)[0] < dimen or np.shape(table)[1] != 2:
+		nbDOF = np.shape(tablecopy)[2]
+		if np.shape(tablecopy)[0] < dimen or np.shape(tablecopy)[1] != 2:
 			raise Warning('Table is not well defined')
 
 		# Find nodes
@@ -69,7 +71,7 @@ class step():
 		for i in range(nbDOF):
 			dod = []
 			for j in range(dimen):
-				block_bound_dim = table[j, :, i]
+				block_bound_dim = tablecopy[j, :, i]
 				
 				if block_bound_dim[0]: 
 					dod.extend(np.where(INC[:, j] == 0)[0])
@@ -88,8 +90,9 @@ class step():
 	def add_DirichletTemperature(self, table=None, temperature=0.0):
 		"This function is first tentative of adding constant boundary conditions "
 		table = np.array(table, dtype=bool)
-		if not np.any(table != True): raise Warning('At least one blocked face is needed')
-		dod = self.__get_boundaryNodes(table=table)[0]
+		if not np.any(table == True): raise Warning('At least one blocked face is needed')
+		self.activate_DirichletThermal()
+		dod = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
 		self._thDirichletTable += table
 		
 		if np.isscalar(temperature): 
@@ -97,14 +100,14 @@ class step():
 		else: 
 			if len(temperature) != len(dod): raise Warning('Not possible')
 			self._thDirichletBound[dod] = temperature		
-		self._thdod.append(dod)
+		self._thdod.extend(dod)
 		return 
 
 	def getThermalBoundaryConditionInfo(self): 
 		if self._thDirichletTable is None: raise Warning('Please define first total Dirichlet boundaries')
 		nbctrlpts_total = np.product(self._nbctrlpts)
-		dof = set(np.arange(nbctrlpts_total, dtype= int)) - set(self._thdod)
+		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(set(self._thdod))
 		self._thdof = np.array(list(dof), dtype=int)
-		return  self._thdod, self.__thDirichletBound[self._thdod], self._thdof
+		return  self._thdod, self._thDirichletBound[self._thdod], self._thdof
 	
 	# Mechanical problem

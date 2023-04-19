@@ -79,7 +79,7 @@ class encoder():
 		dod = problem._boundary._thdod
 
 		if funTemp is not None:  
-			nbctrlpts_total = np.prod(problem._geometry._nbctrlpts)
+			nbctrlpts_total = np.prod(problem._model._nbctrlpts)
 			ud = problem.solveInterpolationProblem(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_heatForce(funPowDen, indi=dof) 

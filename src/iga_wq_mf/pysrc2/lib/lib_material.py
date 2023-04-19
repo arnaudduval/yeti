@@ -14,22 +14,28 @@ class material():
 		return
 	
 	def interpolateScalarProperty(table, x):
-		y = np.interp(x, table[:, 0], table[:, 1])
+		lenx = np.max(np.shape(x))
+		if np.size(table, axis=0) == 1: y = table[:, 1]*np.ones(lenx)
+		else:  							y = np.interp(x, table[:, 0], table[:, 1])
 		return y
 	
 	def interpolateTensorProperty(table, x, shape=(3, 3)):
 		if np.size(table, axis=1) != np.prod(shape)+1: raise Warning('Not possible')
-		y = np.zeros((*shape, len(x)))
+		lenx = np.max(np.shape(x))
+		y = np.zeros((*shape, lenx))
 		for i in range(shape[0]):
 			for j in range(shape[1]):
 				k = 1 + j + shape[1]*i
 				y[i, j, :] = np.interp(x, table[:, 0], table[:, k])
 		return y
 	
-	def setScalarProperty(self, input):
-		if np.isscalar(input):
+	def setScalarProperty(self, input, isIsotropic=False):
+		if isIsotropic:
 			# Isotropic material (position and temperature independent)
-			prop = lambda x: input*np.ones(len(x))
+			if np.isscalar(input): 		
+				prop = lambda x: input*np.ones(np.max(np.shape(x)))
+			else: 
+				raise Warning('Not possible')
 		elif callable(input):
 			# Anisotropic material (temperature independent but position dependent)
 			prop = lambda x: input(x)
@@ -42,10 +48,22 @@ class material():
 			raise Warning('Not implemented')
 		return prop
 	
-	def setTensorProperty(self, input, shape=(3, 3)):
-		if np.isscalar(input):
+	def setTensorProperty(self, input, shape=(3, 3), isIsotropic=False):
+
+		def create3ArrayFrom2Array(input, x):
+			lenx = np.max(np.shape(x))
+			y = np.zeros((*np.shape(input), lenx))
+			for i in range(np.shape(input)[0]):
+				for j in range(np.shape(input)[1]):
+					y[i, j, :] = input[i, j]
+			return y
+
+		if isIsotropic:
 			# Isotropic material (position and temperature independent)
-			prop = lambda x: input*np.ones((*shape, len(x)))
+			if np.isscalar(input):
+				prop = lambda x: input*np.eye((*shape, np.max(np.shape(x))))
+			else:
+				prop = lambda x: create3ArrayFrom2Array(input, x)
 		elif callable(input):
 			# Anisotropic material (temperature independent but position dependent)
 			prop = lambda x: input(x)
@@ -64,18 +82,24 @@ class thermomat(material):
 		self._capacity     = None
 		self._conductivity = None
 		self._density      = None
+		self._isCapacityIsotropic     = False
+		self._isDensityIsotropic      = False
+		self._isConductivityIsotropic = False
 		return
 	
-	def addDensity(self, input):
-		self._density     = super().setScalarProperty(input)
+	def addDensity(self, input, isIsotropic):
+		if isIsotropic: self._isDensityIsotropic = True
+		self._density     = super().setScalarProperty(input, isIsotropic=isIsotropic)
 		return
 	
-	def addCapacity(self, input):
-		self._capacity    = super().setScalarProperty(input)
+	def addCapacity(self, input, isIsotropic):
+		if isIsotropic: self._isCapacityIsotropic = True
+		self._capacity    = super().setScalarProperty(input, isIsotropic=isIsotropic)
 		return
 	
-	def addConductivity(self, input, shape=(3, 3)):
-		self._conductivity = super().setTensorProperty(input, shape=shape)
+	def addConductivity(self, input, isIsotropic, shape=(3, 3)):
+		if isIsotropic: self._isConductivityIsotropic = True
+		self._conductivity = super().setTensorProperty(input, shape=shape, isIsotropic=isIsotropic)
 		return
 	
 	def eval_capacityCoefficients(self, detJ, input): 
@@ -134,3 +158,4 @@ class mechamat(material):
 		qp = np.atleast_2d(qp)
 		coefs = fun(qp)*detJ*self._density
 		return coefs
+	
