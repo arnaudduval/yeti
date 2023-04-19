@@ -280,7 +280,7 @@ def genEigenDecomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
 	if coefs is None: mcoefs = np.ones(nc); kcoefs = np.ones(nc)
 	else: [mcoefs, kcoefs] = coefs
 
-	eigenvalues, eigenvectors = solver.eigen_decomposition_py(indi, indj, B0, W0, 
+	eigenvalues, eigenvectors = assembly.eigen_decomposition_py(indi, indj, B0, W0, 
 										B1, W1, mcoefs, kcoefs, robin_condition)
 
 	return eigenvalues, eigenvectors
@@ -406,11 +406,11 @@ def computeEigenDiag(eig_u, eig_v, eig_w, coefs=[1.0, 1.0, 1.0]):
 def fastDiagonalization(U, V, W, D, array_in, fdtype='steady'):
 	" Compute fast diagonalization using Fortran"
 	if fdtype == 'interp':
-		array_out = solver.fd_interpolation_3d_py(U, V, W, array_in)
+		array_out = heatsolver.fd_interpolation_3d_py(U, V, W, array_in)
 	elif fdtype == 'steady':
-		array_out = solver.fd_steady_heat_3d_py(U, V, W, D, array_in)
+		array_out = heatsolver.fd_steady_heat_3d_py(U, V, W, D, array_in)
 	elif fdtype == 'elastic':
-		array_out = elastoplasticity.fd_elasticity_3d_py(U, V, W, D, array_in)
+		array_out = plasticitysolver.fd_elasticity_3d_py(U, V, W, D, array_in)
 	
 	return array_out
 

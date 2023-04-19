@@ -33,4 +33,4 @@ problem = heatproblem(material, model, boundary)
 
 # Add heat force
 Fext = problem.eval_heatForce(fun=powden_prism)
-sol, residue = problem.solveSteadyHeatProblem(Fext)
+sol, residue = problem.solveSteadyHeatProblemFT(Fext)

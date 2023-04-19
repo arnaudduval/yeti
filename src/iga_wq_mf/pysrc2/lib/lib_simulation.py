@@ -80,7 +80,7 @@ class encoder():
 
 		if funTemp is not None:  
 			nbctrlpts_total = np.prod(problem._model._nbctrlpts)
-			ud = problem.solveInterpolationProblem(funfield=funTemp)[dod]
+			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_heatForce(funPowDen, indi=dof) 
 			Knd_ud = problem.eval_mfConductivity(prop, u)
@@ -95,7 +95,7 @@ class encoder():
 		" Solve steady heat problems using iterative solver "
 		
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblem(prop, b)
+		un, residue = problem.solveSteadyHeatProblemFT(prop, b)
 		stop = time.process_time()
 		time_t = stop - start 
 

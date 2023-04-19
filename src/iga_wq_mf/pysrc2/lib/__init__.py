@@ -51,7 +51,7 @@ plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # YETI libraries
-from iga_wq_mf import basis_weights, assembly, solver, elastoplasticity
+from iga_wq_mf import basis_weights, assembly, heatsolver, plasticitysolver
 from preprocessing.igaparametrization import IGAparametrization
 
 # Define global functions

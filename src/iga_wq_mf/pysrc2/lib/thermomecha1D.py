@@ -219,33 +219,33 @@ class mechamat1D(model1D):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.activate_mechanical()
-		self.Hfun, self.Hderfun = None, None
-		self.Kfun, self.Kderfun = None, None
+		self._Hfun, self._Hderfun = None, None
+		self._Kfun, self._Kderfun = None, None
 		lawName = kwargs.get('law', 'linear').lower()
 		prop    = kwargs.get('property', {})
 		if lawName == 'linear': self.__setLinearModel(prop)
 		if lawName == 'swift' : self.__setSwiftModel(prop)
 		if lawName == 'voce'  : self.__setVoceModel(prop)
-		funlist = [self.Hfun, self.Hderfun, self.Kfun, self.Kderfun]
+		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return
 	
 	def __setLinearModel(self, kwargs:dict):
 		theta	  = kwargs.get('theta', None)
 		Hbar      = kwargs.get('Hbar', None)
-		self.Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
-		self.Hfun = lambda a: (1-theta)*Hbar*a
-		self.Kderfun = lambda a: theta*Hbar
-		self.Hderfun = lambda a: (1-theta)*Hbar
+		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
+		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kderfun = lambda a: theta*Hbar
+		self._Hderfun = lambda a: (1-theta)*Hbar
 		return
 	
 	def __setSwiftModel(self, kwargs:dict):
 		K = kwargs.get('K', None)
 		n = kwargs.get('exp', None)
-		self.Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
-		self.Hfun = lambda a: 0.0
-		self.Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
-		self.Hderfun = lambda a: 0.0
+		self._Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
+		self._Hfun = lambda a: 0.0
+		self._Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
+		self._Hderfun = lambda a: 0.0
 		return
 	
 	def __setVoceModel(self, kwargs:dict):
@@ -253,10 +253,10 @@ class mechamat1D(model1D):
 		Hbar  = kwargs.get('Hbar', None)
 		Kinf  = kwargs.get('Kinf', None)
 		delta = kwargs.get('delta', None)
-		self.Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
-		self.Hfun = lambda a: (1-theta)*Hbar*a
-		self.Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
-		self.Hderfun = lambda a: (1-theta)*Hbar
+		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
+		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
+		self._Hderfun = lambda a: (1-theta)*Hbar
 		return
 
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-8):
@@ -268,11 +268,11 @@ class mechamat1D(model1D):
 			dgamma = 0.0
 			a_n1   = a_n0 
 			for i in range(nbIter):
-				dH = self.Hfun(a_n1) - self.Hfun(a_n0) 
-				G  = -self.Kfun(a_n1) + np.abs(eta_trial) - (self._elasticmodulus*dgamma + dH)
+				dH = self._Hfun(a_n1) - self._Hfun(a_n0) 
+				G  = -self._Kfun(a_n1) + np.abs(eta_trial) - (self._elasticmodulus*dgamma + dH)
 				if G <=threshold: break
-				dG = - (self._elasticmodulus + self.Hderfun(a_n1) + self.Kderfun(a_n1))
-				dgamma = dgamma - G/dG
+				dG = - (self._elasticmodulus + self._Hderfun(a_n1) + self._Kderfun(a_n1))
+				dgamma -= G/dG
 				a_n1   = a_n0 + dgamma 
 			return dgamma
 
@@ -281,7 +281,7 @@ class mechamat1D(model1D):
 		eta_trial   = sigma_trial - b
 
 		# Check yield status
-		f_trial = np.abs(eta_trial) - self.Kfun(a)
+		f_trial = np.abs(eta_trial) - self._Kfun(a)
 
 		if f_trial <= threshold: # Elastic
 			stress = sigma_trial
@@ -291,13 +291,13 @@ class mechamat1D(model1D):
 			Cep = self._elasticmodulus
 
 		else: # Plastic
-			N = np.sign(eta_trial)
+			Normal = np.sign(eta_trial)
 			dgamma = computeDeltaGamma(self, eta_trial, a)
-			stress = sigma_trial - dgamma*self._elasticmodulus*N
-			pls_new = pls + dgamma*N
+			stress = sigma_trial - dgamma*self._elasticmodulus*Normal
+			pls_new = pls + dgamma*Normal
 			a_new = a + dgamma
-			b_new = b + (self.Hfun(a_new)-self.Hfun(a))*N
-			somme = self.Kderfun(a_new) + self.Hderfun(a_new)
+			b_new = b + (self._Hfun(a_new)-self._Hfun(a))*Normal
+			somme = self._Kderfun(a_new) + self._Hderfun(a_new)
 			Cep = self._elasticmodulus*somme/(self._elasticmodulus + somme)
 
 		return [stress, pls_new, a_new, b_new, Cep]

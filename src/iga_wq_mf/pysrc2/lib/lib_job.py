@@ -51,7 +51,7 @@ class heatproblem():
 		inputs = self.get_input4MatrixFree(table=table)
 		coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, input)
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = solver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
+		if self._model._dim == 3: result = heatsolver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
 
 		return result
 	
@@ -60,7 +60,7 @@ class heatproblem():
 		coefs = self._material.eval_capacityCoefficients(self._model._detJ, input)
 		inputs = self.get_input4MatrixFree(table=table)
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = solver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
+		if self._model._dim == 3: result = heatsolver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
 
 		return result
 	
@@ -70,7 +70,7 @@ class heatproblem():
 		Ccoefs = self._material.eval_capacityCoefficients(self._model._detJ, Cinput)
 		inputs = self.get_input4MatrixFree(table=table)
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = solver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
+		if self._model._dim == 3: result = heatsolver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
 
 		return result
 
@@ -85,7 +85,7 @@ class heatproblem():
 		return vector
 	
 	# Solve using fortran
-	def solveInterpolationProblem(self, funfield=None, datafield=None):
+	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
 		coefs = None
 		if datafield is not None: coefs = datafield * self._model._detJ
 		if funfield is not None:  coefs = funfield(self._model._qpPhy) * self._model._detJ
@@ -100,13 +100,13 @@ class heatproblem():
 		inputs = [self._model._detJ, *self._model._nbqp, *self._model._indices, *self._model._basis, 
 	    		 *self._model._weights, vector, self._nbIterPCG, self._thresholdPCG]
 		start = time.process_time()
-		u_interp, relres = solver.mf_wq_interpolate_cp_3d(*inputs)
+		u_interp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
 		stop = time.process_time()
 		res_end = relres[np.nonzero(relres)][-1]
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblem(self, Fext):
+	def solveSteadyHeatProblemFT(self, Fext):
 		if not self._material._isConductivityIsotropic: raise Warning('Not possible by now')
 		input = self._model._qpPhy
 
@@ -123,10 +123,11 @@ class heatproblem():
 		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: sol, residue = solver.mf_wq_steady_heat_3d(*inputs)
+		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
 
 		return sol, residue
 	
+	# Solve using python
 	def solveTransientHeatProblem(self):
 
 		return
@@ -155,18 +156,18 @@ class mechaproblem():
 		inputs = [*self._geometry._nbqp, *self._geometry._indices, 
 	    			*self._geometry._basis, *self._geometry._weights, 
 					self._geometry._invJ, self._geometry._detJ, prop]
-		result = elastoplasticity.mf_wq_get_su_3d_py(*inputs, u)
+		result = plasticitysolver.mf_wq_get_su_3d_py(*inputs, u)
 		return result
 	
 	def eval_bodyForce(self, fun):
 		if self._model._dim != 3: raise Warning('Method only for 3D geometries')
 		coefs = self._material.eval_volForceCoefficients(fun, self._geometry._detJ, self._geometry._qpPhy)
 		inputs = [coefs, *self._geometry._nbqp, *self._geometry._indices, *self._geometry._weights]
-		vector = elastoplasticity.wq_get_forcevol_3d(*inputs)
+		vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
 		return vector
 	
 	# Solve using fortran
-	def solveElasticityProblem(self, Fext):
+	def solveElasticityProblemFT(self, Fext):
 		self._material.verifyMechanicalProperties()
 		dod = deepcopy(self._boundary._mchdod)
 		for i in range(len(dod)):
@@ -178,9 +179,10 @@ class mechaproblem():
 	    			*self._geometry._weights, Fext, *dod, self._boundary._mchDirichletTable, 
 					self._geometry._invJ, self._geometry._detJ, prop, self._nbiterPCG, 
 					self._thresholdPCG, self._methodPCG]
-		displacement, residue = elastoplasticity.mf_wq_elasticity_3d_py(*inputs)
+		displacement, residue = plasticitysolver.mf_wq_elasticity_3d_py(*inputs)
 		return displacement, residue
 
+	# Solve using python
 	def solvePlasticityProblem(self, Fext): 
 		return
 
