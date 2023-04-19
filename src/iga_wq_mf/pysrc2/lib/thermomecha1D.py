@@ -390,7 +390,6 @@ class mechamat1D(model1D):
 
 		return disp, strain, stress, plastic, moduleE
 
-
 def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	knots  = np.linspace(0, 1, 101)
