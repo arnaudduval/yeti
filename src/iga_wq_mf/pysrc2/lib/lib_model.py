@@ -171,7 +171,7 @@ class part():
 
 		if u_ctrlpts is None: pass
 		elif isinstance(u_ctrlpts, np.ndarray): 
-			if np.size(u_ctrlpts)%self._nb_ctrlpts_total != 0: 
+			if np.size(u_ctrlpts)%self._nbctrlpts_total != 0: 
 				raise Warning('Not enough control points')
 		else: raise Warning('Solution must be ndarray type')
 
@@ -186,7 +186,7 @@ class part():
 		# Export results
 		# ------------------
 		shape_pts = [1, 1, 1]
-		for dim in range(self._dim): shape_pts[dim] = self._sample_size
+		for dim in range(self._dim): shape_pts[dim] = self._sampleSize
 		shape_pts  = tuple(shape_pts)
 		X1, X2, X3 = np.zeros(shape_pts), np.zeros(shape_pts), np.zeros(shape_pts)
 		U   = np.zeros((nbDOF, *shape_pts))
@@ -195,7 +195,7 @@ class part():
 		for k in range(shape_pts[2]):
 			for j in range(shape_pts[1]):
 				for i in range(shape_pts[0]):
-					pos = i + j * self._sample_size + k * self._sample_size**2
+					pos = i + j * self._sampleSize + k * self._sampleSize**2
 					X1[i,j,k] = qpPhy[0, pos]
 					X2[i,j,k] = qpPhy[1, pos]
 					DET[i,j,k] = detJ[pos]

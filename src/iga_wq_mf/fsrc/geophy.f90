@@ -227,6 +227,69 @@ subroutine interpolate_fieldphy_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine interpolate_fieldphy_2d
 
+subroutine eval_capacity_coefficient(nnzJ, detJ, nnzP, prop, coefs, info)
+    !! Computes capacity coefficient coef = sigma * detJ
+    
+    use matrixfreeheat
+    implicit none 
+    ! Input / output data
+    ! -------------------  
+    integer, intent(in) :: nnzJ, nnzP
+    double precision, intent(in) :: detJ
+    dimension :: detJ(nnzJ)
+    double precision, target, intent(in) :: prop
+    dimension :: prop(nnzP)
+
+    integer, intent(out) :: info
+    double precision, intent(out) :: coefs
+    dimension :: coefs(nnzJ)
+
+    ! Local data
+    ! ----------
+    type(thermomat), pointer :: mat
+    double precision :: invJJ(1, 1, nnzJ)
+    
+    allocate(mat)
+    mat%dimen = 1; invJJ = 0.d0
+    call setup_geometry(mat, nnzJ, invJJ, detJ)
+    mat%Cprop => prop
+    allocate(mat%Ccoefs(nnzJ))
+    call update_capacitycoefs(mat, info)
+    coefs = mat%Ccoefs
+
+end subroutine eval_capacity_coefficient
+
+subroutine eval_conductivity_coefficient(dimen, nnzJ, invJ, detJ, nnzP, prop, coefs, info)
+    !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
+    
+    use matrixfreeheat
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, nnzJ, nnzP
+    double precision, intent(in) :: invJ, detJ
+    dimension :: invJ(dimen, dimen, nnzJ), detJ(nnzJ)
+    double precision, target, intent(in) :: prop
+    dimension :: prop(dimen, dimen, nnzP)
+
+    integer, intent(out) :: info
+    double precision, intent(out) :: coefs
+    dimension :: coefs(dimen, dimen, nnzJ)
+
+    ! Local data
+    ! ----------
+    type(thermomat), pointer :: mat
+
+    allocate(mat)
+    mat%dimen = dimen
+    call setup_geometry(mat, nnzJ, invJ, detJ)
+    mat%Kprop => prop
+    allocate(mat%Kcoefs(dimen, dimen, nnzJ))
+    call update_conductivitycoefs(mat, info)
+    coefs = mat%Kcoefs
+    
+end subroutine eval_conductivity_coefficient
+
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
                                 Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD

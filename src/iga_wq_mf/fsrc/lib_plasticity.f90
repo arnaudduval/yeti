@@ -224,7 +224,7 @@ contains
 
     end subroutine setup_geo
 
-    subroutine cpp_combinedHard(mat, strain, pls, a, b, pls_new, a_new, b_new, stress, kwargs)
+    subroutine returnMappingAlgorithm(mat, strain, pls, a, b, pls_new, a_new, b_new, stress, kwargs)
         !! Return closest point proyection (cpp) in combined hardening criteria
 
         implicit none
@@ -302,9 +302,9 @@ contains
         kwargs(2) = mat%mu*(1.d0 - c1)
         kwargs(3) = -2.d0*mat%mu*c2
 
-    end subroutine cpp_combinedHard
+    end subroutine returnMappingAlgorithm
 
-    subroutine setup_combinedHard_kwargs(mat, nc, kwargs)
+    subroutine setup_kwargs(mat, nc, kwargs)
         !! Points to data of the mechanical behavior 
 
         implicit none
@@ -329,9 +329,9 @@ contains
             mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
         end do
 
-    end subroutine setup_combinedHard_kwargs
+    end subroutine setup_kwargs
 
-    subroutine compute_mean_combinedHard_3d(mat, nc_u, nc_v, nc_w)
+    subroutine compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
@@ -391,7 +391,7 @@ contains
 
         end do
 
-    end subroutine compute_mean_combinedHard_3d
+    end subroutine compute_mean_plasticity_3d
 
     subroutine mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &

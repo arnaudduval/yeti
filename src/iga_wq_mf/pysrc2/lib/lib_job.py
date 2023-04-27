@@ -112,10 +112,10 @@ class heatproblem():
 
 		# Compute b = Fn - And Td
 		dod, Td, dof = self._boundary.getThermalBoundaryConditionInfo()
-		T       = np.zeros(self._model._nbctrlpts_total)
-		T[dod]  = Td
-		AndTd   = self.eval_mfConductivity(input, T, table=np.zeros(np.shape(self._boundary._thDirichletTable)))[dof]
-		b       = Fext[dof] - AndTd
+		Temperature  = np.zeros(self._model._nbctrlpts_total)
+		Temperature[dod]  = Td
+		AndTd  = self.eval_mfConductivity(input, Temperature, table=np.zeros(np.shape(self._boundary._thDirichletTable)))[dof]
+		b      = Fext[dof] - AndTd
 
 		coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
 					self._model._detJ, input)
@@ -124,8 +124,9 @@ class heatproblem():
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
+		Temperature[dof] = sol
 
-		return sol, residue
+		return Temperature, residue
 	
 	# Solve using python
 	def solveTransientHeatProblem(self):

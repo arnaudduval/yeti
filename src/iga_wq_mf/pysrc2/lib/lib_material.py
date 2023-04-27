@@ -173,7 +173,7 @@ class mechamat(material):
 				dH = self._Hfun(a_n1) - self._Hfun(a_n0) 
 				G  = (-np.sqrt(2.0/3.0)*self._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(1, 2)) 
 					- (2.0*self._lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
-				if G <=threshold: break
+				if np.abs(G) <=threshold: break
 				dG = - 2.0*(self._lame_mu + (self._Hderfun(a_n1) + self._Kderfun(a_n1))/3.0)
 				dgamma -= G/dG
 				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
@@ -189,11 +189,11 @@ class mechamat(material):
 		Tpls    = array2symtensor(pls)
 		Tb      = array2symtensor(b)
 		traceStrain = evalTrace(Tstrain)
-		e_trial = Tstrain
-		for i in range(dim): e_trial[i, i, :] -= 1.0/3.0*traceStrain
+		devStrain   = Tstrain
+		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
 		# Compute trial stress
-		s_trial = 2*self._lame_mu*(e_trial - Tpls)
+		s_trial = 2*self._lame_mu*(devStrain - Tpls)
 
 		# Compute shifted stress
 		eta_trial = s_trial - Tb
@@ -209,13 +209,16 @@ class mechamat(material):
 			pls_new = pls; a_new = a; b_new = b
 			stress  = symtensor2array(sigma)
 			return
-		
-		# Compute df/dsigma
-		Normal = eta_trial/norm_trial
-		Cep[3:, :] = symtensor2array(Normal)
 
 		# Compute plastic-strain increment
 		dgamma = computeDeltaGamma(self)
+
+		# Update internal hardening variable
+		a_new = a + np.sqrt(2.0/3.0)*dgamma
+
+		# Compute df/dsigma
+		Normal = eta_trial/norm_trial
+		Cep[3:, :] = symtensor2array(Normal)
 
 		# Update stress
 		sigma -= 2*self._lame_mu*dgamma*Normal
@@ -225,12 +228,9 @@ class mechamat(material):
 		Tpls += dgamma*Normal
 		pls_new = symtensor2array(Tpls)
 
-		# Update internal hardening variable
-		a_new = a + np.sqrt(2.0/3.0)*dgamma
-
 		# Update backstress
 		Tb += np.sqrt(2.0/3.0)*(self._Hfun(a_new) - self._Hfun(a))*Normal
-		b_new = symtensor2array(b_new)
+		b_new = symtensor2array(Tb)
 
 		# Update new coefficients
 		somme = self._Kderfun(a_new) + self._Hderfun(a_new)

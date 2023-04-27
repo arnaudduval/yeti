@@ -38,20 +38,17 @@ CreateF2PYModule(NAME basis_weights
 CreateF2PYModule(NAME assembly
                 FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/geophy.f90"
                         "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_assembly.f90"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_gk_assembly.f90"
                 LINK_LIBRARIES iga_wq_mf base 
                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
-CreateF2PYModule(NAME solver
-                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/fast_diagonalisation.f90"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/iga_wq_mfprod.f90"  
-                        "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_heat_solver.f90"  
+CreateF2PYModule(NAME heatsolver
+                FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_heat_solver.f90"  
                 LINK_LIBRARIES iga_wq_mf base 
                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf
 )
 
-CreateF2PYModule(NAME elastoplasticity
+CreateF2PYModule(NAME plasticitysolver
                 FILES   "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/mf_wq_plasticity.f90"
                 LINK_LIBRARIES iga_wq_mf base 
                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/iga_wq_mf

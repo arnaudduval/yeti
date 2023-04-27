@@ -277,7 +277,7 @@ subroutine mf_wq_get_su_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     mat%isElastic = .true.
 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
-    call setup_combinedHard_kwargs(mat, nc_total, kwargs)
+    call setup_kwargs(mat, nc_total, kwargs)
     
     call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -376,10 +376,10 @@ subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
-    call setup_combinedHard_kwargs(mat, nc_total, kwargs)
+    call setup_kwargs(mat, nc_total, kwargs)
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    if (methodPCG.eq.'JMC') call compute_mean_combinedHard_3d(mat, nc_u, nc_v, nc_w)
+    if (methodPCG.eq.'JMC') call compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)
 
     do i = 1, dimen
         mean = 1.d0

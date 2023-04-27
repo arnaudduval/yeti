@@ -270,7 +270,7 @@ class mechamat1D(model1D):
 			for i in range(nbIter):
 				dH = self._Hfun(a_n1) - self._Hfun(a_n0) 
 				G  = -self._Kfun(a_n1) + np.abs(eta_trial) - (self._elasticmodulus*dgamma + dH)
-				if G <=threshold: break
+				if np.abs(G) <=threshold: break
 				dG = - (self._elasticmodulus + self._Hderfun(a_n1) + self._Kderfun(a_n1))
 				dgamma -= G/dG
 				a_n1   = a_n0 + dgamma 
@@ -290,12 +290,12 @@ class mechamat1D(model1D):
 			b_new = b
 			Cep = self._elasticmodulus
 
-		else: # Plastic
-			Normal = np.sign(eta_trial)
+		else: # Plasti
 			dgamma = computeDeltaGamma(self, eta_trial, a)
+			a_new = a + dgamma
+			Normal = np.sign(eta_trial)
 			stress = sigma_trial - dgamma*self._elasticmodulus*Normal
 			pls_new = pls + dgamma*Normal
-			a_new = a + dgamma
 			b_new = b + (self._Hfun(a_new)-self._Hfun(a))*Normal
 			somme = self._Kderfun(a_new) + self._Hderfun(a_new)
 			Cep = self._elasticmodulus*somme/(self._elasticmodulus + somme)
