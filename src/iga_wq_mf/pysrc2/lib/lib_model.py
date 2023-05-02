@@ -30,6 +30,7 @@ class part():
 
 		self._Jqp, self._detJ, self._invJ, self._qpPhy = None, None, None, None
 		self.setJacobienPhysicalPoints()
+		if np.any(self._detJ<0.0): raise Warning('Geometry problem. See control points positions')
 
 		return
 	

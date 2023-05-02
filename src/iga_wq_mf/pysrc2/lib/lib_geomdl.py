@@ -45,25 +45,26 @@ class Geomdl():
 		if dimen == 2: 
 			c = 0
 			ctrlpts_old = obj._control_points
-			ctrlpts = np.zeros((3, nbctrlpts_total))
+			ctrlpts_new = np.zeros((3, nbctrlpts_total))
 			for j in range(nbctrlpts[1]):
 				for i in range(nbctrlpts[0]):
 					pos = j + i*nbctrlpts[1]
-					ctrlpts[:, c] = ctrlpts_old[pos]
+					ctrlpts_temp = ctrlpts_old[pos]
+					ctrlpts_new[:, c] = ctrlpts_temp
 					c += 1 
 
 		elif dimen == 3: 
 			c =  0
 			ctrlpts_old = obj._control_points
-			ctrlpts = np.zeros((3, nbctrlpts_total))
+			ctrlpts_new = np.zeros((3, nbctrlpts_total))
 			for k in range(nbctrlpts[2]):
 				for j in range(nbctrlpts[1]):
 					for i in range(nbctrlpts[0]):
 						pos = j + i*nbctrlpts[1] + k*nbctrlpts[1]*nbctrlpts[0]
-						ctrlpts[:, c] = ctrlpts_old[pos]
+						ctrlpts_temp = ctrlpts_old[pos]
+						ctrlpts_new[:, c] = ctrlpts_temp
 						c += 1 
-
-		info['ctrlpts'] = ctrlpts
+		info['ctrlpts'] = ctrlpts_new
 		return info
 
 	def writeAbaqusFile(self, info, dimen=3):
@@ -343,8 +344,8 @@ class Geomdl():
 		# Create control points of the volume
 		control_points = []
 		for cptw in ctrlpts_w:
-			for cptv in ctrlpts_v: 
-				for cptu in ctrlpts_u: 
+			for cptu in ctrlpts_u: 
+				for cptv in ctrlpts_v: 
 					control_points.append([cptu, cptv, cptw])
 
 		# Create a B-spline volume

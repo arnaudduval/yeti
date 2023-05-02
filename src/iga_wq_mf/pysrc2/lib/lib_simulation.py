@@ -40,7 +40,8 @@ class encoder():
 	def create_model(self):
 		# Create geometry 
 		kwargs   = {'name':self._geoname, 
-		'nb_refinementByDirection': self._cuts*np.ones(3, dtype=int)}
+					'nb_refinementByDirection': self._cuts*np.ones(3, dtype=int),
+					'degree': self._degree*np.ones(3, dtype=int)}
 		modelgeo = Geomdl(**kwargs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: kwargs = {'quadrule': 'iga'}
@@ -72,7 +73,7 @@ class encoder():
 								for res in residuePCG[i]]) 
 		return
 	
-	def eval_heatForce(self, problem:heatproblem, prop, funPowDen=None, funTemp=None):
+	def eval_heatForce(self, problem:heatproblem, funPowDen=None, funTemp=None):
 		""" Compute force vector b = Fn - Knd.ud where F is source vector and K is conductivity matrix. 
 			This equation is used in substitution method (SM)
 		"""
@@ -86,7 +87,7 @@ class encoder():
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_heatForce(funPowDen, indi=dof) 
-			Knd_ud = problem.eval_mfConductivity(prop, u)
+			Knd_ud = problem.eval_mfConductivity(self._part._qpPhy, u, table=np.zeros((3, 2), dtype=bool))
 			Fn    -= Knd_ud[dof]
 		else:
 			Fn = problem.eval_heatForce(funPowDen, indi=dof)
@@ -108,9 +109,8 @@ class encoder():
 		" Runs simulation using given input information "
 
 		if self._part is None: self.create_model()
-		prop    = material._conductivity
 		problem = heatproblem(material, self._part, boundary)
-		Fext    = self.eval_heatForce(problem, prop, self._funPowDen, self._funTemp)
+		Fext    = self.eval_heatForce(problem, self._funPowDen, self._funTemp)
 		self._nbiterPCG = problem._nbIterPCG
 
 		# Run iterative methods
