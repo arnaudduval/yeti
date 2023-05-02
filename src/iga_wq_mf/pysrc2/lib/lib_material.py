@@ -70,7 +70,7 @@ class material():
 		elif len(input.shape) > 1:
 			# Anisotropic material (position independent but temperature dependent)
 			self.verifyTable(input, True)
-			prop = lambda x: self.interpolateScalarProperty(input, x, shape=shape)
+			prop = lambda x: self.interpolateTensorProperty(input, x, shape=shape)
 		else:
 			# Anisotropic material (position dependent and temperature dependent)
 			raise Warning('Not implemented')

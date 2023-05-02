@@ -144,7 +144,7 @@ class decoder():
 		full_path = os.path.realpath(filename)
 		title     = os.path.basename(full_path).split('.')[0]
 		self.decrypt_title(title)
-		self._dataSimulation = self.get_infos_simulation(filename)
+		self._dataSimulation = self.get_infos_simulation()
 	
 		return
 
@@ -167,7 +167,7 @@ class decoder():
 	def get_infos_simulation(self):
 		" Gets the information of the simulation "
 
-		lines = self._get_cleanLines()
+		lines = self._get_cleanLines(self._filename)
 		iterMethods, nbiter = self._read_iterMethods(lines)
 
 		time_noiter, time_itersolver, resPCG = [], [], []
@@ -212,7 +212,7 @@ class decoder():
 			if line.startswith(str2find): break
 			i += 1
 		if i==len(lines):
-			print("Error: keyword " + str2find + " is missing in data file.")
+			print('Error: keyword ' + str2find + ' is missing in data file.')
 		return i
 
 	def _read_iterMethods(self, lines):
@@ -247,17 +247,17 @@ class decoder():
 	def plot_results(self, extension='.pdf', threshold=1.e-12, plotLegend=True):
 
 		savename = self._filename.split('.')[0] + extension
-		residue  = self._dataSimulation.get("resPCG")
-		method_list = self._dataSimulation.get["methods"]
+		residue  = self._dataSimulation.get('resPCG')
+		method_list = self._dataSimulation.get('methods')
 
 		new_method_list = []
 		for pcgmethod in method_list:
-			if pcgmethod   == "WP" : new_method_list.append('w.o. preconditioner')
-			elif pcgmethod == "C"  : new_method_list.append('Classic FD method')
-			elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
-			elif pcgmethod == "TDC": new_method_list.append('Literature') 
-			elif pcgmethod == "JMC": new_method_list.append('This work') 
-			elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
+			if pcgmethod   == 'WP' : new_method_list.append('w.o. preconditioner')
+			elif pcgmethod == 'C'  : new_method_list.append('Classic FD method')
+			elif pcgmethod == 'TDS': new_method_list.append('Literature + scaling') 
+			elif pcgmethod == 'TDC': new_method_list.append('Literature') 
+			elif pcgmethod == 'JMC': new_method_list.append('This work') 
+			elif pcgmethod == 'JMS': new_method_list.append('This work + scaling')
 		
 		markers = ['o', 'v', 's', 'X', '+', 'p']
 
