@@ -68,8 +68,8 @@ class model1D:
 
 	def activate_thermal(self):
 		prop = self._kwargs.get('property', {})
-		self._heatconductivity = prop.get('conductivity', None)
-		self._heatcapacity     = prop.get('capacity', None)
+		self._conductivity = prop.get('conductivity', None)
+		self._capacity     = prop.get('capacity', None)
 		self._density          = prop.get('density', None)
 		return
 	
@@ -187,8 +187,8 @@ class thermo1D(model1D):
 				T_interp = self.interpolate_temperature(TTn1)
 
 				# Get capacity and conductivity properties
-				Kprop = self._heatconductivity(T_interp)
-				Cprop = self._heatcapacity(T_interp)
+				Kprop = self._conductivity(T_interp)
+				Cprop = self._capacity(T_interp)
 
 				# Compute residue
 				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1)

@@ -17,10 +17,12 @@ class encoder():
 		self._funPowDen   = kwargs.get('funPowerDensity', None)
 		self._funTemp     = kwargs.get('funTemperature', None)   
 		self._iterMethods = kwargs.get('IterMethods', ['WP'])
+		self._part    = None
 
 		# Get filename
 		filename = self.make_filename()
 		self._filename = kwargs.get('folder', './') + filename 
+		
 		return
 	
 	def make_filename(self):
@@ -40,11 +42,11 @@ class encoder():
 		kwargs   = {'name':self._geoname, 
 		'nb_refinementByDirection': self._cuts*np.ones(3, dtype=int)}
 		modelgeo = Geomdl(**kwargs)
-		modeliga = modelgeo.getIGAParametrization()
+		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: kwargs = {'quadrule': 'iga'}
 		else:                 kwargs = {'quadrule': 'wq'}
-		model    = part(modeliga, **kwargs)
-		return model
+		self._part = part(modelIGA, **kwargs)
+		return 
 
 	def write_resultsFile(self, inputs:dict): 
 		" Writes and exports simulation data in .txt file "
@@ -77,25 +79,26 @@ class encoder():
 		
 		dof = problem._boundary._thdof
 		dod = problem._boundary._thdod
+		nbctrlpts_total = np.prod(problem._model._nbctrlpts)
+		Fext = np.zeros(nbctrlpts_total)
 
 		if funTemp is not None:  
-			nbctrlpts_total = np.prod(problem._model._nbctrlpts)
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_heatForce(funPowDen, indi=dof) 
 			Knd_ud = problem.eval_mfConductivity(prop, u)
 			Fn    -= Knd_ud[dof]
 		else:
-			ud = None
 			Fn = problem.eval_heatForce(funPowDen, indi=dof)
-			
-		return Fn, ud
+		
+		Fext[dof] = Fn
+		return Fext
 	
-	def run_iterativeSolver(self, problem:heatproblem, prop, b):
+	def run_iterativeSolver(self, problem:heatproblem, Fext):
 		" Solve steady heat problems using iterative solver "
 		
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblemFT(prop, b)
+		un, residue = problem.solveSteadyHeatProblemFT(Fext)
 		stop = time.process_time()
 		time_t = stop - start 
 
@@ -104,22 +107,23 @@ class encoder():
 	def simulate(self, material: thermomat, boundary: step, overwrite=True):
 		" Runs simulation using given input information "
 
-		prop    = material._heatconductivity
-		model   = self.create_model()
-		problem = heatproblem(material, model, boundary)
-		b       = self.eval_heatForce(problem, prop, self._funPowDen, self._funTemp)[0]
+		if self._part is None: self.create_model()
+		prop    = material._conductivity
+		problem = heatproblem(material, self._part, boundary)
+		Fext    = self.eval_heatForce(problem, prop, self._funPowDen, self._funTemp)
+		self._nbiterPCG = problem._nbIterPCG
 
 		# Run iterative methods
 		timeNoIter = []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.run_iterativeSolver(problem, prop, b=b)[-1]
+			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 
 		timeIter, resPCG = [], []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			residue_t, time_temp = self.run_iterativeSolver(problem, prop, b=b)[1:]
+			residue_t, time_temp = self.run_iterativeSolver(problem, Fext=Fext)[1:]
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 				
@@ -135,6 +139,8 @@ class decoder():
 	def __init__(self, filename=None): 
 
 		if filename is None: raise Warning('Not possible. Insert a valid path')
+		self._filename = filename
+		self._dataSimulation = {}
 		full_path = os.path.realpath(filename)
 		title     = os.path.basename(full_path).split('.')[0]
 		self.decrypt_title(title)
@@ -238,6 +244,38 @@ class decoder():
 
 		return residue
 	
-	def plot_results(self, extension='.pdf', plotLegend=True):
+	def plot_results(self, extension='.pdf', threshold=1.e-12, plotLegend=True):
+
+		savename = self._filename.split('.')[0] + extension
+		residue  = self._dataSimulation.get("resPCG")
+		method_list = self._dataSimulation.get["methods"]
+
+		new_method_list = []
+		for pcgmethod in method_list:
+			if pcgmethod   == "WP" : new_method_list.append('w.o. preconditioner')
+			elif pcgmethod == "C"  : new_method_list.append('Classic FD method')
+			elif pcgmethod == "TDS": new_method_list.append('Literature + scaling') 
+			elif pcgmethod == "TDC": new_method_list.append('Literature') 
+			elif pcgmethod == "JMC": new_method_list.append('This work') 
+			elif pcgmethod == "JMS": new_method_list.append('This work + scaling')
+		
+		markers = ['o', 'v', 's', 'X', '+', 'p']
+
+		# Set figure parameters
+		fig, ax = plt.subplots(nrows=1, ncols=1)
+		for i, pcgmethod in enumerate(new_method_list):
+			residue_method = np.asarray(residue[i])
+			residue_method = residue_method[residue_method>threshold]
+			ax.semilogy(np.arange(len(residue_method)), residue_method, '-',
+						label=pcgmethod, marker=markers[i])
+
+		ax.set_ylim(top=10.0, bottom=threshold)
+		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+
+		if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.legend(loc=0)
+		fig.tight_layout()
+		fig.savefig(savename)
 
 		return

@@ -87,6 +87,12 @@ class step():
 	
 	# Heat problem
 
+	def update_thDirichletBound(self):
+		nbctrlpts_total = np.product(self._nbctrlpts)
+		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(set(self._thdod))
+		self._thdof = np.array(list(dof), dtype=int)
+		return
+
 	def add_DirichletTemperature(self, table=None, temperature=0.0):
 		"This function is first tentative of adding constant boundary conditions "
 		table = np.array(table, dtype=bool)
@@ -101,13 +107,12 @@ class step():
 			if len(temperature) != len(dod): raise Warning('Not possible')
 			self._thDirichletBound[dod] = temperature		
 		self._thdod.extend(dod)
+		self.update_thDirichletBound()
 		return 
 
 	def getThermalBoundaryConditionInfo(self): 
 		if self._thDirichletTable is None: raise Warning('Please define first total Dirichlet boundaries')
-		nbctrlpts_total = np.product(self._nbctrlpts)
-		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(set(self._thdod))
-		self._thdof = np.array(list(dof), dtype=int)
+		self.update_thDirichletBound()
 		return  self._thdod, self._thDirichletBound[self._thdod], self._thdof
 	
 	# Mechanical problem

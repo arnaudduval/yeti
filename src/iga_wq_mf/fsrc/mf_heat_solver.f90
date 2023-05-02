@@ -480,7 +480,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
         ! Condition number 
         if ((methodPCG.eq.'C').or.(methodPCG.eq.'JMC')) then
-            
             call compute_steadyheat_cond(nc_total, coefs, kmean, kappa)
             print*, 'Method: ', methodPCG, ', condition number: ', kappa
 
