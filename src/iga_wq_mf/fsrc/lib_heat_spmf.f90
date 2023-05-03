@@ -193,7 +193,6 @@ contains
     
         info = 1
         nnz  = mat%ncols
-        print*, nnz
     
         if (size(mat%Cprop).eq.1) then 
     

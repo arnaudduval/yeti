@@ -35,11 +35,11 @@ class step():
 	def clear_Dirichlet(self):
 		" Clears Dirichlet boundaries "
 		self._thDirichletTable = None
-		self._thdof = None
-		self._thdod = None
+		self._thdof = np.array([], dtype=int)
+		self._thdod = np.array([], dtype=int)
 		self._mchDirichletTable = None
-		self._mchdof = None
-		self._mchdod = None
+		self._mchdof = np.array([], dtype=int)
+		self._mchdod = np.array([], dtype=int)
 		return
 		
 	def __get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
@@ -80,8 +80,8 @@ class step():
 					dod.extend(np.where(INC[:, j] == nbctrlpts[j]-1)[0])
 
 			# Rearrange
-			dod = np.unique(dod)
-			dod_total.append(list(dod))
+			dod = np.unique(dod); dod = np.array(dod, dtype=int)
+			dod_total.append(dod)
 
 		return dod_total
 	
@@ -89,7 +89,9 @@ class step():
 
 	def update_thDirichletBound(self):
 		nbctrlpts_total = np.product(self._nbctrlpts)
-		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(set(self._thdod))
+		dod = set(self._thdod)
+		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
+		self._thdod = np.array(list(dod), dtype=int)
 		self._thdof = np.array(list(dof), dtype=int)
 		return
 
@@ -102,11 +104,12 @@ class step():
 		self._thDirichletTable += table
 		
 		if np.isscalar(temperature): 
-			self._thDirichletBound[dod] = temperature*np.ones(len(dod))
+			self._thDirichletBound[dod] += temperature*np.ones(len(dod))
 		else: 
 			if len(temperature) != len(dod): raise Warning('Not possible')
-			self._thDirichletBound[dod] = temperature		
-		self._thdod.extend(dod)
+			self._thDirichletBound[dod] += temperature		
+		self._thdod = np.append(self._thdod, dod)
+		self._thdod = np.array(self._thdod, dtype=int)
 		self.update_thDirichletBound()
 		return 
 

@@ -8,21 +8,23 @@ from lib.lib_step import step
 from lib.lib_job import heatproblem
 
 def setKprop(P:list):
+	cst = 1.0
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
 	T = P[3, :]
-
-	return 
+	Kprop = np.zeros((3, 3, len(T)))
+	for i in range(3): Kprop[i, i, :] = cst*(1.0 + 2.0/(1.0 + np.exp(-5*(T-1.0))))
+	return Kprop 
 
 def setCprop(P:list):
+	cst = 1.0
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
 	T = P[3, :]
-
-	return 
-
+	Cprop = cst + cst*np.exp(-2.0*abs(T))
+	return Cprop
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -30,13 +32,13 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = False
-name_list   = ['VB']
+dataExist   = True
+name_list   = ['CB', 'TR']
 IterMethods = ['WP', 'C', 'JMC']
 
 if not dataExist:
 
-	degree, cuts = 6, 5
+	degree, cuts = 5, 4
 	time_list    = np.linspace(0, 20, 41)  
 
 	for name in name_list:
@@ -57,26 +59,29 @@ if not dataExist:
 
 			# Block boundaries
 			boundary = step(model._nbctrlpts)
-			boundary.add_DirichletTemperature(table=np.array([[1, 1], [0, 0], [0, 0]]))
+			boundary.add_DirichletTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
+			boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
 			# ---------------------
 			# Transient model
 			# ---------------------
 			problem = heatproblem(mat, model, boundary)
+			problem._methodPCG = PCGmethod
 
 			# Create a Dirichlet condition
 			Tinout = np.zeros((model._nbctrlpts_total, len(time_list)))
-			for i in range(len(time_list)): Tinout[boundary._thdod, i] = 1.0
+			for i in range(len(time_list)): Tinout[boundary._thdod, i] = boundary._thDirichletBound[boundary._thdod]
 
 			# Add external force 
 			Fend = problem.eval_heatForce(powden)
 			Fext = np.kron(np.atleast_2d(Fend).reshape(-1, 1), sigmoid(time_list))
 
 			# Solve
-			lastStep = 40
-			problem.solveNLTransientHeatProblemPy(Tinout=Tinout, Fext=Fext[:, :lastStep], 
-												time_list=time_list[:lastStep], theta=1.0)
-			# # np.savetxt(filename, resPCG)
+			lastStep = 8
+			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext=Fext[:, :lastStep], 
+														time_list=time_list[:lastStep], theta=1.0)
+			np.savetxt(filename, resPCG)
+			model.exportResults(u_ctrlpts=Tinout[:, lastStep-1], folder=folder, nbDOF=1)
 
 else:
 
@@ -92,12 +97,12 @@ else:
 			elif PCGmethod == "JMC": labelmethod = 'This work'
 
 			# Print the first 
-			newresidue = resPCG[2:, 0]; newresidue = newresidue[newresidue>0]
+			newresidue = resPCG[0, 2:]; newresidue = newresidue[newresidue>0]
 			ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
 						linewidth=2.5, marker=markerSet[i], label=labelmethod)
 
 			# # Print the last
-			# newresidue = resPCG[2:, -1]; newresidue = newresidue[newresidue>0]
+			# newresidue = resPCG[-1, 2:]; newresidue = newresidue[newresidue>0]
 			# ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
 			# 			linewidth=2.5, marker=markerSet[i], label=labelmethod)
 
@@ -106,6 +111,6 @@ else:
 		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 		ax.set_ybound(lower=1e-12, upper=10)
 
-		filename = folder + 'TransientNL_' + name + '.pdf'
+		filename = folder + 'TransientNL_' + name + '.png'
 		# fig.tight_layout()
 		fig.savefig(filename)
