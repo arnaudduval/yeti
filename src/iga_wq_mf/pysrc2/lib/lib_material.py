@@ -29,48 +29,50 @@ class material():
 				y[i, j, :] = np.interp(x, table[:, 0], table[:, k])
 		return y
 	
-	def setScalarProperty(self, input, isIsotropic=False):
+	def setScalarProperty(self, inpt, isIsotropic=False):
 		if isIsotropic:
 			# Isotropic material (position and temperature independent)
-			if np.isscalar(input): 		
-				prop = lambda x: input*np.ones(np.max(np.shape(x)))
+			if np.isscalar(inpt): 		
+				prop = lambda x: inpt*np.ones(np.max(np.shape(x)))
 			else: 
 				raise Warning('Not possible')
-		elif callable(input):
+		elif callable(inpt):
 			# Anisotropic material (temperature independent but position dependent)
-			prop = lambda x: input(x)
-		elif len(input.shape) > 1:
+			prop = lambda x: inpt(x)
+		elif len(inpt.shape) > 1:
 			# Anisotropic material (position independent but temperature dependent)
-			self.verifyTable(input, False)
-			prop = lambda x: self.interpolateScalarProperty(input, x)
+			self.verifyTable(inpt, False)
+			prop = lambda x: self.interpolateScalarProperty(inpt, x)
+			print('It will be deprecated')
 		else:
 			# Anisotropic material (position dependent and temperature dependent)
 			raise Warning('Not implemented')
 		return prop
 	
-	def setTensorProperty(self, input, shape=(3, 3), isIsotropic=False):
+	def setTensorProperty(self, inpt, shape=(3, 3), isIsotropic=False):
 
-		def create3ArrayFrom2Array(input, x):
+		def create3ArrayFrom2Array(inpt, x):
 			lenx = np.max(np.shape(x))
-			y = np.zeros((*np.shape(input), lenx))
-			for i in range(np.shape(input)[0]):
-				for j in range(np.shape(input)[1]):
-					y[i, j, :] = input[i, j]
+			y = np.zeros((*np.shape(inpt), lenx))
+			for i in range(np.shape(inpt)[0]):
+				for j in range(np.shape(inpt)[1]):
+					y[i, j, :] = inpt[i, j]
 			return y
 
 		if isIsotropic:
 			# Isotropic material (position and temperature independent)
-			if np.isscalar(input):
-				prop = lambda x: input*np.eye((*shape, np.max(np.shape(x))))
+			if np.isscalar(inpt):
+				prop = lambda x: inpt*np.eye((*shape, np.max(np.shape(x))))
 			else:
-				prop = lambda x: create3ArrayFrom2Array(input, x)
-		elif callable(input):
+				prop = lambda x: create3ArrayFrom2Array(inpt, x)
+		elif callable(inpt):
 			# Anisotropic material (temperature independent but position dependent)
-			prop = lambda x: input(x)
-		elif len(input.shape) > 1:
+			prop = lambda x: inpt(x)
+		elif len(inpt.shape) > 1:
 			# Anisotropic material (position independent but temperature dependent)
-			self.verifyTable(input, True)
-			prop = lambda x: self.interpolateTensorProperty(input, x, shape=shape)
+			self.verifyTable(inpt, True)
+			prop = lambda x: self.interpolateTensorProperty(inpt, x, shape=shape)
+			print('It will be deprecated')
 		else:
 			# Anisotropic material (position dependent and temperature dependent)
 			raise Warning('Not implemented')
@@ -87,29 +89,29 @@ class thermomat(material):
 		self._isConductivityIsotropic = False
 		return
 	
-	def addDensity(self, input, isIsotropic):
+	def addDensity(self, inpt, isIsotropic):
 		if isIsotropic: self._isDensityIsotropic = True
-		self._density     = super().setScalarProperty(input, isIsotropic=isIsotropic)
+		self._density     = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
-	def addCapacity(self, input, isIsotropic):
+	def addCapacity(self, inpt, isIsotropic):
 		if isIsotropic: self._isCapacityIsotropic = True
-		self._capacity    = super().setScalarProperty(input, isIsotropic=isIsotropic)
+		self._capacity    = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
-	def addConductivity(self, input, isIsotropic, shape=(3, 3)):
+	def addConductivity(self, inpt, isIsotropic, shape=(3, 3)):
 		if isIsotropic: self._isConductivityIsotropic = True
-		self._conductivity = super().setTensorProperty(input, shape=shape, isIsotropic=isIsotropic)
+		self._conductivity = super().setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
 	
-	def eval_capacityCoefficients(self, detJ, input): 
-		prop = self._capacity(input)
+	def eval_capacityCoefficients(self, detJ, inpt): 
+		prop = self._capacity(inpt)
 		coefs, info = assembly.eval_capacity_coefficient(detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
 	
-	def eval_conductivityCoefficients(self, invJ, detJ, input):
-		prop = self._conductivity(input)
+	def eval_conductivityCoefficients(self, invJ, detJ, inpt):
+		prop = self._conductivity(inpt)
 		coefs, info = assembly.eval_conductivity_coefficient(invJ, detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs

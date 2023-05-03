@@ -5,17 +5,6 @@
 """
 import numpy as np
 
-def setKprop(T, prop=0.1):
-	# y = prop + prop*np.exp(-0.1*abs(T))
-	# y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
-	y   = np.ones(len(T))
-	return y
-
-def setCprop(T, prop=1.0):
-	# y = prop + prop*np.exp(-2.0*abs(T))
-	y   = np.ones(len(T))
-	return y
-
 def powden(P:list, dim=1):
 	if dim == 1  : x = P[:]
 	elif dim == 2: x = P[0, :]

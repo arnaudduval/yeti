@@ -244,62 +244,6 @@ subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     
 end subroutine mf_wq_get_ku_3d_py
 
-subroutine mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            array_in, alpha, beta, array_out)
-    !! Computes K.u where K is conductivity matrix in 3D 
-    !! This function is adapted to python
-    !! IN CSR FORMAT
-
-    use matrixfreeheat   
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: Kcoefs, Ccoefs, alpha, beta
-    dimension :: Kcoefs(3, 3, nc_total), Ccoefs(nc_total)
-
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-    double precision, intent(in) :: array_in
-    dimension :: array_in(nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! ----------
-    type(thermomat), pointer :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    allocate(mat)
-    mat%dimen   = 3
-    mat%scalars = (/alpha, beta/)
-    call setup_capacitycoefs(mat, nc_total, Ccoefs)
-    call setup_conductivitycoefs(mat, nc_total, Kcoefs)
-    
-    call mf_wq_get_kcu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
-    
-end subroutine mf_wq_get_kcu_3d_py
-
 subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
@@ -520,3 +464,147 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     end if
 
 end subroutine mf_wq_steady_heat_3d
+
+subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                                b, thetadt, nbIterPCG, threshold, methodPCG, x, resPCG)
+    !! Precontionned bi-conjugate gradient to solve transient heat problems
+    !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
+    !! bn is compute beforehand (In python or fortran).
+    !! IN CSR FORMAT
+
+    use matrixfreeheat
+    use solverheat
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    double precision, intent(in) :: Kcoefs, Ccoefs
+    dimension :: Kcoefs(3, 3, nc_total), Ccoefs(nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    character(len=10), intent(in) :: methodPCG
+    integer, intent(in) :: nbIterPCG    
+    double precision, intent(in) :: thetadt, threshold, b
+    dimension :: b(nr_total)
+    
+    double precision, intent(out) :: x, resPCG
+    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    type(thermomat), pointer :: mat
+    type(cgsolver), pointer :: solv
+    double precision :: kmean(3), cmean, kappa
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+                                                    Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
+    double precision :: U_u, U_v, U_w, Deigen
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_total)
+    double precision, dimension(:), allocatable :: Dphysical, Dparametric, Dtemp
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+    
+    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+
+    allocate(mat, solv)
+    mat%dimen = 3
+    call setup_capacitycoefs(mat, nc_total, Ccoefs)
+    call setup_conductivitycoefs(mat, nc_total, Kcoefs)
+    mat%scalars = (/1.d0, thetadt/)
+    solv%matrixfreetype = 3
+
+    if (methodPCG.eq.'WP') then 
+        ! Set solver
+        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
+        
+    else  
+
+        ! Customize method  
+        allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w))            
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+        kmean = 1.d0; cmean = 1.d0
+
+        if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
+            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            kmean = mat%mean(:3)
+            cmean = mat%mean(4)
+        
+        end if
+
+        ! Eigen decomposition
+        allocate(Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w))            
+        call eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, kmean, .true., &
+                            U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+        deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
+
+        Deigen = cmean + thetadt*Deigen
+        call setup_preconditionerdiag(solv, nr_total, Deigen)
+
+        if (methodPCG.eq.'JMS') then
+            allocate(Dparametric(nr_total), Dphysical(nr_total), Dtemp(nr_total))
+
+            ! Find diagonal of preconditioner
+            Dtemp = 0.d0
+            call kronvec3d(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cmean)
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
+                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
+            Dparametric = Dtemp + thetadt*Dparametric
+
+            ! Find diagonal of real matrix 
+            Dtemp = 0.d0
+            call wq_find_capacity_diagonal_3D(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dtemp)
+            call wq_find_conductivity_diagonal_3D(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
+            Dphysical = Dtemp + thetadt*Dphysical
+
+            call setup_scaling(solv, nr_total, Dparametric, Dphysical)
+        end if
+        deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
+
+        ! Condition number P^-1 A
+        call compute_transientheat_cond(nc_total, Kcoefs, Ccoefs, kmean, cmean, kappa)
+        if (methodPCG.eq.'JMS') then
+            Dtemp = Dparametric/Dphysical
+            kappa = kappa*maxval(Dtemp)/minval(Dtemp)
+        end if
+        print*, 'Method: ', methodPCG, ' condition number: ', kappa
+
+        ! Set solver
+        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                    data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
+
+    end if
+
+end subroutine mf_wq_transient_linear_3d

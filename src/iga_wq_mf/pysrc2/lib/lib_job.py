@@ -16,8 +16,10 @@ class heatproblem():
 	
 	def __extractInfo(self):
 		kwargs = self._kwargs
-		self._nbIterPCG    = kwargs.get('nbIterations', 100)
+		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
+		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
+		self._thresholdNR  = kwargs.get('NRThreshold', 1e-12)
 		self._methodPCG    = 'FDC'
 		return
 	
@@ -46,31 +48,25 @@ class heatproblem():
 
 		return inputs
 
-	def eval_mfConductivity(self, input, u, table=None):
+	def eval_mfConductivity(self, u, coefs=None, table=None, **kwargs):
 
 		inputs = self.get_input4MatrixFree(table=table)
-		coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, input)
+		if coefs is None: 
+			inpt   = kwargs.get(['input'])
+			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: result = heatsolver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
 
 		return result
 	
-	def eval_mfCapacity(self, input, u, table=None): 
+	def eval_mfCapacity(self, u, coefs=None, table=None, **kwargs): 
 
-		coefs = self._material.eval_capacityCoefficients(self._model._detJ, input)
 		inputs = self.get_input4MatrixFree(table=table)
+		if coefs is None: 
+			inpt   = kwargs.get(['input'])
+			coefs  = self._material.eval_capacityCoefficients(self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: result = heatsolver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
-
-		return result
-	
-	def eval_mfCondCap(self, Kinput, Cinput, u, table=None, alpha=1.0, beta=1.0):
-
-		Kcoefs = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, Kinput)
-		Ccoefs = self._material.eval_capacityCoefficients(self._model._detJ, Cinput)
-		inputs = self.get_input4MatrixFree(table=table)
-		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = heatsolver.mf_wq_get_kcu_3d_py(Ccoefs, Kcoefs, *inputs, u, alpha, beta)
 
 		return result
 
@@ -84,6 +80,19 @@ class heatproblem():
 
 		return vector
 	
+	def interpolateTemperature(self, uctrlpts):
+		basis   = self._model._basis
+		indices = self._model._indices
+		nbqp    = self._model._nbqp
+
+		# Get position and determinant 
+		inputs = [*nbqp, *indices, *basis, uctrlpts]
+		if self._model._dim == 2:
+			uinterp = assembly.interpolate_fieldphy_2d(*inputs)
+		elif self._model._dim == 3: 
+			uinterp = assembly.interpolate_fieldphy_3d(*inputs)
+		return uinterp
+
 	# Solve using fortran
 	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
 		coefs = None
@@ -106,32 +115,113 @@ class heatproblem():
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblemFT(self, Fext):
+	def solveSteadyHeatProblemFT(self, b, coefs=None):
 		if not self._material._isConductivityIsotropic: raise Warning('Not possible by now')
-		input = self._model._qpPhy
-
-		# Compute b = Fn - And Td
-		dod, Td, dof = self._boundary.getThermalBoundaryConditionInfo()
-		Temperature  = np.zeros(self._model._nbctrlpts_total)
-		Temperature[dod]  = Td
-		AndTd  = self.eval_mfConductivity(input, Temperature, table=np.zeros(np.shape(self._boundary._thDirichletTable)))[dof]
-		b      = Fext[dof] - AndTd
-
-		coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
-					self._model._detJ, input)
+		if coefs is None: 
+			inpt = self._model._qpPhy
+			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
+															self._model._detJ, inpt)
 		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
 		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
-		Temperature[dof] = sol
 
-		return Temperature, residue
+		return sol, residue
 	
-	# Solve using python
-	def solveTransientHeatProblem(self):
+	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, **kwargs):
+		
+		if Ccoefs is None: 
+			temperature = kwargs.get('temperature')
+			inpt = self._model._qpPhy
+			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
+			Ccoefs  = self._material.eval_capacityCoefficients(self._model._invJ, 
+						self._model._detJ, inpt)
+			
+		if Kcoefs is None:
+			temperature = kwargs.get('temperature')
+			inpt = self._model._qpPhy
+			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
+			Kcoefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
+						self._model._detJ, inpt)
+		
+		tmp     = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
+		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
-		return
+		if self._model._dim == 2: raise Warning('Until now not done')
+		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_transient_linear_3d(*inputs)
+
+		return sol, residue
+
+	# Solve using python
+	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):
+		m, n = np.shape(Tinout)
+		nbSteps         = len(time_list)
+		nbctrlpts_total = self._model._nbctrlpts_total
+		if n != nbSteps: raise Warning('Not possible')
+		if m != nbctrlpts_total: raise Warning('Not possible')
+		dod, _, dof = self._boundary.getThermalBoundaryConditionInfo()
+
+		VVn0 = np.zeros(nbctrlpts_total)
+		if nbSteps == 2:
+			dt = time_list[1] - time_list[0]
+			VVn0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
+		elif nbSteps > 2:
+			dt1 = time_list[1] - time_list[0]
+			dt2 = time_list[2] - time_list[1]
+			factor = dt2/dt1
+			VVn0[dod] = 1.0/(dt*(factor - factor**2))*(Tinout[dod, 2] 
+					- (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		else:
+			raise Warning('At least 2 steps')
+		
+		for i in range(1, nbSteps):
+			# Get delta time
+			dt = time_list[i] - time_list[i-1]
+			
+			# Get values of last step
+			TTn0 = np.copy(Tinout[:, i-1])
+
+			# Get approximative values of new step
+			TTn1 = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
+			TTn10 = np.copy(TTn1); VVn1 = np.zeros(np.shape(VVn0))
+			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i]-Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
+			Fstep = Fext[:, i]
+
+			for j in range(self._nbIterNR):
+
+				# Compute temperature and properties at each quadrature point
+				TTinterp = self.interpolateTemperature(TTn1)
+			
+				# Compute internal force
+				inpt = self._model._qpPhy
+				inpt = np.row_stack((inpt, TTinterp*np.ones(np.size(inpt, axis=1))))
+				Ccoefs  = self._material.eval_capacityCoefficients(self._model._invJ, 
+																self._model._detJ, inpt)
+				Kcoefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
+																self._model._detJ, inpt)
+
+				CdTemp = self.eval_mfConductivity(VVn1, coefs=Ccoefs, table=np.zeros((3, 2), dtype=bool))
+				KTemp  = self.eval_mfConductivity(TTn1, coefs=Kcoefs, table=np.zeros((3, 2), dtype=bool))
+				Fint   = KTemp + CdTemp
+
+				# Compute residue
+				ddFF    = Fstep - Fint
+				ddFFdof = ddFF[dof]
+				resNL   = np.sqrt(np.dot(ddFFdof, ddFFdof))
+				if resNL <= self._thresholdNR: break
+
+				# Iterative solver
+				ddVV, resPCG = self.solveLinearTransientHeatProblemFT(dt, ddFFdof, Ccoefs=Ccoefs, Kcoefs=Kcoefs, theta=theta)
+
+				# Update values
+				VVn1[dof] += ddVV
+				TTn1[dof] = TTn10[dof] + theta*dt*VVn1[dof]
+
+			Tinout[:, i] = np.copy(TTn1)
+			VVn0 = np.copy(VVn1)
+
+		return 
 
 class mechaproblem():
 	def __init__(self, mat: mechamat, geo: part, boundcond: step, **kwargs):

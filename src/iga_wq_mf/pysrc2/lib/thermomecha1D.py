@@ -153,32 +153,30 @@ class thermo1D(model1D):
 
 		theta = self._temporaltheta
 		dod   = self._dod; dof = self._dof
-		ddGG  = np.zeros(len(dod)) # d Temperature/ d time
 		VVn0  = np.zeros(len(dof)+len(dod))
 
 		# Compute initial velocity from boundry conditions (for i = 0)
 		if np.shape(Tinout)[1] == 2:
-			delta_t = time_list[1] - time_list[0]
-			ddGG = (Tinout[dod, 1] - Tinout[dod, 0])/delta_t
+			dt = time_list[1] - time_list[0]
+			VVn0[dod] = (Tinout[dod, 1] - Tinout[dod, 0])/dt
 		elif np.shape(Tinout)[1] >= 2:
-			delta_t1 = time_list[1] - time_list[0]
-			delta_t2 = time_list[2] - time_list[0]
-			factor = delta_t2/delta_t1
-			ddGG = 1.0/(delta_t1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+			dt1 = time_list[1] - time_list[0]
+			dt2 = time_list[2] - time_list[0]
+			factor = dt2/dt1
+			VVn0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
-		VVn0[dod] = ddGG
 
 		for i in range(1, np.shape(Tinout)[1]):
 			# Get delta time
-			delta_t = time_list[i] - time_list[i-1]
+			dt = time_list[i] - time_list[i-1]
 
 			# Get values of last step
-			TTn0 = Tinout[:, i-1]; TTn1 = np.copy(TTn0)
+			TTn0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			TTn1 = TTn0 + delta_t*(1-theta)*VVn0; TTn1[dod] = Tinout[dod, i]
+			TTn1 = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
 			TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
-			VVn1[dod] = 1.0/theta*(1.0/delta_t*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
+			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
 			Fstep = Fext[:, i]
 
 			for j in range(nbIterNL): # Newton-Raphson
@@ -193,19 +191,18 @@ class thermo1D(model1D):
 				# Compute residue
 				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1)
 				dF = Fstep[dof] - Fint[dof]
-				prod1 = np.dot(dF, dF)
-				relerror = np.sqrt(prod1)
-				if relerror <= threshold: break
+				resNL = np.sqrt(np.dot(dF, dF))
+				if resNL <= threshold: break
 
 				# Compute tangent matrix
-				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=delta_t)[np.ix_(dof, dof)]
+				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=dt)[np.ix_(dof, dof)]
 
 				# Compute delta dT 
 				ddVV = np.linalg.solve(MM, dF)
 
 				# Update values
 				VVn1[dof] += ddVV
-				TTn1[dof] = TTn1i0[dof] + theta*delta_t*VVn1[dof]
+				TTn1[dof] = TTn1i0[dof] + theta*dt*VVn1[dof]
 
 			# print(j+1, relerror)
 

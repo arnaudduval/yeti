@@ -8,6 +8,17 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/t1dim/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+def setKprop(T, prop=0.1):
+	# y = prop + prop*np.exp(-0.1*abs(T))
+	# y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
+	y   = np.ones(len(T))
+	return y
+
+def setCprop(T, prop=1.0):
+	# y = prop + prop*np.exp(-2.0*abs(T))
+	y   = np.ones(len(T))
+	return y
+
 # Set global variables
 theta        = 1
 degree, nbel = 10, 10

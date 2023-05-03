@@ -81,25 +81,23 @@ class encoder():
 		dof = problem._boundary._thdof
 		dod = problem._boundary._thdod
 		nbctrlpts_total = np.prod(problem._model._nbctrlpts)
-		Fext = np.zeros(nbctrlpts_total)
 
 		if funTemp is not None:  
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_heatForce(funPowDen, indi=dof) 
-			Knd_ud = problem.eval_mfConductivity(self._part._qpPhy, u, table=np.zeros((3, 2), dtype=bool))
+			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), **{'input': self._part._qpPhy})
 			Fn    -= Knd_ud[dof]
 		else:
 			Fn = problem.eval_heatForce(funPowDen, indi=dof)
 		
-		Fext[dof] = Fn
-		return Fext
+		return Fn
 	
-	def run_iterativeSolver(self, problem:heatproblem, Fext):
+	def run_iterativeSolver(self, problem:heatproblem, b):
 		" Solve steady heat problems using iterative solver "
 		
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblemFT(Fext)
+		un, residue = problem.solveSteadyHeatProblemFT(b)
 		stop = time.process_time()
 		time_t = stop - start 
 
@@ -110,20 +108,20 @@ class encoder():
 
 		if self._part is None: self.create_model()
 		problem = heatproblem(material, self._part, boundary)
-		Fext    = self.eval_heatForce(problem, self._funPowDen, self._funTemp)
+		Fn      = self.eval_heatForce(problem, self._funPowDen, self._funTemp)
 		self._nbiterPCG = problem._nbIterPCG
 
 		# Run iterative methods
 		timeNoIter = []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
+			time_temp = self.run_iterativeSolver(problem, b=Fn)[-1]
 			timeNoIter.append(time_temp)
 
 		timeIter, resPCG = [], []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			residue_t, time_temp = self.run_iterativeSolver(problem, Fext=Fext)[1:]
+			residue_t, time_temp = self.run_iterativeSolver(problem, b=Fn)[1:]
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 				

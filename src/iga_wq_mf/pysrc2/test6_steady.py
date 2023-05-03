@@ -7,7 +7,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = True
+dataExist   = False
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(5, 7)
 name_list   = ['cb', 'vb', 'tr', 'rqa']
@@ -29,13 +29,13 @@ for cuts in cuts_list:
 			
 			if not dataExist:
 				simu.create_model()
-				heatmat = thermomat()
-				heatmat.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]),
+				mat = thermomat()
+				mat.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]),
 										isIsotropic=True, shape=(3, 3))				
 				table    = np.ones((3, 2), dtype=bool)
 				boundary = step(simu._part._nbctrlpts)
 				boundary.add_DirichletTemperature(table=table)
-				simu.simulate(material=heatmat, boundary=boundary, overwrite=True)
+				simu.simulate(material=mat, boundary=boundary, overwrite=True)
 
 			else :
 				filename   = simu._filename
