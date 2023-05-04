@@ -53,9 +53,9 @@ if not dataExist:
 			model    = part(modelIGA)
 
 			# Add material 
-			mat = thermomat()
-			mat.addConductivity(setKprop, isIsotropic=False) 
-			mat.addCapacity(setCprop, isIsotropic=False) 
+			material = thermomat()
+			material.addConductivity(setKprop, isIsotropic=False) 
+			material.addCapacity(setCprop, isIsotropic=False) 
 
 			# Block boundaries
 			boundary = step(model._nbctrlpts)
@@ -65,7 +65,7 @@ if not dataExist:
 			# ---------------------
 			# Transient model
 			# ---------------------
-			problem = heatproblem(mat, model, boundary)
+			problem = heatproblem(material, model, boundary)
 			problem._methodPCG = PCGmethod
 
 			# Create a Dirichlet condition
@@ -73,7 +73,7 @@ if not dataExist:
 			for i in range(len(time_list)): Tinout[boundary._thdod, i] = boundary._thDirichletBound[boundary._thdod]
 
 			# Add external force 
-			Fend = problem.eval_heatForce(powden)
+			Fend = problem.eval_bodyForce(powden)
 			Fext = np.kron(np.atleast_2d(Fend).reshape(-1, 1), sigmoid(time_list))
 
 			# Solve
