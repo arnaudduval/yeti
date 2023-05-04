@@ -124,7 +124,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
     integer, parameter :: dimen = 3
     integer, intent(in) ::  nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     double precision, intent(in) :: vforce, JJ
-    dimension :: vforce(dimen), JJ(dimen, dimen-1, nc_total)
+    dimension :: vforce(dimen, nc_total), JJ(dimen, dimen-1, nc_total)
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -146,7 +146,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
         v2 = JJ(:, 2, i)
         call crossproduct(v1, v2, v3)
         dsurf = sqrt(dot_product(v3, v3))
-        coefs(:, i) = vforce * dsurf
+        coefs(:, i) = vforce(:, i) * dsurf
     end do
 
     ! Compute force

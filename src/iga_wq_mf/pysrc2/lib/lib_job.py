@@ -70,16 +70,63 @@ class heatproblem():
 
 		return result
 
-	def eval_heatForce(self, fun, indi=None): 
+	def eval_bodyForce(self, fun, indi=None): 
 
 		if indi is None: indi = np.arange(self._model._nbctrlpts_total, dtype=int)
 		coefs = self._material.eval_heatForceCoefficients(fun, self._model._detJ, self._model._qpPhy)
 		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._weights]
-		if self._model._dim == 2: vector = assembly.wq_get_source_2d(*inputs)[indi]
-		if self._model._dim == 3: vector = assembly.wq_get_source_3d(*inputs)[indi]
+		if self._model._dim == 2: raise Warning('Not done yet')
+		if self._model._dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)[indi]
 
 		return vector
 	
+	def eval_surfForce(self, fun, nbFacePosition):
+		if self._model._dim != 3: raise Warning('Method only for 3D geometries')
+
+		def get_faceInfo(nb):
+			direction = int(np.floor(nb/2))
+			if nb%2 == 1: side = 1
+			else: side = 0
+			return direction, side
+
+		vector = np.zeros(self._model._nbctrlpts_total)
+		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
+		direction, side = get_faceInfo(nbFacePosition)
+
+		# Get control points and quadrature points list
+		if side == 0: 
+			CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+			QPList = np.where(INC_quadpts[:, direction] == 0)[0]
+
+		elif side == 1: 
+			CPList = np.where(INC_ctrlpts[:, direction] == self._model._nbctrlpts[direction]-1)[0]
+			QPList = np.where(INC_quadpts[:, direction] == self._model._nbqp[direction]-1)[0]
+		
+		CPList = list(np.sort(CPList))
+		QPList = list(np.sort(QPList))
+
+		# Modify Jacobien matrix
+		valrange = [i for i in range(self._model._dim)]
+		valrange.pop(direction)
+		JJ = self._model._Jqp[:, :, QPList]
+		JJ = JJ[:, valrange, :]
+
+		# Get force values at quadrature points
+		qpPhy = self._model._qpPhy[:, QPList]
+		coefs = fun(qpPhy)
+
+		# Compute surface force
+		nnz, indices, weights = [], [], []
+		for _ in valrange:
+			nnz.append(self._model._nbqp[_]); weights.append(self._model._weights[_])
+			indices.append(self._model._indices[2*_]); indices.append(self._model._indices[2*_+1]) 
+		
+		tmp = plasticitysolver.wq_get_heatflux_3d(coefs, JJ, *nnz, *indices, *weights)
+		vector[:, CPList] = tmp
+
+		return vector
+
 	def interpolateTemperature(self, uctrlpts):
 		basis   = self._model._basis
 		indices = self._model._indices
@@ -88,9 +135,9 @@ class heatproblem():
 		# Get position and determinant 
 		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
 		if self._model._dim == 2:
-			uinterp = assembly.interpolate_fieldphy_2d(*inputs)
+			uinterp = interpolation.interpolate_fieldphy_2d(*inputs)
 		elif self._model._dim == 3: 
-			uinterp = assembly.interpolate_fieldphy_3d(*inputs)
+			uinterp = interpolation.interpolate_fieldphy_3d(*inputs)
 		uinterp = np.ravel(uinterp)
 		return uinterp
 
@@ -104,7 +151,7 @@ class heatproblem():
 		# Calculate vector
 		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._weights]
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: vector = assembly.wq_get_source_3d(*inputs)
+		if self._model._dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)
 
 		# Solve linear system with fortran
 		inputs = [self._model._detJ, *self._model._nbqp, *self._model._indices, *self._model._basis, 
@@ -228,10 +275,10 @@ class heatproblem():
 		return resPCG_list
 
 class mechaproblem():
-	def __init__(self, mat: mechamat, geo: part, boundcond: step, **kwargs):
-		self._material = mat
-		self._geometry = geo
-		self._boundary = boundcond
+	def __init__(self, material: mechamat, model: part, boundary: step, **kwargs):
+		self._material = material
+		self._model    = model
+		self._boundary = boundary
 		self._kwargs   = kwargs
 		self.__extractInfo()
 		return
@@ -248,33 +295,83 @@ class mechaproblem():
 		if self._model._dim != 3: raise Warning('Until now not done')
 		self._material.verifyMechanicalProperties()
 		prop = [self._material._elasticmodulus, self._material._poissonratio]
-		inputs = [*self._geometry._nbqp, *self._geometry._indices, 
-	    			*self._geometry._basis, *self._geometry._weights, 
-					self._geometry._invJ, self._geometry._detJ, prop]
+		inputs = [*self._model._nbqp, *self._model._indices, 
+	    			*self._model._basis, *self._model._weights, 
+					self._model._invJ, self._model._detJ, prop]
 		result = plasticitysolver.mf_wq_get_su_3d_py(*inputs, u)
 		return result
 	
 	def eval_bodyForce(self, fun):
 		if self._model._dim != 3: raise Warning('Method only for 3D geometries')
-		coefs = self._material.eval_volForceCoefficients(fun, self._geometry._detJ, self._geometry._qpPhy)
-		inputs = [coefs, *self._geometry._nbqp, *self._geometry._indices, *self._geometry._weights]
+		coefs = self._material.eval_volForceCoefficients(fun, self._model._detJ, self._model._qpPhy)
+		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._weights]
 		vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
+		return vector
+	
+	def eval_surfForce(self, fun, nbFacePosition):
+		" Returns force vector at the surface. In 3D: surface integrals. "
+
+		if self._model._dim != 3: raise Warning('Method only for 3D geometries')
+
+		def get_faceInfo(nb):
+			direction = int(np.floor(nb/2))
+			if nb%2 == 1: side = 1
+			else: side = 0
+			return direction, side
+
+		vector = np.zeros((self._model._dim, self._model._nbctrlpts_total))
+		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
+		direction, side = get_faceInfo(nbFacePosition)
+
+		# Get control points and quadrature points list
+		if side == 0: 
+			CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+			QPList = np.where(INC_quadpts[:, direction] == 0)[0]
+
+		elif side == 1: 
+			CPList = np.where(INC_ctrlpts[:, direction] == self._model._nbctrlpts[direction]-1)[0]
+			QPList = np.where(INC_quadpts[:, direction] == self._model._nbqp[direction]-1)[0]
+		
+		CPList = list(np.sort(CPList))
+		QPList = list(np.sort(QPList))
+
+		# Modify Jacobien matrix
+		valrange = [i for i in range(self._model._dim)]
+		valrange.pop(direction)
+		JJ = self._model._Jqp[:, :, QPList]
+		JJ = JJ[:, valrange, :]
+
+		# Get force values at quadrature points
+		qpPhy = self._model._qpPhy[:, QPList]
+		coefs = fun(qpPhy)
+
+		# Compute surface force
+		nnz, indices, weights = [], [], []
+		for _ in valrange:
+			nnz.append(self._model._nbqp[_]); weights.append(self._model._weights[_])
+			indices.append(self._model._indices[2*_]); indices.append(self._model._indices[2*_+1]) 
+		
+		tmp = plasticitysolver.wq_get_forcesurf_3d(coefs, JJ, *nnz, *indices, *weights)
+		vector[:, CPList] = tmp
+
 		return vector
 	
 	# Solve using fortran
 	def solveElasticityProblemFT(self, Fext):
 		self._material.verifyMechanicalProperties()
-		dod = deepcopy(self._boundary._mchdod)
-		for i in range(len(dod)):
-			tmp = np.array(dod[i]); tmp += 1
-			dod[i] = list(tmp)
+		dod_total = deepcopy(self._boundary._mchdod)
+		for i, dod in enumerate(dod_total):
+			tmp = dod + 1
+			dod_total[i] = tmp
 
 		prop = [self._material._elasticmodulus, self._material._poissonratio]
-		inputs = [*self._geometry._nbqp, *self._geometry._indices, *self._geometry._basis, 
-	    			*self._geometry._weights, Fext, *dod, self._boundary._mchDirichletTable, 
-					self._geometry._invJ, self._geometry._detJ, prop, self._nbiterPCG, 
+		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, 
+	    			*self._model._weights, Fext, *dod_total, self._boundary._mchDirichletTable, 
+					self._model._invJ, self._model._detJ, prop, self._nbiterPCG, 
 					self._thresholdPCG, self._methodPCG]
 		displacement, residue = plasticitysolver.mf_wq_elasticity_3d_py(*inputs)
+
 		return displacement, residue
 
 	# Solve using python

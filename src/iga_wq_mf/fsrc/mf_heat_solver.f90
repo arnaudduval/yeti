@@ -244,6 +244,80 @@ subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     
 end subroutine mf_wq_get_ku_3d_py
 
+subroutine wq_get_bodyheat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
+    !! Computes source vector in 3D
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    integer, intent(in) :: nnz_u, nnz_v, nnz_w
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+    double precision, intent(out) :: result
+    dimension :: result(nr_u*nr_v*nr_w)
+
+    call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                        nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                        nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                        coefs, result)
+
+end subroutine wq_get_bodyheat_3d
+
+subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
+    !! Computes source vector in 3D
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! --------------------
+    integer, parameter :: d = 3
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v
+    double precision, intent(in) :: coefs, JJ
+    dimension :: coefs(nc_total), JJ(d, d-1, nc_total)
+    integer, intent(in) :: nnz_u, nnz_v
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_W_u, data_W_v
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v)
+
+    ! Local data
+    ! ----------
+    double precision :: new_coefs, dsurf, v1, v2, v3
+    dimension :: new_coefs(nc_total), v1(d), v2(d), v3(d)
+    integer :: i
+
+    ! Compute coefficients
+    do i = 1, nc_total
+
+        v1 = JJ(:, 1, i); v2 = JJ(:, 2, i)
+        call crossproduct(v1, v2, v3)
+        dsurf = sqrt(dot_product(v3, v3))
+        new_coefs(i) = coefs(i) * dsurf
+
+    end do
+
+    call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
+                        data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                        new_coefs(:), array_out(:))
+
+end subroutine wq_get_heatflux_3d
+
 subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &

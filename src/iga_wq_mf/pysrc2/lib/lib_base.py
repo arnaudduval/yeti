@@ -183,12 +183,12 @@ def evalDersBasisPy(degree, knotvector, knots, multiplicity=1):
 
 def evalDersBasisFortran(degree, knotvector, knots):
 	" Evaluates B-spline functions at given knots using fortran libraries "
-	B, indi, indj = basis_weights.get_genbasis_csr(degree, knotvector, knots)
+	B, indi, indj = basisweights.get_genbasis_csr(degree, knotvector, knots)
 	return B, indi, indj
 
 def gaussTable(order):
 	" Computes Gauss weights and positions in isoparametric space for a given degree "
-	if order <= 10: pos, wgt = basis_weights.gauss_quadrature_table(order)
+	if order <= 10: pos, wgt = basisweights.gauss_quadrature_table(order)
 	else: raise Warning('Not degree found')
 	return pos, wgt
 
@@ -280,7 +280,7 @@ def genEigenDecomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
 	if coefs is None: mcoefs = np.ones(nc); kcoefs = np.ones(nc)
 	else: [mcoefs, kcoefs] = coefs
 
-	eigenvalues, eigenvectors = assembly.eigen_decomposition_py(indi, indj, B0, W0, 
+	eigenvalues, eigenvectors = interpolation.eigen_decomposition_py(indi, indj, B0, W0, 
 										B1, W1, mcoefs, kcoefs, robin_condition)
 
 	return eigenvalues, eigenvectors

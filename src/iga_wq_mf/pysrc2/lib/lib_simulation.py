@@ -85,11 +85,11 @@ class encoder():
 		if funTemp is not None:  
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
-			Fn = problem.eval_heatForce(funPowDen, indi=dof) 
+			Fn = problem.eval_bodyForce(funPowDen, indi=dof) 
 			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), **{'input': self._part._qpPhy})
 			Fn    -= Knd_ud[dof]
 		else:
-			Fn = problem.eval_heatForce(funPowDen, indi=dof)
+			Fn = problem.eval_bodyForce(funPowDen, indi=dof)
 		
 		return Fn
 	

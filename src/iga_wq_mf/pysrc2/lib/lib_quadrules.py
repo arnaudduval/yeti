@@ -105,7 +105,7 @@ class GaussQuadrature(QuadratureRules):
 		return
 	
 	def evalDersBasisWeights(self):
-		B, indi, indj = basis_weights.get_genbasis_csr(self._degree, self._knotvector, self._quadPtsPos)
+		B, indi, indj = basisweights.get_genbasis_csr(self._degree, self._knotvector, self._quadPtsPos)
 		self._dersBasis   = B
 		self._dersIndices = [indi, indj]
 		nnz = np.shape(B)[0]
@@ -241,7 +241,7 @@ class WeightedQuadrature(QuadratureRules):
 			WQmodel      = WeightedQuadrature(degree_model, kv_model, kwargs=self._kwargs)
 			WQmodel.findQuadraturePositions()
 			size_data_model = (degree_model + 1)*WQmodel._nbqp
-			Bm, Wm, indim, indjm = basis_weights.wq_getbasisweights_csr(WQmodel._degree, WQmodel._knotvector, WQmodel._quadPtsPos, 
+			Bm, Wm, indim, indjm = basisweights.wq_getbasisweights_csr(WQmodel._degree, WQmodel._knotvector, WQmodel._quadPtsPos, 
 													WQmodel._Bshape[0], WQmodel._Bshape[1], size_data_model, WQmodel._quadMethod)
 			# Scale the results
 			Wm[:, :2] = Wm[:, :2]*WQmodel._nbel/self._nbel
@@ -273,7 +273,7 @@ class WeightedQuadrature(QuadratureRules):
 			B = data[:, :2]; W = data[:, 2:]
 
 		else:
-			B, W, indi, indj = basis_weights.wq_getbasisweights_csr(self._degree, self._knotvector, self._quadPtsPos, 
+			B, W, indi, indj = basisweights.wq_getbasisweights_csr(self._degree, self._knotvector, self._quadPtsPos, 
 														self._Bshape[0], self._Bshape[1], size_data, self._quadMethod)
 		
 		self._dersBasis   = B

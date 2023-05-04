@@ -112,11 +112,11 @@ class part():
 		start = time.process_time()
 		inputs = [*self._nbqp, *self._indices, *self._basis, self._ctrlpts]
 		if self._dim == 2:
-			self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_2d(*inputs)
-			self._qpPhy = assembly.interpolate_fieldphy_2d(*inputs)
+			self._Jqp, self._detJ, self._invJ = interpolation.eval_jacobien_2d(*inputs)
+			self._qpPhy = interpolation.interpolate_fieldphy_2d(*inputs)
 		if self._dim == 3:
-			self._Jqp, self._detJ, self._invJ = assembly.eval_jacobien_3d(*inputs)
-			self._qpPhy = assembly.interpolate_fieldphy_3d(*inputs)
+			self._Jqp, self._detJ, self._invJ = interpolation.eval_jacobien_3d(*inputs)
+			self._qpPhy = interpolation.interpolate_fieldphy_3d(*inputs)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
 		return
@@ -139,19 +139,19 @@ class part():
 		# Get position and determinant 
 		inputs = [*self._dim*[samplesize], *indices, *basis, self._ctrlpts]
 		if self._dim == 2:
-			Jinterp, detJinterp = assembly.eval_jacobien_2d(*inputs)[:2]
-			posinterp = assembly.interpolate_fieldphy_2d(*inputs)
+			Jinterp, detJinterp = interpolation.eval_jacobien_2d(*inputs)[:2]
+			posinterp = interpolation.interpolate_fieldphy_2d(*inputs)
 		elif self._dim == 3: 
-			Jinterp, detJinterp = assembly.eval_jacobien_3d(*inputs)[:2]
-			posinterp = assembly.interpolate_fieldphy_3d(*inputs)
+			Jinterp, detJinterp = interpolation.eval_jacobien_3d(*inputs)[:2]
+			posinterp = interpolation.interpolate_fieldphy_3d(*inputs)
 
 		# Get interpolation
 		if u_ctrlpts is not None:
 			u_temp = np.atleast_2d(u_ctrlpts)
 			inputs = [*self._dim*[samplesize], *indices, *basis, u_temp]
 
-			if self._dim == 2:   uinterp = assembly.interpolate_fieldphy_2d(*inputs)    
-			elif self._dim == 3: uinterp = assembly.interpolate_fieldphy_3d(*inputs)
+			if self._dim == 2:   uinterp = interpolation.interpolate_fieldphy_2d(*inputs)    
+			elif self._dim == 3: uinterp = interpolation.interpolate_fieldphy_3d(*inputs)
 			if nbDOF == 1: uinterp = np.ravel(uinterp)
 	
 		else: uinterp = None
