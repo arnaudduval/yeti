@@ -93,11 +93,11 @@ class encoder():
 		
 		return Fn
 	
-	def run_iterativeSolver(self, problem:heatproblem, b):
+	def run_iterativeSolver(self, problem:heatproblem, b, nbIterPCG=None):
 		" Solve steady heat problems using iterative solver "
 		
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblemFT(b)
+		un, residue = problem.solveSteadyHeatProblemFT(b, nbIterPCG=nbIterPCG)
 		stop = time.process_time()
 		time_t = stop - start 
 
@@ -115,7 +115,7 @@ class encoder():
 		timeNoIter = []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.run_iterativeSolver(problem, b=Fn)[-1]
+			time_temp = self.run_iterativeSolver(problem, b=Fn, nbIterPCG=1)[-1]
 			timeNoIter.append(time_temp)
 
 		timeIter, resPCG = [], []
@@ -271,7 +271,6 @@ class decoder():
 		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 
 		if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		ax.legend(loc=0)
 		fig.tight_layout()
 		fig.savefig(savename)
 

@@ -19,7 +19,7 @@ class heatproblem():
 		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = kwargs.get('NRThreshold', 1e-6)
+		self._thresholdNR  = kwargs.get('NRThreshold', 1e-8)
 		self._methodPCG    = kwargs.get('PCGmethod', 'FDC')
 		return
 	
@@ -52,7 +52,7 @@ class heatproblem():
 
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: 
-			inpt   = kwargs.get(['input'])
+			inpt   = kwargs.get('input')
 			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: result = heatsolver.mf_wq_get_ku_3d(coefs, *inputs, u)
@@ -142,7 +142,7 @@ class heatproblem():
 		return uinterp
 
 	# Solve using fortran
-	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
+	def solveInterpolationProblemFT(self, funfield=None, datafield=None, nbIterPCG=None):
 		coefs = None
 		if datafield is not None: coefs = datafield * self._model._detJ
 		if funfield is not None:  coefs = funfield(self._model._qpPhy) * self._model._detJ
@@ -154,8 +154,9 @@ class heatproblem():
 		if self._model._dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)
 
 		# Solve linear system with fortran
+		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		inputs = [self._model._detJ, *self._model._nbqp, *self._model._indices, *self._model._basis, 
-	    		 *self._model._weights, vector, self._nbIterPCG, self._thresholdPCG]
+	    		 *self._model._weights, vector, nbIterPCG, self._thresholdPCG]
 		start = time.process_time()
 		u_interp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
 		stop = time.process_time()
@@ -163,21 +164,21 @@ class heatproblem():
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblemFT(self, b, coefs=None):
-		if not self._material._isConductivityIsotropic: raise Warning('Not possible by now')
+	def solveSteadyHeatProblemFT(self, b, coefs=None, nbIterPCG=None):
 		if coefs is None: 
 			inpt = self._model._qpPhy
 			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
 															self._model._detJ, inpt)
 		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
-		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
+		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
 
 		return sol, residue
 	
-	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, **kwargs):
+	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, nbIterPCG=None, **kwargs):
 		
 		if Ccoefs is None: 
 			temperature = kwargs.get('temperature')
@@ -193,7 +194,8 @@ class heatproblem():
 						self._model._detJ, inpt)
 		
 		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
-		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
+		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
