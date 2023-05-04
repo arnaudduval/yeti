@@ -280,7 +280,7 @@ def genEigenDecomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
 	if coefs is None: mcoefs = np.ones(nc); kcoefs = np.ones(nc)
 	else: [mcoefs, kcoefs] = coefs
 
-	eigenvalues, eigenvectors = interpolation.eigen_decomposition_py(indi, indj, B0, W0, 
+	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, B0, W0, 
 										B1, W1, mcoefs, kcoefs, robin_condition)
 
 	return eigenvalues, eigenvectors

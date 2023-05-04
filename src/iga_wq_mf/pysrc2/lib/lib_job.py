@@ -135,9 +135,9 @@ class heatproblem():
 		# Get position and determinant 
 		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
 		if self._model._dim == 2:
-			uinterp = interpolation.interpolate_fieldphy_2d(*inputs)
+			uinterp = geophy.interpolate_fieldphy_2d(*inputs)
 		elif self._model._dim == 3: 
-			uinterp = interpolation.interpolate_fieldphy_3d(*inputs)
+			uinterp = geophy.interpolate_fieldphy_3d(*inputs)
 		uinterp = np.ravel(uinterp)
 		return uinterp
 

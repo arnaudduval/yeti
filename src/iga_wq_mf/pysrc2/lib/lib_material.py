@@ -106,13 +106,13 @@ class thermomat(material):
 	
 	def eval_capacityCoefficients(self, detJ, inpt): 
 		prop = self._capacity(inpt)
-		coefs, info = interpolation.eval_capacity_coefficient(detJ, prop)
+		coefs, info = geophy.eval_capacity_coefficient(detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
 	
 	def eval_conductivityCoefficients(self, invJ, detJ, inpt):
 		prop = self._conductivity(inpt)
-		coefs, info = interpolation.eval_conductivity_coefficient(invJ, detJ, prop)
+		coefs, info = geophy.eval_conductivity_coefficient(invJ, detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
 	
