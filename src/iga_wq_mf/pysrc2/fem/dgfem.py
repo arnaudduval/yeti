@@ -9,8 +9,8 @@ for each element j of size Deltaj. Here f_k (for k = j-1 and j+1)
 represents the flux at one of the boundaries (left if j-1 and right if j+1)   
 """
 
-from others.__init__ import *
-
+import os, sys, numpy as np
+from matplotlib import pyplot as plt
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/'
 

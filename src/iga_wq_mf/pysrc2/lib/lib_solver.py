@@ -1,6 +1,7 @@
 from lib.__init__ import *
 
 class solver():
+	
 	def __init__(self):
 		self._nbIter       = 100
 		self._thresholdPCG = 1e-10

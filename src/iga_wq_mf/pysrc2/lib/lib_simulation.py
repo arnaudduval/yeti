@@ -131,7 +131,6 @@ class encoder():
 
 		return 
 
-
 class decoder(): 
 
 	def __init__(self, filename=None): 

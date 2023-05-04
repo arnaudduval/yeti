@@ -5,7 +5,10 @@
         - There is no heat source, f = 0
         - Is a linear problem
 """
-from others.__init__ import *
+
+import os, sys, numpy as np
+import matplotlib as mpl
+from matplotlib import pyplot as plt
 from scipy import interpolate
 
 full_path = os.path.realpath(__file__)
