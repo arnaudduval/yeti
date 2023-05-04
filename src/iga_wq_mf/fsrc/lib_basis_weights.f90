@@ -193,43 +193,6 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
 
 end subroutine get_basis_coo
 
-subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
-    !! Gets the indices i and j of all non-zero values of matrix I = B * B.T 
-    !! B and I in CSR format
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in):: nr, nc, nnz_B
-    integer, intent(in) :: indi_B, indj_B
-    dimension :: indi_B(nr+1), indj_B(nnz_B)
-    
-    integer, intent(inout) :: nnz_I
-    integer, intent(out) :: indi_I, indj_I
-    dimension :: indi_I(nr+1), indj_I(*)
-
-    ! Local data
-    ! ----------
-    double precision :: MB, MI, ones
-    dimension :: MB(nr, nc), MI(nr, nr), ones(nnz_B)
-    double precision, allocatable, dimension(:) :: data_I
-
-    ! Compute I = B * B.T
-    ones = 1.d0 
-    call csr2dense(nnz_B, indi_B, indj_B, ones, nr, nc, MB)
-    MI = matmul(MB, transpose(MB))
-    
-    ! Convert dense matrix to CSR format
-    if (nnz_I.le.0) then
-        call dense2csr(nr, nr, MI, nnz_I, indi_I, indj_I, data_I)
-    else
-        allocate(data_I(nnz_I))
-        call dense2csr(nr, nr, MI, nnz_I, indi_I, indj_I, data_I)
-        deallocate(data_I)
-    end if
-
-end subroutine get_I_csr
-
 subroutine create_uniformmaxregular_knotvector(degree, nbel, knotvector)
     !! Gets an open uniform with maximum regularity knot-vector 
 

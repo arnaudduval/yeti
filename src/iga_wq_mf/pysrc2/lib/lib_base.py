@@ -406,11 +406,11 @@ def computeEigenDiag(eig_u, eig_v, eig_w, coefs=[1.0, 1.0, 1.0]):
 def fastDiagonalization(U, V, W, D, array_in, fdtype='steady'):
 	" Compute fast diagonalization using Fortran"
 	if fdtype == 'interp':
-		array_out = heatsolver.fd_interpolation_3d_py(U, V, W, array_in)
+		array_out = heatsolver.fd_interpolation_3d(U, V, W, array_in)
 	elif fdtype == 'steady':
-		array_out = heatsolver.fd_steady_heat_3d_py(U, V, W, D, array_in)
+		array_out = heatsolver.fd_steady_heat_3d(U, V, W, D, array_in)
 	elif fdtype == 'elastic':
-		array_out = plasticitysolver.fd_elasticity_3d_py(U, V, W, D, array_in)
+		array_out = plasticitysolver.fd_elasticity_3d(U, V, W, D, array_in)
 	
 	return array_out
 

@@ -158,7 +158,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
     
 end subroutine wq_get_forcesurf_3d
 
-subroutine wq_get_forceint_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
@@ -203,9 +203,9 @@ subroutine wq_get_forceint_3d_py(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
         end do
     end do
 
-end subroutine wq_get_forceint_3d_py
+end subroutine wq_get_forceint_3d
 
-subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
@@ -222,11 +222,11 @@ subroutine fd_elasticity_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_
     double precision, intent(out) :: array_out
     dimension :: array_out(d, nr_total)
 
-    call fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+    call fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     
-end subroutine fd_elasticity_3d_py
+end subroutine fd_elasticity_3d
 
-subroutine mf_wq_get_su_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             invJ, detJ, properties, array_in, array_out)
@@ -279,14 +279,14 @@ subroutine mf_wq_get_su_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
     call setup_kwargs(mat, nc_total, kwargs)
     
-    call mf_wq_get_su_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_wq_get_su_3d_py
+end subroutine mf_wq_get_su_3d
 
-subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
                             ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, &
@@ -388,10 +388,10 @@ subroutine mf_wq_elasticity_3d_py(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     end do
     deallocate(I_u, I_v, I_w)
 
-    call mf_wq_elasticity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+    call mf_wq_linearelasticity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             U_u, U_v, U_w, Deigen, ndu, ndv, ndw, dod_u, dod_v, dod_w, b, &
                             nbIterPCG, threshold, isPrecond, x, resPCG)
 
-end subroutine mf_wq_elasticity_3d_py
+end subroutine mf_wq_elasticity_3d

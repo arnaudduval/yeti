@@ -55,7 +55,7 @@ class heatproblem():
 			inpt   = kwargs.get(['input'])
 			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = heatsolver.mf_wq_get_ku_3d_py(coefs, *inputs, u)
+		if self._model._dim == 3: result = heatsolver.mf_wq_get_ku_3d(coefs, *inputs, u)
 
 		return result
 	
@@ -66,7 +66,7 @@ class heatproblem():
 			inpt   = kwargs.get(['input'])
 			coefs  = self._material.eval_capacityCoefficients(self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: result = heatsolver.mf_wq_get_cu_3d_py(coefs, *inputs, u)
+		if self._model._dim == 3: result = heatsolver.mf_wq_get_cu_3d(coefs, *inputs, u)
 
 		return result
 
@@ -196,7 +196,7 @@ class heatproblem():
 		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
-		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_transient_linear_3d(*inputs)
+		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
 
 		return sol, residue
 
@@ -298,7 +298,7 @@ class mechaproblem():
 		inputs = [*self._model._nbqp, *self._model._indices, 
 	    			*self._model._basis, *self._model._weights, 
 					self._model._invJ, self._model._detJ, prop]
-		result = plasticitysolver.mf_wq_get_su_3d_py(*inputs, u)
+		result = plasticitysolver.mf_wq_get_su_3d(*inputs, u)
 		return result
 	
 	def eval_bodyForce(self, fun):
@@ -370,7 +370,7 @@ class mechaproblem():
 	    			*self._model._weights, Fext, *dod_total, self._boundary._mchDirichletTable, 
 					self._model._invJ, self._model._detJ, prop, self._nbiterPCG, 
 					self._thresholdPCG, self._methodPCG]
-		displacement, residue = plasticitysolver.mf_wq_elasticity_3d_py(*inputs)
+		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
 		return displacement, residue
 

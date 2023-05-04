@@ -8,7 +8,7 @@
 ! It is implemented conjugated gradient algorithms to solve interpolation problems
 ! ====================================================
 
-subroutine fd_steady_heat_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to steady heat problems
     !! by G. Sanaglli and M. Tani
@@ -33,9 +33,9 @@ subroutine fd_steady_heat_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen
     call setup_preconditionerdiag(solv, nr_total, eigen_diag)
     call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
 
-end subroutine fd_steady_heat_3d_py
+end subroutine fd_steady_heat_3d
 
-subroutine fd_interpolation_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applieg in control points interpolation problems
     !! by G. Sanaglli and M. Tani
@@ -58,7 +58,7 @@ subroutine fd_interpolation_3d_py(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, arr
     allocate(solv)
     call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
 
-end subroutine fd_interpolation_3d_py
+end subroutine fd_interpolation_3d
 
 subroutine wq_find_capacity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -137,7 +137,7 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
 
 end subroutine wq_find_conductivity_diagonal_3d
 
-subroutine mf_wq_get_cu_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             array_in, array_out)
@@ -185,13 +185,13 @@ subroutine mf_wq_get_cu_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     allocate(mat)
     call setup_capacitycoefs(mat, nc_total, coefs)
 
-    call mf_wq_get_cu_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_wq_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_wq_get_cu_3d_py
+end subroutine mf_wq_get_cu_3d
 
-subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             array_in, array_out)
@@ -238,11 +238,11 @@ subroutine mf_wq_get_ku_3d_py(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,
     mat%dimen = 3
     call setup_conductivitycoefs(mat, nc_total, coefs)
 
-    call mf_wq_get_ku_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_wq_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
-end subroutine mf_wq_get_ku_3d_py
+end subroutine mf_wq_get_ku_3d
 
 subroutine wq_get_bodyheat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
@@ -539,7 +539,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
 end subroutine mf_wq_steady_heat_3d
 
-subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 b, thetadt, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -681,4 +681,4 @@ subroutine mf_wq_transient_linear_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, n
 
     end if
 
-end subroutine mf_wq_transient_linear_3d
+end subroutine mf_wq_lineartransient_heat_3d
