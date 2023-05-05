@@ -91,8 +91,8 @@ class step():
 		nbctrlpts_total = np.product(self._nbctrlpts)
 		dod = set(self._thdod)
 		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
-		self._thdod = np.array(list(dod), dtype=int)
-		self._thdof = np.array(list(dof), dtype=int)
+		self._thdod = np.sort(np.array(list(dod), dtype=int))
+		self._thdof = np.sort(np.array(list(dof), dtype=int))
 		return
 
 	def add_DirichletTemperature(self, table=None, temperature=0.0):
@@ -126,8 +126,8 @@ class step():
 		for i, dod in enumerate(self._mchdod):
 			dod = set(dod)
 			dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
-			self._mchdod[i] = np.array(list(dod), dtype=int)
-			self._mchdof[i] = np.array(list(dof), dtype=int)
+			self._mchdod[i] = np.sort(np.array(list(dod), dtype=int))
+			self._mchdof[i] = np.sort(np.array(list(dof), dtype=int))
 		return
 
 	def add_DirichletDisplacement(self, table=None, displacement=0.0):
