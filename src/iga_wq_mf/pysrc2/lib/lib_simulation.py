@@ -121,7 +121,7 @@ class encoder():
 		timeIter, resPCG = [], []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			residue_t, time_temp = self.run_iterativeSolver(problem, b=Fn)[1:]
+			un, residue_t, time_temp = self.run_iterativeSolver(problem, b=Fn)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 				
@@ -129,7 +129,7 @@ class encoder():
 		output = {'iterMethods': self._iterMethods, 'timeNoIter':timeNoIter, 'timeIter': timeIter, 'resPCG': resPCG}
 		if overwrite: self.write_resultsFile(output)
 
-		return 
+		return un
 
 class decoder(): 
 

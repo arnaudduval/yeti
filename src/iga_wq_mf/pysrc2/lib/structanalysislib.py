@@ -16,14 +16,14 @@ class Timoshenko(model1D):
 		name    = kwargs.get('section', 'square').lower()
 		if  name == 'square': 
 			L = kwargs.get('width', 1.0)
-			self.__create_square(L)
+			self._create_square(L)
 		elif name == 'rectangle': 
 			b = kwargs.get('width', 1.0)
 			h = kwargs.get('height', 0.1)
-			self.__create_rectangle(b, h)
+			self._create_rectangle(b, h)
 		elif name == 'circle':
 			R = kwargs.get('radius', 1.0)
-			self.__create_circle(R)
+			self._create_circle(R)
 		else: raise Warning('Geometry not found')
 
 		return
@@ -33,19 +33,19 @@ class Timoshenko(model1D):
 		self._shearmodulus = self._elasticmodulus/(2.0*(1.0+self._poissonratio))
 		return
 
-	def __create_square(self, L):
+	def _create_square(self, L):
 		self._area    = L**2.0
 		self._inertia = L**4.0/12.0
 		self._Ks      = 5.0/6.0
 		return
 
-	def __create_circle(self, R):
+	def _create_circle(self, R):
 		self._area    = np.pi*R**2.0/4.0
 		self._inertia = np.pi*R**4.0/4.0
 		self._Ks      = 5.0/6.0
 		return
 
-	def __create_rectangle(self, b, h):
+	def _create_rectangle(self, b, h):
 		self._area    = b*h
 		self._inertia = b*h**3.0/12.0
 		self._Ks      = 5.0/6.0
@@ -57,7 +57,7 @@ class Timoshenko(model1D):
 		self._GAKs = self._shearmodulus*self._area*self._Ks*np.ones(self._nbqp)
 		return 
 	
-	def __find_freeCntrlPts(self): 
+	def _find_freeCntrlPts(self): 
 		set_dof = set([i for i in range(3*self._nbctrlpts)])
 		set_dod = set(self._dod)
 		diff    = set_dof.difference(set_dod)
@@ -75,7 +75,7 @@ class Timoshenko(model1D):
 		else: raise Warning('Only possible block first or last control point')
 		for i in range(3): 
 			if table[i]: self._gdod.append(values[i])
-		self._dof = self.__find_freeCntrlPts()
+		self._dof = self._find_freeCntrlPts()
 		return
 
 	def compute_stiffness(self, dw):
@@ -174,7 +174,7 @@ class Timoshenko(model1D):
 		else: raise Warning('Only possible first or last control point')
 		F = np.zeros(3*self._nb_ctrlpts)
 		F[dod] = values
-		self._dof = self.__find_freeCntrlPts()
+		self._dof = self._find_freeCntrlPts()
 		return F
 
 	def solve(self, Fext, tol=1e-9, nbIterNL=100):

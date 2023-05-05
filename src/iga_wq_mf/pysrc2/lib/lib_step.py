@@ -42,7 +42,7 @@ class step():
 		self._mchdod = np.array([], dtype=int)
 		return
 		
-	def __get_INCTable(self, nnzByDimension):
+	def _get_INCTable(self, nnzByDimension):
 			" Sets topology table, also known as INC: NURBS coordinates. "
 			# Create INC: NURBS coordinates
 			nnz_total = np.prod(nnzByDimension)
@@ -54,7 +54,7 @@ class step():
 						table[genPos, :] = [i1, i2, i3]
 			return table
 	
-	def __get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
+	def _get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
 		" Gets the indices of the blocked and free control points from table"
 
 		# The table of dirichlet boundaries must be at least 3D
@@ -66,7 +66,7 @@ class step():
 			raise Warning('Table is not well defined')
 
 		# Find nodes
-		INC = self.__get_INCTable(nbctrlpts)
+		INC = self._get_INCTable(nbctrlpts)
 		dod_total = []
 		for i in range(nbDOF):
 			dod = []
@@ -100,7 +100,7 @@ class step():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.activate_DirichletThermal()
-		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
+		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
 		self._thDirichletTable += table
 		
 		if np.isscalar(temperature): 
@@ -135,7 +135,7 @@ class step():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.activate_DirichletMechanical()
-		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
+		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
 		self._mchDirichletTable += table
 		
 		if np.isscalar(displacement): 

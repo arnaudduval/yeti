@@ -218,16 +218,16 @@ class mechamat1D(model1D):
 		self.activate_mechanical()
 		self._Hfun, self._Hderfun = None, None
 		self._Kfun, self._Kderfun = None, None
-		lawName = kwargs.get('law', 'linear').lower()
 		prop    = kwargs.get('property', {})
-		if lawName == 'linear': self.__setLinearModel(prop)
-		if lawName == 'swift' : self.__setSwiftModel(prop)
-		if lawName == 'voce'  : self.__setVoceModel(prop)
+		lawName = prop.get('law', 'linear').lower()
+		if lawName == 'linear': self._setLinearModel(prop)
+		if lawName == 'swift' : self._setSwiftModel(prop)
+		if lawName == 'voce'  : self._setVoceModel(prop)
 		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return
 	
-	def __setLinearModel(self, kwargs:dict):
+	def _setLinearModel(self, kwargs:dict):
 		theta	  = kwargs.get('theta', None)
 		Hbar      = kwargs.get('Hbar', None)
 		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
@@ -236,7 +236,7 @@ class mechamat1D(model1D):
 		self._Hderfun = lambda a: (1-theta)*Hbar
 		return
 	
-	def __setSwiftModel(self, kwargs:dict):
+	def _setSwiftModel(self, kwargs:dict):
 		K = kwargs.get('K', None)
 		n = kwargs.get('exp', None)
 		self._Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
@@ -245,7 +245,7 @@ class mechamat1D(model1D):
 		self._Hderfun = lambda a: 0.0
 		return
 	
-	def __setVoceModel(self, kwargs:dict):
+	def _setVoceModel(self, kwargs:dict):
 		theta = kwargs.get('theta', None)
 		Hbar  = kwargs.get('Hbar', None)
 		Kinf  = kwargs.get('Kinf', None)
@@ -287,7 +287,7 @@ class mechamat1D(model1D):
 			b_new = b
 			Cep = self._elasticmodulus
 
-		else: # Plasti
+		else: # Plastic
 			dgamma = computeDeltaGamma(self, eta_trial, a)
 			a_new = a + dgamma
 			Normal = np.sign(eta_trial)

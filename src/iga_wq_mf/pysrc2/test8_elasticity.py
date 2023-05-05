@@ -16,7 +16,7 @@ from lib.lib_geomdl import Geomdl
 from lib.lib_model import part
 from lib.lib_material import mechamat
 from lib.lib_step import step
-from lib.lib_job import heatproblem
+from lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -46,38 +46,35 @@ table[1, 0, 1] = 1
 table[2, 0, 2] = 1
 boundary.add_DirichletDisplacement(table=table)
 
-# # Set Neumann boundaries
-# forces = [[0 for i in range(3)] for j in range(6)]
-# forces[1] = [1e8, 2e8, 0.0]
-# modelPhy._set_neumann_condition({'mechanical': forces})
-# Fsurf = modelPhy.eval_force_surf()
+# Elasticity problem
+problem = mechaproblem(material, model, boundary)
 
-# # -------------
-# # ELASTICITY
-# # -------------
-# # fig, ax = plt.subplots(nrows=1, ncols=1)
+# Set Neumann boundaries
+def forceFun(P:list):
+	x = P[0, :]
+	y = P[1, :]
+	z = P[2, :]
+	ref  = np.array([1e8, 2e8, 0.0])
+	prop = np.zeros((3, len(x)))
+	for i in range(3): prop[i, :] = ref[i] 
+	return prop
 
-# # # Solve in fortran 
-# # for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
-# #     displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG= 100, methodPCG=methodPCG)
-# #     resPCG = resPCG[resPCG>0]
-# #     ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
+Fsurf = problem.eval_surfForce(forceFun, nbFacePosition=1)
 
-# # ax.set_ybound(lower=1e-8, upper=10)
-# # ax.legend()
-# # ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-# # ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-# # fig.tight_layout()
-# # fig.savefig(folder + geoName + 'ElasRes.png')
+# -------------
+# ELASTICITY
+# -------------
+fig, ax = plt.subplots()
 
-# displacement, resPCG = modelPhy.MFelasticity_fortran(indi=dod, Fext=Fsurf, nbIterPCG=100)
-# disp_app = np.ndarray.flatten(displacement)[dof_gen]
-# relerror = relativeError(disp_app, disp_th)
-# print(relerror)
+# Solve in fortran 
+for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
+    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fsurf, methodPCG=methodPCG)
+    resPCG = resPCG[resPCG>0]
+    ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
 
-# # # strain = modelPhy.compute_strain(displacement)
-# # # strain_cp = []
-# # # for _ in range(6):
-# # # 	strain_cp.append(modelPhy.interpolate_ControlPoints(datafield=strain[_, :]))
-# # # strain_cp = np.array(strain_cp)
-# # # modelPhy.export_results(u_ctrlpts=strain_cp, nbDOF=6)
+ax.set_ybound(lower=1e-8, upper=10)
+ax.legend()
+ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+fig.tight_layout()
+fig.savefig(folder + name + 'ElasRes.png')

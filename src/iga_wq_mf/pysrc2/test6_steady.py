@@ -1,16 +1,18 @@
 from lib.__init__ import *
 from lib.lib_load import *
 from lib.lib_simulation import *
+from lib.lib_base import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test6/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = False
+dataExist   = True
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(5, 6)
-name_list   = ['cb', 'vb', 'tr', 'rqa']
+# name_list   = ['cb', 'vb', 'tr', 'rqa']
+name_list   = ['cb']
 IterMethods = ["WP", "C", "JMC", "TDC"]
 
 def setKprop(P:list):
@@ -22,9 +24,12 @@ def setKprop(P:list):
 	for i in range(3): 
 		for j in range(3):
 			Kprop[i, j, :] = Kref[i, j] 
-	Kprop[0, 0, :] += 0.5*np.abs(y)**1.5 
-	Kprop[1, 1, :] += np.abs(z)
-	Kprop[2, 2, :] += np.abs(x)**0.5
+	Kprop[0, 0, :] += 0.75*np.cos(np.pi*y)
+	Kprop[1, 1, :] += 2*np.exp(-(z-0.5)**2)
+	Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
+	# for i in range(len(x)):
+	# 	if not np.all(np.linalg.eigvals(Kprop[:, :, i]) > 0):
+	# 		raise Warning('It is not a positive matrix')
 	return Kprop 
 
 for cuts in cuts_list:
@@ -50,9 +55,14 @@ for cuts in cuts_list:
 				table    = np.ones((3, 2), dtype=bool)
 				boundary = step(simu._part._nbctrlpts)
 				boundary.add_DirichletTemperature(table=table)
-				simu.simulate(material=mat, boundary=boundary, overwrite=True)
+				un = simu.simulate(material=mat, boundary=boundary, overwrite=True)
+				np.save(folder+'solution', un)
 
 			else :
 				filename   = simu._filename
 				simuOutput = decoder(filename)
 				simuOutput.plot_results(extension='.png', plotLegend=False)
+				ref = np.load(folder+'reference.npy')
+				sol = np.load(folder+'solution.npy')
+				relerror = relativeError(sol, ref, relType='fro')*100
+				print('Relative error: %.5f %%' %relerror)

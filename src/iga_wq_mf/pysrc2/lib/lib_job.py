@@ -11,10 +11,10 @@ class heatproblem():
 		self._model    = model
 		self._boundary = boundary
 		self._kwargs   = kwargs
-		self.__extractInfo()
+		self._extractInfo()
 		return
 	
-	def __extractInfo(self):
+	def _extractInfo(self):
 		kwargs = self._kwargs
 		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
@@ -90,8 +90,8 @@ class heatproblem():
 			return direction, side
 
 		vector = np.zeros(self._model._nbctrlpts_total)
-		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
-		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
+		INC_ctrlpts = self._boundary._get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary._get_INCTable(self._model._nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -164,21 +164,23 @@ class heatproblem():
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblemFT(self, b, coefs=None, nbIterPCG=None):
+	def solveSteadyHeatProblemFT(self, b, coefs=None, nbIterPCG=None, methodPCG=None):
 		if coefs is None: 
 			inpt = self._model._qpPhy
 			coefs  = self._material.eval_conductivityCoefficients(self._model._invJ, 
 															self._model._detJ, inpt)
 		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if methodPCG is None: methodPCG = self._methodPCG
+		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
 
 		return sol, residue
 	
-	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, nbIterPCG=None, **kwargs):
+	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, 
+				       					nbIterPCG=None, methodPCG=None, **kwargs):
 		
 		if Ccoefs is None: 
 			temperature = kwargs.get('temperature')
@@ -195,7 +197,8 @@ class heatproblem():
 		
 		tmp    = self.get_input4MatrixFree(table=self._boundary._thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if methodPCG is None: methodPCG = self._methodPCG
+		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, methodPCG]
 
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
@@ -282,12 +285,12 @@ class mechaproblem():
 		self._model    = model
 		self._boundary = boundary
 		self._kwargs   = kwargs
-		self.__extractInfo()
+		self._extractInfo()
 		return
 	
-	def __extractInfo(self):
+	def _extractInfo(self):
 		kwargs = self._kwargs
-		self._nbiterPCG    = kwargs.get('nbIterations', 100)
+		self._nbIterPCG    = kwargs.get('nbIterations', 100)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
 		self._methodPCG    = 'JMC'
 		return
@@ -322,8 +325,8 @@ class mechaproblem():
 			return direction, side
 
 		vector = np.zeros((self._model._dim, self._model._nbctrlpts_total))
-		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
-		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
+		INC_ctrlpts = self._boundary._get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary._get_INCTable(self._model._nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -360,7 +363,7 @@ class mechaproblem():
 		return vector
 	
 	# Solve using fortran
-	def solveElasticityProblemFT(self, Fext):
+	def solveElasticityProblemFT(self, Fext, nbIterPCG=None, methodPCG=None):
 		self._material.verifyMechanicalProperties()
 		dod_total = deepcopy(self._boundary._mchdod)
 		for i, dod in enumerate(dod_total):
@@ -368,10 +371,11 @@ class mechaproblem():
 			dod_total[i] = tmp
 
 		prop = [self._material._elasticmodulus, self._material._poissonratio]
+		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
+		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, 
 	    			*self._model._weights, Fext, *dod_total, self._boundary._mchDirichletTable, 
-					self._model._invJ, self._model._detJ, prop, self._nbiterPCG, 
-					self._thresholdPCG, self._methodPCG]
+					self._model._invJ, self._model._detJ, prop, nbIterPCG, self._thresholdPCG, methodPCG]
 		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
 		return displacement, residue

@@ -130,7 +130,7 @@ class mechamat(material):
 		self._Hfun = None; self._Hderfun = None
 		return
 	
-	def __setExtraMechanicalProperties(self):
+	def _setExtraMechanicalProperties(self):
 		E  = self._elasticmodulus
 		nu = self._poissonratio
 		self._lame_lambda, self._lame_mu, self._lame_bulk = None, None, None
@@ -149,7 +149,7 @@ class mechamat(material):
 		self._poissonratio   = kwargs.get('poisson_ratio', None)
 		self._elasticlimit   = kwargs.get('elastic_limit', None)
 		self._density        = kwargs.get('density', None)
-		self.__setExtraMechanicalProperties()
+		self._setExtraMechanicalProperties()
 		return
 	
 	def verifyMechanicalProperties(self):

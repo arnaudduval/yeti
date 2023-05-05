@@ -24,10 +24,12 @@ def cropImage(filename):
 	Image.fromarray(ROI).save(filename)
 	return 
 
-def relativeError(array_interp, array_th):
+def relativeError(array_interp, array_th, relType='inf'):
 	error = array_th - array_interp
-	try:    relError = np.linalg.norm(error, np.inf)/np.linalg.norm(array_th, np.inf)
-	except: relError = sp.linalg.norm(error, np.inf)/sp.linalg.norm(array_th, np.inf)
+	if relType == 'inf': arg = np.inf
+	elif relType == 'fro': arg = None
+	try:    relError = np.linalg.norm(error, ord=arg)/np.linalg.norm(array_th, ord=arg)
+	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
 	return relError
 
 def sigmoid(x, c1=1, c2=0):
@@ -226,6 +228,7 @@ def lobattoTable(order):
 			0.378_474_956_297_847,
 			0.066_666_666_666_667]
 	else: raise Warning('Not defined')
+	pos = np.array(pos); wgt = np.array(wgt)
 	return pos, wgt
 
 # =========================
