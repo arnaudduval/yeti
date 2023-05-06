@@ -314,7 +314,7 @@ class mechamat1D(model1D):
 		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
 		disp = np.zeros(np.shape(Fext))
 
-		strain  = np.zeros((nbqp, np.shape(Fext)[1]))
+		eps     = np.zeros((nbqp, np.shape(Fext)[1]))
 		plastic = np.zeros((nbqp, np.shape(Fext)[1]))
 		stress  = np.zeros((nbqp, np.shape(Fext)[1]))
 		moduleE = np.zeros((nbqp, np.shape(Fext)[1]))
@@ -329,12 +329,12 @@ class mechamat1D(model1D):
 
 				# Compute strain as function of displacement
 				d_n1[dof] = disp[dof, i-1] + ddisp
-				eps = self.interpolate_strain(d_n1)
+				strain = self.interpolate_strain(d_n1)
 
 				# Find closest point projection 
 				for k in range(nbqp):
-					result1 = self.returnMappingAlgorithm(law, eps[k], pls_n0[k], a_n0[k], b_n0[k])
-					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
+					tmp = self.returnMappingAlgorithm(law, strain[k], pls_n0[k], a_n0[k], b_n0[k])
+					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = tmp
 
 				# Compute Fint
 				Fint = self.compute_intForce(sigma)
@@ -349,14 +349,14 @@ class mechamat1D(model1D):
 
 			# Update values in output
 			disp[:, i]   = d_n1
-			strain[:, i] = eps
+			eps[:, i]    = strain
 			stress[:, i] = sigma
 			plastic[:, i] = ep_n1
 			moduleE[:, i] = Cep
 
 			pls_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return disp, strain, stress, plastic, moduleE
+		return disp, eps, stress, plastic, moduleE
 
 def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable

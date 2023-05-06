@@ -290,9 +290,11 @@ class mechaproblem():
 	
 	def _extractInfo(self):
 		kwargs = self._kwargs
-		self._nbIterPCG    = kwargs.get('nbIterations', 100)
+		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
+		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
-		self._methodPCG    = 'JMC'
+		self._thresholdNR  = kwargs.get('NRThreshold', 1e-8)
+		self._methodPCG    = kwargs.get('PCGmethod', 'JMC')
 		return
 	
 	# Matrix free functions
@@ -361,7 +363,7 @@ class mechaproblem():
 		vector[:, CPList] = tmp
 
 		return vector
-	
+
 	# Solve using fortran
 	def solveElasticityProblemFT(self, Fext, nbIterPCG=None, methodPCG=None):
 		self._material.verifyMechanicalProperties()
@@ -381,6 +383,83 @@ class mechaproblem():
 		return displacement, residue
 
 	# Solve using python
-	def solvePlasticityProblem(self, Fext): 
+	def compute_strain(self, u, isVoigt=False):
+		" Compute strain field from displacement field "
+
+		if self._dim != 3: raise Warning('Not yet')
+		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, self._model._invJ, u, isVoigt]
+		eps    = plasticitysolver.interpolate_strain_3d(*inputs)
+
+		return eps
+	
+	def compute_intForce(self, coefs):
+		"Compute internal force using sigma coefficients "
+
+		if self._dim != 3: raise Warning('Not yet')
+		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._weights]
+		Fint = plasticitysolver.wq_get_forceint_3d(*inputs)
+
+		return Fint
+	
+	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None): 
+		if self._dim != 3: raise Warning('Only for 3D')
+		if not self._material._isPlasticityPossible: raise Warning('Plasticity not defined')
+		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
+		if methodPCG is None: methodPCG = self._methodPCG
+		self._material.verifyMechanicalProperties()
+
+		d     = self._model._dim
+		ddl   = int(d*(d+1)/2)
+		law   = self._material._mechaBehavLaw
+
+		nbqp_total = self._model._nbqp_total
+		pls_n0 = np.zeros((ddl, nbqp_total))
+		a_n0  = np.zeros(nbqp_total)
+		b_n0  = np.zeros((ddl, nbqp_total))
+		pls_n1 = np.zeros((ddl, nbqp_total))
+		a_n1  = np.zeros(nbqp_total)
+		b_n1  = np.zeros((ddl, nbqp_total))
+		sigma = np.zeros((ddl, nbqp_total))
+		Cep   = np.zeros((ddl, ddl, nbqp_total))
+		disp  = np.zeros(np.shape(Fext))
+
+		DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
+
+		for i in range(1, np.shape(Fext)[2]):
+
+			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
+			Fstep = Fext[:, :, i]
+
+			for j in range(self._nbIterNR): # Solver Newton-Raphson
+				print('Step %d, iteration %d' %(i+1, j+1))
+
+				# Compute strain as function of displacement
+				d_n1 = disp[:, :, i-1] + ddisp
+				strain = self.compute_strain(d_n1)
+	
+				# Closest point projection in perfect plasticity
+				for k in range(nbqp_total):
+					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self._material.returnMappingAlgorithm(law, strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
+					sigma[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
+
+				# # Compute coefficients to compute Fint and Stiffness
+				# coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
+
+				# # Compute Fint 
+				# Fint = self.compute_intForce(coef_Fint)
+				# dF   = Fstep - Fint
+				# clean_dirichlet_3d(dF, indi) 
+				# prod1 = block_dot_product(d, dF, dF)
+				# resNL = np.sqrt(prod1)
+				# print('Relative error: %.5e' %resNL)
+				# if resNL <= self._thresholdNR: break
+				
+				# vtmp   = self.solveElasticityProblemFT(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
+				# ddisp += vtmp 
+		
+			disp[:, :, i] = d_n1			
+			pls_n0 = np.copy(pls_n1)
+			a_n0 = np.copy(a_n1)
+			b_n0 = np.copy(b_n1)
 		return
 

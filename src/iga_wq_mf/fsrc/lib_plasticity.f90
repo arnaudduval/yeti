@@ -10,69 +10,6 @@
 ! In this way, we try to avoid some misconceptions when using Voigt notation
 ! ==========================
 
-subroutine symtensor2array(dimen, nvoigt, matrix, array)
-    !! Returns the upper triangular part of a matrix
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen, nvoigt
-    double precision, intent(in) :: matrix
-    dimension :: matrix(dimen, dimen)
-    double precision, intent(out) :: array
-    dimension :: array(nvoigt)
-
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-
-    array = 0.d0; k = 0
-    do i = 1, dimen
-        k = k + 1
-        array(k) = matrix(i, i)
-    end do
-    
-    do i = 1, dimen-1
-        do j = i+1, dimen
-            k = k + 1
-            array(k) = matrix(i, j)
-        end do
-    end do
-
-end subroutine symtensor2array
-
-subroutine array2symtensor(dimen, nvoigt, array, matrix)
-    !! Returns the matrix built from the upper triangular part
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen, nvoigt
-    double precision, intent(in) :: array
-    dimension :: array(nvoigt)
-    double precision, intent(out) :: matrix
-    dimension :: matrix(dimen, dimen)
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-
-    matrix = 0.d0; k = 0
-    do i = 1, dimen
-        k = k + 1
-        matrix(i, i) = array(k)
-    end do
-    
-    do i = 1, dimen-1
-        do j = i+1, dimen
-            k = k + 1
-            matrix(i, j) = array(k)
-            matrix(j, i) = array(k)
-        end do
-    end do
-
-end subroutine array2symtensor
-
 subroutine compute_stress_vonmises(dimen, tensor, VM)
     !! Computes equivalent stress with Von Mises formula of a second-order stress-like tensor.
     !! Given tensor is written in Voigt notation

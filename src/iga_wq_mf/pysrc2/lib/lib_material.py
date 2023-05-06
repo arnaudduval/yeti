@@ -340,3 +340,20 @@ def computeVonMisesStress(tensor):
 	vm = np.linalg.norm(dev, axis=(1, 2))
 	vm = np.sqrt(3.0/2.0)*vm
 	return vm
+
+def clean_dirichlet(A, dod):
+	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+		A is actually a vector arranged following each dimension [Au, Av, Aw]
+	"""
+	dim = np.size(A, axis=1)
+	for i in range(dim): A[i, dod[i]] = 0.0
+	return
+
+def block_dot_product(d, A, B):
+	""" Computes dot product of A and B. 
+		Both are actually vectors arranged following each dimension
+		A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
+	"""
+	result = 0.0
+	for i in range(d): result += A[i, :] @ B[i, :]
+	return result
