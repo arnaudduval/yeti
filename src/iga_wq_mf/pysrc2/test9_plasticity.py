@@ -35,7 +35,8 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA)
 
 # Add material 
-kwargs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9}
+kwargs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
+			'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
 material = mechamat(kwargs)
 
 # Set Dirichlet boundaries
@@ -60,21 +61,8 @@ def forceFun(P:list):
 	return prop
 
 Fsurf = problem.eval_surfForce(forceFun, nbFacePosition=1)
+nbStep = 6; dt = 1/nbStep
+Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
+for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-# -------------
-# ELASTICITY
-# -------------
-fig, ax = plt.subplots()
-
-# Solve in fortran 
-for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
-    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fsurf, methodPCG=methodPCG)
-    resPCG = resPCG[resPCG>0]
-    ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
-
-ax.set_ybound(lower=1e-8, upper=10)
-ax.legend()
-ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-fig.tight_layout()
-fig.savefig(folder + name + 'ElasRes.png')
+displacement, stress_vm = problem.solvePlasticityProblem(Fext=Fext)

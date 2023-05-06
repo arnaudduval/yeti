@@ -119,15 +119,54 @@ class thermomat(material):
 	def eval_heatForceCoefficients(self, fun, detJ, qp): 
 		coefs = fun(qp)*detJ
 		return coefs
-	
-class mechamat(material):
-	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
-	def __init__(self, **kwargs):
-		super().__init__()
-		self._kwargs = kwargs
-		self.getInfo()
+
+class plasticLaw():
+	def __init__(self, elasticmodulus, elasticlimit, kwargs:dict):
+		self._elasticlimit   = elasticlimit
+		self._elasticmodulus = elasticmodulus
 		self._Kfun = None; self._Kderfun = None
 		self._Hfun = None; self._Hderfun = None
+		lawName = kwargs.get('name', 'linear').lower()
+		if lawName == 'linear': self._setLinearModel(kwargs)
+		if lawName == 'swift' : self._setSwiftModel(kwargs)
+		if lawName == 'voce'  : self._setVoceModel(kwargs)
+		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
+		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
+		return	
+	
+	def _setLinearModel(self, kwargs:dict):
+		theta	  = kwargs.get('theta', None)
+		Hbar      = kwargs.get('Hbar', None)
+		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
+		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kderfun = lambda a: theta*Hbar
+		self._Hderfun = lambda a: (1-theta)*Hbar
+		return
+	
+	def _setSwiftModel(self, kwargs:dict):
+		K = kwargs.get('K', None)
+		n = kwargs.get('exp', None)
+		self._Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
+		self._Hfun = lambda a: 0.0
+		self._Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
+		self._Hderfun = lambda a: 0.0
+		return
+	
+	def _setVoceModel(self, kwargs:dict):
+		theta = kwargs.get('theta', None)
+		Hbar  = kwargs.get('Hbar', None)
+		Kinf  = kwargs.get('Kinf', None)
+		delta = kwargs.get('delta', None)
+		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
+		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
+		self._Hderfun = lambda a: (1-theta)*Hbar
+		return
+class mechamat(material):
+	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
+	def __init__(self, kwargs:dict):
+		super().__init__()
+		self.getInfo(kwargs)
 		return
 	
 	def _setExtraMechanicalProperties(self):
@@ -143,12 +182,16 @@ class mechamat(material):
 			self._lame_bulk = bulk
 		return
 	
-	def getInfo(self):
-		kwargs = self._kwargs
+	def getInfo(self, kwargs:dict):		
 		self._elasticmodulus = kwargs.get('elastic_modulus', None)
 		self._poissonratio   = kwargs.get('poisson_ratio', None)
 		self._elasticlimit   = kwargs.get('elastic_limit', None)
 		self._density        = kwargs.get('density', None)
+		plasticKwargs 		 = kwargs.get('law', None)
+		self._isPlasticityPossible = False
+		if plasticKwargs is not None: 
+			self._isPlasticityPossible = True
+			self._mechaBehavLaw = plasticLaw(self._elasticmodulus, self._elasticlimit, plasticKwargs)
 		self._setExtraMechanicalProperties()
 		return
 	
@@ -163,20 +206,20 @@ class mechamat(material):
 		coefs = fun(qp)*detJ*self._density
 		return coefs
 	
-	def returnMappingAlgorithm(self, strain, pls, a, b):
+	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(self, a_n0, eta_trial, nbIter=20, threshold=1e-8):
+		def computeDeltaGamma(law: plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-8):
 			dgamma = 0.0
 			a_n1 = a_n0
 			for i in range(nbIter):
-				dH = self._Hfun(a_n1) - self._Hfun(a_n0) 
-				G  = (-np.sqrt(2.0/3.0)*self._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(1, 2)) 
-					- (2.0*self._lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
+				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
+				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(1, 2)) 
+					- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
 				if np.abs(G) <=threshold: break
-				dG = - 2.0*(self._lame_mu + (self._Hderfun(a_n1) + self._Kderfun(a_n1))/3.0)
+				dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
 				dgamma -= G/dG
 				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
 
@@ -202,7 +245,7 @@ class mechamat(material):
 
 		# Check yield condition
 		norm_trial = np.linalg.norm(eta_trial, axis=(1, 2))
-		f_trial = norm_trial - np.sqrt(2.0/3.0)*self._Kfun(a)
+		f_trial = norm_trial - np.sqrt(2.0/3.0)*law._Kfun(a)
 		sigma   = s_trial
 		for i in range(dim): sigma[i, i, :] += self._lame_bulk*traceStrain
 		Cep[0, :] = self._lame_lambda; Cep[1, :] = self._lame_mu
@@ -213,7 +256,7 @@ class mechamat(material):
 			return
 
 		# Compute plastic-strain increment
-		dgamma = computeDeltaGamma(self)
+		dgamma = computeDeltaGamma(law, self._lame_mu, a, eta_trial)
 
 		# Update internal hardening variable
 		a_new = a + np.sqrt(2.0/3.0)*dgamma
@@ -231,11 +274,11 @@ class mechamat(material):
 		pls_new = symtensor2array(Tpls)
 
 		# Update backstress
-		Tb += np.sqrt(2.0/3.0)*(self._Hfun(a_new) - self._Hfun(a))*Normal
+		Tb += np.sqrt(2.0/3.0)*(law._Hfun(a_new) - law._Hfun(a))*Normal
 		b_new = symtensor2array(Tb)
 
 		# Update new coefficients
-		somme = self._Kderfun(a_new) + self._Hderfun(a_new)
+		somme = law._Kderfun(a_new) + law._Hderfun(a_new)
 		c1 = 2*self._lame_mu*dgamma/norm_trial
 		c2 = 1.0/(1+somme/(3*self._lame_mu)) - c1
 		Cep[0, :] = self._lame_lambda + 2.0/3.0*self._lame_mu*c1

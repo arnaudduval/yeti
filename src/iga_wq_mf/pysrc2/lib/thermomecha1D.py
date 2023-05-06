@@ -9,6 +9,7 @@ import numpy as np
 from lib.__init__ import *
 from lib.lib_base import array2csr_matrix, evalDersBasisFortran
 from lib.lib_quadrules import *
+from lib.lib_material import plasticLaw
 
 class model1D:
 	def __init__(self, **kwargs):
@@ -216,59 +217,27 @@ class mechamat1D(model1D):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.activate_mechanical()
-		self._Hfun, self._Hderfun = None, None
-		self._Kfun, self._Kderfun = None, None
-		prop    = kwargs.get('property', {})
-		lawName = prop.get('law', 'linear').lower()
-		if lawName == 'linear': self._setLinearModel(prop)
-		if lawName == 'swift' : self._setSwiftModel(prop)
-		if lawName == 'voce'  : self._setVoceModel(prop)
-		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
-		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
-		return
-	
-	def _setLinearModel(self, kwargs:dict):
-		theta	  = kwargs.get('theta', None)
-		Hbar      = kwargs.get('Hbar', None)
-		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
-		self._Hfun = lambda a: (1-theta)*Hbar*a
-		self._Kderfun = lambda a: theta*Hbar
-		self._Hderfun = lambda a: (1-theta)*Hbar
-		return
-	
-	def _setSwiftModel(self, kwargs:dict):
-		K = kwargs.get('K', None)
-		n = kwargs.get('exp', None)
-		self._Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
-		self._Hfun = lambda a: 0.0
-		self._Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
-		self._Hderfun = lambda a: 0.0
-		return
-	
-	def _setVoceModel(self, kwargs:dict):
-		theta = kwargs.get('theta', None)
-		Hbar  = kwargs.get('Hbar', None)
-		Kinf  = kwargs.get('Kinf', None)
-		delta = kwargs.get('delta', None)
-		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
-		self._Hfun = lambda a: (1-theta)*Hbar*a
-		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
-		self._Hderfun = lambda a: (1-theta)*Hbar
+		prop = kwargs.get('property', {})
+		plasticKwargs  = prop.get('law', None)
+		self._isPlasticityPossible = False
+		if plasticKwargs is not None: 
+			self._isPlasticityPossible = True
+			self._mechaBehavLaw        = plasticLaw(self._elasticmodulus, self._elasticlimit, plasticKwargs)
 		return
 
-	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-8):
+	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b, threshold=1e-8):
 		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(self, eta_trial, a_n0, nbIter=20, threshold=1e-8):
+		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=20, threshold=1e-8):
 			dgamma = 0.0
 			a_n1   = a_n0 
 			for i in range(nbIter):
-				dH = self._Hfun(a_n1) - self._Hfun(a_n0) 
-				G  = -self._Kfun(a_n1) + np.abs(eta_trial) - (self._elasticmodulus*dgamma + dH)
+				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
+				G  = -law._Kfun(a_n1) + np.abs(eta_trial) - (E*dgamma + dH)
 				if np.abs(G) <=threshold: break
-				dG = - (self._elasticmodulus + self._Hderfun(a_n1) + self._Kderfun(a_n1))
+				dG = - (E + law._Hderfun(a_n1) + law._Kderfun(a_n1))
 				dgamma -= G/dG
 				a_n1   = a_n0 + dgamma 
 			return dgamma
@@ -278,7 +247,7 @@ class mechamat1D(model1D):
 		eta_trial   = sigma_trial - b
 
 		# Check yield status
-		f_trial = np.abs(eta_trial) - self._Kfun(a)
+		f_trial = np.abs(eta_trial) - law._Kfun(a)
 
 		if f_trial <= threshold: # Elastic
 			stress = sigma_trial
@@ -288,13 +257,13 @@ class mechamat1D(model1D):
 			Cep = self._elasticmodulus
 
 		else: # Plastic
-			dgamma = computeDeltaGamma(self, eta_trial, a)
+			dgamma = computeDeltaGamma(law, self._elasticmodulus, eta_trial, a)
 			a_new = a + dgamma
 			Normal = np.sign(eta_trial)
 			stress = sigma_trial - dgamma*self._elasticmodulus*Normal
 			pls_new = pls + dgamma*Normal
-			b_new = b + (self._Hfun(a_new)-self._Hfun(a))*Normal
-			somme = self._Kderfun(a_new) + self._Hderfun(a_new)
+			b_new = b + (law._Hfun(a_new) - law._Hfun(a))*Normal
+			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
 			Cep = self._elasticmodulus*somme/(self._elasticmodulus + somme)
 
 		return [stress, pls_new, a_new, b_new, Cep]
@@ -336,9 +305,11 @@ class mechamat1D(model1D):
 	def solve(self, Fext=None, threshold=1e-8, nbIterNL=10):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
+		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
+		law  = self._mechaBehavLaw
 		nbqp = self._nbqp
 		dof  = self._dof
-		ep_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
+		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		ep_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
 		disp = np.zeros(np.shape(Fext))
@@ -362,7 +333,7 @@ class mechamat1D(model1D):
 
 				# Find closest point projection 
 				for k in range(nbqp):
-					result1 = self.returnMappingAlgorithm(eps[k], ep_n0[k], a_n0[k], b_n0[k])
+					result1 = self.returnMappingAlgorithm(law, eps[k], pls_n0[k], a_n0[k], b_n0[k])
 					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = result1
 
 				# Compute Fint
@@ -383,7 +354,7 @@ class mechamat1D(model1D):
 			plastic[:, i] = ep_n1
 			moduleE[:, i] = Cep
 
-			ep_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
+			pls_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
 
 		return disp, strain, stress, plastic, moduleE
 

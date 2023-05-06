@@ -13,12 +13,11 @@ length       = 1.0
 degree, nbel = 4, 51
 knotvector   = createKnotVector(degree, nbel)
 
-mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'Hbar':1445, 'theta':1.0}
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'K':2e4, 'exp':0.5}
+mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'voce', 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}}
+# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
-kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector,
-        'quadrule': 'wq', 'law': 'linear', 'property': mechaprop}
+kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'property': mechaprop}
 model = mechamat1D(**kwargs)
 model.set_DirichletCondition(table=[1, 0])
 

@@ -9,9 +9,9 @@ folder = os.path.dirname(full_path) + '/results/t1dim/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-mechaprop    = {'law': 'swift', 'elastic_modulus':200e3, 'elastic_limit':506, 'K':2e4, 'exp':0.5}
-# mechaprop    = {'law': 'linear', 'elastic_modulus':200e3, 'elastic_limit':506, 'Hbar':1445, 'theta':1.0}
-# mechaprop    = {'law': 'voce', 'elastic_modulus':200e3, 'elastic_limit':506, 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}
+# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'voce', 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}}
+mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 length       = 1.0
 nbSteps      = 101
 
