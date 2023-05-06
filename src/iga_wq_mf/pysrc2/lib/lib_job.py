@@ -298,14 +298,19 @@ class mechaproblem():
 		return
 	
 	# Matrix free functions
-	def eval_mfStiffness(self, u):
+	def eval_mfStiffness(self, displacement, kwargs=None):
 		if self._model._dim != 3: raise Warning('Until now not done')
 		self._material.verifyMechanicalProperties()
-		prop = [self._material._elasticmodulus, self._material._poissonratio]
+		if kwargs is None: 
+			dimen  = self._model._dim
+			nvoigt = int(dimen*(dimen+1)/2)
+			kwargs = np.zeros((nvoigt+3, self._model._nbqp_total))
+			kwargs[0, :] = self._material._lame_lambda
+			kwargs[1, :] = self._material._lame_mu
 		inputs = [*self._model._nbqp, *self._model._indices, 
 	    			*self._model._basis, *self._model._weights, 
-					self._model._invJ, self._model._detJ, prop]
-		result = plasticitysolver.mf_wq_get_su_3d(*inputs, u)
+					self._model._invJ, self._model._detJ, kwargs]
+		result = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
 		return result
 	
 	def eval_bodyForce(self, fun):
@@ -383,21 +388,21 @@ class mechaproblem():
 		return displacement, residue
 
 	# Solve using python
-	def compute_strain(self, u, isVoigt=False):
+	def compute_strain(self, displacement, isVoigt=False):
 		" Compute strain field from displacement field "
 
 		if self._dim != 3: raise Warning('Not yet')
-		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, self._model._invJ, u, isVoigt]
+		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, self._model._invJ, displacement, isVoigt]
 		eps    = plasticitysolver.interpolate_strain_3d(*inputs)
 
 		return eps
 	
-	def compute_intForce(self, coefs):
+	def compute_intForce(self, stress):
 		"Compute internal force using sigma coefficients "
 
 		if self._dim != 3: raise Warning('Not yet')
-		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._weights]
-		Fint = plasticitysolver.wq_get_forceint_3d(*inputs)
+		inputs = [stress, *self._model._nbqp, *self._model._indices, *self._model._weights]
+		Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
 
 		return Fint
 	

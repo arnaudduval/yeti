@@ -158,52 +158,47 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
     
 end subroutine wq_get_forcesurf_3d
 
-subroutine wq_get_forceint_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
+subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            invJ, detJ, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
     !! IN CSR FORMAT
 
+    use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3
+    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(dimen*dimen, nc_total)
+    double precision, intent(in) :: stress
+    dimension :: stress(nvoigt, nc_total)
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
                     indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+    double precision, intent(in) :: invJ, detJ
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total) 
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v*nr_w)
 
     ! Local data
     ! ----------
-    double precision :: array_temp
-    dimension :: array_temp(nr_u*nr_v*nr_w)
-    integer :: i, j, r, zeta(dimen)
-    
-    array_out = 0.d0
-    do i = 1, dimen
-        do j = 1, dimen
-        
-            r = j + (i-1)*dimen
-            zeta = 1; zeta(j) = 3
-            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
-                                coefs(r, :), array_temp)
-            array_out(i, :) = array_out(i, :) + array_temp
-            
-        end do
-    end do
+    type(mecamat), pointer :: mat
+    integer :: nr_total
 
-end subroutine wq_get_forceint_3d
+    allocate(mat)
+    mat%dimen = dimen
+    mat%nvoigt = nvoigt
+    call setup_geo(mat, nc_total, invJ, detJ)
+    nr_total = nr_u*nr_v*nr_w
+    call wq_internalforce_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
+
+end subroutine wq_get_intforce_3d
 
 subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -222,19 +217,19 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     double precision, intent(out) :: array_out
     dimension :: array_out(d, nr_total)
 
-    call fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
+    call fastdiag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
     
 end subroutine fd_elasticity_3d
 
 subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            invJ, detJ, properties, array_in, array_out)
+                            invJ, detJ, kwargs, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
 
-    use linearelastoplasticity
+    use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------
@@ -249,8 +244,8 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision :: invJ, detJ, properties(2)
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total)  
+    double precision :: invJ, detJ, kwargs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -266,19 +261,17 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    double precision :: kwargs(nvoigt+3, nc_total)
     
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    call initialize_mecamat(mat, dimen, properties(1), properties(1), 1.d0, properties(2), huge(0.0d0))
+    allocate(mat)
+    mat%dimen  = dimen
+    mat%nvoigt = nvoigt
     call setup_geo(mat, nc_total, invJ, detJ)
-    mat%isElastic = .true.
-
-    kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
-    call setup_kwargs(mat, nc_total, kwargs)
-    
+    call setup_jacobienjacobien(mat)
+    call setup_jacobiennormal(mat, kwargs)
     call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -298,7 +291,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     !! This function is adapted to python 
     !! IN CSR FORMAT 
 
-    use linearelastoplasticity
+    use elastoplasticity
     implicit none 
     ! Input / output data
     ! -------------------
@@ -348,9 +341,9 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     isPrecond = .true.
     if (methodPCG.eq.'WP') isPrecond = .false.
 
-    call initialize_mecamat(mat, dimen, properties(1), properties(1), 1.d0, properties(2), huge(0.0d0))
+    call initialize_mecamat(mat, dimen, properties(1), properties(2), huge(0.0d0))
     call setup_geo(mat, nc_total, invJ, detJ)
-    mat%isElastic = .true.
+    call setup_jacobienjacobien(mat)
 
     ! Eigen decomposition
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
@@ -376,7 +369,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
     kwargs = 0.d0; kwargs(1, :) = mat%lambda; kwargs(2, :) = mat%mu
-    call setup_kwargs(mat, nc_total, kwargs)
+    call setup_jacobiennormal(mat, kwargs)
     allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
     I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
     if (methodPCG.eq.'JMC') call compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)

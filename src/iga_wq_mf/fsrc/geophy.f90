@@ -290,6 +290,40 @@ subroutine eval_conductivity_coefficient(dimen, nnzJ, invJ, detJ, nnzP, prop, co
     
 end subroutine eval_conductivity_coefficient
 
+subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
+    
+    use elastoplasticity
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, nnz
+    double precision, intent(in) :: invJ, detJ
+    dimension :: invJ(dimen, dimen, nnz), detJ(nnz)
+    double precision, target, intent(in) :: stress
+    dimension :: stress(dimen, nnz)
+
+    double precision, intent(out) :: coefs
+    dimension :: coefs(dimen, dimen, nnz)
+
+    ! Local data
+    ! ----------
+    type(mecamat), pointer :: mat
+    double precision :: Tstress
+    dimension :: Tstress(dimen, dimen)
+    integer :: i
+
+    allocate(mat)
+    mat%dimen  = dimen
+    mat%nvoigt = dimen*(dimen+1)/2
+    call setup_geo(mat, nnz, invJ, detJ)
+
+    do i = 1, nnz
+        call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
+        coefs(:,:,i) = matmul(mat%invJJ(:,:,i), Tstress)*mat%detJJ(i)
+    end do
+
+end subroutine eval_intforce_coefficient
+
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
                                 Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD

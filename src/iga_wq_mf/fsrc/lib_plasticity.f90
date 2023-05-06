@@ -10,37 +10,7 @@
 ! In this way, we try to avoid some misconceptions when using Voigt notation
 ! ==========================
 
-subroutine compute_stress_vonmises(dimen, tensor, VM)
-    !! Computes equivalent stress with Von Mises formula of a second-order stress-like tensor.
-    !! Given tensor is written in Voigt notation
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen
-    double precision, intent(in) :: tensor
-    dimension :: tensor(dimen, dimen)
-
-    double precision, intent(out) :: VM
-
-    ! Local data
-    ! ----------
-    integer :: i
-    double precision :: dev, trace
-    dimension :: dev(dimen, dimen)
-
-    call eval_trace(dimen, tensor, trace)
-    dev = tensor
-    do i = 1, dimen
-        dev(i, i) = dev(i, i) - 1.d0/3.d0*trace
-    end do
-    
-    call eval_frobenius_norm(dimen, dev, VM)
-    VM = sqrt(3.d0/2.d0)*VM
-
-end subroutine compute_stress_vonmises
-
-subroutine fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
+subroutine fastdiag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, diag, array_in, array_out)
     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
@@ -73,16 +43,16 @@ subroutine fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, dia
                                 array_in(i, :), array_out(i, :))
     end do
     
-end subroutine fd_linearelasticity_3d
+end subroutine fastdiag_elasticity_3d
 
-module linearelastoplasticity
+module elastoplasticity
 
     implicit none
     type :: mecamat
     
         ! Inputs 
         integer :: dimen=3, nvoigt=6
-        double precision :: E, H, beta, poisson, sigma_Y
+        double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJJ=>null()
         double precision, dimension(:, :), pointer :: kwargs=>null(), nn=>null()
         double precision, dimension(:, :, :), pointer :: invJJ=>null()
@@ -93,7 +63,6 @@ module linearelastoplasticity
         double precision :: lambda, mu, bulk
 
         ! Local
-        logical :: isElastic = .false.
         integer :: nc_total
     
     end type mecamat
@@ -104,14 +73,14 @@ contains
     ! COMBINED ISOTROPIC/KINEMATIC HARDENING
     ! ======================================
 
-    subroutine initialize_mecamat(mat, dimen, E, H, beta, nu, sigma_Y)
+    subroutine initialize_mecamat(mat, dimen, elasticmodulus, poissonratio, elasticlimit)
         !! Creates a material using combined isotropic/kinematic hardening theory 
 
         implicit none
         ! Input / output data
         ! -------------------
         integer, intent(in) :: dimen
-        double precision, intent(in) :: E, H, beta, nu, sigma_Y
+        double precision, intent(in) :: elasticmodulus, poissonratio, elasticlimit
         type(mecamat), pointer :: mat
 
         allocate(mat)
@@ -119,13 +88,11 @@ contains
         mat%nvoigt = dimen*(dimen+1)/2
 
         ! Compute mechanical properties
-        mat%E    = E
-        mat%H    = H
-        mat%beta = beta
-        mat%poisson = nu
-        mat%sigma_Y = sigma_Y
-        mat%lambda  = nu*E/((1+nu)*(1-2*nu))
-        mat%mu      = E/(2*(1+nu))
+        mat%elasticmodulus = elasticmodulus
+        mat%poissonratio   = poissonratio
+        mat%elasticlimit   = elasticlimit
+        mat%lambda  = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
+        mat%mu      = elasticmodulus/(2*(1+poissonratio))
         mat%bulk    = mat%lambda + 2.d0/3.d0*mat%mu
         allocate(mat%mean(mat%dimen, mat%dimen))
         mat%mean    = 1.d0
@@ -144,113 +111,22 @@ contains
         double precision, target, intent(in) :: invJJ, detJJ
         dimension :: invJJ(mat%dimen, mat%dimen, nc), detJJ(nc)
 
-        ! Local data
-        ! ----------
-        integer :: i
-
         mat%invJJ => invJJ
         mat%detJJ => detJJ
         mat%nc_total = nc
 
-        allocate(mat%JJjj(mat%dimen, mat%dimen, nc))
-        allocate(mat%JJnn(mat%dimen, mat%dimen, nc))
-        mat%JJnn = 0.d0
-        do i = 1, nc
-            mat%JJjj(:,:,i) = matmul(mat%invJJ(:,:,i), transpose(mat%invJJ(:,:,i)))
-        end do
-
     end subroutine setup_geo
 
-    subroutine returnMappingAlgorithm(mat, strain, pls, a, b, pls_new, a_new, b_new, stress, kwargs)
-        !! Return closest point proyection (cpp) in combined hardening criteria
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(mecamat), pointer :: mat
-        double precision, intent(in) :: strain, pls, a, b
-        dimension :: strain(mat%nvoigt), pls(mat%nvoigt), b(mat%nvoigt)
-
-        double precision, intent(out) ::pls_new, a_new, b_new, stress, kwargs
-        dimension :: pls_new(mat%nvoigt), b_new(mat%nvoigt), stress(mat%nvoigt), kwargs(mat%nvoigt+3)
-        
-        ! Local data
-        ! ----------
-        double precision, dimension(mat%dimen, mat%dimen) :: Tstrain, Tpls, Tb, e_trial, s_trial, eta_trial, sigma, NN
-        double precision :: traceStrain, norm_trial, f_trial, dgamma, c1, c2
-        integer :: i
-
-        call array2symtensor(mat%dimen, mat%nvoigt, strain, Tstrain)
-        call array2symtensor(mat%dimen, mat%nvoigt, pls, Tpls)
-        call array2symtensor(mat%dimen, mat%nvoigt, b, Tb)
-        call eval_trace(mat%dimen, Tstrain, traceStrain)
-        e_trial = Tstrain
-        do i = 1, mat%dimen
-            e_trial(i, i) = e_trial(i, i) - 1.d0/3.d0*traceStrain
-        end do
-
-        ! Compute trial stress
-        s_trial = 2*mat%mu*(e_trial - Tpls)
-
-        ! Compute shifted stress
-        eta_trial = s_trial - Tb
-
-        ! Check yield condition
-        call eval_frobenius_norm(mat%dimen, eta_trial, norm_trial)
-        f_trial = norm_trial - sqrt(2.d0/3.d0)*(mat%sigma_Y + mat%beta*mat%H*a)  
-        sigma = s_trial
-        do i = 1, mat%dimen
-            sigma(i, i) = sigma(i, i) + mat%bulk*traceStrain
-        end do
-        kwargs = 0.d0; kwargs(1) = mat%lambda; kwargs(2) = mat%mu; 
-        
-        if (f_trial.le.0.d0) then ! Elastic point
-            pls_new = pls; a_new = a; b_new = b  
-            call symtensor2array(mat%dimen, mat%nvoigt, sigma, stress)
-            return
-        end if
-
-        ! Compute df/dsigma
-        NN = eta_trial/norm_trial
-        call symtensor2array(mat%dimen, mat%nvoigt, NN, kwargs(4:))
-
-        ! Compute plastic-strain increment        
-        dgamma = 3.d0*f_trial/(6.d0*mat%mu+2.d0*mat%H)
-
-        ! Update stress
-        sigma = sigma - 2*mat%mu*dgamma*NN
-        call symtensor2array(mat%dimen, mat%nvoigt, sigma, stress)
-
-        ! Update plastic strain
-        Tpls = Tpls + dgamma*NN
-        call symtensor2array(mat%dimen, mat%nvoigt, Tpls, pls_new)
-        
-        ! Update internal hardening variable
-        a_new = a + sqrt(2.d0/3.d0)*dgamma
-        
-        ! Update back stress
-        Tb = Tb + 2.d0/3.d0*(1 - mat%beta)*mat%H*dgamma*NN
-        call symtensor2array(mat%dimen, mat%nvoigt, tb, b_new)
-
-        ! Compute some coefficients
-        c1 = 2.d0*mat%mu*dgamma/norm_trial
-        c2 = 1.d0/(1.d0 + mat%H/(3.d0*mat%mu)) - c1
-        kwargs(1) = mat%lambda + 2.d0*mat%mu*c1/3.d0
-        kwargs(2) = mat%mu*(1.d0 - c1)
-        kwargs(3) = -2.d0*mat%mu*c2
-
-    end subroutine returnMappingAlgorithm
-
-    subroutine setup_kwargs(mat, nc, kwargs)
+    subroutine setup_jacobiennormal(mat, kwargs)
         !! Points to data of the mechanical behavior 
 
         implicit none
         ! Input / output data
         ! -------------------
+        double precision, parameter :: threshold = 1.d-12
         type(mecamat), pointer :: mat
-        integer, intent(in) :: nc
         double precision, target, intent(in) :: kwargs
-        dimension :: kwargs(mat%nvoigt+3, nc)
+        dimension :: kwargs(mat%nvoigt+3, mat%nc_total)
 
         ! Local data
         ! ----------
@@ -259,14 +135,34 @@ contains
 
         mat%kwargs => kwargs(:3, :)
         mat%nn     => kwargs(4:, :)
+        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%nc_total))
         mat%JJnn   = 0.d0
-        if (mat%isElastic) return
-        do i = 1, nc
-            call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
-            mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
+        if (any(abs(mat%nn).gt.threshold)) then
+            do i = 1,  mat%nc_total
+                call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
+                mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
+            end do
+        end if
+    end subroutine setup_jacobiennormal
+
+    subroutine setup_jacobienjacobien(mat)
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(mecamat), pointer :: mat
+
+        ! Local data
+        ! ----------
+        integer :: i
+        
+        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%nc_total))
+        mat%JJjj = 0.d0
+        do i = 1, mat%nc_total
+            mat%JJjj(:,:,i) = matmul(mat%invJJ(:,:,i), transpose(mat%invJJ(:,:,i)))
         end do
 
-    end subroutine setup_kwargs
+    end subroutine setup_jacobienjacobien
 
     subroutine compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
@@ -414,7 +310,7 @@ contains
             
     end subroutine mf_wq_stiffness_3d
 
-    subroutine wq_forceint_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine wq_internalforce_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
         !! Computes internal force vector in 3D 
         !! IN CSR FORMAT
@@ -465,7 +361,7 @@ contains
             end do
         end do
 
-    end subroutine wq_forceint_3d
+    end subroutine wq_internalforce_3d
     
     subroutine mf_wq_linearelasticity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -570,7 +466,7 @@ contains
     
             allocate(ptilde(dimen, nr_total), stilde(dimen, nr_total))
             do iter = 1, nbIterPCG
-                call fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
+                call fastdiag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, p, ptilde)
                 call reset_dirichletbound3(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -583,7 +479,7 @@ contains
                 alpha = rsold/prod
                 s = r - alpha*Aptilde ! Normally s is alrady Dirichlet updated
                 
-                call fd_linearelasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
+                call fastdiag_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, Deigen, s, stilde)
                 call reset_dirichletbound3(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
     
                 call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -612,4 +508,4 @@ contains
     
     end subroutine mf_wq_linearelasticity_3d
     
-end module linearelastoplasticity
+end module elastoplasticity
