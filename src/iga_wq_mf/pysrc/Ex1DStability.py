@@ -9,19 +9,20 @@ The Laplace problem is:
 
 from lib.__init__ import *
 from lib.lib_base import createKnotVector, eraseRowsCSR
+from lib.lib_quadrules import GaussQuadrature
 from scipy import interpolate
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/stability/'
+folder = os.path.dirname(full_path) + '/results/t1dim/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def build_sparse_matrix(basis, indi_in, indj_in):
 	indi = np.copy(indi_in); indj = np.copy(indj_in)
 	nrows = len(indi) - 1; ncols = np.max(indj)
 	indi -= 1; indj -= 1
-	B0  = sp.csr_matrix((basis[:,0], indj, indi), shape=(nrows, ncols)).toarray()
-	B1  = sp.csr_matrix((basis[:,1], indj, indi), shape=(nrows, ncols)).toarray()
+	B0  = sp.csr_matrix((basis[:, 0], indj, indi), shape=(nrows, ncols)).toarray()
+	B1  = sp.csr_matrix((basis[:, -1], indj, indi), shape=(nrows, ncols)).toarray()
 	return B0, B1
 
 def scheme_analysis(prop, degree, cuts=None, nbel=None):
@@ -38,33 +39,37 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	if cuts is not None: nbel = int(2**cuts)
 	knotvector = createKnotVector(degree, nbel, multiplicity=degree)
 
+	gaussQuad = GaussQuadrature(degree, knotvector)
+	info = gaussQuad.getQuadratureRulesInfo()
+	qp, [indi_in, indj_in], basis_in, weights_in = info
+
 	# Get basis and weights in IgA 
-	qp, qp_weight, basis_in, indi_in, indj_in = iga_find_basis_weights_fortran(degree, knotvector)[1:]
-	indi, indj, [basis] = erase_rows_csr([0, -1], indi_in, indj_in, [basis_in])
+	indi, indj, [basis, weights] = eraseRowsCSR([0, -1], indi_in, indj_in, [basis_in, weights_in])
 	data_B0 = basis[:, 0]; data_B1 = basis[:, 1]
+	data_W0 = weights[:, 0]; data_W1 = weights[:, -1]
 
 	# Time scheme stability
 	mcoefs = np.ones(len(qp)); kcoefs = prop*np.ones(len(qp))
-	eigenvalues, eigenvectors = solver.eigen_decomposition2_py(indi, indj, data_B0, data_B1, 
-										qp_weight, mcoefs, kcoefs, [0, 0])
+	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, data_B0, data_W0, data_B1, 
+														data_W1, mcoefs, kcoefs, [0, 0])
 	lambda_max  = max(eigenvalues)
 	t_stab      = 2/lambda_max
 
 	# Space oscillations
 	dof = np.arange(1, len(indi_in)-2)
 	B0, B1 = build_sparse_matrix(basis_in, indi_in, indj_in)
-	Mass  = B0 @ np.diag(qp_weight) @ B0.transpose()
-	Stiff = -prop * B1 @ np.diag(qp_weight) @ B1.transpose()
+	W0, W1 = build_sparse_matrix(weights_in, indi_in, indj_in)
+	Mass  = W0 @ B0.transpose()
+	Stiff = -prop * W1 @ B1.transpose()
 
 	Mass  = Mass[dof, :][:, :]; Stiff = Stiff[dof, :][:, :]
-	# newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
 	newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=np.abs(Stiff)>1.e-12)
 	t_osc = newmark_matrix.max()
 
 	return t_stab, t_osc
 
 def plot_analysis(degree_list, cuts_list=None, nbel_list=None, filenumber=0, folder=None, extension='.png', option=1):
-	fig, ax   = plt.subplots(nrows=1, ncols=1)
+	fig, ax = plt.subplots()
 
 	if cuts_list is not None: nbel_list = [2**i for i in cuts_list]
 	if option == 1: name = 'time_stab_' + str(filenumber); title = 'Maximum time step'
@@ -107,11 +112,11 @@ def plot_variable_degree(nbel, degree_list, cuts_list=None, nbel_list=None, file
 	return
 
 data_exist  = True
-degree_list = range(1, 8)
-nbel_list = [i for i in range(4, 8)]
+degree_list = range(1, 7)
+nbel_list   = [i for i in range(4, 8)]
 nbel_list.extend([i for i in range(8, 32, 2)])
 nbel_list.extend([i for i in range(32, 128, 16)])
-nbel_list.extend([i for i in range(128, 513, 32)])
+# nbel_list.extend([i for i in range(128, 513, 32)])
 prop_list   = [1., 1e-2, 1e-4, 1e-6]
 prop_list   = [1.]
 
