@@ -225,17 +225,17 @@ class mechamat(material):
 
 			return dgamma
 
-		ddl, nnz = np.shape(strain)
-		if ddl == 3: dim = 2
-		elif ddl == 6: dim = 3
+		nvoigt = np.size(strain)
+		if nvoigt   == 3: dim = 2
+		elif nvoigt == 6: dim = 3
 
-		Cep     = np.zeros((ddl+3, nnz))
-		Tstrain = array2symtensor(strain)
-		Tpls    = array2symtensor(pls)
-		Tb      = array2symtensor(b)
-		traceStrain = evalTrace(Tstrain)
+		Cep     = np.zeros(nvoigt+3)
+		Tstrain = array2symtensor(strain, dim)
+		Tpls    = array2symtensor(pls, dim)
+		Tb      = array2symtensor(b, dim)
+		traceStrain = evalTrace(Tstrain, dim)
 		devStrain   = Tstrain
-		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
+		for i in range(dim): devStrain[i, i] -= 1.0/3.0*traceStrain
 
 		# Compute trial stress
 		s_trial = 2*self._lame_mu*(devStrain - Tpls)
@@ -244,100 +244,90 @@ class mechamat(material):
 		eta_trial = s_trial - Tb
 
 		# Check yield condition
-		norm_trial = np.linalg.norm(eta_trial, axis=(1, 2))
+		norm_trial = np.linalg.norm(eta_trial)
 		f_trial = norm_trial - np.sqrt(2.0/3.0)*law._Kfun(a)
 		sigma   = s_trial
-		for i in range(dim): sigma[i, i, :] += self._lame_bulk*traceStrain
-		Cep[0, :] = self._lame_lambda; Cep[1, :] = self._lame_mu
+		for i in range(dim): sigma[i, i] += self._lame_bulk*traceStrain
+		Cep[0] = self._lame_lambda; Cep[1] = self._lame_mu
+		pls_new = pls; a_new = a; b_new = b
+		stress  = symtensor2array(sigma, dim)
 
-		if f_trial<=0.0:
-			pls_new = pls; a_new = a; b_new = b
-			stress  = symtensor2array(sigma)
-			return
+		if f_trial>0.0:
 
-		# Compute plastic-strain increment
-		dgamma = computeDeltaGamma(law, self._lame_mu, a, eta_trial)
+			# Compute plastic-strain increment
+			dgamma = computeDeltaGamma(law, self._lame_mu, a, eta_trial)
 
-		# Update internal hardening variable
-		a_new = a + np.sqrt(2.0/3.0)*dgamma
+			# Update internal hardening variable
+			a_new = a + np.sqrt(2.0/3.0)*dgamma
 
-		# Compute df/dsigma
-		Normal = eta_trial/norm_trial
-		Cep[3:, :] = symtensor2array(Normal)
+			# Compute df/dsigma
+			Normal = eta_trial/norm_trial
+			Cep[3:] = symtensor2array(Normal, dim)
 
-		# Update stress
-		sigma -= 2*self._lame_mu*dgamma*Normal
-		stress = symtensor2array(sigma)
+			# Update stress
+			sigma -= 2*self._lame_mu*dgamma*Normal
+			stress = symtensor2array(sigma, dim)
 
-		# Update plastic strain
-		Tpls += dgamma*Normal
-		pls_new = symtensor2array(Tpls)
+			# Update plastic strain
+			Tpls += dgamma*Normal
+			pls_new = symtensor2array(Tpls, dim)
 
-		# Update backstress
-		Tb += np.sqrt(2.0/3.0)*(law._Hfun(a_new) - law._Hfun(a))*Normal
-		b_new = symtensor2array(Tb)
+			# Update backstress
+			Tb += np.sqrt(2.0/3.0)*(law._Hfun(a_new) - law._Hfun(a))*Normal
+			b_new = symtensor2array(Tb, dim)
 
-		# Update new coefficients
-		somme = law._Kderfun(a_new) + law._Hderfun(a_new)
-		c1 = 2*self._lame_mu*dgamma/norm_trial
-		c2 = 1.0/(1+somme/(3*self._lame_mu)) - c1
-		Cep[0, :] = self._lame_lambda + 2.0/3.0*self._lame_mu*c1
-		Cep[1, :] = self._lame_mu*(1.0 - c1)
-		Cep[2, :] = -2.0*self._lame_mu*c2
+			# Update new coefficients
+			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
+			c1 = 2*self._lame_mu*dgamma/norm_trial
+			c2 = 1.0/(1+somme/(3*self._lame_mu)) - c1
+			Cep[0] = self._lame_lambda + 2.0/3.0*self._lame_mu*c1
+			Cep[1] = self._lame_mu*(1.0 - c1)
+			Cep[2] = -2.0*self._lame_mu*c2
 
-		return [stress, pls_new, a_new, b_new, Cep]
+		return stress, pls_new, a_new, b_new, Cep
 	
-def symtensor2array(tensor):
-	tensor = np.atleast_3d(tensor)
-	dim, _, nnz = np.shape(tensor)
-	ddl = int(dim*(dim+1)/2)
-
-	array = np.zeros((ddl, nnz))
+def symtensor2array(tensor, dim):
+	nvoigt = int(dim*(dim+1)/2)
+	array = np.zeros(nvoigt)
 	k = 0
 	for i in range(dim):
-		array[k, :] = tensor[i, i, :]
+		array[k] = tensor[i, i]
 		k += 1
 
 	for i in range(dim-1):
 		for j in range(i+1, dim):
-			array[k, :] = tensor[i, j, :]
+			array[k] = tensor[i, j]
+			k += 1
 
 	return array
 
-def array2symtensor(array):
-	array = np.atleast_2d(array)
-	ddl, nnz = np.shape(array)
-	if ddl == 3: dim = 2
-	elif ddl == 6: dim = 3
-	tensor = np.zeros((dim, dim, nnz))
+def array2symtensor(array, dim):
+	tensor = np.zeros((dim, dim))
 	k = 0
 	for i in range(dim):
-		tensor[i, i, :] = array[k, :]
+		tensor[i, i] = array[k]
 		k += 1
 
 	for i in range(dim-1):
 		for j in range(i+1, dim):
-			tensor[i, j, :] = array[k, :] 
-			tensor[j, i, :] = array[k, :] 
+			tensor[i, j] = array[k] 
+			tensor[j, i] = array[k] 
+			k += 1
 
 	return tensor
 
-def evalTrace(tensor):
-	tensor = np.atleast_3d(tensor)
-	dim, _, nnz = np.shape(tensor)
-	trace = np.zeros(nnz)
+def evalTrace(tensor, dim):
+	trace = 0.0
 	for i in range(dim):
-		trace += tensor[i, i, :]
+		trace += tensor[i, i]
 	return trace
 
-def computeVonMisesStress(tensor):
-	tensor = np.atleast_3d(tensor)
-	dim, _, nnz = np.shape(tensor)
-	trace = evalTrace(tensor)
-	dev   = np.copy(tensor)
+def computeVonMisesStress(tensor, dim):
+	trace  = evalTrace(tensor, dim)
+	dev    = np.copy(tensor)
 	for i in range(dim):
-		dev[i, i, :] -= 1.0/3.0*trace
-	vm = np.linalg.norm(dev, axis=(1, 2))
+		dev[i, i] -= 1.0/3.0*trace
+	vm = np.linalg.norm(dev)
 	vm = np.sqrt(3.0/2.0)*vm
 	return vm
 
@@ -345,7 +335,7 @@ def clean_dirichlet(A, dod):
 	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
 		A is actually a vector arranged following each dimension [Au, Av, Aw]
 	"""
-	dim = np.size(A, axis=1)
+	dim = np.size(A, axis=0)
 	for i in range(dim): A[i, dod[i]] = 0.0
 	return
 

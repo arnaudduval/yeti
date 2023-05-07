@@ -397,7 +397,7 @@ class mechaproblem():
 	def compute_strain(self, displacement, isVoigt=False):
 		" Compute strain field from displacement field "
 
-		if self._dim != 3: raise Warning('Not yet')
+		if self._model._dim != 3: raise Warning('Not yet')
 		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, self._model._invJ, displacement, isVoigt]
 		eps    = plasticitysolver.interpolate_strain_3d(*inputs)
 
@@ -406,14 +406,14 @@ class mechaproblem():
 	def compute_intForce(self, stress):
 		"Compute internal force using sigma coefficients "
 
-		if self._dim != 3: raise Warning('Not yet')
+		if self._model._dim != 3: raise Warning('Not yet')
 		inputs = [stress, *self._model._nbqp, *self._model._indices, *self._model._weights, self._model._invJ, self._model._detJ]
 		Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
 
 		return Fint
 	
 	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None): 
-		if self._dim != 3: raise Warning('Only for 3D')
+		if self._model._dim != 3: raise Warning('Only for 3D')
 		if not self._material._isPlasticityPossible: raise Warning('Plasticity not defined')
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
@@ -431,7 +431,7 @@ class mechaproblem():
 		a_n1  = np.zeros(nbqp_total)
 		b_n1  = np.zeros((ddl, nbqp_total))
 		stress = np.zeros((ddl, nbqp_total))
-		Cep   = np.zeros((ddl, ddl, nbqp_total))
+		Cep   = np.zeros((ddl+3, nbqp_total))
 		disp  = np.zeros(np.shape(Fext))
 
 		for i in range(1, np.shape(Fext)[2]):
@@ -449,7 +449,7 @@ class mechaproblem():
 				# Closest point projection in perfect plasticity
 				for k in range(nbqp_total):
 					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self._material.returnMappingAlgorithm(law, strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
-					stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
+					stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
 
 				# Compute Fint 
 				Fint = self.compute_intForce(stress)
@@ -460,8 +460,8 @@ class mechaproblem():
 				print('Relative error: %.5e' %resNL)
 				if resNL <= self._thresholdNR: break
 				
-				vtmp   = self.solveElasticityProblemFT(Fext=dF, kwargs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
-				ddisp += vtmp 
+				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, kwargs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
+				ddisp  += vtmp 
 		
 			disp[:, :, i] = d_n1			
 			pls_n0 = np.copy(pls_n1)
