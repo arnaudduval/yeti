@@ -8,10 +8,7 @@ The Laplace problem is:
 """
 
 from lib.__init__ import *
-from lib.base_functions import (create_knotvector,
-								iga_find_basis_weights_fortran,
-								erase_rows_csr,
-)
+from lib.lib_base import createKnotVector, eraseRowsCSR
 from scipy import interpolate
 
 # Select folder
@@ -39,7 +36,7 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	"""
 
 	if cuts is not None: nbel = int(2**cuts)
-	knotvector = create_knotvector(degree, nbel, multiplicity=degree)
+	knotvector = createKnotVector(degree, nbel, multiplicity=degree)
 
 	# Get basis and weights in IgA 
 	qp, qp_weight, basis_in, indi_in, indj_in = iga_find_basis_weights_fortran(degree, knotvector)[1:]
@@ -58,11 +55,6 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	B0, B1 = build_sparse_matrix(basis_in, indi_in, indj_in)
 	Mass  = B0 @ np.diag(qp_weight) @ B0.transpose()
 	Stiff = -prop * B1 @ np.diag(qp_weight) @ B1.transpose()
-
-	# for i in range(np.shape(Mass)[0]):
-	# 	for j in range(i, np.shape(Mass)[1]):
-	# 		if np.abs(Stiff[i, j]) < 1.e-12:
-	# 			print(i, j, Mass[i, j], Stiff[i, j])
 
 	Mass  = Mass[dof, :][:, :]; Stiff = Stiff[dof, :][:, :]
 	# newmark_matrix = np.divide(Mass, Stiff, out=np.zeros_like(Mass), where=Stiff!=0)
