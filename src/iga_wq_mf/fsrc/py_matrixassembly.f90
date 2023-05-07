@@ -4,22 +4,6 @@
 ! Moreover, it uses weighted quadrature in order to reduce the number of quadrature points.
 ! ====================================================
 
-subroutine test(n, x)
-
-    implicit none 
-    integer, intent(in) :: n
-    integer, dimension(n), intent(inout) :: x
-    integer :: i
-    integer :: xt
-    do i = 1, n 
-        xt = x(i)
-        if (xt.gt.0) then
-            x(i) = xt*2
-        end if
-    end do
-
-end subroutine
-
 subroutine wq_get_capacity_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
