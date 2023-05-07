@@ -292,7 +292,7 @@ end subroutine eval_conductivity_coefficient
 
 subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
     
-    use elastoplasticity
+    use matrixfreeplasticity
     implicit none 
     ! Input / output data
     ! -------------------

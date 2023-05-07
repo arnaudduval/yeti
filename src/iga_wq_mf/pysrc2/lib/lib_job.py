@@ -370,19 +370,25 @@ class mechaproblem():
 		return vector
 
 	# Solve using fortran
-	def solveElasticityProblemFT(self, Fext, nbIterPCG=None, methodPCG=None):
+	def solveElasticityProblemFT(self, Fext, kwargs=None, nbIterPCG=None, methodPCG=None):
 		self._material.verifyMechanicalProperties()
 		dod_total = deepcopy(self._boundary._mchdod)
 		for i, dod in enumerate(dod_total):
 			tmp = dod + 1
 			dod_total[i] = tmp
 
-		prop = [self._material._elasticmodulus, self._material._poissonratio]
+		dimen  = self._model._dim
+		nvoigt = int(dimen*(dimen+1)/2)
+		prop = [self._material._elasticmodulus, self._material._poissonratio, self._material._elasticlimit]
+		if kwargs is None:
+			kwargs = np.zeros((nvoigt+3, self._model._nbqp_total))
+			kwargs[0, :] = self._material._lame_lambda
+			kwargs[1, :] = self._material._lame_mu
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, 
 	    			*self._model._weights, Fext, *dod_total, self._boundary._mchDirichletTable, 
-					self._model._invJ, self._model._detJ, prop, nbIterPCG, self._thresholdPCG, methodPCG]
+					self._model._invJ, self._model._detJ, prop, kwargs, nbIterPCG, self._thresholdPCG, methodPCG]
 		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
 		return displacement, residue
@@ -401,7 +407,7 @@ class mechaproblem():
 		"Compute internal force using sigma coefficients "
 
 		if self._dim != 3: raise Warning('Not yet')
-		inputs = [stress, *self._model._nbqp, *self._model._indices, *self._model._weights]
+		inputs = [stress, *self._model._nbqp, *self._model._indices, *self._model._weights, self._model._invJ, self._model._detJ]
 		Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
 
 		return Fint
@@ -424,11 +430,9 @@ class mechaproblem():
 		pls_n1 = np.zeros((ddl, nbqp_total))
 		a_n1  = np.zeros(nbqp_total)
 		b_n1  = np.zeros((ddl, nbqp_total))
-		sigma = np.zeros((ddl, nbqp_total))
+		stress = np.zeros((ddl, nbqp_total))
 		Cep   = np.zeros((ddl, ddl, nbqp_total))
 		disp  = np.zeros(np.shape(Fext))
-
-		DU = self.compute_eigen_all(table=self._mechanicalDirichlet)
 
 		for i in range(1, np.shape(Fext)[2]):
 
@@ -445,22 +449,19 @@ class mechaproblem():
 				# Closest point projection in perfect plasticity
 				for k in range(nbqp_total):
 					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self._material.returnMappingAlgorithm(law, strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
-					sigma[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
+					stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, :, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
 
-				# # Compute coefficients to compute Fint and Stiffness
-				# coef_Fint, coef_Stiff = compute_plasticity_coef(sigma, Cep, self._invJ, self._detJ, d=d)
-
-				# # Compute Fint 
-				# Fint = self.compute_intForce(coef_Fint)
-				# dF   = Fstep - Fint
-				# clean_dirichlet_3d(dF, indi) 
-				# prod1 = block_dot_product(d, dF, dF)
-				# resNL = np.sqrt(prod1)
-				# print('Relative error: %.5e' %resNL)
-				# if resNL <= self._thresholdNR: break
+				# Compute Fint 
+				Fint = self.compute_intForce(stress)
+				dF   = Fstep - Fint
+				clean_dirichlet(dF, self._boundary._mchdod) 
+				prod1 = block_dot_product(d, dF, dF)
+				resNL = np.sqrt(prod1)
+				print('Relative error: %.5e' %resNL)
+				if resNL <= self._thresholdNR: break
 				
-				# vtmp   = self.solveElasticityProblemFT(coefs=coef_Stiff, DU=DU, indi=indi, Fext=dF)
-				# ddisp += vtmp 
+				vtmp   = self.solveElasticityProblemFT(Fext=dF, kwargs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
+				ddisp += vtmp 
 		
 			disp[:, :, i] = d_n1			
 			pls_n0 = np.copy(pls_n1)
