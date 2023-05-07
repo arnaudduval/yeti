@@ -1,11 +1,3 @@
-! =========================
-! module :: tensor algebra
-! author :: Joaquin Cornejo
-!
-! This modules is intended to have all the tensor algebra functions necessary for the good
-! performance of the rest of functions.
-! =========================
-
 ! ---------------
 ! Tensor algebra 
 ! ---------------

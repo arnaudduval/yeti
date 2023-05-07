@@ -1,12 +1,7 @@
-! ==========================
-! module :: geometrical properties and behavior of materials
-! author :: Joaquin Cornejo
-! 
+! ==============================================
 ! In this module, one could find functions to compute thermal properties and jacobian given the data at control points
 ! For mechanical properties, we suggest to go to plasticity module
-! It is possible that conductivity and capacity are computed in python, then 
-! these functions are deprecated
-! ==========================
+! ==============================================
 
 subroutine eval_jacobien_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

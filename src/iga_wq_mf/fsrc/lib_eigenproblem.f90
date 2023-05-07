@@ -1,8 +1,10 @@
+! ==============================================
 !! This file contains basic algorithms to compute the maximum eigenvalue of 
 !! the generalized eigenproblem A x = lambda B x
 !! We consider dense matrices but it is possible to adapt them with a matrix-free approach
 !! More information on "Lecture Notes on Solving Large Scale Eigenvalue Problems" by Arbenz, P. 
 !! Author: Joaquin Cornejo
+! ==============================================
 
 subroutine compute_geneigs(nr, A, B, rho, x)
     !! Computes all the eigenvalues of the generalized eigenproblem A x = rho B x

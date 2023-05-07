@@ -1,15 +1,3 @@
-! ==========================
-! module :: Elasto-plasticity 
-! author :: Joaquin Cornejo
-!
-! Remarks :: tensor notation is used (it is NOT Voigt notation)
-! We save some memory storing only the upper triangular of a symmetric matrix
-! For example:
-! Strain e = [e11, e22, e33, e12, e13, e23]
-! Stress s = [s11, s22, s33, s12, s13, s23]
-! In this way, we try to avoid some misconceptions when using Voigt notation
-! ==========================
-
 subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &

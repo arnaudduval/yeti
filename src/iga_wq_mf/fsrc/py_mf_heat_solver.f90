@@ -1,7 +1,4 @@
 ! ====================================================
-! module :: Matrix free methods in WQ approach 
-! author :: Joaquin Cornejo
-! 
 ! This modules aims to compute the dot product between a matrix and a vector 
 ! exploiting the tensor-product structure of those matrices.
 ! Moreover, it uses weighted quadrature in order to reduce the number of quadrature points.

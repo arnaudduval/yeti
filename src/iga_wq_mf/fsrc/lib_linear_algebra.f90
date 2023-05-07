@@ -1,11 +1,8 @@
-! ==========================
-! module :: Linear algebra 
-! author :: Joaquin Cornejo
-! 
+! ==============================================
 ! This modules is intended to have all the linear algebra functions necessary for the good
 ! performance of the rest of the files.
 ! Some functions in this file calls functions defined in YETI (see documentation) or LAPACK libraries.
-! ==========================
+! ==============================================
 
 ! --------------------
 ! Vector and matrices
@@ -1118,56 +1115,3 @@ subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     !$OMP END PARALLEL 
     
 end subroutine get_indices_kron3_product
-
-subroutine create_block_L(nr, ndod, dod, indi_L, indj_L, L, indi_LT, indj_LT, LT)
-    !! Creates the block matrix L of size nrxnc. 
-    !! This matrix satisfies : L M L' = Mnn (n are the free control points)
-    !! Returns L and LT in CSR format
-    !! In this matrix, the number of nonzero values is equal to the number of rows (nc = nr + ndod, nr = ndof)
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndod, dod
-    dimension :: dod(ndod)
-
-    integer, intent(out) :: indi_L, indj_L, indi_LT, indj_LT
-    dimension :: indi_L(nr+1), indj_L(nr), indi_LT(nr+ndod+1), indj_LT(nr)
-    double precision, intent(out) :: L, LT
-    dimension :: L(nr), LT(nr)
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, nc, indi_coo, indj_coo
-    dimension :: indi_coo(nr), indj_coo(nr)
-    integer, allocatable, dimension(:) :: dof
-    double precision :: data_coo
-    dimension :: data_coo(nr, 1)
-
-    nc = nr + ndod
-    if (any(dod.gt.nc)) stop 'Problem creating L'
-    
-    ! Get dof as complement of dod
-    allocate(dof(nr))
-    dof = 1; i = 1; j = 1
-    do while ((j.le.nc).and.(i.le.nr))
-        if (any(dod.eq.j)) then
-            continue
-        else
-            dof(i) = j
-            i = i + 1 
-        end if
-        j = j + 1
-    end do
-
-    ! Get L and L' in CSR format
-    do i = 1, nr ! ndof = nr
-        indi_coo(i) = i
-        indj_coo(i) = dof(i)
-        data_coo(i, 1) = 1.d0 
-    end do
-
-    call coo2csr(1, nr, nr, data_coo, indi_coo, indj_coo, L, indj_L, indi_L)
-    call coo2csr(1, nc, nr, data_coo, indj_coo, indi_coo, LT, indj_LT, indi_LT)
-
-end subroutine create_block_L

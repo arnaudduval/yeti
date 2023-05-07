@@ -1,14 +1,16 @@
-! ==========================
-! module :: Elasto-plasticity 
-! author :: Joaquin Cornejo
-! 
+! ==============================================
 ! This module solves elasto-plasticity problems
-! By the moment, it uses a return mapping algorithm based on 
-! combined isotropic/kinematic hardening theory. Further information 
-! in "Introduction to Nonlinear Finite Element Analysis" by Nam-Ho kim
+! Further information in "Introduction to Nonlinear Finite Element Analysis" by Nam-Ho kim
 ! Moreover, it uses Newton-Raphson algorithm to solve non-linear equation
 ! Further information in "Computational Inelasticity" by Simo and Hughes.
-! ==========================
+!
+! Remarks :: tensor notation is used (it is NOT Voigt notation)
+! We save some memory storing only the upper triangular of a symmetric matrix
+! For example:
+! Strain e = [e11, e22, e33, e12, e13, e23]
+! Stress s = [s11, s22, s33, s12, s13, s23]
+! In this way, we try to avoid some misconceptions when using Voigt notation
+! ==============================================
 
 subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

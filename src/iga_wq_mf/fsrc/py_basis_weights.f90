@@ -1,10 +1,7 @@
-! ==========================
-! module :: Basis and weights 
-! author :: Joaquin Cornejo
-! 
+! ==============================================
 ! In this module, one can find different kind of functions to compute basis and/or weights 
 ! for IGA-Galerkin and IGA-WQ approaches.   
-! ==========================
+! ==============================================
 
 subroutine gauss_quadrature_table(order, position, weight)
     implicit none

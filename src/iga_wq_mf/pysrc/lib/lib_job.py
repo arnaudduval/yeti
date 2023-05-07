@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import eraseRowsCSR
+from lib.lib_base import eraseRowsCSR, array2csr_matrix
 from lib.lib_material import *
 from lib.lib_model import *
 from lib.lib_step import *
@@ -47,6 +47,38 @@ class heatproblem():
 		inputs = [*self._model._nbqp, *indices, *basis, *weights]
 
 		return inputs
+	
+	def assemble_capacity(self, coefs=None, **kwargs):
+		
+		if coefs is None: 
+			inpt   = kwargs.get('input')
+			coefs  = self._material.eval_capacityCoefficients(self._model._detJ, inpt)
+		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
+		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._basis,
+				*self._model._weights]
+		if self._model._dim == 2: raise Warning('Until now not done')
+		if self._model._dim == 3: 
+			assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
+			nnz = np.prod(nnz_I_list)
+			val, indi, indj = assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
+		matrix = array2csr_matrix(val, indi, indj)
+		return matrix
+	
+	def assemble_conductivity(self, coefs=None, **kwargs):
+		
+		if coefs is None: 
+			inpt   = kwargs.get('input')
+			coefs  = self._material.eval_conductivityCoefficients(self._model._detJ, inpt)
+		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
+		inputs = [coefs, *self._model._nbqp, *self._model._indices, *self._model._basis,
+				*self._model._weights]
+		if self._model._dim == 2: raise Warning('Until now not done')
+		if self._model._dim == 3: 
+			assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
+			nnz = np.prod(nnz_I_list)
+			val, indi, indj = assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
+		matrix = array2csr_matrix(val, indi, indj)
+		return matrix
 
 	def eval_mfConductivity(self, u, coefs=None, table=None, **kwargs):
 
@@ -63,7 +95,7 @@ class heatproblem():
 
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: 
-			inpt   = kwargs.get(['input'])
+			inpt   = kwargs.get('input')
 			coefs  = self._material.eval_capacityCoefficients(self._model._detJ, inpt)
 		if self._model._dim == 2: raise Warning('Until now not done')
 		if self._model._dim == 3: result = heatsolver.mf_wq_get_cu_3d(coefs, *inputs, u)
