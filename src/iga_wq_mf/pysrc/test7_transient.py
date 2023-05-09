@@ -8,23 +8,19 @@ from lib.lib_step import step
 from lib.lib_job import heatproblem
 
 def setKprop(P:list):
-	cst = 10.0
+	cst = 10
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
 	T = P[3, :]
-	# for i in range(3): Kprop[i, i, :] = cst*(1.0 + 2.0/(1.0 + np.exp(-5*(T-1.0))))
 	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
 	Kprop = np.zeros((3, 3, len(x)))
 	for i in range(3): 
 		for j in range(3):
 			Kprop[i, j, :] = Kref[i, j] 
-	Kprop[0, 0, :] += 0.75*np.cos(np.pi*y)
-	Kprop[1, 1, :] += 2*np.exp(-(z-0.5)**2)
-	Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
 	for i in range(3): 
 		for j in range(3):
-			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-2.0*(T-1.0))))
+			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(T-1.0))))
 	return Kprop 
 
 def setCprop(P:list):
@@ -33,7 +29,7 @@ def setCprop(P:list):
 	y = P[1, :]
 	z = P[2, :]
 	T = P[3, :]
-	Cprop = cst*(1 + np.exp(-2.0*abs(T)))*np.exp(-(x-0.5)**2)
+	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
 	return Cprop
 
 # Select folder
@@ -44,11 +40,11 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 dataExist   = True
 name_list   = ['CB']
-IterMethods = ['WP', 'C', 'JMC']
+if dataExist: IterMethods = ['WP', 'C', 'JMC']
+else: IterMethods = ['C', 'JMC']  
 example     = 1
 if   example == 1: nbSteps = 41
 elif example == 2: nbSteps = 6
-# elif example == 3: nbSteps = 101
 
 if not dataExist:
 

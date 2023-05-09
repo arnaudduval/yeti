@@ -35,18 +35,18 @@ if not dataExist:
 		info = weightedQuad.getQuadratureRulesInfo()
 		qp, [indi, indj], dersbasis, dersweights = info
 
-		nbqp, indices, basis, weights = [], [], [], []
+		nbqp, indices, basis, wgt = [], [], [], []
 		for dim in range(3):
 			nbqp.append(len(qp))
 			indices.append(indi); indices.append(indj) 
-			basis.append(dersbasis); weights.append(dersweights)
+			basis.append(dersbasis); wgt.append(dersweights)
 
 		# ----------------
 		# Capacity matrix
 		# ----------------
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		coefs  = np.ones(len(qp)**3)
-		inputs = [coefs, *nbqp, *indices, *basis, *weights]
+		inputs = [coefs, *nbqp, *indices, *basis, *wgt]
 
 		start = time.process_time()
 		assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
@@ -60,7 +60,7 @@ if not dataExist:
 		# --------------------
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		coefs = np.ones((3, 3, len(qp)**3))
-		inputs = [coefs, *nbqp, *indices, *basis, *weights]
+		inputs = [coefs, *nbqp, *indices, *basis, *wgt]
 
 		start = time.process_time()
 		assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)

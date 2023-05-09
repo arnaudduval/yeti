@@ -211,7 +211,7 @@ class mechamat(material):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law: plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-8):
+		def computeDeltaGamma(law: plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
 			dgamma = 0.0
 			a_n1 = a_n0
 			for i in range(nbIter):

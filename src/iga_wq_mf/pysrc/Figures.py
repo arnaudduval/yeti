@@ -412,7 +412,7 @@ elif CASE == 8: # Weights W00 and W11
 	# Get weights
 	quadRule.getDenseQuadRules()
 	W00 = quadRule._denseWeights[-WeightName]
-	weights = W00.toarray()[WeightPos, :]
+	wgt = W00.toarray()[WeightPos, :]
 
 	if WeightName == 0:
 		Bref = B
@@ -430,8 +430,8 @@ elif CASE == 8: # Weights W00 and W11
 	ax1.set_ylim(ylim1)
 
 	ax2 = ax1.twinx()
-	ax2.plot(quadRule._quadPtsPos, weights, 'ko')
-	plotVerticalLine(quadRule._quadPtsPos, weights, ax2)
+	ax2.plot(quadRule._quadPtsPos, wgt, 'ko')
+	plotVerticalLine(quadRule._quadPtsPos, wgt, ax2)
 	ax2.set_ylim(ylim2)
 	ax2.grid(None)
 

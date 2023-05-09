@@ -82,10 +82,10 @@ class model1D:
 		self._density        = prop.get('density', None)
 		return
 	
-	def interpolate_sample(self, u_ctrlpts):
+	def interpolate_sample(self, u_ctrlpts, samplesize=None):
 		if np.size(u_ctrlpts, axis=0) != self._nbctrlpts: raise Warning('Not possible')
-		nbknots = self._sampleSize
-		knots   = np.linspace(0, 1, nbknots)
+		if samplesize is None: samplesize = self._sampleSize
+		knots   = np.linspace(0, 1, samplesize)
 		basis, indi, indj = evalDersBasisFortran(self._degree, self._knotvector, knots)
 		B0       = sp.csr_matrix((basis[:, 0], indj-1, indi-1))
 		u_interp = B0.T @ u_ctrlpts
@@ -149,7 +149,7 @@ class thermo1D(model1D):
 
 		return M
 
-	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-12, nbIterNL=20):
+	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-9, nbIterNL=20):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
@@ -225,12 +225,12 @@ class mechamat1D(model1D):
 			self._mechaBehavLaw        = plasticLaw(self._elasticmodulus, self._elasticlimit, plasticKwargs)
 		return
 
-	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b, threshold=1e-8):
+	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b, threshold=1e-9):
 		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=20, threshold=1e-8):
+		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=20, threshold=1e-9):
 			dgamma = 0.0
 			a_n1   = a_n0 
 			for i in range(nbIter):
@@ -302,7 +302,7 @@ class mechamat1D(model1D):
 		S = self._weights[-1] @ np.diag(Scoefs) @ self._basis[1].T 
 		return S
 
-	def solve(self, Fext=None, threshold=1e-8, nbIterNL=10):
+	def solve(self, Fext=None, threshold=1e-9, nbIterNL=30):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -388,15 +388,15 @@ def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=
 	fig.tight_layout()
 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
 
-	# Plot stress-strain of single point
-	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
-	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
-		ax.set_ylabel('Stress (MPa)')
-		ax.set_xlabel('Strain (\%)')
-		ax.set_ylim(bottom=0.0, top=1500)
-		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
+	# # Plot stress-strain of single point
+	# fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
+	# for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
+	# 	ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
+	# 	ax.set_ylabel('Stress (MPa)')
+	# 	ax.set_xlabel('Strain (\%)')
+	# 	ax.set_ylim(bottom=0.0, top=1500)
+	# 	ax.set_xlim(left=0.0, right=strain_interp.max()*100)
 
-	fig.tight_layout()
-	fig.savefig(folder + 'TractionCurve' + method + extension)
+	# fig.tight_layout()
+	# fig.savefig(folder + 'TractionCurve' + method + extension)
 	return

@@ -19,7 +19,7 @@ class heatproblem():
 		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = kwargs.get('NRThreshold', 1e-8)
+		self._thresholdNR  = kwargs.get('NRThreshold', 1e-9)
 		self._methodPCG    = kwargs.get('PCGmethod', 'FDC')
 		return
 	
@@ -306,6 +306,7 @@ class heatproblem():
 				VVn1[dof] += ddVV
 				TTn1[dof] = TTn10[dof] + theta*dt*VVn1[dof]
 
+			# if i == 1 :self._model.exportResults(u_ctrlpts=TTn1, nbDOF=1)
 			Tinout[:, i] = np.copy(TTn1)
 			VVn0 = np.copy(VVn1)
 
@@ -325,7 +326,7 @@ class mechaproblem():
 		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
 		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = kwargs.get('NRThreshold', 1e-8)
+		self._thresholdNR  = kwargs.get('NRThreshold', 1e-9)
 		self._methodPCG    = kwargs.get('PCGmethod', 'JMC')
 		return
 	

@@ -1,51 +1,102 @@
 from lib.__init__ import *
-from lib.lib_base import (createKnotVector)
-from lib.thermomecha1D import mechamat1D, plot_results
+from lib.lib_base import createKnotVector, relativeError
+from lib.thermomecha1D import mechamat1D
 from lib.lib_load import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t1dim/'
+folder = os.path.dirname(full_path) + '/results/plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
+isReference = True
+method = 'iga'
+
+def run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga'):
+	if method == 'iga':
+		kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 
+					'quadrule': 'iga', 'quadmethod': 'leg', 'property': mechaprop}
+	elif method == 'wq':
+		kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 
+					'quadrule': 'wq', 'quadmethod': 1, 'property': mechaprop}
+	else:
+		raise Warning('Not possible')
+	model = mechamat1D(**kwargs)
+	model.set_DirichletCondition(table=[1, 0])
+
+	# Define boundaries conditions
+	Fext        = np.zeros((model._nbctrlpts, nbSteps))
+	Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
+	for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
+
+	# Solve
+	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext)
+	strain_cp   = model.interpolate_CPfield(strain_qp)
+	plastic_cp  = model.interpolate_CPfield(plastic_qp)
+	stress_cp 	= model.interpolate_CPfield(stress_qp)
+	return model, disp_cp, strain_cp, plastic_cp, stress_cp
 
 # Set global variables
-length       = 1.0
-degree, nbel = 4, 51
-knotvector   = createKnotVector(degree, nbel)
+samplesize = 2001
+nbSteps   = 101
+mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 
+				'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
-mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'voce', 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}}
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+if isReference:
+	degree, nbel = 9, 1024
+	knotvector   = createKnotVector(degree, nbel)
+	model, disp_cp, strain_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga')
+	disp_interp = model.interpolate_sample(disp_cp, samplesize=samplesize)[0]
+	strain_interp = model.interpolate_sample(strain_cp, samplesize=samplesize)[0]
+	stress_interp = model.interpolate_sample(stress_cp, samplesize=samplesize)[0]
+	np.save(folder+'disp_interp_ref.npy', disp_interp)
+	np.save(folder+'strain_interp_ref.npy', strain_interp)
+	np.save(folder+'stress_interp_ref.npy', stress_interp)
 
-kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'property': mechaprop}
-model = mechamat1D(**kwargs)
-model.set_DirichletCondition(table=[1, 0])
+else:
 
-# Define boundaries conditions
-nbSteps = 101
-Fext        = np.zeros((model._nbctrlpts, nbSteps))
-Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
-for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
+	def find_relError(ref, interp):
+		norm_ref    = np.linalg.norm(ref, axis=0)
+		error       = ref - interp
+		norm_error  = np.linalg.norm(error, axis=0)
+		relerror    = np.divide(norm_error, norm_ref, out=np.zeros_like(norm_error), where=np.abs(norm_ref)>1.e-12)*100
+		return relerror
 
-# Solve using IGA
-disp_iga, strain_iga, stress_iga, plastic_iga, Cep_iga = model.solve(Fext=Fext)
-strain_cp   = model.interpolate_CPfield(strain_iga)
-plastic_cp  = model.interpolate_CPfield(plastic_iga)
-stress_cp 	= model.interpolate_CPfield(stress_iga)
-plot_results(degree, knotvector, length, disp_iga, plastic_cp,
-                stress_cp, folder=folder, method='IGA')
+	ref = []
+	ref.append(np.load(folder + 'disp_interp_ref.npy'))
+	ref.append(np.load(folder + 'strain_interp_ref.npy'))
+	ref.append(np.load(folder + 'stress_interp_ref.npy'))
 
-# ------------------
-# Post-treatement
-# ------------------
-fig, [ax0, ax1] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
-ax0.plot(model._qpPar, stress_iga[:, 51])
-ax0.set_ylabel('Stress (MPa)')
-ax1.plot(model._qpPar, Cep_iga[:, 51])
-ax1.set_ylabel('Tangent modulus (MPa)')
-for ax in [ax0, ax1]:
-    ax.set_ylim(bottom=0.0)
-    ax.set_xlim(left=0.0, right=1.0)
-    ax.set_xlabel('Quadrature point position')
-fig.tight_layout()
-fig.savefig(folder+'data_step51')
+	degree = 6
+	nbel_list = range(21, 501, 80)
+	relerror = np.zeros((len(nbel_list), nbSteps, 3))
+	
+	for i, nbel in enumerate(nbel_list):
+		knotvector = createKnotVector(degree, nbel)
+		info = run_simulation(degree, knotvector, mechaprop, nbSteps, method=method)
+		model, disp_cp, strain_cp, plastic_cp, stress_cp = info
+		interp = []
+		interp.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
+		interp.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
+		interp.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
+
+		for j in range(3): relerror[i, :, j] = find_relError(ref[j], interp[j])
+
+
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	fig, axs  = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+	nbel_new, steps_new = np.meshgrid(nbel_list, np.arange(0, nbSteps))
+
+	for [i, ax], title in zip(enumerate(axs), ['Displacement', 'Strain', 'Stress']) :
+		im = ax.pcolormesh(nbel_new, steps_new, relerror[:, :, i].T,
+						norm=mpl.colors.LogNorm(vmin=1.e-11, vmax=1.e-1),
+						cmap='viridis', shading='auto')
+		ax.set_ylabel('Steps')
+		ax.set_xlabel('Number of elements')
+		ax.set_title(title + ' error')
+
+		divider = make_axes_locatable(ax)
+		cax = divider.append_axes('right', size='5%', pad=0.05)
+		cbar = fig.colorbar(im, cax=cax, format='%.1e')
+		cbar.ax.set_title('%%')
+
+	fig.tight_layout()
+	fig.savefig(folder + 'convergence.png')

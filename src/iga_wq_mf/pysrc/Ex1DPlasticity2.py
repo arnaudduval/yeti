@@ -5,24 +5,24 @@ from lib.lib_load import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t1dim/'
+folder = os.path.dirname(full_path) + '/results/plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
-# mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'voce', 'Hbar':1445, 'delta':65.8, 'Kinf': 272, 'theta':1.0}}
-mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
-length       = 1.0
-nbSteps      = 101
+mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 
+				'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+length    = 1.0
+nbSteps   = 101
+samplesize =  2001
 
 # ---------------
 # IGA
 # ---------------
-degree, nbel = 4, 22
+degree, nbel = 6, 128
 knotvector   = createKnotVector(degree, nbel)
-kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector,
-            'quadrule': 'iga', 'property': mechaprop, 'quadmethod': 'leg'}
-model = mechamat1D(**kwargs)
+kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector, 
+			'quadrule': 'iga', 'quadmethod': 'leg', 'property': mechaprop}
+model  = mechamat1D(**kwargs)
 model.set_DirichletCondition(table=[1, 0])
 nbqpiga = model._nbqp
 
@@ -32,23 +32,26 @@ Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve 
-disp_iga, strain_iga, stress_iga, plastic_iga, Cep_iga = model.solve(Fext=Fext)
+disp_cp, strain_iga, stress_iga, plastic_iga, Cep_iga = model.solve(Fext=Fext)
 strain_cp   = model.interpolate_CPfield(strain_iga)
 plastic_cp  = model.interpolate_CPfield(plastic_iga)
 stress_cp 	= model.interpolate_CPfield(stress_iga)
-plot_results(degree, knotvector, length, disp_iga, plastic_cp,
-                stress_cp, folder=folder, method='IGA')
-disp_iga_interp = model.interpolate_sample(disp_iga[:, 1:])[0]
+plot_results(degree, knotvector, length, disp_cp, plastic_cp,
+				stress_cp, folder=folder, method='IGA')
+interp_iga  = []
+interp_iga.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
+interp_iga.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
+interp_iga.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
 
 # -------------------
 # Weighted Quadrature
 # -------------------
-degree, nbel = 4, 51
+# degree, nbel = 6, 442
 knotvector   = createKnotVector(degree, nbel)
-kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector,
-            'quadrule': 'wq', 'property': mechaprop}
-# kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector,
-#             'quadrule': 'iga', 'property': mechaprop, 'quadmethod': 'lob'}
+# kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector, 
+# 			'quadrule': 'wq', 'quadmethod': 1, 'property': mechaprop}
+kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector, 
+			'quadrule': 'iga', 'quadmethod': 'lob', 'property': mechaprop}
 model = mechamat1D(**kwargs)
 model.set_DirichletCondition(table=[1, 0])
 nbqpwq = model._nbqp
@@ -59,13 +62,16 @@ Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve
-disp_wq, strain_wq, stress_wq, plastic_wq, Cep_wq = model.solve(Fext=Fext)
+disp_cp, strain_wq, stress_wq, plastic_wq, Cep_wq = model.solve(Fext=Fext)
 strain_cp   = model.interpolate_CPfield(strain_wq)
 plastic_cp  = model.interpolate_CPfield(plastic_wq)
 stress_cp 	= model.interpolate_CPfield(stress_wq)
-plot_results(degree, knotvector, length, disp_wq, plastic_cp,
-                stress_cp, folder=folder, method='WQ')
-disp_wq_interp = model.interpolate_sample(disp_wq[:, 1:])[0]
+plot_results(degree, knotvector, length, disp_cp, plastic_cp,
+				stress_cp, folder=folder, method='WQ')
+interp_wq   = []
+interp_wq.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
+interp_wq.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
+interp_wq.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
 
 # ------------------
 # Post-treatement
@@ -76,29 +82,42 @@ ax0.set_ylabel('Stress (MPa)')
 ax1.plot(model._qpPar, Cep_wq[:, 51])
 ax1.set_ylabel('Tangent modulus (MPa)')
 for ax in [ax0, ax1]:
-    ax.set_ylim(bottom=0.0)
-    ax.set_xlim(left=0.0, right=1.0)
-    ax.set_xlabel('Quadrature point position')
+	ax.set_ylim(bottom=0.0)
+	ax.set_xlim(left=0.0, right=1.0)
+	ax.set_xlabel('Quadrature point position')
 fig.tight_layout()
 fig.savefig(folder+'data_step51')
 
-error    = disp_iga_interp - disp_wq_interp
-relerror = np.linalg.norm(error, axis=0)/np.linalg.norm(disp_iga_interp, axis=0)
-fig, ax  = plt.subplots(nrows=1, ncols=1)
-ax.semilogy(relerror*100)
-ax.set_ylim(bottom=1e-12, top=1e0)
-ax.set_ylabel('L2 Relative error (\%)')
-ax.set_xlabel('Step')
-fig.tight_layout()
-fig.savefig(folder + 'Relative_error_distance.png')
+ref = []
+ref.append(np.load(folder + 'disp_interp_ref.npy'))
+ref.append(np.load(folder + 'strain_interp_ref.npy'))
+ref.append(np.load(folder + 'stress_interp_ref.npy'))
+error_iga = np.zeros((samplesize, nbSteps, 3))
+error_wq  = np.zeros((samplesize, nbSteps, 3))
 
-# relerror    = (np.abs(stress_iga[int((nbqpiga-1)/2), 1:] - stress_wq[int((nbqpwq-1)/2), 1:])/
-#             np.abs(stress_iga[int((nbqpiga-1)/2), 1:])
-# )
-# fig, ax  = plt.subplots(nrows=1, ncols=1)
-# ax.semilogy(relerror*100)
-# ax.set_ylim(bottom=1e-12, top=1e0)
-# ax.set_ylabel('Relative error (\%)')
-# ax.set_xlabel('Step')
-# fig.tight_layout()
-# fig.savefig(folder + 'Relative_error_stress.png')
+for i in range(3):
+	tmp = ref[i] - interp_iga[i]
+	error_iga[:, :, i] = ref[i] - interp_iga[i]
+	error_wq[:, :, i]  = ref[i] - interp_wq[i]
+
+fig, axs  = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
+for [i, ax], title in zip(enumerate(axs), ['Displacement', 'Strain', 'Stress']):
+	
+	norm_ref     = np.linalg.norm(ref[i], axis=0)
+	
+	relerror_iga = np.linalg.norm(error_iga[:, :, i], axis=0)
+	relerror_iga = np.divide(relerror_iga, norm_ref, out=np.zeros_like(relerror_iga), where=np.abs(norm_ref)>1.e-12)*100
+	ax.semilogy(relerror_iga[1:],label='iga-leg w.r.t. ref.')
+
+	relerror_wq  = np.linalg.norm(error_wq[:, :, i], axis=0)
+	relerror_wq  = np.divide(relerror_wq, norm_ref, out=np.zeros_like(relerror_wq), where=np.abs(norm_ref)>1.e-12)*100
+	ax.semilogy(relerror_wq[1:], label='iga-lob w.r.t. ref.')
+
+	ax.set_title(title)
+	ax.set_ylim(bottom=1e-12, top=1e0)
+	ax.set_ylabel('L2 Relative error (\%)')
+	ax.set_xlabel('Step')
+	ax.legend()
+
+fig.tight_layout()
+fig.savefig(folder + 'Relative_error.png')
