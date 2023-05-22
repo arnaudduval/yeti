@@ -5,18 +5,18 @@
 """
 
 from lib.__init__ import *
-from lib.base_functions import (create_knotvector, 
-								wq_find_basis_weights_fortran, 
-								fast_diagonalization, 
-								erase_rows_csr, 
-								eigen_decomposition
+from lib.lib_base import (createKnotVector, 
+							eraseRowsCSR, 
+							genEigenDecomposition,
+							fastDiagonalization
 )
+from lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test5/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
-folder_data = os.path.dirname(full_path) + '/data/'
+folder_data = os.path.dirname(full_path) + '/lib/data/'
 
 # Set global variables
 dataExist     = False
@@ -37,22 +37,24 @@ if not dataExist:
 		for j, degree in enumerate(degree_list):
 		
 			nbel = 2**cuts
-			nb_ctrlpts = degree + nbel - 2
-			knotvector = create_knotvector(degree, nbel)
-			B, W, indi, indj = wq_find_basis_weights_fortran(degree, knotvector)[2:]
+			knotvector = createKnotVector(degree, nbel)
+			weightedQuad = WeightedQuadrature(degree, knotvector)
+			info = weightedQuad.getQuadratureRulesInfo()
+			qp, [indi, indj], dersbasis, dersweights = info
 
 			# Erase data
 			rows2erase = [0, -1]
-			indi_t, indj_t, [B_t, W_t] = erase_rows_csr(rows2erase, indi, indj, [B, W])
+			indi_t, indj_t, [B_t, W_t] = eraseRowsCSR(rows2erase, indi, indj, [dersbasis, dersweights])
 			data_t = [B_t[:, 0], B_t[:, 1], W_t[:, 0], W_t[:, -1]]
 
 			# Compute fast diagonalization
+			nb_ctrlpts = weightedQuad._nbctrlpts - len(rows2erase)
 			V = np.random.random(nb_ctrlpts**3)
 			start = time.process_time()
 
-			eig_t, U_t = eigen_decomposition(indi_t, indj_t, data_t)
+			eig_t, U_t = genEigenDecomposition(indi_t, indj_t, data_t)
 			eig_diag = np.random.random(nb_ctrlpts**3)
-			array_out = fast_diagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
+			array_out = fastDiagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
 			print(array_out[:10])
 
 			stop = time.process_time()

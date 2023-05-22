@@ -5,14 +5,17 @@
 """
 
 from lib.__init__ import *
-from lib.create_geomdl import geomdlModel
-from lib.fortran_mf_wq import fortran_mf_wq
+from lib.lib_geomdl import Geomdl
+from lib.lib_model import part
+from lib.lib_material import thermomat
+from lib.lib_step import step
+from lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test5/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
-folder_data = os.path.dirname(full_path) + '/data/'
+folder_data = os.path.dirname(full_path) + '/lib/data/'
 
 # Set global variables
 dataExist     = False
@@ -36,27 +39,25 @@ if not dataExist:
 		
 		blockPrint()
 
-		nbel = 2**cuts
-		nb_ctrlpts = degree + nbel - 2
-
 		# Create model
-		geometry = {'degree':[degree, degree, degree]}
-		modelGeo = geomdlModel('CB', **geometry)
-		modelIGA = modelGeo.export_IGAparametrization(nb_refinementByDirection=
-													np.array([cuts, cuts, cuts]))
-		modelPhy = fortran_mf_wq(modelIGA)
+		inputs = {'name': 'CB', 'degree':degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+		modelGeo = Geomdl(**inputs)
+		modelIGA = modelGeo.getIGAParametrization()
+		model    = part(modelIGA)
 
 		# Add material 
-		conductivity = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-		material = {'capacity':1.0, 'conductivity':conductivity}
-		modelPhy._set_material(material)
+		material = thermomat()
+		material.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]), isIsotropic=True) 
+		material.addCapacity(1.0, isIsotropic=True) 
 
 		# Block boundaries
-		Dirichlet = np.array([[1, 1], [1, 1], [1, 1]])
-		Dirichlet_dict = {'thermal':Dirichlet}
-		modelPhy._set_dirichlet_boundaries(Dirichlet_dict)
+		boundary = step(model._nbctrlpts)
+		boundary.add_DirichletTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
+		problem = heatproblem(material, model, boundary)
 
-		V = np.random.random(nb_ctrlpts**3)
+		nrows = model._nbctrlpts[0] - 2
+		V = np.random.random(nrows**3)
 
 		# # --------------
 		# # Compute matrix
@@ -75,23 +76,18 @@ if not dataExist:
 		# ------------------
 		# Compute MF product
 		# ------------------
-		# MFtime1 = modelPhy.eval_Cu(V, table=Dirichlet)[-1]
+		# MFtime1 = problem.eval_mfCapacity(V)[-1]
 		# timeMF_Mass_matrix[i, 1] = MFtime1
 		# # np.savetxt(folder_data+'matvec_MF_Mass_'+str(cuts)+'.dat', timeMF_Mass_matrix)
 
-		MFtime2 = modelPhy.eval_Ku(V, table=Dirichlet)[-1]
+		MFtime2 = problem.eval_mfConductivity(V)[-1]
 		timeMF_Stiff_matrix[i, 1] = MFtime2
 		# np.savetxt(folder_data+'matvec_MF_Stiff_'+str(cuts)+'.dat', timeMF_Stiff_matrix)
 
-		# MFtime3 = modelPhy.eval_KCu(V, table=Dirichlet)[-1]
-		# timeMF_SM_matrix[i, 1] = MFtime3
-		# # np.savetxt(folder_data+'matvec_MF_SM_'+str(cuts)+'.dat', timeMF_SM_matrix)
-		
 		enablePrint()
-		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_python))
-		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime1))
-		print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime2))
-		# print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, MFtime3))
+		# print('For p = %s, nbrows = %s, time: %.4f' %(degree, nrows, time_python))
+		# print('For p = %s, nbrows = %s, time: %.4f' %(degree, nrows, MFtime1))
+		print('For p = %s, nbrows = %s, time: %.4f' %(degree, nrows, MFtime2))
 
 else:
 
