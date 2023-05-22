@@ -12,7 +12,7 @@ from lib.lib_quadrules import WeightedQuadrature
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test3/'
 if not os.path.isdir(folder): os.mkdir(folder)
-folder_data = os.path.dirname(full_path) + '/data/'
+folder_data = os.path.dirname(full_path) + '/lib/data/'
 
 # Set global variables
 dataExist   = False
@@ -135,8 +135,3 @@ else :
 
 		fig.tight_layout()
 		fig.savefig(filename_figure)
-
-# from lib.__init__ import *
-# x = np.array([1, 3, 5], dtype=np.int32)
-# assembly.test(x)
-# print(x)
