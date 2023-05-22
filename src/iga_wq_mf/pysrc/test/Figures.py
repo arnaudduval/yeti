@@ -226,7 +226,7 @@ elif CASE == 3: # Quadrature points in IGA
 			knotvector  = createKnotVector(degree, nbel)
 			quadRule    = GaussQuadrature(degree, knotvector)
 			quadRule.getQuadratureRulesInfo()
-			XX, YY      = np.meshgrid(quadRule._quadPtsPos, quadRule._quadPtsPos)
+			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
 			ax.plot(XX, YY, 'ko', markersize=1.2)
 
 			grid = np.linspace(0, 1, nbel+1)
@@ -258,7 +258,7 @@ elif CASE == 4: # Quadrature points in WQ
 			knotvector  = createKnotVector(degree, nbel)
 			quadRule    = WeightedQuadrature(degree, knotvector)
 			quadRule.getQuadratureRulesInfo()
-			XX, YY      = np.meshgrid(quadRule._quadPtsPos, quadRule._quadPtsPos)
+			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
 			ax.plot(XX, YY, 'ko', markersize=1.2)
 
 			grid = np.linspace(0.,1,nbel+1)
@@ -430,8 +430,8 @@ elif CASE == 8: # Weights W00 and W11
 	ax1.set_ylim(ylim1)
 
 	ax2 = ax1.twinx()
-	ax2.plot(quadRule._quadPtsPos, wgt, 'ko')
-	plotVerticalLine(quadRule._quadPtsPos, wgt, ax2)
+	ax2.plot(quadRule.quadPtsPos, wgt, 'ko')
+	plotVerticalLine(quadRule.quadPtsPos, wgt, ax2)
 	ax2.set_ylim(ylim2)
 	ax2.grid(None)
 

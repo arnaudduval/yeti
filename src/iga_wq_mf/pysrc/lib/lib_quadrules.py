@@ -6,29 +6,27 @@ from lib.lib_base import (LegendreTable, lobattoTable,
 
 class QuadratureRules:
 	def __init__(self, degree, knotvector):
-		self._degree       = degree
-		self._knotvector   = knotvector
-		self._nbqp         = None
-		self._quadPtsPos   = None
-		self._dersIndices  = None
-		self._dersBasis    = None
-		self._dersWeights  = None
-		self._denseBasis   = None
-		self._denseWeights = None
-		self._sampleSize   = 101
-		self.getInfoFromKnotvector()
-		self.verifyUniformityRegularity()
+		self.degree       = degree
+		self.knotvector   = knotvector
+		self.__getInfoFromKnotvector()
+		self.__verifyUniformityRegularity()
+
+		self.nbqp         = None
+		self.quadPtsPos   = None
+		self.dersIndices  = None
+		self.dersBasis    = None
+		self.dersWeights  = None
 		return
 
-	def getInfoFromKnotvector(self):
-		self._nbctrlpts = len(self._knotvector) - self._degree - 1
-		self._uniqueKV  = np.unique(self._knotvector)
+	def __getInfoFromKnotvector(self):
+		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
+		self._uniqueKV  = np.unique(self.knotvector)
 		self._nbel      = len(self._uniqueKV) - 1
 		return
 	
-	def verifyUniformityRegularity(self, threshold=1e-8):
+	def __verifyUniformityRegularity(self, threshold=1e-8):
 		self._isMaxReg = False
-		if (self._nbel+self._degree==self._nbctrlpts): self._isMaxReg = True
+		if (self._nbel+self.degree==self.nbctrlpts): self._isMaxReg = True
 
 		self._isUniform = True
 		diffknot = np.diff(np.diff(self._uniqueKV))
@@ -36,144 +34,140 @@ class QuadratureRules:
 		return
 	
 	def getQuadratureRulesInfo(self):
-		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
+		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 	
 	def getDenseQuadRules(self, isFortran=True):
-		self._denseBasis   = []
-		self._denseWeights = []
-		indi, indj = self._dersIndices
-		for i in range(np.size(self._dersBasis, axis=1)):
-			if isFortran: tmp = sp.csr_matrix((self._dersBasis[:, i], indj-1, indi-1))
-			else: tmp = sp.csr_matrix((self._dersBasis[:, i], indj, indi))
-			self._denseBasis.append(tmp)
+		denseBasis, denseWeights = [], []
+		indi, indj = self.dersIndices
+		for i in range(np.size(self.dersBasis, axis=1)):
+			if isFortran: tmp = sp.csr_matrix((self.dersBasis[:, i], indj-1, indi-1))
+			else: tmp = sp.csr_matrix((self.dersBasis[:, i], indj, indi))
+			denseBasis.append(tmp)
 
-		for i in range(np.size(self._dersWeights, axis=1)):
-			if isFortran: tmp = sp.csr_matrix((self._dersWeights[:, i], indj-1, indi-1))
-			else: tmp = sp.csr_matrix((self._dersWeights[:, i], indj, indi))
-			self._denseWeights.append(tmp)
-		return
+		for i in range(np.size(self.dersWeights, axis=1)):
+			if isFortran: tmp = sp.csr_matrix((self.dersWeights[:, i], indj-1, indi-1))
+			else: tmp = sp.csr_matrix((self.dersWeights[:, i], indj, indi))
+			denseWeights.append(tmp)
+		return denseBasis, denseWeights
 	
-	def getGeneralizedBasis(self, isFortran=True):
+	def getGeneralizedBasis(self, sampleSize=101):
 		basis = []
-		knots = np.linspace(0, 1, self._sampleSize)
-		dersBasis, indi, indj = evalDersBasisFortran(self._degree, self._knotvector, knots)
+		knots = np.linspace(0, 1, sampleSize)
+		dersBasis, indi, indj = evalDersBasisFortran(self.degree, self.knotvector, knots)
 		for i in range(np.size(dersBasis, axis=1)):
-			if isFortran: tmp = sp.csr_matrix((dersBasis[:, i], indj-1, indi-1))
-			else: tmp = sp.csr_matrix((self._dersBasis[:, i], indj, indi))
+			tmp = sp.csr_matrix((dersBasis[:, i], indj-1, indi-1)) # -1 because indj is in fortran notation
 			basis.append(tmp)
 		return basis, knots
 	
 class GaussQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, kwargs={}):
+	def __init__(self, degree, knotvector, kwargs=dict()):
 		super().__init__(degree, knotvector)
-		self._kwargs = kwargs
 		self._quadMethod = kwargs.get('quadmethod', 'leg').lower()
 		if self._quadMethod == 'leg': # Legendre 
-			self._order = self._degree + 1
-			self._table = LegendreTable
+			self._order = self.degree + 1
+			self._tablefunction = LegendreTable
 		elif self._quadMethod == 'lob': # Lobatto
-			self._order = self._degree + 2
-			self._table = lobattoTable
+			self._order = self.degree + 2
+			self._tablefunction = lobattoTable
 		else: 
 			raise Warning('Not found')
 		return
 	
-	def getGaussInfo(self):
-		" Gets Gauss quadrature points position and weights from tables "
-		gp, gw = self._table(self._order)
-		self._isoPositions = gp
-		self._isoWeights   = gw
+	def __getGaussInfo(self):
+		" Gets the position of Gauss quadrature points in isoparametric space and its weights using known tables "
+		self._isoPositions, self._isoWeights = self._tablefunction(self._order)
 		return
 
-	def findQuadraturePositions(self):
-		quadPtsInfo = np.array([])
+	def __findQuadraturePositions(self):
+		" Gets the position of Gauss quadrature points in parametric space "
+		tmp   = np.array([])
 		knots = self._uniqueKV
 		for i in range(self._nbel):
-			xg = 0.5*((knots[i+1] - knots[i])*self._isoPositions + knots[i] + knots[i+1])
-			quadPtsInfo = np.append(quadPtsInfo, xg)
-		self._quadPtsPos = np.atleast_1d(quadPtsInfo)
-		self._nbqp = np.size(self._quadPtsPos)
+			xg  = 0.5*((knots[i+1] - knots[i])*self._isoPositions + knots[i] + knots[i+1])
+			tmp = np.append(tmp, xg)
+		self.quadPtsPos = np.atleast_1d(tmp)
+		self.nbqp = np.size(self.quadPtsPos)
 		return
 	
-	def findParametricWeights(self):
-		quadPtsInfo = np.array([])
+	def __findParametricWeights(self):
+		" Gets the weight of Gauss quadrature points in parametric space "
+		tmp   = np.array([])
 		knots = self._uniqueKV
 		for i in range(self._nbel):
-			wg = 0.5*(knots[i+1] - knots[i])*self._isoWeights
-			quadPtsInfo = np.append(quadPtsInfo, wg)
-		self._parametricWeights = np.atleast_1d(quadPtsInfo)
+			wg  = 0.5*(knots[i+1] - knots[i])*self._isoWeights
+			tmp = np.append(tmp, wg)
+		self._parametricWeights = np.atleast_1d(tmp)
 		return
 	
 	def evalDersBasisWeights(self):
-		B, indi, indj = basisweights.get_genbasis_csr(self._degree, self._knotvector, self._quadPtsPos)
-		self._dersBasis   = B
-		self._dersIndices = [indi, indj]
-		nnz = np.shape(B)[0]
-		W = np.zeros((nnz, 4))
+		" Gets the basis and weights evaluated at the Gauss quadrature points "
+		basis, indi, indj = basisweights.get_genbasis_csr(self.degree, self.knotvector, self.quadPtsPos)
+		self.dersBasis   = basis
+		self.dersIndices = [indi, indj]
+		nnz = np.shape(basis)[0]
+		weights = np.zeros((nnz, 4))
 		for i in range(nnz):
-			W[i, 0]  = B[i, 0]*self._parametricWeights[indj[i]-1] # -1 because indj is in fortran notation
-			W[i, 3]  = B[i, 1]*self._parametricWeights[indj[i]-1]
-		W[:, 1] = W[:, 0]; W[:, 2] = W[:, 3]
-		self._dersWeights = W
+			weights[i, 0]  = basis[i, 0]*self._parametricWeights[indj[i]-1] # -1 because indj is in fortran notation
+			weights[i, 3]  = basis[i, 1]*self._parametricWeights[indj[i]-1]
+		weights[:, 1] = weights[:, 0]; weights[:, 2] = weights[:, 3]
+		self.dersWeights = weights
 		return
 	
 	def getQuadratureRulesInfo(self):
-		self.getGaussInfo()
-		self.findQuadraturePositions()
-		self.findParametricWeights()
+		self.__getGaussInfo()
+		self.__findQuadraturePositions()
+		self.__findParametricWeights()
 		self.evalDersBasisWeights()
-		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
+		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 
 class WeightedQuadrature(QuadratureRules):
-	def __init__(self, degree, knotvector, kwargs={}):
+	def __init__(self, degree, knotvector, kwargs=dict()):
 		super().__init__(degree, knotvector)
-		self._kwargs     = kwargs
 		self._quadMethod = kwargs.get('quadmethod', 1)
+		self._quadVars   = kwargs.get('quadvars', {})
 		return
 	
-	def findQuadraturePositions(self):
-		rule = self._kwargs.get('rule', 'midpoint')
-		self._posRule = rule.lower()
+	def __findQuadraturePositions(self):
+		self._posRule = self._quadVars.get('rule', 'midpoint').lower()
 		if self._posRule == 'midpoint':
-			s = self._kwargs.get('s', 1); r = self._kwargs.get('r', 2)
-			self._quadPtsPos = self.QuadPosMidPointRule(s=s, r=r)
+			s = self._quadVars.get('s', 1); r = self._quadVars.get('r', 2)
+			self.quadPtsPos = self.__QuadPosMidPointRule(s=s, r=r)
 		# Add more methods 
-		self._Bshape = self.getBShape(self._quadPtsPos)
-		self._nbqp   = np.size(self._quadPtsPos)
+		self._Bshape = self.__getBShape(self.quadPtsPos)
+		self.nbqp   = np.size(self.quadPtsPos)
 		return
 
 	# Add rules to get the quadrature points
-	def QuadPosMidPointRule(self, s=1, r=2):	
+	def __QuadPosMidPointRule(self, s=1, r=2):	
 		""" Find quadrature points using mid-point rule
 			r is the 'extra' points on the knotspans at the boundaries
 			s is the 'extra' points on the inner knotspans. The number must respect the max rule (see bibliography)
 		"""
-		quadPtsInfo = np.array([])
+		quadPtsPos = np.array([])
 		knots = self._uniqueKV
 		# First span
-		tmp = np.linspace(knots[0], knots[1], self._degree+r)
-		quadPtsInfo = np.append(quadPtsInfo, tmp)
+		tmp = np.linspace(knots[0], knots[1], self.degree+r)
+		quadPtsPos = np.append(quadPtsPos, tmp)
 
 		# Last span
-		tmp = np.linspace(knots[-2], knots[-1], self._degree+r)
-		quadPtsInfo = np.append(quadPtsInfo, tmp)
+		tmp = np.linspace(knots[-2], knots[-1], self.degree+r)
+		quadPtsPos = np.append(quadPtsPos, tmp)
 
 		# Inner span
 		for i in range(1, self._nbel-1):
 			tmp = np.linspace(knots[i], knots[i+1], 2+s)
-			quadPtsInfo = np.append(quadPtsInfo, tmp)
+			quadPtsPos = np.append(quadPtsPos, tmp)
 		
-		quadPtsInfo = np.unique(quadPtsInfo)
-		quadPtsInfo.sort()
-		return quadPtsInfo
+		quadPtsPos = np.unique(quadPtsPos)
+		quadPtsPos.sort()
+		return quadPtsPos
 	
 	# ----
 
-	def getBShape(self, knots, isfortran=True):
-		""" Return the shape of basis in WQ approach.
-		"""
-		B0shape = np.zeros((self._nbctrlpts, 2), dtype=int)
-		B1shape = np.zeros((self._nbctrlpts, 2), dtype=int)
+	def __getBShape(self, knots, isfortran=True):
+		" Return the shape of basis in WQ approach. "
+		B0shape = np.zeros((self.nbctrlpts, 2), dtype=int)
+		B1shape = np.zeros((self.nbctrlpts, 2), dtype=int)
 		knots   = np.atleast_1d(knots)
 
 		tablePointsOverSpan = np.zeros((self._nbel, 2), dtype=int)
@@ -183,16 +177,16 @@ class WeightedQuadrature(QuadratureRules):
 			tablePointsOverSpan[i, 0] = np.nonzero(boolean)[0][0]
 			tablePointsOverSpan[i, 1] = np.nonzero(boolean)[0][-1]
 
-		tableFunctionsOverSpan = np.zeros((self._nbel, self._degree+1), dtype=int)
-		for j in range(0, self._degree+1): tableFunctionsOverSpan[0, j] = j
+		tableFunctionsOverSpan = np.zeros((self._nbel, self.degree+1), dtype=int)
+		for j in range(0, self.degree+1): tableFunctionsOverSpan[0, j] = j
 		for i in range(1, self._nbel): 
-			multiplicity = findMultiplicity(self._knotvector, self._uniqueKV[i])
+			multiplicity = findMultiplicity(self.knotvector, self._uniqueKV[i])
 			tableFunctionsOverSpan[i, 0] = tableFunctionsOverSpan[i-1, 0] + multiplicity
-			for j in range(1, self._degree+1): 
+			for j in range(1, self.degree+1): 
 				tableFunctionsOverSpan[i, j] = tableFunctionsOverSpan[i, 0] + j
 
-		tableSpansOverFunction = np.zeros((self._nbctrlpts, 2), dtype=int)
-		for i in range(0, self._nbctrlpts):
+		tableSpansOverFunction = np.zeros((self.nbctrlpts, 2), dtype=int)
+		for i in range(0, self.nbctrlpts):
 			minspan = 1
 			for j in range(0, self._nbel):
 				if np.any(tableFunctionsOverSpan[j, :]==i):
@@ -203,20 +197,20 @@ class WeightedQuadrature(QuadratureRules):
 					maxspan = j; break
 			tableSpansOverFunction[i, :] = [minspan, maxspan]
 
-		for i in range(0, self._nbctrlpts):
+		for i in range(0, self.nbctrlpts):
 			minspan, maxspan = tableSpansOverFunction[i, :]
 			minknot = tablePointsOverSpan[minspan, 0] + 1
 			maxknot = tablePointsOverSpan[maxspan, 1] - 1
 			if i == 0: minknot -= 1
-			if i == self._nbctrlpts-1: maxknot += 1
+			if i == self.nbctrlpts-1: maxknot += 1
 			B0shape[i, :] = [minknot, maxknot]
 
-		for i in range(0, self._nbctrlpts):
+		for i in range(0, self.nbctrlpts):
 			minspan, maxspan = tableSpansOverFunction[i, :]
 			minknot = tablePointsOverSpan[minspan, 0] + 1
 			maxknot = tablePointsOverSpan[maxspan, 1] - 1
 			if (i == 0) or (i == 1): minknot -= 1
-			if (i == self._nbctrlpts-1) or (i == self._nbctrlpts-2): maxknot += 1
+			if (i == self.nbctrlpts-1) or (i == self.nbctrlpts-2): maxknot += 1
 			B1shape[i, :] = [minknot, maxknot]
 		
 		if isfortran: 
@@ -227,28 +221,29 @@ class WeightedQuadrature(QuadratureRules):
 	def evalDersBasisWeights(self):
 		if self._quadMethod not in [1, 2]: raise Warning('Method unknown')
 		
-		size_data = (self._degree + 1)*self._nbqp
-		B = np.zeros((size_data, 2))
-		W = np.zeros((size_data, 4))
+		size_data = (self.degree + 1)*self.nbqp
+		basis   = np.zeros((size_data, 2))
+		weights = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
-		indi = np.zeros(self._nbctrlpts+1, dtype=int)
+		indi = np.zeros(self.nbctrlpts+1, dtype=int)
 
-		if (self._posRule == 'midpoint') and (self._isUniform) and (self._nbel > self._degree+3):
-			s = self._kwargs.get('s', 1); r = self._kwargs.get('r', 2)
+		if (self._posRule == 'midpoint') and (self._isUniform) and (self._nbel > self.degree+3):
+			s = self._quadVars.get('s', 1); r = self._quadVars.get('r', 2)
 			# Create model
-			degree_model = self._degree
+			degree_model = self.degree
 			kv_model     = createKnotVector(degree_model, degree_model + 3)
-			WQmodel      = WeightedQuadrature(degree_model, kv_model, kwargs=self._kwargs)
-			WQmodel.findQuadraturePositions()
-			size_data_model = (degree_model + 1)*WQmodel._nbqp
-			Bm, Wm, indim, indjm = basisweights.wq_getbasisweights_csr(WQmodel._degree, WQmodel._knotvector, WQmodel._quadPtsPos, 
+			kwargs       = {'quadmethod': self._quadMethod, 'quadvars': self._quadVars}
+			WQmodel      = WeightedQuadrature(degree_model, kv_model, kwargs=kwargs)
+			WQmodel.__findQuadraturePositions()
+			size_data_model = (degree_model + 1)*WQmodel.nbqp
+			Bm, Wm, indim, indjm = basisweights.wq_getbasisweights_csr(WQmodel.degree, WQmodel.knotvector, WQmodel.quadPtsPos, 
 													WQmodel._Bshape[0], WQmodel._Bshape[1], size_data_model, WQmodel._quadMethod)
 			# Scale the results
 			Wm[:, :2] = Wm[:, :2]*WQmodel._nbel/self._nbel
 			Bm[:, -1] = Bm[:, -1]*self._nbel/WQmodel._nbel
 
 			#Copy model data
-			times = self._nbel - (self._degree + 3); row2copy = self._degree + 2
+			times = self._nbel - (self.degree + 3); row2copy = self.degree + 2
 			left  = indim[row2copy-1] - 1; right = indim[row2copy] - 1
 			indj2copy = indjm[left:right];  data2copy = np.zeros((len(indj2copy), 6)) 
 			data2copy[:, :2] = Bm[left:right, :]; data2copy[:, 2:] = Wm[left:right, :]
@@ -264,25 +259,25 @@ class WeightedQuadrature(QuadratureRules):
 				indi = np.copy(inditt); indj = np.copy(indjtt); data = np.copy(datatt)
 
 			# Offset of last p+1 rows
-			nbcols = 2*(self._degree + r) + self._nbel*(s + 1) - 2*s - 3  
+			nbcols = 2*(self.degree + r) + self._nbel*(s + 1) - 2*s - 3  
 			offset = nbcols - np.max(indjm)
 
-			for i in range(self._nbctrlpts-self._degree-1, self._nbctrlpts):
+			for i in range(self.nbctrlpts-self.degree-1, self.nbctrlpts):
 				indj[indi[i]:indi[i+1]] += offset
 
-			B = data[:, :2]; W = data[:, 2:]
+			basis = data[:, :2]; weights = data[:, 2:]
 
 		else:
-			B, W, indi, indj = basisweights.wq_getbasisweights_csr(self._degree, self._knotvector, self._quadPtsPos, 
+			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
 														self._Bshape[0], self._Bshape[1], size_data, self._quadMethod)
 		
-		self._dersBasis   = B
-		self._dersWeights = W
-		self._dersIndices = [indi, indj]
+		self.dersBasis   = basis
+		self.dersWeights = weights
+		self.dersIndices = [indi, indj]
 		return
 	
 	def getQuadratureRulesInfo(self):
-		self.findQuadraturePositions()
+		self.__findQuadraturePositions()
 		self.evalDersBasisWeights()
-		return self._quadPtsPos, self._dersIndices, self._dersBasis, self._dersWeights
+		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 	

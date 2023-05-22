@@ -48,7 +48,7 @@ if not dataExist:
 			data_t = [B_t[:, 0], B_t[:, 1], W_t[:, 0], W_t[:, -1]]
 
 			# Compute fast diagonalization
-			nb_ctrlpts = weightedQuad._nbctrlpts - len(rows2erase)
+			nb_ctrlpts = weightedQuad.nbctrlpts - len(rows2erase)
 			V = np.random.random(nb_ctrlpts**3)
 			start = time.process_time()
 

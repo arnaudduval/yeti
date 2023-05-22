@@ -4,7 +4,7 @@ from lib.lib_base import evalDersBasisPy, evalDersBasisFortran, createKnotVector
 degree = 1
 nbel   = 10
 knotvector = createKnotVector(degree, nbel)
-knots = np.linspace(0, 1, 101)
+knots = np.linspace(0, 1, 10)
 
 pB0, pB1 = evalDersBasisPy(degree, knotvector, knots)
 basis, indi, indj = evalDersBasisFortran(degree, knotvector, knots)

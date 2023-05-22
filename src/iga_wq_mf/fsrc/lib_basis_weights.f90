@@ -23,6 +23,29 @@
 ! GLOBAL FUNCTIONS: expected to work with any knotvector
 ! ------------------------------------------------------
 
+subroutine find_interpolation_kvspan(size_array, array, x, offset, span, threshold)
+    !! Finds the interpolation span of the given value x. 
+    !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
+
+    implicit none 
+    ! Input / output data
+    ! ------------------- 
+    integer, intent(in) :: size_array, offset
+    double precision, intent(in) :: array, x, threshold
+    dimension :: array(size_array)
+
+    integer, intent(out) :: span 
+
+    span = 2 + offset
+
+    do while ((span.lt.size_array-offset).and.((array(span)-x).le.threshold))
+        span = span + 1
+    end do
+
+    span = span - 1 
+
+end subroutine find_interpolation_kvspan
+
 subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
     !! Finds the multiplicity of a given knot.
     !! Ex: Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} and x = 0.5, the multiplicity is 2.
@@ -151,8 +174,8 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
     do i = 1, nb_knots
 
         ! Computes B0 and B1 using a YETI function
-        call find_interpolation_span(size_kv, knotvector, knots(i), degree, span(1), span_tol)
-        call find_interpolation_span(size_ukv, ukv, knots(i), 0, span(2), span_tol)
+        call find_interpolation_kvspan(size_kv, knotvector, knots(i), degree, span(1), span_tol)
+        call find_interpolation_kvspan(size_ukv, ukv, knots(i), 0, span(2), span_tol)
         functions_span = table_functions_span(span(2), :)
         call dersbasisfuns(span(1), degree, nbctrlpts, knots(i), knotvector, B0t, B1t)
 

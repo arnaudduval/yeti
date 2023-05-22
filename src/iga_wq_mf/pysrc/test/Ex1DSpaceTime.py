@@ -13,44 +13,44 @@ length 		   = 1.0
 Tspan          = 0.02
 
 # Space discretization
-degree_sp, nbel = 1, 10
+degree_sp, nbel = 2, 10
 knotvector_sp   = createKnotVector(degree_sp, nbel)
 spDscrt         = GaussQuadrature(degree_sp, knotvector_sp)
 spDscrt.getQuadratureRulesInfo()
-spDscrt.getDenseQuadRules()
+spDenseBasis, spDenseWeights = spDscrt.getDenseQuadRules()
 
 # Construct space matrices
-Mcfs     = rho * Cap * length * np.ones(spDscrt._nbqp)
-Mass_sp  = spDscrt._denseWeights[0] @ np.diag(Mcfs) @ spDscrt._denseBasis[0].T
+Mcfs     = rho * Cap * length * np.ones(spDscrt.nbqp)
+Mass_sp  = spDenseWeights[0] @ np.diag(Mcfs) @ spDenseBasis[0].T
 
-Kcfs     = Cond/length * np.ones(spDscrt._nbqp)
-Stiff_sp = spDscrt._denseWeights[-1] @ np.diag(Kcfs) @ spDscrt._denseBasis[1].T 
+Kcfs     = Cond/length * np.ones(spDscrt.nbqp)
+Stiff_sp = spDenseWeights[-1] @ np.diag(Kcfs) @ spDenseBasis[1].T 
 
 # Time discretization
-degree_t, nsteps  = 1, 9
+degree_t, nsteps  = 2, 9
 knotvector_t      = createKnotVector(degree_t, nsteps)
 tmDscrt           = GaussQuadrature(degree_t, knotvector_t)
 tmDscrt.getQuadratureRulesInfo()
-tmDscrt.getDenseQuadRules()
+tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()
 
 # Construct time matrices
-Adv_time  = tmDscrt._denseWeights[0] @ np.diag(np.ones(tmDscrt._nbqp)) @ tmDscrt._denseBasis[1].T
-Mass_time = tmDscrt._denseWeights[0] @ np.diag(Tspan*np.ones(tmDscrt._nbqp)) @ tmDscrt._denseBasis[0].T
+Adv_time  = tmDenseWeights[0] @ np.diag(np.ones(tmDscrt.nbqp)) @ tmDenseBasis[1].T
+Mass_time = tmDenseWeights[0] @ np.diag(Tspan*np.ones(tmDscrt.nbqp)) @ tmDenseBasis[0].T
 
 # Get free nodes. To reuse algorithms we use the class thermomodel
-all_ctrlpts = set(np.arange(spDscrt._nbctrlpts*tmDscrt._nbctrlpts))
+all_ctrlpts = set(np.arange(spDscrt.nbctrlpts*tmDscrt.nbctrlpts))
 all_dof = []
-for i in range(1, spDscrt._nbctrlpts - 1):
-    for j in range(1, tmDscrt._nbctrlpts):
-        k = i + j*spDscrt._nbctrlpts
+for i in range(1, spDscrt.nbctrlpts - 1):
+    for j in range(1, tmDscrt.nbctrlpts):
+        k = i + j*spDscrt.nbctrlpts
         all_dof.append(k)
 all_dof = set(all_dof); all_dod = all_ctrlpts.difference(all_dof)
 all_dof = list(all_dof); all_dod = list(all_dod)
 
 spe_dod = []
-for i in [spDscrt._nbctrlpts-1]:
-    for j in range(tmDscrt._nbctrlpts):
-        k = i + j*spDscrt._nbctrlpts
+for i in [spDscrt.nbctrlpts-1]:
+    for j in range(tmDscrt.nbctrlpts):
+        k = i + j*spDscrt.nbctrlpts
         spe_dod.append(k)
 
 # Define space-time temperature
