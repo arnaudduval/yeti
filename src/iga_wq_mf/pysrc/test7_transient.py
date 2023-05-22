@@ -38,21 +38,22 @@ folder = os.path.dirname(full_path) + '/results/test7/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = True
-name_list   = ['CB']
-if dataExist: IterMethods = ['WP', 'C', 'JMC']
-else: IterMethods = ['C', 'JMC']  
+dataExist   = False
+name_list   = ['CB', 'VB']
+IterMethods = ['WP', 'C', 'JMC']
+name_list   = ['VB']
+IterMethods = ['JMC']
 example     = 1
 if   example == 1: nbSteps = 41
 elif example == 2: nbSteps = 6
 
 if not dataExist:
 
-	degree, cuts = 5, 4
+	degree, cuts = 6, 4
 	time_list    = np.linspace(0, 0.25, nbSteps)  
 
-	for name in name_list:
-		for PCGmethod in IterMethods:
+	for PCGmethod in IterMethods:
+		for name in name_list:
 			filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'        
 
 			# Create model 
@@ -87,82 +88,78 @@ if not dataExist:
 			Fext = np.kron(np.atleast_2d(Fend).reshape(-1, 1), sigmoid(time_list))
 
 			# Solve
-			lastStep = nbSteps
+			lastStep = 3
 			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext=Fext[:, :lastStep], 
-														time_list=time_list[:lastStep], theta=1.0)
-			np.savetxt(filename, resPCG)
-			# model.exportResults(u_ctrlpts=Tinout[:, lastStep-1], folder=folder, nbDOF=1)
+														time_list=time_list[:lastStep], theta=1.0, thresholdNR=1e-8)
+			# np.savetxt(filename, resPCG)
+			model.exportResults(u_ctrlpts=Tinout[:, lastStep-1], folder=folder, nbDOF=1)
 
 else:
 
-	# for name in name_list:
-	# 	fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
-
-	# 	for i, PCGmethod in enumerate(['C', 'JMC']):
-	# 		filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'
-	# 		resPCG   = np.loadtxt(filename)
-
-	# 		if   PCGmethod == "C"  : labelmethod = 'Classic FD\nmethod'
-	# 		elif PCGmethod == "JMC": labelmethod = 'This work'
-
-	# 		ind = np.where(resPCG[:, 0]==1)
-	# 		newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
-	# 		ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
-			
-	# 		newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
-	# 		ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
-
-	# 		maxStep = int(np.max(resPCG[:, 0]))
-	# 		for j in range(2, maxStep):
-	# 			opacity = (maxStep - j + 1)*1.0/(maxStep - 1)
-	# 			ind = np.where(resPCG[:, 0]==j)
-
-	# 			newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
-	# 			ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
-	# 						color=colorSet[i], linewidth=0.5)
-				
-	# 			newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
-	# 			ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
-	# 						color=colorSet[i], linewidth=0.5)
-
-	# 	ax1.set_title('First NR iterations')
-	# 	ax2.set_title('Last NR iterations')
-	# 	for ax in [ax1, ax2]:
-	# 		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-	# 		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-	# 		ax.set_ybound(lower=1e-12, upper=10)
-
-	# 	filename = folder + 'TransientNL_' + name + str(example) + '.png'
-	# 	fig.tight_layout()
-	# 	fig.savefig(filename)
-
-
 	for name in name_list:
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))
+		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 
-		for i, PCGmethod in enumerate(IterMethods):
+		for i, PCGmethod in enumerate(['C', 'JMC']):
 			filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'
 			resPCG   = np.loadtxt(filename)
 
-			if PCGmethod   == "WP" : labelmethod = 'w.o.\npreconditioner'
-			elif PCGmethod == "C"  : labelmethod = 'Classic FD\nmethod'
+			if   PCGmethod == "C"  : labelmethod = 'Classic FD\nmethod'
 			elif PCGmethod == "JMC": labelmethod = 'This work'
 
-			# Print the first 
-			newresidue = resPCG[0, 2:]; newresidue = newresidue[newresidue>0]
-			ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
-						linewidth=2.5, marker=markerSet[i], label=labelmethod)
+			ind = np.where(resPCG[:, 0]==1)
+			newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
+			ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
+			
+			newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
+			ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
 
-			# # Print the last
-			# newresidue = resPCG[-1, 2:]; newresidue = newresidue[newresidue>0]
-			# ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
-			# 			linewidth=2.5, marker=markerSet[i], label=labelmethod)
+			maxStep = int(np.max(resPCG[:, 0]))
+			for j in range(2, maxStep):
+				opacity = (maxStep - j + 1)*1.0/(maxStep - 1)
+				ind = np.where(resPCG[:, 0]==j)
 
-		ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc='lower left', mode='expand', ncol=3)
-		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
-		ax.set_ybound(lower=1e-12, upper=10)
+				newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
+				ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
+							color=colorSet[i], linewidth=0.5)
+				
+				newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
+				ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
+							color=colorSet[i], linewidth=0.5)
 
-		filename = folder + 'TransientNL_' + name + '.png'
-		# fig.tight_layout()
+		ax1.set_title('First NR iterations')
+		ax2.set_title('Last NR iterations')
+		for ax in [ax1, ax2]:
+			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+			ax.set_ybound(lower=1e-12, upper=10)
+
+		filename = folder + 'TransientNL_' + name + str(example) + '.png'
+		fig.tight_layout()
 		fig.savefig(filename)
+
+
+	# for name in name_list:
+	# 	# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))
+	# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+
+	# 	for i, PCGmethod in enumerate(IterMethods):
+	# 		filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'
+	# 		resPCG   = np.loadtxt(filename)
+
+	# 		if PCGmethod   == "WP" : labelmethod = 'w.o.\npreconditioner'
+	# 		elif PCGmethod == "C"  : labelmethod = 'Classic FD\nmethod'
+	# 		elif PCGmethod == "JMC": labelmethod = 'This work'
+			
+	# 		ind = np.where(resPCG[:, 0]==40)
+	# 		newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
+	# 		ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
+	# 					linewidth=2.5, marker=markerSet[i], label=labelmethod)
+
+	# 	# ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc='lower left', mode='expand', ncol=3)
+	# 	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+	# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+	# 	ax.set_ybound(lower=1e-12, upper=10)
+
+	# 	filename = folder + 'TransientNL_' + name + '2.pdf'
+	# 	fig.tight_layout()
+	# 	fig.savefig(filename)

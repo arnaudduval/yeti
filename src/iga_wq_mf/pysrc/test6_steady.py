@@ -10,9 +10,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = True
 degree_list = np.arange(6, 7)
-cuts_list   = np.arange(5, 6)
+cuts_list   = np.arange(4, 5)
 # name_list   = ['cb', 'vb', 'tr', 'rqa']
-name_list   = ['cb']
+name_list   = ['vb', 'rqa']
 IterMethods = ["WP", "C", "JMC", "TDC"]
 
 def setKprop(P:list):
@@ -61,8 +61,8 @@ for cuts in cuts_list:
 			else :
 				filename   = simu._filename
 				simuOutput = decoder(filename)
-				simuOutput.plot_results(extension='.png', plotLegend=False)
-				ref = np.load(folder+'reference.npy')
-				sol = np.load(folder+'solution.npy')
-				relerror = relativeError(sol, ref, relType='fro')*100
-				print('Relative error: %.5f %%' %relerror)
+				simuOutput.plot_results(extension='.png', plotLegend=True)
+				# ref = np.load(folder+'reference.npy')
+				# sol = np.load(folder+'solution.npy')
+				# relerror = relativeError(sol, ref, relType='fro')*100
+				# print('Relative error: %.5f %%' %relerror)

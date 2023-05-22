@@ -238,7 +238,8 @@ class heatproblem():
 		return sol, residue
 
 	# Solve using python
-	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):
+	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0, thresholdNR=None):
+		if thresholdNR is None: thresholdNR = self._thresholdNR
 		m, n = np.shape(Tinout)
 		nbSteps         = len(time_list)
 		nbctrlpts_total = self._model._nbctrlpts_total
@@ -294,7 +295,7 @@ class heatproblem():
 				ddFFdof = ddFF[dof]
 				resNL   = np.sqrt(np.dot(ddFFdof, ddFFdof))
 				print('NR error: %.5f' %resNL)
-				if resNL <= self._thresholdNR: break
+				if resNL <= thresholdNR: break
 
 				# Iterative solver
 				resPCG = np.array([i, j+1])

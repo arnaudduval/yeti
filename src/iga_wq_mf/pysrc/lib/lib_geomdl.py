@@ -213,6 +213,7 @@ class Geomdl():
 		elif self._name == 'prism' or self._name == 'vb':
 			dimen = 3
 			XY     = self._kwargs.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			# XY     = self._kwargs.get('xy', np.array([[0.0, -1.5], [1.2, -0.5], [1.2, 0.5], [0.0, 1.5]]))
 			height = self._kwargs.get('height', 1)
 			degree_u, degree_v, degree_w = self._kwargs.get('degree', [2, 2, 2])
 			part = self.create_prism(XY, height, degree_u, degree_v, degree_w) 
