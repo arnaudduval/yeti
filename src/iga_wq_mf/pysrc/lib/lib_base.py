@@ -26,7 +26,7 @@ def cropImage(filename):
 
 def relativeError(array_interp, array_th, relType='inf'):
 	error = array_th - array_interp
-	if relType == 'inf': arg = np.inf
+	if   relType == 'inf': arg = np.inf
 	elif relType == 'fro': arg = None
 	try:    relError = np.linalg.norm(error, ord=arg)/np.linalg.norm(array_th, ord=arg)
 	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
@@ -94,7 +94,6 @@ def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
 	return indi_out, indj_out, data_out
 
 def array2csr_matrix(data, indi, indj, isfortran=True):
-	" Computes csr sparse matrix "
 
 	nb_rows = len(indi) - 1
 	if isfortran: 
@@ -133,7 +132,7 @@ def createKnotVector(p, nbel, multiplicity=1):
 	
 	return knotvector
 
-def findMultiplicity(p, knotvector, knot, threshold=1e-8):
+def findMultiplicity(knotvector, knot, threshold=1e-8):
 	""" Finds the multiplicity of a given knot.
 		Ex: Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} and x = 0.5, the multiplicity is 2.
 	"""

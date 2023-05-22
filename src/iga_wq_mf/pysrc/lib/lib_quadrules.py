@@ -186,7 +186,7 @@ class WeightedQuadrature(QuadratureRules):
 		tableFunctionsOverSpan = np.zeros((self._nbel, self._degree+1), dtype=int)
 		for j in range(0, self._degree+1): tableFunctionsOverSpan[0, j] = j
 		for i in range(1, self._nbel): 
-			multiplicity = findMultiplicity(self._degree, self._knotvector, self._uniqueKV[i])
+			multiplicity = findMultiplicity(self._knotvector, self._uniqueKV[i])
 			tableFunctionsOverSpan[i, 0] = tableFunctionsOverSpan[i-1, 0] + multiplicity
 			for j in range(1, self._degree+1): 
 				tableFunctionsOverSpan[i, j] = tableFunctionsOverSpan[i, 0] + j
