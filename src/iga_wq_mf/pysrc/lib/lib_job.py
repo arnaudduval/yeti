@@ -122,8 +122,8 @@ class heatproblem():
 			return direction, side
 
 		vector = np.zeros(self._model._nbctrlpts_total)
-		INC_ctrlpts = self._boundary._get_INCTable(self._model._nbctrlpts)
-		INC_quadpts = self._boundary._get_INCTable(self._model._nbqp)
+		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -365,8 +365,8 @@ class mechaproblem():
 			return direction, side
 
 		vector = np.zeros((self._model._dim, self._model._nbctrlpts_total))
-		INC_ctrlpts = self._boundary._get_INCTable(self._model._nbctrlpts)
-		INC_quadpts = self._boundary._get_INCTable(self._model._nbqp)
+		INC_ctrlpts = self._boundary.__get_INCTable(self._model._nbctrlpts)
+		INC_quadpts = self._boundary.__get_INCTable(self._model._nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -404,7 +404,7 @@ class mechaproblem():
 
 	# Solve using fortran
 	def solveElasticityProblemFT(self, Fext, kwargs=None, nbIterPCG=None, methodPCG=None):
-		dod_total = deepcopy(self._boundary._mchdod)
+		dod_total = deepcopy(self._boundary.mchdod)
 		for i, dod in enumerate(dod_total):
 			tmp = dod + 1
 			dod_total[i] = tmp
@@ -485,7 +485,7 @@ class mechaproblem():
 				# Compute Fint 
 				Fint = self.compute_intForce(stress)
 				dF   = Fstep - Fint
-				clean_dirichlet(dF, self._boundary._mchdod) 
+				clean_dirichlet(dF, self._boundary.mchdod) 
 				prod1 = block_dot_product(d, dF, dF)
 				resNL = np.sqrt(prod1)
 				print('Relative error: %.5e' %resNL)

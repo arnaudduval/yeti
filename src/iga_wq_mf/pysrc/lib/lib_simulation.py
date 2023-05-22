@@ -78,8 +78,8 @@ class encoder():
 			This equation is used in substitution method (SM)
 		"""
 		
-		dof = problem._boundary._thdof
-		dod = problem._boundary._thdod
+		dof = problem._boundary.thdof
+		dod = problem._boundary.thdod
 		nbctrlpts_total = np.prod(problem._model._nbctrlpts)
 
 		if funTemp is not None:  

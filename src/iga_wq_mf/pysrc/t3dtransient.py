@@ -81,7 +81,7 @@ if not dataExist:
 
 			# Create a Dirichlet condition
 			Tinout = np.zeros((model._nbctrlpts_total, len(time_list)))
-			for i in range(len(time_list)): Tinout[boundary._thdod, i] = boundary._thDirichletBound[boundary._thdod]
+			for i in range(len(time_list)): Tinout[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
 
 			# Add external force 
 			Fend = problem.eval_bodyForce(powden)

@@ -7,13 +7,15 @@ from lib.__init__ import *
 from lib.lib_base import createKnotVector
 
 class Geomdl():
-	def __init__(self, **kwargs):
-		self._kwargs = kwargs
-		self._name   = kwargs.get('name', 'cb').lower()
-		self._sampleSize = 101
+	def __init__(self, kwargs:dict):
+		self.name    = kwargs.get('name', '').lower()
+		self.dim     = None
+		self.degree  = kwargs.get('degree', None)
+		self._nbcuts  = kwargs.get('nb_refinementByDirection', np.array([1, 1, 1]))
+		self._geoVars = kwargs.get('geovars', {})
 		return
 	
-	def __setPartInfo(self, obj, dimen=3): 
+	def __getInfo(self, obj, dimen=3): 
 		" Updates and saves important properties of the geometry created "
 
 		info = {}
@@ -67,7 +69,7 @@ class Geomdl():
 		info['ctrlpts'] = ctrlpts_new
 		return info
 
-	def writeAbaqusFile(self, info, dimen=3):
+	def __writeAbaqusFile(self, info, dimen=3):
 		" Writes an inp and NB file. By the moment, it only works with one patch"
 
 		def array2txt(array: np.array, format= '%.2f'):
@@ -80,7 +82,7 @@ class Geomdl():
 		nbctrlpts_total = np.product(nbctrlpts)
 
 		# .inp file
-		inpfile = self._name + '.inp'
+		inpfile = self.name + '.inp'
 		introduction =  [
 			'** Copyright 2020 Thibaut Hirschler',
 			'** Copyright 2020 Arnaud Duval',
@@ -103,7 +105,7 @@ class Geomdl():
 		with open(inpfile, 'w') as f:
 			f.write('\n'.join(introduction))
 			f.write('\n')
-			f.write('*Part, name=%s\n' %self._name)
+			f.write('*Part, name=%s\n' %self.name)
 			f.write('*USER ELEMENT, NODES=%d, TYPE=U1, COORDINATES=%d, INTEGRATION=%d\n' 
 					%(nbctrlpts_total, dimen, nbctrlpts_total))
 			f.write(array2txt(np.arange(dimen)+1, format='%d'))
@@ -118,7 +120,7 @@ class Geomdl():
 			f.write('*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=Mat\n1\n')
 			f.write('*End Part\n')
 			f.write('**ASSEMBLY\n*Assembly, name=Assembly\n')
-			f.write('*Instance, name=I1, part=%s\n' %self._name)
+			f.write('*Instance, name=I1, part=%s\n' %self.name)
 			f.write('*End Instance\n*End Assembly\n')
 			f.write('**MATERIAL\n*MATERIAL,NAME=Mat\n*Elastic\n')
 			f.write('%f, %f\n' %(3e3, 0.3)) 
@@ -126,7 +128,7 @@ class Geomdl():
 			f.write('** OUTPUT REQUESTS\n*node file,frequency=1\nU,RF,CF\n*el file,frequency=1\nSDV\n*End Step')
 
 		# .NB file
-		NBfile = self._name + '.NB'
+		NBfile = self.name + '.NB'
 		introduction =  [
 			'** Copyright 2020 Thibaut Hirschler',
 			'** Copyright 2020 Arnaud Duval',
@@ -170,64 +172,62 @@ class Geomdl():
 
 	def getIGAParametrization(self):
 
-		nb_refinementByDirection = self._kwargs.get('nb_refinementByDirection', np.array([1, 1, 1]))
-
-		print('\nCreating geometry: ' + self._name + '...')
-		if self._name == 'quarter_annulus' or self._name == 'qa':
+		print('\nCreating geometry: ' + self.name + '...')
+		if self.name == 'quarter_annulus' or self.name == 'qa':
 			dimen = 2
-			Rin = self._kwargs.get('Rin', 1.0)
-			Rex = self._kwargs.get('Rex', 2.0)
-			degree_u, degree_v, _ = self._kwargs.get('degree', [2, 3, 2])
-			part = self.create_quarterAnnulus(Rin, Rex, degree_u, degree_v) 
+			Rin = self._geoVars.get('Rin', 1.0)
+			Rex = self._geoVars.get('Rex', 2.0)
+			if self.degree is None: self.degree = [2, 3, 1]
+			part = self.__create_quarterAnnulus(Rin, Rex, *self.degree[:dimen]) 
 
-		elif self._name == 'quadrilateral' or self._name == 'sq':
+		elif self.name == 'quadrilateral' or self.name == 'sq':
 			dimen = 2
-			XY = self._kwargs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
-			degree_u, degree_v, _ = self._kwargs.get('degree', [2, 2, 2])
-			part = self.create_quadrilateral(XY, degree_u, degree_v) 
+			XY = self._geoVars.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			if self.degree is None: self.degree = [2, 2, 1]
+			part = self.__create_quadrilateral(XY, *self.degree[:dimen]) 
 
-		elif self._name == 'cube' or self._name == 'cb': 
+		elif self.name == 'cube' or self.name == 'cb': 
 			dimen = 3
-			Lx = self._kwargs.get('Lx', 1.0)
-			Ly = self._kwargs.get('Ly', 1.0)
-			Lz = self._kwargs.get('Lz', 1.0)
-			degree_u, degree_v, degree_w = self._kwargs.get('degree', [2, 2, 2])
-			part = self.create_parallelepiped(Lx, Ly, Lz, degree_u, degree_v, degree_w) 
+			Lx = self._geoVars.get('Lx', 1.0)
+			Ly = self._geoVars.get('Ly', 1.0)
+			Lz = self._geoVars.get('Lz', 1.0)
+			if self.degree is None: self.degree = [2, 2, 2]
+			part = self.__create_parallelepiped(Lx, Ly, Lz, *self.degree[:dimen]) 
 
-		elif self._name == 'thick_ring' or self._name == 'tr':
+		elif self.name == 'thick_ring' or self.name == 'tr':
 			dimen = 3
-			Rin = self._kwargs.get('Rin', 1.0)
-			Rex = self._kwargs.get('Rex', 2.0)
-			height = self._kwargs.get('height', 1.0)
-			degree_u, degree_v, degree_w = self._kwargs.get('degree', [4, 4, 4])
-			part = self.create_thickRing(Rin, Rex, height, degree_u, degree_v, degree_w) 
+			Rin = self._geoVars.get('Rin', 1.0)
+			Rex = self._geoVars.get('Rex', 2.0)
+			height = self._geoVars.get('height', 1.0)
+			if self.degree is None: self.degree = [4, 4, 4]
+			part = self.__create_thickRing(Rin, Rex, height, *self.degree[:dimen]) 
 
-		elif self._name == 'rotated_quarter_annulus' or self._name == 'rqa':
+		elif self.name == 'rotated_quarter_annulus' or self.name == 'rqa':
 			dimen = 3
-			Rin = self._kwargs.get('Rin', 1.0)
-			Rex = self._kwargs.get('Rex', 2.0)
-			exc = self._kwargs.get('exc', 1.0) 
-			degree_u, degree_v, degree_w = self._kwargs.get('degree', [4, 4, 4])
-			part = self.create_rotatedQuarterAnnulus(Rin, Rex, exc, degree_u, degree_v, degree_w) 
+			Rin = self._geoVars.get('Rin', 1.0)
+			Rex = self._geoVars.get('Rex', 2.0)
+			exc = self._geoVars.get('exc', 1.0) 
+			if self.degree is None: self.degree = [4, 4, 4]
+			part = self.__create_rotatedQuarterAnnulus(Rin, Rex, exc, *self.degree[:dimen]) 
 
-		elif self._name == 'prism' or self._name == 'vb':
+		elif self.name == 'prism' or self.name == 'vb':
 			dimen = 3
-			XY     = self._kwargs.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-			# XY     = self._kwargs.get('xy', np.array([[0.0, -1.5], [1.2, -0.5], [1.2, 0.5], [0.0, 1.5]]))
-			height = self._kwargs.get('height', 1)
-			degree_u, degree_v, degree_w = self._kwargs.get('degree', [2, 2, 2])
-			part = self.create_prism(XY, height, degree_u, degree_v, degree_w) 
+			XY     = self._geoVars.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			height = self._geoVars.get('height', 1)
+			if self.degree is None: self.degree = [2, 2, 2]
+			part = self.__create_prism(XY, height, *self.degree[:dimen]) 
 
 		else: raise Warning("Not developped in this library")
-		
-		self.writeAbaqusFile(self.__setPartInfo(part, dimen=dimen), dimen=dimen)
-		modelIGA = IGAparametrization(filename=self._name)
-		modelIGA.refine(nb_refinementByDirection=nb_refinementByDirection)
+
+		self.dim = dimen
+		self.__writeAbaqusFile(self.__getInfo(part, dimen=dimen), dimen=dimen)
+		modelIGA = IGAparametrization(filename=self.name)
+		modelIGA.refine(nb_refinementByDirection=self._nbcuts)
 
 		# Clean files created
-		os.remove(self._name + '.inp')
-		os.remove(self._name + '.NB')
-		os.remove(self._name + '.save')
+		os.remove(self.name + '.inp')
+		os.remove(self.name + '.NB')
+		os.remove(self.name + '.save')
 
 		return modelIGA
 
@@ -235,7 +235,7 @@ class Geomdl():
 	# CREATE GEOMETRY
 	# ----------------
 	# 2D
-	def create_quarterAnnulus(self, Rin, Rex, degree_u, degree_v):
+	def __create_quarterAnnulus(self, Rin, Rex, degree_u, degree_v):
 		" Creates a quarter of a ring (or annulus) "
 
 		# -------------------------------------
@@ -283,11 +283,10 @@ class Geomdl():
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_v
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
-	def create_quadrilateral(self, XY, degree_u, degree_v):
+	def __create_quadrilateral(self, XY, degree_u, degree_v):
 		" Creates a quadrilateral given coordinates in counterclockwise direction "
 
 		# Set reference position and real position
@@ -324,12 +323,11 @@ class Geomdl():
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
 	# 3D
-	def create_parallelepiped(self, Lx, Ly, Lz, degree_u, degree_v, degree_w):
+	def __create_parallelepiped(self, Lx, Ly, Lz, degree_u, degree_v, degree_w):
 		" Creates a brick (or parallelepiped) "
 
 		# Set number of control points
@@ -357,11 +355,10 @@ class Geomdl():
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
 		obj.knotvector_w = createKnotVector(degree_w, 1)
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
-	def create_thickRing(self, Rin, Rex, height, degree_u, degree_v, degree_w):
+	def __create_thickRing(self, Rin, Rex, height, degree_u, degree_v, degree_w):
 		" Creates a thick ring (quarter of annulus extruded) "
 
 		# -------------------------------------
@@ -416,11 +413,10 @@ class Geomdl():
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_u
 		obj.knotvector_w = knot_vector_w
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
-	def create_rotatedQuarterAnnulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w):
+	def __create_rotatedQuarterAnnulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w):
 		" Creates a quarter of a ring rotated (or revolted) "
 
 		# -------------------------------------
@@ -490,11 +486,10 @@ class Geomdl():
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_v
 		obj.knotvector_w = knot_vector_w
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
-	def create_prism(self, XY, height, degree_u, degree_v, degree_w):
+	def __create_prism(self, XY, height, degree_u, degree_v, degree_w):
 		""" Creates a prism using a quadrilateral as a base.
 		The quadrilateral coordinates are given in counterclockwise direction """
 
@@ -534,7 +529,6 @@ class Geomdl():
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)
 		obj.knotvector_w = createKnotVector(degree_w, 1)
-		obj.sample_size  = self._sampleSize
 
 		return obj
 
