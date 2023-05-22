@@ -18,7 +18,7 @@ from lib.__init__ import *
 from lib.lib_base import (createKnotVector, evalDersBasisPy, cropImage)
 from lib.lib_quadrules import *
 from lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
+from lib.lib_part import part
 # from lib.fortran_mf_wq import fortran_mf_wq
 
 # Select folder

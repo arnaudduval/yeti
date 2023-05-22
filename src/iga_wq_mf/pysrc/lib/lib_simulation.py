@@ -1,8 +1,8 @@
 from lib.__init__ import *
 from lib.lib_geomdl import *
 from lib.lib_material import *
-from pysrc.lib.lib_part import *
-from lib.lib_step import *
+from lib.lib_part import *
+from lib.lib_boundary import *
 from lib.lib_job import heatproblem
 
 class encoder():
@@ -103,7 +103,7 @@ class encoder():
 
 		return un, residue, time_t
 
-	def simulate(self, material: thermomat, boundary: step, overwrite=True):
+	def simulate(self, material: thermomat, boundary: boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
 
 		if self._part is None: self.create_model()

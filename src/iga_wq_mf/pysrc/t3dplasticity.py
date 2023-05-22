@@ -13,9 +13,9 @@
 
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
+from lib.lib_part import part
 from lib.lib_material import mechamat
-from lib.lib_step import step
+from lib.lib_boundary import boundaryCondition
 from lib.lib_job import mechaproblem
 
 # Select folder
@@ -40,7 +40,7 @@ kwargs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elasti
 material = mechamat(kwargs)
 
 # Set Dirichlet boundaries
-boundary = step(model._nbctrlpts)
+boundary = boundaryCondition(model._nbctrlpts)
 table = np.zeros((3, 2, 3), dtype=int)
 table[0, 0, 0] = 1
 table[1, 0, 1] = 1

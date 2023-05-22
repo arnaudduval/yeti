@@ -1,12 +1,12 @@
 from lib.__init__ import *
 from lib.lib_base import eraseRowsCSR, array2csr_matrix
 from lib.lib_material import *
-from pysrc.lib.lib_part import *
-from lib.lib_step import *
+from lib.lib_part import *
+from lib.lib_boundary import *
 
 class heatproblem():
 
-	def __init__(self, material: thermomat, model: part, boundary: step, **kwargs):
+	def __init__(self, material: thermomat, model: part, boundary: boundaryCondition, **kwargs):
 		self._material = material
 		self._model    = model
 		self._boundary = boundary
@@ -314,7 +314,7 @@ class heatproblem():
 		return resPCG_list
 
 class mechaproblem():
-	def __init__(self, material: mechamat, model: part, boundary: step, **kwargs):
+	def __init__(self, material: mechamat, model: part, boundary: boundaryCondition, **kwargs):
 		self._material = material
 		self._model    = model
 		self._boundary = boundary

@@ -6,9 +6,9 @@
 
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
+from lib.lib_part import part
 from lib.lib_material import thermomat
-from lib.lib_step import step
+from lib.lib_boundary import boundaryCondition
 from lib.lib_job import heatproblem
 
 # Select folder
@@ -52,7 +52,7 @@ if not dataExist:
 		material.addCapacity(1.0, isIsotropic=True) 
 
 		# Block boundaries
-		boundary = step(model._nbctrlpts)
+		boundary = boundaryCondition(model._nbctrlpts)
 		boundary.add_DirichletTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
 		problem = heatproblem(material, model, boundary)
 

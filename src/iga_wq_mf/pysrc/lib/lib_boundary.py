@@ -1,6 +1,6 @@
 from lib.__init__ import *
 
-class step():
+class boundaryCondition():
 
 	def __init__(self, nbctrlpts=np.array([1, 1, 1])):
 		self._dim                 = np.count_nonzero(nbctrlpts>1)

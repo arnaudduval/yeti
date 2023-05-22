@@ -2,9 +2,9 @@ from lib.__init__ import *
 from lib.lib_base import sigmoid
 from lib.lib_load import powden
 from lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
+from lib.lib_part import part
 from lib.lib_material import thermomat
-from lib.lib_step import step
+from lib.lib_boundary import boundaryCondition
 from lib.lib_job import heatproblem
 
 def setKprop(P:list):
@@ -69,7 +69,7 @@ if not dataExist:
 			material.addCapacity(setCprop, isIsotropic=False) 
 
 			# Block boundaries
-			boundary = step(model._nbctrlpts)
+			boundary = boundaryCondition(model._nbctrlpts)
 			boundary.add_DirichletTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
 			boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
