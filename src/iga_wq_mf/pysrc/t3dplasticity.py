@@ -40,7 +40,7 @@ kwargs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elasti
 material = mechamat(kwargs)
 
 # Set Dirichlet boundaries
-boundary = boundaryCondition(model._nbctrlpts)
+boundary = boundaryCondition(model.nbctrlpts)
 table = np.zeros((3, 2, 3), dtype=int)
 table[0, 0, 0] = 1
 table[1, 0, 1] = 1

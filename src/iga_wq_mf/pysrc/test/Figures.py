@@ -56,7 +56,7 @@ def plot2DGeo(model:part):
 		return
 
 	samplesize = model._sampleSize
-	ctrlpts = model._ctrlpts
+	ctrlpts = model.ctrlpts
 	evalpts = model.interpolateField()[1]
 
 	X = np.asarray(evalpts[0, :].reshape((samplesize, samplesize)).tolist())
@@ -67,7 +67,7 @@ def plot2DGeo(model:part):
 	ax.grid(None)
 	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
 	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control points')
-	plot_mesh(ctrlpts, model._nbctrlpts, ax)
+	plot_mesh(ctrlpts, model.nbctrlpts, ax)
 	ax.set_xticks(np.arange(0, max(evalpts[:,0])+2, 1.0))
 	ax.set_yticks(np.arange(0, max(evalpts[:,1])+1, 1.0))
 

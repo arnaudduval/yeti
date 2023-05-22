@@ -53,7 +53,7 @@ for cuts in cuts_list:
 				# 						isIsotropic=True, shape=(3, 3))	
 				mat.addConductivity(setKprop, isIsotropic=False)				
 				table    = np.ones((3, 2), dtype=bool)
-				boundary = boundaryCondition(simu._part._nbctrlpts)
+				boundary = boundaryCondition(simu._part.nbctrlpts)
 				boundary.add_DirichletTemperature(table=table)
 				un = simu.simulate(material=mat, boundary=boundary, overwrite=True)
 				np.save(folder+'solution', un)

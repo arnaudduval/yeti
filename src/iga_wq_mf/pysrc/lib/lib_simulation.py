@@ -80,13 +80,13 @@ class encoder():
 		
 		dof = problem._boundary.thdof
 		dod = problem._boundary.thdod
-		nbctrlpts_total = np.prod(problem._model._nbctrlpts)
+		nbctrlpts_total = np.prod(problem._part.nbctrlpts)
 
 		if funTemp is not None:  
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_bodyForce(funPowDen, indi=dof) 
-			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), **{'input': self._part._qpPhy})
+			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), **{'input': self._part.qpPhy})
 			Fn    -= Knd_ud[dof]
 		else:
 			Fn = problem.eval_bodyForce(funPowDen, indi=dof)

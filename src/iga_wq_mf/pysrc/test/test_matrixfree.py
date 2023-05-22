@@ -52,11 +52,11 @@ if not dataExist:
 		material.addCapacity(1.0, isIsotropic=True) 
 
 		# Block boundaries
-		boundary = boundaryCondition(model._nbctrlpts)
+		boundary = boundaryCondition(model.nbctrlpts)
 		boundary.add_DirichletTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
 		problem = heatproblem(material, model, boundary)
 
-		nrows = model._nbctrlpts[0] - 2
+		nrows = model.nbctrlpts[0] - 2
 		V = np.random.random(nrows**3)
 
 		# # --------------

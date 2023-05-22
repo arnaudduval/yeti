@@ -69,7 +69,7 @@ if not dataExist:
 			material.addCapacity(setCprop, isIsotropic=False) 
 
 			# Block boundaries
-			boundary = boundaryCondition(model._nbctrlpts)
+			boundary = boundaryCondition(model.nbctrlpts)
 			boundary.add_DirichletTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
 			boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
