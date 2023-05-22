@@ -8,7 +8,7 @@
 ! Vector and matrices
 ! --------------------
 
-subroutine find_interpolation_span(size_array, array, x, span, tol)
+subroutine find_interpolation_span(size_array, array, x, span, threshold)
     !! Finds the interpolation span of the given value x. 
     !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
 
@@ -16,65 +16,20 @@ subroutine find_interpolation_span(size_array, array, x, span, tol)
     ! Input / output data
     ! ------------------- 
     integer, intent(in) :: size_array
-    double precision, intent(in) :: array, x, tol
+    double precision, intent(in) :: array, x, threshold
     dimension :: array(size_array)
 
     integer, intent(out) :: span 
 
     span = 2
 
-    do while ((span.lt.size_array).and.((array(span)-x).le.tol))
+    do while ((span.lt.size_array).and.((array(span)-x).le.threshold))
         span = span + 1
     end do
 
     span = span - 1 
 
 end subroutine find_interpolation_span
-
-subroutine linear_interpolation(nr, table, nnz, x, y, tol)
-    !! Find the linear interpolation array Y for a given input X
-    !! The table of size nr x 2 contains :
-    !! 1st column : Xref, 2nd column : Yref
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, nnz
-    double precision, intent(in) :: table, x, tol
-    dimension :: table(nr, 2), x(nnz)
-
-    double precision, intent(out) :: y
-    dimension :: y(nnz)
-
-    ! Local data
-    ! ----------
-    integer :: i, span
-    double precision :: x1, x2, y1, y2, xi, yi
-
-    ! Verify if table have values in ascending order
-    do i = 1, nr-1
-        if (table(i+1,1)-table(i,1).le.tol) stop 'Table is not well - defined'
-    end do
-
-    do i = 1, nnz
-        xi = x(i)
-        if (xi.le.table(1,1)) then
-            ! 1st case: x is less than the first point
-            yi = table(1, 2)
-        else if (xi.ge.table(nr,1)) then
-            ! 2nd case: x is greater than the last point
-            yi = table(nr, 2)
-        else
-            ! 3rd case: x is in a span defined by the table
-            call find_interpolation_span(nr, table(:, 1), xi, span, tol)
-            x1 = table(span, 1); x2 = table(span+1, 1)
-            y1 = table(span, 2); y2 = table(span+1, 2)
-            yi = y1 + (xi-x1)*(y2-y1)/(x2-x1)
-        end if
-        y(i) = yi
-    end do
-
-end subroutine linear_interpolation
 
 subroutine diff_array(repeat, nnz, array_in, array_out)
     !! Returns the difference between the elements of an array 
@@ -196,58 +151,6 @@ subroutine linspace(x0, xf, nnz, array)
     end do
 
 end subroutine linspace
-
-subroutine eval_trace(nr, matrix, result)
-    !! Computes the trace (sum of diagonal terms) of a square matrix
-    
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr
-    double precision, intent(in) :: matrix
-    dimension :: matrix(nr, nr)
-
-    double precision, intent(out) :: result
-
-    ! Local data
-    ! ----------
-    integer :: i
-
-    result = 0.d0
-    do i = 1, nr
-        result = result + matrix(i, i)
-    end do   
-
-end subroutine eval_trace
-
-subroutine eval_frobenius_norm(nr, matrix, result)
-    !! Returns Frobenius norm of a square matrix M 
-    !! The definition is norm = sqrt(M_ij M_ij)
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr
-    double precision, intent(in) :: matrix
-    dimension :: matrix(nr, nr)
-
-    double precision, intent(out) :: result
-
-    ! Local data
-    ! ----------
-    integer :: i, j
-
-    result = 0.d0
-
-    do i = 1, nr
-        do j = 1, nr
-            result = result + matrix(i, j)*matrix(i, j)
-        end do
-    end do
-
-    result = sqrt(result)
-    
-end subroutine eval_frobenius_norm
 
 subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
     !! General matrix multiplication of the kind A diag(W) B
@@ -556,7 +459,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     ! --------------------
     integer :: nru, nrv, nrw
     double precision, intent(in) :: tensor
-    dimension :: tensor(nru, nrv, nrw)
+    dimension :: tensor(nru*nrv*nrw)
 
     double precision, intent(out) :: result
     
@@ -565,15 +468,19 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     integer :: iu, iv, iw
     integer :: indu, indv, indw
     dimension :: indu(2), indv(2), indw(2)
+    double precision :: ttensor
+    dimension :: ttensor(nru, nrv, nrw)
 
     result = 0.d0
     indu = (/1, nru/); indv = (/1, nrv/); indw = (/1, nrw/)
+
+    ttensor = reshape(tensor, (/nru, nrv, nrw/))
 
     ! Get internal points
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                result = result + tensor(iu, iv, iw)
+                result = result + ttensor(iu, iv, iw)
             end do
         end do
     end do
@@ -582,7 +489,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 2, nrw-1
         do iv = 2, nrv-1
             do iu = 1, 2
-                result = result + tensor(indu(iu), iv, iw)/2.d0
+                result = result + ttensor(indu(iu), iv, iw)/2.d0
             end do
         end do
     end do
@@ -590,7 +497,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 2, nru-1
-                result = result + tensor(iu, indv(iv), iw)/2.d0
+                result = result + ttensor(iu, indv(iv), iw)/2.d0
             end do
         end do
     end do
@@ -598,7 +505,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 2, nru-1
-                result = result + tensor(iu, iv, indw(iw))/2.d0
+                result = result + ttensor(iu, iv, indw(iw))/2.d0
             end do
         end do
     end do
@@ -607,7 +514,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 2, nru-1
-                result = result + tensor(iu, indv(iv), indw(iw))/4.d0
+                result = result + ttensor(iu, indv(iv), indw(iw))/4.d0
             end do
         end do
     end do
@@ -615,7 +522,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 1, 2
         do iv = 2, nrv-1
             do iu = 1, 2
-                result = result + tensor(indu(iu), iv, indw(iw))/4.d0
+                result = result + ttensor(indu(iu), iv, indw(iw))/4.d0
             end do
         end do
     end do
@@ -623,7 +530,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 2, nrw-1
         do iv = 1, 2
             do iu = 1, 2
-                result = result + tensor(indu(iu), indv(iv), iw)/4.d0
+                result = result + ttensor(indu(iu), indv(iv), iw)/4.d0
             end do
         end do
     end do
@@ -632,7 +539,7 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     do iw = 1, 2
         do iv = 1, 2
             do iu = 1, 2
-                result = result + tensor(indu(iu), indv(iv), indw(iw))/8.d0
+                result = result + ttensor(indu(iu), indv(iv), indw(iw))/8.d0
             end do
         end do
     end do
@@ -641,26 +548,6 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     result = result/((nru - 1)*(nrv - 1)*(nrw - 1))
 
 end subroutine trapezoidal_rule_3d
-
-subroutine reset_dirichletbound3(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
-    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
-    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndu, ndv, ndw
-    double precision, intent(inout) :: A
-    dimension :: A(3, nr)
-
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
-
-    A(1, dod_u) = 0.d0 
-    A(2, dod_v) = 0.d0 
-    A(3, dod_w) = 0.d0 
-
-end subroutine reset_dirichletbound3
 
 subroutine symtensor2array(dimen, nvoigt, matrix, array)
     !! Returns the upper triangular part of a matrix
@@ -724,33 +611,6 @@ subroutine array2symtensor(dimen, nvoigt, array, matrix)
     end do
 
 end subroutine array2symtensor
-
-subroutine block_dot_product(nm, nr, A, B, result)
-    !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
-    !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
-    !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
-
-    implicit none
-    ! Input/ output data
-    ! ------------------
-    integer, intent(in) :: nm, nr
-    double precision, intent(in) :: A, B
-    dimension :: A(nm, nr), B(nm, nr)
-
-    double precision :: result
-
-    ! Local data
-    ! ----------
-    integer :: i
-    double precision :: rtemp
-
-    result = 0.d0
-    do i = 1, nm 
-        rtemp = dot_product(A(i, :), B(i, :))
-        result = result + rtemp
-    end do
-
-end subroutine block_dot_product
 
 ! --------
 ! Indices
@@ -916,7 +776,7 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
     implicit none 
     ! Input / output data
     ! --------------------
-    double precision, parameter :: tol = 1.d-15
+    double precision, parameter :: threshold = 1.d-15
     integer, intent(in) :: nr, nc
     double precision, intent(in) :: AA 
     dimension :: AA(nr, nc)
@@ -936,7 +796,7 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
         nnz = 0
         do i = 1, nr
             do j = 1, nc
-                if (abs(AA(i, j)).gt.tol) then
+                if (abs(AA(i, j)).gt.threshold) then
                     nnz = nnz + 1
                 end if
             end do
@@ -948,7 +808,7 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
         do i = 1, nr
             l = 0
             do j = 1, nc
-                if (abs(AA(i, j)).gt.tol) then
+                if (abs(AA(i, j)).gt.threshold) then
                     a_csr(k) = AA(i, j)
                     indj_csr(k) = j
                     k = k + 1; l = l + 1

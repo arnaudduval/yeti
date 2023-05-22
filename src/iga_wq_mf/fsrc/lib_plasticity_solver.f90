@@ -1,3 +1,50 @@
+subroutine reset_dirichletbound3(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
+    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
+    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, ndu, ndv, ndw
+    double precision, intent(inout) :: A
+    dimension :: A(3, nr)
+
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+
+    A(1, dod_u) = 0.d0 
+    A(2, dod_v) = 0.d0 
+    A(3, dod_w) = 0.d0 
+
+end subroutine reset_dirichletbound3
+
+subroutine block_dot_product(nm, nr, A, B, result)
+    !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
+    !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
+    !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
+
+    implicit none
+    ! Input/ output data
+    ! ------------------
+    integer, intent(in) :: nm, nr
+    double precision, intent(in) :: A, B
+    dimension :: A(nm, nr), B(nm, nr)
+
+    double precision :: result
+
+    ! Local data
+    ! ----------
+    integer :: i
+    double precision :: rtemp
+
+    result = 0.d0
+    do i = 1, nm 
+        rtemp = dot_product(A(i, :), B(i, :))
+        result = result + rtemp
+    end do
+
+end subroutine block_dot_product
+
 module solverplasticity
 
     use matrixfreeplasticity

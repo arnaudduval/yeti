@@ -488,7 +488,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             end do
 
         else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
-            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            call compute_mean_3d(mat, nc_u, nc_v, nc_w)
             kmean = mat%mean(:3)
         
         end if
@@ -620,7 +620,7 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
         kmean = 1.d0; cmean = 1.d0
 
         if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
-            call compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+            call compute_mean_3d(mat, nc_u, nc_v, nc_w)
             kmean = mat%mean(:3)
             cmean = mat%mean(4)
         

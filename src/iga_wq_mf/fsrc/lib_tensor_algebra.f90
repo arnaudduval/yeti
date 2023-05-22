@@ -5,10 +5,10 @@
 subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-    !! Tensor X = (nc_u, nc_v, nc_w)
-    !! Matrix U = (nr, nc)
-    !! Tensor R = (nu, nv, nw) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw
-    !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
+    !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
+    !! Matrix U = U(nr, nc)
+    !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+    !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
 
     use omp_lib
     implicit none
@@ -185,10 +185,10 @@ end subroutine tensor_n_mode_product_dM
 subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nrU, nnzU, dataU, indi, indj, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-    !! Tensor X = (nc_u, nc_v, nc_w)
-    !! Matrix U = (nr, nc). Since U is in CSR format, nc is not necessary to be declared
-    !! Tensor R = (nu, nv, nw) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw
-    !! Ex: if n=1, R(nr, nc_v, nc_w) and nc=nc_u
+    !! Tensor X = X(nc_u, nc_v, nc_w)
+    !! Matrix U = U(nr, nc). Since U is in CSR format, nc is not necessary to be declared
+    !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+    !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
 
     use omp_lib
     implicit none
@@ -1120,29 +1120,6 @@ subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
     end do
 
 end subroutine tensor_decomposition_3d
-
-subroutine compute_mean_3d(nc_u, nc_v, nc_w, coefs, integral)
-    !! Compute the "mean" of a given vector in Fast Diagonalization method 
-
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, intent(in) :: nc_u, nc_v, nc_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_u*nc_v*nc_w)
-
-    double precision, intent(out) :: integral
-    
-    ! Local data
-    ! ----------
-    double precision :: coefs_tensor
-    dimension :: coefs_tensor(nc_u, nc_v, nc_w)
-
-    ! Compute integral
-    coefs_tensor = reshape(coefs, (/nc_u, nc_v, nc_w/))
-    call trapezoidal_rule_3d(nc_u, nc_v, nc_w, coefs_tensor, integral)
-
-end subroutine compute_mean_3d
 
 subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
 

@@ -5,6 +5,7 @@
 ! Further information in "Computational Inelasticity" by Simo and Hughes.
 !
 ! Remarks :: tensor notation is used (it is NOT Voigt notation)
+! Further information in "B free" by J. Planas, I. Romero and J.M. Sancho
 ! We save some memory storing only the upper triangular of a symmetric matrix
 ! For example:
 ! Strain e = [e11, e22, e33, e12, e13, e23]
@@ -195,7 +196,7 @@ subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     allocate(mat)
     mat%dimen = dimen
     mat%nvoigt = nvoigt
-    call setup_geo(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v*nr_w
     call wq_intforce_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
@@ -285,7 +286,7 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = nvoigt
-    call setup_geo(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, kwargs)
     call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -363,7 +364,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
-    call setup_geo(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, kwargs)
     allocate(solv)
@@ -376,7 +377,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
     else
 
-        if (methodPCG.eq.'JMC') call compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)
+        if (methodPCG.eq.'JMC') call compute_mean_3d(mat, nc_u, nc_v, nc_w)
 
         call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

@@ -74,9 +74,9 @@ module matrixfreeplasticity
         ! Inputs 
         integer :: dimen=3, nvoigt=6
         double precision :: elasticmodulus, poissonratio, elasticlimit
-        double precision, dimension(:), pointer :: detJJ=>null()
+        double precision, dimension(:), pointer :: detJ=>null()
         double precision, dimension(:, :), pointer :: kwargs=>null(), nn=>null()
-        double precision, dimension(:, :, :), pointer :: invJJ=>null()
+        double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
         double precision, dimension(:, :), allocatable :: mean
         
@@ -84,7 +84,7 @@ module matrixfreeplasticity
         double precision :: lambda, mu, bulk
 
         ! Local
-        integer :: nc_total
+        integer :: ncols
     
     end type mecamat
 
@@ -116,7 +116,7 @@ contains
 
     end subroutine initialize_mecamat
 
-    subroutine setup_geo(mat, nc, invJJ, detJJ)
+    subroutine setup_geometry(mat, nc, invJ, detJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
         !! It also computes and saves inv(JJ) inv(JJ).transpose
 
@@ -125,14 +125,14 @@ contains
         ! -------------------
         type(mecamat), pointer :: mat
         integer, intent(in) :: nc
-        double precision, target, intent(in) :: invJJ, detJJ
-        dimension :: invJJ(mat%dimen, mat%dimen, nc), detJJ(nc)
+        double precision, target, intent(in) :: invJ, detJ
+        dimension :: invJ(mat%dimen, mat%dimen, nc), detJ(nc)
 
-        mat%invJJ => invJJ
-        mat%detJJ => detJJ
-        mat%nc_total = nc
+        mat%invJ => invJ
+        mat%detJ => detJ
+        mat%ncols = nc
 
-    end subroutine setup_geo
+    end subroutine setup_geometry
 
     subroutine setup_jacobiennormal(mat, kwargs)
         !! Points to data of the mechanical behavior 
@@ -143,7 +143,7 @@ contains
         double precision, parameter :: threshold = 1.d-12
         type(mecamat), pointer :: mat
         double precision, target, intent(in) :: kwargs
-        dimension :: kwargs(mat%nvoigt+3, mat%nc_total)
+        dimension :: kwargs(mat%nvoigt+3, mat%ncols)
 
         ! Local data
         ! ----------
@@ -152,12 +152,12 @@ contains
 
         mat%kwargs => kwargs(:3, :)
         mat%nn     => kwargs(4:, :)
-        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%nc_total))
+        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols))
         mat%JJnn   = 0.d0
         if (any(abs(mat%nn).gt.threshold)) then
-            do i = 1,  mat%nc_total
+            do i = 1,  mat%ncols
                 call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
-                mat%JJnn(:,:,i) = matmul(mat%invJJ(:,:,i), NN)
+                mat%JJnn(:,:,i) = matmul(mat%invJ(:,:,i), NN)
             end do
         end if
     end subroutine setup_jacobiennormal
@@ -173,15 +173,15 @@ contains
         ! ----------
         integer :: i
         
-        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%nc_total))
+        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%ncols))
         mat%JJjj = 0.d0
-        do i = 1, mat%nc_total
-            mat%JJjj(:,:,i) = matmul(mat%invJJ(:,:,i), transpose(mat%invJJ(:,:,i)))
+        do i = 1, mat%ncols
+            mat%JJjj(:,:,i) = matmul(mat%invJ(:,:,i), transpose(mat%invJ(:,:,i)))
         end do
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_mean_plasticity_3d(mat, nc_u, nc_v, nc_w)
+    subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
@@ -200,7 +200,7 @@ contains
         dimension ::    DD(dimen, samplesize), coefs(dimen, dimen, samplesize), nn(nvoigt), &
                         Tnn(dimen, dimen, samplesize), mean(3)
         
-        if (nc_u*nc_v*nc_w.ne.mat%nc_total) stop 'Wrong dimensions'
+        if (nc_u*nc_v*nc_w.ne.mat%ncols) stop 'Wrong dimensions'
         pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
         pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
         pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
@@ -219,7 +219,7 @@ contains
 
         do i = 1, samplesize
             nn = mat%nn(sample(i), :)
-            call array2symtensor(dimen, nvoigt, nn, Tnn(:,:,i))
+            call array2symtensor(dimen, nvoigt, nn, Tnn(:, :, i))
         end do
 
         do i = 1, dimen
@@ -231,17 +231,17 @@ contains
             
             do k = 1, samplesize
                 l = sample(k)
-                call gemm_AWB(1, 3, 3, mat%invJJ(:,:,l), 3, 3, mat%invJJ(:,:,l), DD(:, k), 3, 3, coefs(:,:,k))
+                call gemm_AWB(1, 3, 3, mat%invJ(:, :, l), 3, 3, mat%invJ(:, :, l), DD(:, k), 3, 3, coefs(:, :, k))
             end do
 
-            call compute_mean_3d(3, 3, 3, coefs(1, 1, :), mean(1))
-            call compute_mean_3d(3, 3, 3, coefs(2, 2, :), mean(2))
-            call compute_mean_3d(3, 3, 3, coefs(3, 3, :), mean(3))
+            call trapezoidal_rule_3d(3, 3, 3, coefs(1, 1, :), mean(1))
+            call trapezoidal_rule_3d(3, 3, 3, coefs(2, 2, :), mean(2))
+            call trapezoidal_rule_3d(3, 3, 3, coefs(3, 3, :), mean(3))
             mat%mean(i, :) = mean
 
         end do
 
-    end subroutine compute_mean_plasticity_3d
+    end subroutine compute_mean_3d
 
     subroutine mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -297,20 +297,20 @@ contains
                         array_in(j, :), t1) 
 
                 do r = 1, dimen
-                    kt1(r, :) = mat%kwargs(r, :)*t1*mat%detJJ
+                    kt1(r, :) = mat%kwargs(r, :)*t1*mat%detJ
                 end do
 
-                t2 = kt1(1, :)*mat%invJJ(l, j, :)
+                t2 = kt1(1, :)*mat%invJ(l, j, :)
                 t4 = kt1(3, :)*mat%JJnn(l, j, :)
 
                 do i = 1, dimen
-                    t3 = kt1(2, :)*mat%invJJ(l, i, :)
+                    t3 = kt1(2, :)*mat%invJ(l, i, :)
                     t7 = 0.d0
 
                     do k = 1, dimen
                         alpha = 1; alpha(k) = 2
                         zeta  = beta + (alpha - 1)*2
-                        t5    = t2*mat%invJJ(k, i, :) + t3*mat%invJJ(k, j, :) + t4*mat%JJnn(k, i, :)
+                        t5    = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :) + t4*mat%JJnn(k, i, :)
                         if (i.eq.j) t5 = t5 + kt1(2, :)*mat%JJjj(k, l, :)
                         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -360,7 +360,7 @@ contains
         
         do i = 1, nc_total
             call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
-            t1(:,:,i) = matmul(mat%invJJ(:,:,i), Tstress)*mat%detJJ(i)
+            t1(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
         end do
         
         array_out = 0.d0

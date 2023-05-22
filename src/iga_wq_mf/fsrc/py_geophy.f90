@@ -310,11 +310,11 @@ subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
     allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = dimen*(dimen+1)/2
-    call setup_geo(mat, nnz, invJ, detJ)
+    call setup_geometry(mat, nnz, invJ, detJ)
 
     do i = 1, nnz
         call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
-        coefs(:,:,i) = matmul(mat%invJJ(:,:,i), Tstress)*mat%detJJ(i)
+        coefs(:,:,i) = matmul(mat%invJ(:,:,i), Tstress)*mat%detJ(i)
     end do
 
 end subroutine eval_intforce_coefficient

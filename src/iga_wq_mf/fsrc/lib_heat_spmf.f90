@@ -60,7 +60,6 @@ end subroutine eigendecomp_heat_3d
 module matrixfreeheat
 
     implicit none
-
     type thermomat
         ! Inputs 
         integer :: dimen = 3
@@ -220,7 +219,7 @@ contains
     
     end subroutine update_capacitycoefs
 
-    subroutine compute_mean_heat_3d(mat, nc_u, nc_v, nc_w)
+    subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
@@ -256,15 +255,15 @@ contains
         if (.not.allocated(mat%mean)) allocate(mat%mean(4))
         mat%mean = 0.d0
         if (associated(mat%Kcoefs)) then
-            call compute_mean_3d(3, 3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
-            call compute_mean_3d(3, 3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
-            call compute_mean_3d(3, 3, 3, mat%Kcoefs(3, 3, sample), mat%mean(3))
+            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
+            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
+            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(3, 3, sample), mat%mean(3))
         end if
         if (associated(mat%Ccoefs)) then
-            call compute_mean_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
+            call trapezoidal_rule_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
         end if   
 
-    end subroutine compute_mean_heat_3d
+    end subroutine compute_mean_3d
 
     !! Matrix free 3d functions
 

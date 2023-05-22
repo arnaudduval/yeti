@@ -477,6 +477,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: dimen = 3
+        double precision, parameter :: tol_singular = 1.d-10
         type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
@@ -561,7 +562,7 @@ contains
             call rayleigh_submatrix(dimen, nr_total, RM1, RM2, AA1)
             call rayleigh_submatrix(dimen, nr_total, RM1, RM3, BB1)
 
-            if (norm2(p).lt.1.d-8) then
+            if (norm2(p).lt.tol_singular) then
                 qq = 0.d0; ll = 0.d0
                 call compute_geneigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
             else
