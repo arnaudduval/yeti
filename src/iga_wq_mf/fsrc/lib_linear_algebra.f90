@@ -8,20 +8,20 @@
 ! Vector and matrices
 ! --------------------
 
-subroutine find_interpolation_span(size_array, array, x, span, threshold)
+subroutine find_interpolation_span(size_array, array, x, offset, span, threshold)
     !! Finds the interpolation span of the given value x. 
     !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
 
     implicit none 
     ! Input / output data
     ! ------------------- 
-    integer, intent(in) :: size_array
+    integer, intent(in) :: size_array, offset
     double precision, intent(in) :: array, x, threshold
     dimension :: array(size_array)
 
     integer, intent(out) :: span 
 
-    span = 2
+    span = 2 + offset
 
     do while ((span.lt.size_array).and.((array(span)-x).le.threshold))
         span = span + 1
