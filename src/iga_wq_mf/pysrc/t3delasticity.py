@@ -13,7 +13,7 @@
 
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
-from lib.lib_model import part
+from pysrc.lib.lib_part import part
 from lib.lib_material import mechamat
 from lib.lib_step import step
 from lib.lib_job import mechaproblem

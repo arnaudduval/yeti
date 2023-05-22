@@ -1,7 +1,7 @@
 from lib.__init__ import *
 from lib.lib_base import eraseRowsCSR, array2csr_matrix
 from lib.lib_material import *
-from lib.lib_model import *
+from pysrc.lib.lib_part import *
 from lib.lib_step import *
 
 class heatproblem():
