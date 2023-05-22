@@ -132,6 +132,13 @@ def createKnotVector(p, nbel, multiplicity=1):
 	
 	return knotvector
 
+def findInterpolationSpan(array, x, threshold=1e-8):
+	span = 1
+	while (span<len(array)-1 and (array[span]-x<=threshold)):
+		span += 1
+	span -= 1
+	return span
+
 def findMultiplicity(knotvector, knot, threshold=1e-8):
 	""" Finds the multiplicity of a given knot.
 		Ex: Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} and x = 0.5, the multiplicity is 2.
@@ -143,41 +150,40 @@ def findMultiplicity(knotvector, knot, threshold=1e-8):
 
 	return multiplicity
 
-def evalDersBasisPy(degree, knotvector, knots, multiplicity=1): 
+def evalDersBasisPy(degree, knotvector, knots): 
 	""" Evaluates B-spline functions at given knots. 
 		Knot-vector needs to be regular
 	"""
 
-	nbknots = len(knots)
-	nbel    = len(np.unique(knotvector)) - 1
-	nb_ctrlpts = len(knotvector) - degree - 1
+	nbknots   = len(knots)
+	nbctrlpts = len(knotvector) - degree - 1
+	uvk  = np.unique(knotvector)
+	nbel = len(uvk) - 1 
 
-	B0 = sp.lil_matrix((nb_ctrlpts, nbknots))
-	B1 = sp.lil_matrix((nb_ctrlpts, nbknots))
-
+	basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
 	# Set table of functions per element 
-	table_functions_physpan = np.zeros((nbel, degree + 2), dtype=int); 
-	table_functions_physpan[0, 0] = degree; table_functions_physpan[0, 1:] = np.arange(degree + 1) 
+	table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
+	table_functions_physpan[0, :] = np.arange(degree + 1) 
 
-	for _ in range(1, nbel): 
-		table_functions_physpan[_, :2] = table_functions_physpan[_-1, :2] + multiplicity
-		table_functions_physpan[_, 2:] = table_functions_physpan[_, 1] + np.arange(1, degree + 1) 
+	for i in range(1, nbel):
+		multiplicity = findMultiplicity(knotvector, uvk[i])
+		table_functions_physpan[i, 0] = table_functions_physpan[i-1, 0] + multiplicity
+		table_functions_physpan[i, 1:] = table_functions_physpan[i, 0] + np.arange(1, degree + 1) 
 
+	k = 0
 	for i, knot in enumerate(knots):
-		knot_span = helpers.find_span_linear(degree, knotvector, nb_ctrlpts, knot)
-		phy_span  = np.where(table_functions_physpan[:, 0] == knot_span)[0].tolist()
-		functions_span = table_functions_physpan[phy_span, 1:][0]
+		knot_span = helpers.find_span_linear(degree, knotvector, nbctrlpts, knot)
+		phy_span  = findInterpolationSpan(uvk, knot)
+		functions_span = table_functions_physpan[phy_span, :]
 		B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
 
-		# Set procedure if knot is in the knot-vector
-		if knot in np.unique(knotvector)[1:-1]:             
-			B0t = B0t[:-multiplicity] 
-			B1t = B1t[:-multiplicity] 
-			functions_span = functions_span[:-multiplicity]
+		for j in range(degree + 1):
+			basis[k, :]   = [B0t[j], B1t[j]]
+			indices[k, :] = [functions_span[j], i]
+			k += 1
 
-		B0[np.ix_(functions_span, [i])] = np.asarray(B0t).reshape((-1, 1))
-		B1[np.ix_(functions_span, [i])] = np.asarray(B1t).reshape((-1, 1))
-
+	B0 = sp.coo_matrix((basis[:, 0], (indices[:, 0], indices[:, 1])), shape=(nbctrlpts, nbknots))
+	B1 = sp.coo_matrix((basis[:, 1], (indices[:, 0], indices[:, 1])), shape=(nbctrlpts, nbknots))
 	B0, B1 = B0.tocsr(), B1.tocsr()
 
 	return B0, B1
@@ -280,22 +286,6 @@ def lobattoTable(order):
 # =========================
 # MF FUNCTIONS
 # =========================
-
-def createTableProperties(function, uref=None, prop=None):
-	"Create a table of scalar properties from given function "
-
-	# Set default given u
-	if uref is None: uref = np.linspace(-1., 1., 201)
-
-	# Compute v
-	if prop is None: v = function(uref)
-	else:  v = function(uref, prop)
-
-	# Create table 
-	table = np.zeros((len(uref), 2))
-	table[:, 0] = uref; table[:, 1] = v
-
-	return table
 
 def scipySolver(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
 	""" Solves system using an iterative method : conjugate gradient or bi-conjugate gradient. 

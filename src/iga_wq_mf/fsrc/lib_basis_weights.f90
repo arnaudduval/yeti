@@ -183,8 +183,8 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
         ! Save in COO format
         do j = 1, degree+1
             k = (i - 1)*(degree + 1) + j
-            basis(k, :) = [B0t(j), B1t(j)]
-            indices(k, :)   = [functions_span(j), i]                                
+            basis(k, :)   = [B0t(j), B1t(j)]
+            indices(k, :) = [functions_span(j), i]                                
         end do
     end do
 
