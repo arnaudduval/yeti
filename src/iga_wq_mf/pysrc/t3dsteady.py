@@ -47,10 +47,8 @@ for cuts in cuts_list:
 			simu   = encoder(**inputs)  
 			
 			if not dataExist:
-				simu.create_model()
+				simu._create_model()
 				mat = thermomat()
-				# mat.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]),
-				# 						isIsotropic=True, shape=(3, 3))	
 				mat.addConductivity(setKprop, isIsotropic=False)				
 				table    = np.ones((3, 2), dtype=bool)
 				boundary = boundaryCondition(simu._part.nbctrlpts)
@@ -62,7 +60,4 @@ for cuts in cuts_list:
 				filename   = simu._filename
 				simuOutput = decoder(filename)
 				simuOutput.plot_results(extension='.png', plotLegend=True)
-				# ref = np.load(folder+'reference.npy')
-				# sol = np.load(folder+'solution.npy')
-				# relerror = relativeError(sol, ref, relType='fro')*100
-				# print('Relative error: %.5f %%' %relerror)
+				

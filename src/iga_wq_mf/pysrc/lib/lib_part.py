@@ -5,9 +5,9 @@
 """
 
 # My libraries
+from lib.__init__ import *
 from lib.lib_base import evalDersBasisFortran
-from lib.lib_quadrules import *
-from lib.lib_material import *
+from lib.lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part(): 
 
@@ -37,32 +37,32 @@ class part():
 	# READ FILE
 	# ----------
 	
-	def __read_name(self, modelIGA: IGAparametrization): 
+	def __read_name(self, modelIGA:IGAparametrization): 
 		" Reads name from model "
 		try: name = modelIGA._name
 		except: name = 'IGAparametrization'
 		return name
 
-	def __read_degree(self, modelIGA: IGAparametrization): 
+	def __read_degree(self, modelIGA:IGAparametrization): 
 		" Reads degree from model "
 		degree = modelIGA._Jpqr.flatten()
 		if any(p == 1 for p in degree[:self.dim]): 
 			raise Warning('Model must have at least degree p = 2')
 		return degree
 
-	def __read_dimension(self, modelIGA: IGAparametrization):
+	def __read_dimension(self, modelIGA:IGAparametrization):
 		" Reads dimensions from model "
 		dim = modelIGA._dim[0]
 		if dim != 3: print("WARNING: Some functions have not been well-implemented for 2D geometries")
 		return dim
 
-	def __read_knotvector(self, modelIGA: IGAparametrization):
+	def __read_knotvector(self, modelIGA:IGAparametrization):
 		" Reads knot-vector from model "
 		knotvector = modelIGA._Ukv[0]
 		size_kv = modelIGA._Nkv.flatten()
 		return knotvector, size_kv
 
-	def __read_controlPoints(self, modelIGA: IGAparametrization): 
+	def __read_controlPoints(self, modelIGA:IGAparametrization): 
 		" Reads control points from model "
 		ctrlpts = modelIGA._COORDS[:self.dim, :]
 		return ctrlpts
