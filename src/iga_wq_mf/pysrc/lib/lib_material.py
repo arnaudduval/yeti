@@ -3,23 +3,23 @@ from lib.__init__ import *
 class material():
 
 	def __init__(self):
-		self._threshold = 1e-8
+		self._threshold = 1.e-8
 		return		
 	
-	def verifyTable(self, table, isTensor=False):
+	def __verifyTable(self, table, isTensor=False):
 		table = np.atleast_2d(table)
 		x = np.diff(table[:, 0])
 		if np.any(x<self._threshold): raise Warning('Table is not well defined')
 		if isTensor and np.size(table, axis=1) <= 2: raise Warning('Table not well defined')
 		return
 	
-	def interpolateScalarProperty(table, x):
+	def __interpolateScalarProperty(table, x):
 		lenx = np.max(np.shape(x))
 		if np.size(table, axis=0) == 1: y = table[:, 1]*np.ones(lenx)
 		else:  							y = np.interp(x, table[:, 0], table[:, 1])
 		return y
 	
-	def interpolateTensorProperty(table, x, shape=(3, 3)):
+	def __interpolateTensorProperty(table, x, shape=(3, 3)):
 		if np.size(table, axis=1) != np.prod(shape)+1: raise Warning('Not possible')
 		lenx = np.max(np.shape(x))
 		y = np.zeros((*shape, lenx))
@@ -31,21 +31,20 @@ class material():
 	
 	def setScalarProperty(self, inpt, isIsotropic=False):
 		if isIsotropic:
-			# Isotropic material (position and temperature independent)
+			# Isotropic material 
 			if np.isscalar(inpt): 		
 				prop = lambda x: inpt*np.ones(np.max(np.shape(x)))
 			else: 
 				raise Warning('Not possible')
 		elif callable(inpt):
-			# Anisotropic material (temperature independent but position dependent)
+			# Anisotropic material a continuous function
 			prop = lambda x: inpt(x)
 		elif len(inpt.shape) > 1:
-			# Anisotropic material (position independent but temperature dependent)
-			self.verifyTable(inpt, False)
-			prop = lambda x: self.interpolateScalarProperty(inpt, x)
+			# Anisotropic material a discrete table
+			self.__verifyTable(inpt, False)
+			prop = lambda x: self.__interpolateScalarProperty(inpt, x)
 			print('It will be deprecated')
 		else:
-			# Anisotropic material (position dependent and temperature dependent)
 			raise Warning('Not implemented')
 		return prop
 	
@@ -60,30 +59,29 @@ class material():
 			return y
 
 		if isIsotropic:
-			# Isotropic material (position and temperature independent)
+			# Isotropic material 
 			if np.isscalar(inpt):
 				prop = lambda x: inpt*np.eye((*shape, np.max(np.shape(x))))
 			else:
 				prop = lambda x: create3ArrayFrom2Array(inpt, x)
 		elif callable(inpt):
-			# Anisotropic material (temperature independent but position dependent)
+			# Anisotropic material using a continuous function
 			prop = lambda x: inpt(x)
 		elif len(inpt.shape) > 1:
-			# Anisotropic material (position independent but temperature dependent)
-			self.verifyTable(inpt, True)
-			prop = lambda x: self.interpolateTensorProperty(inpt, x, shape=shape)
+			# Anisotropic material using a discrete table
+			self.__verifyTable(inpt, True)
+			prop = lambda x: self.__interpolateTensorProperty(inpt, x, shape=shape)
 			print('It will be deprecated')
 		else:
-			# Anisotropic material (position dependent and temperature dependent)
 			raise Warning('Not implemented')
 		return prop
 
 class thermomat(material):
 	def __init__(self):
 		super().__init__()
-		self._capacity     = None
-		self._conductivity = None
-		self._density      = None
+		self.capacity     = None
+		self.conductivity = None
+		self.density      = None
 		self._isCapacityIsotropic     = False
 		self._isDensityIsotropic      = False
 		self._isConductivityIsotropic = False
@@ -91,27 +89,27 @@ class thermomat(material):
 	
 	def addDensity(self, inpt, isIsotropic):
 		if isIsotropic: self._isDensityIsotropic = True
-		self._density     = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.density     = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
 	def addCapacity(self, inpt, isIsotropic):
 		if isIsotropic: self._isCapacityIsotropic = True
-		self._capacity    = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.capacity    = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
 	def addConductivity(self, inpt, isIsotropic, shape=(3, 3)):
 		if isIsotropic: self._isConductivityIsotropic = True
-		self._conductivity = super().setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
+		self.conductivity = super().setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
 	
 	def eval_capacityCoefficients(self, detJ, inpt): 
-		prop = self._capacity(inpt)
+		prop = self.capacity(inpt)
 		coefs, info = geophy.eval_capacity_coefficient(detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
 	
 	def eval_conductivityCoefficients(self, invJ, detJ, inpt):
-		prop = self._conductivity(inpt)
+		prop = self.conductivity(inpt)
 		coefs, info = geophy.eval_conductivity_coefficient(invJ, detJ, prop)
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
@@ -121,89 +119,84 @@ class thermomat(material):
 		return coefs
 
 class plasticLaw():
-	def __init__(self, elasticmodulus, elasticlimit, kwargs:dict):
-		self._elasticlimit   = elasticlimit
-		self._elasticmodulus = elasticmodulus
+	def __init__(self, elasticmodulus, elasticlimit, plasticVars:dict):
+		self.__elasticlimit   = elasticlimit
+		self.__elasticmodulus = elasticmodulus
 		self._Kfun = None; self._Kderfun = None
 		self._Hfun = None; self._Hderfun = None
-		lawName = kwargs.get('name', 'linear').lower()
-		if lawName == 'linear': self._setLinearModel(kwargs)
-		if lawName == 'swift' : self._setSwiftModel(kwargs)
-		if lawName == 'voce'  : self._setVoceModel(kwargs)
+		lawName = plasticVars.get('name', '').lower()
+		if   lawName == 'linear': self.__setLinearModel(plasticVars)
+		elif lawName == 'swift' : self.__setSwiftModel(plasticVars)
+		elif lawName == 'voce'  : self.__setVoceModel(plasticVars)
+		else: raise Warning('Unknown method')
 		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
 		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
 		return	
 	
-	def _setLinearModel(self, kwargs:dict):
+	def __setLinearModel(self, kwargs:dict):
 		theta	  = kwargs.get('theta', None)
 		Hbar      = kwargs.get('Hbar', None)
-		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a 
-		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a 
+		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar
-		self._Hderfun = lambda a: (1-theta)*Hbar
+		self._Hderfun = lambda a: (1 - theta)*Hbar
 		return
 	
-	def _setSwiftModel(self, kwargs:dict):
+	def __setSwiftModel(self, kwargs:dict):
 		K = kwargs.get('K', None)
 		n = kwargs.get('exp', None)
-		self._Kfun = lambda a: self._elasticlimit + self._elasticmodulus*(a/K)**n
+		self._Kfun = lambda a: self.__elasticlimit + self.__elasticmodulus*(a/K)**n
 		self._Hfun = lambda a: 0.0
-		self._Kderfun = lambda a: (self._elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self._elasticmodulus
+		self._Kderfun = lambda a: (self.__elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self.__elasticmodulus
 		self._Hderfun = lambda a: 0.0
 		return
 	
-	def _setVoceModel(self, kwargs:dict):
+	def __setVoceModel(self, kwargs:dict):
 		theta = kwargs.get('theta', None)
 		Hbar  = kwargs.get('Hbar', None)
 		Kinf  = kwargs.get('Kinf', None)
 		delta = kwargs.get('delta', None)
-		self._Kfun = lambda a: self._elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
-		self._Hfun = lambda a: (1-theta)*Hbar*a
+		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
+		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
-		self._Hderfun = lambda a: (1-theta)*Hbar
+		self._Hderfun = lambda a: (1 - theta)*Hbar
 		return
+	
 class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
 	def __init__(self, kwargs:dict):
 		super().__init__()
-		self.getInfo(kwargs)
+		self.elasticmodulus = kwargs.get('elastic_modulus', None)
+		self.poissonratio   = kwargs.get('poisson_ratio', None)
+		self.elasticlimit   = kwargs.get('elastic_limit', None)
+		if any([prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]]): 
+			raise Warning('Mechanics not well defined')
+
+		self.density        = kwargs.get('density', None)
+		plasticVars         = kwargs.get('law', None)
+		self._isPlasticityPossible = False
+		if isinstance(plasticVars, dict): 
+			self._isPlasticityPossible = True
+			self.mechaBehavLaw = plasticLaw(self.elasticmodulus, self.elasticlimit, plasticVars)
+		self.__setExtraMechanicalProperties()
 		return
 	
-	def _setExtraMechanicalProperties(self):
-		E  = self._elasticmodulus
-		nu = self._poissonratio
-		self._lame_lambda, self._lame_mu, self._lame_bulk = None, None, None
+	def __setExtraMechanicalProperties(self):
+		E  = self.elasticmodulus
+		nu = self.poissonratio
+		self.lame_lambda, self.lame_mu, self.lame_bulk = None, None, None
 		if E is not None and nu is not None:
 			lamb = nu*E/((1+nu)*(1-2*nu))
 			mu = E/(2*(1+nu))
 			bulk = lamb + 2.0/3.0*mu
-			self._lame_lambda = lamb
-			self._lame_mu = mu
-			self._lame_bulk = bulk
+			self.lame_lambda = lamb
+			self.lame_mu = mu
+			self.lame_bulk = bulk
 		return
-	
-	def getInfo(self, kwargs:dict):		
-		self._elasticmodulus = kwargs.get('elastic_modulus', None)
-		self._poissonratio   = kwargs.get('poisson_ratio', None)
-		self._elasticlimit   = kwargs.get('elastic_limit', None)
-		self._density        = kwargs.get('density', None)
-		plasticKwargs 		 = kwargs.get('law', None)
-		self._isPlasticityPossible = False
-		if plasticKwargs is not None: 
-			self._isPlasticityPossible = True
-			self._mechaBehavLaw = plasticLaw(self._elasticmodulus, self._elasticlimit, plasticKwargs)
-		self._setExtraMechanicalProperties()
-		return
-	
-	def verifyMechanicalProperties(self):
-		" Verifies if mechanical properties exits "
-		proplist = [self._elasticmodulus, self._elasticlimit, self._poissonratio]
-		if any([prop is None for prop in proplist]): raise Warning('Mechanics not well defined')
-		return
-	
+		
 	def eval_volForceCoefficients(self, fun, detJ, qp):
 		qp = np.atleast_2d(qp)
-		coefs = fun(qp)*detJ*self._density
+		coefs = fun(qp)*detJ*self.density
 		return coefs
 	
 	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b):
@@ -211,7 +204,7 @@ class mechamat(material):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law: plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
+		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
 			dgamma = 0.0
 			a_n1 = a_n0
 			for i in range(nbIter):
@@ -238,7 +231,7 @@ class mechamat(material):
 		for i in range(dim): devStrain[i, i] -= 1.0/3.0*traceStrain
 
 		# Compute trial stress
-		s_trial = 2*self._lame_mu*(devStrain - Tpls)
+		s_trial = 2*self.lame_mu*(devStrain - Tpls)
 
 		# Compute shifted stress
 		eta_trial = s_trial - Tb
@@ -247,15 +240,15 @@ class mechamat(material):
 		norm_trial = np.linalg.norm(eta_trial)
 		f_trial = norm_trial - np.sqrt(2.0/3.0)*law._Kfun(a)
 		sigma   = s_trial
-		for i in range(dim): sigma[i, i] += self._lame_bulk*traceStrain
-		Cep[0] = self._lame_lambda; Cep[1] = self._lame_mu
+		for i in range(dim): sigma[i, i] += self.lame_bulk*traceStrain
+		Cep[0] = self.lame_lambda; Cep[1] = self.lame_mu
 		pls_new = pls; a_new = a; b_new = b
 		stress  = symtensor2array(sigma, dim)
 
 		if f_trial>0.0:
 
 			# Compute plastic-strain increment
-			dgamma = computeDeltaGamma(law, self._lame_mu, a, eta_trial)
+			dgamma = computeDeltaGamma(law, self.lame_mu, a, eta_trial)
 
 			# Update internal hardening variable
 			a_new = a + np.sqrt(2.0/3.0)*dgamma
@@ -265,7 +258,7 @@ class mechamat(material):
 			Cep[3:] = symtensor2array(Normal, dim)
 
 			# Update stress
-			sigma -= 2*self._lame_mu*dgamma*Normal
+			sigma -= 2*self.lame_mu*dgamma*Normal
 			stress = symtensor2array(sigma, dim)
 
 			# Update plastic strain
@@ -278,17 +271,17 @@ class mechamat(material):
 
 			# Update new coefficients
 			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
-			c1 = 2*self._lame_mu*dgamma/norm_trial
-			c2 = 1.0/(1+somme/(3*self._lame_mu)) - c1
-			Cep[0] = self._lame_lambda + 2.0/3.0*self._lame_mu*c1
-			Cep[1] = self._lame_mu*(1.0 - c1)
-			Cep[2] = -2.0*self._lame_mu*c2
+			c1 = 2*self.lame_mu*dgamma/norm_trial
+			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
+			Cep[0] = self.lame_lambda + 2.0/3.0*self.lame_mu*c1
+			Cep[1] = self.lame_mu*(1.0 - c1)
+			Cep[2] = -2.0*self.lame_mu*c2
 
 		return stress, pls_new, a_new, b_new, Cep
 	
 def symtensor2array(tensor, dim):
 	nvoigt = int(dim*(dim+1)/2)
-	array = np.zeros(nvoigt)
+	array  = np.zeros(nvoigt)
 	k = 0
 	for i in range(dim):
 		array[k] = tensor[i, i]

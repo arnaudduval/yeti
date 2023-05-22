@@ -334,13 +334,12 @@ class mechaproblem():
 	# Matrix free functions
 	def eval_mfStiffness(self, displacement, kwargs=None):
 		if self._model._dim != 3: raise Warning('Until now not done')
-		self._material.verifyMechanicalProperties()
 		if kwargs is None: 
 			dimen  = self._model._dim
 			nvoigt = int(dimen*(dimen+1)/2)
 			kwargs = np.zeros((nvoigt+3, self._model._nbqp_total))
-			kwargs[0, :] = self._material._lame_lambda
-			kwargs[1, :] = self._material._lame_mu
+			kwargs[0, :] = self._material.lame_lambda
+			kwargs[1, :] = self._material.lame_mu
 		inputs = [*self._model._nbqp, *self._model._indices, 
 	    			*self._model._basis, *self._model._weights, 
 					self._model._invJ, self._model._detJ, kwargs]
@@ -405,7 +404,6 @@ class mechaproblem():
 
 	# Solve using fortran
 	def solveElasticityProblemFT(self, Fext, kwargs=None, nbIterPCG=None, methodPCG=None):
-		self._material.verifyMechanicalProperties()
 		dod_total = deepcopy(self._boundary._mchdod)
 		for i, dod in enumerate(dod_total):
 			tmp = dod + 1
@@ -413,11 +411,11 @@ class mechaproblem():
 
 		dimen  = self._model._dim
 		nvoigt = int(dimen*(dimen+1)/2)
-		prop = [self._material._elasticmodulus, self._material._poissonratio, self._material._elasticlimit]
+		prop = [self._material.elasticmodulus, self._material.poissonratio, self._material.elasticlimit]
 		if kwargs is None:
 			kwargs = np.zeros((nvoigt+3, self._model._nbqp_total))
-			kwargs[0, :] = self._material._lame_lambda
-			kwargs[1, :] = self._material._lame_mu
+			kwargs[0, :] = self._material.lame_lambda
+			kwargs[1, :] = self._material.lame_mu
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self._model._nbqp, *self._model._indices, *self._model._basis, 
@@ -451,11 +449,10 @@ class mechaproblem():
 		if not self._material._isPlasticityPossible: raise Warning('Plasticity not defined')
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
-		self._material.verifyMechanicalProperties()
 
 		d     = self._model._dim
 		ddl   = int(d*(d+1)/2)
-		law   = self._material._mechaBehavLaw
+		law   = self._material.mechaBehavLaw
 
 		nbqp_total = self._model._nbqp_total
 		pls_n0 = np.zeros((ddl, nbqp_total))
