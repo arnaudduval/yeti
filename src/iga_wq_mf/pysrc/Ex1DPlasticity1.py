@@ -5,7 +5,7 @@ from lib.lib_load import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/plasticity/'
+folder = os.path.dirname(full_path) + '/results/d1plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 isReference = True
 method = 'iga'

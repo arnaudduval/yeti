@@ -10,7 +10,7 @@ from lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test1/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 nbel_list = [2**i for i in np.arange(2, 6)]

@@ -5,7 +5,7 @@ from lib.lib_base import relativeError
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test6/'
+folder = os.path.dirname(full_path) + '/results/t3dsteady/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = True

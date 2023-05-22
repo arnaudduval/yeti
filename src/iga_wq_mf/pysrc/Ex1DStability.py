@@ -14,7 +14,7 @@ from scipy import interpolate
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t1dim/'
+folder = os.path.dirname(full_path) + '/results/d1heat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def build_sparse_matrix(basis, indi_in, indj_in):

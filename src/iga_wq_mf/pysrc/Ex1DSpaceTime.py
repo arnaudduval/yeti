@@ -4,7 +4,7 @@ from lib.lib_quadrules import GaussQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t1dim/'
+folder = os.path.dirname(full_path) + '/results/d1heat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Material and geometry

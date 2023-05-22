@@ -3,7 +3,7 @@ from lib.lib_base import createKnotVector
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t1dim/'
+folder = os.path.dirname(full_path) + '/results/d1plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables

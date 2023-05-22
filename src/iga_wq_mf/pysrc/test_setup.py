@@ -10,7 +10,7 @@ from lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test3/'
+folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 folder_data = os.path.dirname(full_path) + '/lib/data/'
 
