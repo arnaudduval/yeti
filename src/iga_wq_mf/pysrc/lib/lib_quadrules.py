@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import (gaussTable, lobattoTable, 
+from lib.lib_base import (LegendreTable, lobattoTable, 
 						findMultiplicity, createKnotVector, 
 						insertRowCSR, evalDersBasisFortran
 )
@@ -70,7 +70,7 @@ class GaussQuadrature(QuadratureRules):
 		self._quadMethod = kwargs.get('quadmethod', 'leg').lower()
 		if self._quadMethod == 'leg': # Legendre 
 			self._order = self._degree + 1
-			self._table = gaussTable
+			self._table = LegendreTable
 		elif self._quadMethod == 'lob': # Lobatto
 			self._order = self._degree + 2
 			self._table = lobattoTable
