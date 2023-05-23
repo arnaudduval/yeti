@@ -5,9 +5,7 @@
 .. Joaquin Cornejo
 """
 
-import numpy as np
 from lib.__init__ import *
-from lib.lib_base import evalDersBasisFortran
 from lib.lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
 from lib.lib_material import plasticLaw
 

@@ -439,7 +439,6 @@ class mechaproblem(problem):
 
 		d     = self.part.dim
 		ddl   = int(d*(d+1)/2)
-		law   = self.material.plasticLaw
 
 		nbqp_total = self.part.nbqp_total
 		pls_n0 = np.zeros((ddl, nbqp_total))
