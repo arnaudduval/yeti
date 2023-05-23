@@ -20,18 +20,18 @@ def run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga'):
 	else:
 		raise Warning('Not possible')
 	model = mechamat1D(**kwargs)
-	model.set_DirichletCondition(table=[1, 0])
+	model.add_DirichletCondition(table=[1, 0])
 
 	# Define boundaries conditions
-	Fext        = np.zeros((model._nbctrlpts, nbSteps))
+	Fext        = np.zeros((model.nbctrlpts, nbSteps))
 	Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
 	for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 	# Solve
 	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext)
-	strain_cp   = model.interpolate_CPfield(strain_qp)
-	plastic_cp  = model.interpolate_CPfield(plastic_qp)
-	stress_cp 	= model.interpolate_CPfield(stress_qp)
+	strain_cp   = model.interpolate_CntrlPtsField(strain_qp)
+	plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
+	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
 	return model, disp_cp, strain_cp, plastic_cp, stress_cp
 
 # Set global variables
@@ -44,9 +44,9 @@ if isReference:
 	degree, nbel = 9, 1024
 	knotvector   = createKnotVector(degree, nbel)
 	model, disp_cp, strain_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga')
-	disp_interp = model.interpolate_sample(disp_cp, samplesize=samplesize)[0]
-	strain_interp = model.interpolate_sample(strain_cp, samplesize=samplesize)[0]
-	stress_interp = model.interpolate_sample(stress_cp, samplesize=samplesize)[0]
+	disp_interp = model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0]
+	strain_interp = model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0]
+	stress_interp = model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0]
 	np.save(folder+'disp_interp_ref.npy', disp_interp)
 	np.save(folder+'strain_interp_ref.npy', strain_interp)
 	np.save(folder+'stress_interp_ref.npy', stress_interp)
@@ -74,9 +74,9 @@ else:
 		info = run_simulation(degree, knotvector, mechaprop, nbSteps, method=method)
 		model, disp_cp, strain_cp, plastic_cp, stress_cp = info
 		interp = []
-		interp.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
-		interp.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
-		interp.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
+		interp.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
+		interp.append(model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0])
+		interp.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
 
 		for j in range(3): relerror[i, :, j] = find_relError(ref[j], interp[j])
 

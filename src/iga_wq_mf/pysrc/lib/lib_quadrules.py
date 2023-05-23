@@ -16,6 +16,8 @@ class QuadratureRules:
 		self.dersIndices  = None
 		self.dersBasis    = None
 		self.dersWeights  = None
+		self._denseBasis   = None
+		self._denseWeights = None
 		return
 
 	def __getInfoFromKnotvector(self):

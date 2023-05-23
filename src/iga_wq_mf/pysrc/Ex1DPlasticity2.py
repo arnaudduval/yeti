@@ -23,25 +23,25 @@ knotvector   = createKnotVector(degree, nbel)
 kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector, 
 			'quadrule': 'iga', 'quadmethod': 'leg', 'property': mechaprop}
 model  = mechamat1D(**kwargs)
-model.set_DirichletCondition(table=[1, 0])
-nbqpiga = model._nbqp
+model.add_DirichletCondition(table=[1, 0])
+nbqpiga = model.nbqp
 
 # Define boundaries conditions
-Fext        = np.zeros((model._nbctrlpts, nbSteps))
+Fext        = np.zeros((model.nbctrlpts, nbSteps))
 Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve 
 disp_cp, strain_iga, stress_iga, plastic_iga, Cep_iga = model.solve(Fext=Fext)
-strain_cp   = model.interpolate_CPfield(strain_iga)
-plastic_cp  = model.interpolate_CPfield(plastic_iga)
-stress_cp 	= model.interpolate_CPfield(stress_iga)
+strain_cp   = model.interpolate_CntrlPtsField(strain_iga)
+plastic_cp  = model.interpolate_CntrlPtsField(plastic_iga)
+stress_cp 	= model.interpolate_CntrlPtsField(stress_iga)
 plot_results(degree, knotvector, length, disp_cp, plastic_cp,
 				stress_cp, folder=folder, method='IGA')
 interp_iga  = []
-interp_iga.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
-interp_iga.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
-interp_iga.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
+interp_iga.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
+interp_iga.append(model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0])
+interp_iga.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
 
 # -------------------
 # Weighted Quadrature
@@ -53,25 +53,25 @@ knotvector   = createKnotVector(degree, nbel)
 kwargs = {'length': length, 'degree': degree, 'knotvector': knotvector, 
 			'quadrule': 'iga', 'quadmethod': 'lob', 'property': mechaprop}
 model = mechamat1D(**kwargs)
-model.set_DirichletCondition(table=[1, 0])
-nbqpwq = model._nbqp
+model.add_DirichletCondition(table=[1, 0])
+nbqpwq = model.nbqp
 
 # Define boundaries conditions
-Fext        = np.zeros((model._nbctrlpts, nbSteps))
+Fext        = np.zeros((model.nbctrlpts, nbSteps))
 Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
 for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 # Solve
 disp_cp, strain_wq, stress_wq, plastic_wq, Cep_wq = model.solve(Fext=Fext)
-strain_cp   = model.interpolate_CPfield(strain_wq)
-plastic_cp  = model.interpolate_CPfield(plastic_wq)
-stress_cp 	= model.interpolate_CPfield(stress_wq)
+strain_cp   = model.interpolate_CntrlPtsField(strain_wq)
+plastic_cp  = model.interpolate_CntrlPtsField(plastic_wq)
+stress_cp 	= model.interpolate_CntrlPtsField(stress_wq)
 plot_results(degree, knotvector, length, disp_cp, plastic_cp,
 				stress_cp, folder=folder, method='WQ')
 interp_wq   = []
-interp_wq.append(model.interpolate_sample(disp_cp, samplesize=samplesize)[0])
-interp_wq.append(model.interpolate_sample(strain_cp, samplesize=samplesize)[0])
-interp_wq.append(model.interpolate_sample(stress_cp, samplesize=samplesize)[0])
+interp_wq.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
+interp_wq.append(model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0])
+interp_wq.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
 
 # ------------------
 # Post-treatement

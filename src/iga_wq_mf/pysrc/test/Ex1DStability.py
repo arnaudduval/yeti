@@ -8,7 +8,7 @@ The Laplace problem is:
 """
 
 from lib.__init__ import *
-from lib.lib_base import createKnotVector, eraseRowsCSR
+from lib.lib_base import createKnotVector, eraseRowsCSR, array2csr_matrix
 from lib.lib_quadrules import GaussQuadrature
 from scipy import interpolate
 
@@ -18,12 +18,9 @@ folder = os.path.dirname(full_path) + '/results/d1heat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def build_sparse_matrix(basis, indi_in, indj_in):
-	indi = np.copy(indi_in); indj = np.copy(indj_in)
-	nrows = len(indi) - 1; ncols = np.max(indj)
-	indi -= 1; indj -= 1
-	B0  = sp.csr_matrix((basis[:, 0], indj, indi), shape=(nrows, ncols)).toarray()
-	B1  = sp.csr_matrix((basis[:, -1], indj, indi), shape=(nrows, ncols)).toarray()
-	return B0, B1
+	B0  = array2csr_matrix(basis[:, 0], indi_in, indj_in, isfortran=True)
+	B1  = array2csr_matrix(basis[:, -1], indi_in, indj_in, isfortran=True)
+	return B0.toarray(), B1.toarray()
 
 def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	""" Here, prop = k/rho*Cp (isotropic material)

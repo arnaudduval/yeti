@@ -7,119 +7,110 @@
 
 import numpy as np
 from lib.__init__ import *
-from lib.lib_base import array2csr_matrix, evalDersBasisFortran
-from lib.lib_quadrules import *
+from lib.lib_base import evalDersBasisFortran
+from lib.lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
 from lib.lib_material import plasticLaw
 
-class model1D:
-	def __init__(self, **kwargs):
-		self._sampleSize = kwargs.get('sample_size', 101)
-		self._kwargs = kwargs
-		self.set_geometry()
-		self.set_igaparameterization()
-		self.set_quadratureRule()
+class part1D:
+	def __init__(self, kwargs:dict):
+		self.__setGeometry(kwargs)
+		self.__setIgaParameterization(kwargs)
+		self.__setQuadratureRules(kwargs)
 		return
 	
-	def set_geometry(self):
-		self._J    = self._kwargs.get('length', 1.0)
-		self._detJ = self._J
-		self._invJ = 1.0/self._J
+	def __setGeometry(self, kwargs:dict):
+		self.Jqp  = kwargs.get('length', 1.0)
+		self.detJ = self.Jqp
+		self.invJ = 1.0/self.Jqp
 		return
 	
-	def set_igaparameterization(self):
-		kwargs           = self._kwargs
-		self._degree     = kwargs.get('degree', 2)
-		self._knotvector = kwargs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
-		self._nbctrlpts  = len(self._knotvector) - self._degree - 1
+	def __setIgaParameterization(self, kwargs:dict):
+		self.degree     = kwargs.get('degree', 2)
+		self.knotvector = kwargs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
+		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
 		return
 
-	def set_quadratureRule(self):
-		kwargs        = self._kwargs
-		quadRuleName  = kwargs.get('quadrule', 'wq').lower()
-		quadRule      = None
+	def __setQuadratureRules(self, kwargs:dict):
+		quadRuleName = kwargs.get('quadrule', 'wq').lower()
+		quadRule     = None
 		
 		if quadRuleName == 'iga':
-			quadRule = GaussQuadrature(self._degree, self._knotvector, kwargs=kwargs)
+			quadRule = GaussQuadrature(self.degree, self.knotvector, kwargs=kwargs)
 		elif quadRuleName == 'wq':
-			quadRule = WeightedQuadrature(self._degree, self._knotvector, kwargs=kwargs)
+			quadRule = WeightedQuadrature(self.degree, self.knotvector, kwargs=kwargs)
 		else:
 			raise Warning('Not found')
-
-		# nbqp, 
-		info = quadRule.getQuadratureRulesInfo()
-		quadPtsPos, dersIndices, dersBasis, dersWeights = info
-		self._nbqp = len(quadPtsPos); self._qpPar = quadPtsPos; 
-		self._basis, self._weights = [], []
-
-		for i in range(2): self._basis.append(array2csr_matrix(dersBasis[:, i], *dersIndices))
-		for i in range(4): self._weights.append(array2csr_matrix(dersWeights[:, i], *dersIndices))
-		
+		quadRule.getQuadratureRulesInfo()
+		self.quadRule = quadRule
+		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
 		return
 
-	def set_DirichletCondition(self, table=[0, 0]):
+	def add_DirichletCondition(self, table=[0, 0]):
 		dod = []
-		dof = [i for i in range(0, self._nbctrlpts)]
+		dof = [i for i in range(0, self.nbctrlpts)]
 		if table[0] == 1:  
 			dof.pop(0); dod.append(0)
 		if table[-1] == 1: 
-			dof.pop(-1); dod.append(self._nbctrlpts-1)
-		self._dof = dof
-		self._dod = dod
+			dof.pop(-1); dod.append(self.nbctrlpts-1)
+		self.dof = dof
+		self.dod = dod
 		return 
 
-	def activate_thermal(self):
-		prop = self._kwargs.get('property', {})
-		self._conductivity = prop.get('conductivity', None)
-		self._capacity     = prop.get('capacity', None)
-		self._density          = prop.get('density', None)
+	def activate_thermal(self, matVars:dict):
+		self.conductivity = matVars.get('conductivity', None)
+		self.capacity     = matVars.get('capacity', None)
+		self.density      = matVars.get('density', None)
 		return
 	
-	def activate_mechanical(self):
-		prop = self._kwargs.get('property', {})
-		self._elasticmodulus = prop.get('elastic_modulus', None)
-		self._poissonratio   = prop.get('poisson_ratio', None)
-		self._elasticlimit   = prop.get('elastic_limit', None)
-		self._density        = prop.get('density', None)
+	def activate_mechanical(self, matVars:dict):
+		self.elasticmodulus = matVars.get('elastic_modulus', None)
+		self.poissonratio   = matVars.get('poisson_ratio', None)
+		self.elasticlimit   = matVars.get('elastic_limit', None)
+		self.density        = matVars.get('density', None)
 		return
 	
-	def interpolate_sample(self, u_ctrlpts, samplesize=None):
-		if np.size(u_ctrlpts, axis=0) != self._nbctrlpts: raise Warning('Not possible')
-		if samplesize is None: samplesize = self._sampleSize
-		knots   = np.linspace(0, 1, samplesize)
-		basis, indi, indj = evalDersBasisFortran(self._degree, self._knotvector, knots)
-		B0       = sp.csr_matrix((basis[:, 0], indj-1, indi-1))
-		u_interp = B0.T @ u_ctrlpts
-		x_interp = self._detJ * knots
+	def interpolate_sampleField(self, u_ctrlpts, sampleSize=101):
+		if np.size(u_ctrlpts, axis=0) != self.nbctrlpts: raise Warning('Not possible')
+		basis, knots = self.quadRule.getGeneralizedBasis(sampleSize=sampleSize)
+		u_interp = basis[0].T @ u_ctrlpts
+		x_interp = self.detJ * knots
 		return u_interp, x_interp
+	
+	def interpolate_CntrlPtsField(self, u_ref):
+		" Interpolate control point field (from parametric to physical space) "
+		masse = self.weights[0] @ self.basis[0].T
+		force = self.weights[0] @ u_ref
+		u_ctrlpts = np.linalg.solve(masse.toarray(), force)
+		return u_ctrlpts
 
-class thermo1D(model1D):
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-		self.activate_thermal()
+class thermo1D(part1D):
+	def __init__(self, kwargs:dict):
+		super().__init__(kwargs)
+		self.activate_thermal(kwargs)
 		self._temporaltheta = kwargs.get('heattheta', 1.0)
 		return
 
 	def interpolate_temperature(self, T_ctrlpts):
 		" Interpolate temperature in 1D "
-		T_interp = self._basis[0].T @ T_ctrlpts
+		T_interp = self.basis[0].T @ T_ctrlpts
 		return T_interp
 
 	def compute_volForce(self, Fprop):
 		" Computes 'volumetric' source vector in 1D "
-		Fcoefs = Fprop * self._detJ
-		F = self._weights[0] @ Fcoefs 
+		Fcoefs = Fprop * self.detJ
+		F = self.weights[0] @ Fcoefs 
 		return F
 
 	def compute_intForce(self, Kprop, Cprop, T, dT):
 		"Returns the internal heat force in transient heat"
 
 		# Compute conductivity matrix
-		Kcoefs = Kprop * self._invJ
-		K = self._weights[-1] @ np.diag(Kcoefs) @ self._basis[1].T 
+		Kcoefs = Kprop * self.invJ
+		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
 
 		# Compute capacity matrix 
-		Ccoefs = Cprop * self._detJ
-		C = self._weights[0] @ np.diag(Ccoefs) @ self._basis[0].T
+		Ccoefs = Cprop * self.detJ
+		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		# C = np.diag(C.sum(axis=1))
 
 		# Compute internal heat force 
@@ -136,12 +127,12 @@ class thermo1D(model1D):
 		"""
 
 		# Compute conductivity matrix
-		Kcoefs = Kprop * self._invJ
-		K = self._weights[-1] @ np.diag(Kcoefs) @ self._basis[1].T 
+		Kcoefs = Kprop * self.invJ
+		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
 
 		# Compute capacitiy matrix 
-		Ccoefs = Cprop * self._detJ
-		C =self._weights[0] @ np.diag(Ccoefs) @ self._basis[0].T
+		Ccoefs = Cprop * self.detJ
+		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		# C = np.diag(C.sum(axis=1))
 
 		# Compute tangent matrix 
@@ -153,7 +144,7 @@ class thermo1D(model1D):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
-		dod   = self._dod; dof = self._dof
+		dod   = self.dod; dof = self.dof
 		VVn0  = np.zeros(len(dof)+len(dod))
 
 		# Compute initial velocity from boundry conditions (for i = 0)
@@ -186,8 +177,8 @@ class thermo1D(model1D):
 				T_interp = self.interpolate_temperature(TTn1)
 
 				# Get capacity and conductivity properties
-				Kprop = self._conductivity(T_interp)
-				Cprop = self._capacity(T_interp)
+				Kprop = self.conductivity(T_interp)
+				Cprop = self.capacity(T_interp)
 
 				# Compute residue
 				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1)
@@ -213,16 +204,15 @@ class thermo1D(model1D):
 
 		return 
 
-class mechamat1D(model1D):
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-		self.activate_mechanical()
-		prop = kwargs.get('property', {})
-		plasticKwargs  = prop.get('law', None)
+class mechamat1D(part1D):
+	def __init__(self, kwargs:dict):
+		super().__init__(kwargs)
+		self.activate_mechanical(kwargs)
+		plasticVars = kwargs.get('law', None)
 		self._isPlasticityPossible = False
-		if plasticKwargs is not None: 
+		if isinstance(plasticVars, dict):  
 			self._isPlasticityPossible = True
-			self._mechaBehavLaw        = plasticLaw(self._elasticmodulus, self._elasticlimit, plasticKwargs)
+			self.mechaBehavLaw        = plasticLaw(self.elasticmodulus, self.elasticlimit, plasticVars)
 		return
 
 	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b, threshold=1e-9):
@@ -243,7 +233,7 @@ class mechamat1D(model1D):
 			return dgamma
 
 		# Elastic predictor
-		sigma_trial = self._elasticmodulus*(strain - pls)
+		sigma_trial = self.elasticmodulus*(strain - pls)
 		eta_trial   = sigma_trial - b
 
 		# Check yield status
@@ -254,35 +244,28 @@ class mechamat1D(model1D):
 			pls_new = pls
 			a_new = a
 			b_new = b
-			Cep = self._elasticmodulus
+			Cep = self.elasticmodulus
 
 		else: # Plastic
-			dgamma = computeDeltaGamma(law, self._elasticmodulus, eta_trial, a)
+			dgamma = computeDeltaGamma(law, self.elasticmodulus, eta_trial, a)
 			a_new = a + dgamma
 			Normal = np.sign(eta_trial)
-			stress = sigma_trial - dgamma*self._elasticmodulus*Normal
+			stress = sigma_trial - dgamma*self.elasticmodulus*Normal
 			pls_new = pls + dgamma*Normal
 			b_new = b + (law._Hfun(a_new) - law._Hfun(a))*Normal
 			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
-			Cep = self._elasticmodulus*somme/(self._elasticmodulus + somme)
+			Cep = self.elasticmodulus*somme/(self.elasticmodulus + somme)
 
 		return [stress, pls_new, a_new, b_new, Cep]
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
-		eps = self._basis[1].T @ disp / self._invJ
+		eps = self.basis[1].T @ disp / self.invJ
 		return eps
-	
-	def interpolate_CPfield(self, u_ref):
-		" Interpolate control point field (from parametric to physical space) "
-		masse = self._weights[0] @ self._basis[0].T
-		force = self._weights[0] @ u_ref
-		u_ctrlpts = np.linalg.solve(masse.toarray(), force)
-		return u_ctrlpts
 
 	def compute_volForce(self, b): 
 		" Computes volumetric force in 1D. Usualy b = rho*g*L (Weight) "
-		F = self._weights[0] @ b.T
+		F = self.weights[0] @ b.T
 		return F
 
 	def compute_intForce(self, sigma):
@@ -290,7 +273,7 @@ class mechamat1D(model1D):
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Fint = self._weights[2] @ sigma.T
+		Fint = self.weights[2] @ sigma.T
 		return Fint
 
 	def compute_tangentMatrix(self, Cep):
@@ -298,17 +281,17 @@ class mechamat1D(model1D):
 			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Scoefs = Cep*1.0/self._detJ
-		S = self._weights[-1] @ np.diag(Scoefs) @ self._basis[1].T 
+		Scoefs = Cep*1.0/self.detJ
+		S = self.weights[-1] @ np.diag(Scoefs) @ self.basis[1].T 
 		return S
 
 	def solve(self, Fext=None, threshold=1e-9, nbIterNL=30):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
-		law  = self._mechaBehavLaw
-		nbqp = self._nbqp
-		dof  = self._dof
+		law  = self.mechaBehavLaw
+		nbqp = self.quadRule.nbqp
+		dof  = self.dof
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		ep_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
@@ -358,15 +341,13 @@ class mechamat1D(model1D):
 
 		return disp, eps, stress, plastic, moduleE
 
-def plot_results(degree, knotvector, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
+def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
-	knots  = np.linspace(0, 1, 101)
-	basis, indi, indj = evalDersBasisFortran(degree, knotvector, knots)
-	B0 = sp.csr_matrix((basis[:, 0], indj-1, indi-1)); B1 = sp.csr_matrix((basis[:, -1], indj-1, indi-1))
-	displacement   = B0.T @ disp_cp
-	strain_interp  = B1.T @ disp_cp
-	plastic_interp = B0.T @ plastic_cp
-	stress_interp  = B0.T @ stress_cp
+	basis, knots = quadRule.getGeneralizedBasis(sampleSize=101)
+	displacement   = basis[0].T @ disp_cp
+	strain_interp  = basis[1].T @ disp_cp
+	plastic_interp = basis[0].T @ plastic_cp
+	stress_interp  = basis[0].T @ stress_cp
 
 	# Plot fields
 	N = np.shape(disp_cp)[1]

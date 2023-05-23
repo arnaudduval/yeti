@@ -28,7 +28,7 @@ kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector,
         'quadrule': 'wq', 'heattheta': theta, 'property': heatprop}
 
 model = thermo1D(**kwargs)
-model.set_DirichletCondition(table=[1, 1])
+model.add_DirichletCondition(table=[1, 1])
 
 # Define boundaries conditions	
 N = 1000
@@ -45,7 +45,7 @@ temperature[-1,:] = 1.0
 
 # Solve
 model.solve(Fext=Fext, time_list=time_list, Tinout=temperature)
-temp_interp, x_interp = model.interpolate_sample(temperature)
+temp_interp, x_interp = model.interpolate_sampleField(temperature)
 print(temp_interp.min())
 
 # ------------------

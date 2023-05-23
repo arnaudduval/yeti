@@ -13,10 +13,10 @@ knotvector   = createKnotVector(degree, nbel)
 
 # Create Timoshenko beam
 mechaprop = {'elastic_modulus':1e8, 'elastic_limit':506, 'poisson_ratio': 0.3}
-kwargs    = {'section': 'rectangle', 'length': length, 'degree': degree, 'knotvector': knotvector,
-        'quadrule': 'wq', 'law': 'linear', 'property': mechaprop}
-model     = Timoshenko(**kwargs)
-model.set_DirichletCondition(0, values=[0.0, 0.0, 0.0], table=[True, True, True])
+kwargs    = {'length': length, 'degree': degree, 'knotvector': knotvector,
+            'section': 'rectangle', 'quadrule': 'wq', 'law': 'linear', 'property': mechaprop}
+model     = Timoshenko(kwargs)
+model.add_DirichletCondition(0, values=[0.0, 0.0, 0.0], table=[True, True, True])
 # model.set_DirichletCondition(-1, values=[0.0, 0.0, 0.0], table=[False, True, False])
 
 # Compute external force vector of uniform force field
@@ -29,8 +29,8 @@ u, w, theta = model.solve(Fext)
 # ------------------
 # Post-treatement
 # ------------------
-u_interp = model.interpolate_sample(u)[0]
-w_interp, x_interp = model.interpolate_sample(w)
+u_interp = model.interpolate_sampleField(u)[0]
+w_interp, x_interp = model.interpolate_sampleField(w)
 beam = x_interp + u_interp
 
 fig, ax = plt.subplots()
