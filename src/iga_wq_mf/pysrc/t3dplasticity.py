@@ -28,16 +28,18 @@ degree, cuts = 2, 3
 name = 'CB'
 
 # Create model 
-inputs = {'name': name, 'degree':degree*np.ones(3, dtype=int), 
+geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-modelGeo = Geomdl(**inputs)
+quadArgs  = {'quadrule': 'wq', 'type': 1}
+
+modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
-model    = part(modelIGA)
+model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-kwargs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
-			'law':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
-material = mechamat(kwargs)
+matArgs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
+			'plasticLaw':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(model.nbctrlpts)
@@ -65,4 +67,4 @@ nbStep = 6; dt = 1/nbStep
 Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-displacement, stress_vm = problem.solvePlasticityProblemPy(Fext=Fext)
+displacement, stress_vm = problem.solvePlasticityProblemPy(Fext=Fext, )

@@ -12,7 +12,7 @@ class problem():
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 20)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-9)
+		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 
@@ -410,7 +410,8 @@ class mechaproblem(problem):
 
 		return Fint
 	
-	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None): 
+	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None, thresholdNR=None): 
+		if thresholdNR is None: thresholdNR = self._thresholdNR
 		if self.part.dim != 3: raise Warning('Only for 3D')
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
@@ -435,8 +436,8 @@ class mechaproblem(problem):
 			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
 			Fstep = Fext[:, :, i]
 
+			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Solver Newton-Raphson
-				print('Step %d, iteration %d' %(i+1, j+1))
 
 				# Compute strain as function of displacement
 				d_n1 = disp[:, :, i-1] + ddisp
@@ -453,7 +454,7 @@ class mechaproblem(problem):
 				clean_dirichlet(dF, self.boundary.mchdod) 
 				prod1 = block_dot_product(d, dF, dF)
 				resNL = np.sqrt(prod1)
-				print('Relative error: %.5e' %resNL)
+				print('NR error: %.5e' %resNL)
 				if resNL <= self._thresholdNR: break
 				
 				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
