@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import createKnotVector, relativeError
+from lib.lib_base import createKnotVector
 from lib.thermomecha1D import mechamat1D
 from lib.lib_load import *
 
@@ -7,24 +7,27 @@ from lib.lib_load import *
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
-isReference = True
-method = 'iga'
 
-def run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga'):
-	if method == 'iga':
-		kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 
-					'quadrule': 'iga', 'quadmethod': 'leg', 'property': mechaprop}
-	elif method == 'wq':
-		kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector, 
-					'quadrule': 'wq', 'quadmethod': 1, 'property': mechaprop}
-	else:
-		raise Warning('Not possible')
-	model = mechamat1D(**kwargs)
+def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
+
+	# Create geometry
+	if   quadrule == 'iga': quadType = 'leg'
+	elif quadrule == 'wq' : quadType = 1
+	else: raise Warning('Not possible')
+	quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': quadrule, 'type': quadType}
+	geoArgs   = {'length': 1.0}
+	args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+	model = mechamat1D(args)
+
+	# Add material
+	model.activate_mechanical(matArgs)
+
+	# Add boundary condition
 	model.add_DirichletCondition(table=[1, 0])
 
 	# Define boundaries conditions
 	Fext        = np.zeros((model.nbctrlpts, nbSteps))
-	Fext[:, -1] = model.compute_volForce(forceVol(model._qpPar))
+	Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
 	for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
 
 	# Solve
@@ -34,17 +37,20 @@ def run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga'):
 	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
 	return model, disp_cp, strain_cp, plastic_cp, stress_cp
 
+isReference = True
+quadrule = 'iga'
+
 # Set global variables
 samplesize = 2001
-nbSteps   = 101
-mechaprop = {'elastic_modulus':200e3, 'elastic_limit':506, 
-				'law': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+nbSteps    = 101
+matArgs    = {'elastic_modulus':200e3, 'elastic_limit':506, 
+			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 if isReference:
 	degree, nbel = 9, 1024
 	knotvector   = createKnotVector(degree, nbel)
-	model, disp_cp, strain_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, mechaprop, nbSteps, method='iga')
-	disp_interp = model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0]
+	model, disp_cp, strain_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga')
+	disp_interp   = model.interpolate_sampleField(disp_cp,   sampleSize=samplesize)[0]
 	strain_interp = model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0]
 	stress_interp = model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0]
 	np.save(folder+'disp_interp_ref.npy', disp_interp)
@@ -53,7 +59,7 @@ if isReference:
 
 else:
 
-	def find_relError(ref, interp):
+	def relativeError(ref, interp):
 		norm_ref    = np.linalg.norm(ref, axis=0)
 		error       = ref - interp
 		norm_error  = np.linalg.norm(error, axis=0)
@@ -71,14 +77,14 @@ else:
 	
 	for i, nbel in enumerate(nbel_list):
 		knotvector = createKnotVector(degree, nbel)
-		info = run_simulation(degree, knotvector, mechaprop, nbSteps, method=method)
+		info = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule=quadrule)
 		model, disp_cp, strain_cp, plastic_cp, stress_cp = info
 		interp = []
 		interp.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
 		interp.append(model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0])
 		interp.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
 
-		for j in range(3): relerror[i, :, j] = find_relError(ref[j], interp[j])
+		for j in range(3): relerror[i, :, j] = relativeError(ref[j], interp[j])
 
 
 	from mpl_toolkits.axes_grid1 import make_axes_locatable

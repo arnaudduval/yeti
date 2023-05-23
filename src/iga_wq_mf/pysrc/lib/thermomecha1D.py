@@ -30,14 +30,13 @@ class part1D:
 		return
 	
 	def __setQuadratureRules(self, quadArgs:dict):
-		quadRuleName = quadArgs.get('quadrule', 'wq').lower()
+		quadRuleName = quadArgs.get('quadrule', '').lower()
 		quadRule     = None
 		if quadRuleName == 'iga':
 			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
 		elif quadRuleName == 'wq':
 			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
-		else:
-			raise Warning('Not found')
+		else: raise Warning('Not found')
 		quadRule.getQuadratureRulesInfo()
 		self.quadRule = quadRule
 		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
@@ -46,12 +45,12 @@ class part1D:
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
-		dod = []
-		dof = [i for i in range(0, self.nbctrlpts)]
+		dod = np.array([], dtype=int)
+		dof = np.arange(self.nbctrlpts, dtype=int)
 		if table[0] == 1:  
-			dof.pop(0); dod.append(0)
+			dof = np.delete(dof, 0); dod = np.append(dod, 0)
 		if table[-1] == 1: 
-			dof.pop(-1); dod.append(self.nbctrlpts-1)
+			dof = np.delete(dof, -1); dod = np.append(dod, self.nbctrlpts-1)
 		self.dof = dof
 		self.dod = dod
 		return 
@@ -219,7 +218,7 @@ class mechamat1D(part1D):
 		tmp = matArgs.get('plasticLaw', None)
 		if isinstance(tmp, dict):  
 			self._isPlasticityPossible = True
-			self.plasticLaw         = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
+			self.plasticLaw            = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
 		return 
 
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):

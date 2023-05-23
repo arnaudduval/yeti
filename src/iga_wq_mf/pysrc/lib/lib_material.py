@@ -130,7 +130,7 @@ class plasticLaw():
 		elif lawName == 'voce'  : self.__setVoceModel(plasticVars)
 		else: raise Warning('Unknown method')
 		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
-		if any([fun is None for fun in funlist]): raise Warning('Something went wrong')
+		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
 		return	
 	
 	def __setLinearModel(self, kwargs:dict):
