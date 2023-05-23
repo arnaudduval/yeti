@@ -4,21 +4,25 @@ from lib.thermomecha1D import part1D
 class Timoshenko(part1D):
 	def __init__(self, kwargs:dict):
 		super().__init__(kwargs)
-		self.__setGeometry(kwargs)
-		self.dod, self.DirichletBound, self.dof = [], [], []
+		
+		self._area, self._inertia, self._Ks = None, None, None
+		geoArgs  = kwargs.get('geoArgs', {})
+		self.__setGeometry(geoArgs)
+		
+		self.DirichletBound, self.dod, self.dof  = np.array([], dtype=int), np.array([], dtype=int), np.array([], dtype=int)
 		return
 	
-	def __setGeometry(self, kwargs: dict):
-		name = kwargs.get('section', 'square').lower()
+	def __setGeometry(self, geoArgs: dict):
+		name = geoArgs.get('section', 'square').lower()
 		if  name == 'square': 
-			L = kwargs.get('width', 1.0)
+			L = geoArgs.get('width', 1.0)
 			self.__create_square(L)
 		elif name == 'rectangle': 
-			b = kwargs.get('width', 1.0)
-			h = kwargs.get('height', 0.1)
+			b = geoArgs.get('width', 1.0)
+			h = geoArgs.get('height', 0.1)
 			self.__create_rectangle(b, h)
 		elif name == 'circle':
-			R = kwargs.get('radius', 1.0)
+			R = geoArgs.get('radius', 1.0)
 			self.__create_circle(R)
 		else: raise Warning('Geometry not found')
 
@@ -41,38 +45,33 @@ class Timoshenko(part1D):
 		self._inertia = b*h**3.0/12.0
 		self._Ks      = 5.0/6.0
 		return
-
-	def __compute_mechaproperties(self):
-		if any(el is None for el in [self.elasticmodulus, self.shearmodulus]): raise Warning('Not possible')
-		self._EA   = self.elasticmodulus*self._area*np.ones(self.nbqp)
-		self._EI   = self.elasticmodulus*self._inertia*np.ones(self.nbqp)
-		self._GAKs = self.shearmodulus*self._area*self._Ks*np.ones(self.nbqp)
-		return 
 	
-	def activate_mechanical(self, kwargs:dict):
-		super().activate_mechanical(kwargs)
+	def activate_mechanical(self, matArgs:dict):
+		super().activate_mechanical(matArgs)
+		nbqp = self.quadRule.nbqp
 		self.shearmodulus = self.elasticmodulus/(2.0*(1.0+self.poissonratio))
-		self.__compute_mechaproperties()
+		self._EA   = self.elasticmodulus*self._area*np.ones(nbqp)
+		self._EI   = self.elasticmodulus*self._inertia*np.ones(nbqp)
+		self._GAKs = self.shearmodulus*self._area*self._Ks*np.ones(nbqp)
 		return
 
 	def __update_DirichletBound(self): 
-		set_dof = set([i for i in range(3*self.nbctrlpts)])
-		set_dod = set(self.dod)
-		diff    = set_dof.difference(set_dod)
-		self.dof = list(diff)
+		dod = set(self.dod)
+		dof = set(np.arange(3*self.nbctrlpts, dtype=int)).difference(dod)
+		self.dof = np.sort(np.array(list(dof), dtype=int))
 		return 
 
 	def add_DirichletCondition(self, bound, values=[0., 0., 0.], table=[True, True, True]):
 		if bound in self.dod: raise Warning('Enter non-repeated boundary')
 		if   bound == 0:
 			for i in range(3): 
-				if table[i]: self.dod.append(i*self.nbctrlpts)
+				if table[i]: self.dod = np.append(self.dod, int(i*self.nbctrlpts))
 		elif bound == -1:
 			for i in range(3): 
-				if table[i]: self.dod.append(self.nbctrlpts + i*self.nbctrlpts - 1)
+				if table[i]: self.dod = np.append(self.dod, int(self.nbctrlpts + i*self.nbctrlpts - 1))
 		else: raise Warning('Only possible block first or last control point')
 		for i in range(3): 
-			if table[i]: self.DirichletBound.append(values[i])
+			if table[i]: self.DirichletBound = np.append(self.DirichletBound, values[i])
 		self.__update_DirichletBound()
 		return
 
@@ -151,9 +150,10 @@ class Timoshenko(part1D):
 
 	def compute_volforce(self, p, q):
 		" Compute Timoshenko force vector "
-		if np.isscalar(p): p = p*np.ones(self.nbqp)
-		if np.isscalar(q): q = q*np.ones(self.nbqp)
-		if len(p) != self.nbqp or len(q) != self.nbqp: raise Warning('Not possible')
+		nbqp = self.quadRule.nbqp
+		if np.isscalar(p): p = p*np.ones(nbqp)
+		if np.isscalar(q): q = q*np.ones(nbqp)
+		if len(p) != nbqp or len(q) != nbqp: raise Warning('Not possible')
 		F1 = compute_sub_force_vector(self.detJ, self.weights, p)
 		F2 = compute_sub_force_vector(self.detJ, self.weights, q)
 
@@ -175,7 +175,7 @@ class Timoshenko(part1D):
 		self.__update_DirichletBound()
 		return F
 
-	def solve(self, Fext, tol=1e-9, nbIterNL=100):
+	def solve(self, Fext, threshold=1e-9, nbIterNL=100):
 		" Solves Timoshenko method "
 
 		if not len(self.dod): raise Warning('Add boundary conditions')
@@ -197,7 +197,7 @@ class Timoshenko(part1D):
 			dF      = Fext[dof] - Fint[dof]
 			errorNL = np.sqrt(np.dot(dF, dF))
 			print('Iteration %s, error: %.5e' %(i, errorNL))
-			if errorNL <= tol: break
+			if errorNL <= threshold: break
 
 			# Compute derivative of u
 			dudx = compute_derivative(self.detJ, self.basis, sol[range(nr)])

@@ -13,31 +13,29 @@ from lib.lib_material import plasticLaw
 
 class part1D:
 	def __init__(self, kwargs:dict):
-		self.__setGeometry(kwargs)
-		self.__setIgaParameterization(kwargs)
-		self.__setQuadratureRules(kwargs)
+		geoArgs  = kwargs.get('geoArgs', {})
+		self.__setGeometry(geoArgs)
+
+		quadArgs = kwargs.get('quadArgs', {})
+		self.degree     = quadArgs.get('degree', 2)
+		self.knotvector = quadArgs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
+		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
+		self.__setQuadratureRules(quadArgs)
 		return
 	
-	def __setGeometry(self, kwargs:dict):
-		self.Jqp  = kwargs.get('length', 1.0)
+	def __setGeometry(self, geoArgs:dict):
+		self.Jqp  = geoArgs.get('length', 1.0)
 		self.detJ = self.Jqp
 		self.invJ = 1.0/self.Jqp
 		return
 	
-	def __setIgaParameterization(self, kwargs:dict):
-		self.degree     = kwargs.get('degree', 2)
-		self.knotvector = kwargs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
-		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
-		return
-
-	def __setQuadratureRules(self, kwargs:dict):
-		quadRuleName = kwargs.get('quadrule', 'wq').lower()
+	def __setQuadratureRules(self, quadArgs:dict):
+		quadRuleName = quadArgs.get('quadrule', 'wq').lower()
 		quadRule     = None
-		
 		if quadRuleName == 'iga':
-			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=kwargs)
+			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
 		elif quadRuleName == 'wq':
-			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=kwargs)
+			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
 		else:
 			raise Warning('Not found')
 		quadRule.getQuadratureRulesInfo()
@@ -56,17 +54,17 @@ class part1D:
 		self.dod = dod
 		return 
 
-	def activate_thermal(self, matVars:dict):
-		self.conductivity = matVars.get('conductivity', None)
-		self.capacity     = matVars.get('capacity', None)
-		self.density      = matVars.get('density', None)
+	def activate_thermal(self, matArgs:dict):
+		self.conductivity = matArgs.get('conductivity', None)
+		self.capacity     = matArgs.get('capacity', None)
+		self.density      = matArgs.get('density', None)
 		return
 	
-	def activate_mechanical(self, matVars:dict):
-		self.elasticmodulus = matVars.get('elastic_modulus', None)
-		self.poissonratio   = matVars.get('poisson_ratio', None)
-		self.elasticlimit   = matVars.get('elastic_limit', None)
-		self.density        = matVars.get('density', None)
+	def activate_mechanical(self, matArgs:dict):
+		self.elasticmodulus = matArgs.get('elastic_modulus', None)
+		self.poissonratio   = matArgs.get('poisson_ratio', None)
+		self.elasticlimit   = matArgs.get('elastic_limit', None)
+		self.density        = matArgs.get('density', None)
 		return
 	
 	def interpolate_sampleField(self, u_ctrlpts, sampleSize=101):

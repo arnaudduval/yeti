@@ -12,15 +12,21 @@ degree, nbel = 4, 10
 knotvector   = createKnotVector(degree, nbel)
 
 # Create Timoshenko beam
-mechaprop = {'elastic_modulus':1e8, 'elastic_limit':506, 'poisson_ratio': 0.3}
-kwargs    = {'length': length, 'degree': degree, 'knotvector': knotvector,
-            'section': 'rectangle', 'quadrule': 'wq', 'law': 'linear', 'property': mechaprop}
-model     = Timoshenko(kwargs)
+quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}
+geoArgs   = {'length': length, 'section': 'rectangle'}
+args      = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+model     = Timoshenko(args)
+
+# Add material
+mechaArgs = {'elastic_modulus':1e8, 'elastic_limit':506, 'poisson_ratio': 0.3}
+model.activate_mechanical(mechaArgs)
+
+# Add boundary condition
 model.add_DirichletCondition(0, values=[0.0, 0.0, 0.0], table=[True, True, True])
-# model.set_DirichletCondition(-1, values=[0.0, 0.0, 0.0], table=[False, True, False])
+model.add_DirichletCondition(-1, values=[0.0, 0.0, 0.0], table=[True, True, True])
 
 # Compute external force vector of uniform force field
-Fu, Qw = 0.0, -4.0
+Fu, Qw = 0.0, 4.0
 Fext   = model.compute_volforce(Fu, Qw)
 
 # Solve 
