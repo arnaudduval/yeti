@@ -7,11 +7,12 @@ from lib.__init__ import *
 from lib.lib_base import createKnotVector
 
 class Geomdl():
-	def __init__(self, kwargs:dict):
+	def __init__(self, geoArgs:dict):
 		self._dim     = None
-		self._degree  = kwargs.get('degree', None)
-		self._nbcuts  = kwargs.get('refinement', np.array([1, 1, 1]))
-		self._geoVars = kwargs.get('geometry', {})
+		self._name    = geoArgs.get('name', '').lower()
+		self._degree  = geoArgs.get('degree', None)
+		self._nbcuts  = geoArgs.get('nb_refinementByDirection', np.array([1, 1, 1]))
+		self._extraArgs = geoArgs.get('extra', {})
 		return
 	
 	def __getInfo(self, obj): 
@@ -173,50 +174,49 @@ class Geomdl():
 		return
 
 	def getIGAParametrization(self):
-
-		name = self._geoVars.get('name', '')
+		name = self._name
 		print('\nCreating geometry: ' + name + '...')
 		if name == 'quarter_annulus' or name == 'qa':
 			dimen = 2
-			Rin = self._geoVars.get('Rin', 1.0)
-			Rex = self._geoVars.get('Rex', 2.0)
+			Rin = self._extraArgs.get('Rin', 1.0)
+			Rex = self._extraArgs.get('Rex', 2.0)
 			if self._degree is None: self._degree = [2, 3, 1]
 			part = self.__create_quarterAnnulus(Rin, Rex, *self._degree[:dimen]) 
 
 		elif name == 'quadrilateral' or name == 'sq':
 			dimen = 2
-			XY = self._geoVars.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			XY = self._extraArgs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
 			if self._degree is None: self._degree = [2, 2, 1]
 			part = self.__create_quadrilateral(XY, *self._degree[:dimen]) 
 
 		elif name == 'cube' or name == 'cb': 
 			dimen = 3
-			Lx = self._geoVars.get('Lx', 1.0)
-			Ly = self._geoVars.get('Ly', 1.0)
-			Lz = self._geoVars.get('Lz', 1.0)
+			Lx = self._extraArgs.get('Lx', 1.0)
+			Ly = self._extraArgs.get('Ly', 1.0)
+			Lz = self._extraArgs.get('Lz', 1.0)
 			if self._degree is None: self._degree = [2, 2, 2]
 			part = self.__create_parallelepiped(Lx, Ly, Lz, *self._degree[:dimen]) 
 
 		elif name == 'thick_ring' or name == 'tr':
 			dimen = 3
-			Rin = self._geoVars.get('Rin', 1.0)
-			Rex = self._geoVars.get('Rex', 2.0)
-			height = self._geoVars.get('height', 1.0)
+			Rin = self._extraArgs.get('Rin', 1.0)
+			Rex = self._extraArgs.get('Rex', 2.0)
+			height = self._extraArgs.get('height', 1.0)
 			if self._degree is None: self._degree = [4, 4, 4]
 			part = self.__create_thickRing(Rin, Rex, height, *self._degree[:dimen]) 
 
 		elif name == 'rotated_quarter_annulus' or name == 'rqa':
 			dimen = 3
-			Rin = self._geoVars.get('Rin', 1.0)
-			Rex = self._geoVars.get('Rex', 2.0)
-			exc = self._geoVars.get('exc', 1.0) 
+			Rin = self._extraArgs.get('Rin', 1.0)
+			Rex = self._extraArgs.get('Rex', 2.0)
+			exc = self._extraArgs.get('exc', 1.0) 
 			if self._degree is None: self._degree = [4, 4, 4]
 			part = self.__create_rotatedQuarterAnnulus(Rin, Rex, exc, *self._degree[:dimen]) 
 
 		elif name == 'prism' or name == 'vb':
 			dimen = 3
-			XY     = self._geoVars.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
-			height = self._geoVars.get('height', 1)
+			XY     = self._extraArgs.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			height = self._extraArgs.get('height', 1)
 			if self._degree is None: self._degree = [2, 2, 2]
 			part = self.__create_prism(XY, height, *self._degree[:dimen]) 
 

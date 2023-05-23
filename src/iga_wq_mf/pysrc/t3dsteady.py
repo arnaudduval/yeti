@@ -1,7 +1,8 @@
 from lib.__init__ import *
 from lib.lib_load import *
-from lib.lib_simulation import *
-from lib.lib_base import relativeError
+from lib.lib_material import thermomat
+from lib.lib_boundary import boundaryCondition
+from lib.lib_simulation import encoder, decoder
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -11,7 +12,6 @@ if not os.path.isdir(folder): os.mkdir(folder)
 dataExist   = True
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(4, 5)
-# name_list   = ['cb', 'vb', 'tr', 'rqa']
 name_list   = ['vb', 'rqa']
 IterMethods = ["WP", "C", "JMC", "TDC"]
 
@@ -41,10 +41,10 @@ for cuts in cuts_list:
 			elif name == 'tr' : funpow, funtemp = powden_thickring, None 
 			elif name == 'rqa': funpow, funtemp = powden_rotring, temperature_rotring 
 
-			inputs = {'degree': degree, 'cuts': cuts, 'name': name, 'isGauss': False, 
+			inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': name, 'isGauss': False, 
 					'funPowerDensity': funpow, 'funTemperature': funtemp, 'IterMethods': IterMethods,
 					'folder': folder}
-			simu   = encoder(**inputs)  
+			simu   = encoder(inputs)  
 			
 			if not dataExist:
 				mat = thermomat()

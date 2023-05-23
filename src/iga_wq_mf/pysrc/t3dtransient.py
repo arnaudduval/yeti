@@ -57,11 +57,13 @@ if not dataExist:
 			filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'        
 
 			# Create model 
-			inputs = {'name': name, 'degree':degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-			modelGeo = Geomdl(**inputs)
+			geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+			quadArgs  = {'quadrule': 'wq', 'type': 1}
+
+			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()
-			model    = part(modelIGA)
+			model    = part(modelIGA, quadArgs=quadArgs)
 
 			# Add material 
 			material = thermomat()
@@ -84,7 +86,7 @@ if not dataExist:
 			for i in range(len(time_list)): Tinout[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
 
 			# Add external force 
-			Fend = problem.eval_bodyForce(powden)
+			Fend = problem.eval_volForce(powden)
 			Fext = np.kron(np.atleast_2d(Fend).reshape(-1, 1), sigmoid(time_list))
 
 			# Solve
@@ -136,7 +138,6 @@ else:
 		filename = folder + 'TransientNL_' + name + str(example) + '.png'
 		fig.tight_layout()
 		fig.savefig(filename)
-
 
 	# for name in name_list:
 	# 	# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))

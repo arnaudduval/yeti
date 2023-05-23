@@ -7,22 +7,21 @@ from lib.lib_job import heatproblem
 
 class encoder():
 
-	def __init__(self, kwargs:dict):
+	def __init__(self, simuArgs:dict):
 
-		# Get data to run simulation
-		self._degree = kwargs.get('degree', 2)
-		self._nbcuts = kwargs.get('cuts', 2)
-		self._nbctrlpts = int(self.degree + 2**self._nbcuts) 
-		self._name   = kwargs.get('name', 'tr').lower()
-		self._part   = None
-		self._isGaussQuad = kwargs.get('isGauss', False)
-		self._funPowDen   = kwargs.get('funPowerDensity', None)
-		self._funTemp     = kwargs.get('funTemperature', None)   
-		self._iterMethods = kwargs.get('IterMethods', ['WP'])
+		self._name 		= simuArgs.get('name', '').lower()
+		self._degree 	= simuArgs.get('degree', 2)
+		self._nbcuts 	= simuArgs.get('nb_refinementByDirection', 2)
+		self._nbctrlpts = int(self._degree + 2**self._nbcuts) 
 		
-		# Get filename
+		self._isGaussQuad = simuArgs.get('isGauss', False)
+		self._funPowDen   = simuArgs.get('funPowerDensity', None)
+		self._funTemp     = simuArgs.get('funTemperature', None)   
+		self._iterMethods = simuArgs.get('IterMethods', ['WP'])
+		
 		filename = self.__make_filename()
-		self._filename = kwargs.get('folder', './') + filename 
+		self._filename = simuArgs.get('folder', './') + filename 
+		self._part = None
 		
 		return
 	
@@ -38,26 +37,26 @@ class encoder():
 		filename += '.txt'
 		return filename
 	
-	def _create_model(self):
+	def __create_model(self):
 		# Create geometry 
-		kwargs   = {'name':self._name, 
+		geoArgs   = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int)}
-		modelgeo = Geomdl(**kwargs)
+		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
-		if self._isGaussQuad: kwargs = {'quadrule': 'iga'}
-		else:                 kwargs = {'quadrule': 'wq'}
-		self._part = part(modelIGA, kwargs)
+		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}
+		else:                 quadArgs = {'quadrule': 'wq'}
+		self._part = part(modelIGA, quadArgs)
 		return 
 
-	def _write_resultsFile(self, inputs:dict): 
+	def write_resultsFile(self, inputs:dict): 
 		" Writes and exports simulation data in .txt file "
 		
-		nbIterPCG    = inputs['nbIterPCG']
-		iterMethods  = inputs['iterMethods']
-		timeNoIter   = inputs['timeNoIter']
-		timeIter     = inputs['timeIter']
-		residuePCG   = inputs['resPCG']
+		nbIterPCG   = inputs['nbIterPCG']
+		iterMethods = inputs['iterMethods']
+		timeNoIter  = inputs['timeNoIter']
+		timeIter    = inputs['timeIter']
+		residuePCG  = inputs['resPCG']
 		
 		with open(self._filename, 'w') as f:
 			f.write('** RESULTS **\n')
@@ -75,7 +74,7 @@ class encoder():
 								for res in residuePCG[i]]) 
 		return
 	
-	def _eval_heatForce(self, problem:heatproblem, funPowDen=None, funTemp=None):
+	def __eval_heatForce(self, problem:heatproblem, funPowDen=None, funTemp=None):
 		""" Compute force vector b = Fn - Knd.ud where F is source vector and K is conductivity matrix. 
 			This equation is used in substitution method (SM)
 		"""
@@ -87,48 +86,46 @@ class encoder():
 		if funTemp is not None:  
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
-			Fn = problem.eval_bodyForce(funPowDen, indi=dof) 
-			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), **{'input': self._part.qpPhy})
+			Fn = problem.eval_volForce(funPowDen, indi=dof) 
+			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), args=self._part.qpPhy)
 			Fn    -= Knd_ud[dof]
 		else:
-			Fn = problem.eval_bodyForce(funPowDen, indi=dof)
+			Fn = problem.eval_volForce(funPowDen, indi=dof)
 		
 		return Fn
 	
-	def _run_iterativeSolver(self, problem:heatproblem, b, nbIterPCG=None):
+	def __run_iterativeSolver(self, problem:heatproblem, b, nbIterPCG=None):
 		" Solve steady heat problems using iterative solver "
-		
 		start = time.process_time()
 		un, residue = problem.solveSteadyHeatProblemFT(b, nbIterPCG=nbIterPCG)
 		stop = time.process_time()
 		time_t = stop - start 
-
 		return un, residue, time_t
 
-	def simulate(self, material: thermomat, boundary: boundaryCondition, overwrite=True):
+	def simulate(self, material:thermomat, boundary:boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
 
-		if self._part is None: self._create_model()
+		if self._part is None: self.__create_model()
 		problem = heatproblem(material, self._part, boundary)
-		Fn      = self._eval_heatForce(problem, self._funPowDen, self._funTemp)
+		Fn      = self.__eval_heatForce(problem, self._funPowDen, self._funTemp)
 
 		# Run iterative methods
 		timeNoIter = []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self._run_iterativeSolver(problem, b=Fn, nbIterPCG=1)[-1]
+			time_temp = self.__run_iterativeSolver(problem, b=Fn, nbIterPCG=0)[-1]
 			timeNoIter.append(time_temp)
 
 		timeIter, resPCG = [], []
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			un, residue_t, time_temp = self._run_iterativeSolver(problem, b=Fn)
+			un, residue_t, time_temp = self.__run_iterativeSolver(problem, b=Fn)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 				
 		# Write file
 		output = {'nbIterPCG': problem._nbIterPCG, 'iterMethods': self._iterMethods, 'timeNoIter':timeNoIter, 'timeIter': timeIter, 'resPCG': resPCG}
-		if overwrite: self._write_resultsFile(output)
+		if overwrite: self.write_resultsFile(output)
 
 		return un
 

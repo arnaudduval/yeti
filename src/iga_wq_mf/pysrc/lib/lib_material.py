@@ -119,43 +119,43 @@ class thermomat(material):
 		return coefs
 
 class plasticLaw():
-	def __init__(self, elasticmodulus, elasticlimit, plasticVars:dict):
+	def __init__(self, elasticmodulus, elasticlimit, plasticArgs:dict):
 		self.__elasticlimit   = elasticlimit
 		self.__elasticmodulus = elasticmodulus
 		self._Kfun = None; self._Kderfun = None
 		self._Hfun = None; self._Hderfun = None
-		lawName = plasticVars.get('name', '').lower()
-		if   lawName == 'linear': self.__setLinearModel(plasticVars)
-		elif lawName == 'swift' : self.__setSwiftModel(plasticVars)
-		elif lawName == 'voce'  : self.__setVoceModel(plasticVars)
+		lawName = plasticArgs.get('name', '').lower()
+		if   lawName == 'linear': self.__setLinearModel(plasticArgs)
+		elif lawName == 'swift' : self.__setSwiftModel(plasticArgs)
+		elif lawName == 'voce'  : self.__setVoceModel(plasticArgs)
 		else: raise Warning('Unknown method')
 		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
 		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
 		return	
 	
-	def __setLinearModel(self, kwargs:dict):
-		theta	  = kwargs.get('theta', None)
-		Hbar      = kwargs.get('Hbar', None)
+	def __setLinearModel(self, plasticArgs:dict):
+		theta	  = plasticArgs.get('theta', None)
+		Hbar      = plasticArgs.get('Hbar', None)
 		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a 
 		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar
 		self._Hderfun = lambda a: (1 - theta)*Hbar
 		return
 	
-	def __setSwiftModel(self, kwargs:dict):
-		K = kwargs.get('K', None)
-		n = kwargs.get('exp', None)
+	def __setSwiftModel(self, plasticArgs:dict):
+		K = plasticArgs.get('K', None)
+		n = plasticArgs.get('exp', None)
 		self._Kfun = lambda a: self.__elasticlimit + self.__elasticmodulus*(a/K)**n
 		self._Hfun = lambda a: 0.0
 		self._Kderfun = lambda a: (self.__elasticmodulus/K)*n*(a/K)**(n-1) if a!=0 else 1e10*self.__elasticmodulus
 		self._Hderfun = lambda a: 0.0
 		return
 	
-	def __setVoceModel(self, kwargs:dict):
-		theta = kwargs.get('theta', None)
-		Hbar  = kwargs.get('Hbar', None)
-		Kinf  = kwargs.get('Kinf', None)
-		delta = kwargs.get('delta', None)
+	def __setVoceModel(self, plasticArgs:dict):
+		theta = plasticArgs.get('theta', None)
+		Hbar  = plasticArgs.get('Hbar', None)
+		Kinf  = plasticArgs.get('Kinf', None)
+		delta = plasticArgs.get('delta', None)
 		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
 		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
@@ -164,18 +164,18 @@ class plasticLaw():
 	
 class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
-	def __init__(self, kwargs:dict):
+	def __init__(self, matArgs:dict):
 		super().__init__()
-		self.density        = kwargs.get('density', None)
-		self.elasticmodulus = kwargs.get('elastic_modulus', None)
-		self.poissonratio   = kwargs.get('poisson_ratio', None)
-		self.elasticlimit   = kwargs.get('elastic_limit', None)
+		self.density        = matArgs.get('density', None)
+		self.elasticmodulus = matArgs.get('elastic_modulus', None)
+		self.poissonratio   = matArgs.get('poisson_ratio', None)
+		self.elasticlimit   = matArgs.get('elastic_limit', None)
 		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): 
 			raise Warning('Mechanics not well defined')
 
 		self.plasticLaw            = None
 		self._isPlasticityPossible = False
-		tmp = kwargs.get('plasticlaw', None)
+		tmp = matArgs.get('plasticLaw', None)
 		if isinstance(tmp, dict): 
 			self._isPlasticityPossible = True
 			self.plasticLaw = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)

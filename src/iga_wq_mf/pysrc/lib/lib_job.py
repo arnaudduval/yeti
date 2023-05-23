@@ -5,21 +5,21 @@ from lib.lib_part import part
 from lib.lib_boundary import boundaryCondition, get_INCTable
 
 class problem():
-	def __init__(self, part:part, boundary:boundaryCondition, kwargs:dict):
+	def __init__(self, part:part, boundary:boundaryCondition, solverArgs:dict):
 		self.material = None
 		self.part     = part
 		self.boundary = boundary
-		self._nbIterPCG    = kwargs.get('nbIterationsPCG', 100)
-		self._nbIterNR     = kwargs.get('nbIterationsNR', 20)
-		self._thresholdPCG = kwargs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = kwargs.get('NRThreshold', 1e-9)
-		self._methodPCG    = kwargs.get('PCGmethod', 'JMC')
+		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
+		self._nbIterNR     = solverArgs.get('nbIterationsNR', 20)
+		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
+		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-9)
+		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 
 class heatproblem(problem):
-	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, kwargs=None):
-		if kwargs is None: kwargs = dict()
-		super().__init__(part, boundary, kwargs)
+	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs=None):
+		if solverArgs is None: solverArgs = dict()
+		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return
 	
@@ -48,11 +48,8 @@ class heatproblem(problem):
 
 		return inputs
 	
-	def assemble_capacity(self, coefs=None, **kwargs):
-		
-		if coefs is None: 
-			inpt   = kwargs.get('input')
-			coefs  = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
+	def assemble_capacity(self, coefs=None, args=None):
+		if coefs is None: coefs = self.material.eval_capacityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.basis, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
@@ -63,11 +60,8 @@ class heatproblem(problem):
 		matrix = array2csr_matrix(val, indi, indj)
 		return matrix
 	
-	def assemble_conductivity(self, coefs=None, **kwargs):
-		
-		if coefs is None: 
-			inpt   = kwargs.get('input')
-			coefs  = self.material.eval_conductivityCoefficients(self.part.detJ, inpt)
+	def assemble_conductivity(self, coefs=None, args=None):
+		if coefs is None: coefs = self.material.eval_conductivityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.basis, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
@@ -78,36 +72,26 @@ class heatproblem(problem):
 		matrix = array2csr_matrix(val, indi, indj)
 		return matrix
 
-	def eval_mfConductivity(self, u, coefs=None, table=None, **kwargs):
-
+	def eval_mfConductivity(self, u, coefs=None, table=None, args=None):
 		inputs = self.get_input4MatrixFree(table=table)
-		if coefs is None: 
-			inpt   = kwargs.get('input')
-			coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
+		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, args)
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: result = heatsolver.mf_wq_get_ku_3d(coefs, *inputs, u)
-
 		return result
 	
-	def eval_mfCapacity(self, u, coefs=None, table=None, **kwargs): 
-
+	def eval_mfCapacity(self, u, coefs=None, table=None, args=None): 
 		inputs = self.get_input4MatrixFree(table=table)
-		if coefs is None: 
-			inpt   = kwargs.get('input')
-			coefs  = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
+		if coefs is None: coefs  = self.material.eval_capacityCoefficients(self.part.detJ, args)
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: result = heatsolver.mf_wq_get_cu_3d(coefs, *inputs, u)
-
 		return result
 
-	def eval_bodyForce(self, fun, indi=None): 
-
+	def eval_volForce(self, fun, indi=None): 
 		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Not done yet')
 		if self.part.dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)[indi]
-
 		return vector
 	
 	def eval_surfForce(self, fun, nbFacePosition):
@@ -157,7 +141,7 @@ class heatproblem(problem):
 
 		return vector
 
-	def interpolateTemperature(self, uctrlpts):
+	def interpolate_temperature(self, uctrlpts):
 		basis   = self.part.basis
 		indices = self.part.indices
 		nbqp    = self.part.nbqp
@@ -174,8 +158,8 @@ class heatproblem(problem):
 	# Solve using fortran
 	def solveInterpolationProblemFT(self, funfield=None, datafield=None, nbIterPCG=None):
 		coefs = None
-		if datafield is not None: coefs = datafield * self.part.detJ
-		if funfield is not None:  coefs = funfield(self.part.qpPhy) * self.part.detJ
+		if datafield is not None: coefs = datafield*self.part.detJ
+		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
 		if coefs is None: raise Warning('Missing data')
 
 		# Calculate vector
@@ -195,11 +179,9 @@ class heatproblem(problem):
 		return u_interp
 
 	def solveSteadyHeatProblemFT(self, b, coefs=None, nbIterPCG=None, methodPCG=None):
-		if coefs is None: 
-			inpt = self.part.qpPhy
-			coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
-															self.part.detJ, inpt)
-		tmp    = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
+		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
+															self.part.detJ, self.part.qpPhy)
+		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, methodPCG]
@@ -210,22 +192,20 @@ class heatproblem(problem):
 		return sol, residue
 	
 	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, 
-				       					nbIterPCG=None, methodPCG=None, **kwargs):
-		
+										nbIterPCG=None, methodPCG=None, args={}):
 		if Ccoefs is None: 
-			temperature = kwargs.get('temperature')
+			temperature = args.get('temperature')
 			inpt = self.part.qpPhy
 			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
 			Ccoefs  = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
 			
 		if Kcoefs is None:
-			temperature = kwargs.get('temperature')
+			temperature = args.get('temperature')
 			inpt = self.part.qpPhy
 			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
-			Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
-						self.part.detJ, inpt)
+			Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
 		
-		tmp    = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
+		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, methodPCG]
@@ -276,7 +256,7 @@ class heatproblem(problem):
 			for j in range(self._nbIterNR):
 
 				# Compute temperature and properties at each quadrature point
-				TTinterp = self.interpolateTemperature(TTn1)
+				TTinterp = self.interpolate_temperature(TTn1)
 			
 				# Compute internal force
 				inpt = self.part.qpPhy
@@ -292,7 +272,7 @@ class heatproblem(problem):
 				ddFF    = Fstep - Fint
 				ddFFdof = ddFF[dof]
 				resNL   = np.sqrt(np.dot(ddFFdof, ddFFdof))
-				print('NR error: %.5f' %resNL)
+				print('NR error: %.5e' %resNL)
 				if resNL <= thresholdNR: break
 
 				# Iterative solver
@@ -312,28 +292,28 @@ class heatproblem(problem):
 		return resPCG_list
 
 class mechaproblem(problem):
-	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, kwargs=None):
-		if kwargs is None: kwargs = dict()
-		super().__init__(part, boundary, kwargs)
+	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs=None):
+		if solverArgs is None: solverArgs = dict()
+		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return
 	
 	# Matrix free functions
-	def eval_mfStiffness(self, displacement, kwargs=None):
+	def eval_mfStiffness(self, displacement, tensorArgs=None):
 		if self.part.dim != 3: raise Warning('Until now not done')
-		if kwargs is None: 
+		if tensorArgs is None: 
 			dimen  = self.part.dim
 			nvoigt = int(dimen*(dimen+1)/2)
-			kwargs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			kwargs[0, :] = self.material.lame_lambda
-			kwargs[1, :] = self.material.lame_mu
+			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			tensorArgs[0, :] = self.material.lame_lambda
+			tensorArgs[1, :] = self.material.lame_mu
 		inputs = [*self.part.nbqp, *self.part.indices, 
 	    			*self.part.basis, *self.part.weights, 
-					self.part.invJ, self.part.detJ, kwargs]
+					self.part.invJ, self.part.detJ, tensorArgs]
 		result = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
 		return result
 	
-	def eval_bodyForce(self, fun):
+	def eval_volForce(self, fun):
 		if self.part.dim != 3: raise Warning('Method only for 3D geometries')
 		coefs = self.material.eval_volForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
@@ -390,24 +370,23 @@ class mechaproblem(problem):
 		return vector
 
 	# Solve using fortran
-	def solveElasticityProblemFT(self, Fext, kwargs=None, nbIterPCG=None, methodPCG=None):
+	def solveElasticityProblemFT(self, Fext, tensorArgs=None, nbIterPCG=None, methodPCG=None):
 		dod_total = deepcopy(self.boundary.mchdod)
 		for i, dod in enumerate(dod_total):
-			tmp = dod + 1
-			dod_total[i] = tmp
+			tmp = dod + 1; dod_total[i] = tmp
 
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		prop = [self.material.elasticmodulus, self.material.poissonratio, self.material.elasticlimit]
-		if kwargs is None:
-			kwargs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			kwargs[0, :] = self.material.lame_lambda
-			kwargs[1, :] = self.material.lame_mu
+		if tensorArgs is None:
+			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			tensorArgs[0, :] = self.material.lame_lambda
+			tensorArgs[1, :] = self.material.lame_mu
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self.part.nbqp, *self.part.indices, *self.part.basis, 
 				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, kwargs, nbIterPCG, self._thresholdPCG, methodPCG]
+				self.part.invJ, self.part.detJ, prop, tensorArgs, nbIterPCG, self._thresholdPCG, methodPCG]
 		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
 		return displacement, residue
@@ -477,7 +456,7 @@ class mechaproblem(problem):
 				print('Relative error: %.5e' %resNL)
 				if resNL <= self._thresholdNR: break
 				
-				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, kwargs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
+				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
 				ddisp  += vtmp 
 		
 			disp[:, :, i] = d_n1			

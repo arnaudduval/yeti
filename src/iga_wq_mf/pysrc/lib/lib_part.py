@@ -11,7 +11,7 @@ from lib.lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part(): 
 
-	def __init__(self, modelIGA, kwargs=None):
+	def __init__(self, modelIGA, quadArgs:dict):
 		print('\nInitializing thermo-mechanical model')
 		self.name       = self.__read_name(modelIGA)
 		self.dim        = self.__read_dimension(modelIGA)
@@ -24,8 +24,7 @@ class part():
 
 		self.nbqp, self.nbqp_total = [], None
 		self.basis, self.weights, self.indices = [], [], []
-		if kwargs is None: kwargs = dict()
-		self.__setQuadratureRules(kwargs)
+		self.__setQuadratureRules(quadArgs)
 
 		self.Jqp, self.detJ, self.invJ, self.qpPhy = None, None, None, None
 		self.__setJacobienPhysicalPoints()
@@ -67,24 +66,23 @@ class part():
 		ctrlpts = modelIGA._COORDS[:self.dim, :]
 		return ctrlpts
 	
-	def __setQuadratureRules(self, kwargs:dict):
+	def __setQuadratureRules(self, quadArgs:dict):
 
-		quadRuleName  = kwargs.get('quadrule', 'wq').lower()
-		quadRule_list = []
+		name = quadArgs.get('quadrule', 'wq').lower()
+		quadRuleByDirection = []
 		
 		print('Evaluating basis and weights')
 		start = time.process_time()
-		if quadRuleName == 'iga':
+		if name == 'iga':
 			for i in range(self.dim):
-				quadRule_list.append(GaussQuadrature(self.degree[i], self.knotvector[i], quadArgs=kwargs))
-		if quadRuleName == 'wq':
+				quadRuleByDirection.append(GaussQuadrature(self.degree[i], self.knotvector[i], quadArgs=quadArgs))
+		if name == 'wq':
 			for i in range(self.dim):
-				quadRule_list.append(WeightedQuadrature(self.degree[i], self.knotvector[i], quadArgs=kwargs))
+				quadRuleByDirection.append(WeightedQuadrature(self.degree[i], self.knotvector[i], quadArgs=quadArgs))
 		
-		for quadRule in quadRule_list:
+		for quadRule in quadRuleByDirection:
 			quadPtsPos, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()
-			nbqp = len(quadPtsPos)
-			indi, indj = dersIndices
+			nbqp = len(quadPtsPos); indi, indj = dersIndices
 			self.nbqp.append(nbqp); self.indices.append(indi); self.indices.append(indj)
 			self.basis.append(dersBasis); self.weights.append(dersWeights)
 		stop = time.process_time()
