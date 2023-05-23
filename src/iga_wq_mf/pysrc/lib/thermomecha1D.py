@@ -35,9 +35,9 @@ class part1D:
 		quadRule     = None
 		
 		if quadRuleName == 'iga':
-			quadRule = GaussQuadrature(self.degree, self.knotvector, kwargs=kwargs)
+			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=kwargs)
 		elif quadRuleName == 'wq':
-			quadRule = WeightedQuadrature(self.degree, self.knotvector, kwargs=kwargs)
+			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=kwargs)
 		else:
 			raise Warning('Not found')
 		quadRule.getQuadratureRulesInfo()
@@ -71,7 +71,7 @@ class part1D:
 	
 	def interpolate_sampleField(self, u_ctrlpts, sampleSize=101):
 		if np.size(u_ctrlpts, axis=0) != self.nbctrlpts: raise Warning('Not possible')
-		basis, knots = self.quadRule.getGeneralizedBasis(sampleSize=sampleSize)
+		basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
 		u_interp = basis[0].T @ u_ctrlpts
 		x_interp = self.detJ * knots
 		return u_interp, x_interp
@@ -343,7 +343,7 @@ class mechamat1D(part1D):
 
 def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
-	basis, knots = quadRule.getGeneralizedBasis(sampleSize=101)
+	basis, knots = quadRule.getSampleBasis(sampleSize=101)
 	displacement   = basis[0].T @ disp_cp
 	strain_interp  = basis[1].T @ disp_cp
 	plastic_interp = basis[0].T @ plastic_cp

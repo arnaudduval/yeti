@@ -76,10 +76,10 @@ class part():
 		start = time.process_time()
 		if quadRuleName == 'iga':
 			for i in range(self.dim):
-				quadRule_list.append(GaussQuadrature(self.degree[i], self.knotvector[i], kwargs=kwargs))
+				quadRule_list.append(GaussQuadrature(self.degree[i], self.knotvector[i], quadArgs=kwargs))
 		if quadRuleName == 'wq':
 			for i in range(self.dim):
-				quadRule_list.append(WeightedQuadrature(self.degree[i], self.knotvector[i], kwargs=kwargs))
+				quadRule_list.append(WeightedQuadrature(self.degree[i], self.knotvector[i], quadArgs=kwargs))
 		
 		for quadRule in quadRule_list:
 			quadPtsPos, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()

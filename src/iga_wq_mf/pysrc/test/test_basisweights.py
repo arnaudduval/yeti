@@ -32,17 +32,11 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# --------
 			# FORTRAN
 			# --------
-			weightedQuad = WeightedQuadrature(degree, knotvector)
-			info = weightedQuad.getQuadratureRulesInfo()[1:]
-			[indi, indj], tmp, wgt = info
-			nb_qp = np.max(indj); indi -= 1; indj -= 1
-
-			B0f  = sp.csr_matrix((tmp[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			B1f  = sp.csr_matrix((tmp[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W00f = sp.csr_matrix((wgt[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W01f = sp.csr_matrix((wgt[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W10f = sp.csr_matrix((wgt[:, 2], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W11f = sp.csr_matrix((wgt[:, 3], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			weightedQuad = WeightedQuadrature(degree, knotvector, {})
+			weightedQuad.getQuadratureRulesInfo()
+			basis, weights = weightedQuad.getDenseQuadRules()
+			[B0f, B1f] = basis
+			[W00f, W01f, W10f, W11f] = weights
 
 			# Calculate I
 			I00f = W00f @ B0f.T; I01f = W01f @ B1f.T
@@ -51,17 +45,11 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# ----------
 			# REFERENCE
 			# ----------
-			gaussQuad = GaussQuadrature(degree, knotvector)
-			info = gaussQuad.getQuadratureRulesInfo()[1:]
-			[indi, indj], tmp, wgt = info
-			nb_qp = np.max(indj); indi -= 1; indj -= 1
-
-			B0  = sp.csr_matrix((tmp[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			B1  = sp.csr_matrix((tmp[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W00 = sp.csr_matrix((wgt[:, 0], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W01 = sp.csr_matrix((wgt[:, 1], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W10 = sp.csr_matrix((wgt[:, 2], indj, indi), shape=(nb_ctrlpts, nb_qp))
-			W11 = sp.csr_matrix((wgt[:, 3], indj, indi), shape=(nb_ctrlpts, nb_qp))
+			gaussQuad = GaussQuadrature(degree, knotvector, {})
+			gaussQuad.getQuadratureRulesInfo()
+			basis, weights = gaussQuad.getDenseQuadRules()
+			[B0, B1] = basis
+			[W00, W01, W10, W11] = weights
 
 			# Calculate I
 			I00 = W00 @ B0.T; I01 = W01 @ B1.T

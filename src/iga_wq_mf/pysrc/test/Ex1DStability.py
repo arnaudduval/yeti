@@ -36,7 +36,7 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	if cuts is not None: nbel = int(2**cuts)
 	knotvector = createKnotVector(degree, nbel, multiplicity=degree)
 
-	gaussQuad = GaussQuadrature(degree, knotvector)
+	gaussQuad = GaussQuadrature(degree, knotvector, {})
 	info = gaussQuad.getQuadratureRulesInfo()
 	qp, [indi_in, indj_in], basis_in, weights_in = info
 
@@ -127,10 +127,10 @@ if not data_exist:
 				t_stab, t_osc = scheme_analysis(prop, degree, nbel=nbel)
 				save_data1[i, j] = t_stab
 				save_data2[i, j] = t_osc
-		name = 'time_stab_' + str(k) + '.dat'
-		np.savetxt(folder + name, save_data1)
-		name = 'time_osc_'  + str(k) + '.dat'
-		np.savetxt(folder + name, save_data2)
+		# name = 'time_stab_' + str(k) + '.dat'
+		# np.savetxt(folder + name, save_data1)
+		# name = 'time_osc_'  + str(k) + '.dat'
+		# np.savetxt(folder + name, save_data2)
 else:
 	for filenumber in range(len(prop_list)):
 		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)

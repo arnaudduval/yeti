@@ -15,7 +15,7 @@ Tspan          = 0.02
 # Space discretization
 degree_sp, nbel = 2, 10
 knotvector_sp   = createKnotVector(degree_sp, nbel)
-spDscrt         = GaussQuadrature(degree_sp, knotvector_sp)
+spDscrt         = GaussQuadrature(degree_sp, knotvector_sp, {})
 spDscrt.getQuadratureRulesInfo()
 spDenseBasis, spDenseWeights = spDscrt.getDenseQuadRules()
 
@@ -29,7 +29,7 @@ Stiff_sp = spDenseWeights[-1] @ np.diag(Kcfs) @ spDenseBasis[1].T
 # Time discretization
 degree_t, nsteps  = 2, 9
 knotvector_t      = createKnotVector(degree_t, nsteps)
-tmDscrt           = GaussQuadrature(degree_t, knotvector_t)
+tmDscrt           = GaussQuadrature(degree_t, knotvector_t, {})
 tmDscrt.getQuadratureRulesInfo()
 tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()
 
@@ -37,7 +37,7 @@ tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()
 Adv_time  = tmDenseWeights[0] @ np.diag(np.ones(tmDscrt.nbqp)) @ tmDenseBasis[1].T
 Mass_time = tmDenseWeights[0] @ np.diag(Tspan*np.ones(tmDscrt.nbqp)) @ tmDenseBasis[0].T
 
-# Get free nodes. To reuse algorithms we use the class thermomodel
+# Get free nodes
 all_ctrlpts = set(np.arange(spDscrt.nbctrlpts*tmDscrt.nbctrlpts))
 all_dof = []
 for i in range(1, spDscrt.nbctrlpts - 1):

@@ -134,7 +134,7 @@ elif CASE == 1: # Univariate functions
 		multiplicity = 1
 		knotvector   = createKnotVector(degree, nbel, multiplicity=multiplicity)
 		quadRule     = QuadratureRules(degree, knotvector)
-		basis, knots = quadRule.getGeneralizedBasis()
+		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray(); B1 = basis[0].toarray()
 
 		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
@@ -163,7 +163,7 @@ elif CASE == 2: # Bivariate functions
 		degree, nbel = 3, 4
 		knotvector   = createKnotVector(degree, nbel)
 		quadRule     = QuadratureRules(degree, knotvector)
-		basis, knots = quadRule.getGeneralizedBasis()
+		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray()
 		B02plot = B0[1, :]
 
@@ -406,7 +406,7 @@ elif CASE == 8: # Weights W00 and W11
 	knotvector   = createKnotVector(degree, nbel)
 	quadRule     = WeightedQuadrature(degree, knotvector)
 	quadRule.getQuadratureRulesInfo()
-	basis, knots = quadRule.getGeneralizedBasis()
+	basis, knots = quadRule.getSampleBasis()
 	B = basis[WeightName].toarray()
 
 	# Get weights
