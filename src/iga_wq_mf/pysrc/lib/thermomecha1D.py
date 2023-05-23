@@ -238,15 +238,13 @@ class mechamat1D(part1D):
 
 		# Check yield status
 		f_trial = np.abs(eta_trial) - law._Kfun(a)
+		stress = sigma_trial
+		pls_new = pls
+		a_new = a
+		b_new = b
+		Cep = self.elasticmodulus
 
-		if f_trial <= threshold: # Elastic
-			stress = sigma_trial
-			pls_new = pls
-			a_new = a
-			b_new = b
-			Cep = self.elasticmodulus
-
-		else: # Plastic
+		if f_trial > threshold: # Plastic
 			dgamma = computeDeltaGamma(law, self.elasticmodulus, eta_trial, a)
 			a_new = a + dgamma
 			Normal = np.sign(eta_trial)

@@ -3,13 +3,12 @@ from lib.__init__ import *
 class material():
 
 	def __init__(self):
-		self._threshold = 1.e-8
 		return		
 	
-	def __verifyTable(self, table, isTensor=False):
+	def __verifyTable(self, table, isTensor=False, threshold=1.e-8):
 		table = np.atleast_2d(table)
 		x = np.diff(table[:, 0])
-		if np.any(x<self._threshold): raise Warning('Table is not well defined')
+		if np.any(x<threshold): raise Warning('Table is not well defined')
 		if isTensor and np.size(table, axis=1) <= 2: raise Warning('Table not well defined')
 		return
 	
@@ -79,11 +78,12 @@ class material():
 class thermomat(material):
 	def __init__(self):
 		super().__init__()
+		self.density      = None
 		self.capacity     = None
 		self.conductivity = None
-		self.density      = None
-		self._isCapacityIsotropic     = False
+
 		self._isDensityIsotropic      = False
+		self._isCapacityIsotropic     = False
 		self._isConductivityIsotropic = False
 		return
 	
@@ -166,18 +166,19 @@ class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
 	def __init__(self, kwargs:dict):
 		super().__init__()
+		self.density        = kwargs.get('density', None)
 		self.elasticmodulus = kwargs.get('elastic_modulus', None)
 		self.poissonratio   = kwargs.get('poisson_ratio', None)
 		self.elasticlimit   = kwargs.get('elastic_limit', None)
-		if any([prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]]): 
+		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): 
 			raise Warning('Mechanics not well defined')
 
-		self.density        = kwargs.get('density', None)
-		plasticVars         = kwargs.get('law', None)
+		self.plasticLaw            = None
 		self._isPlasticityPossible = False
-		if isinstance(plasticVars, dict): 
+		tmp = kwargs.get('plasticlaw', None)
+		if isinstance(tmp, dict): 
 			self._isPlasticityPossible = True
-			self.mechaBehavLaw = plasticLaw(self.elasticmodulus, self.elasticlimit, plasticVars)
+			self.plasticLaw = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
 		self.__setExtraMechanicalProperties()
 		return
 	
@@ -199,7 +200,7 @@ class mechamat(material):
 		coefs = fun(qp)*detJ*self.density
 		return coefs
 	
-	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b):
+	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
@@ -238,17 +239,17 @@ class mechamat(material):
 
 		# Check yield condition
 		norm_trial = np.linalg.norm(eta_trial)
-		f_trial = norm_trial - np.sqrt(2.0/3.0)*law._Kfun(a)
+		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._Kfun(a)
 		sigma   = s_trial
 		for i in range(dim): sigma[i, i] += self.lame_bulk*traceStrain
 		Cep[0] = self.lame_lambda; Cep[1] = self.lame_mu
 		pls_new = pls; a_new = a; b_new = b
 		stress  = symtensor2array(sigma, dim)
 
-		if f_trial>0.0:
+		if f_trial>threshold:
 
 			# Compute plastic-strain increment
-			dgamma = computeDeltaGamma(law, self.lame_mu, a, eta_trial)
+			dgamma = computeDeltaGamma(self.plasticLaw, self.lame_mu, a, eta_trial)
 
 			# Update internal hardening variable
 			a_new = a + np.sqrt(2.0/3.0)*dgamma
@@ -266,11 +267,11 @@ class mechamat(material):
 			pls_new = symtensor2array(Tpls, dim)
 
 			# Update backstress
-			Tb += np.sqrt(2.0/3.0)*(law._Hfun(a_new) - law._Hfun(a))*Normal
+			Tb += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new) - self.plasticLaw._Hfun(a))*Normal
 			b_new = symtensor2array(Tb, dim)
 
 			# Update new coefficients
-			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
+			somme = self.plasticLaw._Kderfun(a_new) + self.plasticLaw._Hderfun(a_new)
 			c1 = 2*self.lame_mu*dgamma/norm_trial
 			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
 			Cep[0] = self.lame_lambda + 2.0/3.0*self.lame_mu*c1

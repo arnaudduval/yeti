@@ -22,31 +22,7 @@ class boundaryCondition():
 			self.mchDirichletBound = np.zeros((nbctrlpts_total, dimen))
 		return
 	
-	def clear_Dirichlet(self):
-		" Clears Dirichlet boundaries "
-		self._thDirichletTable = np.zeros((self._dim, 2), dtype=bool)
-		self.thDirichletBound  = None
-		self.thdof  = []
-		self.thdod  = []
-		self._mchDirichletTable = np.zeros((self._dim, 2, self._dim), dtype=bool)
-		self.mchDirichletBound  = None
-		self.mchdof = [[] for i in range(self._dim)]
-		self.mchdod = [[] for i in range(self._dim)]
-		return
-	
-	def _get_INCTable(self, nnzByDimension):
-			" Sets topology table, also known as INC: NURBS coordinates. "
-			# Create INC: NURBS coordinates
-			nnz_total = np.prod(nnzByDimension)
-			table = np.zeros((nnz_total, 3), dtype= int)
-			for i3 in range(nnzByDimension[2]): 
-				for i2 in range(nnzByDimension[1]): 
-					for i1 in range(nnzByDimension[0]):
-						genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1]
-						table[genPos, :] = [i1, i2, i3]
-			return table
-	
-	def _get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
+	def __get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
 		" Gets the indices of the blocked and free control points from table"
 
 		# The table of dirichlet boundaries must be at least 3D
@@ -58,7 +34,7 @@ class boundaryCondition():
 			raise Warning('Table is not well defined')
 
 		# Find nodes
-		INC = self._get_INCTable(nbctrlpts)
+		INC = get_INCTable(nbctrlpts)
 		dod_total = []
 		for i in range(nbDOF):
 			dod = []
@@ -77,6 +53,19 @@ class boundaryCondition():
 
 		return dod_total
 	
+	def clear_Dirichlet(self):
+		" Clears Dirichlet boundaries "
+		self.thDirichletTable = np.zeros((self._dim, 2), dtype=bool)
+		self.thDirichletBound  = None
+		self.thdof  = []
+		self.thdod  = []
+		self.mchDirichletTable = np.zeros((self._dim, 2, self._dim), dtype=bool)
+		self.mchDirichletBound  = None
+		self.mchdof = [[] for i in range(self._dim)]
+		self.mchdod = [[] for i in range(self._dim)]
+		return
+	
+
 	# Heat problem
 
 	def __update_thDirichletBound(self):
@@ -92,8 +81,8 @@ class boundaryCondition():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.__activate_DirichletThermal()
-		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
-		self._thDirichletTable += table
+		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
+		self.thDirichletTable += table
 		
 		if np.isscalar(temperature): 
 			self.thDirichletBound[dod_total] = temperature*np.ones(len(dod_total))
@@ -106,7 +95,7 @@ class boundaryCondition():
 		return 
 
 	def getThermalBoundaryConditionInfo(self): 
-		if self._thDirichletTable is None: raise Warning('Please define first total Dirichlet boundaries')
+		if self.thDirichletTable is None: raise Warning('Please define first total Dirichlet boundaries')
 		self.__update_thDirichletBound()
 		return  self.thdod, self.thDirichletBound[self.thdod], self.thdof
 	
@@ -127,8 +116,8 @@ class boundaryCondition():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.__activate_DirichletMechanical()
-		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
-		self._mchDirichletTable += table
+		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
+		self.mchDirichletTable += table
 		
 		if np.isscalar(displacement): 
 			for i, dod in enumerate(dod_total):
@@ -144,3 +133,15 @@ class boundaryCondition():
 			self.mchdod[i] = np.array(tmp, dtype=int)
 		self.__update_mchDirichletBound()
 		return 
+
+def get_INCTable(nnzByDimension):
+	" Sets topology table, also known as INC: NURBS coordinates. "
+	# Create INC: NURBS coordinates
+	nnz_total = np.prod(nnzByDimension)
+	table = np.zeros((nnz_total, 3), dtype= int)
+	for i3 in range(nnzByDimension[2]): 
+		for i2 in range(nnzByDimension[1]): 
+			for i1 in range(nnzByDimension[0]):
+				genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1]
+				table[genPos, :] = [i1, i2, i3]
+	return table

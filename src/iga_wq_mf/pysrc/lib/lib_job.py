@@ -2,7 +2,7 @@ from lib.__init__ import *
 from lib.lib_base import eraseRowsCSR, array2csr_matrix
 from lib.lib_material import thermomat, mechamat, clean_dirichlet, block_dot_product
 from lib.lib_part import part
-from lib.lib_boundary import boundaryCondition
+from lib.lib_boundary import boundaryCondition, get_INCTable
 
 class problem():
 	def __init__(self, part:part, boundary:boundaryCondition, kwargs:dict):
@@ -27,7 +27,7 @@ class heatproblem(problem):
 	def get_input4MatrixFree(self, table=None):
 		" Returns necessary inputs to compute the product between a matrix and a vector "
 		
-		if table is None: table = self.boundary._thDirichletTable
+		if table is None: table = self.boundary.thDirichletTable
 		indices, basis, weights = [], [], []
 		for i in range(self.part.dim):
 			# Select data
@@ -120,8 +120,8 @@ class heatproblem(problem):
 			return direction, side
 
 		vector = np.zeros(self.part.nbctrlpts_total)
-		INC_ctrlpts = self.boundary._get_INCTable(self.part.nbctrlpts)
-		INC_quadpts = self.boundary._get_INCTable(self.part.nbqp)
+		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
+		INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -199,7 +199,7 @@ class heatproblem(problem):
 			inpt = self.part.qpPhy
 			coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
 															self.part.detJ, inpt)
-		tmp    = self.get_input4MatrixFree(table=self.boundary._thDirichletTable)
+		tmp    = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, methodPCG]
@@ -225,7 +225,7 @@ class heatproblem(problem):
 			Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
 						self.part.detJ, inpt)
 		
-		tmp    = self.get_input4MatrixFree(table=self.boundary._thDirichletTable)
+		tmp    = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, methodPCG]
@@ -352,8 +352,8 @@ class mechaproblem(problem):
 			return direction, side
 
 		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
-		INC_ctrlpts = self.boundary._get_INCTable(self.part.nbctrlpts)
-		INC_quadpts = self.boundary._get_INCTable(self.part.nbqp)
+		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
+		INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
 		# Get control points and quadrature points list
@@ -406,7 +406,7 @@ class mechaproblem(problem):
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self.part.nbqp, *self.part.indices, *self.part.basis, 
-				*self.part.weights, Fext, *dod_total, self.boundary._mchDirichletTable, 
+				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, kwargs, nbIterPCG, self._thresholdPCG, methodPCG]
 		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
@@ -439,7 +439,7 @@ class mechaproblem(problem):
 
 		d     = self.part.dim
 		ddl   = int(d*(d+1)/2)
-		law   = self.material.mechaBehavLaw
+		law   = self.material.plasticLaw
 
 		nbqp_total = self.part.nbqp_total
 		pls_n0 = np.zeros((ddl, nbqp_total))
