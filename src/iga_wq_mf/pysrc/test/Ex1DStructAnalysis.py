@@ -18,8 +18,8 @@ args      = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
 model     = Timoshenko(args)
 
 # Add material
-mechaArgs = {'elastic_modulus':1e8, 'elastic_limit':506, 'poisson_ratio': 0.3}
-model.activate_mechanical(mechaArgs)
+matArgs   = {'elastic_modulus':1e8, 'elastic_limit':506, 'poisson_ratio': 0.3}
+model.activate_mechanical(matArgs)
 
 # Add boundary condition
 model.add_DirichletCondition(0, values=[0.0, 0.0, 0.0], table=[True, True, True])

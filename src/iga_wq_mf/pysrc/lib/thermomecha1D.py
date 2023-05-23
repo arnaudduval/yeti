@@ -41,6 +41,8 @@ class part1D:
 		quadRule.getQuadratureRulesInfo()
 		self.quadRule = quadRule
 		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
+		self.qpPhy = quadRule.quadPtsPos*self.Jqp
+		self.nbqp  = len(self.qpPhy)
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -83,10 +85,13 @@ class part1D:
 
 class thermo1D(part1D):
 	def __init__(self, kwargs:dict):
-		super().__init__(kwargs)
-		self.activate_thermal(kwargs)
-		self._temporaltheta = kwargs.get('heattheta', 1.0)
+		super().__init__(kwargs)	
 		return
+	
+	def activate_thermal(self, matArgs:dict):
+		super().activate_thermal(matArgs)
+		self._temporaltheta = matArgs.get('heattheta', 1.0)
+		return 
 
 	def interpolate_temperature(self, T_ctrlpts):
 		" Interpolate temperature in 1D "
@@ -99,7 +104,7 @@ class thermo1D(part1D):
 		F = self.weights[0] @ Fcoefs 
 		return F
 
-	def compute_intForce(self, Kprop, Cprop, T, dT):
+	def compute_intForce(self, Kprop, Cprop, T, dT, isLumped=False):
 		"Returns the internal heat force in transient heat"
 
 		# Compute conductivity matrix
@@ -109,14 +114,14 @@ class thermo1D(part1D):
 		# Compute capacity matrix 
 		Ccoefs = Cprop * self.detJ
 		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
-		# C = np.diag(C.sum(axis=1))
+		if isLumped: C = np.diag(C.sum(axis=1))
 
 		# Compute internal heat force 
 		Fint = C @ dT + K @ T
 
 		return Fint
 
-	def compute_tangentMatrix(self, Kprop, Cprop, dt):
+	def compute_tangentMatrix(self, Kprop, Cprop, dt, isLumped=False):
 		""" Computes tangent matrix in transient heat
 			S = C + theta dt K
 			K = int_Omega dB/dx Kprop dB/dx dx = int_[0, 1] J^-1 dB/dxi Kprop J^-1 dB/dxi detJ dxi.
@@ -131,14 +136,14 @@ class thermo1D(part1D):
 		# Compute capacitiy matrix 
 		Ccoefs = Cprop * self.detJ
 		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
-		# C = np.diag(C.sum(axis=1))
+		if isLumped: C = np.diag(C.sum(axis=1))
 
 		# Compute tangent matrix 
 		M = C + self._temporaltheta*dt*K
 
 		return M
 
-	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-9, nbIterNL=20):
+	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-9, nbIterNL=20, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
@@ -179,13 +184,13 @@ class thermo1D(part1D):
 				Cprop = self.capacity(T_interp)
 
 				# Compute residue
-				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1)
+				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1, isLumped=isLumped)
 				dF = Fstep[dof] - Fint[dof]
 				resNL = np.sqrt(np.dot(dF, dF))
 				if resNL <= threshold: break
 
 				# Compute tangent matrix
-				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=dt)[np.ix_(dof, dof)]
+				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
 
 				# Compute delta dT 
 				ddVV = np.linalg.solve(MM, dF)
@@ -204,16 +209,20 @@ class thermo1D(part1D):
 
 class mechamat1D(part1D):
 	def __init__(self, kwargs:dict):
-		super().__init__(kwargs)
-		self.activate_mechanical(kwargs)
-		plasticVars = kwargs.get('law', None)
-		self._isPlasticityPossible = False
-		if isinstance(plasticVars, dict):  
-			self._isPlasticityPossible = True
-			self.mechaBehavLaw        = plasticLaw(self.elasticmodulus, self.elasticlimit, plasticVars)
+		super().__init__(kwargs)		
 		return
+	
+	def activate_mechanical(self, matArgs:dict):
+		super().activate_mechanical(matArgs)
+		self.plasticLaw = None
+		self._isPlasticityPossible = False
+		tmp = matArgs.get('plasticLaw', None)
+		if isinstance(tmp, dict):  
+			self._isPlasticityPossible = True
+			self.plasticLaw         = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
+		return 
 
-	def returnMappingAlgorithm(self, law:plasticLaw, strain, pls, a, b, threshold=1e-9):
+	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
 		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
@@ -235,7 +244,7 @@ class mechamat1D(part1D):
 		eta_trial   = sigma_trial - b
 
 		# Check yield status
-		f_trial = np.abs(eta_trial) - law._Kfun(a)
+		f_trial = np.abs(eta_trial) - self.plasticLaw._Kfun(a)
 		stress = sigma_trial
 		pls_new = pls
 		a_new = a
@@ -243,13 +252,13 @@ class mechamat1D(part1D):
 		Cep = self.elasticmodulus
 
 		if f_trial > threshold: # Plastic
-			dgamma = computeDeltaGamma(law, self.elasticmodulus, eta_trial, a)
+			dgamma = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, eta_trial, a)
 			a_new = a + dgamma
 			Normal = np.sign(eta_trial)
 			stress = sigma_trial - dgamma*self.elasticmodulus*Normal
 			pls_new = pls + dgamma*Normal
-			b_new = b + (law._Hfun(a_new) - law._Hfun(a))*Normal
-			somme = law._Kderfun(a_new) + law._Hderfun(a_new)
+			b_new = b + (self.plasticLaw._Hfun(a_new) - self.plasticLaw._Hfun(a))*Normal
+			somme = self.plasticLaw._Kderfun(a_new) + self.plasticLaw._Hderfun(a_new)
 			Cep = self.elasticmodulus*somme/(self.elasticmodulus + somme)
 
 		return [stress, pls_new, a_new, b_new, Cep]
@@ -285,9 +294,7 @@ class mechamat1D(part1D):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
-		law  = self.mechaBehavLaw
-		nbqp = self.quadRule.nbqp
-		dof  = self.dof
+		nbqp = self.nbqp; dof  = self.dof
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		ep_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
@@ -312,7 +319,7 @@ class mechamat1D(part1D):
 
 				# Find closest point projection 
 				for k in range(nbqp):
-					tmp = self.returnMappingAlgorithm(law, strain[k], pls_n0[k], a_n0[k], b_n0[k])
+					tmp = self.returnMappingAlgorithm(strain[k], pls_n0[k], a_n0[k], b_n0[k])
 					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = tmp
 
 				# Compute Fint

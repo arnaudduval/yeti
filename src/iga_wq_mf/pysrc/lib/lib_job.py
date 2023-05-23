@@ -466,7 +466,7 @@ class mechaproblem(problem):
 	
 				# Closest point projection in perfect plasticity
 				for k in range(nbqp_total):
-					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self.material.returnMappingAlgorithm(law, strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
+					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self.material.returnMappingAlgorithm(strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
 					stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
 
 				# Compute Fint 

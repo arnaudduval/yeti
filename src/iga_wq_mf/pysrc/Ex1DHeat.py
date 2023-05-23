@@ -20,21 +20,28 @@ def setCprop(T, prop=1.0):
 	return y
 
 # Set global variables
-theta        = 1
-degree, nbel = 10, 10
+length       = 1.0
+degree, nbel = 6, 100 
 knotvector   = createKnotVector(degree, nbel)
-heatprop     = {'conductivity': setKprop, 'capacity': setCprop}
-kwargs = {'length': 1.0, 'degree': degree, 'knotvector': knotvector,
-        'quadrule': 'wq', 'heattheta': theta, 'property': heatprop}
 
-model = thermo1D(**kwargs)
+# Create geometry
+quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}
+geoArgs   = {'length': 1.0}
+args      = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+model 	  = thermo1D(args)
+
+# Add material 
+matArgs = {'heattheta': 1.0, 'conductivity': setKprop, 'capacity': setCprop}
+model.activate_thermal(matArgs)
+
+# Add boundary condition
 model.add_DirichletCondition(table=[1, 1])
 
-# Define boundaries conditions	
-N = 1000
+# Define external force	
+N = 20
 time_list = np.linspace(0, 0.02, N)
 print('Time step: %3e' %(time_list.max()/N))
-Fprop     = powden(model._qpPar)
+Fprop     = powden(model.qpPhy)
 FFend     = model.compute_volForce(Fprop)
 FFend     = np.atleast_2d(FFend).reshape(-1, 1)
 Fext      = np.kron(FFend, sigmoid(time_list))
