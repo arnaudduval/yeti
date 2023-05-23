@@ -369,15 +369,15 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	fig.tight_layout()
 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
 
-	# # Plot stress-strain of single point
-	# fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
-	# for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-	# 	ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
-	# 	ax.set_ylabel('Stress (MPa)')
-	# 	ax.set_xlabel('Strain (\%)')
-	# 	ax.set_ylim(bottom=0.0, top=1500)
-	# 	ax.set_xlim(left=0.0, right=strain_interp.max()*100)
+	# Plot stress-strain of single point
+	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
+	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
+		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
+		ax.set_ylabel('Stress (MPa)')
+		ax.set_xlabel('Strain (\%)')
+		ax.set_ylim(bottom=0.0, top=1500)
+		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
 
-	# fig.tight_layout()
-	# fig.savefig(folder + 'TractionCurve' + method + extension)
+	fig.tight_layout()
+	fig.savefig(folder + 'TractionCurve' + method + extension)
 	return
