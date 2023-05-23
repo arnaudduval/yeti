@@ -12,6 +12,7 @@ class encoder():
 		# Get data to run simulation
 		self._degree = kwargs.get('degree', 2)
 		self._nbcuts = kwargs.get('cuts', 2)
+		self._nbctrlpts = int(self.degree + 2**self._nbcuts) 
 		self._name   = kwargs.get('name', 'tr').lower()
 		self._part   = None
 		self._isGaussQuad = kwargs.get('isGauss', False)
@@ -81,7 +82,7 @@ class encoder():
 		
 		dof = problem.boundary.thdof
 		dod = problem.boundary.thdod
-		nbctrlpts_total = problem.part._nbctrlpts_total
+		nbctrlpts_total = problem.part.nbctrlpts_total
 
 		if funTemp is not None:  
 			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]

@@ -20,9 +20,9 @@ class part():
 		self.nbctrlpts  = np.ones(3, dtype=int)
 		self.knotvector, self.size_kv = self.__read_knotvector(modelIGA)
 		for i in range(self.dim): self.nbctrlpts[i] = len(self.knotvector[i]) - self.degree[i] - 1
-		self._nbctrlpts_total = np.product(self.nbctrlpts)
+		self.nbctrlpts_total = np.product(self.nbctrlpts)
 
-		self.nbqp, self._nbqp_total = [], None
+		self.nbqp, self.nbqp_total = [], None
 		self.basis, self.weights, self.indices = [], [], []
 		if kwargs is None: kwargs = dict()
 		self.__setQuadratureRules(kwargs)
@@ -91,7 +91,7 @@ class part():
 		print('\tBasis and weights in : %.5f s' %(stop-start))
 
 		# Update number of quadrature points
-		self._nbqp_total = np.prod(self.nbqp)
+		self.nbqp_total = np.prod(self.nbqp)
 
 		return
 	
@@ -161,7 +161,7 @@ class part():
 
 		if u_ctrlpts is None: pass
 		elif isinstance(u_ctrlpts, np.ndarray): 
-			if np.size(u_ctrlpts)%self._nbctrlpts_total != 0: 
+			if np.size(u_ctrlpts)%self.nbctrlpts_total != 0: 
 				raise Warning('Not enough control points')
 		else: raise Warning('Solution must be ndarray type')
 

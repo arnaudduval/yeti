@@ -80,7 +80,7 @@ if not dataExist:
 			problem._methodPCG = PCGmethod
 
 			# Create a Dirichlet condition
-			Tinout = np.zeros((model._nbctrlpts_total, len(time_list)))
+			Tinout = np.zeros((model.nbctrlpts_total, len(time_list)))
 			for i in range(len(time_list)): Tinout[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
 
 			# Add external force 

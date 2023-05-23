@@ -102,7 +102,7 @@ class heatproblem(problem):
 
 	def eval_bodyForce(self, fun, indi=None): 
 
-		if indi is None: indi = np.arange(self.part._nbctrlpts_total, dtype=int)
+		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Not done yet')
@@ -119,7 +119,7 @@ class heatproblem(problem):
 			else: side = 0
 			return direction, side
 
-		vector = np.zeros(self.part._nbctrlpts_total)
+		vector = np.zeros(self.part.nbctrlpts_total)
 		INC_ctrlpts = self.boundary._get_INCTable(self.part.nbctrlpts)
 		INC_quadpts = self.boundary._get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
@@ -240,7 +240,7 @@ class heatproblem(problem):
 		if thresholdNR is None: thresholdNR = self._thresholdNR
 		m, n = np.shape(Tinout)
 		nbSteps         = len(time_list)
-		nbctrlpts_total = self.part._nbctrlpts_total
+		nbctrlpts_total = self.part.nbctrlpts_total
 		if n != nbSteps: raise Warning('Not possible')
 		if m != nbctrlpts_total: raise Warning('Not possible')
 		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
@@ -324,7 +324,7 @@ class mechaproblem(problem):
 		if kwargs is None: 
 			dimen  = self.part.dim
 			nvoigt = int(dimen*(dimen+1)/2)
-			kwargs = np.zeros((nvoigt+3, self.part._nbqp_total))
+			kwargs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			kwargs[0, :] = self.material.lame_lambda
 			kwargs[1, :] = self.material.lame_mu
 		inputs = [*self.part.nbqp, *self.part.indices, 
@@ -351,7 +351,7 @@ class mechaproblem(problem):
 			else: side = 0
 			return direction, side
 
-		vector = np.zeros((self.part.dim, self.part._nbctrlpts_total))
+		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
 		INC_ctrlpts = self.boundary._get_INCTable(self.part.nbctrlpts)
 		INC_quadpts = self.boundary._get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
@@ -400,7 +400,7 @@ class mechaproblem(problem):
 		nvoigt = int(dimen*(dimen+1)/2)
 		prop = [self.material.elasticmodulus, self.material.poissonratio, self.material.elasticlimit]
 		if kwargs is None:
-			kwargs = np.zeros((nvoigt+3, self.part._nbqp_total))
+			kwargs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			kwargs[0, :] = self.material.lame_lambda
 			kwargs[1, :] = self.material.lame_mu
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
@@ -441,7 +441,7 @@ class mechaproblem(problem):
 		ddl   = int(d*(d+1)/2)
 		law   = self.material.mechaBehavLaw
 
-		nbqp_total = self.part._nbqp_total
+		nbqp_total = self.part.nbqp_total
 		pls_n0 = np.zeros((ddl, nbqp_total))
 		a_n0  = np.zeros(nbqp_total)
 		b_n0  = np.zeros((ddl, nbqp_total))

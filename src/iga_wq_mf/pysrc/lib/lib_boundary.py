@@ -3,35 +3,35 @@ from lib.__init__ import *
 class boundaryCondition():
 
 	def __init__(self, nbctrlpts=np.array([1, 1, 1])):
-		self.nbctrlpts = nbctrlpts
-		self.dim = np.count_nonzero(nbctrlpts>1)
-		if self.dim == 1: raise Warning('Not possible')	
+		self._nbctrlpts = nbctrlpts
+		self._dim = np.count_nonzero(nbctrlpts>1)
+		if self._dim == 1: raise Warning('Not possible')	
 		self.clear_Dirichlet()
 		return
 	
 	def __activate_DirichletThermal(self):
-		nbctrlpts_total = np.product(self.nbctrlpts)
+		nbctrlpts_total = np.product(self._nbctrlpts)
 		if self.thDirichletBound is None:
 			self.thDirichletBound = np.zeros(nbctrlpts_total)
 		return
 	
 	def __activate_DirichletMechanical(self):
-		nbctrlpts_total = np.product(self.nbctrlpts)
-		dimen = np.size(self.nbctrlpts)
+		nbctrlpts_total = np.product(self._nbctrlpts)
+		dimen = np.size(self._nbctrlpts)
 		if self.mchDirichletBound is None:
 			self.mchDirichletBound = np.zeros((nbctrlpts_total, dimen))
 		return
 	
 	def clear_Dirichlet(self):
 		" Clears Dirichlet boundaries "
-		self._thDirichletTable = np.zeros((self.dim, 2), dtype=bool)
+		self._thDirichletTable = np.zeros((self._dim, 2), dtype=bool)
 		self.thDirichletBound  = None
 		self.thdof  = []
 		self.thdod  = []
-		self._mchDirichletTable = np.zeros((self.dim, 2, self.dim), dtype=bool)
+		self._mchDirichletTable = np.zeros((self._dim, 2, self._dim), dtype=bool)
 		self.mchDirichletBound  = None
-		self.mchdof = [[] for i in range(self.dim)]
-		self.mchdod = [[] for i in range(self.dim)]
+		self.mchdof = [[] for i in range(self._dim)]
+		self.mchdod = [[] for i in range(self._dim)]
 		return
 	
 	def _get_INCTable(self, nnzByDimension):
@@ -80,7 +80,7 @@ class boundaryCondition():
 	# Heat problem
 
 	def __update_thDirichletBound(self):
-		nbctrlpts_total = np.product(self.nbctrlpts)
+		nbctrlpts_total = np.product(self._nbctrlpts)
 		dod = set(self.thdod)
 		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
 		self.thdod = np.sort(np.array(list(dod), dtype=int))
@@ -92,7 +92,7 @@ class boundaryCondition():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.__activate_DirichletThermal()
-		dod_total = self._get_boundaryNodes(table, self.nbctrlpts, dimen=self.dim)[0]
+		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
 		self._thDirichletTable += table
 		
 		if np.isscalar(temperature): 
@@ -113,8 +113,8 @@ class boundaryCondition():
 	# Mechanical problem
 
 	def __update_mchDirichletBound(self):
-		nbctrlpts_total = np.product(self.nbctrlpts)
-		self.mchdof    = [[] for i in range(self.dim)]
+		nbctrlpts_total = np.product(self._nbctrlpts)
+		self.mchdof    = [[] for i in range(self._dim)]
 		for i, dod in enumerate(self.mchdod):
 			dod = set(dod)
 			dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
@@ -127,7 +127,7 @@ class boundaryCondition():
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
 		self.__activate_DirichletMechanical()
-		dod_total = self._get_boundaryNodes(table, self.nbctrlpts, dimen=self.dim)
+		dod_total = self._get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
 		self._mchDirichletTable += table
 		
 		if np.isscalar(displacement): 
