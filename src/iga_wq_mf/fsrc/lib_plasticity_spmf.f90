@@ -84,7 +84,7 @@ module matrixfreeplasticity
         double precision :: lambda, mu, bulk
 
         ! Local
-        integer :: ncols
+        integer :: ncols_sp
     
     end type mecamat
 
@@ -130,7 +130,7 @@ contains
 
         mat%invJ => invJ
         mat%detJ => detJ
-        mat%ncols = nc
+        mat%ncols_sp = nc
 
     end subroutine setup_geometry
 
@@ -143,7 +143,7 @@ contains
         double precision, parameter :: threshold = 1.d-12
         type(mecamat), pointer :: mat
         double precision, target, intent(in) :: kwargs
-        dimension :: kwargs(mat%nvoigt+3, mat%ncols)
+        dimension :: kwargs(mat%nvoigt+3, mat%ncols_sp)
 
         ! Local data
         ! ----------
@@ -152,10 +152,10 @@ contains
 
         mat%kwargs => kwargs(:3, :)
         mat%nn     => kwargs(4:, :)
-        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols))
+        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJnn   = 0.d0
         if (any(abs(mat%nn).gt.threshold)) then
-            do i = 1,  mat%ncols
+            do i = 1,  mat%ncols_sp
                 call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
                 mat%JJnn(:,:,i) = matmul(mat%invJ(:,:,i), NN)
             end do
@@ -173,9 +173,9 @@ contains
         ! ----------
         integer :: i
         
-        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%ncols))
+        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJjj = 0.d0
-        do i = 1, mat%ncols
+        do i = 1, mat%ncols_sp
             mat%JJjj(:,:,i) = matmul(mat%invJ(:,:,i), transpose(mat%invJ(:,:,i)))
         end do
 
@@ -200,7 +200,7 @@ contains
         dimension ::    DD(dimen, samplesize), coefs(dimen, dimen, samplesize), nn(nvoigt), &
                         Tnn(dimen, dimen, samplesize), mean(3)
         
-        if (nc_u*nc_v*nc_w.ne.mat%ncols) stop 'Wrong dimensions'
+        if (nc_u*nc_v*nc_w.ne.mat%ncols_sp) stop 'Wrong dimensions'
         pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
         pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
         pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
