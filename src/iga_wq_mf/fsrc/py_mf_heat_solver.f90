@@ -408,12 +408,13 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     use matrixfreeheat
     use solverheat
+    use separatevariables
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
+    double precision, intent(in), target :: coefs
     dimension :: coefs(3, 3, nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -436,7 +437,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! ----------
     type(thermomat), pointer :: mat
     type(cgsolver), pointer :: solv
-    integer :: i
+    type(operator), allocatable :: oper
     double precision :: kmean(3), kappa
 
     ! Fast diagonalization
@@ -480,12 +481,10 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         kmean = 1.d0
 
         if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
-            
-            ! Separation of variables
-            do i = 1, 2
-                call tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, coefs, &
-                                            Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
-            end do
+            call initialize_operator(oper, 3, (/nc_u, nc_v, nc_w/), (/.true., .true., .true./))
+            call separatevariables_3d(oper, coefs)
+            Mcoef_u = oper%MM(1, 1:nc_u); Mcoef_v = oper%MM(2, 1:nc_v); Mcoef_w = oper%MM(3, 1:nc_w)
+            Kcoef_u = oper%KK(1, 1:nc_u); Kcoef_v = oper%KK(2, 1:nc_v); Kcoef_w = oper%KK(3, 1:nc_w)
 
         else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
             call compute_mean_3d(mat, nc_u, nc_v, nc_w)

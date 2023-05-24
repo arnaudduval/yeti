@@ -441,3 +441,129 @@ contains
     end subroutine mf_wq_condcap_3d
 
 end module matrixfreeheat
+
+subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
+
+    implicit none
+    ! Input /  output data
+    ! --------------------
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: Kcoefs, Ccoefs
+    dimension :: Kcoefs(dimen, dimen, nnz), Ccoefs(nnz)
+    double precision, intent(in) :: Kmean, Cmean
+    dimension :: Kmean(dimen)
+
+    double precision, intent(out) :: kappa
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k
+    double precision :: eye, KK, Kmean2, rho, x
+    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
+    double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
+
+    eye = 0.d0
+    do i = 1, dimen
+        eye(i, i) = 1.d0
+    end do
+
+    do i = 1, dimen
+        kmean2(i) = 1.0/sqrt(Kmean(i))
+    end do
+
+    KK = Kcoefs(:, :, 1)
+    do i = 1, dimen
+        do j = 1, dimen
+            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+        end do
+    end do
+
+    call compute_geneigs(dimen, KK, eye, rho, x)
+    supKold = maxval(rho); infKold = minval(rho)
+    supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
+
+    do k = 2, nnz
+        
+        KK = Kcoefs(:, :, k)
+        do i = 1, dimen
+            do j = 1, dimen
+                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+            end do
+        end do
+
+        call compute_geneigs(dimen, KK, eye, rho, x)
+        supKnew = maxval(rho); infKnew = minval(rho)
+        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
+        Cnew = Ccoefs(k)/Cmean
+        supC = max(supCold, Cnew); infC = min(infCold, Cnew)
+
+        supKold = supK; infKold = infK
+        supCold = supC; infCold = infC
+
+    end do
+    
+    kappa = max(supK, supC)/min(infK, infC)
+
+end subroutine compute_transientheat_cond
+
+subroutine compute_steadyheat_cond(nnz, Kcoefs, Kmean, kappa)
+    
+    implicit none
+    ! Input /  output data
+    ! --------------------
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nnz
+    double precision, intent(in) :: Kcoefs
+    dimension :: Kcoefs(dimen, dimen, nnz)
+    double precision, intent(in) :: Kmean
+    dimension :: Kmean(dimen)
+
+    double precision, intent(out) :: kappa
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k
+    double precision :: eye, KK, Kmean2, rho, x
+    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
+    double precision :: supKold, infKold, supKnew, infKnew, supK, infK
+
+    eye = 0.d0
+    do i = 1, dimen
+        eye(i, i) = 1.d0
+    end do
+
+    do i = 1, dimen
+        kmean2(i) = 1.0/sqrt(Kmean(i))
+    end do
+
+    KK = Kcoefs(:, :, 1)
+    do i = 1, dimen
+        do j = 1, dimen
+            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+        end do
+    end do
+
+    call compute_geneigs(dimen, KK, eye, rho, x)
+    supKold = maxval(rho); infKold = minval(rho)
+
+    do k = 2, nnz
+        
+        KK = Kcoefs(:, :, k)
+        do i = 1, dimen
+            do j = 1, dimen
+                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
+            end do
+        end do
+
+        call compute_geneigs(dimen, KK, eye, rho, x)
+        supKnew = maxval(rho); infKnew = minval(rho)
+        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
+
+        supKold = supK; infKold = infK
+
+    end do
+    
+    kappa = supK/infK
+
+end subroutine compute_steadyheat_cond 

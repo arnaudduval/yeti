@@ -9,7 +9,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/t3dsteady/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = True
+dataExist   = False
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(4, 5)
 name_list   = ['vb', 'rqa']

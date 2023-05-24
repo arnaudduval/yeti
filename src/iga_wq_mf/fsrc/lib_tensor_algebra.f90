@@ -369,6 +369,47 @@ subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_i
 
 end subroutine sumfacto3d_dM
 
+subroutine sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv, Mw, Mt, array_in, array_out)
+    !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
+    !! Based on "Preconditioners for IGA" by Montardini
+    !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+
+    implicit none 
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nr_t, nc_t
+    double precision, intent(in) :: Mu, Mv, Mw, Mt
+    dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w), Mt(nr_t, nc_t)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
+
+    ! Local data 
+    ! ----------
+    double precision, allocatable, dimension(:) :: R1, R2, R3
+
+    allocate(R1(nr_u*nc_v*nc_w*nc_t))
+    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+
+    allocate(R2(nr_u*nr_v*nc_w*nc_t))
+    call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, nc_t, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
+    deallocate(R1)
+
+    allocate(R3(nr_u*nr_v*nr_w*nc_t))
+    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, nc_t, R2, nr_w, nc_w, Mw, 3, size(R3), R3)
+    deallocate(R2)   
+
+    call tensor_n_mode_product_dM(nr_u, nr_v, nr_w, nc_t, R3, nr_t, nc_t, Mt, 4, size(array_out), array_out)
+    deallocate(R3)
+
+end subroutine sumfacto4d_dM
+
 subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
                             nnz_v, indi_v, indj_v, data_v, array_in, array_out)
     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
@@ -445,6 +486,52 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
     deallocate(R2)
 
 end subroutine sumfacto3d_spM
+
+subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, indi_u, indj_u, data_u, &
+                        nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, &
+                        nnz_t, indi_t, indj_t, data_t, array_in, array_out)
+    !! Evaluates a dot product between a tensor 3D and a vector 
+    !! Based on "Preconditioners for IGA" by Montardini
+    !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
+    double precision, intent(in) :: data_u, data_v, data_w, data_t
+    dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w), data_t(nnz_t)
+    integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+    dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
+                    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
+
+    ! Local data 
+    ! ----------
+    double precision, allocatable, dimension(:) :: R1, R2, R3
+
+    allocate(R1(nr_u*nc_v*nc_w*nc_t))
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
+
+    allocate(R2(nr_u*nr_v*nc_w*nc_t))
+    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, nc_t, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(R2), R2)
+    deallocate(R1)
+
+    allocate(R3(nr_u*nr_v*nr_w*nc_t))
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R2, nr_w, nnz_w, data_w, indi_w, indj_w, 3, size(R3), R3)
+    deallocate(R2)
+
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R3, nr_t, nnz_t, data_t, indi_t, indj_t, 4, size(array_out), array_out)
+    deallocate(R3)
+
+end subroutine sumfacto4d_spM
 
 ! -------------------------------------
 ! Sum factorization to compute matrices 
@@ -1004,245 +1091,3 @@ subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coe
     call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, coefs(3))
     
 end subroutine find_parametric_diag_3d
-
-subroutine tensor_decomposition_3d(nc_total, nc_u, nc_v, nc_w, CC, &
-                                    M_u, M_v, M_w, K_u, K_v, K_w)
-    !! Tensor decomposition of CC matrix to improve Fast diagonalization precontionner
-    !! Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
-
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, intent(in) :: nc_total, nc_u, nc_v, nc_w
-    double precision, intent(in) :: CC
-    dimension :: CC(3, 3, nc_total)
-
-    double precision, intent(inout) :: M_u, M_v, M_w, K_u, K_v, K_w
-    dimension :: M_u(nc_u), M_v(nc_v), M_w(nc_w), K_u(nc_u), K_v(nc_v), K_w(nc_w)
-
-    ! Local data
-    ! ----------
-    double precision :: Vscript, Wscript, Mscript, Nscript
-    dimension ::    Vscript(nc_u, nc_v, nc_w), Wscript(2, nc_u, nc_v, nc_w), &
-                    Mscript(nc_u, nc_v, nc_w), Nscript(nc_u, nc_v, nc_w)
-    integer :: ju, jv, jw, k, l, genPos, c
-    double precision :: vmin, vmax
-    double precision :: UU(3), WW(3), WWlk(2)
-
-    do k = 1, 3
-        do jw = 1, nc_w
-            do jv = 1, nc_v
-                do ju = 1, nc_u
-                    genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                    UU = [M_u(ju), M_v(jv), M_w(jw)] 
-                    Vscript(ju, jv, jw) = CC(k, k, genPos)*UU(k)/product(UU)
-                end do
-            end do
-        end do
-
-        ! Update w
-        if (k.eq.1) then 
-            do ju = 1, nc_u
-                vmin = minval(Vscript(ju, :, :))
-                vmax = maxval(Vscript(ju, :, :))
-                K_u(ju) = sqrt(vmin*vmax)
-            end do
-
-        else if (k.eq.2) then
-            do jv = 1, nc_v
-                vmin = minval(Vscript(:, jv, :))
-                vmax = maxval(Vscript(:, jv, :))
-                K_v(jv) = sqrt(vmin*vmax)
-            end do
-
-        else if (k.eq.3) then 
-            do jw = 1, nc_v
-                vmin = minval(Vscript(:, :, jw))
-                vmax = maxval(Vscript(:, :, jw))
-                K_w(jw) = sqrt(vmin*vmax)
-            end do
-        end if
-    end do
-
-    do k = 1, 3
-
-        c = 0
-        do l = 1, 3
-            if (k.ne.l) then 
-                c = c + 1
-                do jw = 1, nc_w
-                    do jv = 1, nc_v
-                        do ju = 1, nc_u
-                            genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            UU = [M_u(ju), M_v(jv), M_w(jw)]
-                            WW = [K_u(ju), K_v(jv), K_w(jw)]
-                            Wscript(c, ju, jv, jw) = CC(k, k, genPos)*UU(k)*UU(l)&
-                                                        /(product(UU)*WW(k))
-                        end do
-                    end do
-                end do
-            end if
-        end do
-
-        ! Compute Nscript and Mscript
-        do jw = 1, nc_w
-            do jv = 1, nc_v
-                do ju = 1, nc_u
-                    WWlk = Wscript(:, ju, jv, jw)
-                    Nscript(ju, jv, jw) = minval(WWlk)
-                    Mscript(ju, jv, jw) = maxval(WWlk)
-                end do
-            end do
-        end do
-
-        ! Update u
-        if (k.eq.1) then 
-            do ju = 1, nc_u
-                vmin = minval(Nscript(ju, :, :))
-                vmax = maxval(Mscript(ju, :, :))
-                M_u(ju) = sqrt(vmin*vmax)
-            end do
-
-        else if (k.eq.2) then
-            do jv = 1, nc_v
-                vmin = minval(Nscript(:, jv, :))
-                vmax = maxval(Mscript(:, jv, :))
-                M_v(jv) = sqrt(vmin*vmax)
-            end do
-
-        else if (k.eq.3) then 
-            do jw = 1, nc_v
-                vmin = minval(Nscript(:, :, jw))
-                vmax = maxval(Mscript(:, :, jw))
-                M_w(jw) = sqrt(vmin*vmax)
-            end do
-        end if
-    end do
-
-end subroutine tensor_decomposition_3d
-
-subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
-
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: Kcoefs, Ccoefs
-    dimension :: Kcoefs(dimen, dimen, nnz), Ccoefs(nnz)
-    double precision, intent(in) :: Kmean, Cmean
-    dimension :: Kmean(dimen)
-
-    double precision, intent(out) :: kappa
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-    double precision :: eye, KK, Kmean2, rho, x
-    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
-    double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
-
-    eye = 0.d0
-    do i = 1, dimen
-        eye(i, i) = 1.d0
-    end do
-
-    do i = 1, dimen
-        kmean2(i) = 1.0/sqrt(Kmean(i))
-    end do
-
-    KK = Kcoefs(:, :, 1)
-    do i = 1, dimen
-        do j = 1, dimen
-            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-        end do
-    end do
-
-    call compute_geneigs(dimen, KK, eye, rho, x)
-    supKold = maxval(rho); infKold = minval(rho)
-    supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
-
-    do k = 2, nnz
-        
-        KK = Kcoefs(:, :, k)
-        do i = 1, dimen
-            do j = 1, dimen
-                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-            end do
-        end do
-
-        call compute_geneigs(dimen, KK, eye, rho, x)
-        supKnew = maxval(rho); infKnew = minval(rho)
-        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
-        Cnew = Ccoefs(k)/Cmean
-        supC = max(supCold, Cnew); infC = min(infCold, Cnew)
-
-        supKold = supK; infKold = infK
-        supCold = supC; infCold = infC
-
-    end do
-    
-    kappa = max(supK, supC)/min(infK, infC)
-
-end subroutine compute_transientheat_cond
-
-subroutine compute_steadyheat_cond(nnz, Kcoefs, Kmean, kappa)
-    
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: Kcoefs
-    dimension :: Kcoefs(dimen, dimen, nnz)
-    double precision, intent(in) :: Kmean
-    dimension :: Kmean(dimen)
-
-    double precision, intent(out) :: kappa
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-    double precision :: eye, KK, Kmean2, rho, x
-    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
-    double precision :: supKold, infKold, supKnew, infKnew, supK, infK
-
-    eye = 0.d0
-    do i = 1, dimen
-        eye(i, i) = 1.d0
-    end do
-
-    do i = 1, dimen
-        kmean2(i) = 1.0/sqrt(Kmean(i))
-    end do
-
-    KK = Kcoefs(:, :, 1)
-    do i = 1, dimen
-        do j = 1, dimen
-            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-        end do
-    end do
-
-    call compute_geneigs(dimen, KK, eye, rho, x)
-    supKold = maxval(rho); infKold = minval(rho)
-
-    do k = 2, nnz
-        
-        KK = Kcoefs(:, :, k)
-        do i = 1, dimen
-            do j = 1, dimen
-                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-            end do
-        end do
-
-        call compute_geneigs(dimen, KK, eye, rho, x)
-        supKnew = maxval(rho); infKnew = minval(rho)
-        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
-
-        supKold = supK; infKold = infK
-
-    end do
-    
-    kappa = supK/infK
-
-end subroutine compute_steadyheat_cond 
