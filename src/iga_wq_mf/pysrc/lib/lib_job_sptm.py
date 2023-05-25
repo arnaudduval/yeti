@@ -14,7 +14,7 @@ class heatproblemSpTm(heatproblem):
 		tmspan       = timeArgs.get('timespan', 1.)
 		tmdegree     = timeArgs.get('degree', None)
 		tmknotvector = timeArgs.get('knotvector', None)
-		if any(el for el in [tmdegree, tmknotvector]): raise Warning('Not possible')
+		if any(el is None for el in [tmdegree, tmknotvector]): raise Warning('Not possible')
 		tmquadrule   = timeArgs.get('quadrule', 'wq').lower()
 		if   tmquadrule == 'iga': quadRule = GaussQuadrature(tmdegree, tmknotvector, quadArgs=timeArgs)
 		elif tmquadrule == 'wq' : quadRule = WeightedQuadrature(tmdegree, tmknotvector, quadArgs=timeArgs)
@@ -30,15 +30,15 @@ class heatproblemSpTm(heatproblem):
 		return
 	
 	def __update_thDirichletBound(self):
-		nbctrlpts_total = np.product(self.boundary._nbctrlpts)*self.timeDisc.nbctrlpts
+		nbctrlpts_total = self.part.nbctrlpts_total*self.timeDisc.nbctrlpts
 		spthDirichletBound = self.boundary.thDirichletBound
 		spdod = self.boundary.thdod
-		dod   = np.arange(self.boundary._nbctrlpts, dtype=int)
+		dod   = np.arange(self.part.nbctrlpts_total, dtype=int)
 		thDirichletBound = np.zeros(nbctrlpts_total)
 		for i in range(self.timeDisc.nbctrlpts):
-			tmp = spdod + i*self.boundary._nbctrlpts
+			tmp = spdod + i*self.part.nbctrlpts_total
 			dod = np.append(dod, tmp)
-			thDirichletBound[tmp] = spthDirichletBound
+			thDirichletBound[tmp] = spthDirichletBound[spdod]
 		dod = set(dod)
 		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(spdod)
 		self.boundary.thdod = np.sort(np.array(list(spdod), dtype=int))
