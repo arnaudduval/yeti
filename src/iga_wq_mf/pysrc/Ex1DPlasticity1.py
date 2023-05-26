@@ -37,11 +37,11 @@ def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
 	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
 	return model, disp_cp, strain_cp, plastic_cp, stress_cp
 
-isReference = True
-quadrule = 'iga'
+isReference = False
+quadrule = 'wq'
 
 # Set global variables
-samplesize = 2001
+samplesize = 2500
 nbSteps    = 101
 matArgs    = {'elastic_modulus':200e3, 'elastic_limit':506, 
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}

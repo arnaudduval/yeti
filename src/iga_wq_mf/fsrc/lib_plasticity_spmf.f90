@@ -279,7 +279,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, r, alpha, beta, zeta!, info
+        integer :: i, j, k, l, alpha, beta, zeta!, info
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
         dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
@@ -296,8 +296,8 @@ contains
                         nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
                         array_in(j, :), t1) 
 
-                do r = 1, dimen
-                    kt1(r, :) = mat%kwargs(r, :)*t1*mat%detJ
+                do i = 1, dimen
+                    kt1(i, :) = mat%kwargs(i, :)*t1*mat%detJ
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
