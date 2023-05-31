@@ -238,7 +238,7 @@ contains
             call trapezoidal_rule_3d(3, 3, 3, coefs(2, 2, :), mean(2))
             call trapezoidal_rule_3d(3, 3, 3, coefs(3, 3, :), mean(3))
             mat%mean(i, :) = mean
-
+            print*, mean
         end do
 
     end subroutine compute_mean_3d

@@ -278,6 +278,12 @@ class mechamat(material):
 			Cep[1] = self.lame_mu*(1.0 - c1)
 			Cep[2] = -2.0*self.lame_mu*c2
 
+			# c1 = 1 - 2*self.lame_mu*dgamma/norm_trial
+			# c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
+			# Cep[0] = self.lame_lambda + 2.0/3.0*self.lame_mu*(1 - c1)
+			# Cep[1] = self.lame_mu*c1
+			# Cep[2] = -2.0*self.lame_mu*c2
+
 		return stress, pls_new, a_new, b_new, Cep
 	
 def symtensor2array(tensor, dim):
