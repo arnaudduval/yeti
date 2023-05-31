@@ -208,7 +208,7 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     !! Applied to elasticity problems
     !! by G. Sanaglli and M. Tani
     
-    use solverheat
+    use solverplasticity
     implicit none
     ! Input / output  data 
     !---------------------
@@ -224,19 +224,67 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     ! Local data
     ! ----------
     type(cgsolver), pointer :: solv
-    double precision :: temp
-    dimension :: temp(nr_total) 
-    integer :: i
 
     allocate(solv)
-    do i = 1, dimen 
-        temp = eigen_diag(i, :)
-        call setup_preconditionerdiag(solv, nr_total, temp)
-        call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u(:, :, i), U_v(:, :, i), U_w(:, :, i), &
-                                array_in(i, :), array_out(i, :))
-    end do
+    call setup_preconditionerdiag(solv, nr_total, eigen_diag)
+    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     
 end subroutine fd_elasticity_3d
+
+subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            invJ, detJ, kwargs, array_in, array_out)
+    !! Computes S.u in 3D where S is stiffness matrix. 
+    !! This function is adapted to python and ONLY for elastric materials
+    !! IN CSR FORMAT
+
+    use matrixfreeplasticity
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+
+    double precision :: invJ, detJ, kwargs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total)
+
+    double precision, intent(in) :: array_in
+    dimension :: array_in(dimen, nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(dimen, nr_total)
+
+    ! Local data 
+    ! ----------
+    type(mecamat), pointer :: mat
+    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+    
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+
+    allocate(mat)
+    mat%dimen  = dimen
+    mat%nvoigt = nvoigt
+    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_jacobienjacobien(mat)
+    call setup_jacobiennormal(mat, kwargs)
+    call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                    data_W_u, data_W_v, array_in, array_out)
+
+end subroutine mf_wq_get_su_2d
 
 subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

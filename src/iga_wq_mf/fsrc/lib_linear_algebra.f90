@@ -427,6 +427,64 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
 
 end subroutine spmat_dot_dvec
 
+subroutine trapezoidal_rule_2d(nru, nrv, tensor, result)
+    !! Computes an integral inside a unitary cube using trapezoidal rule.
+    !! It supposes that points are equidistant
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer :: nru, nrv
+    double precision, intent(in) :: tensor
+    dimension :: tensor(nru*nrv)
+
+    double precision, intent(out) :: result
+    
+    ! Local data
+    ! ----------
+    integer :: iu, iv
+    integer :: indu, indv
+    dimension :: indu(2), indv(2)
+    double precision :: ttensor
+    dimension :: ttensor(nru, nrv)
+
+    result = 0.d0
+    indu = (/1, nru/); indv = (/1, nrv/)
+
+    ttensor = reshape(tensor, (/nru, nrv/))
+
+    ! Get internal points
+    do iv = 2, nrv-1
+        do iu = 2, nru-1
+            result = result + ttensor(iu, iv)
+        end do
+    end do
+
+    ! Get boundary edges
+    do iv = 1, 2
+        do iu = 2, nru-1
+            result = result + ttensor(iu, indv(iv))/2.d0
+        end do
+    end do
+
+    do iv = 2, nrv-1
+        do iu = 1, 2
+            result = result + ttensor(indu(iu), iv)/2.d0
+        end do
+    end do
+
+    ! Get corner points
+    do iv = 1, 2
+        do iu = 1, 2
+            result = result + ttensor(indu(iu), indv(iv))/4.d0
+        end do
+    end do
+
+    ! Update integral
+    result = result/((nru - 1)*(nrv - 1))
+
+end subroutine trapezoidal_rule_2d
+
 subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     !! Computes an integral inside a unitary cube using trapezoidal rule.
     !! It supposes that points are equidistant
