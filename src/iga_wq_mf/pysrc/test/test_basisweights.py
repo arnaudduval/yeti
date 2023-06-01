@@ -13,26 +13,25 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/test/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-nbel_list = [2**i for i in np.arange(2, 6)]
+nbel_list = [2**i for i in np.arange(3, 6)]
 
 for varName in ['I00', 'I01', 'I10', 'I11']:
 	
 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
 
-	for degree in range(3, 8):
+	for degree in range(2, 8):
 
 		norm_fortran = []; norm_python = []
 		color = next(ax._get_lines.prop_cycler)['color']
 
 		for nbel in nbel_list: 
-
 			knotvector = createKnotVector(degree, nbel)
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# --------
 			# FORTRAN
 			# --------
-			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3}})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			[B0f, B1f] = basis
@@ -65,9 +64,8 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 
 			norm_temp = relativeError(var2, var1)
 			dif = var2-var1
-			print(var2.todense())
-			print(var1.todense())
-			if norm_temp > 1e-5: raise Warning('Something happend. Fortran basis are wrong')
+			if norm_temp > 1e-5: 
+				raise Warning('Something happend. Fortran basis are wrong')
 			norm_fortran.append(norm_temp)
 
 		label = 'Degree $p = $ ' + str(degree)

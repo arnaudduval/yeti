@@ -126,12 +126,14 @@ class GaussQuadrature(QuadratureRules):
 class WeightedQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, quadArgs:dict):
 		super().__init__(degree, knotvector)
-		self._wqType    = quadArgs.get('type', 1)
-		self._extraArgs = quadArgs.get('extra', {})
+		self._wqType  = quadArgs.get('type', 1)
+		self._posRule = 'midpoint' # By default
+		if   self._wqType == 1: extraArgsDefault = {'s': 1, 'r': 2}
+		elif self._wqType == 2: extraArgsDefault = {'s': 2, 'r': 2}
+		self._extraArgs = quadArgs.get('extra', extraArgsDefault)
 		return
 	
 	def __findQuadraturePositions(self):
-		self._posRule = self._extraArgs.get('rule', 'midpoint').lower()
 		if self._posRule == 'midpoint':
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			self.quadPtsPos = self.__QuadPosMidPointRule(s=s, r=r)
@@ -221,9 +223,8 @@ class WeightedQuadrature(QuadratureRules):
 		
 		return [B0shape, B1shape]
 	
-	def evalDersBasisWeights(self):
+	def evalDersBasisWeights(self):	
 		if self._wqType not in [1, 2]: raise Warning('Method unknown')
-		
 		size_data = (self.degree + 1)*self.nbqp
 		basis   = np.zeros((size_data, 2))
 		weights = np.zeros((size_data, 4))
@@ -235,7 +236,7 @@ class WeightedQuadrature(QuadratureRules):
 			# Create model
 			degree_model = self.degree
 			kv_model     = createKnotVector(degree_model, degree_model + 3)
-			kwargs       = {'quadmethod': self._wqType, 'quadvars': self._extraArgs}
+			kwargs       = {'type': self._wqType, 'extra': self._extraArgs}
 			WQmodel      = WeightedQuadrature(degree_model, kv_model, quadArgs=kwargs)
 			WQmodel.__findQuadraturePositions()
 			size_data_model = (degree_model + 1)*WQmodel.nbqp
