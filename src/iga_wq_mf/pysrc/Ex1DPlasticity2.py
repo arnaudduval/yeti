@@ -14,12 +14,12 @@ length    = 1.0
 nbSteps   = 101
 geoArgs   = {'length': length}
 sampleSize = 2500
-lastStep  = 52
+lastStep  = 53
 
 # ---------------
 # IGA
 # ---------------
-degree, nbel = 7, 32
+degree, nbel = 7, 16
 knotvector   = createKnotVector(degree, nbel)
 quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
@@ -58,7 +58,7 @@ interp_iga.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize
 # degree, nbel = 6, 442
 knotvector   = createKnotVector(degree, nbel)
 
-quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 2}
+quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 1}
 # quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'lob'}
 args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
 model = mechamat1D(args)
@@ -91,7 +91,8 @@ interp_wq.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)
 # enablePrint()
 
 tmp = interp_iga[-1][:, -1] - interp_wq[-1][:, -1]
-print(np.linalg.norm(tmp))
+relerror = np.linalg.norm(tmp)/np.linalg.norm(interp_iga[-1][:, -1])*100
+print('Relative error: %.3e' %relerror)
 
 # # ------------------
 # # Post-treatement
