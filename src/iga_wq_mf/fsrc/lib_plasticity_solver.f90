@@ -68,7 +68,7 @@ module solverplasticity3
 
     use matrixfreeplasticity
     type cgsolver
-        integer :: matrixfreetype = 1, dimen = 3
+        integer :: dimen = 3
         double precision, dimension(:,:), pointer :: diag=>null()
     end type cgsolver
 
@@ -103,15 +103,10 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        if (solv%matrixfreetype.eq.1) then
-
-            call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
-        else 
-            stop 'function not defined'
-        end if
 
     end subroutine matrixfree_spMdV
 
@@ -324,7 +319,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde)
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde) 
             call reset_dirichletbound3(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -366,7 +361,7 @@ module solverplasticity2
 
     use matrixfreeplasticity
     type cgsolver
-        integer :: matrixfreetype = 1, dimen = 2
+        integer :: dimen = 2
         double precision, dimension(:,:), pointer :: diag=>null()
     end type cgsolver
 
@@ -401,15 +396,10 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        if (solv%matrixfreetype.eq.1) then
-
-            call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+        call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
-        else 
-            stop 'function not defined'
-        end if
 
     end subroutine matrixfree_spMdV
 
@@ -588,7 +578,7 @@ contains
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
         double precision, intent(in) :: U_u, U_v
-        dimension ::    U_u(nr_u, nr_u, solv%dimen), U_v(nr_v, nr_v, solv%dimen)
+        dimension :: U_u(nr_u, nr_u, solv%dimen), U_v(nr_v, nr_v, solv%dimen)
 
         integer, intent(in) :: ndu, ndv
         integer, intent(in) :: dod_u, dod_v

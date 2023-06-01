@@ -632,12 +632,10 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     else
 
         if (methodPCG.eq.'JMC') call compute_mean_2d(mat, nc_u, nc_v)
-
         call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                     data_B_u, data_B_v, data_W_u, data_W_v, table, &
                                     mat%mean, U_u, U_v, Deigen)
-
         call setup_preconditionerdiag(solv, nr_total, Deigen)
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &

@@ -1123,7 +1123,7 @@ subroutine find_parametric_diag_2d(nr_u, nr_v, Mu, Mv, Ku, Kv, coefs, diag)
     call kronvec2d(nr_v, Mv, nr_u, Ku, diag, coefs(1))
 
     ! Kv x Mu
-    call kronvec3d(nr_v, Kv, nr_u, Mu, diag, coefs(2))
+    call kronvec2d(nr_v, Kv, nr_u, Mu, diag, coefs(2))
 
 end subroutine find_parametric_diag_2d
 

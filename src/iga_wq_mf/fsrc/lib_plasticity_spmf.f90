@@ -16,7 +16,7 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: mean
-    dimension :: mean(dimen, 2)
+    dimension :: mean(dimen, dimen)
 
     double precision, intent(out) :: U_u, U_v, Deigen
     dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), Deigen(dimen, nr_u*nr_v)
@@ -34,7 +34,6 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v)) 
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
-
     do i = 1, dimen
         call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                 data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
@@ -43,7 +42,6 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
         call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
                                 data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
                                 data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
-
     end do
 
     deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
@@ -80,7 +78,7 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: mean
-    dimension :: mean(dimen, 3)
+    dimension :: mean(dimen, dimen)
 
     double precision, intent(out) :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), Deigen(dimen, nr_u*nr_v*nr_w)
@@ -413,7 +411,7 @@ contains
                         nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, dimen
+                do i = 1, 3
                     kt1(i, :) = mat%kwargs(i, :)*t1*mat%detJ
                 end do
 
@@ -497,7 +495,7 @@ contains
                         nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, dimen
+                do i = 1, 3
                     kt1(i, :) = mat%kwargs(i, :)*t1*mat%detJ
                 end do
 
