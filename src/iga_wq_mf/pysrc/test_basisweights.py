@@ -32,7 +32,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# --------
 			# FORTRAN
 			# --------
-			weightedQuad = WeightedQuadrature(degree, knotvector, {})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			[B0f, B1f] = basis
@@ -64,6 +64,9 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			elif varName == 'I11': var1 = I11; var2 = I11f
 
 			norm_temp = relativeError(var2, var1)
+			dif = var2-var1
+			print(var2.todense())
+			print(var1.todense())
 			if norm_temp > 1e-5: raise Warning('Something happend. Fortran basis are wrong')
 			norm_fortran.append(norm_temp)
 
