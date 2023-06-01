@@ -1,3 +1,63 @@
+subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, table, mean, U_u, U_v, Deigen)
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 2
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+
+    integer, intent(in) :: table
+    dimension :: table(dimen, 2, dimen)
+    double precision, intent(in) :: mean
+    dimension :: mean(dimen, 2)
+
+    double precision, intent(out) :: U_u, U_v, Deigen
+    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), Deigen(dimen, nr_u*nr_v)
+
+    ! Local data
+    ! -----------
+    integer :: i
+    double precision, dimension(:), allocatable :: I_u, I_v
+    double precision :: D_u, D_v
+    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen)
+    double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v, &
+                                                    Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
+
+    allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v))
+    allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v)) 
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+
+    do i = 1, dimen
+        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
+
+        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
+
+    end do
+
+    deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
+    deallocate(Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v)
+
+    allocate(I_u(nr_u), I_v(nr_v))
+    I_u = 1.d0; I_v = 1.d0
+    do i = 1, dimen
+        call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, i), D_v(:, i), mean(i, :), Deigen(i, :))
+    end do
+    deallocate(I_u, I_v)
+
+end subroutine eigendecomp_plasticity_2d
+
 subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
@@ -467,6 +527,57 @@ contains
         end do
             
     end subroutine mf_wq_stiffness_3d
+
+    subroutine wq_intforce_2d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
+        !! Computes internal force vector in 3D 
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: dimen = 3
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        double precision, intent(in) :: stress
+        dimension :: stress(mat%nvoigt, nc_total)
+        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+        dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                        indi_v(nr_v+1), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(dimen, nr_total)
+
+        ! Local data
+        ! ----------
+        double precision :: Tstress, t1, t2
+        dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
+        integer :: i, k, alpha(dimen), zeta(dimen)
+        
+        if (nr_total.ne.nr_u*nr_v) stop 'Number of rows not equal'
+        
+        do i = 1, nc_total
+            call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
+            t1(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
+        end do
+        
+        array_out = 0.d0
+        do i = 1, dimen
+            do k = 1, dimen
+                alpha = 1; alpha(k) = 2
+                zeta  = 1 + (alpha - 1)*2
+
+                call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                t1(k, i, :), t2)
+                array_out(i, :) = array_out(i, :) + t2
+            end do
+        end do
+
+    end subroutine wq_intforce_2d
 
     subroutine wq_intforce_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)

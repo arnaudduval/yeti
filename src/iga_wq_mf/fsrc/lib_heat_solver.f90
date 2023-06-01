@@ -1,9 +1,9 @@
-module solverheat
+module solverheat3
 
     use matrixfreeheat
     type cgsolver
         logical :: withscaling = .false., withdiag = .false.
-        integer :: matrixfreetype = 1
+        integer :: matrixfreetype = 1, dimen = 3
         double precision, dimension(:), allocatable :: factor
         double precision, dimension(:), pointer :: diag=>null()
     end type cgsolver
@@ -476,7 +476,6 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        integer, parameter :: dimen = 3
         double precision, parameter :: tol_singular = 1.d-10
         type(cgsolver), pointer :: solv
         type(thermomat), pointer :: mat
@@ -507,9 +506,9 @@ contains
         ! Local data
         ! ----------
         integer :: k, ii
-        double precision, dimension(dimen, nr_total) :: RM1, RM2, RM3
-        double precision, dimension(dimen, dimen) :: AA1, BB1, qq
-        double precision, dimension(dimen) :: ll, delta
+        double precision, dimension(solv%dimen, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(solv%dimen, solv%dimen) :: AA1, BB1, qq
+        double precision, dimension(solv%dimen) :: ll, delta
         double precision, dimension(nr_total) :: u, v, g, gtil, p
         double precision :: q, norm
 
@@ -559,14 +558,14 @@ contains
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, RM3(3, :))
 
-            call rayleigh_submatrix(dimen, nr_total, RM1, RM2, AA1)
-            call rayleigh_submatrix(dimen, nr_total, RM1, RM3, BB1)
+            call rayleigh_submatrix(solv%dimen, nr_total, RM1, RM2, AA1)
+            call rayleigh_submatrix(solv%dimen, nr_total, RM1, RM3, BB1)
 
             if (norm2(p).lt.tol_singular) then
                 qq = 0.d0; ll = 0.d0
-                call compute_geneigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+                call compute_geneigs(solv%dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
             else
-                call compute_geneigs(dimen, AA1, BB1, ll, qq)
+                call compute_geneigs(solv%dimen, AA1, BB1, ll, qq)
             end if
     
             rho = maxval(ll); ii = maxloc(ll, dim=1)
@@ -589,4 +588,4 @@ contains
 
     end subroutine LOBPCGSTAB
 
-end module solverheat
+end module solverheat3

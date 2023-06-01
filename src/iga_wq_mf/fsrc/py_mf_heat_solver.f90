@@ -10,7 +10,7 @@ subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_di
     !! Applied to steady heat problems
     !! by G. Sanaglli and M. Tani
     
-    use solverheat
+    use solverheat3
     implicit none
     ! Input / output  data 
     !---------------------
@@ -37,7 +37,7 @@ subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_
     !! Applieg in control points interpolation problems
     !! by G. Sanaglli and M. Tani
     
-    use solverheat
+    use solverheat3
     implicit none
     ! Input / output  data 
     !---------------------
@@ -303,7 +303,7 @@ subroutine mf_wq_get_spacetimeheat_3d(Ccoefs, Kcoefs, detG, nr_total, nc_sp, nc_
     
 end subroutine mf_wq_get_spacetimeheat_3d
 
-subroutine wq_get_bodyheat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine wq_get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes source vector in 3D
     !! IN CSR FORMAT
@@ -331,9 +331,9 @@ subroutine wq_get_bodyheat_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                         nnz_w, indi_w, indj_w, data_W_w(:, 1), &
                         coefs, result)
 
-end subroutine wq_get_bodyheat_3d
+end subroutine wq_get_heatvol_3d
 
-subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine wq_get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
     !! Computes source vector in 3D
     !! IN CSR FORMAT
@@ -375,7 +375,7 @@ subroutine wq_get_heatflux_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         new_coefs(:), array_out(:))
 
-end subroutine wq_get_heatflux_3d
+end subroutine wq_get_heatsurf_3d
 
 subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -385,7 +385,7 @@ subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! IN CSR FORMAT
     
     use matrixfreeheat
-    use solverheat
+    use solverheat3
 
     implicit none 
     ! Input / output data
@@ -469,7 +469,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat
+    use solverheat3
     use separatevariables
 
     implicit none 
@@ -607,7 +607,7 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat
+    use solverheat3
 
     implicit none 
     ! Input / output data

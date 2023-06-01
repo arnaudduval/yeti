@@ -714,6 +714,44 @@ subroutine csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine csr_get_matrix_2d 
 
+subroutine csr_get_diag_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, diag)
+    !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
+    !! Algorithm based on sum factorization adapted to diagonal case 
+    !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
+    !! Indices must be in CSR format
+
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_u*nc_v)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_B_v, data_W_u, data_W_v
+    dimension ::    data_B_u(nnz_u), data_B_v(nnz_v), &
+                    data_W_u(nnz_u), data_W_v(nnz_v)
+
+    double precision, intent(out) :: diag
+    dimension :: diag(nr_u*nr_v)
+
+    ! Local data
+    ! ----------
+    double precision :: data_BW_u, data_BW_v
+    dimension :: data_BW_u(nnz_u), data_BW_v(nnz_v)
+    
+    data_BW_u = data_B_u*data_W_u
+    data_BW_v = data_B_v*data_W_v
+
+    call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_BW_u, &
+                    nnz_v, indi_v, indj_v, data_BW_v, coefs, diag)
+
+end subroutine csr_get_diag_2d
+
 subroutine csr_get_row_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, row_u, row_v, row_w, &
                         nnz_row_u, nnz_row_v, nnz_row_w, i_nnz_u, i_nnz_v, i_nnz_w, &
                         nnz_col_u, nnz_col_v, nnz_col_w, j_nnz_u, j_nnz_v, j_nnz_w, &
@@ -1064,6 +1102,30 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     deallocate(KK, MM)
 
 end subroutine eigen_decomposition
+
+subroutine find_parametric_diag_2d(nr_u, nr_v, Mu, Mv, Ku, Kv, coefs, diag)
+    !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)
+                        
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nr_v
+    double precision, intent(in) :: Mu, Mv, Ku, Kv, coefs
+    dimension :: Mu(nr_u), Mv(nr_v), &
+                Ku(nr_u), Kv(nr_v), coefs(2)
+
+    double precision, intent(out) :: diag
+    dimension :: diag(nr_u*nr_v)
+
+    diag = 0.d0
+
+    ! Mv x Ku
+    call kronvec2d(nr_v, Mv, nr_u, Ku, diag, coefs(1))
+
+    ! Kv x Mu
+    call kronvec3d(nr_v, Kv, nr_u, Mu, diag, coefs(2))
+
+end subroutine find_parametric_diag_2d
 
 subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coefs, diag)
     !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)

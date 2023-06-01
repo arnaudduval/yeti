@@ -1,3 +1,22 @@
+subroutine reset_dirichletbound2(nr, A, ndu, ndv, dod_u, dod_v)
+    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
+    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, ndu, ndv
+    double precision, intent(inout) :: A
+    dimension :: A(2, nr)
+
+    integer, intent(in) :: dod_u, dod_v
+    dimension :: dod_u(ndu), dod_v(ndv)
+
+    A(1, dod_u) = 0.d0 
+    A(2, dod_v) = 0.d0 
+
+end subroutine reset_dirichletbound2
+
 subroutine reset_dirichletbound3(nr, A, ndu, ndv, ndw, dod_u, dod_v, dod_w)
     !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
     !! A is actually a vector arranged following each dimension [Au, Av, Aw]
@@ -45,7 +64,7 @@ subroutine block_dot_product(nm, nr, A, B, result)
 
 end subroutine block_dot_product
 
-module solverplasticity
+module solverplasticity3
 
     use matrixfreeplasticity
     type cgsolver
@@ -341,4 +360,299 @@ contains
 
     end subroutine PBiCGSTAB
 
-end module solverplasticity
+end module solverplasticity3
+
+module solverplasticity2
+
+    use matrixfreeplasticity
+    type cgsolver
+        integer :: matrixfreetype = 1, dimen = 2
+        double precision, dimension(:,:), pointer :: diag=>null()
+    end type cgsolver
+
+contains
+
+    subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, array_in, array_out)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver), pointer :: solv
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
+                        indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(solv%dimen, nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(solv%dimen, nr_total)
+
+        if (solv%matrixfreetype.eq.1) then
+
+            call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
+        else 
+            stop 'function not defined'
+        end if
+
+    end subroutine matrixfree_spMdV
+
+    subroutine setup_preconditionerdiag(solv, nr, diag)
+
+        use omp_lib
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver), pointer :: solv
+        integer, intent(in) :: nr
+        double precision, target, intent(in) :: diag
+        dimension :: diag(solv%dimen, nr)
+
+        solv%diag => diag
+        
+    end subroutine setup_preconditionerdiag
+
+    subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
+        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+        !! Applied to steady heat problems
+        !! by G. Sanaglli and M. Tani
+        
+        use omp_lib
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        type(cgsolver), pointer :: solv
+        integer, intent(in) :: nr_total, nr_u, nr_v
+        double precision, intent(in) :: U_u, U_v, array_in
+        dimension :: U_u(nr_u, nr_u, solv%dimen), U_v(nr_v, nr_v, solv%dimen), array_in(solv%dimen, nr_total)
+    
+        double precision, intent(out) :: array_out
+        dimension :: array_out(solv%dimen, nr_total)
+    
+        ! Local data
+        ! ----------
+        integer :: i, j, dimen, nb_tasks
+        double precision :: array_temp
+        dimension :: array_temp(solv%dimen, nr_total)
+        
+        dimen = solv%dimen
+
+        ! Compute (Uv x Uu)'.array_in
+        do i = 1, dimen
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(U_u(:,:,i)), transpose(U_v(:,:,i)), &
+                            array_in(i, :), array_temp(i, :))
+        end do
+
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, dimen*nr_total/nb_tasks)
+        do j = 1, nr_total
+            do i = 1, dimen
+                array_temp(i, j) = array_temp(i, j)/solv%diag(i, j)
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+
+        ! Compute (Uv x Uu).array_temp
+        do i = 1, dimen
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, U_u(:,:,i), U_v(:,:,i), &
+                            array_temp(i, :), array_out(i, :))
+        end do
+
+    end subroutine applyfastdiag
+
+    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver), pointer :: solv
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        integer, intent(in) :: ndu, ndv
+        integer, intent(in) :: dod_u, dod_v
+        dimension :: dod_u(ndu), dod_v(ndv)
+
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(solv%dimen, nr_total)
+        
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
+
+        ! Local data
+        ! -----------
+        double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
+        double precision :: r, rhat, p, s, Ap, As
+        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), &
+                        s(solv%dimen, nr_total), Ap(solv%dimen, nr_total), As(solv%dimen, nr_total)
+        integer :: iter
+
+        x = 0.d0; r = b; 
+        call reset_dirichletbound2(nr_total, r, ndu, ndv, dod_u, dod_v) 
+        rhat = r; p = r
+        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
+        normb = maxval(abs(r))
+        resPCG = 0.d0; resPCG(1) = 1.d0
+        if (normb.lt.threshold) return
+
+        do iter = 1, nbIterPCG
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                    data_W_u, data_W_v, p, Ap)
+            call reset_dirichletbound2(nr_total, Ap, ndu, ndv, dod_u, dod_v) 
+            call block_dot_product(solv%dimen, nr_total, Ap, rhat, prod)
+            alpha = rsold/prod
+            s = r - alpha*Ap
+
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                    data_W_u, data_W_v, s, As)
+            call reset_dirichletbound2(nr_total, As, ndu, ndv, dod_u, dod_v) 
+            call block_dot_product(solv%dimen, nr_total, As, s, prod)
+            call block_dot_product(solv%dimen, nr_total, As, As, prod2)
+            omega = prod/prod2
+            x = x + alpha*p + omega*s
+            r = s - omega*As
+
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit
+            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
+            beta = (alpha/omega)*(rsnew/rsold)
+            p = r + beta*(p - omega*Ap)
+            rsold = rsnew
+        end do
+
+    end subroutine BiCGSTAB
+
+    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, U_u, U_v, ndu, ndv, dod_u, dod_v, &
+                        nbIterPCG, threshold, b, x, resPCG)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver), pointer :: solv
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: U_u, U_v
+        dimension ::    U_u(nr_u, nr_u, solv%dimen), U_v(nr_v, nr_v, solv%dimen)
+
+        integer, intent(in) :: ndu, ndv
+        integer, intent(in) :: dod_u, dod_v
+        dimension :: dod_u(ndu), dod_v(ndv)
+
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(solv%dimen, nr_total)
+        
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
+
+        ! Local data
+        ! -----------
+        double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
+        double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
+        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), & 
+                        s(solv%dimen, nr_total), ptilde(solv%dimen, nr_total), Aptilde(solv%dimen, nr_total), &
+                        Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
+        integer :: iter
+
+        x = 0.d0; r = b; 
+        call reset_dirichletbound2(nr_total, r, ndu, ndv, dod_u, dod_v) 
+        rhat = r; p = r
+        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
+        normb = maxval(abs(r))
+        resPCG = 0.d0; resPCG(1) = 1.d0
+        if (normb.lt.threshold) return
+
+        do iter = 1, nbIterPCG
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, p, ptilde)
+            call reset_dirichletbound2(nr_total, ptilde, ndu, ndv, dod_u, dod_v) 
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, ptilde, Aptilde)
+            call reset_dirichletbound2(nr_total, Aptilde, ndu, ndv, dod_u, dod_v) 
+            call block_dot_product(solv%dimen, nr_total, Aptilde, rhat, prod)
+            alpha = rsold/prod
+            s = r - alpha*Aptilde
+            
+            call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, s, stilde)
+            call reset_dirichletbound2(nr_total, stilde, ndu, ndv, dod_u, dod_v) 
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, stilde, Astilde)
+            call reset_dirichletbound2(nr_total, Astilde, ndu, ndv, dod_u, dod_v) 
+            
+            call block_dot_product(solv%dimen, nr_total, Astilde, s, prod)
+            call block_dot_product(solv%dimen, nr_total, Astilde, Astilde, prod2)
+
+            omega = prod/prod2
+            x = x + alpha*ptilde + omega*stilde
+            r = s - omega*Astilde    
+            
+            resPCG(iter+1) = maxval(abs(r))/normb
+            if (resPCG(iter+1).le.threshold) exit
+            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
+            beta = (alpha/omega)*(rsnew/rsold)
+            p = r + beta*(p - omega*Aptilde)
+            rsold = rsnew
+        end do
+
+    end subroutine PBiCGSTAB
+
+end module solverplasticity2

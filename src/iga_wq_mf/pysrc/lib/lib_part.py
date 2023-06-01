@@ -93,6 +93,23 @@ class part():
 
 		return
 	
+	def addQuadratureRule(self, direction:int, quadArgs:dict):
+		if direction<0 or direction>=self.dim: raise Warning('Direction not valid')
+		name = quadArgs.get('quadrule', None)
+		if name == 'iga':
+				quadRule = GaussQuadrature(self.degree[direction], self.knotvector[direction], quadArgs=quadArgs)
+		elif name == 'wq':
+				quadRule = WeightedQuadrature(self.degree[direction], self.knotvector[direction], quadArgs=quadArgs)
+		else: raise Warning('Insert a valid quadrature rule')
+
+		# Update quadrature rule
+		quadPtsPos, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()
+		nbqp = len(quadPtsPos); indi, indj = dersIndices
+		self.nbqp[direction] = nbqp; self.indices[2*direction] = indi; self.indices[2*direction+1] = indj
+		self.basis[direction] = dersBasis; self.weights[direction] = dersWeights
+		self.nbqp_total = np.prod(self.nbqp)
+		return
+	
 	def __setJacobienPhysicalPoints(self):
 		" Computes jacobien and physical position "
 

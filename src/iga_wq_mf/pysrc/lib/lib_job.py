@@ -91,7 +91,7 @@ class heatproblem(problem):
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Not done yet')
-		if self.part.dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)[indi]
+		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)[indi]
 		return vector
 	
 	def eval_surfForce(self, fun, nbFacePosition):
@@ -136,7 +136,7 @@ class heatproblem(problem):
 			nnz.append(self.part.nbqp[_]); weights.append(self.part.weights[_])
 			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
 		
-		tmp = plasticitysolver.wq_get_heatflux_3d(coefs, JJ, *nnz, *indices, *weights)
+		tmp = plasticitysolver.wq_get_heatsurf_3d(coefs, JJ, *nnz, *indices, *weights)
 		vector[:, CPList] = tmp
 
 		return vector
@@ -165,7 +165,7 @@ class heatproblem(problem):
 		# Calculate vector
 		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
-		if self.part.dim == 3: vector = heatsolver.wq_get_bodyheat_3d(*inputs)
+		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
 		# Solve linear system with fortran
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
