@@ -81,7 +81,7 @@ class heatproblemSpTm(heatproblem):
 		indices.append(indi_t); indices.append(indj_t) 
 		basis.append(basist); weights.append(weightst)
 
-		inputs = [*self.part.nbqp, self.timeDisc.nbqp, *indices, *basis, *weights]
+		inputs = [*self.part.nbqp[:self.part.dim], self.timeDisc.nbqp, *indices, *basis, *weights]
 
 		return inputs
 	

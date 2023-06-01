@@ -283,7 +283,7 @@ class Geomdl():
 		obj = BSpline.Surface()
 		obj.degree_u = degree_u
 		obj.degree_v = degree_v
-		obj.ctrlpts_size_u, obj.ctrlpts_size_v = nb_ctrlpts_u, nb_ctrlpts_v
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v = int(nb_ctrlpts_u), int(nb_ctrlpts_v)
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = knot_vector_u
 		obj.knotvector_v = knot_vector_v
@@ -323,7 +323,7 @@ class Geomdl():
 		obj = BSpline.Surface() 
 		obj.degree_u = degree_u
 		obj.degree_v = degree_v
-		obj.ctrlpts_size_u, obj.ctrlpts_size_v = nb_ctrlpts_u, nb_ctrlpts_v
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v = int(nb_ctrlpts_u), int(nb_ctrlpts_v)
 		obj.ctrlpts = ctrlpts
 		obj.knotvector_u = createKnotVector(degree_u, 1)
 		obj.knotvector_v = createKnotVector(degree_v, 1)

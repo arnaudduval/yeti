@@ -44,14 +44,14 @@ class heatproblem(problem):
 			indices.append(indi_t); indices.append(indj_t) 
 			basis.append(basist); weights.append(weightst)
 
-		inputs = [*self.part.nbqp, *indices, *basis, *weights]
+		inputs = [*self.part.nbqp[:self.part.dim], *indices, *basis, *weights]
 
 		return inputs
 	
 	def assemble_capacity(self, coefs=None, args=None):
 		if coefs is None: coefs = self.material.eval_capacityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
-		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.basis, *self.part.weights]
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: 
 			assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
@@ -63,7 +63,7 @@ class heatproblem(problem):
 	def assemble_conductivity(self, coefs=None, args=None):
 		if coefs is None: coefs = self.material.eval_conductivityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
-		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.basis, *self.part.weights]
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: 
 			assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
@@ -89,7 +89,7 @@ class heatproblem(problem):
 	def eval_volForce(self, fun, indi=None): 
 		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
-		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Not done yet')
 		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)[indi]
 		return vector
@@ -144,7 +144,7 @@ class heatproblem(problem):
 	def interpolate_temperature(self, uctrlpts):
 		basis   = self.part.basis
 		indices = self.part.indices
-		nbqp    = self.part.nbqp
+		nbqp    = self.part.nbqp[:self.part.dim]
 
 		# Get position and determinant 
 		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
@@ -163,13 +163,13 @@ class heatproblem(problem):
 		if coefs is None: raise Warning('Missing data')
 
 		# Calculate vector
-		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
 		# Solve linear system with fortran
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		inputs = [self.part.detJ, *self.part.nbqp, *self.part.indices, *self.part.basis, 
+		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 	    		 *self.part.weights, vector, nbIterPCG, self._thresholdPCG]
 		start = time.process_time()
 		u_interp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
@@ -307,23 +307,22 @@ class mechaproblem(problem):
 			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			tensorArgs[0, :] = self.material.lame_lambda
 			tensorArgs[1, :] = self.material.lame_mu
-		inputs = [*self.part.nbqp, *self.part.indices, 
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, 
 	    			*self.part.basis, *self.part.weights, 
 					self.part.invJ, self.part.detJ, tensorArgs]
-		result = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
+		if   self.part.dim == 2:  result = plasticitysolver.mf_wq_get_su_2d(*inputs, displacement)
+		elif self.part.dim == 3:  result = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
 		return result
 	
 	def eval_volForce(self, fun):
-		if self.part.dim != 3: raise Warning('Method only for 3D geometries')
 		coefs = self.material.eval_volForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
-		inputs = [coefs, *self.part.nbqp, *self.part.indices, *self.part.weights]
-		vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+		if   self.part.dim == 2: vector = plasticitysolver.wq_get_forcevol_2d(*inputs)
+		elif self.part.dim == 3: vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
 		return vector
 	
 	def eval_surfForce(self, fun, nbFacePosition):
 		" Returns force vector at the surface. In 3D: surface integrals. "
-
-		if self.part.dim != 3: raise Warning('Method only for 3D geometries')
 
 		def get_faceInfo(nb):
 			direction = int(np.floor(nb/2))
@@ -335,6 +334,7 @@ class mechaproblem(problem):
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
+		if direction>=2*self.part.dim: raise Warning('Not possible')
 
 		# Get control points and quadrature points list
 		if side == 0: 
@@ -364,7 +364,8 @@ class mechaproblem(problem):
 			nnz.append(self.part.nbqp[_]); weights.append(self.part.weights[_])
 			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
 		
-		tmp = plasticitysolver.wq_get_forcesurf_3d(coefs, JJ, *nnz, *indices, *weights)
+		if   self.part.dim == 2: tmp = plasticitysolver.wq_get_forcesurf_2d(coefs, JJ, *nnz, *indices, *weights)
+		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(coefs, JJ, *nnz, *indices, *weights)
 		vector[:, CPList] = tmp
 
 		return vector
@@ -384,10 +385,11 @@ class mechaproblem(problem):
 			tensorArgs[1, :] = self.material.lame_mu
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG
-		inputs = [*self.part.nbqp, *self.part.indices, *self.part.basis, 
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, tensorArgs, nbIterPCG, self._thresholdPCG, methodPCG]
-		displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
+		if   self.part.dim == 2: displacement, residue = plasticitysolver.mf_wq_elasticity_2d(*inputs)
+		elif self.part.dim == 3: displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
 		return displacement, residue
 
@@ -395,18 +397,19 @@ class mechaproblem(problem):
 	def compute_strain(self, displacement, isVoigt=False):
 		" Compute strain field from displacement field "
 
-		if self.part.dim != 3: raise Warning('Not yet')
-		inputs = [*self.part.nbqp, *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
-		eps    = plasticitysolver.interpolate_strain_3d(*inputs)
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
+		eps    = plasticitysolver.interpolate_strain_2d(*inputs)
+		if   self.part.dim == 2: eps = plasticitysolver.interpolate_strain_2d(*inputs)
+		elif self.part.dim == 3: eps = plasticitysolver.interpolate_strain_3d(*inputs)
 
 		return eps
 	
 	def compute_intForce(self, stress):
 		"Compute internal force using sigma coefficients "
 
-		if self.part.dim != 3: raise Warning('Not yet')
-		inputs = [stress, *self.part.nbqp, *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ]
-		Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
+		inputs = [stress, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ]
+		if   self.part.dim == 2: Fint = plasticitysolver.wq_get_intforce_2d(*inputs)
+		elif self.part.dim == 3: Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
 
 		return Fint
 	

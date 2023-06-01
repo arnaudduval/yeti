@@ -17,9 +17,8 @@ class boundaryCondition():
 	
 	def __activate_DirichletMechanical(self):
 		nbctrlpts_total = np.product(self._nbctrlpts)
-		dimen = np.size(self._nbctrlpts)
 		if self.mchDirichletBound is None:
-			self.mchDirichletBound = np.zeros((nbctrlpts_total, dimen))
+			self.mchDirichletBound = np.zeros((nbctrlpts_total, self._dim))
 		return
 	
 	def __get_boundaryNodes(self, table, nbctrlpts, dimen=3): 

@@ -22,7 +22,7 @@ class part():
 		for i in range(self.dim): self.nbctrlpts[i] = len(self.knotvector[i]) - self.degree[i] - 1
 		self.nbctrlpts_total = np.product(self.nbctrlpts)
 
-		self.nbqp, self.nbqp_total = [], None
+		self.nbqp, self.nbqp_total = np.ones(3, dtype=int), None
 		self.basis, self.weights, self.indices = [], [], []
 		self.__setQuadratureRules(quadArgs)
 
@@ -80,10 +80,10 @@ class part():
 			for i in range(self.dim):
 				quadRuleByDirection.append(WeightedQuadrature(self.degree[i], self.knotvector[i], quadArgs=quadArgs))
 		
-		for quadRule in quadRuleByDirection:
+		for i, quadRule in enumerate(quadRuleByDirection):
 			quadPtsPos, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()
 			nbqp = len(quadPtsPos); indi, indj = dersIndices
-			self.nbqp.append(nbqp); self.indices.append(indi); self.indices.append(indj)
+			self.nbqp[i] = nbqp; self.indices.append(indi); self.indices.append(indj)
 			self.basis.append(dersBasis); self.weights.append(dersWeights)
 		stop = time.process_time()
 		print('\tBasis and weights in : %.5f s' %(stop-start))
@@ -115,7 +115,7 @@ class part():
 
 		print('Evaluating jacobien and physical position')
 		start = time.process_time()
-		inputs = [*self.nbqp, *self.indices, *self.basis, self.ctrlpts]
+		inputs = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
 			self.Jqp, self.detJ, self.invJ = geophy.eval_jacobien_2d(*inputs)
 			self.qpPhy = geophy.interpolate_fieldphy_2d(*inputs)
