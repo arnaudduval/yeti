@@ -1,6 +1,6 @@
 """
-.. Test of elasticity 3D
-.. We test how elasticity module works
+.. Test of plasticity 3D
+.. We test how plasticity module works
 .. SI (Steel) : 
 ..      - Stress : Pa (210e9)
 ..      - Length : m
