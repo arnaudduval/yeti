@@ -414,7 +414,6 @@ class mechaproblem(problem):
 	
 	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None, thresholdNR=None): 
 		if thresholdNR is None: thresholdNR = self._thresholdNR
-		if self.part.dim != 3: raise Warning('Only for 3D')
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
 		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		if methodPCG is None: methodPCG = self._methodPCG

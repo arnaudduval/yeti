@@ -52,7 +52,7 @@ class part():
 	def __read_dimension(self, modelIGA:IGAparametrization):
 		" Reads dimensions from model "
 		dim = modelIGA._dim[0]
-		if dim != 3: print("WARNING: Some functions have not been well-implemented for 2D geometries")
+		if dim != 3: print("WARNING: Some functions may have not been well-implemented for 2D geometries")
 		return dim
 
 	def __read_knotvector(self, modelIGA:IGAparametrization):

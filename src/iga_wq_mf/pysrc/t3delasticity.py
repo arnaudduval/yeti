@@ -51,8 +51,7 @@ boundary.add_DirichletDisplacement(table=table)
 # Elasticity problem
 problem = mechaproblem(material, model, boundary)
 
-# Set Neumann boundaries
-def forceFun(P:list):
+def forceSurfFun(P:list):
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
@@ -61,7 +60,7 @@ def forceFun(P:list):
 	for i in range(3): prop[i, :] = ref[i] 
 	return prop
 
-Fsurf = problem.eval_surfForce(forceFun, nbFacePosition=1)
+Fsurf = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
 
 # -------------
 # ELASTICITY

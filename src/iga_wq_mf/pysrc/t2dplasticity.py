@@ -1,6 +1,6 @@
 """
-.. Test of plasticity 3D
-.. We test how plasticity module works
+.. Test of elastoplasticity 2D
+.. We test how elasticity module works
 .. SI (Steel) : 
 ..      - Stress : Pa (210e9)
 ..      - Length : m
@@ -20,12 +20,12 @@ from lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t3delastoplasticity/'
+folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 2, 3
-name = 'CB'
+degree, cuts = 4, 6 
+name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -43,10 +43,9 @@ material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(model.nbctrlpts)
-table = np.zeros((3, 2, 3), dtype=int)
+table = np.zeros((2, 2, 2), dtype=int)
 table[0, 0, 0] = 1
 table[1, 0, 1] = 1
-table[2, 0, 2] = 1
 boundary.add_DirichletDisplacement(table=table)
 
 # Elasticity problem
@@ -55,10 +54,9 @@ problem = mechaproblem(material, model, boundary)
 def forceSurfFun(P:list):
 	x = P[0, :]
 	y = P[1, :]
-	z = P[2, :]
-	ref  = np.array([1e8, 2e8, 0.0])
-	prop = np.zeros((3, len(x)))
-	for i in range(3): prop[i, :] = ref[i] 
+	ref  = np.array([1.e8, 0.0])
+	prop = np.zeros((2, len(x)))
+	for i in range(2): prop[i, :] = ref[i] 
 	return prop
 
 Fsurf = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
