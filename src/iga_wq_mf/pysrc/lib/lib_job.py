@@ -285,7 +285,6 @@ class heatproblem(problem):
 				VVn1[dof] += ddVV
 				TTn1[dof] = TTn10[dof] + theta*dt*VVn1[dof]
 
-			# if i == 1 :self._model.exportResults(u_ctrlpts=TTn1, nbDOF=1)
 			Tinout[:, i] = np.copy(TTn1)
 			VVn0 = np.copy(VVn1)
 
@@ -431,6 +430,7 @@ class mechaproblem(problem):
 		stress = np.zeros((ddl, nbqp_total))
 		Cep   = np.zeros((ddl+3, nbqp_total))
 		disp  = np.zeros(np.shape(Fext))
+		resPCG_list = []
 
 		for i in range(1, np.shape(Fext)[2]):
 
@@ -458,12 +458,16 @@ class mechaproblem(problem):
 				print('NR error: %.5e' %resNL)
 				if resNL <= thresholdNR: break
 				
-				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
-				ddisp  += vtmp 
+				resPCG = np.array([i, j+1])
+				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
+				resPCG = np.append(resPCG, resPCGt)
+				resPCG_list.append(resPCG)
+
+				ddisp  += vtmp
 		
 			disp[:, :, i] = d_n1			
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
-		return disp
+		return disp, resPCG_list
 
