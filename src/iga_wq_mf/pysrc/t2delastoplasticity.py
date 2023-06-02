@@ -25,7 +25,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 4, 6 
-name = 'SQ'
+name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -42,16 +42,15 @@ material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(model.nbctrlpts)
-table = np.zeros((2, 2, 2), dtype=int)
-table[0, 0, 0] = 1
-table[1, 0, 1] = 1
+table = np.ones((2, 2, 2), dtype=int)
+# table[0, 0, 0] = 1
+# table[1, 0, 1] = 1
 boundary.add_DirichletDisplacement(table=table)
 
 # Elasticity problem
 problem = mechaproblem(material, model, boundary)
 
-# Set Neumann boundaries
-def forceFun(P:list):
+def forceSurfFun(P:list):
 	x = P[0, :]
 	y = P[1, :]
 	ref  = np.array([1.e8, 0.0])
@@ -59,7 +58,16 @@ def forceFun(P:list):
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
 
-Fsurf = problem.eval_surfForce(forceFun, nbFacePosition=1)
+def forceVolFun(P:list):
+	x = P[0, :]
+	y = P[1, :]
+	ref  = np.array([1.e5, 0.0])
+	prop = np.zeros((2, len(x)))
+	for i in range(2): prop[i, :] = ref[i] 
+	return prop
+
+# Fsurf = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
+Fvol = problem.eval_volForce(forceVolFun)
 
 # -------------
 # ELASTICITY
@@ -68,7 +76,7 @@ fig, ax = plt.subplots()
 
 # Solve in fortran 
 for methodPCG, label in zip(['WP', 'C', 'JMC'], ['w.o. preconditioner', 'Fast diag. (FD)', 'This work']):
-    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fsurf, methodPCG=methodPCG)
+    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fvol, methodPCG=methodPCG)
     resPCG = resPCG[resPCG>0]
     ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
 

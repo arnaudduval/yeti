@@ -411,7 +411,7 @@ subroutine fd_elasticity_2d(nr_total, nr_u, nr_v, U_u, U_v, eigen_diag, array_in
     allocate(solv)
     call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
     solv%isdiagblocks = .true.
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
+    call applyfastdiag(solv, dimen, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
     
 end subroutine fd_elasticity_2d
 
@@ -440,7 +440,7 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     allocate(solv)
     call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
     solv%isdiagblocks = .true.
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+    call applyfastdiag(solv, dimen, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     
 end subroutine fd_elasticity_3d
 
@@ -684,7 +684,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, U_u, U_v, ndu, ndv, dod_u, dod_v, &
+                        data_W_u, data_W_v, ddl, U_u, U_v, ndu, ndv, dod_u, dod_v, &
                         nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                    
@@ -825,7 +825,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         call setup_preconditionerdiag(solv, ddl, nr_total, Deigen)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, ddl, &
                         U_u, U_v, U_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                   
