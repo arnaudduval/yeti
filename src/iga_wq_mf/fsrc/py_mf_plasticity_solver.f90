@@ -445,7 +445,7 @@ end subroutine fd_elasticity_3d
 subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
-                            invJ, detJ, kwargs, array_in, array_out)
+                            invJ, detJ, CepArgs, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -463,8 +463,8 @@ subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    double precision :: invJ, detJ, kwargs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total)
+    double precision :: invJ, detJ, CepArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -489,7 +489,7 @@ subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, kwargs)
+    call setup_jacobiennormal(mat, CepArgs)
     call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                     data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
@@ -500,7 +500,7 @@ end subroutine mf_wq_get_su_2d
 subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            invJ, detJ, kwargs, array_in, array_out)
+                            invJ, detJ, CepArgs, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -520,8 +520,8 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision :: invJ, detJ, kwargs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total)
+    double precision :: invJ, detJ, CepArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -547,7 +547,7 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, kwargs)
+    call setup_jacobiennormal(mat, CepArgs)
     call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -558,7 +558,7 @@ end subroutine mf_wq_get_su_3d
 subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, b, &
-                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, kwargs, &
+                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, CepArgs, &
                             nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -585,8 +585,8 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     integer, intent(in) :: table, dod_u, dod_v
     dimension :: table(dimen, 2, dimen), dod_u(ndu), dod_v(ndv)
 
-    double precision, intent(in) :: invJ, detJ, properties(3), kwargs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, properties(3), CepArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -621,7 +621,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, kwargs)
+    call setup_jacobiennormal(mat, CepArgs)
     allocate(solv)
 
     if (methodPCG.eq.'WP') then 
@@ -631,7 +631,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
     else
 
-        if (methodPCG.eq.'JMC') call compute_mean_2d(mat, nc_u, nc_v)
+        if (methodPCG.eq.'JMC') call compute_mean_diagblocks(mat, dimen, (/nc_u, nc_v/))
         call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                     data_B_u, data_B_v, data_W_u, data_W_v, table, &
@@ -651,7 +651,7 @@ end subroutine mf_wq_elasticity_2d
 subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, kwargs, &
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, CepArgs, &
                             nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -680,8 +680,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     integer, intent(in) :: table, dod_u, dod_v, dod_w
     dimension :: table(dimen, 2, dimen), dod_u(ndu), dod_v(ndv), dod_w(ndw)
 
-    double precision, intent(in) :: invJ, detJ, properties(3), kwargs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), kwargs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, properties(3), CepArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -718,7 +718,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, kwargs)
+    call setup_jacobiennormal(mat, CepArgs)
     allocate(solv)
 
     if (methodPCG.eq.'WP') then 
@@ -729,7 +729,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                 data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
     else
 
-        if (methodPCG.eq.'JMC') call compute_mean_3d(mat, nc_u, nc_v, nc_w)
+        if (methodPCG.eq.'JMC') call compute_mean_diagblocks(mat, dimen, (/nc_u, nc_v, nc_w/))
 
         call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

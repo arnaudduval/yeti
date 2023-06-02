@@ -130,10 +130,10 @@ module matrixfreeplasticity
     type :: mecamat
     
         ! Inputs 
-        integer :: dimen=3, nvoigt=6
+        integer :: dimen = 3, nvoigt = 6
         double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJ=>null()
-        double precision, dimension(:, :), pointer :: kwargs=>null(), nn=>null()
+        double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
         double precision, dimension(:, :), allocatable :: mean
@@ -192,7 +192,7 @@ contains
 
     end subroutine setup_geometry
 
-    subroutine setup_jacobiennormal(mat, kwargs)
+    subroutine setup_jacobiennormal(mat, CepArgs)
         !! Points to data of the mechanical behavior 
 
         implicit none
@@ -200,22 +200,22 @@ contains
         ! -------------------
         double precision, parameter :: threshold = 1.d-12
         type(mecamat), pointer :: mat
-        double precision, target, intent(in) :: kwargs
-        dimension :: kwargs(mat%nvoigt+3, mat%ncols_sp)
+        double precision, target, intent(in) :: CepArgs
+        dimension :: CepArgs(mat%nvoigt+3, mat%ncols_sp)
 
         ! Local data
         ! ----------
-        double precision :: NN(mat%dimen, mat%dimen)
+        double precision :: TNN(mat%dimen, mat%dimen)
         integer :: i
 
-        mat%kwargs => kwargs(:3, :)
-        mat%nn     => kwargs(4:, :)
+        mat%CepArgs => CepArgs(:3, :)
+        mat%NN      => CepArgs(4:, :)
         if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJnn   = 0.d0
-        if (any(abs(mat%nn).gt.threshold)) then
+        if (any(abs(mat%NN).gt.threshold)) then
             do i = 1,  mat%ncols_sp
-                call array2symtensor(mat%dimen, mat%nvoigt, mat%nn(:, i), NN)
-                mat%JJnn(:,:,i) = matmul(mat%invJ(:,:,i), NN)
+                call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), TNN)
+                mat%JJnn(:,:,i) = matmul(mat%invJ(:,:,i), TNN)
             end do
         end if
     end subroutine setup_jacobiennormal
@@ -239,125 +239,104 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_mean_2d(mat, nc_u, nc_v)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
-
+    subroutine compute_mean_ijblock(dimen, mat, samplesize, sample, mean)
         implicit none 
         ! Input / output data
         ! -------------------
-        integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2, samplesize = 3**dimen
         type(mecamat), pointer :: mat
-        integer, intent(in) :: nc_u, nc_v
+        integer, intent(in) :: dimen, samplesize, sample
+        dimension :: sample(samplesize)
+
+        double precision, intent(out) :: mean(dimen)
 
         ! Local data
         ! ----------
-        integer :: i, j, k, l, genPos, pos
-        integer :: ind_u, ind_v, sample
-        dimension :: ind_u(3), ind_v(3), sample(samplesize)
-        double precision :: DD, coefs, nn, Tnn, mean
-        dimension ::    DD(dimen, samplesize), coefs(dimen, dimen, samplesize), nn(nvoigt), &
-                        Tnn(dimen, dimen, samplesize), mean(dimen)
-        
-        if (nc_u*nc_v.ne.mat%ncols_sp) stop 'Wrong dimensions'
-        pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-        pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-    
-        ! Select a set of coefficients
-        l = 1
-        do j = 1, 3
-            do i = 1, 3
-                genPos = ind_u(i) + (ind_v(j) - 1)*nc_u
-                sample(l) = genPos
-                l = l + 1
-            end do
-        end do
+        integer :: i, j, k, l, m, n, c, genpos
+        double precision :: DD, coefs, NN, TNN
+        dimension :: DD(dimen, dimen), coefs(dimen, dimen, samplesize), NN(int(dimen*(dimen+1)/2)), TNN(dimen, dimen)
 
-        do i = 1, samplesize
-            nn = mat%nn(sample(i), :)
-            call array2symtensor(dimen, nvoigt, nn, Tnn(:, :, i))
-        end do
+        do c = 1, samplesize
+            genpos = sample(c)
+            NN = mat%NN(genpos, :)
+            call array2symtensor(dimen, size(NN), NN, TNN)
 
-        do i = 1, dimen
             DD = 0.d0
-            do j = 1, dimen
-                DD(j, :) = mat%kwargs(2, sample) + mat%kwargs(3, sample)*(Tnn(i, j, :)**2)
-            end do
-            DD(i, :) = DD(i, :) + mat%kwargs(1, sample) + mat%kwargs(2, sample) 
-            
-            do k = 1, samplesize
-                l = sample(k)
-                call gemm_AWB(1, dimen, dimen, mat%invJ(:, :, l), dimen, dimen, &
-                            mat%invJ(:, :, l), DD(:, k), dimen, dimen, coefs(:, :, k))
-            end do
-
-            call trapezoidal_rule_2d(3, 3, coefs(1, 1, :), mean(1))
-            call trapezoidal_rule_2d(3, 3, coefs(2, 2, :), mean(2))
-            mat%mean(i, :) = mean
-        end do
-
-    end subroutine compute_mean_2d
-
-    subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2, samplesize = 3**dimen
-        type(mecamat), pointer :: mat
-        integer, intent(in) :: nc_u, nc_v, nc_w
-
-        ! Local data
-        ! ----------
-        integer :: i, j, k, l, genPos, pos
-        integer :: ind_u, ind_v, ind_w, sample
-        dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
-        double precision :: DD, coefs, nn, Tnn, mean
-        dimension ::    DD(dimen, samplesize), coefs(dimen, dimen, samplesize), nn(nvoigt), &
-                        Tnn(dimen, dimen, samplesize), mean(dimen)
-        
-        if (nc_u*nc_v*nc_w.ne.mat%ncols_sp) stop 'Wrong dimensions'
-        pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-        pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-        pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
-    
-        ! Select a set of coefficients
-        l = 1
-        do k = 1, 3
-            do j = 1, 3
-                do i = 1, 3
-                    genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
-                    sample(l) = genPos
-                    l = l + 1
+            DD(i, j) = DD(i, j) + mat%CepArgs(1, genpos)
+            DD(j, i) = DD(j, i) + mat%CepArgs(2, genpos)
+            if (i.eq.j) then
+                do k = 1, dimen
+                    DD(k, k) = DD(k, k) + mat%CepArgs(2, genpos)
+                end do
+            end if
+            do l = 1, dimen
+                do m = 1, dimen
+                    DD(l, m) = DD(l, m) + mat%CepArgs(3, genpos)*TNN(i, l)*TNN(j, m)
                 end do
             end do
+            coefs(:, :, c) = matmul(mat%invJ(:, :, genpos), matmul(DD, transpose(mat%invJ(:, :, genpos))))
         end do
 
-        do i = 1, samplesize
-            nn = mat%nn(sample(i), :)
-            call array2symtensor(dimen, nvoigt, nn, Tnn(:, :, i))
+        do n = 1, dimen
+            call trapezoidal_rule_2d(3, 3, coefs(n, n, :), mean(n))
+        end do   
+
+    end subroutine compute_mean_ijblock
+
+    subroutine compute_mean_diagblocks(mat, dimen, nclist)
+        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: dimen, nclist
+        dimension :: nclist(dimen)
+
+        ! Local data
+        ! ----------
+        integer :: i, j, k, c, genpos, pos, ind(3)
+        integer, dimension(:), allocatable :: sample
+        integer, dimension(:, :), allocatable :: indlist
+        double precision :: mean(dimen)
+        
+        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
+        allocate(indlist(dimen, 3), sample(3**dimen))
+        do i = 1, dimen 
+            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
+            indlist(i, :) = ind
         end do
+    
+        ! Select a set of coefficients
+        if (dimen.eq.3) then
+            c = 1
+            do k = 1, 3
+                do j = 1, 3
+                    do i = 1, 3
+                        genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+                        sample(c) = genpos
+                        c = c + 1
+                    end do
+                end do
+            end do
+        else if (dimen.eq.2) then
+            c = 1
+            do j = 1, 3
+                do i = 1, 3
+                    genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+                    sample(c) = genpos
+                    c = c + 1
+                end do
+            end do
+        else
+            stop 'Not possible, try another function'
+        end if
 
         do i = 1, dimen
-            DD = 0.d0
-            do j = 1, dimen
-                DD(j, :) = mat%kwargs(2, sample) + mat%kwargs(3, sample)*(Tnn(i, j, :)**2)
-            end do
-            DD(i, :) = DD(i, :) + mat%kwargs(1, sample) + mat%kwargs(2, sample) 
-            
-            do k = 1, samplesize
-                l = sample(k)
-                call gemm_AWB(1, dimen, dimen, mat%invJ(:, :, l), dimen, dimen, &
-                            mat%invJ(:, :, l), DD(:, k), dimen, dimen, coefs(:, :, k))  
-            end do
-
-            call trapezoidal_rule_3d(3, 3, 3, coefs(1, 1, :), mean(1))
-            call trapezoidal_rule_3d(3, 3, 3, coefs(2, 2, :), mean(2))
-            call trapezoidal_rule_3d(3, 3, 3, coefs(3, 3, :), mean(3))
+            call compute_mean_ijblock(dimen, mat, size(sample), sample, mean)
             mat%mean(i, :) = mean
         end do
 
-    end subroutine compute_mean_3d
+    end subroutine compute_mean_diagblocks
 
     subroutine mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -412,7 +391,7 @@ contains
                         array_in(j, :), t1) 
 
                 do i = 1, 3
-                    kt1(i, :) = mat%kwargs(i, :)*t1*mat%detJ
+                    kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
@@ -496,7 +475,7 @@ contains
                         array_in(j, :), t1) 
 
                 do i = 1, 3
-                    kt1(i, :) = mat%kwargs(i, :)*t1*mat%detJ
+                    kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
