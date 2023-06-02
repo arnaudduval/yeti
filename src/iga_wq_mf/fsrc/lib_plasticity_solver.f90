@@ -69,7 +69,8 @@ module solverplasticity3
     use matrixfreeplasticity
     type cgsolver
         integer :: dimen = 3
-        double precision, dimension(:,:), pointer :: diag=>null()
+        double precision, dimension(:, :), pointer :: diag=>null()
+        logical :: isdiagblocks = .true.
     end type cgsolver
 
 contains
@@ -110,22 +111,29 @@ contains
 
     end subroutine matrixfree_spMdV
 
-    subroutine setup_preconditionerdiag(solv, nr, diag)
+    subroutine setup_preconditionerdiag(solv, nm, nr, diag)
 
         use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr
+        integer, intent(in) :: nr, nm
         double precision, target, intent(in) :: diag
-        dimension :: diag(solv%dimen, nr)
+        dimension :: diag(nm, nr)
 
+        if (nm.eq.solv%dimen) then
+            solv%isdiagblocks = .true.
+        else if (nm.eq.solv%dimen**2) then
+            solv%isdiagblocks = .false.
+        else 
+            stop 'Not possible'
+        end if
         solv%diag => diag
         
     end subroutine setup_preconditionerdiag
 
-    subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+    subroutine applyfastdiag1(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
         !! by G. Sanaglli and M. Tani
@@ -149,6 +157,7 @@ contains
         double precision :: array_temp
         dimension :: array_temp(solv%dimen, nr_total)
         
+        if (.not.solv%isdiagblocks) stop 'Not possible'
         dimen = solv%dimen
 
         ! Compute (Uw x Uv x Uu)'.array_in
@@ -176,7 +185,7 @@ contains
                             array_temp(i, :), array_out(i, :))
         end do
 
-    end subroutine applyfastdiag
+    end subroutine applyfastdiag1
 
     subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -319,7 +328,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde) 
+            call applyfastdiag1(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, p, ptilde) 
             call reset_dirichletbound3(nr_total, ptilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -330,7 +339,7 @@ contains
             alpha = rsold/prod
             s = r - alpha*Aptilde
             
-            call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
+            call applyfastdiag1(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, s, stilde)
             call reset_dirichletbound3(nr_total, stilde, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -362,7 +371,8 @@ module solverplasticity2
     use matrixfreeplasticity
     type cgsolver
         integer :: dimen = 2
-        double precision, dimension(:,:), pointer :: diag=>null()
+        double precision, dimension(:, :), pointer :: diag=>null()
+        logical :: isdiagblocks = .true.
     end type cgsolver
 
 contains
@@ -403,22 +413,29 @@ contains
 
     end subroutine matrixfree_spMdV
 
-    subroutine setup_preconditionerdiag(solv, nr, diag)
+    subroutine setup_preconditionerdiag(solv, nm, nr, diag)
 
         use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr
+        integer, intent(in) :: nr, nm
         double precision, target, intent(in) :: diag
-        dimension :: diag(solv%dimen, nr)
+        dimension :: diag(nm, nr)
 
+        if (nm.eq.solv%dimen) then
+            solv%isdiagblocks = .true.
+        else if (nm.eq.solv%dimen**2) then
+            solv%isdiagblocks = .false.
+        else 
+            stop 'Not possible'
+        end if
         solv%diag => diag
         
     end subroutine setup_preconditionerdiag
 
-    subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
+    subroutine applyfastdiag1(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
         !! by G. Sanaglli and M. Tani
@@ -466,7 +483,7 @@ contains
                             array_temp(i, :), array_out(i, :))
         end do
 
-    end subroutine applyfastdiag
+    end subroutine applyfastdiag1
 
     subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -609,7 +626,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, p, ptilde)
+            call applyfastdiag1(solv, nr_total, nr_u, nr_v, U_u, U_v, p, ptilde)
             call reset_dirichletbound2(nr_total, ptilde, ndu, ndv, dod_u, dod_v) 
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -620,7 +637,7 @@ contains
             alpha = rsold/prod
             s = r - alpha*Aptilde
             
-            call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, s, stilde)
+            call applyfastdiag1(solv, nr_total, nr_u, nr_v, U_u, U_v, s, stilde)
             call reset_dirichletbound2(nr_total, stilde, ndu, ndv, dod_u, dod_v) 
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &

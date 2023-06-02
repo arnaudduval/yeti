@@ -1,5 +1,5 @@
 subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, table, mean, U_u, U_v, Deigen)
+                                data_B_u, data_B_v, data_W_u, data_W_v, table, U_u, U_v, D_u, D_v)
 
     implicit none 
     ! Input / output data
@@ -15,18 +15,15 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
 
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
-    double precision, intent(in) :: mean
-    dimension :: mean(dimen, dimen)
 
-    double precision, intent(out) :: U_u, U_v, Deigen
-    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), Deigen(dimen, nr_u*nr_v)
+    double precision, intent(out) :: U_u, U_v
+    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen)
+    double precision, intent(out) :: D_u, D_v
+    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen)
 
     ! Local data
     ! -----------
     integer :: i
-    double precision, dimension(:), allocatable :: I_u, I_v
-    double precision :: D_u, D_v
-    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen)
     double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v, &
                                                     Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
 
@@ -47,19 +44,12 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
     deallocate(Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v)
 
-    allocate(I_u(nr_u), I_v(nr_v))
-    I_u = 1.d0; I_v = 1.d0
-    do i = 1, dimen
-        call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, i), D_v(:, i), mean(i, :), Deigen(i, :))
-    end do
-    deallocate(I_u, I_v)
-
 end subroutine eigendecomp_plasticity_2d
 
 subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
-                                mean, U_u, U_v, U_w, Deigen)
+                                U_u, U_v, U_w, D_u, D_v, D_w)
 
     implicit none 
     ! Input / output data
@@ -77,18 +67,15 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
-    double precision, intent(in) :: mean
-    dimension :: mean(dimen, dimen)
 
-    double precision, intent(out) :: U_u, U_v, U_w, Deigen
-    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), Deigen(dimen, nr_u*nr_v*nr_w)
+    double precision, intent(out) :: U_u, U_v, U_w
+    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen)
+    double precision, intent(out) :: D_u, D_v, D_w
+    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen)
 
     ! Local data
     ! -----------
     integer :: i
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w
-    double precision :: D_u, D_v, D_w
-    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen)
     double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, &
                                                     Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
 
@@ -115,13 +102,6 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
     deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
 
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    do i = 1, dimen
-        call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), mean(i, :), Deigen(i, :))
-    end do
-    deallocate(I_u, I_v, I_w)
-
 end subroutine eigendecomp_plasticity_3d
 
 module matrixfreeplasticity
@@ -130,13 +110,13 @@ module matrixfreeplasticity
     type :: mecamat
     
         ! Inputs 
-        integer :: dimen = 3, nvoigt = 6
+        integer :: dimen, nvoigt
         double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJ=>null()
         double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
-        double precision, dimension(:, :), allocatable :: mean
+        double precision, dimension(:, :, :), allocatable :: mean
         
         ! Outputs
         double precision :: lambda, mu, bulk
@@ -169,7 +149,7 @@ contains
         mat%lambda  = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
         mat%mu      = elasticmodulus/(2*(1+poissonratio))
         mat%bulk    = mat%lambda + 2.d0/3.d0*mat%mu
-        allocate(mat%mean(mat%dimen, mat%dimen))
+        allocate(mat%mean(mat%dimen, mat%dimen, mat%dimen))
         mat%mean    = 1.d0
 
     end subroutine initialize_mecamat
@@ -211,11 +191,11 @@ contains
         mat%CepArgs => CepArgs(:3, :)
         mat%NN      => CepArgs(4:, :)
         if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
-        mat%JJnn   = 0.d0
+        mat%JJnn = 0.d0
         if (any(abs(mat%NN).gt.threshold)) then
             do i = 1,  mat%ncols_sp
                 call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), TNN)
-                mat%JJnn(:,:,i) = matmul(mat%invJ(:,:,i), TNN)
+                mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), TNN)
             end do
         end if
     end subroutine setup_jacobiennormal
@@ -234,26 +214,26 @@ contains
         if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJjj = 0.d0
         do i = 1, mat%ncols_sp
-            mat%JJjj(:,:,i) = matmul(mat%invJ(:,:,i), transpose(mat%invJ(:,:,i)))
+            mat%JJjj(:, :, i) = matmul(mat%invJ(:, :, i), transpose(mat%invJ(:, :, i)))
         end do
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_mean_ijblock(dimen, mat, samplesize, sample, mean)
+    subroutine compute_mean_ijblock(i, j, dimen, nvoigt, mat, samplesize, sample, mean)
         implicit none 
         ! Input / output data
         ! -------------------
         type(mecamat), pointer :: mat
-        integer, intent(in) :: dimen, samplesize, sample
+        integer, intent(in) :: i, j, dimen, nvoigt, samplesize, sample
         dimension :: sample(samplesize)
 
         double precision, intent(out) :: mean(dimen)
 
         ! Local data
         ! ----------
-        integer :: i, j, k, l, m, n, c, genpos
+        integer :: k, l, m, n, c, genpos
         double precision :: DD, coefs, NN, TNN
-        dimension :: DD(dimen, dimen), coefs(dimen, dimen, samplesize), NN(int(dimen*(dimen+1)/2)), TNN(dimen, dimen)
+        dimension :: DD(dimen, dimen), coefs(dimen, dimen, samplesize), NN(nvoigt), TNN(dimen, dimen)
 
         do c = 1, samplesize
             genpos = sample(c)
@@ -282,14 +262,14 @@ contains
 
     end subroutine compute_mean_ijblock
 
-    subroutine compute_mean_diagblocks(mat, dimen, nclist)
+    subroutine compute_mean_diagblocks(mat, dimen, nvoigt, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
         ! Input / output data
         ! -------------------
         type(mecamat), pointer :: mat
-        integer, intent(in) :: dimen, nclist
+        integer, intent(in) :: dimen, nvoigt, nclist
         dimension :: nclist(dimen)
 
         ! Local data
@@ -307,8 +287,16 @@ contains
         end do
     
         ! Select a set of coefficients
-        if (dimen.eq.3) then
-            c = 1
+        c = 1
+        if (dimen.eq.2) then
+            do j = 1, 3
+                do i = 1, 3
+                    genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+                    sample(c) = genpos
+                    c = c + 1
+                end do
+            end do
+        else if (dimen.eq.3) then
             do k = 1, 3
                 do j = 1, 3
                     do i = 1, 3
@@ -318,8 +306,44 @@ contains
                     end do
                 end do
             end do
-        else if (dimen.eq.2) then
-            c = 1
+        else
+            stop 'Not possible, try another function'
+        end if
+
+        do i = 1, dimen
+            call compute_mean_ijblock(i, i, dimen, nvoigt, mat, size(sample), sample, mean)
+            mat%mean(i, i, :) = mean
+        end do
+
+    end subroutine compute_mean_diagblocks
+
+    subroutine compute_mean_allblocks(mat, dimen, nvoigt, nclist)
+        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: dimen, nvoigt, nclist
+        dimension :: nclist(dimen)
+
+        ! Local data
+        ! ----------
+        integer :: i, j, k, c, genpos, pos, ind(3)
+        integer, dimension(:), allocatable :: sample
+        integer, dimension(:, :), allocatable :: indlist
+        double precision :: mean(dimen)
+        
+        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
+        allocate(indlist(dimen, 3), sample(3**dimen))
+        do i = 1, dimen 
+            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
+            indlist(i, :) = ind
+        end do
+    
+        ! Select a set of coefficients
+        c = 1
+        if (dimen.eq.2) then
             do j = 1, 3
                 do i = 1, 3
                     genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
@@ -327,16 +351,28 @@ contains
                     c = c + 1
                 end do
             end do
+        else if (dimen.eq.3) then
+            do k = 1, 3
+                do j = 1, 3
+                    do i = 1, 3
+                        genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+                        sample(c) = genpos
+                        c = c + 1
+                    end do
+                end do
+            end do
         else
             stop 'Not possible, try another function'
         end if
 
         do i = 1, dimen
-            call compute_mean_ijblock(dimen, mat, size(sample), sample, mean)
-            mat%mean(i, :) = mean
+            do j = 1, dimen
+                call compute_mean_ijblock(i, j, dimen, nvoigt, mat, size(sample), sample, mean)
+                mat%mean(i, j, :) = mean
+            end do
         end do
 
-    end subroutine compute_mean_diagblocks
+    end subroutine compute_mean_allblocks
 
     subroutine mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -374,7 +410,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta!, info
+        integer :: i, j, k, l, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
         dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
@@ -411,7 +447,6 @@ contains
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                 t5, t6)
                         t7 = t7 + t6
-
                     end do
 
                     array_out(i, :) = array_out(i, :) + t7
@@ -457,7 +492,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta!, info
+        integer :: i, j, k, l, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
         dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
@@ -495,7 +530,6 @@ contains
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                 nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t5, t6)
                         t7 = t7 + t6
-
                     end do
 
                     array_out(i, :) = array_out(i, :) + t7
@@ -513,7 +547,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        integer, parameter :: dimen = 3
+        integer, parameter :: dimen = 2
         type(mecamat), pointer :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
         double precision, intent(in) :: stress
