@@ -210,7 +210,7 @@ class mechamat(material):
 			a_n1 = a_n0
 			for i in range(nbIter):
 				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
-				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(1, 2)) 
+				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial) 
 					- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
 				if np.abs(G) <=threshold: break
 				dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)

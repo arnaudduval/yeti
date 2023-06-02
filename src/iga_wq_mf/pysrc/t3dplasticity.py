@@ -37,8 +37,8 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
-			'plasticLaw':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+matArgs  = {'density': 7800, 'elastic_modulus':200e3, 'elastic_limit':506, 'poisson_ratio': 0.3,
+			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
@@ -66,4 +66,4 @@ nbStep = 6; dt = 1/nbStep
 Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-displacement, stress_vm = problem.solvePlasticityProblemPy(Fext=Fext)
+displacement = problem.solvePlasticityProblemPy(Fext=Fext)

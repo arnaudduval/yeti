@@ -456,7 +456,7 @@ class mechaproblem(problem):
 				prod1 = block_dot_product(d, dF, dF)
 				resNL = np.sqrt(prod1)
 				print('NR error: %.5e' %resNL)
-				if resNL <= self._thresholdNR: break
+				if resNL <= thresholdNR: break
 				
 				vtmp, _ = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
 				ddisp  += vtmp 
@@ -465,5 +465,5 @@ class mechaproblem(problem):
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
-		return
+		return disp
 

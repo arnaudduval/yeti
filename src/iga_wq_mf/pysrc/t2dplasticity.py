@@ -24,21 +24,25 @@ folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 6 
+degree, cuts = 3, 5
 name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-quadArgs  = {'quadrule': 'wq', 'type': 1}
+quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
 
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
-			'plasticLaw':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+# matArgs = {'density': 7800, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 500e9, 
+# 			'plasticLaw':{'name': 'linear', 'Hbar':1445, 'theta':1.0}}
+
+matArgs    = {'density': 7800, 'elastic_modulus':1e9, 'poisson_ratio': 0.3, 'elastic_limit':5e6,
+			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
@@ -54,7 +58,7 @@ problem = mechaproblem(material, model, boundary)
 def forceSurfFun(P:list):
 	x = P[0, :]
 	y = P[1, :]
-	ref  = np.array([1.e8, 0.0])
+	ref  = np.array([1.e6, 0.0])
 	prop = np.zeros((2, len(x)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
@@ -64,4 +68,4 @@ nbStep = 6; dt = 1/nbStep
 Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-displacement, stress_vm = problem.solvePlasticityProblemPy(Fext=Fext)
+displacement = problem.solvePlasticityProblemPy(Fext=Fext, thresholdNR=1e-5)

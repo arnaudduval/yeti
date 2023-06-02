@@ -154,7 +154,7 @@ contains
         if (solv%isdiagblocks) then
             call applyfastdiag1(solv, ddl, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         else
-            print*, 'not coded yet'
+            stop 'not coded yet'
         end if  
 
     end subroutine applyfastdiag
