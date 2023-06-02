@@ -43,10 +43,9 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
                                     data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v) 
         end do
     else
-        c = 0
         do i = 1, dimen
             do j = 1, dimen
-                c = c + 1
+                c = j + (i-1)*dimen
                 call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                         data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
                                         data_W_u(:, 4), table(1, :, i) + table(1, :, j), &
@@ -121,10 +120,9 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                     data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
         end do
     else
-        c = 0
         do i = 1, dimen
             do j = 1, dimen
-                c = c + 1
+                c = j + (i-1)*dimen
                 call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
                                         data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
                                         data_W_u(:, 4), table(1, :, i) + table(1, :, j), &

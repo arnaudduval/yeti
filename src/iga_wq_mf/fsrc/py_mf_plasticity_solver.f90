@@ -670,10 +670,10 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                     ddl, U_u, U_v, D_u, D_v)
 
             allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0; c = 0
+            I_u = 1.d0; I_v = 1.d0
             do i = 1, dimen
                 do j = 1, dimen
-                    c = c + 1
+                    c = j + (i-1)*dimen
                     call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, c), D_v(:, c), mat%mean(i, j, :), Deigen(c, :))
                 end do
             end do
@@ -811,10 +811,10 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                                         data_W_u, data_W_v, data_W_w, table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
 
             allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0; I_w = 1.d0; c = 0
+            I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
             do i = 1, dimen
                 do j = 1, dimen
-                    c = c + 1
+                    c = j + (i-1)*dimen
                     call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, c), D_v(:, c), D_w(:, c), &
                                             mat%mean(i, j, :), Deigen(c, :))
                 end do
