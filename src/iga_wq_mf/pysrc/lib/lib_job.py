@@ -398,7 +398,6 @@ class mechaproblem(problem):
 		" Compute strain field from displacement field "
 
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
-		eps    = plasticitysolver.interpolate_strain_2d(*inputs)
 		if   self.part.dim == 2: eps = plasticitysolver.interpolate_strain_2d(*inputs)
 		elif self.part.dim == 3: eps = plasticitysolver.interpolate_strain_3d(*inputs)
 

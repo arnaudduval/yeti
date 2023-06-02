@@ -1,11 +1,11 @@
 subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, table, U_u, U_v, D_u, D_v)
+                                data_B_u, data_B_v, data_W_u, data_W_v, table, ddl, U_u, U_v, D_u, D_v)
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 2
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, ddl
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -17,45 +17,65 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     dimension :: table(dimen, 2, dimen)
 
     double precision, intent(out) :: U_u, U_v
-    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen)
+    dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl)
     double precision, intent(out) :: D_u, D_v
-    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen)
+    dimension :: D_u(nr_u, ddl), D_v(nr_v, ddl)
 
     ! Local data
     ! -----------
-    integer :: i
+    integer :: i, j, c
     double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v, &
                                                     Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
-
+    if (.not.any((/dimen, dimen**2/).eq.ddl)) stop 'Not possible eigen decomposition'
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v)) 
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
-    do i = 1, dimen
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
 
-        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
-    end do
+    if (ddl.eq.dimen) then
+        do i = 1, dimen
+            call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                    data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                    data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
+
+            call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                    data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                    data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v) 
+        end do
+    else
+        c = 0
+        do i = 1, dimen
+            do j = 1, dimen
+                c = c + 1
+                call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                        data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                        data_W_u(:, 4), table(1, :, i) + table(1, :, j), &
+                                        D_u(:, c), U_u(:, :, c), Kdiag_u, Mdiag_u)
+
+                call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                        data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                        data_W_v(:, 4), table(2, :, i) + table(2, :, j), &
+                                        D_v(:, c), U_v(:, :, c), Kdiag_v, Mdiag_v)
+
+            end do
+        end do
+    end if
 
     deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
     deallocate(Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v)
-
+    
 end subroutine eigendecomp_plasticity_2d
 
 subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
-                                U_u, U_v, U_w, D_u, D_v, D_w)
+                                ddl, U_u, U_v, U_w, D_u, D_v, D_w)
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 3
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ddl
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -69,35 +89,59 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     dimension :: table(dimen, 2, dimen)
 
     double precision, intent(out) :: U_u, U_v, U_w
-    dimension :: U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen)
+    dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), U_w(nr_w, nr_w, ddl)
     double precision, intent(out) :: D_u, D_v, D_w
-    dimension :: D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen)
+    dimension :: D_u(nr_u, ddl), D_v(nr_v, ddl), D_w(nr_w, ddl)
 
     ! Local data
     ! -----------
-    integer :: i
+    integer :: i, j, c
     double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w, &
                                                     Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
 
+    if (.not.any((/dimen, dimen**2/).eq.ddl)) stop 'Not possible eigen decomposition'
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
     allocate(Mcoef_u(nc_u), Kcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_v(nc_v), Mcoef_w(nc_w), Kcoef_w(nc_w)) 
     Mcoef_u = 1.d0; Kcoef_u = 1.d0
     Mcoef_v = 1.d0; Kcoef_v = 1.d0
     Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-    do i = 1, dimen
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                                data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
-                                data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
+    if (ddl.eq.dimen) then
+        do i = 1, dimen
+            call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                    data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                    data_W_u(:, 4), table(1, :, i), D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
 
-        call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                                data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
-                                data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
+            call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                    data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                    data_W_v(:, 4), table(2, :, i), D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
 
-        call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                                data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
-                                data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
-    end do
+            call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                                    data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                    data_W_w(:, 4), table(3, :, i), D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
+        end do
+    else
+        c = 0
+        do i = 1, dimen
+            do j = 1, dimen
+                c = c + 1
+                call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                                        data_B_u(:, 1), data_W_u(:, 1), data_B_u(:, 2), &
+                                        data_W_u(:, 4), table(1, :, i) + table(1, :, j), &
+                                        D_u(:, c), U_u(:, :, c), Kdiag_u, Mdiag_u)
+
+                call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                                        data_B_v(:, 1), data_W_v(:, 1), data_B_v(:, 2), &
+                                        data_W_v(:, 4), table(2, :, i) + table(2, :, j), &
+                                        D_v(:, c), U_v(:, :, c), Kdiag_v, Mdiag_v)
+
+                call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
+                                        data_B_w(:, 1), data_W_w(:, 1), data_B_w(:, 2), &
+                                        data_W_w(:, 4), table(3, :, i) + table(3, :, j), &
+                                        D_w(:, c), U_w(:, :, c), Kdiag_w, Mdiag_w) 
+            end do
+        end do
+    end if
 
     deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
     deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
@@ -307,7 +351,7 @@ contains
                 end do
             end do
         else
-            stop 'Not possible, try another function'
+            stop 'Not possible compute mean diagonal blocks'
         end if
 
         do i = 1, dimen
@@ -362,7 +406,7 @@ contains
                 end do
             end do
         else
-            stop 'Not possible, try another function'
+            stop 'Not possible compute mean all blocks'
         end if
 
         do i = 1, dimen

@@ -1081,11 +1081,11 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     deallocate(BB1, WW1)
 
     ! Modify K to avoid singular matrix (using Robin boundary condition)
-    if (robin_condition(1).eq.1) then 
+    if (robin_condition(1).ne.0) then 
         KK(1, 1) = penalty*KK(1, 1)
     end if
 
-    if (robin_condition(2).eq.1) then 
+    if (robin_condition(2).ne.0) then 
         KK(nr, nr) = penalty*KK(nr, nr)
     end if
 
