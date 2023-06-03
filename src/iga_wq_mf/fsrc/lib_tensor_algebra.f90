@@ -1110,7 +1110,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
     call compute_geneigs(nr, KK, MM, eigenvalues, eigenvectors)
-    if (any(eigenvalues.lt.0.d0)) print*, 'Probable instabilities'
+    ! if (any(eigenvalues.lt.0.d0)) print*, 'Probable instabilities'
     deallocate(KK, MM)
 
 end subroutine eigen_decomposition

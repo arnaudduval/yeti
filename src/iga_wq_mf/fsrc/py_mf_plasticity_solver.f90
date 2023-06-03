@@ -607,9 +607,11 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     double precision, dimension(:, :, :), allocatable :: U_u, U_v
     double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v
 
-    integer :: i, j, c, ddl
+    ! integer :: i, j, c, ddl
+    integer :: i, nc, ddl
     double precision :: I_u, I_v
     dimension :: I_u(nr_u), I_v(nr_v)
+    double precision, dimension(:, :), allocatable :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, MM, KK
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -637,7 +639,11 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                 data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        allocate(Mcoef_u(nc_u, dimen), Mcoef_v(nc_v, dimen), Kcoef_u(nc_u, dimen), Kcoef_v(nc_v, dimen))
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
 
         if ((isdiagblocks).and.(methodPCG.eq.'JMC')) then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
@@ -645,15 +651,24 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
             call compute_mean_allblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
         end if
 
-        if (isdiagblocks.or.(methodPCG.eq.'C')) then
+        if (methodPCG.eq.'TDC') then 
+            nc = maxval((/nc_u, nc_v/))
+            allocate(MM(dimen, nc), KK(dimen, nc))
+            do i = 1, dimen
+                call compute_separationvariables_ijblock(i, i, mat%dimen, mat%nvoigt, (/nc_u, nc_v/), mat, MM, KK)
+                Mcoef_u(:, i) = MM(1, 1:nc_u); Mcoef_v(:, i) = MM(2, 1:nc_v)
+                Kcoef_u(:, i) = KK(1, 1:nc_u); Kcoef_v(:, i) = KK(2, 1:nc_v)
+            end do
+        end if
+
+        if (isdiagblocks.or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
             ddl = dimen
             allocate(U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), D_u(nr_u, ddl), D_v(nr_v, ddl))
             call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_B_u, data_B_v, data_W_u, data_W_v, table, &
-                                    ddl, U_u, U_v, D_u, D_v)
-
+                                    data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
+                                    table, ddl, U_u, U_v, D_u, D_v)
             allocate(Deigen(ddl, nr_total))
             I_u = 1.d0; I_v = 1.d0
             do i = 1, dimen
@@ -662,21 +677,22 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         
         else 
 
-            ddl = dimen*dimen
-            allocate(U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), D_u(nr_u, ddl), D_v(nr_v, ddl))
-            call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_B_u, data_B_v, data_W_u, data_W_v, table, &
-                                    ddl, U_u, U_v, D_u, D_v)
+            stop 'This method has not been developed'
+            ! ddl = dimen*dimen
+            ! allocate(U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), D_u(nr_u, ddl), D_v(nr_v, ddl))
+            ! call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
+            !                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+            !                         data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
+            !                         table, ddl, U_u, U_v, D_u, D_v)
 
-            allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0
-            do i = 1, dimen
-                do j = 1, dimen
-                    c = j + (i-1)*dimen
-                    call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, c), D_v(:, c), mat%mean(i, j, :), Deigen(c, :))
-                end do
-            end do
+            ! allocate(Deigen(ddl, nr_total))
+            ! I_u = 1.d0; I_v = 1.d0
+            ! do i = 1, dimen
+            !     do j = 1, dimen
+            !         c = j + (i-1)*dimen
+            !         call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, c), D_v(:, c), mat%mean(i, j, :), Deigen(c, :))
+            !     end do
+            ! end do
 
         end if
 
@@ -744,9 +760,11 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v, D_w
 
-    integer :: i, j, c, ddl
+    ! integer :: i, j, c, ddl
+    integer :: i, ddl
     double precision :: I_u, I_v, I_w
     dimension :: I_u(nr_u), I_v(nr_v), I_w(nr_w)
+    double precision, dimension(:, :), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -779,6 +797,12 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
+        allocate(Mcoef_u(nc_u, dimen), Mcoef_v(nc_v, dimen), Mcoef_w(nc_w, dimen), &
+                Kcoef_u(nc_u, dimen), Kcoef_v(nc_v, dimen), Kcoef_w(nc_w, dimen))
+        Mcoef_u = 1.d0; Kcoef_u = 1.d0
+        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+        Mcoef_w = 1.d0; Kcoef_w = 1.d0
+
         if ((isdiagblocks).and.(methodPCG.eq.'JMC')) then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
         else if (.not.(isdiagblocks).and.(methodPCG.eq.'JMC')) then
@@ -792,7 +816,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     D_u(nr_u, ddl), D_v(nr_v, ddl), D_w(nr_w, ddl))
             call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                        data_W_u, data_W_v, data_W_w, table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
+                                        data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+                                        table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
 
             allocate(Deigen(ddl, nr_total))
             I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
@@ -803,22 +828,24 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         
         else 
 
-            ddl = dimen*dimen
-            allocate(U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), U_w(nr_w, nr_w, ddl), &
-                    D_u(nr_u, ddl), D_v(nr_v, ddl), D_w(nr_w, ddl))
-            call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                        data_W_u, data_W_v, data_W_w, table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
+            stop 'This method has not been developed'
+            ! ddl = dimen*dimen
+            ! allocate(U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), U_w(nr_w, nr_w, ddl), &
+            !         D_u(nr_u, ddl), D_v(nr_v, ddl), D_w(nr_w, ddl))
+            ! call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            !                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+            !                             data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+            !                             table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
 
-            allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-            do i = 1, dimen
-                do j = 1, dimen
-                    c = j + (i-1)*dimen
-                    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, c), D_v(:, c), D_w(:, c), &
-                                            mat%mean(i, j, :), Deigen(c, :))
-                end do
-            end do
+            ! allocate(Deigen(ddl, nr_total))
+            ! I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+            ! do i = 1, dimen
+            !     do j = 1, dimen
+            !         c = j + (i-1)*dimen
+            !         call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, c), D_v(:, c), D_w(:, c), &
+            !                                 mat%mean(i, j, :), Deigen(c, :))
+            !     end do
+            ! end do
 
         end if
 

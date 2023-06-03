@@ -25,9 +25,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 3, 5
-name = 'SQ'
+name = 'QA'
 dataExist = True
-IterMethods = ['C', 'JMC']
+IterMethods = ['C', 'JMC', 'TDC']
 
 if not dataExist:
 	for PCGmethod in IterMethods:
