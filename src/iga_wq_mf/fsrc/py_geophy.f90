@@ -319,8 +319,8 @@ subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
 
 end subroutine eval_intforce_coefficient
 
-subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, data_B1, data_W1, &
-                                Mcoef, Kcoef, robin_condition, eigenvalues, eigenvectors)
+subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B, data_W, &
+                                Mcoefs, Kcoefs, robcond1, robcond2, eigenvalues, eigenvectors)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -334,12 +334,12 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     integer, intent(in) :: nr, nc, nnz
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
-    double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
-    dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
-    double precision, intent(in) :: Mcoef, Kcoef
-    dimension :: Mcoef(nc), Kcoef(nc)
-    integer, intent(in) :: robin_condition
-    dimension :: robin_condition(2)
+    double precision, intent(in) :: data_B, data_W
+    dimension :: data_B(nnz, 2), data_W(nnz, 4)
+    double precision, intent(in) :: Mcoefs, Kcoefs
+    dimension :: Mcoefs(nc), Kcoefs(nc)
+    integer, intent(in) :: robcond1, robcond2
+    dimension :: robcond1(2), robcond2(2)
             
     double precision, intent(out) :: eigenvalues, eigenvectors
     dimension :: eigenvalues(nr), eigenvectors(nr, nr)
@@ -349,8 +349,7 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B0, data_W0, dat
     double precision :: Kdiag, Mdiag
     dimension :: Kdiag(nr), Mdiag(nr)
 
-    call eigen_decomposition(nr, nc, Mcoef, Kcoef, nnz, indi, indj, &
-                            data_B0, data_W0, data_B1, data_W1, robin_condition, &
-                            eigenvalues, eigenvectors, Kdiag, Mdiag)
+    call eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, data_B, data_W, &
+                            robcond1, robcond2, eigenvalues, eigenvectors, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py

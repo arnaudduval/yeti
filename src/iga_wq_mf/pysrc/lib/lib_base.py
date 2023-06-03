@@ -304,7 +304,7 @@ def scipySolver(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True)
 
 	return x
 
-def genEigenDecomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
+def genEigenDecomposition(indi, indj, data, robcond=[0, 0], coefs=None):
 	""" Eigen decomposition generalized KU = MUD
 		K: stiffness matrix, K = int B1 B1 dx = W11 * B1
 		M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -313,14 +313,14 @@ def genEigenDecomposition(indi, indj, data, robin_condition=[0, 0], coefs=None):
 	"""
 
 	nc = np.max(indj)
-	[B0, B1, W0, W1] = data
+	[B, W] = data
 
 	# Create mcoef and kcoef is are none type
 	if coefs is None: mcoefs = np.ones(nc); kcoefs = np.ones(nc)
 	else: [mcoefs, kcoefs] = coefs
 
-	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, B0, W0, 
-										B1, W1, mcoefs, kcoefs, robin_condition)
+	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, B, W, 
+									mcoefs, kcoefs, robcond, robcond)
 
 	return eigenvalues, eigenvectors
 

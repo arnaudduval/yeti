@@ -1010,7 +1010,7 @@ end subroutine csr_get_diag_3d
 ! ----------------------------
 
 subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
-                                data_B0, data_W0, data_B1, data_W1, robin_condition, &
+                                data_B, data_W, robcond1, robcond2, &
                                 eigenvalues, eigenvectors, Kdiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -1028,10 +1028,10 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     dimension :: Mcoefs(nc), Kcoefs(nc)
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
-    double precision, intent(in) :: data_B0, data_W0, data_B1, data_W1
-    dimension :: data_B0(nnz), data_W0(nnz), data_B1(nnz), data_W1(nnz)
-    integer, intent(in) :: robin_condition
-    dimension :: robin_condition(2)
+    double precision, intent(in) :: data_B, data_W
+    dimension :: data_B(nnz, 2), data_W(nnz, 4)
+    integer, intent(in) :: robcond1, robcond2
+    dimension :: robcond1(2), robcond2(2)
             
     double precision, intent(out) :: eigenvalues, eigenvectors
     dimension :: eigenvalues(nr), eigenvectors(nr, nr)
@@ -1041,51 +1041,62 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! Local data
     ! ----------
     integer :: i, j
-    double precision, allocatable, dimension(:) :: data_B0t, data_B1t
+    double precision :: data_Bt(nnz)
     double precision, allocatable, dimension(:,:) :: BB0, WW0, MM, BB1, WW1, KK
     
     ! Masse matrix
-    allocate(data_B0t(nnz))
-    data_B0t = data_B0
+    data_Bt = data_B(:, 1)
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_B0t(j) = data_B0t(j)*Mcoefs(indj(j))
+            data_Bt(j) = data_Bt(j)*Mcoefs(indj(j))
         end do
     end do
 
     allocate(BB0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_B0t, nr, nc, BB0)
-    deallocate(data_B0t)
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
     allocate(WW0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W0, nr, nc, WW0)
+    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, WW0)
     allocate(MM(nr, nr))
     MM = matmul(WW0, transpose(BB0))
     deallocate(BB0, WW0)
 
     ! Stiffness matrix
-    allocate(data_B1t(nnz))
-    data_B1t = data_B1
+    data_Bt = data_B(:, 2)
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_B1t(j) = data_B1t(j)*Kcoefs(indj(j))
+            data_Bt(j) = data_Bt(j)*Kcoefs(indj(j))
         end do
     end do
 
     allocate(BB1(nr, nc))
-    call csr2dense(nnz, indi, indj, data_B1t, nr, nc, BB1)
-    deallocate(data_B1t)
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB1)
     allocate(WW1(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W1, nr, nc, WW1)
+    call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
     allocate(KK(nr, nr))
+
+    !! TO MODIFY ACCORDING TO NEW TECHNIQUE TO FAST DIAGONALIZATION
+    ! if (robcond1(1).ne.0) then 
+    !     WW1(1, 1) = penalty*WW1(1, 1)
+    ! end if
+    ! if (robcond1(2).ne.0) then 
+    !     WW1(nr, nr) = penalty*WW1(nr, nr)
+    ! end if
+
+    ! if (robcond2(1).ne.0) then 
+    !     BB1(1, 1) = penalty*BB1(1, 1)
+    ! end if
+    ! if (robcond2(2).ne.0) then 
+    !     BB1(nr, nr) = penalty*BB1(nr, nr)
+    ! end if
+
     KK = matmul(WW1, transpose(BB1))
     deallocate(BB1, WW1)
 
-    ! Modify K to avoid singular matrix (using Robin boundary condition)
-    if (robin_condition(1).ne.0) then 
+    if ((robcond1(1).ne.0).or.(robcond2(1).ne.0)) then 
         KK(1, 1) = penalty*KK(1, 1)
     end if
 
-    if (robin_condition(2).ne.0) then 
+    if ((robcond1(2).ne.0).or.(robcond2(2).ne.0)) then 
         KK(nr, nr) = penalty*KK(nr, nr)
     end if
 
@@ -1099,6 +1110,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
     call compute_geneigs(nr, KK, MM, eigenvalues, eigenvectors)
+    if (any(eigenvalues.lt.0.d0)) print*, 'Probable instabilities'
     deallocate(KK, MM)
 
 end subroutine eigen_decomposition
