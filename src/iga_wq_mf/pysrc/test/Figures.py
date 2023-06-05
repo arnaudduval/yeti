@@ -87,7 +87,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 0
+CASE      = 9
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -460,83 +460,28 @@ elif CASE == 8: # Weights W00 and W11
 	
 	case8(folder, extension)
 
-# elif CASE == 9: # 3D Geometries
+elif CASE == 9: # 2D Geometries
 
-# 	geoName   = 'TR'
-# 	dataExist = True
-
-# 	# Set filename
-# 	filename = folder + 'VTK_' + geoName + '.png'
-
-# 	if not dataExist:
-
-# 		# Create model
-# 		modelGeo = geomdlModel(geoName)
-# 		modelGeo.knot_refinement(nb_refinementByDirection=np.array([1, 1, 1]))
-# 		modelPhy = fortran_mf_wq(modelGeo)
-# 		modelPhy.export_results()    
-
-# 		# Read data
-# 		full_path = os.path.realpath(__file__)
-# 		fileVTK   = os.path.dirname(full_path) + '/results/' + geoName
-# 		grid      = pv.read(fileVTK + '.vts')
-		
-# 		sargs = dict(
-# 				title = 'det J',
-# 				title_font_size=50,
-# 				label_font_size=40,
-# 				shadow=True,
-# 				n_labels=2,
-# 				fmt="%.1f",
-# 				position_x=0.2, 
-# 				position_y=0.1,
-# 		)
-# 		pv.start_xvfb()
-# 		plotter = pv.Plotter(off_screen=True)
-# 		if geoName == 'CB': 
-# 			boring_cmap = plt.cm.get_cmap("GnBu", 1)
-# 			plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
-# 			plotter.camera.zoom(0.6)
-# 		else: 
-# 			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-
-# 		if geoName == 'VB': 
-# 			plotter.camera_position  = 'yz'
-# 			plotter.camera.elevation = 45
-# 		elif geoName == 'RQA': 
-# 			plotter.camera_position  = 'xz'
-# 			plotter.camera.azimuth   = -45
-# 			plotter.camera.zoom(0.8)
-
-# 		plotter.background_color = 'white'
-# 		plotter.window_size = [1600, 1600]
-# 		plotter.screenshot(filename)
-# 		os.remove(fileVTK + '.vts')
-
-# 	cropImage(filename)
-
-elif CASE == 10: # 2D Geometries
-
-	def case10(folder):
+	def case9(folder):
 		# Create model
 		name    = 'QA'
 		filename = folder + 'VTK_' + name + '.png'
 		degree, cuts = 5, 5
-		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 		quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		model    = part(modelIGA, quadArgs=quadArgs)
+		model.exportResults(folder=folder)
 		
 		# Read data
-		full_path = os.path.realpath(__file__)
-		fileVTK   = os.path.dirname(full_path) + '/results/' + name
+		fileVTK   = folder + 'IGAparametrization'
 		grid      = pv.read(fileVTK + '.vts')
 		
 		sargs = dict(
-				title = 'det J',
+				title = 'normalized det J',
 				title_font_size=50,
 				label_font_size=40,
 				shadow=True,
@@ -548,13 +493,71 @@ elif CASE == 10: # 2D Geometries
 		pv.start_xvfb()
 		plotter = pv.Plotter(off_screen=True)
 		plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		plotter.camera_position  = 'xy'
+		plotter.camera.zoom(0.8)
 
 		plotter.background_color = 'white'
 		plotter.window_size = [1600, 1600]
 		plotter.screenshot(filename)
 		os.remove(fileVTK + '.vts')
 		cropImage(filename)
-		
+
+	case9(folder)
+
+elif CASE == 10: # 3D Geometries
+
+	def case10(folder):
+		# Create model
+		name    = 'TR'
+		filename = folder + 'VTK_' + name + '.png'
+		degree, cuts = 5, 5
+		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+		quadArgs  = {'quadrule': 'wq', 'type': 1}
+
+		modelGeo = Geomdl(geoArgs)
+		modelIGA = modelGeo.getIGAParametrization()
+		model    = part(modelIGA, quadArgs=quadArgs)
+		model.exportResults(folder=folder)
+
+		# Read data
+		fileVTK   = folder + 'IGAparametrization'
+		grid      = pv.read(fileVTK + '.vts')
+	
+		sargs = dict(
+				title = 'normalized det J',
+				title_font_size=50,
+				label_font_size=40,
+				shadow=True,
+				n_labels=2,
+				fmt="%.1f",
+				position_x=0.2, 
+				position_y=0.1,
+		)
+		pv.start_xvfb()
+		plotter = pv.Plotter(off_screen=True)
+		if name == 'CB': 
+			boring_cmap = plt.cm.get_cmap("GnBu", 1)
+			plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
+			plotter.camera.zoom(0.6)
+		else: 
+			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+
+		if name == 'VB': 
+			plotter.camera_position  = 'yz'
+			plotter.camera.elevation = 45
+		elif name == 'RQA': 
+			plotter.camera_position  = 'xz'
+			plotter.camera.azimuth   = -45
+			plotter.camera.zoom(0.8)
+
+		plotter.background_color = 'white'
+		plotter.window_size = [1600, 1600]
+		plotter.screenshot(filename)
+		os.remove(fileVTK + '.vts')
+		cropImage(filename)
+		return
+	
 	case10(folder)
 
 else: raise Warning('Case unkwnon')
