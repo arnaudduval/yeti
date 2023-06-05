@@ -75,14 +75,14 @@ Fvol = problem.eval_volForce(forceVolFun)
 fig, ax = plt.subplots()
 
 # Solve in fortran 
-for methodPCG, label in zip(['WP', 'C', 'TDC', 'JMC'], 
-							['w.o. preconditioner', 'Fast diag. (FD)', 'Literature', 'This work']):
+for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'], 
+							['w.o. preconditioner', 'Fast diag. (FD)', 'This work'])):
     displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fvol, methodPCG=methodPCG)
     resPCG = resPCG[resPCG>0]
-    ax.semilogy(np.arange(len(resPCG)), resPCG, label=label)
+    ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
 ax.set_ybound(lower=1e-8, upper=1e2)
-ax.legend()
+# ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 fig.tight_layout()

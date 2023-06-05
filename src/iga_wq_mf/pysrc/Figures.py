@@ -85,7 +85,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 8
+CASE      = 0
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -118,7 +118,7 @@ if CASE == 0: # B-spline curve
 		ax.set_ylabel(r'$X_2$')
 		ax.axis('equal')
 		fig.tight_layout()
-		fig.savefig(filename)
+		fig.savefig(filename, dpi=300)
 		return
 
 	case0(folder, extension)
