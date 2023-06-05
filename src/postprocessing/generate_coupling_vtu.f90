@@ -106,7 +106,10 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
     integer :: file         !! File unit
     integer :: comp         !! intermediate variable for connectivity computation
     integer :: offset       !! Offset counter when writing VTU file
-    
+
+
+    interfaces(:) = 0
+    domains(:) = 0
     write(*,*) 'Post processing interface patch #', lgrge_patch_number
     !! Loop on patches to find corresponding interface patches
     do i_patch = 1, nb_patch
@@ -170,6 +173,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
 
     !! Get data from each side of interface    
     do i_side = 1, 2
+       if (interfaces(i_side)>0) then
         call ExtractNurbsPatchMechInfos(interfaces(i_side), ien, props, jprops,   &
                 &   nnode, nb_elem_patch, elt_type, tensor)
         if (elt_type_patch .eq. 'U00') then
@@ -237,7 +241,8 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
                     enddo
                 enddo
             enddo
-        endif        
+         endif
+      endif
     enddo
 
     !! Write data to files

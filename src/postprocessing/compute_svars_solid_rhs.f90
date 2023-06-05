@@ -205,7 +205,7 @@ subroutine uSvarsRHS(rhs, sol, mcrd, nnode, nbInt, coords, elt_type, &
         nbPtInt = int(nbInt**(1.0/2.0))
         if (nbPtInt**2. < nbInt) nbPtInt = nbPtInt + 1
     elseif (mcrd .eq. 3) then
-        nbPtInt = int(nbInt**(1.0/30.))
+        nbPtInt = int(nbInt**(1.0/3.0))
         if (nbPtInt**3. < nbint) nbPtInt = nbPtInt +1
     endif
     
