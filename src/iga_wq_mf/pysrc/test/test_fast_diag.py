@@ -19,8 +19,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 folder_data = os.path.dirname(full_path) + '/lib/data/'
 
 # Set global variables
-dataExist     = False
-withReference = True
+dataExist     = True
+withReference = False
 degree_list   = range(2, 4)
 cut_list      = range(8, 10)
 

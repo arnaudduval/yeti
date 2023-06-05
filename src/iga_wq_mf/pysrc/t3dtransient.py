@@ -38,11 +38,11 @@ folder = os.path.dirname(full_path) + '/results/t3dtransient/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-dataExist   = False
+dataExist   = True
 name_list   = ['CB', 'VB']
 IterMethods = ['WP', 'C', 'JMC']
-name_list   = ['VB']
-IterMethods = ['JMC']
+# name_list   = ['VB']
+# IterMethods = ['JMC']
 example     = 1
 if   example == 1: nbSteps = 41
 elif example == 2: nbSteps = 6
@@ -140,8 +140,8 @@ else:
 		fig.savefig(filename)
 
 	# for name in name_list:
-	# 	# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))
-	# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+	# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4.7))
+	# 	# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 
 	# 	for i, PCGmethod in enumerate(IterMethods):
 	# 		filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'
@@ -151,16 +151,16 @@ else:
 	# 		elif PCGmethod == "C"  : labelmethod = 'Classic FD\nmethod'
 	# 		elif PCGmethod == "JMC": labelmethod = 'This work'
 			
-	# 		ind = np.where(resPCG[:, 0]==40)
-	# 		newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
+	# 		ind = np.where(resPCG[:, 0]==1)
+	# 		newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
 	# 		ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
 	# 					linewidth=2.5, marker=markerSet[i], label=labelmethod)
 
-	# 	# ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc='lower left', mode='expand', ncol=3)
+	# 	ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc='lower left', mode='expand', ncol=3)
 	# 	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 	# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 	# 	ax.set_ybound(lower=1e-12, upper=10)
 
-	# 	filename = folder + 'TransientNL_' + name + '2.pdf'
+	# 	filename = folder + 'TransientNL_' + name + '.png'
 	# 	fig.tight_layout()
 	# 	fig.savefig(filename)

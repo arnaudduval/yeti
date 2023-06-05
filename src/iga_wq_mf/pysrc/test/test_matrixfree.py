@@ -18,11 +18,11 @@ if not os.path.isdir(folder): os.mkdir(folder)
 folder_data = os.path.dirname(full_path) + '/lib/data/'
 
 # Set global variables
-dataExist     = False
+dataExist     = True
 withReference = False
 degree_list   = range(2, 3)
-cuts          = 7
-extension     = '.pdf'
+cuts          = 6
+extension     = '.png'
 
 if not dataExist:
 

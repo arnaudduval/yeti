@@ -14,7 +14,7 @@ length    = 1.0
 nbSteps   = 101
 geoArgs   = {'length': length}
 sampleSize =  2500
-FigPlot   = 1
+FigPlot   = 2
 
 ref = []
 ref.append(np.load(folder + 'disp_interp_ref.npy'))
@@ -87,7 +87,7 @@ elif FigPlot == 1:
 	cuts_list   = np.arange(3, 9)
 	error = np.zeros((len(degree_list), 2))
 
-	# First curve
+	# Second curve
 	fig, axs  = plt.subplots(nrows=1, ncols=2, figsize=(11, 4))
 	for cuts in cuts_list:
 		nbqp_list = []
@@ -142,3 +142,81 @@ elif FigPlot == 1:
 	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 	fig.tight_layout()
 	fig.savefig(folder + 'Fig2ErrorNBqp' + str(quadArgs['quadrule']) +'.png')
+
+elif FigPlot == 2:
+
+	degree_list = np.arange(2, 7)
+	cuts_list   = np.arange(3, 8)
+	TYPEOFFIG = 2
+
+	if TYPEOFFIG == 0: TypeList = range(1, 5)
+	if TYPEOFFIG == 1: TypeList = range(1, 5)
+	if TYPEOFFIG == 2: TypeList = range(2, 6)
+
+	error = np.zeros((len(degree_list), len(cuts_list), len(TypeList), 2))
+	# First curve
+	fig, axs  = plt.subplots(nrows=1, ncols=2, figsize=(11, 4))
+	for i, typeQuad in enumerate(TypeList):
+		for j, degree in enumerate(degree_list):
+			for k, cuts in enumerate(cuts_list):
+				nbel = 2**cuts
+				knotvector = createKnotVector(degree, nbel)
+				if TYPEOFFIG == 0: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 
+												'type': 'legextra', 'extra':{'nbQPEL':typeQuad}}
+				if TYPEOFFIG == 1: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
+												'type': 1, 'extra':{'s':typeQuad}}
+				if TYPEOFFIG == 2: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
+												'type': 1, 'extra':{'r':typeQuad}}
+				args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+				model = mechamat1D(args)
+
+				# Add material
+				model.activate_mechanical(matArgs)
+
+				# Add boundary condition
+				model.add_DirichletCondition(table=[1, 0])
+
+				# Define boundaries conditions
+				Fext        = np.zeros((model.nbctrlpts, nbSteps))
+				Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
+				for l in range(1, nbSteps-1): Fext[:, l] = l/(nbSteps-1)*Fext[:, -1]
+
+				blockPrint()
+				# Solve 
+				lastStep = -1
+				disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
+				stress_cp = model.interpolate_CntrlPtsField(stress)
+
+				interp = []
+				interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
+				interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+				enablePrint()
+
+				for l in range(2):
+					norm_ref = np.linalg.norm(ref[l][:, :lastStep], axis=0)
+					tmp		 = ref[l][:, :lastStep] - interp[l]
+					relerror = np.linalg.norm(tmp, axis=0)
+					relerror = np.divide(relerror, norm_ref, out=np.zeros_like(relerror), where=np.abs(norm_ref)>1.e-12)*100
+					error[j, k, i, l] = relerror[-1] # Last step 			
+
+			for [l, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']):
+				ax.semilogy(2**cuts_list, error[j, :, i, l], color=colorSet[i], alpha=1/(j+1), marker=markerSet[i])
+				ax.set_title(title)
+
+		for [l, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']):
+			if TYPEOFFIG == 0: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=r'$p+$' + str(typeQuad) + ' quadPts/el')
+			if TYPEOFFIG == 1: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=str(2+typeQuad) + ' int. points')
+			if TYPEOFFIG == 2: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=r'$p+$' + str(typeQuad) + ' ext. points')
+			ax.set_title(title)
+
+	for ax in axs:
+		ax.set_ylim(bottom=1e-16, top=1e1)
+		ax.set_ylabel('L2 Relative error (\%)')
+		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
+		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+		ax.set_xticks([8, 32, 128])
+
+	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	fig.tight_layout()
+	fig.savefig(folder + 'Fig3ErrorNBel_' + str(quadArgs['quadrule']) + str(TYPEOFFIG) +'.png')
