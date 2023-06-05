@@ -52,7 +52,10 @@ class heatproblem(problem):
 		if coefs is None: coefs = self.material.eval_capacityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
-		if self.part.dim == 2: raise Warning('Until now not done')
+		if self.part.dim == 2: 
+			assembly.wq_get_capacity_2d(*inputs, nnz_I_list, nnz)
+			nnz = np.prod(nnz_I_list)
+			val, indi, indj = assembly.wq_get_capacity_2d(*inputs, nnz_I_list, nnz)
 		if self.part.dim == 3: 
 			assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
 			nnz = np.prod(nnz_I_list)
@@ -64,7 +67,10 @@ class heatproblem(problem):
 		if coefs is None: coefs = self.material.eval_conductivityCoefficients(self.part.detJ, args)
 		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
 		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
-		if self.part.dim == 2: raise Warning('Until now not done')
+		if self.part.dim == 2: 
+			assembly.wq_get_conductivity_2d(*inputs, nnz_I_list, nnz)
+			nnz = np.prod(nnz_I_list)
+			val, indi, indj = assembly.wq_get_conductivity_2d(*inputs, nnz_I_list, nnz)
 		if self.part.dim == 3: 
 			assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
 			nnz = np.prod(nnz_I_list)
@@ -90,7 +96,7 @@ class heatproblem(problem):
 		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if self.part.dim == 2: raise Warning('Not done yet')
+		if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)[indi]
 		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)[indi]
 		return vector
 	

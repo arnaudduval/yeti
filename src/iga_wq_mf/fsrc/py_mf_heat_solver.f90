@@ -134,6 +134,58 @@ subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, n
 
 end subroutine wq_find_conductivity_diagonal_3d
 
+subroutine mf_wq_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            array_in, array_out)
+    !! Computes C.u where C is capacity matrix in 3D
+    !! This function is adapted to python
+    !! IN CSR FORMAT
+
+    use matrixfreeheat
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    
+    integer, intent(in) :: indi_u, indi_v
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+    integer, intent(in) ::  indj_u, indj_v
+    dimension :: indj_u(nnz_u), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_total)
+
+    ! Local data 
+    ! ---------- 
+    type(thermomat), pointer :: mat
+    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+
+    allocate(mat)
+    call setup_capacitycoefs(mat, nc_total, coefs)
+
+    call mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
+                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+
+end subroutine mf_wq_get_cu_2d
+
 subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
@@ -187,6 +239,56 @@ subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
 
 end subroutine mf_wq_get_cu_3d
+
+subroutine mf_wq_get_ku_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            array_in, array_out)
+    !! Computes K.u where K is conductivity matrix in 3D 
+    !! This function is adapted to python
+    !! IN CSR FORMAT
+
+    use matrixfreeheat
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    double precision, intent(in) :: coefs
+    dimension :: coefs(3, 3, nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_total)
+
+    ! Local data
+    ! ----------
+    type(thermomat), pointer :: mat
+    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    
+    allocate(mat)
+    mat%dimen = 3
+    call setup_conductivitycoefs(mat, nc_total, coefs)
+
+    call mf_wq_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
+                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+    
+end subroutine mf_wq_get_ku_2d
 
 subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -302,6 +404,34 @@ subroutine mf_wq_get_spacetimeheat_3d(Ccoefs, Kcoefs, detG, nr_total, nc_sp, nc_
                             array_in, array_out)
     
 end subroutine mf_wq_get_spacetimeheat_3d
+
+subroutine wq_get_heatvol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, result)
+    !! Computes source vector in 3D
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    integer, intent(in) :: nnz_u, nnz_v
+    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_W_u, data_W_v
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+    double precision, intent(out) :: result
+    dimension :: result(nr_u*nr_v)
+
+    call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                        nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                        coefs, result)
+
+end subroutine wq_get_heatvol_2d
 
 subroutine wq_get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)

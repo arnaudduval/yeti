@@ -15,11 +15,13 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import (createKnotVector, evalDersBasisPy, cropImage)
+from lib.lib_base import (createKnotVector, evalDersBasisPy, cropImage, relativeError)
 from lib.lib_quadrules import *
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
-# from lib.fortran_mf_wq import fortran_mf_wq
+from lib.lib_material import thermomat
+from lib.lib_boundary import boundaryCondition
+from lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -148,7 +150,7 @@ elif CASE == 1: # Univariate functions
 		ax1.set_ylabel(r'$B_{i,p}(\xi)$')
 		ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
 		fig.tight_layout()
-		fig.savefig(filename)
+		fig.savefig(filename, dpi=300)
 		return
 	
 	case1(folder, extension)
@@ -209,7 +211,7 @@ elif CASE == 2: # Bivariate functions
 			ax.set_ylabel(r'$\xi_2$')
 			ax.set_zlabel(r'$B_{i,p}(\xi)$')
 			fig.tight_layout()
-			fig.savefig(filename) 
+			fig.savefig(filename, dpi=300) 
 		return
 	
 	case2(folder, extension)
@@ -241,7 +243,7 @@ elif CASE == 3: # Quadrature points in IGA
 			ax.set_xlabel(r'$\xi_1$')   
 
 		fig.tight_layout()
-		fig.savefig(filename) 
+		fig.savefig(filename, dpi=300) 
 		return
 
 	case3(folder, extension)
@@ -273,7 +275,7 @@ elif CASE == 4: # Quadrature points in WQ
 			ax.set_xlabel(r'$\xi_1$')
 
 		fig.tight_layout()
-		fig.savefig(filename) 
+		fig.savefig(filename, dpi=300) 
 		return
 	
 	case4(folder, extension)
@@ -288,7 +290,7 @@ elif CASE == 5: # B-spline surface
 	modelIGA = modelGeo.getIGAParametrization()
 	model    = part(modelIGA)
 	fig = plot2DGeo(model)
-	fig.savefig(filename) 
+	fig.savefig(filename, dpi=300) 
 
 elif CASE == 6: # FEM functions 
 
@@ -317,130 +319,146 @@ elif CASE == 6: # FEM functions
 		ax.set_xlabel(r'$\xi$')
 		ax.set_xticks([0, 0.5, 1])
 		fig.tight_layout()
-		fig.savefig(filename)
+		fig.savefig(filename, dpi=300)
 		return
 	
 	case6(folder, extension)
 
-# elif CASE == 7: # Convergence curve
+elif CASE == 7: # Convergence curve
 
-# 	# Set filename
-# 	filename = folder + 'ConvergenceIGA'+ extension
+	def powden(P:list):
+		x = P[:, 0]
+		y = P[:, 1]
+		f = np.sin(np.pi*x)*np.sin(np.pi*y)
+		return f
 
-# 	def powden(P:list):
-# 		x, y = P
-# 		f = np.sin(np.pi*x)*np.sin(np.pi*y)
-# 		return f
+	def solution(P:list): 
+		x, y = P
+		t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
+		return t
+	
+	def case7(folder, extension):
 
-# 	def solution(P:list): 
-# 		x, y = P
-# 		t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
-# 		return t
+		# Set filename
+		filename = folder + 'ConvergenceIGA'+ extension
 
-# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
-# 	for degree in range(2, 8):
-# 		norm = []; nbel_list =[]
-# 		for cuts in range(1, 7):
-# 			print([degree, 2**cuts])
+		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
+		for degree in range(2, 8):
+			norm = []; nbel_list =[]
+			for cuts in range(1, 7):
+				print([degree, 2**cuts])
 
-# 			blockPrint()
-# 			# Create model
-# 			name     = 'quadrilateral'
-# 			modelGeo = geomdlModel(name=name, **{'degree':[degree, degree, degree]})
-# 			modelGeo.knot_refinement(np.array([cuts, cuts, cuts]))
-# 			modelPhy = fortran_mf_wq(modelGeo)
+				blockPrint()
+				# Create model
+				name     = 'SQ'
+				geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+							'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+				quadArgs  = {'quadrule': 'wq', 'type': 1}
 
-# 			# Add material 
-# 			material = {'capacity':1, 'conductivity':np.eye(2)}
-# 			modelPhy._set_material(material)
+				modelGeo = Geomdl(geoArgs)
+				modelIGA = modelGeo.getIGAParametrization()
+				model    = part(modelIGA, quadArgs=quadArgs)
 
-# 			# Block boundaries
-# 			Dirichlet = {'thermal':np.array([[1, 1], [1, 1], [1, 1]])}
-# 			modelPhy._set_dirichlet_boundaries(Dirichlet)
-# 			dof = modelPhy._thermal_dof
-# 			dod = modelPhy._thermal_dod 
+				# Add material 
+				material = thermomat()
+				material.addCapacity(1.0, isIsotropic=True)
+				material.addConductivity(np.eye(2), isIsotropic=True, shape=(2, 2))
 
-# 			# Solve
-# 			Kdd = modelPhy.eval_conductivity_matrix(indi=dof, indj=dof)
-# 			Fd  = modelPhy.eval_source_vector(powden, indi=dof)
-# 			Td  = sp.linalg.spsolve(Kdd, Fd)  
-# 			T   = np.zeros(modelPhy._nb_ctrlpts_total); T[dof] = Td
-# 			enablePrint()
+				# Block boundaries
+				boundary = boundaryCondition(model.nbctrlpts)
+				table = np.ones((2, 2), dtype=int)
+				boundary.add_DirichletDisplacement(table=table)
+				dof = boundary.thdof
 
-# 			# Interpolate
-# 			output  = modelPhy.interpolate_field(u_ctrlpts=T, nbDOF=1)
-# 			qp_interp, u_interp = output[1], output[-1]
-# 			u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
-# 			u_exact = np.array(u_exact)
+				# Solve
+				problem = heatproblem(material, model, boundary)
+				Kdd = problem.assemble_conductivity(model.qpPhy)[:, dof][dof, :]
+				Fd  = problem.eval_volForce(powden, indi=dof)
+				Td  = sp.linalg.spsolve(Kdd, Fd)  
+				T   = np.zeros(model.nbctrlpts_total); T[dof] = Td
+				enablePrint()
 
-# 			# Relative error
-# 			error = relativeError(u_interp, u_exact)
-# 			norm.append(error)
-# 			nbel_list.append(2**cuts)
-			
-# 		ax.loglog(nbel_list, norm, label='Degree $p =$ ' + str(degree))
-# 		slope = np.polyfit(np.log10(nbel_list[1:5]),np.log10(norm[1:5]), 1)[0]
-# 		slope = round(slope)
-# 		annotation.slope_marker((nbel_list[3], norm[3]), slope, 
-# 								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+				# Interpolate
+				output  = model.interpolateField(u_ctrlpts=T, nbDOF=1)
+				qp_interp, u_interp = output[1], output[-1]
+				u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
+				u_exact = np.array(u_exact)
 
-# 	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-# 	ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
-# 	ax.set_ylabel('Relative error ' + r'$\displaystyle\frac{||u-u^h||_\infty}{||u||_\infty}$')   
-# 	fig.tight_layout()
-# 	fig.savefig(filename)
+				# Relative error
+				error = relativeError(u_interp, u_exact)
+				norm.append(error)
+				nbel_list.append(2**cuts)
+				
+			ax.loglog(nbel_list, norm, label='Degree $p =$ ' + str(degree))
+			slope = np.polyfit(np.log10(nbel_list[1:5]),np.log10(norm[1:5]), 1)[0]
+			slope = round(slope)
+			annotation.slope_marker((nbel_list[3], norm[3]), slope, 
+									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+		ax.set_ylabel('Relative error ' + r'$\displaystyle\frac{||u-u^h||_\infty}{||u||_\infty}$')   
+		fig.tight_layout()
+		fig.savefig(filename, dpi=300)
+		return
+	
+	case7(folder, extension)
 
 elif CASE == 8: # Weights W00 and W11
 
-	WeightName = 1 # or 0
-	if WeightName not in [0, 1]: raise Warning('Not possible')
-	if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
-	else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
+	def case8(folder, extension):
+		WeightName = 1 # or 0
+		if WeightName not in [0, 1]: raise Warning('Not possible')
+		if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
+		else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
 
-	# Set filename
-	filename = folder + 'WeightsW' + str(WeightName) + extension
+		# Set filename
+		filename = folder + 'WeightsW' + str(WeightName) + extension
 
-	# B-spline properties 
-	WeightPos    = 2
-	degree, nbel = 2, 3
-	knotvector   = createKnotVector(degree, nbel)
-	quadRule     = WeightedQuadrature(degree, knotvector)
-	quadRule.getQuadratureRulesInfo()
-	basis, knots = quadRule.getSampleBasis()
-	B = basis[WeightName].toarray()
+		# B-spline properties 
+		WeightPos    = 2
+		degree, nbel = 2, 3
+		knotvector   = createKnotVector(degree, nbel)
+		quadRule     = WeightedQuadrature(degree, knotvector)
+		quadRule.getQuadratureRulesInfo()
+		basis, knots = quadRule.getSampleBasis()
+		B = basis[WeightName].toarray()
 
-	# Get weights
-	quadRule.getDenseQuadRules()
-	W00 = quadRule._denseWeights[-WeightName]
-	wgt = W00.toarray()[WeightPos, :]
+		# Get weights
+		quadRule.getDenseQuadRules()
+		W00 = quadRule._denseWeights[-WeightName]
+		wgt = W00.toarray()[WeightPos, :]
 
-	if WeightName == 0:
-		Bref = B
-	else:
-		kvref = createKnotVector(degree-1, nbel)
-		Bref = evalDersBasisPy(degree-1, kvref, knots)[0]
-		Bref = Bref.toarray()
+		if WeightName == 0:
+			Bref = B
+		else:
+			kvref = createKnotVector(degree-1, nbel)
+			Bref = evalDersBasisPy(degree-1, kvref, knots)[0]
+			Bref = Bref.toarray()
 
-	fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
-	for i in range(np.shape(Bref)[0]): 
-		ax1.plot(knots, Bref[i, :], linewidth=2)
+		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
+		for i in range(np.shape(Bref)[0]): 
+			ax1.plot(knots, Bref[i, :], linewidth=2)
 
-	# Fill basis chosen
-	ax1.fill_between(x=knots, y1=B[WeightPos, :], color="g", alpha=0.2)
-	ax1.set_ylim(ylim1)
+		# Fill basis chosen
+		ax1.fill_between(x=knots, y1=B[WeightPos, :], color="g", alpha=0.2)
+		ax1.set_ylim(ylim1)
 
-	ax2 = ax1.twinx()
-	ax2.plot(quadRule.quadPtsPos, wgt, 'ko')
-	plotVerticalLine(quadRule.quadPtsPos, wgt, ax2)
-	ax2.set_ylim(ylim2)
-	ax2.grid(None)
+		ax2 = ax1.twinx()
+		ax2.plot(quadRule.quadPtsPos, wgt, 'ko')
+		plotVerticalLine(quadRule.quadPtsPos, wgt, ax2)
+		ax2.set_ylim(ylim2)
+		ax2.grid(None)
 
-	ax1.set_xlabel(r'$\xi$')
-	ax1.set_ylabel('Basis')
-	ax2.set_ylabel('Weights')
-	ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
-	fig.tight_layout()
-	fig.savefig(filename)
+		ax1.set_xlabel(r'$\xi$')
+		ax1.set_ylabel('Basis')
+		ax2.set_ylabel('Weights')
+		ax1.set_xticks(np.linspace(0, 1, nbel+1), ['0', '1/3', '2/3', '1'])
+		fig.tight_layout()
+		fig.savefig(filename, dpi=300)
+		return
+	
+	case8(folder, extension)
 
 # elif CASE == 9: # 3D Geometries
 
@@ -497,33 +515,46 @@ elif CASE == 8: # Weights W00 and W11
 
 # 	cropImage(filename)
 
-# elif CASE == 10: # Results
+elif CASE == 10: # 2D Geometries
 
-# 	# Read data
-# 	full_path = os.path.realpath(__file__)
-# 	folderVTK = os.path.dirname(full_path) + '/results/test8/'
-# 	grid = pv.read(folderVTK + 'IGAparametrization.vts')
-# 	filename = folder + 'VTK_Results' + '.png'
+	def case10(folder):
+		# Create model
+		name    = 'QA'
+		filename = folder + 'VTK_' + name + '.png'
+		degree, cuts = 5, 5
+		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+		quadArgs  = {'quadrule': 'wq', 'type': 1}
 
-# 	sargs = dict(
-# 			title = 'Temperature (K)',
-# 			title_font_size=50,
-# 			label_font_size=40,
-# 			shadow=True,
-# 			n_labels=2,
-# 			fmt="%.1f",
-# 			position_x=0.2, 
-# 			position_y=0.1,
-# 	)
+		modelGeo = Geomdl(geoArgs)
+		modelIGA = modelGeo.getIGAParametrization()
+		model    = part(modelIGA, quadArgs=quadArgs)
+		
+		# Read data
+		full_path = os.path.realpath(__file__)
+		fileVTK   = os.path.dirname(full_path) + '/results/' + name
+		grid      = pv.read(fileVTK + '.vts')
+		
+		sargs = dict(
+				title = 'det J',
+				title_font_size=50,
+				label_font_size=40,
+				shadow=True,
+				n_labels=2,
+				fmt="%.1f",
+				position_x=0.2, 
+				position_y=0.1,
+		)
+		pv.start_xvfb()
+		plotter = pv.Plotter(off_screen=True)
+		plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
 
-# 	pv.start_xvfb()
-# 	plotter = pv.Plotter(off_screen=True)
-# 	plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-# 	plotter.camera.zoom(0.6)
-# 	plotter.background_color = 'white'
-# 	plotter.window_size = [1600, 1600]
-# 	plotter.screenshot(filename)
-
-# 	cropImage(filename)
+		plotter.background_color = 'white'
+		plotter.window_size = [1600, 1600]
+		plotter.screenshot(filename)
+		os.remove(fileVTK + '.vts')
+		cropImage(filename)
+		
+	case10(folder)
 
 else: raise Warning('Case unkwnon')

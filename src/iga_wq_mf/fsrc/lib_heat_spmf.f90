@@ -547,6 +547,122 @@ contains
         
     end subroutine mf_wq_spacetimeheat_3d
 
+    !! Matrix free 2d functions 
+    subroutine mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
+        !! Computes C.u where C is the capacity matrix in 3D 
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
+                        indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data 
+        ! ----------
+        double precision :: array_temp
+        dimension :: array_temp(nc_total)
+
+        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+
+        call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            array_in, array_temp)
+
+        array_temp = array_temp * mat%Ccoefs
+
+        call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                            array_temp, array_out)
+        
+    end subroutine mf_wq_capacity_2d
+
+    subroutine mf_wq_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
+        !! Computes K.u where K is conductivity matrix in 3D 
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: dimen = 2
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data 
+        ! -----------
+        double precision :: array_temp_0, array_temp_1, array_temp_2
+        dimension :: array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total)
+        integer :: i, j, alpha, beta, zeta
+        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
+
+        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+
+        array_out = 0.d0
+        do j = 1, dimen
+            beta = 1; beta(j) = 2
+            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
+                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
+                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
+                                array_in, array_temp_0)
+            do i = 1, dimen
+                alpha = 1; alpha(i) = 2
+                zeta = beta + (alpha - 1)*2
+                array_temp_1 = array_temp_0 * mat%Kcoefs(i, j, :)
+                call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
+                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                    array_temp_1, array_temp_2)
+                array_out = array_out + array_temp_2
+            end do
+        end do
+        
+    end subroutine mf_wq_conductivity_2d
+
 end module matrixfreeheat
 
 subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
