@@ -99,7 +99,7 @@ if not dataExist:
 else:
 
 	for name in name_list:
-		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
+		fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 
 		for i, PCGmethod in enumerate(['C', 'JMC']):
 			filename = folder + 'ResPCG_' + name + '_' + PCGmethod + str(example) + '.dat'
@@ -110,10 +110,10 @@ else:
 
 			ind = np.where(resPCG[:, 0]==1)
 			newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
-			ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
+			axs[0].semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', label=labelmethod, linewidth=0.5)
 			
 			newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
-			ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', linewidth=0.5)
+			axs[1].semilogy(np.arange(len(newresidue)), newresidue, '-', color='k', label=labelmethod, linewidth=0.5)
 
 			maxStep = int(np.max(resPCG[:, 0]))
 			for j in range(2, maxStep):
@@ -121,20 +121,21 @@ else:
 				ind = np.where(resPCG[:, 0]==j)
 
 				newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
-				ax1.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
+				axs[0].semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
 							color=colorSet[i], linewidth=0.5)
 				
 				newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
-				ax2.semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
+				axs[1].semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
 							color=colorSet[i], linewidth=0.5)
 
-		ax1.set_title('First NR iterations')
-		ax2.set_title('Last NR iterations')
-		for ax in [ax1, ax2]:
+		axs[0].set_title('First NR iterations')
+		axs[1].set_title('Last NR iterations')
+		for ax in axs:
 			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 			ax.set_ybound(lower=1e-12, upper=10)
 
+		axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		filename = folder + 'TransientNL_' + name + str(example) + '.png'
 		fig.tight_layout()
 		fig.savefig(filename)
