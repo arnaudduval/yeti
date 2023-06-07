@@ -128,7 +128,7 @@ subroutine build_CGrammatrix(Mdata, Mrow, Mcol, activeElement, nb_data, &
                 do i = 1, nnode_patch
                     coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, numElem))
                 enddo
-            
+                cGramMatrix(:) = zero
                 
                 call extractNurbsElementinfos(numElem)
                 
@@ -144,7 +144,7 @@ subroutine build_CGrammatrix(Mdata, Mrow, Mcol, activeElement, nb_data, &
             &           PROPS_patch,JPROPS_patch,            &
             &           cGramMatrix(:nnodeSum))      
                 endif
-        
+                
                 !! Assemble to global matrix
                 sctr(:nnode_patch) = ien_patch(:, numElem)
                 i = 0
@@ -229,7 +229,7 @@ subroutine UGRAMMATRIX_byCP(mcrd, nnode, nbInt, coords, elt_type, &
         nbPtInt = int(nbInt**(1.0/2.0))
         if (nbPtInt**2. < nbInt) nbPtInt = nbPtInt + 1
     elseif (mcrd .eq. 3) then
-        nbPtInt = int(nbInt**(1.0/30.))
+        nbPtInt = int(nbInt**(1.0/3.0))
         if (nbPtInt**3. < nbint) nbPtInt = nbPtInt +1
     endif
     

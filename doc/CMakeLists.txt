@@ -16,8 +16,11 @@ if(Sphinx_FOUND)
         "${CMAKE_CURRENT_LIST_DIR}/source/usage/install_wsl.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/validation/benchs.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/theory/embedded_sensitivities.rst"
+        "${CMAKE_CURRENT_LIST_DIR}/source/theory/bibliography.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/api/preprocessing.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/api/iga_manipulation.rst"
+        "${CMAKE_CURRENT_LIST_DIR}/source/examples/index.rst"
+        "${CMAKE_CURRENT_LIST_DIR}/source/examples/OPT_stiffPanel.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/nodes-numbering.png"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/logo-yeti_with_text.svg"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/install_WSL/01_launch_powershell_admin.png"
@@ -25,6 +28,9 @@ if(Sphinx_FOUND)
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/benchs/dload/dload_geometry.svg"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/benchs/dload/dload_triangular_increase.svg"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/benchs/dload/dload_triangular_decrease.svg"
+        "${CMAKE_CURRENT_LIST_DIR}/source/_static/examples/OPT_stiffPanel/stiffened_roof.png"
+        "${CMAKE_CURRENT_LIST_DIR}/source/_static/examples/OPT_stiffPanel/ctrls_patchs_stiffened_roof.svg"
+        "${CMAKE_CURRENT_LIST_DIR}/source/_static/examples/OPT_stiffPanel/stiffened_roof_results.png"
     )
 
 

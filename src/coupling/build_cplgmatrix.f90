@@ -159,12 +159,12 @@ subroutine cplg_matrix(Cdata,Crow,Ccol,nb_data, &
                         &   saveXIb( :,kk+1:kk+n),saveXI(:,kk+1:kk+n),  &
                         &   saveBI(:,:,kk+1:kk+n),dim_patch,MCRD,nnode_patch,   &
                         &   NBINT(numPatch),COORDS_elem(:,:nnode_patch)      )
-            
+                
                 kk = kk + n
-            
+                
             enddo
-         
-
+            
+            
             !! 2. Lagrangian field
             !!  - compute basis functions
             call extractNurbsPatchGeoInfos(numLgrge, Nkv,Jpqr,Nijk,Ukv, &
@@ -187,9 +187,9 @@ subroutine cplg_matrix(Cdata,Crow,Ccol,nb_data, &
 
                 call updateElementNumber(saveXIb(:3,i))
                 call evalLgrge(saveXIb(:3,i),saveRl(:,i))
-            
+                
                 saveEL(i) = current_elem
-
+                
             enddo
 
          
@@ -209,7 +209,9 @@ subroutine cplg_matrix(Cdata,Crow,Ccol,nb_data, &
          
          
             do kk = 1,nb_gps
-            
+                
+                CMAT(:,:,:) = zero
+                
                 call updateElementNumber(saveXI(:,kk))
                 sctr(:nnode_patch) = IEN_patch(:,current_elem)
                 do i = 1,nnode_patch
@@ -249,9 +251,9 @@ subroutine cplg_matrix(Cdata,Crow,Ccol,nb_data, &
                     !!        &   COORDS_elem(:,:nnode_patch),CMAT(:,:,:n))
                     endif
                 endif
-            
+                
                 if (ismaster .eq. 0) CMAT(:,:,:n) = -CMAT(:,:,:n)
-            
+                
                 !! ASSEMBLING
                 sctr(:nnode_patch)       = IEN_patch(:,current_elem)
                 sctr_l(:NNODE(numLgrge)) = saveIEN(:,saveEL(kk))

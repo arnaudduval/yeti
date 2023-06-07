@@ -117,6 +117,9 @@ class IGAparametrization:
         # Distributions
         # Assuming nodal distributions only
         self._nodal_distributions = {}
+        # Keep a copy of the nodal distribution defined on the initial geometry
+        self._nodal_distributions_init = {}
+
         if len(mechanicalSettings) > 7:
             for distrib in mechanicalSettings[7]:
                 if distrib.opts['location'].strip() == 'NODE':
@@ -126,10 +129,10 @@ class IGAparametrization:
                     d[:] = distrib.get_defaultvalues()
                     idx = a[:, 0].astype(int)
                     d[idx - 1] = a[:, 1:]
-                    if n == 1:
-                        d = np.ravel(d, order='F')
                     headers = distrib.opts['dtype']
                     self._nodal_distributions[distrib.get_name()] = \
+                        [d.copy(), headers]
+                    self._nodal_distributions_init[distrib.get_name()] = \
                         [d.copy(), headers]
                 else:
                     raise Exception('Only nodal distributions are handled')
@@ -579,7 +582,7 @@ class IGAparametrization:
             icount = 0
             for nodaldistrib in self._nodal_distributions.values():
                 if nodaldistrib[1] == 'distributedload':
-                    distribnodalload.append([nodaldistrib[0]])
+                    distribnodalload.append([nodaldistrib[0].T])
                     icount += 1
             distribnodalload = np.block(distribnodalload) \
                 if icount > 0 else np.zeros((1, self._nb_cp))
@@ -694,7 +697,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3),
+    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3, dtype=int),
                                Flag=np.array([True, True, True])):
         """Get the necessary inputs for .vtu file generation.
 
@@ -718,7 +721,7 @@ class IGAparametrization:
         inputs : list
             Necessary inputs for generating the .vtu file.
         """
-        nb_ref = np.maximum(nb_ref, np.ones(3))
+        nb_ref = np.maximum(nb_ref, np.ones(3, dtype=int))
         inputs = [FILENAME, Flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
@@ -2105,14 +2108,15 @@ class IGAparametrization:
         # self._nodal_distributions = new_nodal_distributions
 
         # Refine nodal distributions
+        # Nodal distribution is refined from the discretisation state of the initial geometry
         new_nodal_distributions = {}
-        for key, distrib in self._nodal_distributions.items():
+        for key, distrib in self._nodal_distributions_init.items():
             # Get pressure magnitude at nodes
             init_field = distrib[0]
             # Reshape to a two-dimensionnal array
             init_field = np.vstack(init_field)
             # Compute new field
-            new_field = self._updateNodalField(init_field).T
+            new_field = self._updateNodalField(init_field)
             # Get initial type of load (does not change)
             l_name = distrib[1]
             # Fill new dictionnary with refined pressure field

@@ -86,6 +86,7 @@ c     -----------
          call cross(TI(:,1),TI(:,2),vectV(:))
          call dot(  TI(:,3),vectV(:),normV)
       Endif
+
       
       ! Assembling
       count = 1
@@ -95,6 +96,9 @@ c     -----------
             temp2 = temp*R(i)
             Do k = 1,MCRD
                CMAT(k,k,count) = temp2
+               if (temp2<0.) then
+                  print*,'negatif'
+               endif
             Enddo
             count = count + 1
          Enddo

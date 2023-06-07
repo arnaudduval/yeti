@@ -306,7 +306,7 @@ def get_boundElement(igaPara, num_bound, num_patch=0):
     return elems
 
 
-def get_directionCP(igaPara, num_bound, num_patch, offset=0):
+def get_directionCP(igaPara, num_bound, num_patch=0, offset=0):
     """Get indices from boundary face control points of a given patch.
 
     Returns local indices of control points controlling the boundary indexed at
