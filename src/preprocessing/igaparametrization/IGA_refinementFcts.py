@@ -533,7 +533,7 @@ def updateIndCPbyPatch(COORDSfineByPatch,Nkv_fine,Jpqr_fine,dim_init,strongcplgi
       cplg_thispatch = np.where(strongcplginfos[:,2]==num_patch)[0]
       for i in cplg_thispatch:
         idx2rm = get_boundCPindice_wEdges(Nkv_fine,Jpqr_fine,dim_init,strongcplginfos[i,3],
-                                          num_patch)
+                                          num_patch,num_orientation=strongcplginfos[i,4])
         idx2add= get_boundCPindice_wEdges(Nkv_fine,Jpqr_fine,dim_init,strongcplginfos[i,1],
                                           strongcplginfos[i,0])
         indCPbyPatch_fine[num_patch][idx2rm] = indCPbyPatch_fine[strongcplginfos[i,0]][idx2add]

@@ -108,7 +108,7 @@ def get_boundCPindice(Nkv, Jpqr, num_bound, num_patch=0, offset=0):
         return ind_face6.astype(int)
 
 
-def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0):
+def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0, num_orientation=0) -> np.ndarray:
     """Get indices from boundary face control points of a given patch.
 
     Returns local indices of control points controlling the boundary indexed at
@@ -135,6 +135,17 @@ def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0):
     offset : int, optional
         Offset to get the indices of a following row of control points.
         The default is 0.
+    num_orientation : int, optional
+        Local ordering of the output array.\n
+        It should be between ``0`` and ``7``, and defines the local directions as:\n
+          0: ( 1, 2), 1: (-1, 2), 2: ( 1,-2), 3: (-1,-2),\n
+          4: ( 2, 1), 5: (-2, 1), 6: ( 2,-1), 7: (-2,-1).
+        For edges, if ``orientation`` is an odd number then the list is flipped, else
+        it is outputed in the natural order.
+        This argument has no effects for vertices.
+
+        This option is useful when coupling strongly patches that have
+        interface faces/edges with different orientations.
 
     Returns
     -------
@@ -146,6 +157,14 @@ def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0):
         List of local control points indices on the vertex.
 
     """
+    if not num_orientation in np.arange(8):
+        raise ValueError("Wrong value for argument ``Orientation``. "\
+                         "See description of the function.")
+    localorientations = [
+        ( 1, 2), (-1, 2), ( 1,-2), (-1,-2),
+        ( 2, 1), (-2, 1), ( 2,-1), (-2,-1)]
+    orientation = localorientations[num_orientation]
+
     nb_cpPatchD = np.intp(
         np.maximum(Nkv[:, num_patch] - (Jpqr[:, num_patch] + 1), 1))
 
@@ -155,46 +174,77 @@ def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0):
 
     # Face s.t. xi = 0
     if num_bound == 1:
-        ind_face1 = \
-            np.kron(np.ones(nb_cpPatchD[2]), edgeEta + edgeXi[offset]) + \
-            np.kron(edgeZeta, np.ones(nb_cpPatchD[1]))
+        l1 = edgeEta + edgeXi[offset] if abs(orientation[0])==1 else edgeZeta
+        l2 = edgeZeta if abs(orientation[1])==2 else edgeEta + edgeXi[offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face1 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        #ind_face1 = \
+        #    np.kron(np.ones(nb_cpPatchD[2]), edgeEta + edgeXi[offset]) + \
+        #    np.kron(edgeZeta, np.ones(nb_cpPatchD[1]))
         return ind_face1.astype(int)
     # Face s.t. xi = 1
     if num_bound == 2:
-        ind_face2 = \
-            np.kron(np.ones(nb_cpPatchD[2]), edgeEta + edgeXi[-1 - offset]) + \
-            np.kron(edgeZeta, np.ones(nb_cpPatchD[1]))
+        l1 = edgeEta + edgeXi[-1 - offset] if abs(orientation[0])==1 else edgeZeta
+        l2 = edgeZeta if abs(orientation[1])==2 else edgeEta + edgeXi[-1 - offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face2 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        # ind_face2 = \
+        #     np.kron(np.ones(nb_cpPatchD[2]), edgeEta + edgeXi[-1 - offset]) + \
+        #     np.kron(edgeZeta, np.ones(nb_cpPatchD[1]))
         return ind_face2.astype(int)
     # Face s.t. eta = 0
     if num_bound == 3:
-        ind_face3 = \
-            np.kron(np.ones(nb_cpPatchD[2]), edgeXi + edgeEta[offset]) + \
-            np.kron(edgeZeta, np.ones(nb_cpPatchD[0]))
+        l1 = edgeXi + edgeEta[offset] if abs(orientation[0])==1 else edgeZeta
+        l2 = edgeZeta if abs(orientation[1])==2 else edgeXi + edgeEta[offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face3 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        # ind_face3 = \
+        #     np.kron(np.ones(nb_cpPatchD[2]), edgeXi + edgeEta[offset]) + \
+        #     np.kron(edgeZeta, np.ones(nb_cpPatchD[0]))
         return ind_face3.astype(int)
     # Face s.t. eta = 1
     if num_bound == 4:
-        ind_face4 = \
-            np.kron(np.ones(nb_cpPatchD[2]), edgeXi + edgeEta[-1 - offset]) + \
-            np.kron(edgeZeta, np.ones(nb_cpPatchD[0]))
+        l1 = edgeXi + edgeEta[-1 - offset] if abs(orientation[0])==1 else edgeZeta
+        l2 = edgeZeta if abs(orientation[1])==2 else edgeXi + edgeEta[-1 - offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face4 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        # ind_face4 = \
+        #     np.kron(np.ones(nb_cpPatchD[2]), edgeXi + edgeEta[-1 - offset]) + \
+        #     np.kron(edgeZeta, np.ones(nb_cpPatchD[0]))
         return ind_face4.astype(int)
     # Face s.t. zeta = 0
     if num_bound == 5:
-        ind_face5 = \
-            np.kron(np.ones(nb_cpPatchD[1]), edgeXi + edgeZeta[offset]) + \
-            np.kron(edgeEta, np.ones(nb_cpPatchD[0]))
+        l1 = edgeXi + edgeZeta[offset] if abs(orientation[0])==1 else edgeEta
+        l2 = edgeEta if abs(orientation[1])==2 else edgeXi + edgeZeta[offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face5 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        # ind_face5 = \
+        #     np.kron(np.ones(nb_cpPatchD[1]), edgeXi + edgeZeta[offset]) + \
+        #     np.kron(edgeEta, np.ones(nb_cpPatchD[0]))
         return ind_face5.astype(int)
     # Face s.t. zeta = 1
     if num_bound == 6:
-        ind_face6 = \
-            np.kron(np.ones(nb_cpPatchD[1]),
-                    edgeXi + edgeZeta[-1 - offset]) + \
-            np.kron(edgeEta, np.ones(nb_cpPatchD[0]))
+        l1 = edgeXi + edgeZeta[-1 - offset] if abs(orientation[0])==1 else edgeEta
+        l2 = edgeEta if abs(orientation[1])==2 else edgeXi + edgeZeta[-1 - offset]
+        if orientation[0]<0: l1 = np.flip(l1)
+        if orientation[1]<0: l2 = np.flip(l2)
+        ind_face6 = np.kron(np.ones(l2.size), l1) + np.kron(l2, np.ones(l1.size))
+        # ind_face6 = \
+        #     np.kron(np.ones(nb_cpPatchD[1]),
+        #             edgeXi + edgeZeta[-1 - offset]) + \
+        #     np.kron(edgeEta, np.ones(nb_cpPatchD[0]))
         return ind_face6.astype(int)
     # Edges
     if num_bound > 100 and num_bound < 1000:
         edges = get_edgeCPindice(Nkv, Jpqr, dim, num_patch=num_patch)
         e = np.mod(num_bound, 100)
-        return edges[e - 1]
+        return edges[e - 1] if orientation[0]>0 else np.flip(edges[e - 1])
+    
     # Vertices
     if num_bound > 1000:
         vertex = get_vertexCPindice(Nkv, Jpqr, dim, num_patch=num_patch)
@@ -534,10 +584,70 @@ def add_displacementBC(igaPara, listCP, direction, value):
 
     return None
 
+def find_orientation(test_cps:np.ndarray, Nkv:np.ndarray, Jpqr:np.ndarray, dim:np.ndarray, indCPbyPatch:list, num_bound:int, num_patch=0, offset=0):
+    """Find the orientation that orders the control points located at the bound ``num_bound`` 
+    of patch ``num_patch`` has given by ``test_cps``.
 
-def get_interface(num_patch, Nkv ,Jpqr, dim, indCPbyPatch):
-    '''
-    Renvoie les interfaces du patch #num_patch# qui sont connectes a d'autres patch
+    Parameters
+    ----------
+    Nkv : list of int
+        Number of knots by direction.
+    Jpqr : list of int
+        Degree by direction.
+    dim : array of int
+        dimension for all patches
+    indCPbyPatch : list of array of int
+        Control point indices for all patches
+    num_bound : int
+        Index of the boundary entities (faces, edges, or vertices).
+    num_patch : int, optional
+        Index of the patch (python numbering). The default is 0.
+    offset : int, optional
+        Offset to get the indices of a following row of control points.
+        The default is 0.
+
+    Returns
+    -------
+    num_orientation : int
+        Integer between 0 and 7.
+    """
+    icps = get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch, offset)
+    cps = indCPbyPatch[num_patch][icps]
+    if not np.all(np.isin(cps, test_cps)):
+        raise ValueError("``test_cps`` are not defining the bound %i for the patch %i"%(num_bound, num_patch))
+    if np.all(cps==test_cps):
+        return 0
+    argsort1 = np.argsort(test_cps)
+    argsort2 = np.argsort(cps)
+    icps_ordered = icps[argsort2][np.argsort(argsort1)]
+    for num_orientation in np.arange(8)[1:]:
+        test_icps = get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch, offset, num_orientation=num_orientation)
+        if np.all(test_icps==icps_ordered):
+            return num_orientation
+    raise ValueError("No appropriate orientation has been found.")
+
+def get_interface(num_patch:int, Nkv:np.ndarray,Jpqr:np.ndarray, dim:np.ndarray, indCPbyPatch:list):
+    '''Identifies the strong coupling interfaces between ``num_patch`` and all other patches.
+
+    Parameters
+    ----------
+    num_patch : int
+        Index of the patch (python numbering).
+    Nkv : list of int
+        Number of knots by direction.
+    Jpqr : list of int
+        Degree by direction.
+    dim : array of int
+        dimension for all patches
+    indCPbyPatch : list of array of int
+        Control point indices for all patches
+
+    Return
+    ------
+    tab : array of int
+        A table with 5 colums and as many rows as found interfaces with other patches.
+        Columns are of type: 
+        [index master patch, master bound, index slave patch, slave bound, orientation].
     '''
     tab_thispatch = []
     for i in range(0, num_patch):
@@ -555,8 +665,11 @@ def get_interface(num_patch, Nkv ,Jpqr, dim, indCPbyPatch):
                     cps = indCPbyPatch[i][icps_bound]
                     bounds = find_allBounds(cps, Nkv, Jpqr, dim, indCPbyPatch,
                                             num_patch)
+                    
+                    orientation = find_orientation(
+                        cps, Nkv, Jpqr, dim, indCPbyPatch, bounds[0], num_patch)
 
-                    tab_thispatch.append([i, bnd, num_patch, bounds[0]])
+                    tab_thispatch.append([i, bnd, num_patch, bounds[0], orientation])
             else:
                 for bnd in bounds:
                     icps_bound = get_boundCPindice_wEdges(Nkv, Jpqr, dim, bnd,
@@ -565,14 +678,16 @@ def get_interface(num_patch, Nkv ,Jpqr, dim, indCPbyPatch):
                     boundi = find_allBounds(cps, Nkv, Jpqr, dim,
                                             indCPbyPatch, i)
 
-                    tab_thispatch.append([i, boundi[0], num_patch,bnd])
+                    orientation = find_orientation(
+                        cps, Nkv, Jpqr, dim, indCPbyPatch, boundi[0], i)
+
+                    tab_thispatch.append([i, boundi[0], num_patch,bnd,orientation])
             # j = 0
             # for bnd in bounds[:n]:
             #     tab_thispatch.append([i,boundi[j],num_patch,bnd])
             #     j += 1
 
     return np.array(tab_thispatch, dtype=np.intp)
-
 
 def get_patchConnectionInfos(Nkv, Jpqr, dim, indCPbyPatch, nb_patch):
     '''
