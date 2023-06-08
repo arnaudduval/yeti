@@ -428,7 +428,7 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
 end subroutine spmat_dot_dvec
 
 subroutine trapezoidal_rule_2d(nru, nrv, tensor, result)
-    !! Computes an integral inside a unitary cube using trapezoidal rule.
+    !! Computes an integral inside a unitary square using trapezoidal rule.
     !! It supposes that points are equidistant
 
     implicit none
