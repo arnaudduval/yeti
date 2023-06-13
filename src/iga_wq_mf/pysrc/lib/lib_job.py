@@ -373,6 +373,9 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(coefs, JJ, *nnz, *indices, *weights)
 		vector[:, CPList] = tmp
 
+		for i in range(self.part.dim):
+			vector[i, self.boundary.mchdod[i]] = 0.0
+
 		return vector
 
 	# Solve using fortran

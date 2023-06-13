@@ -287,7 +287,7 @@ class mechamat1D(part1D):
 		S = self.weights[-1] @ np.diag(Scoefs) @ self.basis[1].T 
 		return S
 
-	def solve(self, Fext=None, threshold=1e-9, nbIterNL=30):
+	def solve(self, Fext=None, threshold=1e-9, nbIterNL=15):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -328,7 +328,8 @@ class mechamat1D(part1D):
 
 				# Compute stiffness
 				Sdof = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
-				ddisp += np.linalg.solve(Sdof, dF)
+				SdofSparse = sp.csr_matrix(Sdof)
+				ddisp += sp.linalg.spsolve(SdofSparse, dF)
 
 			# Update values in output
 			disp[:, i]   = d_n1

@@ -2,12 +2,8 @@
 .. Test of elastoplasticity 2D
 .. We test how elasticity module works
 .. SI (Steel) : 
-..      - Stress : Pa (210e9)
-..      - Length : m
-..      - Force  : N
-..      - Mass   : kg 
-..      - Density: kg/m^3 (7.8e3)
-..      - Gravity: m/s^2 (9.8)
+..      - Stress : MPa (200e3)
+..      - Length : mm
 .. Joaquin Cornejo 
 """
 
@@ -24,8 +20,8 @@ folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 6 
-name = 'QA'
+degree, cuts = 4, 7
+name = 'SQ'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -37,37 +33,48 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs  = {'density': 1000, 'elastic_modulus': 1e9, 'poisson_ratio': 0.3, 'elastic_limit': 100e9}
+matArgs  = {'density': 1.0, 'elastic_modulus':200e3, 'elastic_limit':506, 'poisson_ratio': 0.3,}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(model.nbctrlpts)
 table = np.zeros((2, 2, 2), dtype=int)
-table[0, 0, 0] = 1
-table[1, 0, 1] = 1
+if name == 'SQ':
+	table[0, 0, 0] = 1
+	table[0, 0, 1] = 1
+elif name == 'QA':
+	# table[1, 0, 0] = 1
+	table[1, 1, 0] = 1
+	table[1, 0, 1] = 1
+else: raise Warning('Not possible')
 boundary.add_DirichletDisplacement(table=table)
 
 # Elasticity problem
 problem = mechaproblem(material, model, boundary)
 
+def forceVolFun1(P:list):
+	ref  = np.array([0.0, 0.0])
+	prop = np.zeros((2, np.size(P, axis=1)))
+	for i in range(2): prop[i, :] = ref[i] 
+	return prop
+
+def forceVolFun2(P:list):
+	ref  = np.array([0.0, 0.0])
+	prop = np.zeros((2, np.size(P, axis=1)))
+	for i in range(2): prop[i, :] = ref[i] 
+	return prop
+
 def forceSurfFun(P:list):
-	x = P[0, :]
-	y = P[1, :]
-	ref  = np.array([1.e8, 0.0])
-	prop = np.zeros((2, len(x)))
+	ref  = np.array([1.e3, 0.0])
+	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
 
-def forceVolFun(P:list):
-	x = P[0, :]
-	y = P[1, :]
-	ref  = np.array([1.e5, 0.0])
-	prop = np.zeros((2, len(x)))
-	for i in range(2): prop[i, :] = ref[i] 
-	return prop
-
-# Fsurf = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
-Fvol = problem.eval_volForce(forceVolFun)
+Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
+if name == 'SQ': 
+	Fext += problem.eval_volForce(forceVolFun1)
+elif name == 'QA': 
+	Fext += problem.eval_volForce(forceVolFun2)
 
 # -------------
 # ELASTICITY
@@ -75,13 +82,14 @@ Fvol = problem.eval_volForce(forceVolFun)
 fig, ax = plt.subplots()
 
 # Solve in fortran 
-for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC', 'TDC'], 
-							['w.o. preconditioner', 'Fast diag. (FD)', 'This work', 'Literature'])):
-    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fvol, methodPCG=methodPCG)
+for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'], 
+							['w.o. preconditioner', 'Fast diag. (FD)', 'This work'])):
+    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext, methodPCG=methodPCG)
     resPCG = resPCG[resPCG>0]
     ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
-ax.set_ybound(lower=1e-8, upper=1e2)
+model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+ax.set_ybound(lower=1e-12, upper=1e0)
 ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')

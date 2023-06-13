@@ -10,10 +10,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 matArgs   = {'elastic_modulus':200e3, 'elastic_limit':506, 'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
-length    = 1.0
 nbSteps   = 101
-geoArgs   = {'length': length}
-sampleSize =  2500
+geoArgs   = {'length': 1.0}
+sampleSize = 2500
 FigPlot   = 2
 
 ref = []
@@ -21,7 +20,7 @@ ref.append(np.load(folder + 'disp_interp_ref.npy'))
 ref.append(np.load(folder + 'stress_interp_ref.npy'))
 
 if FigPlot == 0:
-	degree_list = np.arange(2, 10)
+	degree_list = np.arange(2, 6)
 	cuts_list   = np.arange(3, 9)
 	error = np.zeros((len(cuts_list), 2))
 
@@ -31,8 +30,8 @@ if FigPlot == 0:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
 			knotvector = createKnotVector(degree, nbel)
-			quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 1}
-			# quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
+			# quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 1}
+			quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 			args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
 			model = mechamat1D(args)
 
@@ -43,14 +42,15 @@ if FigPlot == 0:
 			model.add_DirichletCondition(table=[1, 0])
 
 			# Define boundaries conditions
-			Fext        = np.zeros((model.nbctrlpts, nbSteps))
-			Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
-			for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
+			Fext    = np.zeros((model.nbctrlpts, 2*nbSteps + 1))
+			Fextref = model.compute_volForce(forceVol(model.qpPhy))
+			for i in range(0, nbSteps+1): Fext[:, i] = i/nbSteps*Fextref
+			for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
 
 			blockPrint()
 			# Solve 
-			lastStep = -1
-			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
+			lastStep = -2 # -2 or nbSteps+1
+			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep], threshold=1e-8)
 			stress_cp = model.interpolate_CntrlPtsField(stress)
 
 			interp = []
@@ -70,12 +70,14 @@ if FigPlot == 0:
 			ax.set_title(title)
 
 	for ax in axs:
-		ax.set_ylim(bottom=1e-16, top=1e1)
 		ax.set_ylabel('L2 Relative error (\%)')
 		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
 		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 		ax.set_xticks([8, 32, 128, 256])
+
+	axs[0].set_ylim(bottom=1e-8, top=1e1)
+	axs[1].set_ylim(bottom=1e-4, top=1e1)
 
 	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 	fig.tight_layout()
@@ -108,14 +110,15 @@ elif FigPlot == 1:
 			nbqp_list.append(model.nbqp)
 
 			# Define boundaries conditions
-			Fext        = np.zeros((model.nbctrlpts, nbSteps))
-			Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
-			for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
+			Fext    = np.zeros((model.nbctrlpts, 2*nbSteps + 1))
+			Fextref = model.compute_volForce(forceVol(model.qpPhy))
+			for i in range(0, nbSteps+1): Fext[:, i] = i/nbSteps*Fextref
+			for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
 
 			blockPrint()
 			# Solve 
-			lastStep = -1
-			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
+			lastStep = -2 # -2 or nbSteps+1
+			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep], threshold=1e-8)
 			stress_cp = model.interpolate_CntrlPtsField(stress)
 
 			interp = []
@@ -145,72 +148,68 @@ elif FigPlot == 1:
 
 elif FigPlot == 2:
 
-	degree_list = np.arange(2, 7)
-	cuts_list   = np.arange(3, 8)
+	degree = 5
+	cuts_list = np.arange(3, 8)
 	TYPEOFFIG = 2
 
 	if TYPEOFFIG == 0: TypeList = range(1, 5)
 	if TYPEOFFIG == 1: TypeList = range(1, 5)
 	if TYPEOFFIG == 2: TypeList = range(2, 6)
 
-	error = np.zeros((len(degree_list), len(cuts_list), len(TypeList), 2))
+	error = np.zeros((len(cuts_list), len(TypeList), 2))
 	# First curve
 	fig, axs  = plt.subplots(nrows=1, ncols=2, figsize=(11, 4))
-	for i, typeQuad in enumerate(TypeList):
-		for j, degree in enumerate(degree_list):
-			for k, cuts in enumerate(cuts_list):
-				nbel = 2**cuts
-				knotvector = createKnotVector(degree, nbel)
-				if TYPEOFFIG == 0: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 
-												'type': 'legextra', 'extra':{'nbQPEL':typeQuad}}
-				if TYPEOFFIG == 1: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
-												'type': 1, 'extra':{'s':typeQuad}}
-				if TYPEOFFIG == 2: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
-												'type': 1, 'extra':{'r':typeQuad}}
-				args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
-				model = mechamat1D(args)
+	for j, typeQuad in enumerate(TypeList):
+		for k, cuts in enumerate(cuts_list):
+			nbel = 2**cuts
+			knotvector = createKnotVector(degree, nbel)
+			if TYPEOFFIG == 0: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 
+											'type': 'legextra', 'extra':{'nbQPEL':typeQuad}}
+			if TYPEOFFIG == 1: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
+											'type': 1, 'extra':{'s':typeQuad}}
+			if TYPEOFFIG == 2: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
+											'type': 1, 'extra':{'r':typeQuad}}
+			args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+			model = mechamat1D(args)
 
-				# Add material
-				model.activate_mechanical(matArgs)
+			# Add material
+			model.activate_mechanical(matArgs)
 
-				# Add boundary condition
-				model.add_DirichletCondition(table=[1, 0])
+			# Add boundary condition
+			model.add_DirichletCondition(table=[1, 0])
 
-				# Define boundaries conditions
-				Fext        = np.zeros((model.nbctrlpts, nbSteps))
-				Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
-				for l in range(1, nbSteps-1): Fext[:, l] = l/(nbSteps-1)*Fext[:, -1]
+			# Define boundaries conditions
+			Fext    = np.zeros((model.nbctrlpts, 2*nbSteps + 1))
+			Fextref = model.compute_volForce(forceVol(model.qpPhy))
+			for i in range(0, nbSteps+1): Fext[:, i] = i/nbSteps*Fextref
+			for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
 
-				blockPrint()
-				# Solve 
-				lastStep = -1
-				disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
-				stress_cp = model.interpolate_CntrlPtsField(stress)
+			blockPrint()
+			# Solve 
+			lastStep = nbSteps+1 # -2 or nbSteps+1
+			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep], threshold=1e-8)
+			stress_cp = model.interpolate_CntrlPtsField(stress)
 
-				interp = []
-				interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
-				interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
-				enablePrint()
+			interp = []
+			interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+			enablePrint()
 
-				for l in range(2):
-					norm_ref = np.linalg.norm(ref[l][:, :lastStep], axis=0)
-					tmp		 = ref[l][:, :lastStep] - interp[l]
-					relerror = np.linalg.norm(tmp, axis=0)
-					relerror = np.divide(relerror, norm_ref, out=np.zeros_like(relerror), where=np.abs(norm_ref)>1.e-12)*100
-					error[j, k, i, l] = relerror[-1] # Last step 			
-
-			for [l, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']):
-				ax.semilogy(2**cuts_list, error[j, :, i, l], color=colorSet[i], alpha=1/(j+1), marker=markerSet[i])
-				ax.set_title(title)
+			for l in range(2):
+				norm_ref = np.linalg.norm(ref[l][:, :lastStep], axis=0)
+				tmp		 = ref[l][:, :lastStep] - interp[l]
+				relerror = np.linalg.norm(tmp, axis=0)
+				relerror = np.divide(relerror, norm_ref, out=np.zeros_like(relerror), where=np.abs(norm_ref)>1.e-12)*100
+				error[k, j, l] = relerror[-1] # Last step 			
 
 		for [l, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']):
-			if TYPEOFFIG == 0: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=r'$p+$' + str(typeQuad) + ' quadPts/el')
-			if TYPEOFFIG == 1: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=str(2+typeQuad) + ' int. points')
-			if TYPEOFFIG == 2: ax.semilogy(2**cuts_list, error[0, :, i, l], color=colorSet[i], marker=markerSet[i], label=r'$p+$' + str(typeQuad) + ' ext. points')
+			if TYPEOFFIG == 0: ax.semilogy(2**cuts_list, error[:, j, l], color=colorSet[j], marker=markerSet[j], label=r'$p+$' + str(typeQuad) + ' quadPts/el')
+			if TYPEOFFIG == 1: ax.semilogy(2**cuts_list, error[:, j, l], color=colorSet[j], marker=markerSet[j], label=str(2+typeQuad) + ' int. points')
+			if TYPEOFFIG == 2: ax.semilogy(2**cuts_list, error[:, j, l], color=colorSet[j], marker=markerSet[j], label=r'$p+$' + str(typeQuad) + ' ext. points')
 			ax.set_title(title)
 
 	for ax in axs:
-		ax.set_ylim(bottom=1e-16, top=1e1)
+		ax.set_ylim(bottom=1e-8, top=1e1)
 		ax.set_ylabel('L2 Relative error (\%)')
 		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
 		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())

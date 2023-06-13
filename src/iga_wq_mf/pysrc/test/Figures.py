@@ -464,7 +464,7 @@ elif CASE == 9: # 2D Geometries
 
 	def case9(folder):
 		# Create model
-		name    = 'QA'
+		name    = 'SQ'
 		filename = folder + 'VTK_' + name + '.png'
 		degree, cuts = 5, 5
 		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -492,7 +492,12 @@ elif CASE == 9: # 2D Geometries
 		)
 		pv.start_xvfb()
 		plotter = pv.Plotter(off_screen=True)
-		plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		if name == 'SQ':
+			boring_cmap = plt.cm.get_cmap("GnBu", 1)
+			plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
+		else:
+			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		
 		plotter.camera_position  = 'xy'
 		plotter.camera.zoom(0.8)
 

@@ -1,6 +1,6 @@
 from lib.__init__ import *
 from lib.lib_base import createKnotVector
-from lib.thermomecha1D import mechamat1D
+from lib.thermomecha1D import mechamat1D, plot_results
 from lib.lib_load import *
 
 # Select folder
@@ -26,18 +26,20 @@ def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
 	model.add_DirichletCondition(table=[1, 0])
 
 	# Define boundaries conditions
-	Fext        = np.zeros((model.nbctrlpts, nbSteps))
-	Fext[:, -1] = model.compute_volForce(forceVol(model.qpPhy))
-	for i in range(1, nbSteps-1): Fext[:, i] = i/(nbSteps-1)*Fext[:, -1]
+	Fext    = np.zeros((model.nbctrlpts, 2*nbSteps + 1))
+	Fextref = model.compute_volForce(forceVol(model.qpPhy))
+	for i in range(0, nbSteps+1): Fext[:, i] = i/nbSteps*Fextref
+	for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
 
 	# Solve
-	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext)
+	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext, threshold=1e-8)
 	strain_cp   = model.interpolate_CntrlPtsField(strain_qp)
 	plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
 	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
+	plot_results(model.quadRule, geoArgs['length'], disp_cp, plastic_cp, stress_cp, folder=folder, method=quadrule)
 	return model, disp_cp, strain_cp, plastic_cp, stress_cp
 
-isReference = False
+isReference = True
 quadrule = 'wq'
 
 # Set global variables
@@ -48,14 +50,12 @@ matArgs    = {'elastic_modulus':200e3, 'elastic_limit':506,
 
 if isReference:
 	degree, nbel = 9, 1024
-	knotvector   = createKnotVector(degree, nbel)
+	knotvector   = createKnotVector(degree, nbel, multiplicity=degree)
 	model, disp_cp, strain_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga')
 	disp_interp   = model.interpolate_sampleField(disp_cp,   sampleSize=samplesize)[0]
-	strain_interp = model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0]
 	stress_interp = model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0]
-	np.save(folder+'disp_interp_ref.npy', disp_interp)
-	np.save(folder+'strain_interp_ref.npy', strain_interp)
-	np.save(folder+'stress_interp_ref.npy', stress_interp)
+	np.save(folder+'disp_interp_refcont.npy', disp_interp)
+	np.save(folder+'stress_interp_refcont.npy', stress_interp)
 
 else:
 
@@ -68,7 +68,6 @@ else:
 
 	ref = []
 	ref.append(np.load(folder + 'disp_interp_ref.npy'))
-	ref.append(np.load(folder + 'strain_interp_ref.npy'))
 	ref.append(np.load(folder + 'stress_interp_ref.npy'))
 
 	degree = 6
@@ -81,7 +80,6 @@ else:
 		model, disp_cp, strain_cp, plastic_cp, stress_cp = info
 		interp = []
 		interp.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
-		interp.append(model.interpolate_sampleField(strain_cp, sampleSize=samplesize)[0])
 		interp.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
 
 		for j in range(3): relerror[i, :, j] = relativeError(ref[j], interp[j])
@@ -91,7 +89,7 @@ else:
 	fig, axs  = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
 	nbel_new, steps_new = np.meshgrid(nbel_list, np.arange(0, nbSteps))
 
-	for [i, ax], title in zip(enumerate(axs), ['Displacement', 'Strain', 'Stress']) :
+	for [i, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']) :
 		im = ax.pcolormesh(nbel_new, steps_new, relerror[:, :, i].T,
 						norm=mpl.colors.LogNorm(vmin=1.e-11, vmax=1.e-1),
 						cmap='viridis', shading='auto')
