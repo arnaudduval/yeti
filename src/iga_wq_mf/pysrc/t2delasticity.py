@@ -21,7 +21,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 degree, cuts = 4, 7
-name = 'SQ'
+name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -89,8 +89,8 @@ for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'],
     ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
 model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
-ax.set_ybound(lower=1e-12, upper=1e0)
-ax.legend()
+ax.set_ybound(lower=1e-12, upper=1e1)
+# ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 fig.tight_layout()
