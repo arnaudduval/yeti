@@ -647,6 +647,94 @@ subroutine array2symtensor(dimen, nvoigt, array, matrix)
 
 end subroutine array2symtensor
 
+subroutine erase_rows_csr(nr2er, rows2er, nm, nr_in, nnz_in, indi_in, indj_in, a_in, &
+                        nnz_out, indi_out, indj_out, a_out)
+    !! Erase rows from CSR format
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr2er, nr_in, nnz_in, nm
+    integer, intent(in) :: rows2er, indi_in, indj_in
+    dimension :: rows2er(nr2er), indi_in(nr_in+1), indj_in(nnz_in)
+    double precision, intent(in) :: a_in
+    dimension :: a_in(nnz_in, nm)
+
+    integer, intent(inout) :: nnz_out
+    integer, intent(out) :: indi_out, indj_out
+    dimension :: indi_out(nr_in-nr2er+1), indj_out(nnz_out)
+    double precision, intent(out) :: a_out
+    dimension :: a_out(nnz_out, nm) 
+
+    ! Local data
+    ! ----------
+    integer :: i, j, k, c, nr_out, nnzrow
+    integer, allocatable, dimension(:) :: rows2save
+
+    ! Verify that rows to erase are consistant
+    do i = 1, nr2er
+        k = rows2er(i)
+        if ((k.lt.1).or.(k.gt.nr_in)) then 
+            stop 'Rows to erase are not well defined'
+        end if
+    end do
+
+    ! Verify that rows to erase are different 
+    do i = 1, nr2er
+        c = 0
+        k = rows2er(i)
+        do j = 1, nr2er
+            if (k.eq.rows2er(j)) then 
+                c = c + 1
+            end if
+        end do
+        if (c.ge.2) then 
+            stop 'Rows to erase are repeated'
+        end if
+    end do
+
+    if (nnz_out.le.0) then 
+        ! Gets the number of non zeros values of output
+        nnz_out = nnz_in
+
+        do i = 1, nr2er
+            j = rows2er(i)
+            nnzrow = indi_in(j+1) - indi_in(j)
+            nnz_out = nnz_out - nnzrow
+        end do
+
+    else
+        ! Compute rows to save
+        nr_out = nr_in - nr2er
+        allocate(rows2save(nr_out))
+        i = 1; j = 1
+        do while ((j.le.nr_in).and.(i.le.nr_out))
+            if (any(rows2er.eq.j)) then
+                continue
+            else
+                rows2save(i) = j
+                i = i + 1 
+            end if
+            j = j + 1
+        end do
+
+        ! Compute indices
+        c = 1
+        indi_out(1) = 1
+        do i = 1, nr_out
+            j = rows2save(i)
+            nnzrow = indi_in(j+1) - indi_in(j)
+            do k = indi_in(j), indi_in(j+1) - 1
+                indj_out(c) = indj_in(k)
+                a_out(c, :) = a_in(k, :)
+                c = c + 1
+            end do
+            indi_out(i+1) = indi_out(i) + nnzrow
+        end do
+
+    end if
+
+end subroutine erase_rows_csr
+
 ! --------
 ! Indices
 ! --------
