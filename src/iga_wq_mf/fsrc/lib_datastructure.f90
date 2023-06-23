@@ -38,15 +38,17 @@ contains
                 datstruct%indj(dimen, maxval(datstruct%nnzs)), &
                 datstruct%bw(dimen, maxval(datstruct%nnzs), 6))
 
+        datstruct%indi = 0
         datstruct%indi(1, 1:nr_u+1) = indi_u
         datstruct%indi(2, 1:nr_v+1) = indi_v
 
+        datstruct%indj = 0
         datstruct%indj(1, 1:nnz_u) = indj_u
         datstruct%indj(2, 1:nnz_v) = indj_v
 
+        datstruct%bw = 0.d0
         datstruct%bw(1, 1:nnz_u, 1:2) = data_B_u
         datstruct%bw(2, 1:nnz_v, 1:2) = data_B_v
-
         datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
         datstruct%bw(2, 1:nnz_v, 3:6) = data_W_v
         
@@ -80,18 +82,20 @@ contains
                 datstruct%indj(dimen, maxval(datstruct%nnzs)), &
                 datstruct%bw(dimen, maxval(datstruct%nnzs), 6))
 
+        datstruct%indi = 0
         datstruct%indi(1, 1:nr_u+1) = indi_u
         datstruct%indi(2, 1:nr_v+1) = indi_v
         datstruct%indi(3, 1:nr_w+1) = indi_w
 
+        datstruct%indj = 0
         datstruct%indj(1, 1:nnz_u) = indj_u
         datstruct%indj(2, 1:nnz_v) = indj_v
         datstruct%indj(3, 1:nnz_w) = indj_w
 
+        datstruct%bw = 0.d0
         datstruct%bw(1, 1:nnz_u, 1:2) = data_B_u
         datstruct%bw(2, 1:nnz_v, 1:2) = data_B_v
         datstruct%bw(3, 1:nnz_w, 1:2) = data_B_w
-
         datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
         datstruct%bw(2, 1:nnz_v, 3:6) = data_W_v
         datstruct%bw(3, 1:nnz_w, 3:6) = data_W_w
@@ -125,13 +129,13 @@ contains
 
             if (all(table(i, :).eqv.(/.true., .true./))) then
                 allocate(rows2er(2))
-                rows2er = (/1, datstruct%nrows(i)/)
+                rows2er = (/1, nr/)
             else if (all(table(i, :).eqv.(/.true., .false./))) then
                 allocate(rows2er(1))
                 rows2er = 1
             else if (all(table(i, :).eqv.(/.false., .true./))) then
                 allocate(rows2er(1))
-                rows2er = datstruct%nrows(i)
+                rows2er = nr
             else 
                 nnz_new_list(i) = nnz
                 cycle
@@ -153,6 +157,7 @@ contains
         allocate(datstruct%indi(dimen, maxval(nr_new_list)+1), &
                 datstruct%indj(dimen, maxval(nnz_new_list)), &
                 datstruct%bw(dimen, maxval(nnz_new_list), 6))
+        datstruct%indi = 0; datstruct%indj = 0; datstruct%bw = 0.d0
 
         do i = 1, dimen
             nr  = datstruct%nrows(i)
@@ -160,13 +165,13 @@ contains
 
             if (all(table(i, :).eqv.(/.true., .true./))) then
                 allocate(rows2er(2))
-                rows2er = (/1, datstruct%nrows(i)/)
+                rows2er = (/1, nr/)
             else if (all(table(i, :).eqv.(/.true., .false./))) then
                 allocate(rows2er(1))
                 rows2er = 1
             else if (all(table(i, :).eqv.(/.false., .true./))) then
                 allocate(rows2er(1))
-                rows2er = datstruct%nrows(i)
+                rows2er = nr
             else 
                 datstruct%indi(i, 1:nr+1) = indi(i, 1:nr+1)
                 datstruct%indj(i, 1:nnz)  = indj(i, 1:nnz)
@@ -181,7 +186,7 @@ contains
             datstruct%indi(i, 1:nr_new_list(i)+1) = indi_out
             datstruct%indj(i, 1:nnz_new_list(i))  = indj_out
             datstruct%bw(i, 1:nnz_new_list(i), :) = bw_out
-            deallocate(indi_out, indj_out, bw_out)
+            deallocate(rows2er, indi_out, indj_out, bw_out)
         end do
 
         datstruct%nrows = nr_new_list
@@ -189,39 +194,39 @@ contains
 
     end subroutine update_datastructure
 
-    subroutine getcsr2csc(datstruct)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(structure), allocatable :: datstruct
+    ! subroutine getcsr2csc(datstruct)
+    !     implicit none 
+    !     ! Input / output data
+    !     ! --------------------
+    !     type(structure), allocatable :: datstruct
 
-        ! Local data
-        ! ----------
-        integer :: i, nr, nc, nnz
-        integer, dimension(:), allocatable :: indi, indj, indi_T, indj_T
-        double precision, dimension(:, :), allocatable :: bw, bw_T
+    !     ! Local data
+    !     ! ----------
+    !     integer :: i, nr, nc, nnz
+    !     integer, dimension(:), allocatable :: indi, indj, indi_T, indj_T
+    !     double precision, dimension(:, :), allocatable :: bw, bw_T
 
-        allocate(datstruct%indi_T(datstruct%dimen, maxval(datstruct%ncols)+1), &
-                datstruct%indj_T(datstruct%dimen, maxval(datstruct%nnzs)), &
-                datstruct%bw_T(datstruct%dimen, maxval(datstruct%nnzs), 6))
+    !     allocate(datstruct%indi_T(datstruct%dimen, maxval(datstruct%ncols)+1), &
+    !             datstruct%indj_T(datstruct%dimen, maxval(datstruct%nnzs)), &
+    !             datstruct%bw_T(datstruct%dimen, maxval(datstruct%nnzs), 6))
 
-        do i = 1, datstruct%dimen
-            nr  = datstruct%nrows(i)
-            nc  = datstruct%ncols(i)
-            nnz = datstruct%nnzs(i)
-            allocate(indi(nr+1), indi_T(nc+1), &
-                    indj(nnz), indj_T(nnz), &
-                    bw(nnz, 6), bw_T(nnz, 6))
-            indi = datstruct%indi(i, 1:nr+1)
-            indj = datstruct%indj(i, 1:nnz)
-            bw   = datstruct%bw(i, 1:nnz, :)
-            call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
-            datstruct%indi_T(i, 1:nc+1) = indi_T
-            datstruct%indj_T(i, 1:nnz)  = indj_T
-            datstruct%bw_T(i, 1:nnz, :) = bw_T
-            deallocate(indi, indj, indi_T, indj_T, bw, bw_T)
-        end do
+    !     do i = 1, datstruct%dimen
+    !         nr  = datstruct%nrows(i)
+    !         nc  = datstruct%ncols(i)
+    !         nnz = datstruct%nnzs(i)
+    !         allocate(indi(nr+1), indi_T(nc+1), &
+    !                 indj(nnz), indj_T(nnz), &
+    !                 bw(nnz, 6), bw_T(nnz, 6))
+    !         indi = datstruct%indi(i, 1:nr+1)
+    !         indj = datstruct%indj(i, 1:nnz)
+    !         bw   = datstruct%bw(i, 1:nnz, :)
+    !         call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
+    !         datstruct%indi_T(i, 1:nc+1) = indi_T
+    !         datstruct%indj_T(i, 1:nnz)  = indj_T
+    !         datstruct%bw_T(i, 1:nnz, :) = bw_T
+    !         deallocate(indi, indj, indi_T, indj_T, bw, bw_T)
+    !     end do
 
-    end subroutine getcsr2csc
+    ! end subroutine getcsr2csc
 
 end module datastructure
