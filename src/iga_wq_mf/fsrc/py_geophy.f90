@@ -314,7 +314,7 @@ subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
 
     do i = 1, nnz
         call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
-        coefs(:,:,i) = matmul(mat%invJ(:,:,i), Tstress)*mat%detJ(i)
+        coefs(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
     end do
 
 end subroutine eval_intforce_coefficient

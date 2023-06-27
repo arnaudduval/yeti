@@ -398,7 +398,7 @@ subroutine fd_elasticity_2d(nr_total, nr_u, nr_v, U_u, U_v, eigen_diag, array_in
     integer, parameter :: dimen = 2
     integer, intent(in) :: nr_total, nr_u, nr_v
     double precision, intent(in) :: U_u, U_v, eigen_diag, array_in
-    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), &
+    dimension ::    U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), &
                     eigen_diag(dimen, nr_total), array_in(dimen, nr_total)
 
     double precision, intent(out) :: array_out
@@ -426,7 +426,7 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
     integer, parameter :: dimen = 3
     integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
     double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
-    dimension ::    U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
+    dimension ::    U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w), &
                     eigen_diag(dimen, nr_total), array_in(dimen, nr_total)
 
     double precision, intent(out) :: array_out
@@ -637,7 +637,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
-        allocate(Mcoef_u(nc_u, dimen), Mcoef_v(nc_v, dimen), Kcoef_u(nc_u, dimen), Kcoef_v(nc_v, dimen))
+        allocate(Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v))
         Mcoef_u = 1.d0; Kcoef_u = 1.d0
         Mcoef_v = 1.d0; Kcoef_v = 1.d0
 
@@ -655,7 +655,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
             end do
         end if
 
-        allocate(U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), D_u(nr_u, dimen), D_v(nr_v, dimen))
+        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), D_u(dimen, nr_u), D_v(dimen, nr_v))
         call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                 data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
                                 table, U_u, U_v, D_u, D_v)
@@ -764,8 +764,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
-        allocate(Mcoef_u(nc_u, dimen), Mcoef_v(nc_v, dimen), Mcoef_w(nc_w, dimen), &
-                Kcoef_u(nc_u, dimen), Kcoef_v(nc_v, dimen), Kcoef_w(nc_w, dimen))
+        allocate(Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Mcoef_w(dimen, nc_w), &
+                Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v), Kcoef_w(dimen, nc_w))
         Mcoef_u = 1.d0; Kcoef_u = 1.d0
         Mcoef_v = 1.d0; Kcoef_v = 1.d0
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
@@ -774,8 +774,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
         end if
 
-        allocate(U_u(nr_u, nr_u, dimen), U_v(nr_v, nr_v, dimen), U_w(nr_w, nr_w, dimen), &
-                D_u(nr_u, dimen), D_v(nr_v, dimen), D_w(nr_w, dimen))
+        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w), &
+                D_u(dimen, nr_u), D_v(dimen, nr_v), D_w(dimen, nr_w))
         call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                                     data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
