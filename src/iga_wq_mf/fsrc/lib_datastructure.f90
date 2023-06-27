@@ -5,11 +5,47 @@ module datastructure
         integer :: dimen
         integer, allocatable, dimension(:) :: nrows, ncols, nnzs
         integer, allocatable, dimension(:, :) :: indi, indj, indi_T, indj_T
-        double precision, allocatable, dimension(:, :, :) :: bw, bw_T
+        double precision, allocatable, dimension(:, :) :: eigval
+        double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvec
 
     end type structure
 
 contains
+
+    subroutine init_1datastructure(datstruct, nr_u, nc_u, nnz_u, indi_u, indj_u, data_B_u, data_W_u)
+
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        integer, parameter :: dimen = 1
+        type(structure), allocatable :: datstruct
+        integer, intent(in) :: nr_u, nc_u, nnz_u
+        integer, intent(in) :: indi_u, indj_u
+        dimension ::    indi_u(nr_u+1), indj_u(nnz_u)
+        double precision, intent(in) :: data_B_u, data_W_u
+        dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
+
+        datstruct%dimen = dimen
+        allocate(datstruct%nrows(dimen), datstruct%ncols(dimen), datstruct%nnzs(dimen))
+        datstruct%nrows = (/nr_u/)
+        datstruct%ncols = (/nc_u/)
+        datstruct%nnzs  = (/nnz_u/)
+
+        allocate(datstruct%indi(dimen, maxval(datstruct%nrows)+1), & 
+                datstruct%indj(dimen, maxval(datstruct%nnzs)), &
+                datstruct%bw(dimen, maxval(datstruct%nnzs), 6))
+
+        datstruct%indi = 0
+        datstruct%indi(1, 1:nr_u+1) = indi_u
+
+        datstruct%indj = 0
+        datstruct%indj(1, 1:nnz_u) = indj_u
+
+        datstruct%bw = 0.d0
+        datstruct%bw(1, 1:nnz_u, 1:2) = data_B_u
+        datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
+        
+    end subroutine init_1datastructure
 
     subroutine init_2datastructure(datstruct, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -194,39 +230,78 @@ contains
 
     end subroutine update_datastructure
 
-    ! subroutine getcsr2csc(datstruct)
-    !     implicit none 
-    !     ! Input / output data
-    !     ! --------------------
-    !     type(structure), allocatable :: datstruct
+    subroutine getcsr2csc(datstruct)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(structure), allocatable :: datstruct
 
-    !     ! Local data
-    !     ! ----------
-    !     integer :: i, nr, nc, nnz
-    !     integer, dimension(:), allocatable :: indi, indj, indi_T, indj_T
-    !     double precision, dimension(:, :), allocatable :: bw, bw_T
+        ! Local data
+        ! ----------
+        integer :: i, nr, nc, nnz
+        integer, dimension(:), allocatable :: indi, indj, indi_T, indj_T
+        double precision, dimension(:, :), allocatable :: bw, bw_T
 
-    !     allocate(datstruct%indi_T(datstruct%dimen, maxval(datstruct%ncols)+1), &
-    !             datstruct%indj_T(datstruct%dimen, maxval(datstruct%nnzs)), &
-    !             datstruct%bw_T(datstruct%dimen, maxval(datstruct%nnzs), 6))
+        allocate(datstruct%indi_T(datstruct%dimen, maxval(datstruct%ncols)+1), &
+                datstruct%indj_T(datstruct%dimen, maxval(datstruct%nnzs)), &
+                datstruct%bw_T(datstruct%dimen, maxval(datstruct%nnzs), 6))
 
-    !     do i = 1, datstruct%dimen
-    !         nr  = datstruct%nrows(i)
-    !         nc  = datstruct%ncols(i)
-    !         nnz = datstruct%nnzs(i)
-    !         allocate(indi(nr+1), indi_T(nc+1), &
-    !                 indj(nnz), indj_T(nnz), &
-    !                 bw(nnz, 6), bw_T(nnz, 6))
-    !         indi = datstruct%indi(i, 1:nr+1)
-    !         indj = datstruct%indj(i, 1:nnz)
-    !         bw   = datstruct%bw(i, 1:nnz, :)
-    !         call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
-    !         datstruct%indi_T(i, 1:nc+1) = indi_T
-    !         datstruct%indj_T(i, 1:nnz)  = indj_T
-    !         datstruct%bw_T(i, 1:nnz, :) = bw_T
-    !         deallocate(indi, indj, indi_T, indj_T, bw, bw_T)
-    !     end do
+        do i = 1, datstruct%dimen
+            nr  = datstruct%nrows(i)
+            nc  = datstruct%ncols(i)
+            nnz = datstruct%nnzs(i)
+            allocate(indi(nr+1), indi_T(nc+1), &
+                    indj(nnz), indj_T(nnz), &
+                    bw(nnz, 6), bw_T(nnz, 6))
+            indi = datstruct%indi(i, 1:nr+1)
+            indj = datstruct%indj(i, 1:nnz)
+            bw   = datstruct%bw(i, 1:nnz, :)
+            call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
+            datstruct%indi_T(i, 1:nc+1) = indi_T
+            datstruct%indj_T(i, 1:nnz)  = indj_T
+            datstruct%bw_T(i, 1:nnz, :) = bw_T
+            deallocate(indi, indj, indi_T, indj_T, bw, bw_T)
+        end do
 
-    ! end subroutine getcsr2csc
+    end subroutine getcsr2csc
+
+    subroutine eigendecomposition(datstruct, ncols, Mcoef, Kcoef)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(structure), allocatable :: datstruct
+        integer, intent(in) :: ncols
+        double precision, intent(in) :: Mcoef, Kcoef
+        dimension :: Mcoef(datstruct%dimen, ncols), Kcoef(datstruct%dimen, ncols)
+
+        ! Local data
+        ! ----------
+        integer :: i, nr, nc, nnz
+        integer, dimension(:), allocatable :: indi, indj
+        double precision, dimension(:), allocatable :: eigvalues, Mdiag, Kdiag
+        double precision, dimension(:, :), allocatable :: bw, eigvectors
+
+        allocate(datstruct%eigval(maxval(datstruct%nrows), datstruct%dimen), &
+        datstruct%eigvec(maxval(datstruct%nrows), maxval(datstruct%nrows), datstruct%dimen))
+        datstruct%eigval = 0.d0; datstruct%eigvec = 0.d0
+
+        ! Eigen decomposition
+        do i = 1, datstruct%dimen
+            nr  = datstruct%nrows(i)
+            nc  = datstruct%ncols(i)
+            nnz = datstruct%nnzs(i)
+            allocate(indi(nr+1), indj(nnz), bw(nnz, 6))
+            indi = datstruct%indi(i, 1:nr+1)
+            indj = datstruct%indj(i, 1:nnz)
+            bw   = datstruct%bw(i, 1:nnz, :)
+            allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
+            call eigen_decomposition(nr, nc, Mcoef(i, 1:nc), Kcoef(i, 1:nc), nnz, indi, indj, &
+                                    bw(:, 1:2), bw(:, 3:6), (/0, 0/), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+            datstruct%eigval(1:nr, i) = eigvalues
+            datstruct%eigvec(1:nr, 1:nr, i) = eigvectors
+            deallocate(indi, indj, bw, eigvalues, eigvectors, Mdiag, Kdiag)
+        end do
+
+    end subroutine eigendecomposition
 
 end module datastructure

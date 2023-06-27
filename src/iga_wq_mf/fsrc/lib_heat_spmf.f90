@@ -18,8 +18,8 @@ subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension ::    Mcoef_u(nr_u), Mcoef_v(nr_v), Mcoef_w(nr_w), &
-                    Kcoef_u(nr_u), Kcoef_v(nr_v), Kcoef_w(nr_w)
+    dimension ::    Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), &
+                    Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w)
     double precision, intent(in) :: mean
     dimension :: mean(3)
     logical, intent(in) :: isDiag
