@@ -311,20 +311,20 @@ subroutine inverse_matrix(nr, A)
 
 end subroutine inverse_matrix
 
-subroutine crossproduct(v1, v2, v3)
+subroutine crossproduct(vA, vB, vC)
     !! Computes cross product in a 3D Euclidean space, v3 =  v1 x v2 (x is cross product)
 
     ! Input / output data
     ! -------------------
-    double precision, intent(in) :: v1, v2
-    dimension :: v1(3), v2(3)
+    double precision, intent(in) :: vA, vB
+    dimension :: vA(3), vB(3)
 
-    double precision, intent(out) :: v3
-    dimension :: v3(3)
+    double precision, intent(out) :: vC
+    dimension :: vC(3)
 
-    v3(1) = v1(2)*v2(3) - v1(3)*v2(2)
-    v3(2) = v1(3)*v2(1) - v1(1)*v2(3)
-    v3(3) = v1(1)*v2(2) - v1(2)*v2(1)
+    vC(1) = vA(2)*vB(3) - vA(3)*vB(2)
+    vC(2) = vA(3)*vB(1) - vA(1)*vB(3)
+    vC(3) = vA(1)*vB(2) - vA(2)*vB(1)
 
 end subroutine crossproduct
 

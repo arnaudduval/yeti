@@ -280,7 +280,8 @@ contains
         integer, dimension(:), allocatable :: indi, indj
         double precision, dimension(:), allocatable :: eigvalues, Mdiag, Kdiag
         double precision, dimension(:, :), allocatable :: bw, eigvectors
-
+        
+        if (ncols.lt.maxval(datstruct%ncols)) stop 'Problem size'
         allocate(datstruct%eigval(maxval(datstruct%nrows), datstruct%dimen), &
         datstruct%eigvec(maxval(datstruct%nrows), maxval(datstruct%nrows), datstruct%dimen))
         datstruct%eigval = 0.d0; datstruct%eigvec = 0.d0
@@ -296,7 +297,7 @@ contains
             bw   = datstruct%bw(i, 1:nnz, :)
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
             call eigen_decomposition(nr, nc, Mcoef(i, 1:nc), Kcoef(i, 1:nc), nnz, indi, indj, &
-                                    bw(:, 1:2), bw(:, 3:6), (/0, 0/), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+                                    bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
             datstruct%eigval(1:nr, i) = eigvalues
             datstruct%eigvec(1:nr, 1:nr, i) = eigvectors
             deallocate(indi, indj, bw, eigvalues, eigvectors, Mdiag, Kdiag)

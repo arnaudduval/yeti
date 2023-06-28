@@ -650,21 +650,22 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
             allocate(MM(dimen, nc), KK(dimen, nc))
             do i = 1, dimen
                 call compute_separationvariables_ijblock(i, i, mat%dimen, mat%nvoigt, (/nc_u, nc_v/), mat, MM, KK)
-                Mcoef_u(:, i) = MM(1, 1:nc_u); Mcoef_v(:, i) = MM(2, 1:nc_v)
-                Kcoef_u(:, i) = KK(1, 1:nc_u); Kcoef_v(:, i) = KK(2, 1:nc_v)
+                Mcoef_u(i, :) = MM(1, 1:nc_u); Mcoef_v(i, :) = MM(2, 1:nc_v)
+                Kcoef_u(i, :) = KK(1, 1:nc_u); Kcoef_v(i, :) = KK(2, 1:nc_v)
             end do
         end if
 
         allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), D_u(dimen, nr_u), D_v(dimen, nr_v))
-        call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+        call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                 data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
                                 table, U_u, U_v, D_u, D_v)
         allocate(Deigen(dimen, nr_total))
         I_u = 1.d0; I_v = 1.d0
         do i = 1, dimen
-            call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(:, i), D_v(:, i), mat%mean(i, i, :), Deigen(i, :))
+            call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(i, :), D_v(i, :), mat%mean(i, i, :), Deigen(i, :))
         end do
-
+        
         call setup_preconditionerdiag(solv, dimen, nr_total, Deigen)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -784,7 +785,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         allocate(Deigen(dimen, nr_total))
         I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
         do i = 1, dimen
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(:, i), D_v(:, i), D_w(:, i), &
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(i, :), D_v(i, :), D_w(i, :), &
                                         mat%mean(i, i, :), Deigen(i, :))
         end do
 

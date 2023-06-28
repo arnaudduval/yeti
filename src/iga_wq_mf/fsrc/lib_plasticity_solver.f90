@@ -121,6 +121,7 @@ contains
         double precision, target, intent(in) :: diag
         dimension :: diag(nm, nr)
 
+        if (nm.ne.solv%dimen) stop 'Not possible'
         solv%diag => diag
         
     end subroutine setup_preconditionerdiag
@@ -142,7 +143,6 @@ contains
     
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
-    
         ! Local data
         ! ----------
         integer :: i, j, dimen, nb_tasks
@@ -414,6 +414,7 @@ contains
         double precision, target, intent(in) :: diag
         dimension :: diag(nm, nr)
 
+        if (nm.ne.solv%dimen) stop 'Not possible'
         solv%diag => diag
         
     end subroutine setup_preconditionerdiag
