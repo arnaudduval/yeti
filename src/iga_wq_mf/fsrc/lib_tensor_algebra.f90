@@ -1010,8 +1010,7 @@ end subroutine csr_get_diag_3d
 ! ----------------------------
 
 subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
-                                data_B, data_W, robcond1, robcond2, &
-                                eigenvalues, eigenvectors, Kdiag, Mdiag)
+                                data_B, data_W, robcond, eigval, eigvec, Kdiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -1030,11 +1029,11 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B, data_W
     dimension :: data_B(nnz, 2), data_W(nnz, 4)
-    integer, intent(in) :: robcond1, robcond2
-    dimension :: robcond1(2), robcond2(2)
+    integer, intent(in) :: robcond
+    dimension :: robcond(2)
             
-    double precision, intent(out) :: eigenvalues, eigenvectors
-    dimension :: eigenvalues(nr), eigenvectors(nr, nr)
+    double precision, intent(out) :: eigval, eigvec
+    dimension :: eigval(nr), eigvec(nr, nr)
     double precision, intent(out) :: Kdiag, Mdiag
     dimension :: Kdiag(nr), Mdiag(nr)
 
@@ -1074,29 +1073,14 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
     allocate(KK(nr, nr))
 
-    !! TO MODIFY ACCORDING TO NEW TECHNIQUE TO FAST DIAGONALIZATION
-    ! if (robcond1(1).ne.0) then 
-    !     WW1(1, 1) = penalty*WW1(1, 1)
-    ! end if
-    ! if (robcond1(2).ne.0) then 
-    !     WW1(nr, nr) = penalty*WW1(nr, nr)
-    ! end if
-
-    ! if (robcond2(1).ne.0) then 
-    !     BB1(1, 1) = penalty*BB1(1, 1)
-    ! end if
-    ! if (robcond2(2).ne.0) then 
-    !     BB1(nr, nr) = penalty*BB1(nr, nr)
-    ! end if
-
     KK = matmul(WW1, transpose(BB1))
     deallocate(BB1, WW1)
 
-    if ((robcond1(1).ne.0).or.(robcond2(1).ne.0)) then 
+    if (robcond(1).ne.0) then 
         KK(1, 1) = penalty*KK(1, 1)
     end if
 
-    if ((robcond1(2).ne.0).or.(robcond2(2).ne.0)) then 
+    if (robcond(2).ne.0) then 
         KK(nr, nr) = penalty*KK(nr, nr)
     end if
 
@@ -1109,8 +1093,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! -----------------------------------
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
-    call compute_geneigs(nr, KK, MM, eigenvalues, eigenvectors)
-    ! if (any(eigenvalues.lt.0.d0)) print*, 'Probable instabilities'
+    call compute_geneigs(nr, KK, MM, eigval, eigvec)
     deallocate(KK, MM)
 
 end subroutine eigen_decomposition

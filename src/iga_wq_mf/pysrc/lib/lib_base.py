@@ -320,7 +320,7 @@ def genEigenDecomposition(indi, indj, data, robcond=[0, 0], coefs=None):
 	else: [mcoefs, kcoefs] = coefs
 
 	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, B, W, 
-									mcoefs, kcoefs, robcond, robcond)
+									mcoefs, kcoefs, robcond)
 
 	return eigenvalues, eigenvectors
 

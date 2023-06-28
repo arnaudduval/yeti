@@ -37,13 +37,13 @@ subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
     ! Eigen decomposition
     call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u, data_W_u, (/0, 0/), (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+                            data_B_u, data_W_u, (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
 
     call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v, data_W_v, (/0, 0/), (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
+                            data_B_v, data_W_v, (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
 
     call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w, data_W_w, (/0, 0/), (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
+                            data_B_w, data_W_w, (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
 
     ! Find diagonal
     if (.not.isDiag) return
