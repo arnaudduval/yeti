@@ -1,12 +1,12 @@
 subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                 data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
-                                table, ddl, U_u, U_v, D_u, D_v)
+                                table, U_u, U_v, D_u, D_v)
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 2
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, ddl
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -17,12 +17,12 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
-    dimension :: Mcoef_u(ddl, nc_u), Mcoef_v(ddl, nc_v), Kcoef_u(ddl, nc_u), Kcoef_v(ddl, nc_v)
+    dimension :: Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v)
 
     double precision, intent(out) :: U_u, U_v
-    dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v)
+    dimension :: U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v)
     double precision, intent(out) :: D_u, D_v
-    dimension :: D_u(ddl, nr_u), D_v(ddl, nr_v)
+    dimension :: D_u(dimen, nr_u), D_v(dimen, nr_v)
 
     ! Local data
     ! -----------
@@ -46,13 +46,13 @@ end subroutine eigendecomp_plasticity_2d
 subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, &
-                                Kcoef_u, Kcoef_v, Kcoef_w, table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
+                                Kcoef_u, Kcoef_v, Kcoef_w, table, U_u, U_v, U_w, D_u, D_v, D_w)
 
     implicit none 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 3
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, ddl
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -65,13 +65,13 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension :: Mcoef_u(ddl, nc_u), Mcoef_v(ddl, nc_v), Mcoef_w(ddl, nc_w), &
-                Kcoef_u(ddl, nc_u), Kcoef_v(ddl, nc_v), Kcoef_w(ddl, nc_w)
+    dimension :: Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Mcoef_w(dimen, nc_w), &
+                Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v), Kcoef_w(dimen, nc_w)
 
     double precision, intent(out) :: U_u, U_v, U_w
-    dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), U_w(ddl, nr_w, nr_w)
+    dimension :: U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w)
     double precision, intent(out) :: D_u, D_v, D_w
-    dimension :: D_u(ddl, nr_u), D_v(ddl, nr_v), D_w(ddl, nr_w)
+    dimension :: D_u(dimen, nr_u), D_v(dimen, nr_v), D_w(dimen, nr_w)
 
     ! Local data
     ! -----------
@@ -362,63 +362,6 @@ contains
         end do
 
     end subroutine compute_mean_diagblocks
-
-    subroutine compute_mean_allblocks(mat, dimen, nvoigt, nclist)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(mecamat), pointer :: mat
-        integer, intent(in) :: dimen, nvoigt, nclist
-        dimension :: nclist(dimen)
-
-        ! Local data
-        ! ----------
-        integer :: i, j, k, c, genpos, pos, ind(3)
-        integer, dimension(:), allocatable :: sample
-        integer, dimension(:, :), allocatable :: indlist
-        double precision :: mean(dimen)
-        
-        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
-        allocate(indlist(dimen, 3), sample(3**dimen))
-        do i = 1, dimen 
-            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
-            indlist(i, :) = ind
-        end do
-    
-        ! Select a set of coefficients
-        c = 1
-        if (dimen.eq.2) then
-            do j = 1, 3
-                do i = 1, 3
-                    genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
-                    sample(c) = genpos
-                    c = c + 1
-                end do
-            end do
-        else if (dimen.eq.3) then
-            do k = 1, 3
-                do j = 1, 3
-                    do i = 1, 3
-                        genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
-                        sample(c) = genpos
-                        c = c + 1
-                    end do
-                end do
-            end do
-        else
-            stop 'Not possible compute mean all blocks'
-        end if
-
-        do i = 1, dimen
-            do j = 1, dimen
-                call compute_mean_ijblock(i, j, dimen, nvoigt, mat, size(sample), sample, mean)
-                mat%mean(i, j, :) = mean
-            end do
-        end do
-
-    end subroutine compute_mean_allblocks
 
     subroutine mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &

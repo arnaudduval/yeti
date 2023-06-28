@@ -410,8 +410,7 @@ subroutine fd_elasticity_2d(nr_total, nr_u, nr_v, U_u, U_v, eigen_diag, array_in
 
     allocate(solv)
     call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
-    solv%isdiagblocks = .true.
-    call applyfastdiag(solv, dimen, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
+    call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
     
 end subroutine fd_elasticity_2d
 
@@ -439,8 +438,7 @@ subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_dia
 
     allocate(solv)
     call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
-    solv%isdiagblocks = .true.
-    call applyfastdiag(solv, dimen, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
+    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
     
 end subroutine fd_elasticity_3d
 
@@ -592,7 +590,6 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
-    logical :: isdiagblocks = .true.
 
     double precision, intent(in) :: b
     dimension :: b(dimen, nr_total)
@@ -607,7 +604,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     double precision, dimension(:, :, :), allocatable :: U_u, U_v
     double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v
 
-    integer :: i, nc, ddl
+    integer :: i, nc
     double precision :: I_u, I_v
     dimension :: I_u(nr_u), I_v(nr_v)
     double precision, dimension(:, :), allocatable :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, MM, KK
@@ -644,10 +641,8 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         Mcoef_u = 1.d0; Kcoef_u = 1.d0
         Mcoef_v = 1.d0; Kcoef_v = 1.d0
 
-        if ((isdiagblocks).and.(methodPCG.eq.'JMC')) then
+        if (methodPCG.eq.'JMC') then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
-        else if (.not.(isdiagblocks).and.(methodPCG.eq.'JMC')) then
-            call compute_mean_allblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
         end if
 
         if (methodPCG.eq.'TDC') then 
@@ -660,31 +655,22 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
             end do
         end if
 
-        if (isdiagblocks.or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-
-            ddl = dimen
-            allocate(U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), D_u(ddl, nr_u), D_v(ddl, nr_v))
-            call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
-                                    table, ddl, U_u, U_v, D_u, D_v)
-            allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0
-            do i = 1, dimen
-                call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(i, :), D_v(i, :), mat%mean(i, i, :), Deigen(i, :))
-            end do
+        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), D_u(dimen, nr_u), D_v(dimen, nr_v))
+        call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
+                                table, U_u, U_v, D_u, D_v)
+        allocate(Deigen(dimen, nr_total))
+        I_u = 1.d0; I_v = 1.d0
+        do i = 1, dimen
+            call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(i, :), D_v(i, :), mat%mean(i, i, :), Deigen(i, :))
+        end do
         
-        else 
-
-            stop 'This method has not been developed'
-
-        end if
-
-        call setup_preconditionerdiag(solv, ddl, nr_total, Deigen)
+        call setup_preconditionerdiag(solv, dimen, nr_total, Deigen)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ddl, U_u, U_v, ndu, ndv, dod_u, dod_v, &
+                        data_W_u, data_W_v, U_u, U_v, ndu, ndv, dod_u, dod_v, &
                         nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                    
@@ -729,7 +715,6 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
-    logical :: isdiagblocks = .true.
 
     double precision, intent(in) :: b
     dimension :: b(dimen, nr_total)
@@ -744,7 +729,7 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
     double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v, D_w
 
-    integer :: i, ddl
+    integer :: i
     double precision :: I_u, I_v, I_w
     dimension :: I_u(nr_u), I_v(nr_v), I_w(nr_w)
     double precision, dimension(:, :), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
@@ -786,39 +771,28 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         Mcoef_v = 1.d0; Kcoef_v = 1.d0
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
 
-        if ((isdiagblocks).and.(methodPCG.eq.'JMC')) then
+        if (methodPCG.eq.'JMC') then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
-        else if (.not.(isdiagblocks).and.(methodPCG.eq.'JMC')) then
-            call compute_mean_allblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
         end if
 
-        if (isdiagblocks.or.(methodPCG.eq.'C')) then
+        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w), &
+                D_u(dimen, nr_u), D_v(dimen, nr_v), D_w(dimen, nr_w))
+        call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                                    data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
+                                    table, U_u, U_v, U_w, D_u, D_v, D_w)
 
-            ddl = dimen
-            allocate(U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), U_w(ddl, nr_w, nr_w), &
-                    D_u(ddl, nr_u), D_v(ddl, nr_v), D_w(ddl, nr_w))
-            call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                        data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
-                                        table, ddl, U_u, U_v, U_w, D_u, D_v, D_w)
+        allocate(Deigen(dimen, nr_total))
+        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
+        do i = 1, dimen
+            call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(i, :), D_v(i, :), D_w(i, :), &
+                                        mat%mean(i, i, :), Deigen(i, :))
+        end do
 
-            allocate(Deigen(ddl, nr_total))
-            I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-            do i = 1, dimen
-                call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(i, :), D_v(i, :), D_w(i, :), &
-                                            mat%mean(i, i, :), Deigen(i, :))
-            end do
-        
-        else 
-
-            stop 'This method has not been developed'
-
-        end if
-
-        call setup_preconditionerdiag(solv, ddl, nr_total, Deigen)
+        call setup_preconditionerdiag(solv, dimen, nr_total, Deigen)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, ddl, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
                         U_u, U_v, U_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                   
