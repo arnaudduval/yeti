@@ -31,16 +31,13 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     
     allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v))
     do i = 1, dimen
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
-                                data_B_u, data_W_u, table(1, :, i), table(1, :, i), &
-                                D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
 
-    do i = 1, dimen
         call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
                                 data_B_u, data_W_u, table(1, :, i), D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
 
         call eigen_decomposition(nr_v, nc_v, Mcoef_v(i, :), Kcoef_v(i, :), nnz_v, indi_v, indj_v, &
-                                data_B_v, data_W_v, table(2, :, i), D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v) 
+                                data_B_v, data_W_v, table(2, :, i), D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v)
+
     end do
 
     deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
