@@ -145,8 +145,8 @@ contains
         type(cgsolver), pointer :: solv
         integer, intent(in) :: ddl, nr_total, nr_u, nr_v, nr_w
         double precision, intent(in) :: U_u, U_v, U_w, array_in
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), &
-                    U_w(nr_w, nr_w, ddl), array_in(solv%dimen, nr_total)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), &
+                    U_w(ddl, nr_w, nr_w), array_in(solv%dimen, nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
@@ -171,8 +171,8 @@ contains
         type(cgsolver), pointer :: solv
         integer, intent(in) :: ddl, nr_total, nr_u, nr_v, nr_w
         double precision, intent(in) :: U_u, U_v, U_w, array_in
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), &
-                    U_w(nr_w, nr_w, ddl), array_in(solv%dimen, nr_total)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), &
+                    U_w(ddl, nr_w, nr_w), array_in(solv%dimen, nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
@@ -189,7 +189,7 @@ contains
         ! Compute (Uw x Uv x Uu)'.array_in
         do i = 1, dimen
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                        transpose(U_u(:,:,i)), transpose(U_v(:,:,i)), transpose(U_w(:,:,i)), &
+                        transpose(U_u(i, :, :)), transpose(U_v(i, :, :)), transpose(U_w(i, :, :)), &
                         array_in(i, :), array_temp(i, :))
         end do
 
@@ -207,7 +207,7 @@ contains
         ! Compute (Uw x Uv x Uu).array_temp
         do i = 1, dimen
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            U_u(:,:,i), U_v(:,:,i), U_w(:,:,i), &
+                            U_u(i, :, :), U_v(i, :, :), U_w(i, :, :), &
                             array_temp(i, :), array_out(i, :))
         end do
 
@@ -323,7 +323,7 @@ contains
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
         double precision, intent(in) :: U_u, U_v, U_w
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), U_w(nr_w, nr_w, ddl)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), U_w(ddl, nr_w, nr_w)
 
         integer, intent(in) :: ndu, ndv, ndw
         integer, intent(in) :: dod_u, dod_v, dod_w
@@ -473,7 +473,7 @@ contains
         type(cgsolver), pointer :: solv
         integer, intent(in) :: ddl, nr_total, nr_u, nr_v
         double precision, intent(in) :: U_u, U_v, array_in
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), array_in(solv%dimen, nr_total)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), array_in(solv%dimen, nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
@@ -498,7 +498,7 @@ contains
         type(cgsolver), pointer :: solv
         integer, intent(in) :: ddl, nr_total, nr_u, nr_v
         double precision, intent(in) :: U_u, U_v, array_in
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), array_in(solv%dimen, nr_total)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), array_in(solv%dimen, nr_total)
     
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
@@ -513,7 +513,7 @@ contains
 
         ! Compute (Uv x Uu)'.array_in
         do i = 1, dimen
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(U_u(:, :, i)), transpose(U_v(:, :, i)), &
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(U_u(i, :, :)), transpose(U_v(i, :, :)), &
                             array_in(i, :), array_temp(i, :))
         end do
 
@@ -530,7 +530,7 @@ contains
 
         ! Compute (Uv x Uu).array_temp
         do i = 1, dimen
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, U_u(:, :, i), U_v(:, :, i), &
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, U_u(i, :, :), U_v(i, :, :), &
                             array_temp(i, :), array_out(i, :))
         end do
 
@@ -646,7 +646,7 @@ contains
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
         double precision, intent(in) :: U_u, U_v
-        dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl)
+        dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v)
 
         integer, intent(in) :: ndu, ndv
         integer, intent(in) :: dod_u, dod_v

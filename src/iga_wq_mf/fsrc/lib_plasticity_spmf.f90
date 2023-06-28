@@ -17,12 +17,12 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
-    dimension :: Mcoef_u(nc_u, ddl), Mcoef_v(nc_v, ddl), Kcoef_u(nc_u, ddl), Kcoef_v(nc_v, ddl)
+    dimension :: Mcoef_u(ddl, nc_u), Mcoef_v(ddl, nc_v), Kcoef_u(ddl, nc_u), Kcoef_v(ddl, nc_v)
 
     double precision, intent(out) :: U_u, U_v
-    dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl)
+    dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v)
     double precision, intent(out) :: D_u, D_v
-    dimension :: D_u(nr_u, ddl), D_v(nr_v, ddl)
+    dimension :: D_u(ddl, nr_u), D_v(ddl, nr_v)
 
     ! Local data
     ! -----------
@@ -34,25 +34,25 @@ subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
 
     if (ddl.eq.dimen) then
         do i = 1, dimen
-            call eigen_decomposition(nr_u, nc_u, Mcoef_u(:, i), Kcoef_u(:, i), nnz_u, indi_u, indj_u, &
+            call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
                                     data_B_u, data_W_u, table(1, :, i), table(1, :, i), &
-                                    D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
+                                    D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
 
-            call eigen_decomposition(nr_v, nc_v, Mcoef_v(:, i), Kcoef_v(:, i), nnz_v, indi_v, indj_v, &
+            call eigen_decomposition(nr_v, nc_v, Mcoef_v(i, :), Kcoef_v(i, :), nnz_v, indi_v, indj_v, &
                                     data_B_v, data_W_v, table(2, :, i), table(2, :, i), &
-                                    D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v) 
+                                    D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v) 
         end do
     else
         do i = 1, dimen
             do j = 1, dimen
                 c = j + (i-1)*dimen
-                call eigen_decomposition(nr_u, nc_u, Mcoef_u(:, c), Kcoef_u(:, c), nnz_u, indi_u, indj_u, &
+                call eigen_decomposition(nr_u, nc_u, Mcoef_u(c, :), Kcoef_u(c, :), nnz_u, indi_u, indj_u, &
                                         data_B_u, data_W_u, table(1, :, i), table(1, :, j), &
-                                        D_u(:, c), U_u(:, :, c), Kdiag_u, Mdiag_u)
+                                        D_u(c, :), U_u(c, :, :), Kdiag_u, Mdiag_u)
 
-                call eigen_decomposition(nr_v, nc_v, Mcoef_v(:, c), Kcoef_v(:, c), nnz_v, indi_v, indj_v, &
+                call eigen_decomposition(nr_v, nc_v, Mcoef_v(c, :), Kcoef_v(c, :), nnz_v, indi_v, indj_v, &
                                         data_B_v, data_W_v, table(2, :, i), table(2, :, j), &
-                                        D_v(:, c), U_v(:, :, c), Kdiag_v, Mdiag_v)
+                                        D_v(c, :), U_v(c, :, :), Kdiag_v, Mdiag_v)
 
             end do
         end do
@@ -84,13 +84,13 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     integer, intent(in) :: table
     dimension :: table(dimen, 2, dimen)
     double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension :: Mcoef_u(nc_u, ddl), Mcoef_v(nc_v, ddl), Mcoef_w(nc_w, ddl), &
-                Kcoef_u(nc_u, ddl), Kcoef_v(nc_v, ddl), Kcoef_w(nc_w, ddl)
+    dimension :: Mcoef_u(ddl, nc_u), Mcoef_v(ddl, nc_v), Mcoef_w(ddl, nc_w), &
+                Kcoef_u(ddl, nc_u), Kcoef_v(ddl, nc_v), Kcoef_w(ddl, nc_w)
 
     double precision, intent(out) :: U_u, U_v, U_w
-    dimension :: U_u(nr_u, nr_u, ddl), U_v(nr_v, nr_v, ddl), U_w(nr_w, nr_w, ddl)
+    dimension :: U_u(ddl, nr_u, nr_u), U_v(ddl, nr_v, nr_v), U_w(ddl, nr_w, nr_w)
     double precision, intent(out) :: D_u, D_v, D_w
-    dimension :: D_u(nr_u, ddl), D_v(nr_v, ddl), D_w(nr_w, ddl)
+    dimension :: D_u(ddl, nr_u), D_v(ddl, nr_v), D_w(ddl, nr_w)
 
     ! Local data
     ! -----------
@@ -103,33 +103,33 @@ subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
     if (ddl.eq.dimen) then
         do i = 1, dimen
-            call eigen_decomposition(nr_u, nc_u, Mcoef_u(:, i), Kcoef_u(:, i), nnz_u, indi_u, indj_u, &
+            call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
                                     data_B_u, data_W_u, table(1, :, i), table(1, :, i), &
-                                    D_u(:, i), U_u(:, :, i), Kdiag_u, Mdiag_u)
+                                    D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
 
-            call eigen_decomposition(nr_v, nc_v, Mcoef_v(:, i), Kcoef_v(:, i), nnz_v, indi_v, indj_v, &
+            call eigen_decomposition(nr_v, nc_v, Mcoef_v(i, :), Kcoef_v(i, :), nnz_v, indi_v, indj_v, &
                                     data_B_v, data_W_v, table(2, :, i), table(2, :, i), &
-                                    D_v(:, i), U_v(:, :, i), Kdiag_v, Mdiag_v)
+                                    D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v)
 
-            call eigen_decomposition(nr_w, nc_w, Mcoef_w(:, i), Kcoef_w(:, i), nnz_w, indi_w, indj_w, &
+            call eigen_decomposition(nr_w, nc_w, Mcoef_w(i, :), Kcoef_w(i, :), nnz_w, indi_w, indj_w, &
                                     data_B_w, data_W_w, table(3, :, i), table(3, :, i), &
-                                    D_w(:, i), U_w(:, :, i), Kdiag_w, Mdiag_w) 
+                                    D_w(i, :), U_w(i, :, :), Kdiag_w, Mdiag_w) 
         end do
     else
         do i = 1, dimen
             do j = 1, dimen
                 c = j + (i-1)*dimen
-                call eigen_decomposition(nr_u, nc_u, Mcoef_u(:, c), Kcoef_u(:, c), nnz_u, indi_u, indj_u, &
+                call eigen_decomposition(nr_u, nc_u, Mcoef_u(c, :), Kcoef_u(c, :), nnz_u, indi_u, indj_u, &
                                         data_B_u, data_W_u, table(1, :, i), table(1, :, j), &
-                                        D_u(:, c), U_u(:, :, c), Kdiag_u, Mdiag_u)
+                                        D_u(c, :), U_u(c, :, :), Kdiag_u, Mdiag_u)
 
-                call eigen_decomposition(nr_v, nc_v, Mcoef_v(:, c), Kcoef_v(:, c), nnz_v, indi_v, indj_v, &
+                call eigen_decomposition(nr_v, nc_v, Mcoef_v(c, :), Kcoef_v(c, :), nnz_v, indi_v, indj_v, &
                                         data_B_v, data_W_v, table(2, :, i), table(2, :, j), &
-                                        D_v(:, c), U_v(:, :, c), Kdiag_v, Mdiag_v)
+                                        D_v(c, :), U_v(c, :, :), Kdiag_v, Mdiag_v)
 
-                call eigen_decomposition(nr_w, nc_w, Mcoef_w(:, c), Kcoef_w(:, c), nnz_w, indi_w, indj_w, &
+                call eigen_decomposition(nr_w, nc_w, Mcoef_w(c, :), Kcoef_w(c, :), nnz_w, indi_w, indj_w, &
                                         data_B_w, data_W_w, table(3, :, i), table(3, :, j), &
-                                        D_w(:, c), U_w(:, :, c), Kdiag_w, Mdiag_w) 
+                                        D_w(c, :), U_w(c, :, :), Kdiag_w, Mdiag_w) 
             end do
         end do
     end if

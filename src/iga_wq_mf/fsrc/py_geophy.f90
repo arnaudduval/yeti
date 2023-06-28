@@ -320,7 +320,7 @@ subroutine eval_intforce_coefficient(dimen, nnz, invJ, detJ, stress, coefs)
 end subroutine eval_intforce_coefficient
 
 subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B, data_W, &
-                                Mcoefs, Kcoefs, robcond1, robcond2, eigenvalues, eigenvectors)
+                                Mcoefs, Kcoefs, robcond1, robcond2, eigval, eigvec)
     !! Eigen decomposition generalized KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -341,8 +341,8 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B, data_W, &
     integer, intent(in) :: robcond1, robcond2
     dimension :: robcond1(2), robcond2(2)
             
-    double precision, intent(out) :: eigenvalues, eigenvectors
-    dimension :: eigenvalues(nr), eigenvectors(nr, nr)
+    double precision, intent(out) :: eigval, eigvec
+    dimension :: eigval(nr), eigvec(nr, nr)
 
     ! Local data
     ! ----------
@@ -350,6 +350,6 @@ subroutine eigen_decomposition_py(nr, nc, nnz, indi, indj, data_B, data_W, &
     dimension :: Kdiag(nr), Mdiag(nr)
 
     call eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, data_B, data_W, &
-                            robcond1, robcond2, eigenvalues, eigenvectors, Kdiag, Mdiag)
+                            robcond1, robcond2, eigval, eigvec, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py

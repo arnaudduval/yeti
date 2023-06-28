@@ -90,7 +90,7 @@ for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'],
 
 model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
 ax.set_ybound(lower=1e-12, upper=1e1)
-# ax.legend()
+ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 fig.tight_layout()
