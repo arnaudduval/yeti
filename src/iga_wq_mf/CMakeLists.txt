@@ -19,6 +19,7 @@
 # Add library
 add_library(iga_wq_mf 
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_linear_algebra.f90"
+                "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_datastructure.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_eigenproblem.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_basis_weights.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"

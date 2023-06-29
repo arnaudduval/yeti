@@ -88,7 +88,7 @@ for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'],
     resPCG = resPCG[resPCG>0]
     ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
-model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+# model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
 ax.set_ybound(lower=1e-12, upper=1e1)
 ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')

@@ -582,8 +582,10 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
     integer, intent(in) :: ndu, ndv
-    integer, intent(in) :: table, dod_u, dod_v
-    dimension :: table(dimen, 2, dimen), dod_u(ndu), dod_v(ndv)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2, dimen) 
+    integer, intent(in) :: dod_u, dod_v
+    dimension :: dod_u(ndu), dod_v(ndv)
 
     double precision, intent(in) :: invJ, detJ, properties(3), CepArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total) 
@@ -601,13 +603,6 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! -----------
     type(mecamat), pointer :: mat
     type(cgsolver), pointer :: solv
-    double precision, dimension(:, :, :), allocatable :: U_u, U_v
-    double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v
-
-    integer :: i, nc
-    double precision :: I_u, I_v
-    dimension :: I_u(nr_u), I_v(nr_v)
-    double precision, dimension(:, :), allocatable :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, MM, KK
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -635,42 +630,21 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                 data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-
-        allocate(Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v))
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
         if (methodPCG.eq.'JMC') then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
         end if
 
-        if (methodPCG.eq.'TDC') then 
-            nc = maxval((/nc_u, nc_v/))
-            allocate(MM(dimen, nc), KK(dimen, nc))
-            do i = 1, dimen
-                call compute_separationvariables_ijblock(i, i, mat%dimen, mat%nvoigt, (/nc_u, nc_v/), mat, MM, KK)
-                Mcoef_u(i, :) = MM(1, 1:nc_u); Mcoef_v(i, :) = MM(2, 1:nc_v)
-                Kcoef_u(i, :) = KK(1, 1:nc_u); Kcoef_v(i, :) = KK(2, 1:nc_v)
-            end do
-        end if
+        call init_solver(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_B_u, data_B_v, data_W_u, data_W_v, table)
+        call eigendecomposition(solv%dx_struct, mat%mean(1, 1, :))
+        call eigendecomposition(solv%dy_struct, mat%mean(2, 2, :))
 
-        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), D_u(dimen, nr_u), D_v(dimen, nr_v))
-        call eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
-                                table, U_u, U_v, D_u, D_v)
-        allocate(Deigen(dimen, nr_total))
-        I_u = 1.d0; I_v = 1.d0
-        do i = 1, dimen
-            call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u(i, :), D_v(i, :), mat%mean(i, i, :), Deigen(i, :))
-        end do
-        
-        call setup_preconditionerdiag(solv, dimen, nr_total, Deigen)
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call PBiCGSTAB2(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, U_u, U_v, ndu, ndv, dod_u, dod_v, &
+                        data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
                         nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                    
@@ -707,8 +681,10 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     integer, intent(in) :: ndu, ndv, ndw
-    integer, intent(in) :: table, dod_u, dod_v, dod_w
-    dimension :: table(dimen, 2, dimen), dod_u(ndu), dod_v(ndv), dod_w(ndw)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2, dimen) 
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
 
     double precision, intent(in) :: invJ, detJ, properties(3), CepArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), CepArgs(nvoigt+3, nc_total) 

@@ -2,9 +2,10 @@ module datastructure
 
     implicit none
     type :: structure
-        integer :: dimen
-        integer, allocatable, dimension(:) :: nrows, ncols, nnzs
+        integer :: dimen, nr_total, nc_total
+        integer, allocatable, dimension(:) :: nrows, ncols, nnzs, dof
         integer, allocatable, dimension(:, :) :: indi, indj, indi_T, indj_T
+        double precision, allocatable, dimension(:) :: Deigen
         double precision, allocatable, dimension(:, :) :: eigval
         double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvec
 
@@ -44,6 +45,8 @@ contains
         datstruct%bw = 0.d0
         datstruct%bw(1, 1:nnz_u, 1:2) = data_B_u
         datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
+        datstruct%nr_total = product(datstruct%nrows)
+        datstruct%nc_total = product(datstruct%ncols)
         
     end subroutine init_1datastructure
 
@@ -87,6 +90,8 @@ contains
         datstruct%bw(2, 1:nnz_v, 1:2) = data_B_v
         datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
         datstruct%bw(2, 1:nnz_v, 3:6) = data_W_v
+        datstruct%nr_total = product(datstruct%nrows)
+        datstruct%nc_total = product(datstruct%ncols)
         
     end subroutine init_2datastructure
 
@@ -135,8 +140,70 @@ contains
         datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
         datstruct%bw(2, 1:nnz_v, 3:6) = data_W_v
         datstruct%bw(3, 1:nnz_w, 3:6) = data_W_w
+        datstruct%nr_total = product(datstruct%nrows)
+        datstruct%nc_total = product(datstruct%ncols)
         
     end subroutine init_3datastructure
+
+    subroutine get_boundarynodes(datstruct, dimen, table)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(structure), allocatable :: datstruct
+        integer, intent(in) :: dimen
+        logical, intent(in) :: table
+        dimension :: table(dimen, 2)
+
+        ! Local data
+        ! ----------
+        integer :: ndof, c, i, j, k
+        integer, dimension(dimen) :: inf, sup, tmp
+
+        if (dimen.ne.datstruct%dimen) stop 'table not well defined.'
+
+        inf = 1; sup = datstruct%nrows
+        do i = 1, dimen
+            if (table(i, 1)) inf(i) = inf(i) + 1
+            if (table(i, 2)) sup(i) = sup(i) - 1  
+        end do
+
+        tmp  = sup - inf + 1
+        ndof = product(tmp)
+        allocate(datstruct%dof(ndof)); datstruct%dof = 0
+        c = 1
+
+        if (dimen.eq.1) then
+            
+            do i = inf(1), sup(1)
+                datstruct%dof(c) = i
+                c = c + 1 
+            end do
+
+        else if (dimen.eq.2) then
+
+            do j = inf(2), sup(2)
+                do i = inf(1), sup(1)
+                    datstruct%dof(c) = i + (j-1)*datstruct%nrows(1)
+                    c = c + 1 
+                end do
+            end do
+
+        else if (dimen.eq.3) then
+
+            do k = inf(3), sup(3)
+                do j = inf(2), sup(2)
+                    do i = inf(1), sup(1)
+                        datstruct%dof(c) = i + (j-1)*datstruct%nrows(1) + (k-1)*datstruct%nrows(1)*datstruct%nrows(2)
+                        c = c + 1 
+                    end do
+                end do
+            end do
+
+        else
+            stop 'Not possible get boundary nodes'
+        end if
+
+    end subroutine get_boundarynodes
 
     subroutine update_datastructure(datstruct, dimen, table)
         implicit none 
@@ -157,6 +224,8 @@ contains
         double precision, dimension(:, :), allocatable :: bw_out
 
         if (dimen.ne.datstruct%dimen) stop 'table not well defined.'
+        call get_boundarynodes(datstruct, dimen, table)
+
         nr_new_list  = datstruct%nrows 
         nnz_new_list = 0
         do i = 1, dimen
@@ -227,6 +296,8 @@ contains
 
         datstruct%nrows = nr_new_list
         datstruct%nnzs  = nnz_new_list
+        datstruct%nr_total = product(datstruct%nrows)
+        datstruct%nc_total = product(datstruct%ncols)
 
     end subroutine update_datastructure
 
@@ -265,23 +336,26 @@ contains
 
     end subroutine getcsr2csc
 
-    subroutine eigendecomposition(datstruct, ncols, Mcoef, Kcoef)
+    subroutine eigendecomposition(datstruct, mean)
         implicit none 
         ! Input / output data
         ! --------------------
         type(structure), allocatable :: datstruct
-        integer, intent(in) :: ncols
-        double precision, intent(in) :: Mcoef, Kcoef
-        dimension :: Mcoef(datstruct%dimen, ncols), Kcoef(datstruct%dimen, ncols)
-
+        double precision, intent(in) :: mean
+        dimension :: mean(datstruct%dimen)
+        
         ! Local data
         ! ----------
-        integer :: i, nr, nc, nnz
+        integer :: i, nr, nc, nnz, ncols
         integer, dimension(:), allocatable :: indi, indj
-        double precision, dimension(:), allocatable :: eigvalues, Mdiag, Kdiag
+        double precision, dimension(:), allocatable :: ones, eigvalues, Mdiag, Kdiag
         double precision, dimension(:, :), allocatable :: bw, eigvectors
+        double precision, dimension(:), allocatable :: Mcoef, Kcoef
         
-        if (ncols.lt.maxval(datstruct%ncols)) stop 'Problem size'
+        ncols = maxval(datstruct%ncols)
+        allocate(Mcoef(ncols), Kcoef(ncols))
+        Mcoef = 1.d0; Kcoef = 1.d0
+
         allocate(datstruct%eigval(datstruct%dimen, maxval(datstruct%nrows)), &
         datstruct%eigvec(datstruct%dimen, maxval(datstruct%nrows), maxval(datstruct%nrows)))
         datstruct%eigval = 0.d0; datstruct%eigvec = 0.d0
@@ -296,12 +370,24 @@ contains
             indj = datstruct%indj(i, 1:nnz)
             bw   = datstruct%bw(i, 1:nnz, :)
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
-            call eigen_decomposition(nr, nc, Mcoef(i, 1:nc), Kcoef(i, 1:nc), nnz, indi, indj, &
+            call eigen_decomposition(nr, nc, Mcoef(1:nc), Kcoef(1:nc), nnz, indi, indj, &
                                     bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
             datstruct%eigval(i, 1:nr) = eigvalues
             datstruct%eigvec(i, 1:nr, 1:nr) = eigvectors
             deallocate(indi, indj, bw, eigvalues, eigvectors, Mdiag, Kdiag)
         end do
+
+        if ((datstruct%dimen.le.1).or.(datstruct%dimen.ge.4)) return
+        allocate(ones(maxval(datstruct%nrows)), datstruct%Deigen(product(datstruct%nrows)))
+        ones = 1.d0; datstruct%Deigen = 0.d0
+
+        if (datstruct%dimen.eq.2) then 
+            call find_parametric_diag_2d(datstruct%nrows(1), datstruct%nrows(2), ones(1:datstruct%nrows(1)), &
+                                    ones(1:datstruct%nrows(2)), datstruct%eigval(1, 1:datstruct%nrows(1)), &
+                                    datstruct%eigval(2, 1:datstruct%nrows(2)), mean, datstruct%Deigen)
+        else if (datstruct%dimen.eq.3) then
+            stop 'Not done yet'
+        end if
 
     end subroutine eigendecomposition
 
