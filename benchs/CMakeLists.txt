@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 # Add validation tests
@@ -66,6 +66,10 @@ add_test(NAME dload-triangle-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload
 add_test(NAME dload-uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME dload-uniform-field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 
+# Static shell analysis where a single element is loaded with pressure
+add_test(NAME shell_1_element_load-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_1elt.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
+add_test(NAME shell_1_element_load-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_9elts.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
+
 # Static analyis of a 2D palne stress plate with a round hole and least square projection postprocessing
 add_test(NAME leastsquare-projection-1patch COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/1_patch/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/1_patch)
 add_test(NAME leastsquare-projection-2patches COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches)
@@ -83,7 +87,7 @@ add_test(NAME embeddedsolid2-NLembded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH
 # Couling between solid patches with projected Gauss points
 add_test(NAME coupling_U5
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
-         WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)       
+         WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 
 # plate with hole with Abaqus parameters
 add_test(NAME ROM1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
@@ -115,7 +119,7 @@ add_test(NAME grad_solid_unit_cube_centrif
 
 # Embedded solid element sensibilities
 # 1 - volume gradient
-add_test(NAME gradvol_embdsol_cube_nonli_hull 
+add_test(NAME gradvol_embdsol_cube_nonli_hull
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
@@ -176,22 +180,24 @@ add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_centrif
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
 
 set_tests_properties(
-                     platevib 
-                     OPTplatevib_AN 
-                     OPT1-plateWithHole 
-                     OPT2-squareShellRoof 
-                     OPT4-cantileverBeam 
-                     OPT5-squareShellRoofDisp 
-                     OPT6-tensileSpecimen 
-                     OPT7-catenary 
-                     OPT8-ElephantTrunk 
-                     dload-triangle-1 
-                     dload-triangle-2 
-                     dload-uniform 
-                     dload-uniform-field 
-                     leastsquare-projection-1patch 
-                     leastsquare-projection-2patches 
-                     leastsquare-projection-2patchescplg 
+                     platevib
+                     OPTplatevib_AN
+                     OPT1-plateWithHole
+                     OPT2-squareShellRoof
+                     OPT4-cantileverBeam
+                     OPT5-squareShellRoofDisp
+                     OPT6-tensileSpecimen
+                     OPT7-catenary
+                     OPT8-ElephantTrunk
+                     dload-triangle-1
+                     dload-triangle-2
+                     dload-uniform
+                     dload-uniform-field
+                     shell_1_element_load-1
+                     shell_1_element_load-2
+                     leastsquare-projection-1patch
+                     leastsquare-projection-2patches
+                     leastsquare-projection-2patchescplg
                      coupling-postprocessing
                      embeddedsolid1-NLmap
                      embeddedsolid2-NLembded
