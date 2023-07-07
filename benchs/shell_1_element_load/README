@@ -1,0 +1,4 @@
+A shell structure divided in 3x3 element
+clamped at corners
+Only central element is loaded with pressure
+REsults are compared with Abaqus simulation

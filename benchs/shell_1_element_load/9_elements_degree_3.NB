@@ -1,0 +1,52 @@
+** Copyright 2023 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms
+** of the GNU Lesser General Public License as published by the Free Software
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*Dimension
+2
+*Number of CP by element
+16
+*Number of patch
+1
+*Total number of element
+9
+*Number of element by patch
+9
+*Patch(1)
+10
+0.0, 0.0, 0.0, 0.0, 0.33, 0.67, 1.0, 1.0, 1.0, 1.0
+10
+0.0, 0.0, 0.0, 0.0, 0.33, 0.67, 1.0, 1.0, 1.0, 1.0
+*Jpqr
+3,3
+*Nijk
+1, 4,4
+1, 5,4
+1, 6,4
+1, 4,5
+1, 5,5
+1, 6,5
+1, 4,6
+1, 5,6
+1, 6,6
+*Weight
+1, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+2, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+3, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+4, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+5, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+6, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+7, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+8, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.
+9, 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.

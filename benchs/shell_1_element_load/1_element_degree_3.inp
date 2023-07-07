@@ -1,0 +1,82 @@
+** Copyright 2023 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms
+** of the GNU Lesser General Public License as published by the Free Software
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*HEADING
+**YETI  Laboratoire de Mécanique des Contacts et des Structures - CNRS - INSA Lyon
+*Part, name=Plate
+*USER ELEMENT, NODES=16, TYPE=U3, COORDINATES=3, INTEGRATION=16, TENSOR=PSTRESS
+1,2,3
+*Node,nset=AllNodes
+    1,  0.0,    0.0,    0.0
+    2,  3.33,   0.0,    0.0
+    3,  6.67,   0.0,    0.0
+    4,  10.0,   0.0,    0.0
+    5,  0.0,    3.33,    0.0
+    6,  3.33,   3.33,    0.0
+    7,  6.67,   3.33,    0.0
+    8,  10.0,   3.33,    0.0
+    9,  0.0,    6.67,    0.0
+    10, 3.33,   6.67,    0.0
+    11, 6.67,   6.67,    0.0
+    12, 10.0,   6.67,    0.0
+    13, 0.0,    10.0,    0.0
+    14, 3.33,   10.0,    0.0
+    15, 6.67,   10.0,    0.0
+    16, 10.0,   10.0,    0.0
+*Element,type=U3,elset=AllElts
+1, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+*ELSET,ELSET=EltPatch1,generate
+1, 1, 1
+*ELSET,ELSET=EltToLoad
+1
+*NSET,NSET=CPatX0Y0
+1
+*NSET,NSET=CPatXMY0
+4
+*NSET,NSET=CPatX0YM
+13
+*NSET,NSET=CPatXMYM
+16
+**
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=MAT
+1, 0.1
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly
+*Instance, name=I1, part=Plate
+*End Instance
+*End Assembly
+** MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+210e9, 0.3
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+*Boundary
+I1.CPatX0Y0, 1, 3, 0.
+I1.CPatXMY0, 1, 3, 0.
+I1.CPatX0YM, 1, 3, 0.
+I1.CPatXMYM, 1, 3, 0.
+** DLOAD
+*Dload
+I1.EltToLoad, U60, 100.
+** I1.EltToLoad, U61, 1.
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
