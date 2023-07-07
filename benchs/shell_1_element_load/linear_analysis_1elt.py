@@ -16,7 +16,7 @@
 # along with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
