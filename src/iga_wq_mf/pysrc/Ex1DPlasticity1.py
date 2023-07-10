@@ -32,7 +32,8 @@ def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
 	for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
 
 	# Solve
-	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext, threshold=1e-8)
+	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext, threshold=1e-7)
+	print(np.min(plastic_qp[:, -1]), np.max(plastic_qp[:, -1]))
 	strain_cp   = model.interpolate_CntrlPtsField(strain_qp)
 	plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
 	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
@@ -44,8 +45,8 @@ quadrule = 'wq'
 
 # Set global variables
 samplesize = 2500
-nbSteps    = 101
-matArgs    = {'elastic_modulus':200e3, 'elastic_limit':506, 
+nbSteps    = 50
+matArgs    = {'elastic_modulus':200e3, 'elastic_limit':500, 
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 if isReference:

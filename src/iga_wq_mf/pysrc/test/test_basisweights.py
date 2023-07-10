@@ -31,7 +31,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 			# --------
 			# FORTRAN
 			# --------
-			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3}})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			[B0f, B1f] = basis

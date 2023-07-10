@@ -735,6 +735,57 @@ subroutine erase_rows_csr(nr2er, rows2er, nm, nr_in, nnz_in, indi_in, indj_in, a
 
 end subroutine erase_rows_csr
 
+subroutine FGMRES(n, invP, A, b, x)
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: nbI = 10, nbR = 1
+    double precision, parameter :: threshold = 1.d-8
+
+    integer, intent(in) :: n 
+    double precision, intent(in) :: invP, A, b
+    dimension :: invP(n, n), A(n, n), b(n)
+
+    double precision, intent(out) :: x
+    dimension :: x(n)
+    
+    ! Local data
+    ! ----------
+    integer :: i, j, k
+    double precision :: r(n), xtilde(n), y(nbI), w(n), beta, &
+                        V(n, nbI+1), Z(n, nbI), H(nbI+1, nbI), e(nbI+1)
+
+    x = 0.d0
+    e = 0.d0; e(1) = 1
+
+    do k = 1, nbR
+        H = 0.d0; Z=0.d0
+        r = b - matmul(A, x)
+        beta = norm2(r)
+        if (beta.le.threshold) return
+        V(:, 1) = r/beta
+
+        do j = 1, nbI
+            Z(:, j) = matmul(invP, V(:, j))
+            w = matmul(A, Z(:, j))
+
+            do i = 1, j
+                H(i, j) = dot_product(V(:, i), w)
+                w = w - H(i, j)*V(:, i)
+            end do
+
+            H(j+1, j) = norm2(w)
+            V(:, j+1) = w/H(j+1, j)
+            call solve_linear_system(j+1, j, H(:j+1, :j), beta*e(:j+1), y(:j))
+            xtilde = x + matmul(Z(:, :j), y(:j))
+            r  = b - matmul(A, xtilde)
+            if (norm2(r).le.threshold) exit
+        end do
+        x = xtilde
+    end do
+
+end subroutine 
+
 ! --------
 ! Indices
 ! --------

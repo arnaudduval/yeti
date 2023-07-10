@@ -87,7 +87,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 9
+CASE      = 8
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -407,7 +407,7 @@ elif CASE == 7: # Convergence curve
 elif CASE == 8: # Weights W00 and W11
 
 	def case8(folder, extension):
-		WeightName = 1 # or 0
+		WeightName = 0 # or 0
 		if WeightName not in [0, 1]: raise Warning('Not possible')
 		if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
 		else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
@@ -419,7 +419,7 @@ elif CASE == 8: # Weights W00 and W11
 		WeightPos    = 2
 		degree, nbel = 2, 3
 		knotvector   = createKnotVector(degree, nbel)
-		quadRule     = WeightedQuadrature(degree, knotvector)
+		quadRule     = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
 		quadRule.getQuadratureRulesInfo()
 		basis, knots = quadRule.getSampleBasis()
 		B = basis[WeightName].toarray()
