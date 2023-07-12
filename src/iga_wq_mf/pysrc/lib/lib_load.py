@@ -14,8 +14,8 @@ def powden(P:list, dim=1):
 
 def forceVol(P:list):
 	# force = 5e3*np.sin(np.pi*P)
-	force = 3e3*np.sin(np.pi*P)
-	# force = 1e2*np.ones(len(P))
+	# force = 3e3*np.sin(np.pi*P)
+	force = 2.5e-1*np.ones(len(P))
 	return force
 
 def powden_cube(P: list):

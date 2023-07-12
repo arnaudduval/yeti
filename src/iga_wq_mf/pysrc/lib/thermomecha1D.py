@@ -19,6 +19,12 @@ class part1D:
 		self.knotvector = quadArgs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
 		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
 		self.__setQuadratureRules(quadArgs)
+		self.addThresholds(kwargs.get('solverArgs', {}))
+		return
+	
+	def addThresholds(self, solverArgs:dict):
+		self._thresholdNR = solverArgs.get('NRThreshold', 1.e-8)
+		self._nbIterNR    = solverArgs.get('nbIterationsNR', 20)
 		return
 	
 	def __setGeometry(self, geoArgs:dict):
@@ -140,7 +146,7 @@ class thermo1D(part1D):
 
 		return M
 
-	def solve(self, Fext=None, time_list=None, Tinout=None, threshold=1e-9, nbIterNL=20, isLumped=False):
+	def solve(self, Fext=None, time_list=None, Tinout=None, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
@@ -171,7 +177,7 @@ class thermo1D(part1D):
 			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
 			Fstep = Fext[:, i]
 
-			for j in range(nbIterNL): # Newton-Raphson
+			for j in range(self._nbIterNR): # Newton-Raphson
 
 				# Interpolate temperature
 				T_interp = self.interpolate_temperature(TTn1)
@@ -183,20 +189,20 @@ class thermo1D(part1D):
 				# Compute residue
 				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1, isLumped=isLumped)
 				dF = Fstep[dof] - Fint[dof]
-				resNL = np.sqrt(np.dot(dF, dF))
-				if resNL <= threshold: break
+				resNR = np.sqrt(np.dot(dF, dF))
+				print('Rhapson with error %.5e' %resNR)
+				if resNR <= self._thresholdNR: break
 
 				# Compute tangent matrix
-				MM = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
+				Adof = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
+				AdofSparse = sp.csr_matrix(Adof)
 
 				# Compute delta dT 
-				ddVV = np.linalg.solve(MM, dF)
+				ddVV = sp.linalg.spsolve(AdofSparse, dF)
 
 				# Update values
 				VVn1[dof] += ddVV
 				TTn1[dof] = TTn1i0[dof] + theta*dt*VVn1[dof]
-
-			# print(j+1, relerror)
 
 			# Update values in output
 			Tinout[:, i] = np.copy(TTn1)
@@ -224,7 +230,7 @@ class mechamat1D(part1D):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=20, threshold=1e-9):
+		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=100, threshold=1e-9):
 			dgamma = 0.0
 			a_n1   = a_n0 
 			for i in range(nbIter):
@@ -233,7 +239,7 @@ class mechamat1D(part1D):
 				if np.abs(G) <=threshold: break
 				dG = - (E + law._Hderfun(a_n1) + law._Kderfun(a_n1))
 				dgamma -= G/dG
-				a_n1   = a_n0 + dgamma 
+				a_n1   = a_n0 + dgamma
 			return dgamma
 
 		# Elastic predictor
@@ -262,12 +268,13 @@ class mechamat1D(part1D):
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
-		eps = self.basis[1].T @ disp / self.invJ
+		eps = self.basis[1].T @ disp * self.invJ
 		return eps
 
 	def compute_volForce(self, b): 
-		" Computes volumetric force in 1D. Usualy b = rho*g*L (Weight) "
-		F = self.weights[0] @ b.T
+		" Computes volumetric force in 1D. "
+		Fcoefs = self.detJ*np.ones(self.nbqp)
+		F = self.weights[0] @ np.diag(Fcoefs) @ b.T
 		return F
 
 	def compute_intForce(self, sigma):
@@ -283,11 +290,11 @@ class mechamat1D(part1D):
 			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Scoefs = Cep*1.0/self.detJ
+		Scoefs = Cep*self.invJ
 		S = self.weights[-1] @ np.diag(Scoefs) @ self.basis[1].T 
 		return S
 
-	def solve(self, Fext=None, threshold=1e-9, nbIterNL=15):
+	def solve(self, Fext=None):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -304,12 +311,14 @@ class mechamat1D(part1D):
 
 		for i in range(1, np.shape(Fext)[1]):
 
-			d_n1 = np.copy(disp[:, i-1]); ddisp = np.zeros(len(dof)) 
+			d_n1  = np.copy(disp[:, i-1]); ddisp = np.zeros(len(dof)) 
 			Fstep = np.copy(Fext[:, i])
+			if i==int(np.shape(Fext)[1]/2)+1:
+				print('Starting decharging')
 
-			print('Step %d' %i)
-			for j in range(nbIterNL): # Newton-Raphson
-
+			print('Step %d, force max:%.5e' %(i,np.max(Fstep)))
+			for j in range(self._nbIterNR): # Newton-Raphson 
+				
 				# Compute strain as function of displacement
 				d_n1[dof] = disp[dof, i-1] + ddisp
 				strain = self.interpolate_strain(d_n1)
@@ -322,9 +331,9 @@ class mechamat1D(part1D):
 				# Compute Fint
 				Fint = self.compute_intForce(sigma)
 				dF 	 = Fstep[dof] - Fint[dof]
-				relerror = np.sqrt(np.dot(dF, dF))
-				print('Rhapson with error %.5e' %relerror)
-				if relerror <= threshold: break
+				resNR = np.sqrt(np.dot(dF, dF))
+				print('Rhapson with error %.5e' %resNR)
+				if resNR <= self._thresholdNR: break
 
 				# Compute stiffness
 				Sdof = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
@@ -354,13 +363,13 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	N = np.shape(disp_cp)[1]
 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	units = ['m', '\%', 'MPa']
+	units = ['mm', 'mm/m', 'MPa']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
 		ax.set_title(name)
 		ax.set_ylabel('Step')
-		ax.set_xlabel('Position (m)')
+		ax.set_xlabel('Position (mm)')
 		ax.grid(False)
 		divider = make_axes_locatable(ax)
 		cax = divider.append_axes('right', size='5%', pad=0.05)
@@ -373,11 +382,11 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	# Plot stress-strain of single point
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
 	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-		ax.plot(strain_interp[pos, :]*100, stress_interp[pos, :])
+		ax.plot(strain_interp[pos, :], stress_interp[pos, :])
 		ax.set_ylabel('Stress (MPa)')
-		ax.set_xlabel('Strain (\%)')
-		ax.set_ylim(bottom=0.0, top=1500)
-		ax.set_xlim(left=0.0, right=strain_interp.max()*100)
+		ax.set_xlabel('Strain (mm/m)')
+		ax.set_ylim(bottom=0.0, top=200)
+		ax.set_xlim(left=0.0, right=strain_interp.max())
 
 	fig.tight_layout()
 	fig.savefig(folder + 'TractionCurve' + method + extension)
