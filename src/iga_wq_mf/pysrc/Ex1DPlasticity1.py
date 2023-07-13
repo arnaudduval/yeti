@@ -1,3 +1,14 @@
+"""
+.. Test of elastoplasticity 1D
+.. We test how elasticity module works
+.. SI (Steel) : 
+..      - Stress : MPa
+..      - Length : mm
+..      - Force  : N
+..      - Mass   : metric ton 
+.. Joaquin Cornejo 
+"""
+
 from lib.__init__ import *
 from lib.lib_base import createKnotVector
 from lib.thermomecha1D import mechamat1D, plot_results

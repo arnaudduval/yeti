@@ -9,6 +9,10 @@ class problem():
 		self.material = None
 		self.part     = part
 		self.boundary = boundary
+		self.addSolverConstraints(solverArgs)
+		return
+	
+	def addSolverConstraints(self, solverArgs:dict):
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 20)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
@@ -17,8 +21,7 @@ class problem():
 		return
 
 class heatproblem(problem):
-	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs=None):
-		if solverArgs is None: solverArgs = dict()
+	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return
@@ -162,7 +165,7 @@ class heatproblem(problem):
 		return uinterp
 
 	# Solve using fortran
-	def solveInterpolationProblemFT(self, funfield=None, datafield=None, nbIterPCG=None):
+	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
 		coefs = None
 		if datafield is not None: coefs = datafield*self.part.detJ
 		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
@@ -174,9 +177,8 @@ class heatproblem(problem):
 		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
 		# Solve linear system with fortran
-		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
 		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-	    		 *self.part.weights, vector, nbIterPCG, self._thresholdPCG]
+	    		 *self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
 		start = time.process_time()
 		u_interp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
 		stop = time.process_time()
@@ -184,21 +186,18 @@ class heatproblem(problem):
 		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
 		return u_interp
 
-	def solveSteadyHeatProblemFT(self, b, coefs=None, nbIterPCG=None, methodPCG=None):
+	def solveSteadyHeatProblemFT(self, b, coefs=None):
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
 															self.part.detJ, self.part.qpPhy)
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
-		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		if methodPCG is None: methodPCG = self._methodPCG
-		inputs = [coefs, *tmp, b, nbIterPCG, self._thresholdPCG, methodPCG]
+		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
 
 		return sol, residue
 	
-	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, 
-										nbIterPCG=None, methodPCG=None, args={}):
+	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, args={}):
 		if Ccoefs is None: 
 			temperature = args.get('temperature')
 			inpt = self.part.qpPhy
@@ -212,9 +211,7 @@ class heatproblem(problem):
 			Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
 		
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
-		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		if methodPCG is None: methodPCG = self._methodPCG
-		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, nbIterPCG, self._thresholdPCG, methodPCG]
+		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
@@ -222,8 +219,7 @@ class heatproblem(problem):
 		return sol, residue
 
 	# Solve using python
-	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0, thresholdNR=None):
-		if thresholdNR is None: thresholdNR = self._thresholdNR
+	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):
 		m, n = np.shape(Tinout)
 		nbSteps         = len(time_list)
 		nbctrlpts_total = self.part.nbctrlpts_total
@@ -277,9 +273,9 @@ class heatproblem(problem):
 				# Compute residue
 				ddFF    = Fstep - Fint
 				ddFFdof = ddFF[dof]
-				resNL   = np.sqrt(np.dot(ddFFdof, ddFFdof))
-				print('NR error: %.5e' %resNL)
-				if resNL <= thresholdNR: break
+				resNR   = np.sqrt(np.dot(ddFFdof, ddFFdof))
+				print('NR error: %.5e' %resNR)
+				if resNR <= self._thresholdNR: break
 
 				# Iterative solver
 				resPCG = np.array([i, j+1])
@@ -297,8 +293,7 @@ class heatproblem(problem):
 		return resPCG_list
 
 class mechaproblem(problem):
-	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs=None):
-		if solverArgs is None: solverArgs = dict()
+	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return
@@ -379,7 +374,7 @@ class mechaproblem(problem):
 		return vector
 
 	# Solve using fortran
-	def solveElasticityProblemFT(self, Fext, tensorArgs=None, nbIterPCG=None, methodPCG=None):
+	def solveElasticityProblemFT(self, Fext, tensorArgs=None):
 		dod_total = deepcopy(self.boundary.mchdod)
 		for i, dod in enumerate(dod_total):
 			tmp = dod + 1; dod_total[i] = tmp
@@ -391,11 +386,9 @@ class mechaproblem(problem):
 			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			tensorArgs[0, :] = self.material.lame_lambda
 			tensorArgs[1, :] = self.material.lame_mu
-		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		if methodPCG is None: methodPCG = self._methodPCG
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, tensorArgs, nbIterPCG, self._thresholdPCG, methodPCG]
+				self.part.invJ, self.part.detJ, prop, tensorArgs, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.mf_wq_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
@@ -420,11 +413,8 @@ class mechaproblem(problem):
 
 		return Fint
 	
-	def solvePlasticityProblemPy(self, Fext, nbIterPCG=None, methodPCG=None, thresholdNR=None): 
-		if thresholdNR is None: thresholdNR = self._thresholdNR
+	def solvePlasticityProblemPy(self, Fext): 
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
-		if nbIterPCG is None: nbIterPCG = self._nbIterPCG
-		if methodPCG is None: methodPCG = self._methodPCG
 
 		d     = self.part.dim
 		ddl   = int(d*(d+1)/2)
@@ -463,20 +453,21 @@ class mechaproblem(problem):
 				dF   = Fstep - Fint
 				clean_dirichlet(dF, self.boundary.mchdod) 
 				prod1 = block_dot_product(d, dF, dF)
-				resNL = np.sqrt(prod1)
-				print('NR error: %.5e' %resNL)
-				if resNL <= thresholdNR: break
+				resNR = np.sqrt(prod1)
+				print('NR error: %.5e' %resNR)
+				if resNR <= self._thresholdNR: break
 				
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep, nbIterPCG=nbIterPCG, methodPCG=methodPCG)
+				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
 				ddisp  += vtmp
-		
+
 			disp[:, :, i] = d_n1			
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
+
 		return disp, resPCG_list
 

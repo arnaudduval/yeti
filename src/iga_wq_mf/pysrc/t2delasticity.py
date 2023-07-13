@@ -25,7 +25,7 @@ name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
-			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 'extra':{'Rin':5.e2, 'Rex':1.e3}}
 quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 modelGeo = Geomdl(geoArgs)
@@ -33,7 +33,7 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs  = {'density': 1.0, 'elastic_modulus':200e3, 'elastic_limit':506, 'poisson_ratio': 0.3,}
+matArgs  = {'density': 1.0, 'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3,}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
@@ -65,7 +65,7 @@ def forceVolFun2(P:list):
 	return prop
 
 def forceSurfFun(P:list):
-	ref  = np.array([1.e3, 0.0])
+	ref  = np.array([1.e-1, 0.0])
 	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop

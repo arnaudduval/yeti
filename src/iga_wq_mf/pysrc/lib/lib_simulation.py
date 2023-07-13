@@ -94,10 +94,10 @@ class encoder():
 		
 		return Fn
 	
-	def __run_iterativeSolver(self, problem:heatproblem, b, nbIterPCG=None):
+	def __run_iterativeSolver(self, problem:heatproblem, b):
 		" Solve steady heat problems using iterative solver "
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblemFT(b, nbIterPCG=nbIterPCG)
+		un, residue = problem.solveSteadyHeatProblemFT(b)
 		stop = time.process_time()
 		time_t = stop - start 
 		return un, residue, time_t
@@ -110,13 +110,13 @@ class encoder():
 		Fn      = self.__eval_heatForce(problem, self._funPowDen, self._funTemp)
 
 		# Run iterative methods
-		timeNoIter = []
+		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.__run_iterativeSolver(problem, b=Fn, nbIterPCG=0)[-1]
+			time_temp = self.__run_iterativeSolver(problem, b=Fn)[-1]
 			timeNoIter.append(time_temp)
 
-		timeIter, resPCG = [], []
+		timeIter, resPCG = [], []; problem.addSolverConstraints({})
 		for im in self._iterMethods:
 			problem._methodPCG = im
 			un, residue_t, time_temp = self.__run_iterativeSolver(problem, b=Fn)

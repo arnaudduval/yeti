@@ -197,7 +197,7 @@ class mechamat(material):
 		
 	def eval_volForceCoefficients(self, fun, detJ, qp):
 		qp = np.atleast_2d(qp)
-		coefs = fun(qp)*detJ*self.density
+		coefs = fun(qp)*detJ
 		return coefs
 	
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
@@ -227,7 +227,7 @@ class mechamat(material):
 		Tstrain = array2symtensor(strain, dim)
 		Tpls    = array2symtensor(pls, dim)
 		Tb      = array2symtensor(b, dim)
-		traceStrain = evalTrace(Tstrain, dim)
+		traceStrain = evalOneTrace(Tstrain, dim)
 		devStrain   = Tstrain
 		for i in range(dim): devStrain[i, i] -= 1.0/3.0*traceStrain
 
@@ -316,20 +316,11 @@ def array2symtensor(array, dim):
 
 	return tensor
 
-def evalTrace(tensor, dim):
+def evalOneTrace(tensor, dim):
 	trace = 0.0
 	for i in range(dim):
 		trace += tensor[i, i]
 	return trace
-
-def computeVonMisesStress(tensor, dim):
-	trace  = evalTrace(tensor, dim)
-	dev    = np.copy(tensor)
-	for i in range(dim):
-		dev[i, i] -= 1.0/3.0*trace
-	vm = np.linalg.norm(dev)
-	vm = np.sqrt(3.0/2.0)*vm
-	return vm
 
 def clean_dirichlet(A, dod):
 	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
@@ -347,3 +338,12 @@ def block_dot_product(d, A, B):
 	result = 0.0
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
+
+def computeVonMisesStress(tensor, dim):
+	trace  = evalOneTrace(tensor, dim)
+	dev    = np.copy(tensor)
+	for i in range(dim):
+		dev[i, i] -= 1.0/3.0*trace
+	vm = np.linalg.norm(dev)
+	vm = np.sqrt(3.0/2.0)*vm
+	return vm

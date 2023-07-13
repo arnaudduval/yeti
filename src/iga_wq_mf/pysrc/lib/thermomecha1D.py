@@ -19,10 +19,10 @@ class part1D:
 		self.knotvector = quadArgs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
 		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
 		self.__setQuadratureRules(quadArgs)
-		self.addThresholds(kwargs.get('solverArgs', {}))
+		self.addSolverConstraints(kwargs.get('solverArgs', {}))
 		return
 	
-	def addThresholds(self, solverArgs:dict):
+	def addSolverConstraints(self, solverArgs:dict):
 		self._thresholdNR = solverArgs.get('NRThreshold', 1.e-8)
 		self._nbIterNR    = solverArgs.get('nbIterationsNR', 20)
 		return
