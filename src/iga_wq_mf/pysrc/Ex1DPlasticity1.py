@@ -44,7 +44,6 @@ def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
 
 	# Solve
 	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext)
-	print(np.min(stress_qp[:, -1]), np.max(stress_qp[:, -1]))
 	strain_cp   = model.interpolate_CntrlPtsField(strain_qp)
 	plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
 	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)

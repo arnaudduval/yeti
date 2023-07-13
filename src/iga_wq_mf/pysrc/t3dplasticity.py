@@ -66,4 +66,4 @@ nbStep = 6; dt = 1/nbStep
 Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
 for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-displacement = problem.solvePlasticityProblemPy(Fext=Fext)
+displacement = problem.solvePlasticityProblemPy(Fext=Fext)[0]

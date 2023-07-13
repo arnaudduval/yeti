@@ -1,6 +1,10 @@
 from lib.__init__ import *
 from lib.lib_base import eraseRowsCSR, array2csr_matrix
-from lib.lib_material import thermomat, mechamat, clean_dirichlet, block_dot_product
+from lib.lib_material import (thermomat, 
+							mechamat, 
+							clean_dirichlet, 
+							block_dot_product, 
+							computeMultiVMStressVgt)
 from lib.lib_part import part
 from lib.lib_boundary import boundaryCondition, get_INCTable
 
@@ -430,6 +434,7 @@ class mechaproblem(problem):
 		Cep   = np.zeros((ddl+3, nbqp_total))
 		disp  = np.zeros(np.shape(Fext))
 		resPCG_list = []
+		VMstress = np.zeros(nbqp_total)
 
 		for i in range(1, np.shape(Fext)[2]):
 
@@ -468,6 +473,7 @@ class mechaproblem(problem):
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
+			VMstress = computeMultiVMStressVgt(stress, self.part.dim)
 
-		return disp, resPCG_list
+		return disp, resPCG_list, VMstress
 

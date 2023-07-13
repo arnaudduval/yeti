@@ -322,6 +322,15 @@ def evalOneTrace(tensor, dim):
 		trace += tensor[i, i]
 	return trace
 
+def computeOneVMStress(tensor, dim):
+	trace  = evalOneTrace(tensor, dim)
+	dev    = np.copy(tensor)
+	for i in range(dim):
+		dev[i, i] -= 1.0/3.0*trace
+	vm = np.linalg.norm(dev)
+	vm = np.sqrt(3.0/2.0)*vm
+	return vm
+
 def clean_dirichlet(A, dod):
 	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
 		A is actually a vector arranged following each dimension [Au, Av, Aw]
@@ -339,11 +348,22 @@ def block_dot_product(d, A, B):
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
 
-def computeVonMisesStress(tensor, dim):
-	trace  = evalOneTrace(tensor, dim)
-	dev    = np.copy(tensor)
+def evalMultiTraceVgt(tensors, dim):
+	trace = np.zeros(np.size(tensors, axis=1))
 	for i in range(dim):
-		dev[i, i] -= 1.0/3.0*trace
-	vm = np.linalg.norm(dev)
-	vm = np.sqrt(3.0/2.0)*vm
+		trace += tensors[i, :]
+	return trace
+
+def computeMultiVMStressVgt(tensors, dim):
+	nvgt  = int(dim*(dim+1)/2)
+	trace = evalMultiTraceVgt(tensors, dim)
+	dev   = np.copy(tensors)
+	for i in range(dim):
+		dev[i, :] -= 1.0/3.0*trace
+	s = np.zeros(np.size(tensors, axis=1))
+	for i in range(dim):
+		s += tensors[i, :]*tensors[i, :]
+	for i in range(dim, nvgt):
+		s += 2*tensors[i, :]*tensors[i, :]
+	vm = np.sqrt(3.0/2.0*s)
 	return vm

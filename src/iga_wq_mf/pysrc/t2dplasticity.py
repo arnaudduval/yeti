@@ -43,7 +43,7 @@ if not dataExist:
 		model    = part(modelIGA, quadArgs=quadArgs)
 
 		# Add material 
-		matArgs    = {'density': 7800, 'elastic_modulus':1e9, 'poisson_ratio': 0.3, 'elastic_limit':5e6,
+		matArgs    = {'elastic_modulus':1e9, 'poisson_ratio': 0.3, 'elastic_limit':5e6,
 					'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 		material = mechamat(matArgs)
@@ -71,7 +71,7 @@ if not dataExist:
 		Fext   = np.zeros((*np.shape(Fsurf), nbStep+1))
 		for i in range(1, nbStep+1): Fext[:, :, i] = i*dt*Fsurf
 
-		displacement, resPCG = problem.solvePlasticityProblemPy(Fext=Fext, thresholdNR=1e-5, methodPCG=PCGmethod)
+		displacement, resPCG, _ = problem.solvePlasticityProblemPy(Fext=Fext, thresholdNR=1e-5, methodPCG=PCGmethod)
 		np.savetxt(filename, resPCG)
 
 else: 
