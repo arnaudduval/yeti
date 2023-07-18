@@ -8,6 +8,7 @@
 *.pdf
 *.png
 *.gz
+*.npy
 
 # Folders
 results

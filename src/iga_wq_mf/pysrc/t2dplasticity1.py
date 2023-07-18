@@ -51,17 +51,18 @@ def run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga'):
 	problem = mechaproblem(material, model, boundary)
 
 	def forceSurfFun(P:list):
-		x = P[0, :]
-		y = P[1, :]
-		ref  = np.array([2.5e1, 0.0])
-		prop = np.zeros((2, len(x)))
+		ref  = np.array([4e1, 0.0])
+		prop = np.zeros((2, np.size(P, axis=1)))
 		for i in range(2): prop[i, :] = ref[i] 
 		return prop
 	
 	Fextref = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
-	Fext   = np.zeros((*np.shape(Fextref), 2*nbSteps + 1))
-	for i in range(0, nbSteps+1): Fext[:, :, i] = i/nbSteps*Fextref
-	for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, :, i] = (2*nbSteps - i)/nbSteps*Fextref
+	# Fext   = np.zeros((*np.shape(Fextref), 2*nbSteps + 1))
+	# for i in range(0, nbSteps+1): Fext[:, :, i] = i/nbSteps*Fextref
+	# for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, :, i] = (2*nbSteps - i)/nbSteps*Fextref
+
+	Fext = np.zeros((*np.shape(Fextref), nbSteps))
+	for i in range(0, nbSteps): Fext[:, :, i] = i/(nbSteps-1)*Fextref
 
 	# Solve
 	disp_cp, _, stress_qp = problem.solvePlasticityProblemPy(Fext=Fext)
@@ -72,12 +73,12 @@ quadrule = 'wq'
 
 # Set global variables
 samplesize = 2500
-nbSteps    = 50
+nbSteps    = 41
 matArgs    = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3,
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 if isReference:
-	degree, cuts = 8, 8
+	degree, cuts = 6, 8
 	problem, disp_cp, stress_qp = run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga')
 	np.save(folder+'stress_quadPts_ref.npy', stress_qp)
 	np.save(folder+'disp_ctrlPts_ref.npy', disp_cp)

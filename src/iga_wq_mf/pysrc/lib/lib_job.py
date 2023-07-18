@@ -17,9 +17,9 @@ class problem():
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
+		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 20)
-		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
+		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-10)
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
@@ -450,14 +450,8 @@ class mechaproblem(problem):
 				strain = self.compute_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
-				start = time.time()
-				# for k in range(nbqp_total):
-				# 	output = self.material.returnMappingAlgorithm(strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
-				# 	stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, k] = output[:ddl], output[ddl:2*ddl], output[2*ddl], output[2*ddl+1:3*ddl+1], output[3*ddl+1:]
 				output = self.material.returnMappingAlgorithmForAll(strain, pls_n0, a_n0, b_n0)
 				stress, pls_n1, a_n1, b_n1, Cep = output[:ddl, :], output[ddl:2*ddl, :], output[2*ddl, :], output[2*ddl+1:3*ddl+1, :], output[3*ddl+1:, :]
-				stop = time.time()
-				print(stop-start)
 
 				# Compute Fint 
 				Fint = self.compute_intForce(stress)
@@ -480,6 +474,10 @@ class mechaproblem(problem):
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
+
+			if i%3==0:
+				np.save('stress_quadPts_ref.npy', stress_r)
+				np.save('disp_ctrlPts_ref.npy', disp)
 
 		return disp, resPCG_list, stress_r
 

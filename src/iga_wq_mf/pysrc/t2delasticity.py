@@ -65,7 +65,7 @@ def forceVolFun2(P:list):
 	return prop
 
 def forceSurfFun(P:list):
-	ref  = np.array([2.5e1, 0.0])
+	ref  = np.array([4e1, 0.0])
 	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop

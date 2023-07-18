@@ -59,10 +59,8 @@ if not dataExist:
 		problem = mechaproblem(material, model, boundary)
 
 		def forceSurfFun(P:list):
-			x = P[0, :]
-			y = P[1, :]
-			ref  = np.array([1.e7, 0.0])
-			prop = np.zeros((2, len(x)))
+			ref  = np.array([3e1, 0.0])
+			prop = np.zeros((2, np.size(P, axis=1)))
 			for i in range(2): prop[i, :] = ref[i] 
 			return prop
 
