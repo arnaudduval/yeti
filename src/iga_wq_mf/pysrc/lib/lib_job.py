@@ -418,6 +418,7 @@ class mechaproblem(problem):
 		return Fint
 	
 	def solvePlasticityProblemPy(self, Fext): 
+
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
 
 		d     = self.part.dim
@@ -433,8 +434,8 @@ class mechaproblem(problem):
 		stress = np.zeros((ddl, nbqp_total))
 		Cep   = np.zeros((ddl+3, nbqp_total))
 		disp  = np.zeros(np.shape(Fext))
+		stress_r = np.zeros((ddl, nbqp_total, np.shape(Fext)[2]))
 		resPCG_list = []
-		VMstress = np.zeros(nbqp_total)
 
 		for i in range(1, np.shape(Fext)[2]):
 
@@ -449,9 +450,14 @@ class mechaproblem(problem):
 				strain = self.compute_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
-				for k in range(nbqp_total):
-					sigmat, pls_n1t, a_n1t, b_n1t, Cept = self.material.returnMappingAlgorithm(strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
-					stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, k] = sigmat, pls_n1t, a_n1t, b_n1t, Cept
+				start = time.time()
+				# for k in range(nbqp_total):
+				# 	output = self.material.returnMappingAlgorithm(strain[:, k], pls_n0[:, k], a_n0[k], b_n0[:, k])
+				# 	stress[:, k], pls_n1[:, k], a_n1[k], b_n1[:, k], Cep[:, k] = output[:ddl], output[ddl:2*ddl], output[2*ddl], output[2*ddl+1:3*ddl+1], output[3*ddl+1:]
+				output = self.material.returnMappingAlgorithmForAll(strain, pls_n0, a_n0, b_n0)
+				stress, pls_n1, a_n1, b_n1, Cep = output[:ddl, :], output[ddl:2*ddl, :], output[2*ddl, :], output[2*ddl+1:3*ddl+1, :], output[3*ddl+1:, :]
+				stop = time.time()
+				print(stop-start)
 
 				# Compute Fint 
 				Fint = self.compute_intForce(stress)
@@ -469,11 +475,11 @@ class mechaproblem(problem):
 
 				ddisp  += vtmp
 
-			disp[:, :, i] = d_n1			
+			disp[:, :, i] = d_n1
+			stress_r[:, :, i] = stress			
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
-			VMstress = computeMultiVMStressVgt(stress, self.part.dim)
 
-		return disp, resPCG_list, VMstress
+		return disp, resPCG_list, stress_r
 

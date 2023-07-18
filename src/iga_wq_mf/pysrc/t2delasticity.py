@@ -33,7 +33,7 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs  = {'density': 1.0, 'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3,}
+matArgs  = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
@@ -65,7 +65,7 @@ def forceVolFun2(P:list):
 	return prop
 
 def forceSurfFun(P:list):
-	ref  = np.array([1.e-1, 0.0])
+	ref  = np.array([2.5e1, 0.0])
 	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
@@ -84,11 +84,12 @@ fig, ax = plt.subplots()
 # Solve in fortran 
 for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'], 
 							['w.o. preconditioner', 'Fast diag. (FD)', 'This work'])):
-    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext, methodPCG=methodPCG)
+    problem.addSolverConstraints(solverArgs={'PCGmethod': methodPCG})
+    displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
     resPCG = resPCG[resPCG>0]
     ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
-# model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
 ax.set_ybound(lower=1e-12, upper=1e1)
 ax.legend()
 ax.set_xlabel('Number of iterations of BiCGSTAB solver')

@@ -53,7 +53,7 @@ def run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga'):
 	def forceSurfFun(P:list):
 		x = P[0, :]
 		y = P[1, :]
-		ref  = np.array([2.e1, 0.0])
+		ref  = np.array([2.5e1, 0.0])
 		prop = np.zeros((2, len(x)))
 		for i in range(2): prop[i, :] = ref[i] 
 		return prop
@@ -64,12 +64,8 @@ def run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga'):
 	for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, :, i] = (2*nbSteps - i)/nbSteps*Fextref
 
 	# Solve
-	disp_cp, _, VMstress_qp = problem.solvePlasticityProblemPy(Fext=Fext)
-	# plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
-	VMstress_cp = model.interpolate_CntrlPtsField(VMstress_qp) #!!!!!!!!!!!!!!!!!
-	# plot_results(model.quadRule, geoArgs['length'], disp_cp, plastic_cp, stress_cp, folder=folder, method=quadrule)
-
-	return problem, disp_cp, VMstress_cp
+	disp_cp, _, stress_qp = problem.solvePlasticityProblemPy(Fext=Fext)
+	return problem, disp_cp, stress_qp
 
 isReference = True
 quadrule = 'wq'
@@ -81,10 +77,8 @@ matArgs    = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3,
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 if isReference:
-	degree, cuts = 4, 7
-	problem, disp_cp, VMstress_cp = run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga')
-	stress_interp = problem.part.interpolateField(VMstress_cp, nbDOF=1, sampleSize=samplesize)[-1]
-	# disp_interp   = model.interpolate_sampleField(disp_cp,   sampleSize=samplesize)[0]
-	# np.save(folder+'disp_interp_refcont.npy', disp_interp)
-	np.save(folder+'stress_interp_refcont.npy', stress_interp)
+	degree, cuts = 8, 8
+	problem, disp_cp, stress_qp = run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga')
+	np.save(folder+'stress_quadPts_ref.npy', stress_qp)
+	np.save(folder+'disp_ctrlPts_ref.npy', disp_cp)
 
