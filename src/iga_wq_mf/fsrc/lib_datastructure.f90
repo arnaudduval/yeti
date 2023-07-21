@@ -22,9 +22,9 @@ contains
         type(structure), allocatable :: datstruct
         integer, intent(in) :: nr_u, nc_u, nnz_u
         integer, intent(in) :: indi_u, indj_u
-        dimension ::    indi_u(nr_u+1), indj_u(nnz_u)
+        dimension :: indi_u(nr_u+1), indj_u(nnz_u)
         double precision, intent(in) :: data_B_u, data_W_u
-        dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
+        dimension :: data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
 
         datstruct%dimen = dimen
         allocate(datstruct%nrows(dimen), datstruct%ncols(dimen), datstruct%nnzs(dimen))
@@ -145,7 +145,7 @@ contains
         
     end subroutine init_3datastructure
 
-    subroutine get_boundarynodes(datstruct, dimen, table)
+    subroutine get_innernodes(datstruct, dimen, table)
         implicit none 
         ! Input / output data
         ! --------------------
@@ -203,7 +203,7 @@ contains
             stop 'Not possible get boundary nodes'
         end if
 
-    end subroutine get_boundarynodes
+    end subroutine get_innernodes
 
     subroutine update_datastructure(datstruct, dimen, table)
         implicit none 
@@ -224,7 +224,7 @@ contains
         double precision, dimension(:, :), allocatable :: bw_out
 
         if (dimen.ne.datstruct%dimen) stop 'table not well defined.'
-        call get_boundarynodes(datstruct, dimen, table)
+        call get_innernodes(datstruct, dimen, table)
 
         nr_new_list  = datstruct%nrows 
         nnz_new_list = 0
