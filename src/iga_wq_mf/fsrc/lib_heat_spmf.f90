@@ -1,3 +1,54 @@
+subroutine eigendecomp_heat_2d(nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, &
+                                Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, mean, isDiag, &
+                                U_u, U_v, Deigen, Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+
+    double precision, intent(in) :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
+    dimension ::    Mcoef_u(nc_u), Mcoef_v(nc_v), &
+                    Kcoef_u(nc_u), Kcoef_v(nc_v)
+    double precision, intent(in) :: mean
+    dimension :: mean(2)
+    logical, intent(in) :: isDiag
+
+    double precision, intent(out) :: U_u, U_v, Deigen
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), Deigen(nr_u*nr_v)
+    double precision, intent(out) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v
+    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Kdiag_u(nr_u), Kdiag_v(nr_v)
+
+    ! Local data
+    ! -----------
+    double precision :: D_u, D_v
+    dimension :: D_u(nr_u), D_v(nr_v)
+    double precision, dimension(:), allocatable :: I_u, I_v
+
+    ! Eigen decomposition
+    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
+                            data_B_u, data_W_u, (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
+
+    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
+                            data_B_v, data_W_v, (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
+
+    ! Find diagonal
+    if (.not.isDiag) return
+    allocate(I_u(nr_u), I_v(nr_v))
+    I_u = 1.d0; I_v = 1.d0
+    call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u, D_v, mean, Deigen)
+    deallocate(I_u, I_v)
+
+end subroutine eigendecomp_heat_2d
+
 subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &

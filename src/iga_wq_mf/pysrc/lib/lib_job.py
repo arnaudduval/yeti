@@ -18,11 +18,39 @@ class problem():
 	
 	def addSolverConstraints(self, solverArgs:dict):
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
-		self._nbIterNR     = solverArgs.get('nbIterationsNR', 20)
+		self._nbIterNR     = solverArgs.get('nbIterationsNR', 30)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-10)
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
+	
+	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
+		coefs = None
+		if datafield is not None: coefs = datafield*self.part.detJ
+		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
+		if coefs is None: raise Warning('Missing data')
+		coefs = np.atleast_2d(coefs)
+
+		# Calculate vector
+		u_interp = []
+		for i in range(np.size(coefs, axis=0)):
+			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+			if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
+			if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
+
+			# Solve linear system with fortran
+			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
+					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
+			start = time.process_time()
+			if self.part.dim == 2: u_interp_tmp, relres = heatsolver.mf_wq_interpolate_cp_2d(*inputs)
+			if self.part.dim == 3: u_interp_tmp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
+			stop = time.process_time()
+			res_end = relres[np.nonzero(relres)][-1]
+			print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
+			u_interp.append(u_interp_tmp)
+
+		return np.stack(u_interp, axis=0)
+
 
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
@@ -169,27 +197,6 @@ class heatproblem(problem):
 		return uinterp
 
 	# Solve using fortran
-	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
-		coefs = None
-		if datafield is not None: coefs = datafield*self.part.detJ
-		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
-		if coefs is None: raise Warning('Missing data')
-
-		# Calculate vector
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if self.part.dim == 2: raise Warning('Until now not done')
-		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
-
-		# Solve linear system with fortran
-		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-	    		 *self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
-		start = time.process_time()
-		u_interp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
-		stop = time.process_time()
-		res_end = relres[np.nonzero(relres)][-1]
-		print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
-		return u_interp
-
 	def solveSteadyHeatProblemFT(self, b, coefs=None):
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
 															self.part.detJ, self.part.qpPhy)
@@ -475,9 +482,9 @@ class mechaproblem(problem):
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
 
-			if i%3==0:
-				np.save('stress_quadPts_ref.npy', stress_r)
-				np.save('disp_ctrlPts_ref.npy', disp)
+			# if i%3==0:
+			# 	np.save('stress_quadPts_ref.npy', stress_r)
+			# 	np.save('disp_ctrlPts_ref.npy', disp)
 
 		return disp, resPCG_list, stress_r
 

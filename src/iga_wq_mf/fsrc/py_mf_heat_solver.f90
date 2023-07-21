@@ -507,6 +507,84 @@ subroutine wq_get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
 
 end subroutine wq_get_heatsurf_3d
 
+subroutine mf_wq_interpolate_cp_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            b, nbIterPCG, threshold, x, resPCG)
+    !! Preconditioned conjugate gradient to solve interpolation problem
+    !! IN CSR FORMAT
+    
+    use matrixfreeheat
+    use solverheat2
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_total)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nr_total)
+    
+    double precision, intent(out) :: x, resPCG
+    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    type(thermomat), pointer :: mat
+    type(cgsolver), pointer :: solv
+
+    ! Fast diagonalization
+    double precision, dimension(:), allocatable ::  Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
+                                                    Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v, Deigen
+    double precision :: U_u, U_v
+    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v)
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    
+    ! Eigen decomposition
+    allocate(Mcoef_u(nc_u), Mcoef_v(nc_v), Kcoef_u(nc_u), Kcoef_v(nc_v), &
+            Mdiag_u(nr_u), Mdiag_v(nr_v), Kdiag_u(nr_u), Kdiag_v(nr_v))            
+    Mcoef_u = 1.d0; Kcoef_u = 1.d0
+    Mcoef_v = 1.d0; Kcoef_v = 1.d0
+
+    call eigendecomp_heat_2d(nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, (/1.d0, 1.d0/), .false., &
+                            U_u, U_v, Deigen, Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
+    deallocate( Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v, &
+                Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v)
+
+    ! Set material and solver
+    allocate(mat, solv)
+    call setup_capacitycoefs(mat, nc_total, coefs)
+    solv%matrixfreetype = 1
+
+    call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                data_W_u, data_W_v, U_u, U_v, nbIterPCG, threshold, b, x, resPCG)
+
+end subroutine mf_wq_interpolate_cp_2d
+
 subroutine mf_wq_interpolate_cp_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
