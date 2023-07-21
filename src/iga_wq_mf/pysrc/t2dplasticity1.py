@@ -89,7 +89,7 @@ if isReference:
 else:
 	problem =  run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga', isComputing=False)
 	stress_qpref = np.load(folder+'stress_quadPts_ref.npy')[:,:,-2]
-	stress_cpref = problem.solveInterpolationProblemFT(datafield=stress_qpref)
+	stress_cpref = problem.L2projectionCtrlpts(datafield=stress_qpref)
 	stress_interp = problem.part.interpolateMeshgridField(u_ctrlpts=stress_cpref, nbDOF=3, sampleSize=samplesize)[-1]
 	stress_vm = computeMultiVMStressVgt(stress_interp, dim=2)
 	stress_interp = np.vstack([stress_interp, stress_vm])

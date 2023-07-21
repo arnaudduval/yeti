@@ -24,7 +24,7 @@ class problem():
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 	
-	def solveInterpolationProblemFT(self, funfield=None, datafield=None):
+	def L2projectionCtrlpts(self, funfield=None, datafield=None):
 		coefs = None
 		if datafield is not None: coefs = datafield*self.part.detJ
 		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
@@ -32,25 +32,17 @@ class problem():
 		coefs = np.atleast_2d(coefs)
 
 		# Calculate vector
-		u_interp = []
-		for i in range(np.size(coefs, axis=0)):
-			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-			if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
-			if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
+		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+		if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
+		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
-			# Solve linear system with fortran
-			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
-			start = time.process_time()
-			if self.part.dim == 2: u_interp_tmp, relres = heatsolver.mf_wq_interpolate_cp_2d(*inputs)
-			if self.part.dim == 3: u_interp_tmp, relres = heatsolver.mf_wq_interpolate_cp_3d(*inputs)
-			stop = time.process_time()
-			res_end = relres[np.nonzero(relres)][-1]
-			print('Interpolation in: %.3e s with relative residue %.3e' %(stop-start, res_end))
-			u_interp.append(u_interp_tmp)
+		# Solve linear system with fortran
+		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
+				*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
+		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
+		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
 
-		return np.stack(u_interp, axis=0)
-
+		return u_interp
 
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
@@ -83,36 +75,6 @@ class heatproblem(problem):
 
 		return inputs
 	
-	def assemble_capacity(self, coefs=None, args=None):
-		if coefs is None: coefs = self.material.eval_capacityCoefficients(self.part.detJ, args)
-		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
-		if self.part.dim == 2: 
-			assembly.wq_get_capacity_2d(*inputs, nnz_I_list, nnz)
-			nnz = np.prod(nnz_I_list)
-			val, indi, indj = assembly.wq_get_capacity_2d(*inputs, nnz_I_list, nnz)
-		if self.part.dim == 3: 
-			assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
-			nnz = np.prod(nnz_I_list)
-			val, indi, indj = assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
-		matrix = array2csr_matrix(val, indi, indj)
-		return matrix
-	
-	def assemble_conductivity(self, coefs=None, args=None):
-		if coefs is None: coefs = self.material.eval_conductivityCoefficients(self.part.detJ, args)
-		nnz_I_list, nnz = np.array([-1, -1, -1], dtype=np.int32), 1
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
-		if self.part.dim == 2: 
-			assembly.wq_get_conductivity_2d(*inputs, nnz_I_list, nnz)
-			nnz = np.prod(nnz_I_list)
-			val, indi, indj = assembly.wq_get_conductivity_2d(*inputs, nnz_I_list, nnz)
-		if self.part.dim == 3: 
-			assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
-			nnz = np.prod(nnz_I_list)
-			val, indi, indj = assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
-		matrix = array2csr_matrix(val, indi, indj)
-		return matrix
-
 	def eval_mfConductivity(self, u, coefs=None, table=None, args=None):
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, args)

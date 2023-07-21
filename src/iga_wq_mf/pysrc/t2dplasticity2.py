@@ -99,7 +99,7 @@ if FigPlot == 0:
 			disp_interp = np.vstack([disp_interp, disp_norm])
 			interp.append(disp_interp)
 
-			stress_cp = problem.solveInterpolationProblemFT(datafield=stress_qp[:,:,-2])
+			stress_cp = problem.L2projectionCtrlpts(datafield=stress_qp[:,:,-2])
 			stress_interp = problem.part.interpolateMeshgridField(u_ctrlpts=stress_cp, nbDOF=3, sampleSize=sampleSize)[-1]
 			stress_vm = computeMultiVMStressVgt(stress_interp, dim=2)
 			stress_interp = np.vstack([stress_interp, stress_vm])
@@ -208,7 +208,7 @@ elif FigPlot == 2:
 			disp_interp = np.vstack([disp_interp, disp_norm])
 			interp.append(disp_interp)
 
-			stress_cp = problem.solveInterpolationProblemFT(datafield=stress_qp[:,:,-2])
+			stress_cp = problem.L2projectionCtrlpts(datafield=stress_qp[:,:,-2])
 			stress_interp = problem.part.interpolateMeshgridField(u_ctrlpts=stress_cp, nbDOF=3, sampleSize=sampleSize)[-1]
 			stress_vm = computeMultiVMStressVgt(stress_interp, dim=2)
 			stress_interp = np.vstack([stress_interp, stress_vm])

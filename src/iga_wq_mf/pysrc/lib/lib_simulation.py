@@ -84,7 +84,7 @@ class encoder():
 		nbctrlpts_total = problem.part.nbctrlpts_total
 
 		if funTemp is not None:  
-			ud = problem.solveInterpolationProblemFT(funfield=funTemp)[dod]
+			ud = problem.L2projectionCtrlpts(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Fn = problem.eval_volForce(funPowDen, indi=dof) 
 			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), args=self._part.qpPhy)
