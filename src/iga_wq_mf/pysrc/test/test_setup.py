@@ -5,7 +5,7 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import createKnotVector
+from lib.lib_base import createUniformMaxregularKnotvector
 from lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
@@ -30,7 +30,7 @@ if not dataExist:
 	
 	for i, degree in enumerate(degree_list):
 
-		knotvector = createKnotVector(degree, nbel)
+		knotvector = createUniformMaxregularKnotvector(degree, nbel)
 		weightedQuad = WeightedQuadrature(degree, knotvector)
 		info = weightedQuad.getQuadratureRulesInfo()
 		qp, [indi, indj], dersbasis, dersweights = info

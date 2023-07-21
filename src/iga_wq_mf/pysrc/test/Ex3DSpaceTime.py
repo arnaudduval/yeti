@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import createKnotVector
+from lib.lib_base import createUniformMaxregularKnotvector
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
 from lib.lib_material import thermomat
@@ -62,6 +62,6 @@ boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temp
 # Transient model
 # ---------------------
 nbSteps  = 20
-timeArgs = {'timespan': 0.25, 'degree': degree, 'knotvector': createKnotVector(degree, nbSteps), 'quadrule': 'wq'}
+timeArgs = {'timespan': 0.25, 'degree': degree, 'knotvector': createUniformMaxregularKnotvector(degree, nbSteps), 'quadrule': 'wq'}
 problem  = heatproblemSpTm(material, model, boundary, timeArgs=timeArgs)
 

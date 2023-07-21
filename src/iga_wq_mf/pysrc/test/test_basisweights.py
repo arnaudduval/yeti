@@ -5,7 +5,7 @@
 .. Joaquin Cornejo 
 """
 from lib.__init__ import *
-from lib.lib_base import createKnotVector, relativeError
+from lib.lib_base import createUniformMaxregularKnotvector, relativeError
 from lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 # Select folder
@@ -25,7 +25,7 @@ for varName in ['I00', 'I01', 'I10', 'I11']:
 		color = next(ax._get_lines.prop_cycler)['color']
 
 		for nbel in nbel_list: 
-			knotvector = createKnotVector(degree, nbel)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# --------

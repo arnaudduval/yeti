@@ -1,6 +1,6 @@
 from lib.__init__ import *
-from lib.lib_base import (LegendreTable, lobattoTable, 
-						findMultiplicity, createKnotVector, 
+from lib.lib_base import (legendreTable, lobattoTable, 
+						findMultiplicity, createUniformMaxregularKnotvector, 
 						insertRowCSR, evalDersBasisFortran
 )
 
@@ -69,13 +69,13 @@ class GaussQuadrature(QuadratureRules):
 		extraArgs = quadArgs.get('extra', {'nbQPEL': 1})
 		if self._gaussType == 'leg': # Legendre 
 			self._order = self.degree + 1
-			self._tablefunction = LegendreTable
+			self._tablefunction = legendreTable
 		elif self._gaussType == 'lob': # Lobatto
 			self._order = self.degree + 2
 			self._tablefunction = lobattoTable
 		elif self._gaussType == 'legextra':
 			self._order = self.degree + extraArgs.get('nbQPEL')
-			self._tablefunction = LegendreTable
+			self._tablefunction = legendreTable
 		else: 
 			raise Warning('Not found')
 		return
@@ -239,7 +239,7 @@ class WeightedQuadrature(QuadratureRules):
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			# Create model
 			degree_model = self.degree
-			kv_model     = createKnotVector(degree_model, degree_model + 3)
+			kv_model     = createUniformMaxregularKnotvector(degree_model, degree_model + 3)
 			kwargs       = {'type': self._wqType, 'extra': self._extraArgs}
 			WQmodel      = WeightedQuadrature(degree_model, kv_model, quadArgs=kwargs)
 			WQmodel.__findQuadraturePositions()

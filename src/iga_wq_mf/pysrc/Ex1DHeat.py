@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import createKnotVector, sigmoid
+from lib.lib_base import createUniformMaxregularKnotvector, sigmoid
 from lib.thermomecha1D import thermo1D
 from lib.lib_load import *
 
@@ -22,7 +22,7 @@ def setCprop(T, prop=1.0):
 # Set global variables
 length       = 1.0
 degree, nbel = 6, 100 
-knotvector   = createKnotVector(degree, nbel)
+knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 
 # Create geometry
 quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}

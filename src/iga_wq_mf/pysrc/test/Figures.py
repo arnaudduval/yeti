@@ -15,7 +15,7 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import (createKnotVector, evalDersBasisPy, cropImage, relativeError)
+from lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage, relativeError)
 from lib.lib_quadrules import *
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
@@ -98,7 +98,7 @@ if CASE == 0: # B-spline curve
 
 		# Create the curve 
 		degree, nbel = 2, 4
-		knotvector   = createKnotVector(degree, nbel)
+		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 		crv            = BSpline.Curve()
 		crv.degree     = degree
 		crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], 
@@ -134,7 +134,7 @@ elif CASE == 1: # Univariate functions
 		# B-spline properties 
 		degree, nbel = 3, 4
 		multiplicity = 1
-		knotvector   = createKnotVector(degree, nbel, multiplicity=multiplicity)
+		knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=multiplicity)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray(); B1 = basis[0].toarray()
@@ -163,7 +163,7 @@ elif CASE == 2: # Bivariate functions
 
 		# B-Spline properties
 		degree, nbel = 3, 4
-		knotvector   = createKnotVector(degree, nbel)
+		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray()
@@ -225,7 +225,7 @@ elif CASE == 3: # Quadrature points in IGA
 		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
-			knotvector  = createKnotVector(degree, nbel)
+			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
 			quadRule    = GaussQuadrature(degree, knotvector)
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
@@ -257,7 +257,7 @@ elif CASE == 4: # Quadrature points in WQ
 		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
-			knotvector  = createKnotVector(degree, nbel)
+			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
 			quadRule    = WeightedQuadrature(degree, knotvector)
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
@@ -418,7 +418,7 @@ elif CASE == 8: # Weights W00 and W11
 		# B-spline properties 
 		WeightPos    = 2
 		degree, nbel = 2, 3
-		knotvector   = createKnotVector(degree, nbel)
+		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 		quadRule     = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
 		quadRule.getQuadratureRulesInfo()
 		basis, knots = quadRule.getSampleBasis()
@@ -432,7 +432,7 @@ elif CASE == 8: # Weights W00 and W11
 		if WeightName == 0:
 			Bref = B
 		else:
-			kvref = createKnotVector(degree-1, nbel)
+			kvref = createUniformMaxregularKnotvector(degree-1, nbel)
 			Bref = evalDersBasisPy(degree-1, kvref, knots)[0]
 			Bref = Bref.toarray()
 

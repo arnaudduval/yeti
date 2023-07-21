@@ -102,7 +102,7 @@ subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos,
     ! ----------
     type(weightedquadrature), allocatable :: obj
 
-    if (nbctrlpts.ne.size_kv-degree-1) stop 'Size problem'
+    if (nbctrlpts.ne.size_kv-degree-1) stop 'Size problem in wq get basis coo'
     call init_wq(obj, degree, knotvector, quadptspos, B0shape, B1shape, method)
     if (method.eq.1) then
         call findbasisweightrules_md1_wq(obj, basis, weights, indices)

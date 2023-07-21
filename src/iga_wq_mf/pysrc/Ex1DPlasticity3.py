@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import (createKnotVector)
+from lib.lib_base import (createUniformMaxregularKnotvector)
 from lib.thermomecha1D import mechamat1D, plot_results
 from lib.lib_load import *
 
@@ -29,7 +29,7 @@ if FigPlot == 0:
 	for degree in degree_list:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
-			knotvector = createKnotVector(degree, nbel)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 1}
 			# quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 			args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
@@ -96,7 +96,7 @@ elif FigPlot == 1:
 		for j, degree in enumerate(degree_list):
 		
 			nbel = 2**cuts
-			knotvector = createKnotVector(degree, nbel)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 'type': 1}
 			# quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 			args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
@@ -162,7 +162,7 @@ elif FigPlot == 2:
 	for j, typeQuad in enumerate(TypeList):
 		for k, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
-			knotvector = createKnotVector(degree, nbel)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			if TYPEOFFIG == 0: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 
 											'type': 'legextra', 'extra':{'nbQPEL':typeQuad}}
 			if TYPEOFFIG == 1: quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq', 
@@ -232,7 +232,7 @@ elif FigPlot == 3:
 	for mult in mult_list:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
-			knotvector = createKnotVector(degree, nbel, multiplicity=mult)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel, multiplicity=mult)
 			quadArgs   = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 			args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
 			model = mechamat1D(args)

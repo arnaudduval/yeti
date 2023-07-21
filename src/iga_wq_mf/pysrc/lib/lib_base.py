@@ -112,7 +112,7 @@ def array2csr_matrix(data, indi, indj, isfortran=True):
 # B-SPLINE FUNCTIONS
 # ==========================
 
-def createKnotVector(p, nbel, multiplicity=1):
+def createUniformMaxregularKnotvector(p, nbel, multiplicity=1):
 	" Creates an uniform and open knot-vector with a given regularity "
 
 	kv_unique = np.linspace(0., 1., nbel + 1)[1 : -1]
@@ -193,7 +193,7 @@ def evalDersBasisFortran(degree, knotvector, knots):
 	B, indi, indj = basisweights.get_genbasis_csr(degree, knotvector, knots)
 	return B, indi, indj
 
-def LegendreTable(order):
+def legendreTable(order):
 	" Computes Gauss-Legendre weights and positions in isoparametric space for a given degree "
 	if order <= 10: pos, wgt = basisweights.gauss_quadrature_table(order)
 	else: raise Warning('Not degree found')
@@ -287,7 +287,7 @@ def lobattoTable(order):
 # MF FUNCTIONS
 # =========================
 
-def scipySolver(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True):
+def scipySolver(A, b, nbIter=100, threshold=1e-10, PreCond='ilu', isCG=True):
 	""" Solves system using an iterative method : conjugate gradient or bi-conjugate gradient. 
 		It can use ILU preconditioner to accelerate convergence. 
 	"""
@@ -299,8 +299,8 @@ def scipySolver(A, b, nbIterations=100, epsilon=1e-10, PreCond='ilu', isCG=True)
 		M = sclin.LinearOperator(A.shape, Mx)
 
 	# Solve with iterative method
-	if isCG: x, info = sclin.cg(A, b, tol=epsilon, maxiter=nbIterations, M=M)
-	else: x, info = sclin.bicgstab(A, b, tol=epsilon, maxiter=nbIterations, M=M)
+	if isCG: x, info = sclin.cg(A, b, tol=threshold, maxiter=nbIter, M=M)
+	else: x, info = sclin.bicgstab(A, b, tol=threshold, maxiter=nbIter, M=M)
 
 	return x
 
@@ -452,72 +452,6 @@ def fastDiagonalization(U, V, W, D, array_in, fdtype='steady'):
 		array_out = plasticitysolver.fd_elasticity_3d(U, V, W, D, array_in)
 	
 	return array_out
-
-def computeMean3d(ncu, ncv, ncw, C):
-
-	def trapezoidal_rule_3d(coefs):
-		nru, nrv, nrw = np.shape(coefs)
-		indu = [0, nru-1]; indv = [0, nrv-1]; indw = [0, nrw-1]
-		integral = 0.0
-		for iw in range(1, nrw-1):
-			for iv in range(1, nrv-1):
-				for iu in range(1, nru-1):
-					integral += coefs[iu, iv, iw]
-
-		for iw in range(1, nrw-1):
-			for iv in range(1, nrv-1):
-				for iu in [0, 1]:
-					integral += coefs[indu[iu], iv, iw]/2.0
-
-		for iw in range(1, nrw-1):
-			for iv in [0, 1]:
-				for iu in range(1, nru-1):
-					integral += coefs[iu, indv[iv], iw]/2.0
-
-		for iw in [0, 1]:
-			for iv in range(1, nrv-1):
-				for iu in range(1, nru-1):
-					integral += coefs[iu, iv, indw[iw]]/2.0
-
-		for iw in [0, 1]:
-			for iv in [0, 1]:
-				for iu in range(1, nru-1):
-					integral += coefs[iu, indv[iv], indw[iw]]/4.0
-
-		for iw in [0, 1]:
-			for iv in range(1, nrv-1):
-				for iu in [0, 1]:
-					integral += coefs[indu[iu], iv, indw[iw]]/4.0
-
-		for iw in range(1, nrw-1):
-			for iv in [0, 1]:
-				for iu in [0, 1]:
-					integral += coefs[indu[iu], indv[iv], iw]/4.0
-	
-		for iw in [0, 1]:
-			for iv in [0, 1]:
-				for iu in [0, 1]:
-					integral += coefs[indu[iu], indv[iv], indw[iw]]/8.0
-
-		integral = integral/((nru-1)*(nrv-1)*(nrw-1))
-
-		return integral
-
-	Cset = np.zeros((3, 3, 3))
-	if ncu*ncv*ncw != len(C): raise Warning('Mismatch dimension')
-	pos = int((ncu-1)/2); indu = [0, pos, ncu-1]
-	pos = int((ncv-1)/2); indv = [0, pos, ncv-1]
-	pos = int((ncw-1)/2); indw = [0, pos, ncw-1]
-	
-	for k in range(3):
-		for j in range(3):
-			for i in range(3):
-				genPos = indu[i] + indv[j]*ncu + indw[k]*ncu*ncv
-				Cset[i, j, k] = C[genPos]
-
-	integral = trapezoidal_rule_3d(Cset)
-
-	return integral
 
 class solver():
 	

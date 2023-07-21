@@ -1,5 +1,5 @@
 from lib.__init__ import *
-from lib.lib_base import createKnotVector, evalDersBasisPy
+from lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisPy
 from lib.lib_quadrules import GaussQuadrature
 
 # Select folder
@@ -14,7 +14,7 @@ Tspan          = 0.02
 
 # Space discretization
 degree_sp, nbel = 2, 10
-knotvector_sp   = createKnotVector(degree_sp, nbel)
+knotvector_sp   = createUniformMaxregularKnotvector(degree_sp, nbel)
 spDscrt         = GaussQuadrature(degree_sp, knotvector_sp, {})
 spDscrt.getQuadratureRulesInfo()
 spDenseBasis, spDenseWeights = spDscrt.getDenseQuadRules()
@@ -28,7 +28,7 @@ Stiff_sp = spDenseWeights[-1] @ np.diag(Kcfs) @ spDenseBasis[1].T
 
 # Time discretization
 degree_t, nsteps  = 2, 9
-knotvector_t      = createKnotVector(degree_t, nsteps)
+knotvector_t      = createUniformMaxregularKnotvector(degree_t, nsteps)
 tmDscrt           = GaussQuadrature(degree_t, knotvector_t, {})
 tmDscrt.getQuadratureRulesInfo()
 tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()

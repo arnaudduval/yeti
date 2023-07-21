@@ -23,22 +23,22 @@
 ! GLOBAL FUNCTIONS: expected to work with any knotvector
 ! ------------------------------------------------------
 
-subroutine find_interpolation_kvspan(size_array, array, x, offset, span, threshold)
+subroutine find_interpolation_kvspan(nnz, array, x, offset, span, threshold)
     !! Finds the interpolation span of the given value x. 
     !! Ex: Given the nodes {0, 0.5, 1} and x = 0.25, the interpolation span is 1
 
     implicit none 
     ! Input / output data
     ! ------------------- 
-    integer, intent(in) :: size_array, offset
+    integer, intent(in) :: nnz, offset
     double precision, intent(in) :: array, x, threshold
-    dimension :: array(size_array)
+    dimension :: array(nnz)
 
     integer, intent(out) :: span 
 
     span = 2 + offset
 
-    do while ((span.lt.size_array-offset).and.((array(span)-x).le.threshold))
+    do while ((span.lt.nnz-offset).and.((array(span)-x).le.threshold))
         span = span + 1
     end do
 
@@ -46,7 +46,7 @@ subroutine find_interpolation_kvspan(size_array, array, x, offset, span, thresho
 
 end subroutine find_interpolation_kvspan
 
-subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
+subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, threshold)
     !! Finds the multiplicity of a given knot.
     !! Ex: Given the knot-vector {0, 0, 0, 0.5, 0.5, 1, 1, 1} and x = 0.5, the multiplicity is 2.
 
@@ -54,7 +54,7 @@ subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
     ! Input / output data
     ! ------------------- 
     integer, intent(in) :: size_kv
-    double precision, intent(in) :: knotvector, x, span_tol
+    double precision, intent(in) :: knotvector, x, threshold
     dimension :: knotvector(size_kv)
 
     integer, intent(out) :: multiplicity 
@@ -66,14 +66,14 @@ subroutine find_multiplicity(size_kv, knotvector, x, multiplicity, span_tol)
     multiplicity = 0
 
     do i = 1, size_kv
-        if (abs(x-knotvector(i)).le.span_tol) then 
+        if (abs(x-knotvector(i)).le.threshold) then 
             multiplicity = multiplicity + 1
         end if
     end do
 
 end subroutine find_multiplicity
 
-subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out, kv_out, span_tol)
+subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out, kv_out, threshold)
     !! Computes a new knot-vector using p-refinement 
     !! Ex: Given the knot-vector = [0, 0, 0, 0.5, 1, 1, 1] and repeat = 1, then new knot vector = [0, 0, 0, 0.5, 0.5, 1, 1, 1]
 
@@ -81,7 +81,7 @@ subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out,
     ! Input / output data
     ! -----------------
     integer, intent(in) :: repeat, degree, size_kv_in
-    double precision, intent(in) :: kv_in, span_tol
+    double precision, intent(in) :: kv_in, threshold
     dimension :: kv_in(size_kv_in)
 
     integer, intent(inout) :: size_kv_out
@@ -108,7 +108,7 @@ subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out,
         end do
 
         do i = 2, size_nodes - 1
-            call find_multiplicity(size_kv_in, kv_in, nodes(i), multiplicity, span_tol)
+            call find_multiplicity(size_kv_in, kv_in, nodes(i), multiplicity, threshold)
             multiplicity = multiplicity + repeat
 
             do j = 1, multiplicity
@@ -126,7 +126,7 @@ subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out,
 
 end subroutine increase_multiplicity
 
-subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, span_tol)
+subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, threshold)
     !! Finds the basis B0 and B1 for every given knot. 
     !! The algorithm computes by itself the knot-vector span of a given knot and 
     !! returns the value of the basis B0 and B1 for that knot. 
@@ -136,7 +136,7 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
     ! Input / output data
     ! -------------------
     integer, intent(in) :: degree, size_ukv, size_kv, nb_knots
-    double precision, intent(in) :: ukv, knotvector, knots, span_tol
+    double precision, intent(in) :: ukv, knotvector, knots, threshold
     dimension :: ukv(size_ukv), knotvector(size_kv), knots(nb_knots)
 
     integer, intent(out) :: indices
@@ -164,7 +164,7 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
     end do
 
     do i = 2, size_ukv-1
-        call find_multiplicity(size_kv, knotvector, ukv(i), multiplicity, span_tol)
+        call find_multiplicity(size_kv, knotvector, ukv(i), multiplicity, threshold)
         table_functions_span(i, 1) = table_functions_span(i-1, 1) + multiplicity
         do j = 2, degree+1
             table_functions_span(i, j) = table_functions_span(i, 1) + j - 1
@@ -174,8 +174,8 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
     do i = 1, nb_knots
 
         ! Computes B0 and B1 using a YETI function
-        call find_interpolation_kvspan(size_kv, knotvector, knots(i), degree, span(1), span_tol)
-        call find_interpolation_kvspan(size_ukv, ukv, knots(i), 0, span(2), span_tol)
+        call find_interpolation_kvspan(size_kv, knotvector, knots(i), degree, span(1), threshold)
+        call find_interpolation_kvspan(size_ukv, ukv, knots(i), 0, span(2), threshold)
         functions_span = table_functions_span(span(2), :)
         call dersbasisfuns(span(1), degree, nbctrlpts, knots(i), knotvector, B0t, B1t)
 
@@ -202,7 +202,7 @@ subroutine create_uniformmaxregular_knotvector(degree, nbel, knotvector)
 
     ! Local data
     ! ----------
-    integer ::  i, c
+    integer :: i, c
 
     ! Create knotvector 
     knotvector = 0.d0
@@ -232,7 +232,7 @@ subroutine get_I_csr(nr, nc, nnz_B, indi_B, indj_B, nnz_I, indi_I, indj_I)
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in):: nr, nc, nnz_B
+    integer, intent(in) :: nr, nc, nnz_B
     integer, intent(in) :: indi_B, indj_B
     dimension :: indi_B(nr+1), indj_B(nnz_B)
     

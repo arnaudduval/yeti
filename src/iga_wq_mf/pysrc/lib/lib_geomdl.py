@@ -4,7 +4,7 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import createKnotVector
+from lib.lib_base import createUniformMaxregularKnotvector
 
 class Geomdl():
 	def __init__(self, geoArgs:dict):
@@ -246,7 +246,7 @@ class Geomdl():
 		# First part : construction of the arc
 		# -------------------------------------
 		nb_ctrlpts_v  = degree_v + 1 
-		knot_vector_v = createKnotVector(degree_v, 1)
+		knot_vector_v = createUniformMaxregularKnotvector(degree_v, 1)
 
 		# Construct points to be interpolated
 		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_v)
@@ -266,7 +266,7 @@ class Geomdl():
 		# -------------------------------------
 		nb_ctrlpts_u = degree_u + 1 
 		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
-		knot_vector_u = createKnotVector(degree_u, 1)
+		knot_vector_u = createUniformMaxregularKnotvector(degree_u, 1)
 
 		# -------------------------------------------
 		# Third part : construction of annulus sector
@@ -325,8 +325,8 @@ class Geomdl():
 		obj.degree_v = degree_v
 		obj.ctrlpts_size_u, obj.ctrlpts_size_v = int(nb_ctrlpts_u), int(nb_ctrlpts_v)
 		obj.ctrlpts = ctrlpts
-		obj.knotvector_u = createKnotVector(degree_u, 1)
-		obj.knotvector_v = createKnotVector(degree_v, 1)
+		obj.knotvector_u = createUniformMaxregularKnotvector(degree_u, 1)
+		obj.knotvector_v = createUniformMaxregularKnotvector(degree_v, 1)
 
 		return obj
 
@@ -356,9 +356,9 @@ class Geomdl():
 		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
 		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_v), int(nb_ctrlpts_w)
 		obj.ctrlpts = control_points
-		obj.knotvector_u = createKnotVector(degree_u, 1)
-		obj.knotvector_v = createKnotVector(degree_v, 1)
-		obj.knotvector_w = createKnotVector(degree_w, 1)
+		obj.knotvector_u = createUniformMaxregularKnotvector(degree_u, 1)
+		obj.knotvector_v = createUniformMaxregularKnotvector(degree_v, 1)
+		obj.knotvector_w = createUniformMaxregularKnotvector(degree_w, 1)
 
 		return obj
 
@@ -369,7 +369,7 @@ class Geomdl():
 		# First part : construction of the arc
 		# -------------------------------------
 		nb_ctrlpts_u = degree_v + 1 
-		knot_vector_u = createKnotVector(degree_v, 1)
+		knot_vector_u = createUniformMaxregularKnotvector(degree_v, 1)
 
 		# Construct points to be interpolated
 		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_u)
@@ -390,12 +390,12 @@ class Geomdl():
 		# Define degree in u direction
 		nb_ctrlpts_u = degree_u + 1 
 		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
-		knot_vector_u = createKnotVector(degree_u, 1)
+		knot_vector_u = createUniformMaxregularKnotvector(degree_u, 1)
 
 		# Define degree in w direction
 		nb_ctrlpts_w = degree_w + 1 
 		ctrlpts_height = np.linspace(0, height, nb_ctrlpts_w)
-		knot_vector_w = createKnotVector(degree_w, 1)
+		knot_vector_w = createUniformMaxregularKnotvector(degree_w, 1)
 
 		# -------------------------------------------
 		# Third part : construction of annulus sector
@@ -427,7 +427,7 @@ class Geomdl():
 		# First part : construction of the arc 1
 		# -------------------------------------
 		nb_ctrlpts_v = degree_v + 1 
-		knot_vector_v = createKnotVector(degree_v, 1)
+		knot_vector_v = createUniformMaxregularKnotvector(degree_v, 1)
 
 		# Construct points to be interpolated
 		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_v)
@@ -447,13 +447,13 @@ class Geomdl():
 		# -------------------------------------
 		nb_ctrlpts_u = degree_u + 1 
 		ctrlpts_line = np.linspace(Rin, Rex, nb_ctrlpts_u)
-		knot_vector_u = createKnotVector(degree_u, 1)
+		knot_vector_u = createUniformMaxregularKnotvector(degree_u, 1)
 
 		# -------------------------------------
 		# Third part : construction of the arc 2
 		# -------------------------------------
 		nb_ctrlpts_w = degree_w + 1 
-		knot_vector_w = createKnotVector(degree_w, 1)
+		knot_vector_w = createUniformMaxregularKnotvector(degree_w, 1)
 
 		# Construct points to be interpolated
 		theta = np.linspace(0.0, np.pi/2.0, nb_ctrlpts_w)
@@ -530,9 +530,9 @@ class Geomdl():
 		obj.degree_u, obj.degree_v, obj.degree_w = degree_u, degree_v, degree_w
 		obj.ctrlpts_size_u, obj.ctrlpts_size_v, obj.ctrlpts_size_w = int(nb_ctrlpts_u), int(nb_ctrlpts_v), int(nb_ctrlpts_w)
 		obj.ctrlpts = ctrlpts
-		obj.knotvector_u = createKnotVector(degree_u, 1)
-		obj.knotvector_v = createKnotVector(degree_v, 1)
-		obj.knotvector_w = createKnotVector(degree_w, 1)
+		obj.knotvector_u = createUniformMaxregularKnotvector(degree_u, 1)
+		obj.knotvector_v = createUniformMaxregularKnotvector(degree_v, 1)
+		obj.knotvector_w = createUniformMaxregularKnotvector(degree_w, 1)
 
 		return obj
 

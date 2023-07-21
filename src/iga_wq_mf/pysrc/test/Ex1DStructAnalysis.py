@@ -1,5 +1,5 @@
 from lib.structanalysislib import *
-from lib.lib_base import createKnotVector
+from lib.lib_base import createUniformMaxregularKnotvector
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -9,7 +9,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 length       = 1.0
 degree, nbel = 4, 10 
-knotvector   = createKnotVector(degree, nbel)
+knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 
 # Create Timoshenko beam
 quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}

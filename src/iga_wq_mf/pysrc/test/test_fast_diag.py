@@ -5,7 +5,7 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import (createKnotVector, 
+from lib.lib_base import (createUniformMaxregularKnotvector, 
 							eraseRowsCSR, 
 							genEigenDecomposition,
 							fastDiagonalization
@@ -37,7 +37,7 @@ if not dataExist:
 		for j, degree in enumerate(degree_list):
 		
 			nbel = 2**cuts
-			knotvector = createKnotVector(degree, nbel)
+			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			weightedQuad = WeightedQuadrature(degree, knotvector)
 			info = weightedQuad.getQuadratureRulesInfo()
 			qp, [indi, indj], dersbasis, dersweights = info

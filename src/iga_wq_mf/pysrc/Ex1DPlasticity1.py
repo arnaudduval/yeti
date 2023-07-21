@@ -10,7 +10,7 @@
 """
 
 from lib.__init__ import *
-from lib.lib_base import createKnotVector
+from lib.lib_base import createUniformMaxregularKnotvector
 from lib.thermomecha1D import mechamat1D, plot_results
 from lib.lib_load import *
 
@@ -60,7 +60,7 @@ matArgs    = {'elastic_modulus':2e5, 'elastic_limit':100,
 
 if isReference:
 	degree, nbel = 9, 1024
-	knotvector   = createKnotVector(degree, nbel, multiplicity=degree)
+	knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=degree)
 	model, disp_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga')
 	disp_interp   = model.interpolate_sampleField(disp_cp,   sampleSize=samplesize)[0]
 	stress_interp = model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0]
@@ -79,7 +79,7 @@ else:
 	ref.append(np.load(folder + 'stress_interp_ref.npy'))
 
 	degree, nbel = 9, 1024
-	knotvector   = createKnotVector(degree, nbel, multiplicity=1)
+	knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=1)
 	quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 	geoArgs   = {'length': 1.e3}
 	args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
