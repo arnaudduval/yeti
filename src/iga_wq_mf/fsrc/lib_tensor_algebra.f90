@@ -23,7 +23,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
 
     ! Local data
     ! ----------
-    double precision, allocatable, dimension(:,:) :: Xt, Rt
+    double precision, allocatable, dimension(:, :) :: Xt, Rt
     integer :: ju, jv, jw, jt, i, nb_tasks
 
     if (mode.eq.1) then 
@@ -638,7 +638,7 @@ subroutine csr_get_matrix_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     ! Local data 
     ! ----------
     integer :: iu, iv, ju, jv, k, genPos, offset, nb_tasks
-    double precision, allocatable, dimension(:,:) :: B_u, B_v, W_u, W_v
+    double precision, allocatable, dimension(:, :) :: B_u, B_v, W_u, W_v
     
     integer :: nnz_row_u, nnz_row_v, nnz_col_u, nnz_col_v, nnz_gen_row
     integer, allocatable, dimension(:) :: i_nnz_u, i_nnz_v, j_nnz_u, j_nnz_v
@@ -780,7 +780,7 @@ subroutine csr_get_row_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, row_u, row_
     ! ----------
     integer :: iu, iv, iw, ju, jv, jw, posu, posv, posw, posCoef, genPosC
     double precision, allocatable, dimension(:) :: Ci0, Wt
-    double precision, allocatable, dimension(:,:) :: BW_u, BW_v, BW_w, Bt
+    double precision, allocatable, dimension(:, :) :: BW_u, BW_v, BW_w, Bt
 
     ! Set values of C
     allocate(Ci0(nnz_col_u*nnz_col_v*nnz_col_w))
@@ -870,7 +870,7 @@ subroutine csr_get_matrix_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, n
     ! Local data 
     ! ----------
     integer :: iu, iv, iw, ju, jv, jw, k, genPos, offset, nb_tasks
-    double precision, allocatable, dimension(:,:) :: B_u, B_v, B_w, W_u, W_v, W_w
+    double precision, allocatable, dimension(:, :) :: B_u, B_v, B_w, W_u, W_v, W_w
     
     integer :: nnz_row_u, nnz_row_v, nnz_row_w, nnz_col_u, nnz_col_v, nnz_col_w, nnz_gen_row
     integer, allocatable, dimension(:) :: i_nnz_u, i_nnz_v, i_nnz_w, j_nnz_u, j_nnz_v, j_nnz_w
@@ -1041,7 +1041,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! ----------
     integer :: i, j
     double precision :: data_Bt(nnz)
-    double precision, allocatable, dimension(:,:) :: BB0, WW0, MM, BB1, WW1, KK
+    double precision, allocatable, dimension(:, :) :: BB0, WW0, MM, BB1, WW1, KK
     
     ! Masse matrix
     data_Bt = data_B(:, 1)

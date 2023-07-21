@@ -59,7 +59,7 @@ def plot2DGeo(model:part):
 
 	samplesize = model._sampleSize
 	ctrlpts = model.ctrlpts
-	evalpts = model.interpolateField()[1]
+	evalpts = model.interpolateMeshgridField()[1]
 
 	X = np.asarray(evalpts[0, :].reshape((samplesize, samplesize)).tolist())
 	Y = np.asarray(evalpts[1, :].reshape((samplesize, samplesize)).tolist())
@@ -379,7 +379,7 @@ elif CASE == 7: # Convergence curve
 				enablePrint()
 
 				# Interpolate
-				output  = model.interpolateField(u_ctrlpts=T, nbDOF=1)
+				output  = model.interpolateMeshgridField(u_ctrlpts=T, nbDOF=1)
 				qp_interp, u_interp = output[1], output[-1]
 				u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
 				u_exact = np.array(u_exact)

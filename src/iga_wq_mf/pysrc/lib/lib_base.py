@@ -304,26 +304,6 @@ def scipySolver(A, b, nbIter=100, threshold=1e-10, PreCond='ilu', isCG=True):
 
 	return x
 
-def genEigenDecomposition(indi, indj, data, robcond=[0, 0], coefs=None):
-	""" Eigen decomposition generalized KU = MUD
-		K: stiffness matrix, K = int B1 B1 dx = W11 * B1
-		M: mass matrix, M = int B0 B0 dx = W00 * B0
-		U: eigenvectors matrix
-		D: diagonal of eigenvalues
-	"""
-
-	nc = np.max(indj)
-	[B, W] = data
-
-	# Create mcoef and kcoef is are none type
-	if coefs is None: mcoefs = np.ones(nc); kcoefs = np.ones(nc)
-	else: [mcoefs, kcoefs] = coefs
-
-	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, B, W, 
-									mcoefs, kcoefs, robcond)
-
-	return eigenvalues, eigenvectors
-
 def separationOfVariables3d(n_list, CC_matrix, dim=3):
 	""" Tensor decomposition of CC matrix to improve Fast diagonalization precontionner
 		Based on "Preconditioners for Isogemetric Analysis" by M. Montardini
@@ -423,35 +403,6 @@ def separationOfVariables3d(n_list, CC_matrix, dim=3):
 					u3[j] = np.sqrt(m*M) 
 
 	return u1, u2, u3, w1, w2, w3
-
-def computeEigenDiag(eig_u, eig_v, eig_w, coefs=[1.0, 1.0, 1.0]):
-	" Computes diagonal of eigen values "
-
-	def kron3vec(A, B, C):
-		" Computes kron product of 3 vectors: A x B x C"
-		result = np.kron(np.kron(A, B), C)
-		return result
-
-	one_u = np.ones(len(eig_u))
-	one_v = np.ones(len(eig_v))
-	one_w = np.ones(len(eig_w))
-
-	eig_diag  = coefs[0]*kron3vec(one_w, one_v, eig_u)
-	eig_diag += coefs[1]*kron3vec(one_w, eig_v, one_u)
-	eig_diag += coefs[2]*kron3vec(eig_w, one_v, one_u)
-	
-	return eig_diag
-
-def fastDiagonalization(U, V, W, D, array_in, fdtype='steady'):
-	" Compute fast diagonalization using Fortran"
-	if fdtype == 'interp':
-		array_out = heatsolver.fd_interpolation_3d(U, V, W, array_in)
-	elif fdtype == 'steady':
-		array_out = heatsolver.fd_steady_heat_3d(U, V, W, D, array_in)
-	elif fdtype == 'elastic':
-		array_out = plasticitysolver.fd_elasticity_3d(U, V, W, D, array_in)
-	
-	return array_out
 
 class solver():
 	

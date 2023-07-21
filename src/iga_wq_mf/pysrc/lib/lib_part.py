@@ -118,10 +118,10 @@ class part():
 		inputs = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
 			self.Jqp, self.detJ, self.invJ = geophy.eval_jacobien_2d(*inputs)
-			self.qpPhy = geophy.interpolate_fieldphy_2d(*inputs)
+			self.qpPhy = geophy.interpolate_meshgrid_2d(*inputs)
 		if self.dim == 3:
 			self.Jqp, self.detJ, self.invJ = geophy.eval_jacobien_3d(*inputs)
-			self.qpPhy = geophy.interpolate_fieldphy_3d(*inputs)
+			self.qpPhy = geophy.interpolate_meshgrid_3d(*inputs)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
 		return
@@ -130,7 +130,7 @@ class part():
 	# POST-PROCESSING 
 	# ----------------
 
-	def interpolateField(self, u_ctrlpts=None, nbDOF=3, sampleSize=101):
+	def interpolateMeshgridField(self, u_ctrlpts=None, nbDOF=3, sampleSize=101):
 
 		# Get basis using fortran
 		knots = np.linspace(0, 1, sampleSize)
@@ -144,18 +144,18 @@ class part():
 		inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
 		if self.dim == 2:
 			Jinterp, detJinterp = geophy.eval_jacobien_2d(*inputs)[:2]
-			posinterp = geophy.interpolate_fieldphy_2d(*inputs)
+			posinterp = geophy.interpolate_meshgrid_2d(*inputs)
 		elif self.dim == 3: 
 			Jinterp, detJinterp = geophy.eval_jacobien_3d(*inputs)[:2]
-			posinterp = geophy.interpolate_fieldphy_3d(*inputs)
+			posinterp = geophy.interpolate_meshgrid_3d(*inputs)
 
 		# Get interpolation
 		if u_ctrlpts is not None:
 			u_temp = np.atleast_2d(u_ctrlpts)
 			inputs = [*self.dim*[sampleSize], *indices, *basis, u_temp]
 
-			if self.dim == 2:   uinterp = geophy.interpolate_fieldphy_2d(*inputs)    
-			elif self.dim == 3: uinterp = geophy.interpolate_fieldphy_3d(*inputs)
+			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)    
+			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
 			if nbDOF == 1: uinterp = np.ravel(uinterp)
 	
 		else: uinterp = None
@@ -183,7 +183,7 @@ class part():
 		# ------------------
 		# Get interpolation
 		# ------------------
-		qpPhy, detJ, u_interp = self.interpolateField(u_ctrlpts=u_ctrlpts, nbDOF=nbDOF, sampleSize=sampleSize)[1:]
+		qpPhy, detJ, u_interp = self.interpolateMeshgridField(u_ctrlpts=u_ctrlpts, nbDOF=nbDOF, sampleSize=sampleSize)[1:]
 		mean_detJ = statistics.mean(detJ)
 		detJ /= mean_detJ
 

@@ -90,13 +90,13 @@ else:
 	problem =  run_simulation(degree, cuts, matArgs, nbSteps, quadrule='iga', isComputing=False)
 	stress_qpref = np.load(folder+'stress_quadPts_ref.npy')[:,:,-2]
 	stress_cpref = problem.solveInterpolationProblemFT(datafield=stress_qpref)
-	stress_interp = problem.part.interpolateField(u_ctrlpts=stress_cpref, nbDOF=3, sampleSize=samplesize)[-1]
+	stress_interp = problem.part.interpolateMeshgridField(u_ctrlpts=stress_cpref, nbDOF=3, sampleSize=samplesize)[-1]
 	stress_vm = computeMultiVMStressVgt(stress_interp, dim=2)
 	stress_interp = np.vstack([stress_interp, stress_vm])
 	np.save(folder+'stress_interp_ref2D.npy', stress_interp)
 
 	disp_cpref  = np.load(folder+'disp_ctrlPts_ref.npy')[:,:,-2]
-	disp_interp = problem.part.interpolateField(u_ctrlpts=disp_cpref, nbDOF=2, sampleSize=samplesize)[-1]
+	disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=disp_cpref, nbDOF=2, sampleSize=samplesize)[-1]
 	disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
 	disp_interp = np.vstack([disp_interp, disp_norm])
 	np.save(folder+'disp_interp_ref2D.npy', disp_interp)

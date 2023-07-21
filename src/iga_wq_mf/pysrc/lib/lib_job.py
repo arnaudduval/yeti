@@ -190,9 +190,9 @@ class heatproblem(problem):
 		# Get position and determinant 
 		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
 		if self.part.dim == 2:
-			uinterp = geophy.interpolate_fieldphy_2d(*inputs)
+			uinterp = geophy.interpolate_meshgrid_2d(*inputs)
 		elif self.part.dim == 3: 
-			uinterp = geophy.interpolate_fieldphy_3d(*inputs)
+			uinterp = geophy.interpolate_meshgrid_3d(*inputs)
 		uinterp = np.ravel(uinterp)
 		return uinterp
 

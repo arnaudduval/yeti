@@ -90,7 +90,7 @@ for degree in degree_list:
 		# ELASTICITY
 		# -------------
 		displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
-		interp = problem.part.interpolateField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
+		interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
 		disp_norm = np.sqrt(interp[0, :]**2+interp[1, :]**2)
 		interp = np.vstack([interp, disp_norm])
 		
