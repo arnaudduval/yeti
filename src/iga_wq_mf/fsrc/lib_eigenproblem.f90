@@ -15,7 +15,7 @@ subroutine compute_geneigs(nr, A, B, rho, x)
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr
-    double precision, intent(in)  :: A, B
+    double precision, intent(in) :: A, B
     dimension :: A(nr, nr), B(nr, nr)
 
     double precision, intent(out) :: rho, x
@@ -40,7 +40,7 @@ subroutine compute_geneigs(nr, A, B, rho, x)
 
 end subroutine compute_geneigs
 
-subroutine power_iteration(nr, A, nbIter, x, rho)
+subroutine power_iteration(nr, A, x, rho, nbIter)
     !! Computes the maximum eigenvalue of A and its eigenvector. 
     !! The matrix A could be any matrix
 
@@ -89,17 +89,15 @@ subroutine rayleigh_submatrix(d, nr, VV1, VV2, MM)
     ! Local data
     ! ----------
     integer :: i, j
-    double precision :: prod
 
     do i = 1, d
-        prod = dot_product(VV1(i, :), VV2(i, :))
-        MM(i, i) = prod 
+        MM(i, i) = dot_product(VV1(i, :), VV2(i, :)) 
     end do
 
     do i = 1, d
         do j = i+1, d
-            prod = dot_product(VV1(i, :), VV2(j, :))
-            MM(i, j) = prod; MM(j, i) = prod
+            MM(i, j) = dot_product(VV1(i, :), VV2(j, :))
+            MM(j, i) = MM(i, j)
         end do 
     end do
 
@@ -115,7 +113,7 @@ subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
     implicit none
     ! Input / output data
     ! ------------------- 
-    integer, parameter :: dimen = 2
+    integer, parameter :: d = 2
     integer, intent(in) :: nr, nbIter
     double precision, intent(in) :: A, B, C, threshold
     dimension :: A(nr, nr), B(nr, nr), C(nr, nr)
@@ -126,9 +124,9 @@ subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
     ! Local data
     ! ----------
     integer :: k, ii
-    double precision, dimension(dimen, nr) :: RM1, RM2, RM3
-    double precision, dimension(dimen, dimen) :: AA1, BB1, qq
-    double precision, dimension(dimen) :: ll, delta
+    double precision, dimension(d, nr) :: RM1, RM2, RM3
+    double precision, dimension(d, d) :: AA1, BB1, qq
+    double precision, dimension(d) :: ll, delta
     double precision, dimension(nr) :: u, v, g, gtil, p
     double precision :: q, norm
 
@@ -154,10 +152,10 @@ subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
 
         RM1(1, :) = x; RM1(2, :) = p; RM2(1, :) = v; RM3(1, :) = u
         RM2(2, :) = matmul(A, p); RM3(2, :) = matmul(B, p)
-        call rayleigh_submatrix(dimen, nr, RM1, RM2, AA1)
-        call rayleigh_submatrix(dimen, nr, RM1, RM3, BB1)
+        call rayleigh_submatrix(d, nr, RM1, RM2, AA1)
+        call rayleigh_submatrix(d, nr, RM1, RM3, BB1)
 
-        call compute_geneigs(dimen, AA1, BB1, ll, qq)
+        call compute_geneigs(d, AA1, BB1, ll, qq)
         rho = maxval(ll); ii = maxloc(ll, dim=1)
         delta = qq(:, ii)
 
@@ -181,7 +179,7 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     implicit none
     ! Input / output data
     ! ------------------- 
-    integer, parameter :: dimen = 3
+    integer, parameter :: d = 3
     double precision, parameter :: tol_singular = 1.d-10
     integer, intent(in) :: nr, nbIter
     double precision, intent(in) :: A, B, C, threshold
@@ -193,9 +191,9 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     ! Local data
     ! ----------
     integer :: k, ii
-    double precision, dimension(dimen, nr) :: RM1, RM2, RM3
-    double precision, dimension(dimen, dimen) :: AA1, BB1, qq
-    double precision, dimension(dimen) :: ll, delta
+    double precision, dimension(d, nr) :: RM1, RM2, RM3
+    double precision, dimension(d, d) :: AA1, BB1, qq
+    double precision, dimension(d) :: ll, delta
     double precision, dimension(nr) :: u, v, g, gtil, p
     double precision :: q, norm
 
@@ -224,14 +222,14 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
         RM2(1, :) = v; RM2(2, :) = -matmul(A, g); RM2(3, :) = matmul(A, p)
         RM3(1, :) = u; RM3(2, :) = -matmul(B, g); RM3(3, :) = matmul(B, p)
 
-        call rayleigh_submatrix(dimen, nr, RM1, RM2, AA1)
-        call rayleigh_submatrix(dimen, nr, RM1, RM3, BB1)
+        call rayleigh_submatrix(d, nr, RM1, RM2, AA1)
+        call rayleigh_submatrix(d, nr, RM1, RM3, BB1)
 
         if (norm2(p).lt.tol_singular) then
             qq = 0.d0; ll = 0.d0
-            call compute_geneigs(dimen-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+            call compute_geneigs(d-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
         else
-            call compute_geneigs(dimen, AA1, BB1, ll, qq)
+            call compute_geneigs(d, AA1, BB1, ll, qq)
         end if
 
         rho = maxval(ll); ii = maxloc(ll, dim=1)
