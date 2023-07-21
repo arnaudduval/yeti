@@ -25,22 +25,20 @@ subroutine diff_array(repeat, nnz, array_in, array_out)
 
     ! Local data
     ! ----------
-    double precision :: array_temp
-    dimension :: array_temp(nnz)
+    double precision :: tmp(nnz)
     integer :: i, j
 
-    if (repeat.ge.nnz) stop 'It can not be greater than the array size'
-    if (repeat.lt.0) stop 'It can not be less than zero'
+    if ((repeat.ge.nnz).or.(repeat.lt.0)) stop 'Problem in diff array'
 
     array_out = array_in
 
     do j = 1, repeat
 
-        array_temp = array_out
+        tmp = array_out
 
         ! Get the difference
         do i = 1, nnz-j
-            array_out(i) = array_temp(i+1) - array_temp(i)
+            array_out(i) = tmp(i+1) - tmp(i)
         end do
 
         ! Extra data is set to 0
@@ -52,7 +50,7 @@ subroutine diff_array(repeat, nnz, array_in, array_out)
     
 end subroutine diff_array
 
-subroutine find_unique_array(nnz, array, array_unique)
+subroutine find_unique_array(nnz_in, array_in, array_out)
     !! Gets the non-repreated values of an array
     !! Ex: Given the array [0, 1, 1, 2, 3, 3, 3], the unique array is [0, 1, 2, 3, 0, 0, 0, 4]
     !! The last value is the number of unique elements
@@ -60,33 +58,32 @@ subroutine find_unique_array(nnz, array, array_unique)
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nnz 
-    double precision, intent(in) :: array
-    dimension :: array(nnz)
+    integer, intent(in) :: nnz_in 
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nnz_in)
 
-    double precision, intent(out) :: array_unique
-    dimension :: array_unique(nnz+1)
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nnz_in+1)
 
     ! Local data
     ! ----------
-    integer :: i, c, nnz_unique
-    logical :: mask
-    dimension :: mask(nnz)
+    integer :: i, c, nnz_out
+    logical :: mask(nnz_in)
 
-    array_unique = 0.d0
+    array_out = 0.d0
     mask = .false.
 
-    do i = 1, nnz
+    do i = 1, nnz_in
 
         ! Count the number of occurrences of this element
-        c = count(array(i).eq.array)
+        c = count(array_in(i).eq.array_in)
     
         if (c.eq.1) then  
             ! There is only one, flag it:  
             mask(i) = .true.  
         else  
             !  Flag this value only if it has not already been flagged
-            if (.not. any(array(i).eq.array .and. mask)) then
+            if (.not. any(array_in(i).eq.array_in .and. mask)) then
                 mask(i) = .true.  
             end if
         end if
@@ -94,9 +91,9 @@ subroutine find_unique_array(nnz, array, array_unique)
     end do
 
     ! Return only flagged elements
-    nnz_unique = count(mask)
-    array_unique(1:nnz_unique) = pack(array, mask)
-    array_unique(nnz+1) = dble(nnz_unique)
+    nnz_out = count(mask)
+    array_out(1:nnz_out) = pack(array_in, mask)
+    array_out(nnz_in+1) = dble(nnz_out)
 
 end subroutine find_unique_array
 
@@ -117,7 +114,7 @@ subroutine linspace(x0, xf, nnz, array)
     integer :: i
     double precision :: h 
 
-    if (nnz.le.1) stop 'Size of array can not be 1 or less'
+    if (nnz.le.1) stop 'Problem in linspace'
 
     array(1) = x0; array(nnz) = xf
 
@@ -161,9 +158,9 @@ subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! A diag(W) B.T
         ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
 
-        if (ncA.ne.ncB) stop 'Please verify size of matrices'
+        if (ncA.ne.ncB) stop 'Size problem in GEMM'
         allocate(MM(nrA, ncA))
-        forall (i = 1 : nrA, j = 1 : ncA) 
+        forall (i = 1:nrA, j = 1:ncA) 
             MM(i, j) = A(i, j) * W(j)
         end forall
         R = matmul(MM, transpose(B))
@@ -173,7 +170,7 @@ subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! nrR = nrA, ncR = nrB, size(W) = ncA = ncB
         ! Only diagonal
 
-        if (ncA.ne.ncB) stop 'Please verify size of matrices'
+        if (ncA.ne.ncB) stop 'Size problem in GEMM'
         do i = 1, nrA
             s = 0.d0
             do k = 1, ncA
@@ -186,9 +183,9 @@ subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! A.T diag(W) B
         ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
 
-        if (nrA.ne.nrB) stop 'Please verify size of matrices'
+        if (nrA.ne.nrB) stop 'Size problem in GEMM'
         allocate(MM(nrB, ncB))
-        forall (i = 1 : nrB, j = 1 : ncB) 
+        forall (i = 1:nrB, j = 1:ncB) 
             MM(i, j) = W(i) * B(i, j) 
         end forall
         R = matmul(transpose(A), MM)
@@ -198,7 +195,7 @@ subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
         ! nrR = ncA, ncR = ncB, size(W) = nrA = nrB
         ! Only diagonal
 
-        if (nrA.ne.nrB) stop 'Please verify size of matrices'
+        if (nrA.ne.nrB) stop 'Size problem in GEMM'
         do i = 1, ncA
             s = 0.d0
             do k = 1, nrA
@@ -508,7 +505,6 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
 
     result = 0.d0
     indu = (/1, nru/); indv = (/1, nrv/); indw = (/1, nrw/)
-
     ttensor = reshape(tensor, (/nru, nrv, nrw/))
 
     ! Get internal points
@@ -734,57 +730,6 @@ subroutine erase_rows_csr(nr2er, rows2er, nm, nr_in, nnz_in, indi_in, indj_in, a
     end if
 
 end subroutine erase_rows_csr
-
-subroutine FGMRES(n, invP, A, b, x)
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: nbI = 10, nbR = 1
-    double precision, parameter :: threshold = 1.d-8
-
-    integer, intent(in) :: n 
-    double precision, intent(in) :: invP, A, b
-    dimension :: invP(n, n), A(n, n), b(n)
-
-    double precision, intent(out) :: x
-    dimension :: x(n)
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-    double precision :: r(n), xtilde(n), y(nbI), w(n), beta, &
-                        V(n, nbI+1), Z(n, nbI), H(nbI+1, nbI), e(nbI+1)
-
-    x = 0.d0
-    e = 0.d0; e(1) = 1
-
-    do k = 1, nbR
-        H = 0.d0; Z=0.d0
-        r = b - matmul(A, x)
-        beta = norm2(r)
-        if (beta.le.threshold) return
-        V(:, 1) = r/beta
-
-        do j = 1, nbI
-            Z(:, j) = matmul(invP, V(:, j))
-            w = matmul(A, Z(:, j))
-
-            do i = 1, j
-                H(i, j) = dot_product(V(:, i), w)
-                w = w - H(i, j)*V(:, i)
-            end do
-
-            H(j+1, j) = norm2(w)
-            V(:, j+1) = w/H(j+1, j)
-            call solve_linear_system(j+1, j, H(:j+1, :j), beta*e(:j+1), y(:j))
-            xtilde = x + matmul(Z(:, :j), y(:j))
-            r  = b - matmul(A, xtilde)
-            if (norm2(r).le.threshold) exit
-        end do
-        x = xtilde
-    end do
-
-end subroutine 
 
 ! --------
 ! Indices
