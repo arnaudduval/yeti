@@ -10,7 +10,8 @@
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
-from lib.lib_material import mechamat
+from lib.lib_material import (mechamat, array2symtensorForAll, evalMultiTraceVgt, 
+					computeMultiVMStressVgt, symtensor2arrayForAll)
 from lib.lib_boundary import boundaryCondition
 from lib.lib_job import mechaproblem
 
@@ -18,6 +19,42 @@ from lib.lib_job import mechaproblem
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
+
+# Set global variables
+degree, cuts = 9, 9
+degree, cuts = 6, 6
+name = 'QA'
+
+# Create model 
+geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+			'extra':{'Rin':5.e2, 'Rex':1.e3, 
+			'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
+quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
+
+modelGeo = Geomdl(geoArgs)
+modelIGA = modelGeo.getIGAParametrization()
+model    = part(modelIGA, quadArgs=quadArgs)
+
+# Add material 
+matArgs  = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3}
+material = mechamat(matArgs)
+
+# Set Dirichlet boundaries
+boundary = boundaryCondition(model.nbctrlpts)
+table = np.zeros((2, 2, 2), dtype=int)
+if name == 'SQ':
+	table[0, 0, 0] = 1
+	table[0, 0, 1] = 1
+elif name == 'QA':
+	# table[1, 0, 0] = 1
+	table[1, 1, 0] = 1
+	table[1, 0, 1] = 1
+else: raise Warning('Not possible')
+boundary.add_DirichletDisplacement(table=table)
+
+# Elasticity problem
+problem = mechaproblem(material, model, boundary)
 
 def forceVolFun1(P:list):
 	ref  = np.array([0.0, 0.0])
@@ -37,80 +74,48 @@ def forceSurfFun(P:list):
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
 
-# Set global variables
-name = 'SQ'
-ref = np.load(folder + 'disp_interp_refElasticity2.npy')
+Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
+if name == 'SQ': 
+	Fext += problem.eval_volForce(forceVolFun1)
+elif name == 'QA': 
+	Fext += problem.eval_volForce(forceVolFun2)
 
-degree_list = np.arange(3, 7)
-cuts_list   = np.arange(3, 9)
-error_disp  = np.ones((len(cuts_list), 3))
+# -------------
+# ELASTICITY
+# -------------
+# fig, ax = plt.subplots()
+# # Solve in fortran 
+# for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'], 
+# 							['w.o. preconditioner', 'Fast diag. (FD)', 'This work'])):
+#     problem.addSolverConstraints(solverArgs={'PCGmethod': methodPCG})
+#     displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
+#     resPCG = resPCG[resPCG>0]
+#     ax.semilogy(np.arange(len(resPCG)), resPCG, '-', label=label, marker=markerSet[i])
 
-fig_disp, axs_disp  = plt.subplots(nrows=1, ncols=3, figsize=(14, 4))
-for degree in degree_list:
-	for j, cuts in enumerate(cuts_list):
+# ax.set_ybound(lower=1e-12, upper=1e1)
+# ax.legend()
+# ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+# fig.tight_layout()
+# fig.savefig(folder + name + 'ElasRes.png')
 
-		# Create model 
-		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-					'extra':{'Rin':5.e2, 'Rex':1.e3, 
-					'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
-		quadArgs  = {'quadrule': 'wq', 'type': 1}
-		# quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
+# Solve in fortran 
+displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
+strain  = problem.compute_strain(displacement)
+Tstrain = array2symtensorForAll(strain, 2)
+traceStrain = evalMultiTraceVgt(strain, 2)
+devStrain   = Tstrain
+for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
-		modelGeo = Geomdl(geoArgs)
-		modelIGA = modelGeo.getIGAParametrization()
-		model    = part(modelIGA, quadArgs=quadArgs)
+# Compute stress
+Tstress = 2*problem.material.lame_mu*(devStrain)
+stress  = symtensor2arrayForAll(Tstress, 2)
+stress_vm = computeMultiVMStressVgt(stress, 2)
+print(stress_vm.max())
 
-		# Add material 
-		matArgs  = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3}
-		material = mechamat(matArgs)
 
-		# Set Dirichlet boundaries
-		boundary = boundaryCondition(model.nbctrlpts)
-		table = np.zeros((2, 2, 2), dtype=int)
-		if name == 'SQ':
-			table[0, 0, 0] = 1
-			table[0, 0, 1] = 1
-		elif name == 'QA':
-			# table[1, 0, 0] = 1
-			table[1, 1, 0] = 1
-			table[1, 0, 1] = 1
-		else: raise Warning('Not possible')
-		boundary.add_DirichletDisplacement(table=table)
-
-		# Elasticity problem
-		problem = mechaproblem(material, model, boundary)
-		Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
-		if name == 'SQ': 
-			Fext += problem.eval_volForce(forceVolFun1)
-		elif name == 'QA': 
-			Fext += problem.eval_volForce(forceVolFun2)
-
-		# -------------
-		# ELASTICITY
-		# -------------
-		displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
-		interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
-		disp_norm = np.sqrt(interp[0, :]**2+interp[1, :]**2)
-		interp = np.vstack([interp, disp_norm])
-		
-		for i in range(3):
-			norm_ref = np.linalg.norm(ref[i])
-			tmp		 = ref[i] - interp[i]
-			error_disp[j, i] = np.linalg.norm(tmp)/norm_ref*100
-
-	for [i, ax], title in zip(enumerate(axs_disp), ['Disp x', 'Disp y', 'Disp Norm']):
-		ax.semilogy(2**cuts_list, error_disp[:, i], marker=markerSet[i], label='degree p='+str(degree))
-		ax.set_title(title)
-
-	for ax in axs_disp:
-		ax.set_ylabel('L2 Relative error (\%)')
-		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
-		ax.set_ylim(bottom=1e-5, top=1e1)
-		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-		ax.set_xticks([8, 64, 128, 256])
-
-	axs_disp[-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	fig_disp.tight_layout()
-	fig_disp.savefig(folder + 'Fig1Elasticity2DispErrorNBel_' + str(quadArgs['quadrule']) +'.png')
+# model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+# disp_interp = problem.part.interpolateField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
+# disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
+# disp_interp = np.vstack([disp_interp, disp_norm])
+# np.save(folder+'disp_interp_refElasticity2.npy', disp_interp)
