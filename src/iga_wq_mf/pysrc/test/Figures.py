@@ -59,7 +59,7 @@ def plot2DGeo(model:part):
 
 	samplesize = model._sampleSize
 	ctrlpts = model.ctrlpts
-	evalpts = model.interpolateMeshgridField()[1]
+	evalpts = model.interpolateMeshgridField()[0]
 
 	X = np.asarray(evalpts[0, :].reshape((samplesize, samplesize)).tolist())
 	Y = np.asarray(evalpts[1, :].reshape((samplesize, samplesize)).tolist())
@@ -380,7 +380,7 @@ elif CASE == 7: # Convergence curve
 
 				# Interpolate
 				output  = model.interpolateMeshgridField(u_ctrlpts=T, nbDOF=1)
-				qp_interp, u_interp = output[1], output[-1]
+				qp_interp, u_interp = output[0], output[-1]
 				u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
 				u_exact = np.array(u_exact)
 
@@ -474,7 +474,7 @@ elif CASE == 9: # 2D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		model    = part(modelIGA, quadArgs=quadArgs)
-		model.exportResults(folder=folder)
+		model.exportResultsCP(folder=folder)
 		
 		# Read data
 		fileVTK   = folder + 'IGAparametrization'
@@ -523,7 +523,7 @@ elif CASE == 10: # 3D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		model    = part(modelIGA, quadArgs=quadArgs)
-		model.exportResults(folder=folder)
+		model.exportResultsCP(folder=folder)
 
 		# Read data
 		fileVTK   = folder + 'IGAparametrization'

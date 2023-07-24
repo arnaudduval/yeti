@@ -17,13 +17,12 @@ from lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
+folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 9, 9
 degree, cuts = 6, 6
-name = 'QA'
+name = 'SQ'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -111,11 +110,9 @@ for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 Tstress = 2*problem.material.lame_mu*(devStrain)
 stress  = symtensor2arrayForAll(Tstress, 2)
 stress_vm = computeMultiVMStressVgt(stress, 2)
-print(stress_vm.max())
 
-
-# model.exportResults(u_ctrlpts=displacement, nbDOF=2, folder=folder)
-# disp_interp = problem.part.interpolateField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
-# disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
-# disp_interp = np.vstack([disp_interp, disp_norm])
-# np.save(folder+'disp_interp_refElasticity2.npy', disp_interp)
+model.exportResultsCP(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
+disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
+disp_interp = np.vstack([disp_interp, disp_norm])
+np.save(folder+'disp_interp_refElasticity2.npy', disp_interp)

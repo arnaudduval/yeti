@@ -16,7 +16,7 @@ from lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t2delastoplasticity/'
+folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceVolFun1(P:list):
