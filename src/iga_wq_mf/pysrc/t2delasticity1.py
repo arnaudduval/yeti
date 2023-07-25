@@ -21,7 +21,7 @@ folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 6, 6
+degree, cuts = 2, 5
 name = 'SQ'
 
 # Create model 
@@ -55,18 +55,6 @@ boundary.add_DirichletDisplacement(table=table)
 # Elasticity problem
 problem = mechaproblem(material, model, boundary)
 
-def forceVolFun1(P:list):
-	ref  = np.array([0.0, 0.0])
-	prop = np.zeros((2, np.size(P, axis=1)))
-	for i in range(2): prop[i, :] = ref[i] 
-	return prop
-
-def forceVolFun2(P:list):
-	ref  = np.array([0.0, 0.0])
-	prop = np.zeros((2, np.size(P, axis=1)))
-	for i in range(2): prop[i, :] = ref[i] 
-	return prop
-
 def forceSurfFun(P:list):
 	ref  = np.array([4e1, 0.0])
 	prop = np.zeros((2, np.size(P, axis=1)))
@@ -74,14 +62,31 @@ def forceSurfFun(P:list):
 	return prop
 
 Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
-if name == 'SQ': 
-	Fext += problem.eval_volForce(forceVolFun1)
-elif name == 'QA': 
-	Fext += problem.eval_volForce(forceVolFun2)
 
 # -------------
 # ELASTICITY
 # -------------
+start = time.time()
+displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+stop = time.time()
+print('CPU time: %5e' %(stop-start))
+model.exportResultsCP(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+
+strain  = problem.compute_strain(displacement)
+Tstrain = array2symtensorForAll(strain, 2)
+traceStrain = evalMultiTraceVgt(strain, 2)
+devStrain   = Tstrain
+for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
+
+Tstress = 2*problem.material.lame_mu*(devStrain)
+stress  = symtensor2arrayForAll(Tstress, 2)
+stress_vm = computeMultiVMStressVgt(stress, 2)
+
+disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
+disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
+disp_interp = np.vstack([disp_interp, disp_norm])
+np.save(folder+'disp_interp_ref.npy', disp_interp)
+
 # fig, ax = plt.subplots()
 # # Solve in fortran 
 # for i, [methodPCG, label] in enumerate(zip(['WP', 'C', 'JMC'], 
@@ -97,22 +102,3 @@ elif name == 'QA':
 # ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 # fig.tight_layout()
 # fig.savefig(folder + name + 'ElasRes.png')
-
-# Solve in fortran 
-displacement, resPCG = problem.solveElasticityProblemFT(Fext=Fext)
-strain  = problem.compute_strain(displacement)
-Tstrain = array2symtensorForAll(strain, 2)
-traceStrain = evalMultiTraceVgt(strain, 2)
-devStrain   = Tstrain
-for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
-
-# Compute stress
-Tstress = 2*problem.material.lame_mu*(devStrain)
-stress  = symtensor2arrayForAll(Tstress, 2)
-stress_vm = computeMultiVMStressVgt(stress, 2)
-
-model.exportResultsCP(u_ctrlpts=displacement, nbDOF=2, folder=folder)
-disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
-disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
-disp_interp = np.vstack([disp_interp, disp_norm])
-np.save(folder+'disp_interp_refElasticity2.npy', disp_interp)

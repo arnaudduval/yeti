@@ -22,7 +22,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 sampleSize   = 2500
-degree, cuts = 6, 5
+degree, cuts = 2, 8
 name = 'SQ'
 
 # Create model 
@@ -72,7 +72,12 @@ Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=3)
 # ELASTICITY
 # -------------
 # Solve in fortran 
+start = time.time()
 disp_cp = problem.solveElasticityProblemFT(Fext=Fext)[0]
+stop = time.time()
+print('CPU time: %5e' %(stop-start))
+# model.exportResultsCP(u_ctrlpts=disp_cp, nbDOF=2, folder=folder)
+
 strain  = problem.compute_strain(disp_cp)
 TenStrain = array2symtensorForAll(strain, 2)
 trStrain  = evalMultiTraceVgt(strain, 2)

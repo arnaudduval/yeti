@@ -32,10 +32,6 @@ def relativeError(array_interp, array_th, relType='inf'):
 	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
 	return relError
 
-def sigmoid(x, c1=1, c2=0):
-	f = 1.0/(1.0 + np.exp(-c1*(x - c2)))
-	return f
-
 def eraseRowsCSR(rows2er, indi_in, indj_in, data_in, isfortran=True):
 	" Returns new data after erasing rows in CSR format "
 	
@@ -94,18 +90,13 @@ def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
 	return indi_out, indj_out, data_out
 
 def array2csr_matrix(data, indi, indj, isfortran=True):
-
-	nb_rows = len(indi) - 1
+	indjcopy = np.copy(indj)
+	indicopy = np.copy(indi)
 	if isfortran: 
-		nb_cols  = max(indj)
-		indjcopy = indj - 1
-		indicopy = indi - 1 
-	else: 
-		nb_cols = max(indj) + 1 
-		indjcopy = np.copy(indj)
-		indicopy = np.copy(indi)
-	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy), shape=(nb_rows, nb_cols))
-									
+		indjcopy = indjcopy - 1
+		indicopy = indicopy - 1 
+	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy))
+	
 	return sparse_matrix
 
 # ==========================

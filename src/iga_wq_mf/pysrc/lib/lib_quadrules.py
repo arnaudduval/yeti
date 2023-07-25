@@ -1,7 +1,7 @@
 from lib.__init__ import *
 from lib.lib_base import (legendreTable, lobattoTable, 
 						findMultiplicity, createUniformMaxregularKnotvector, 
-						insertRowCSR, evalDersBasisFortran
+						insertRowCSR, evalDersBasisFortran, array2csr_matrix
 )
 
 class QuadratureRules:
@@ -21,9 +21,9 @@ class QuadratureRules:
 		return
 
 	def __getInfo(self):
-		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
-		self._uniqueKV  = np.unique(self.knotvector)
-		self._nbel      = len(self._uniqueKV) - 1
+		self.nbctrlpts = len(self.knotvector) - self.degree - 1
+		self._uniqueKV = np.unique(self.knotvector)
+		self._nbel     = len(self._uniqueKV) - 1
 		return
 	
 	def __verifyUniformityRegularity(self, threshold=1e-8):
@@ -42,13 +42,11 @@ class QuadratureRules:
 		denseBasis, denseWeights = [], []
 		indi, indj = self.dersIndices
 		for i in range(np.size(self.dersBasis, axis=1)):
-			if isFortran: tmp = sp.csr_matrix((self.dersBasis[:, i], indj-1, indi-1))
-			else: tmp = sp.csr_matrix((self.dersBasis[:, i], indj, indi))
+			tmp = array2csr_matrix(self.dersBasis[:, i], indi, indj, isfortran=isFortran)
 			denseBasis.append(tmp)
 
 		for i in range(np.size(self.dersWeights, axis=1)):
-			if isFortran: tmp = sp.csr_matrix((self.dersWeights[:, i], indj-1, indi-1))
-			else: tmp = sp.csr_matrix((self.dersWeights[:, i], indj, indi))
+			tmp = array2csr_matrix(self.dersWeights[:, i], indi, indj, isfortran=isFortran)
 			denseWeights.append(tmp)
 		self._denseBasis, self._denseWeights = denseBasis, denseWeights
 		return denseBasis, denseWeights
@@ -154,6 +152,7 @@ class WeightedQuadrature(QuadratureRules):
 		"""
 		quadPtsPos = np.array([])
 		knots = self._uniqueKV
+		
 		# First span
 		tmp = np.linspace(knots[0], knots[1], self.degree+r)
 		quadPtsPos = np.append(quadPtsPos, tmp)
@@ -171,8 +170,6 @@ class WeightedQuadrature(QuadratureRules):
 		quadPtsPos.sort()
 		return quadPtsPos
 	
-	# ----
-
 	def __getBShape(self, knots, isfortran=True):
 		" Return the shape of basis in WQ approach. "
 		B0shape = np.zeros((self.nbctrlpts, 2), dtype=int)
