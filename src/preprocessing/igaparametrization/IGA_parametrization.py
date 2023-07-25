@@ -806,6 +806,43 @@ class IGAparametrization:
 
         return inputs
 
+    def get_inputs4evaldispmulti(self, sol, n_xi, n_eta, n_zeta, numpatch=1):
+        """
+
+        Parameters
+        ----------
+        sol : TYPE
+            DESCRIPTION.
+        n_xi : TYPE
+            DESCRIPTION.
+        n_eta : TYPE
+            DESCRIPTION.
+        n_zeta : TYPE
+            DESCRIPTION.
+        numpatch : TYPE, optional
+            DESCRIPTION. The default is 1.
+
+        Returns
+        -------
+        inputs : TYPE
+            DESCRIPTION.
+
+        """
+        if not (numpatch > 0 and numpatch < self._nb_patch + 1):
+            print('Error: numpatch should be between 1'
+                  'and {}'.format(self._nb_patch))
+            return None
+
+        inputs = [numpatch, n_xi, n_eta, n_zeta, sol,
+                  self._COORDS, self._IEN_flat, self._elementsByPatch,
+                  self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
+                  self._Jpqr, self._ELT_TYPE_flat,
+                  self._MATERIAL_PROPERTIES[:2, :], self._TENSOR_flat,
+                  self._PROPS_flat, self._JPROPS, self._nnode, self._nb_patch,
+                  self._nb_elem, self._nb_cp, self._mcrd]
+
+        return inputs
+
     def get_inputs4evalstress(self, sol, xi, numpatch=1):
         """
 
