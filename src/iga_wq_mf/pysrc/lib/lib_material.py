@@ -184,11 +184,10 @@ class mechamat(material):
 				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
 				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(0, 1)) 
 					- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
-				if np.all(G<=threshold): break
+				if np.all(np.abs(G)<=threshold): break
 				dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
 				dgamma -= G/dG
 				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
-
 			return dgamma
 
 		nvoigt, nnz = np.shape(strain)
@@ -210,7 +209,7 @@ class mechamat(material):
 		# Compute shifted stress
 		eta_trial = s_trial - Tb
 
-		# Check yield condition
+		# Check yield status
 		norm_trial = np.linalg.norm(eta_trial, axis=(0, 1))
 		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._Kfun(a)
 		sigma   = s_trial
@@ -244,7 +243,7 @@ class mechamat(material):
 			Tb[:, :, plsInd] += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
 			b_new[:, plsInd] = symtensor2arrayForAll(Tb[:, :, plsInd], dim)
 
-			# Update new coefficients
+			# Update tangent coefficients
 			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
 			c1 = 2*self.lame_mu*dgamma_plsInd/norm_trial[plsInd]
 			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1

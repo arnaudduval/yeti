@@ -51,11 +51,11 @@ if FigPlot == 0:
 			# Solve 
 			lastStep = nbSteps+1 # -2 or nbSteps+1
 			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
-			stress_cp = model.interpolate_CntrlPtsField(stress)
+			stress_cp = model.L2projectionCtrlpts(stress)
 
 			interp = []
-			interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
-			interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(disp_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(stress_cp, sampleSize=sampleSize)[0])
 			enablePrint()
 
 			for i in range(2):
@@ -119,11 +119,11 @@ elif FigPlot == 1:
 			# Solve 
 			lastStep = -2 # -2 or nbSteps+1
 			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep], threshold=1e-8)
-			stress_cp = model.interpolate_CntrlPtsField(stress)
+			stress_cp = model.L2projectionCtrlpts(stress)
 
 			interp = []
-			interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
-			interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(disp_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(stress_cp, sampleSize=sampleSize)[0])
 			enablePrint()
 
 			for i in range(2):
@@ -188,11 +188,11 @@ elif FigPlot == 2:
 			# Solve 
 			lastStep = nbSteps+1 # -2 or nbSteps+1
 			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
-			stress_cp = model.interpolate_CntrlPtsField(stress)
+			stress_cp = model.L2projectionCtrlpts(stress)
 
 			interp = []
-			interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
-			interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(disp_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(stress_cp, sampleSize=sampleSize)[0])
 			enablePrint()
 
 			for l in range(2):
@@ -253,11 +253,11 @@ elif FigPlot == 3:
 			# Solve 
 			lastStep = -3 # -2 or nbSteps+1
 			disp_cp, _, stress, _, _ = model.solve(Fext=Fext[:, :lastStep])
-			stress_cp = model.interpolate_CntrlPtsField(stress)
+			stress_cp = model.L2projectionCtrlpts(stress)
 
 			interp = []
-			interp.append(model.interpolate_sampleField(disp_cp, sampleSize=sampleSize)[0])
-			interp.append(model.interpolate_sampleField(stress_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(disp_cp, sampleSize=sampleSize)[0])
+			interp.append(model.interpolateMeshgridField(stress_cp, sampleSize=sampleSize)[0])
 			enablePrint()
 
 			for i in range(2):

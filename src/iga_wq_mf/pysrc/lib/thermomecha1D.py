@@ -1,7 +1,6 @@
 """
 .. This module contains functions to treat transient heat problems in 1D. 
 .. It also contains functions to treat elastoplasticity problems in 1D. 
-.. It is adapted to IGA problems (using Gauss quadrature)
 .. Joaquin Cornejo
 """
 
@@ -35,7 +34,6 @@ class part1D:
 	
 	def __setQuadratureRules(self, quadArgs:dict):
 		quadRuleName = quadArgs.get('quadrule', '').lower()
-		quadRule     = None
 		if quadRuleName == 'iga':
 			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
 		elif quadRuleName == 'wq':
@@ -72,18 +70,20 @@ class part1D:
 		self.density        = matArgs.get('density', None)
 		return
 	
-	def interpolate_sampleField(self, u_ctrlpts, sampleSize=101):
-		if np.size(u_ctrlpts, axis=0) != self.nbctrlpts: raise Warning('Not possible')
-		basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
+	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
+		if isSample: basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
+		else: 		 basis 		  = self.quadRule.getDenseQuadRules()[0]
 		u_interp = basis[0].T @ u_ctrlpts
-		x_interp = self.detJ * knots
+		if isSample: x_interp = self.detJ * knots
+		else: 		 x_interp = self.qpPhy
 		return u_interp, x_interp
 	
-	def interpolate_CntrlPtsField(self, u_ref):
+	def L2projectionCtrlpts(self, u_ref):
 		" Interpolate control point field (from parametric to physical space) "
-		masse = self.weights[0] @ self.basis[0].T
-		force = self.weights[0] @ u_ref
-		u_ctrlpts = np.linalg.solve(masse.toarray(), force)
+		masse = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ self.basis[0].T
+		force = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ u_ref
+		masseSparse = sp.csr_matrix(masse)
+		u_ctrlpts = sp.linalg.spsolve(masseSparse, force)
 		return u_ctrlpts
 
 class thermo1D(part1D):
@@ -103,23 +103,18 @@ class thermo1D(part1D):
 
 	def compute_volForce(self, Fprop):
 		" Computes 'volumetric' source vector in 1D "
-		Fcoefs = Fprop * self.detJ
+		Fcoefs = Fprop*self.detJ
 		F = self.weights[0] @ Fcoefs 
 		return F
 
 	def compute_intForce(self, Kprop, Cprop, T, dT, isLumped=False):
 		"Returns the internal heat force in transient heat"
 
-		# Compute conductivity matrix
-		Kcoefs = Kprop * self.invJ
+		Kcoefs = Kprop*self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
-
-		# Compute capacity matrix 
 		Ccoefs = Cprop * self.detJ
 		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
-
-		# Compute internal heat force 
 		Fint = C @ dT + K @ T
 
 		return Fint
@@ -132,16 +127,11 @@ class thermo1D(part1D):
 			C = int_Omega B Cprop B dx = int [0, 1] B Cprop det J B dxi
 		"""
 
-		# Compute conductivity matrix
 		Kcoefs = Kprop * self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
-
-		# Compute capacitiy matrix 
 		Ccoefs = Cprop * self.detJ
 		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
-
-		# Compute tangent matrix 
 		M = C + self._temporaltheta*dt*K
 
 		return M
@@ -151,9 +141,9 @@ class thermo1D(part1D):
 
 		theta = self._temporaltheta
 		dod   = self.dod; dof = self.dof
-		VVn0  = np.zeros(len(dof)+len(dod))
+		VVn0  = np.zeros(self.nbctrlpts)
 
-		# Compute initial velocity from boundry conditions (for i = 0)
+		# Compute initial velocity from boundary conditions (for i = 0)
 		if np.shape(Tinout)[1] == 2:
 			dt = time_list[1] - time_list[0]
 			VVn0[dod] = (Tinout[dod, 1] - Tinout[dod, 0])/dt
@@ -230,41 +220,60 @@ class mechamat1D(part1D):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law:plasticLaw, E, eta_trial, a_n0, nbIter=100, threshold=1e-9):
-			dgamma = 0.0
+		def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-9):
+			dgamma = np.zeros(np.size(a_n0))
 			a_n1   = a_n0 
 			for i in range(nbIter):
 				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
 				G  = -law._Kfun(a_n1) + np.abs(eta_trial) - (E*dgamma + dH)
-				if np.abs(G) <=threshold: break
+				if np.all(np.abs(G)<=threshold): break
 				dG = - (E + law._Hderfun(a_n1) + law._Kderfun(a_n1))
 				dgamma -= G/dG
 				a_n1   = a_n0 + dgamma
 			return dgamma
 
-		# Elastic predictor
+		nnz = np.size(strain)
+		output  = np.zeros((5, nnz))
+
+		# Compute trial stress
 		sigma_trial = self.elasticmodulus*(strain - pls)
 		eta_trial   = sigma_trial - b
 
 		# Check yield status
 		f_trial = np.abs(eta_trial) - self.plasticLaw._Kfun(a)
-		stress = sigma_trial
+		stress  = sigma_trial
 		pls_new = pls
 		a_new = a
 		b_new = b
-		Cep = self.elasticmodulus
+		Cep   = self.elasticmodulus*np.ones(nnz)
 
-		if f_trial > threshold: # Plastic
-			dgamma = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, eta_trial, a)
-			a_new = a + dgamma
-			Normal = np.sign(eta_trial)
-			stress = sigma_trial - dgamma*self.elasticmodulus*Normal
-			pls_new = pls + dgamma*Normal
-			b_new = b + (self.plasticLaw._Hfun(a_new) - self.plasticLaw._Hfun(a))*Normal
-			somme = self.plasticLaw._Kderfun(a_new) + self.plasticLaw._Hderfun(a_new)
-			Cep = self.elasticmodulus*somme/(self.elasticmodulus + somme)
+		plsInd = np.nonzero(f_trial>threshold)[0]
+		if np.size(plsInd)>0:
+			# Compute plastic-strain increment
+			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
+			
+			# Update internal hardening variable
+			a_new[plsInd] = a[plsInd] + dgamma_plsInd
+			
+			# Compute df/dsigma
+			Normal_plsInd = np.sign(eta_trial[plsInd])
 
-		return [stress, pls_new, a_new, b_new, Cep]
+			# Update stress
+			stress[plsInd] = sigma_trial[plsInd] - dgamma_plsInd*self.elasticmodulus*Normal_plsInd
+			
+			# Update plastic strain
+			pls_new[plsInd] = pls[plsInd] + dgamma_plsInd*Normal_plsInd
+
+			# Update backstress
+			b_new[plsInd] = b[plsInd] + (self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
+			
+			# Update tangent coefficients
+			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
+			Cep[plsInd] = self.elasticmodulus*somme/(self.elasticmodulus + somme)
+
+		output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
+		output[3, :] = b_new; output[4, :] = Cep
+		return output
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
@@ -300,56 +309,60 @@ class mechamat1D(part1D):
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
 		nbqp = self.nbqp; dof  = self.dof
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
-		ep_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
-		Cep, sigma = np.zeros(nbqp), np.zeros(nbqp)
+		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
+		Cep, stress = np.zeros(nbqp), np.zeros(nbqp)
 		disp = np.zeros(np.shape(Fext))
 
 		eps     = np.zeros((nbqp, np.shape(Fext)[1]))
 		plastic = np.zeros((nbqp, np.shape(Fext)[1]))
-		stress  = np.zeros((nbqp, np.shape(Fext)[1]))
+		sigma  = np.zeros((nbqp, np.shape(Fext)[1]))
 		moduleE = np.zeros((nbqp, np.shape(Fext)[1]))
 
 		for i in range(1, np.shape(Fext)[1]):
-
-			d_n1  = np.copy(disp[:, i-1]); ddisp = np.zeros(len(dof)) 
+			# Get values of last step
+			d_n1  = np.copy(disp[:, i-1])
+			
+			# Get values of new step
+			ddisp = np.zeros(len(dof)) 
 			Fstep = np.copy(Fext[:, i])
-			if i==int(np.shape(Fext)[1]/2)+1:
-				print('Starting decharging')
 
-			print('Step %d, force max:%.5e' %(i,np.max(Fstep)))
+			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Newton-Raphson 
 				
-				# Compute strain as function of displacement
-				d_n1[dof] = disp[dof, i-1] + ddisp
+				# Compute strain
 				strain = self.interpolate_strain(d_n1)
 
 				# Find closest point projection 
-				for k in range(nbqp):
-					tmp = self.returnMappingAlgorithm(strain[k], pls_n0[k], a_n0[k], b_n0[k])
-					sigma[k], ep_n1[k], a_n1[k], b_n1[k], Cep[k] = tmp
+				output = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
+				stress, pls_n1, a_n1, b_n1, Cep = output[0, :], output[1, :], output[2, :], output[3, :], output[4, :]
 
-				# Compute Fint
-				Fint = self.compute_intForce(sigma)
+				# Compute residue
+				Fint = self.compute_intForce(stress)
 				dF 	 = Fstep[dof] - Fint[dof]
 				resNR = np.sqrt(np.dot(dF, dF))
 				print('Rhapson with error %.5e' %resNR)
 				if resNR <= self._thresholdNR: break
 
-				# Compute stiffness
-				Sdof = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
-				SdofSparse = sp.csr_matrix(Sdof)
-				ddisp += sp.linalg.spsolve(SdofSparse, dF)
+				# Compute tangent matrix
+				Stangent = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
+				SSparse  = sp.csr_matrix(Stangent)
+				
+				# Compute delta disp
+				ddisp += sp.linalg.spsolve(SSparse, dF)
+
+				# Update values
+				d_n1[dof] = disp[dof, i-1] + ddisp
 
 			# Update values in output
-			disp[:, i]   = d_n1
-			eps[:, i]    = strain
-			stress[:, i] = sigma
-			plastic[:, i] = ep_n1
+			disp[:, i]    = d_n1
+			eps[:, i]     = strain
+			sigma[:, i]   = stress
+			plastic[:, i] = pls_n1
 			moduleE[:, i] = Cep
 
-			pls_n0, a_n0, b_n0 = np.copy(ep_n1), np.copy(a_n1), np.copy(b_n1)
+			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return disp, eps, stress, plastic, moduleE
+		return disp, eps, sigma, plastic, moduleE
 
 def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -363,7 +376,7 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	N = np.shape(disp_cp)[1]
 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	units = ['mm', 'mm/m', 'MPa']
+	units = ['mm', r'$\times 10^{-3}$', 'MPa']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')

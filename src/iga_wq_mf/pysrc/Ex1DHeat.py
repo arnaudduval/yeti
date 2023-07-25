@@ -52,7 +52,7 @@ temperature[-1,:] = 1.0
 
 # Solve
 model.solve(Fext=Fext, time_list=time_list, Tinout=temperature)
-temp_interp, x_interp = model.interpolate_sampleField(temperature)
+temp_interp, x_interp = model.interpolateMeshgridField(temperature)
 print(temp_interp.min())
 
 # ------------------

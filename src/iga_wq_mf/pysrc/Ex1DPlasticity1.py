@@ -44,8 +44,8 @@ def run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga'):
 
 	# Solve
 	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = model.solve(Fext=Fext)
-	plastic_cp  = model.interpolate_CntrlPtsField(plastic_qp)
-	stress_cp 	= model.interpolate_CntrlPtsField(stress_qp)
+	plastic_cp  = model.L2projectionCtrlpts(plastic_qp)
+	stress_cp 	= model.L2projectionCtrlpts(stress_qp)
 	plot_results(model.quadRule, geoArgs['length'], disp_cp, plastic_cp, stress_cp, folder=folder, method=quadrule)
 	return model, disp_cp, plastic_cp, stress_cp
 
@@ -59,17 +59,17 @@ matArgs    = {'elastic_modulus':2e5, 'elastic_limit':100,
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
 
 if isReference:
-	degree, nbel = 9, 1024
+	degree, nbel = 4, 32
 	knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=degree)
 	model, disp_cp, plastic_cp, stress_cp = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule='iga')
-	disp_interp   = model.interpolate_sampleField(disp_cp,   sampleSize=samplesize)[0]
-	stress_interp = model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0]
+	disp_interp   = model.interpolateMeshgridField(disp_cp,   sampleSize=samplesize)[0]
+	stress_interp = model.interpolateMeshgridField(stress_cp, sampleSize=samplesize)[0]
 
-	basis, knots  = model.quadRule.getSampleBasis(sampleSize=samplesize)
-	strain_interp = basis[1].T @ disp_cp
-	np.save(folder+'disp_interp_ref.npy', disp_interp)
-	np.save(folder+'strain_interp_ref.npy', strain_interp)
-	np.save(folder+'stress_interp_ref.npy', stress_interp)
+	# basis, knots  = model.quadRule.getSampleBasis(sampleSize=samplesize)
+	# strain_interp = basis[1].T @ disp_cp
+	# np.save(folder+'disp_interp_ref.npy', disp_interp)
+	# np.save(folder+'strain_interp_ref.npy', strain_interp)
+	# np.save(folder+'stress_interp_ref.npy', stress_interp)
 
 else:
 
@@ -85,11 +85,11 @@ else:
 	args  = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
 	model = mechamat1D(args)
 	qpPhy = np.linspace(0, 1, samplesize)*geoArgs['length']
-	plastic = ref[1][:, nbSteps] - ref[2][:, nbSteps]/matArgs['elastic_modulus']*1000
+	plastic = ref[1][:, nbSteps] - ref[2][:, nbSteps]/matArgs['elastic_modulus']
 
 	fig, axs  = plt.subplots(nrows=1, ncols=3, figsize=(15, 4))
-	axs[0].plot(qpPhy, ref[1][:, nbSteps])
-	axs[1].plot(qpPhy, plastic)
+	axs[0].plot(qpPhy, ref[1][:, nbSteps]*1e-6)
+	axs[1].plot(qpPhy, plastic*1e-6)
 	axs[2].plot(qpPhy, ref[2][:, nbSteps])
 
 	for ax in axs:
@@ -97,56 +97,10 @@ else:
 		ax.set_ylim(bottom=0)
 
 	for i in range(2):
-		axs[i].set_ylim(top=5)
+		axs[i].set_ylim(top=5e-6)
 	axs[-1].set_ylim(top=200)
-	axs[0].set_ylabel('Strain (mm/m)')
-	axs[1].set_ylabel('Plastic strain (mm/m)')
+	axs[0].set_ylabel('Strain (m/m)')
+	axs[1].set_ylabel('Plastic strain (m/m)')
 	axs[2].set_ylabel('Stress (MPa)')
 	fig.tight_layout()
 	fig.savefig(folder + 'DataMaxLoad' + '.png')
-
-	# def relativeError(ref, interp):
-	# 	norm_ref    = np.linalg.norm(ref, axis=0)
-	# 	error       = ref - interp
-	# 	norm_error  = np.linalg.norm(error, axis=0)
-	# 	relerror    = np.divide(norm_error, norm_ref, out=np.zeros_like(norm_error), where=np.abs(norm_ref)>1.e-12)*100
-	# 	return relerror
-
-	# ref = []
-	# ref.append(np.load(folder + 'disp_interp_ref.npy'))
-	# ref.append(np.load(folder + 'stress_interp_ref.npy'))
-
-	# degree = 6
-	# nbel_list = range(21, 501, 80)
-	# relerror = np.zeros((len(nbel_list), nbSteps, 3))
-	
-	# for i, nbel in enumerate(nbel_list):
-	# 	knotvector = createKnotVector(degree, nbel)
-	# 	info = run_simulation(degree, knotvector, matArgs, nbSteps, quadrule=quadrule)
-	# 	model, disp_cp, strain_cp, plastic_cp, stress_cp = info
-	# 	interp = []
-	# 	interp.append(model.interpolate_sampleField(disp_cp, sampleSize=samplesize)[0])
-	# 	interp.append(model.interpolate_sampleField(stress_cp, sampleSize=samplesize)[0])
-
-	# 	for j in range(3): relerror[i, :, j] = relativeError(ref[j], interp[j])
-
-
-	# from mpl_toolkits.axes_grid1 import make_axes_locatable
-	# fig, axs  = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
-	# nbel_new, steps_new = np.meshgrid(nbel_list, np.arange(0, nbSteps))
-
-	# for [i, ax], title in zip(enumerate(axs), ['Displacement', 'Stress']) :
-	# 	im = ax.pcolormesh(nbel_new, steps_new, relerror[:, :, i].T,
-	# 					norm=mpl.colors.LogNorm(vmin=1.e-11, vmax=1.e-1),
-	# 					cmap='viridis', shading='auto')
-	# 	ax.set_ylabel('Steps')
-	# 	ax.set_xlabel('Number of elements')
-	# 	ax.set_title(title + ' error')
-
-	# 	divider = make_axes_locatable(ax)
-	# 	cax = divider.append_axes('right', size='5%', pad=0.05)
-	# 	cbar = fig.colorbar(im, cax=cax, format='%.1e')
-	# 	cbar.ax.set_title('%%')
-
-	# fig.tight_layout()
-	# fig.savefig(folder + 'convergence.png')
