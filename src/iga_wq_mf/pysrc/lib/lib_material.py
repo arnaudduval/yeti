@@ -6,29 +6,6 @@ class material():
 	def __init__(self):
 		return		
 	
-	def __verifyTable(self, table, isTensor=False, threshold=1.e-8):
-		table = np.atleast_2d(table)
-		x = np.diff(table[:, 0])
-		if np.any(x<threshold): raise Warning('Table is not well defined')
-		if isTensor and np.size(table, axis=1) <= 2: raise Warning('Table not well defined')
-		return
-	
-	def __interpolateScalarProperty(table, x):
-		lenx = np.max(np.shape(x))
-		if np.size(table, axis=0) == 1: y = table[:, 1]*np.ones(lenx)
-		else:  							y = np.interp(x, table[:, 0], table[:, 1])
-		return y
-	
-	def __interpolateTensorProperty(table, x, shape=(3, 3)):
-		if np.size(table, axis=1) != np.prod(shape)+1: raise Warning('Not possible')
-		lenx = np.max(np.shape(x))
-		y = np.zeros((*shape, lenx))
-		for i in range(shape[0]):
-			for j in range(shape[1]):
-				k = 1 + j + shape[1]*i
-				y[i, j, :] = np.interp(x, table[:, 0], table[:, k])
-		return y
-	
 	def setScalarProperty(self, inpt, isIsotropic=False):
 		if isIsotropic:
 			# Isotropic material 
@@ -37,13 +14,8 @@ class material():
 			else: 
 				raise Warning('Not possible')
 		elif callable(inpt):
-			# Anisotropic material a continuous function
+			# Anisotropic material using a continuous function
 			prop = lambda x: inpt(x)
-		elif len(inpt.shape) > 1:
-			# Anisotropic material a discrete table
-			self.__verifyTable(inpt, False)
-			prop = lambda x: self.__interpolateScalarProperty(inpt, x)
-			print('It will be deprecated')
 		else:
 			raise Warning('Not implemented')
 		return prop
@@ -67,11 +39,6 @@ class material():
 		elif callable(inpt):
 			# Anisotropic material using a continuous function
 			prop = lambda x: inpt(x)
-		elif len(inpt.shape) > 1:
-			# Anisotropic material using a discrete table
-			self.__verifyTable(inpt, True)
-			prop = lambda x: self.__interpolateTensorProperty(inpt, x, shape=shape)
-			print('It will be deprecated')
 		else:
 			raise Warning('Not implemented')
 		return prop
@@ -115,8 +82,8 @@ class thermomat(material):
 		if info == 0: raise Warning('It is not possible to compute coefficients')
 		return coefs
 	
-	def eval_heatForceCoefficients(self, fun, detJ, qp): 
-		coefs = fun(qp)*detJ
+	def eval_heatForceCoefficients(self, fun, detJ, inpt): 
+		coefs = fun(inpt)*detJ
 		return coefs
 
 class plasticLaw():
@@ -135,8 +102,8 @@ class plasticLaw():
 		return	
 	
 	def __setLinearModel(self, plasticArgs:dict):
-		theta	  = plasticArgs.get('theta', None)
-		Hbar      = plasticArgs.get('Hbar', None)
+		theta = plasticArgs.get('theta', None)
+		Hbar  = plasticArgs.get('Hbar', None)
 		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a 
 		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar*np.ones(np.size(a))
@@ -150,7 +117,6 @@ class plasticLaw():
 			with np.errstate(divide='ignore'):
 				y = np.where(a==0.0, 1e10*self.__elasticmodulus, (self.__elasticmodulus/K)*n*(a/K)**(n-1))
 			return y
-				
 		self._Kfun = lambda a: self.__elasticlimit + self.__elasticmodulus*(a/K)**n
 		self._Hfun = lambda a: np.zeros(np.size(a))
 		self._Kderfun = lambda a: localKderfun(a)
@@ -212,89 +178,6 @@ class mechamat(material):
 		"""
 
 		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
-			dgamma = 0.0
-			a_n1 = a_n0
-			for i in range(nbIter):
-				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
-				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial) 
-					- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
-				if np.abs(G) <=threshold: break
-				dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
-				dgamma -= G/dG
-				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
-
-			return dgamma
-
-		nvoigt = np.size(strain)
-		if nvoigt   == 3: dim = 2
-		elif nvoigt == 6: dim = 3
-
-		output  = np.zeros(4*(nvoigt+1))
-		Cep     = np.zeros(3)
-		Tstrain = array2symtensor(strain, dim)
-		Tpls    = array2symtensor(pls, dim)
-		Tb      = array2symtensor(b, dim)
-		traceStrain = evalOneTrace(Tstrain, dim)
-		devStrain   = Tstrain
-		for i in range(dim): devStrain[i, i] -= 1.0/3.0*traceStrain
-
-		# Compute trial stress
-		s_trial = 2*self.lame_mu*(devStrain - Tpls)
-
-		# Compute shifted stress
-		eta_trial = s_trial - Tb
-
-		# Check yield condition
-		norm_trial = np.linalg.norm(eta_trial)
-		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._Kfun(a)
-		sigma   = s_trial
-		for i in range(dim): sigma[i, i] += self.lame_bulk*traceStrain
-		Cep[0] = self.lame_lambda; Cep[1] = self.lame_mu
-		pls_new = pls; a_new = a; b_new = b
-		stress  = symtensor2array(sigma, dim)
-
-		if f_trial>threshold:
-
-			# Compute plastic-strain increment
-			dgamma = computeDeltaGamma(self.plasticLaw, self.lame_mu, a, eta_trial)
-
-			# Update internal hardening variable
-			a_new = a + np.sqrt(2.0/3.0)*dgamma
-
-			# Compute df/dsigma
-			Normal = eta_trial/norm_trial
-			output[3*nvoigt+4:] = symtensor2array(Normal, dim)
-
-			# Update stress
-			sigma -= 2*self.lame_mu*dgamma*Normal
-			stress = symtensor2array(sigma, dim)
-
-			# Update plastic strain
-			Tpls += dgamma*Normal
-			pls_new = symtensor2array(Tpls, dim)
-
-			# Update backstress
-			Tb += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new) - self.plasticLaw._Hfun(a))*Normal
-			b_new = symtensor2array(Tb, dim)
-
-			# Update new coefficients
-			somme = self.plasticLaw._Kderfun(a_new) + self.plasticLaw._Hderfun(a_new)
-			c1 = 2*self.lame_mu*dgamma/norm_trial
-			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
-			Cep[0] = self.lame_lambda + 2.0/3.0*self.lame_mu*c1
-			Cep[1] = self.lame_mu*(1.0 - c1)
-			Cep[2] = -2.0*self.lame_mu*c2
-
-		output[0:nvoigt] = stress; output[nvoigt:2*nvoigt] = pls_new; output[2*nvoigt] = a_new
-		output[2*nvoigt+1:3*nvoigt+1] = b_new; output[3*nvoigt+1:3*nvoigt+4] = Cep
-		return output
-	
-	def returnMappingAlgorithmForAll(self, strain, pls, a, b, threshold=1e-9):
-		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
-			It uses combined isotropic/kinematic hardening theory.  
-		"""
-
-		def computeDeltaGammaForAll(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
 			dgamma = np.zeros(np.size(a_n0))
 			a_n1 = a_n0
 			for i in range(nbIter):
@@ -317,7 +200,7 @@ class mechamat(material):
 		Tstrain = array2symtensorForAll(strain, dim)
 		Tpls    = array2symtensorForAll(pls, dim)
 		Tb      = array2symtensorForAll(b, dim)
-		traceStrain = evalMultiTraceVgt(strain, dim)
+		traceStrain = evalTraceForAll(strain, dim)
 		devStrain   = Tstrain
 		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
@@ -337,34 +220,33 @@ class mechamat(material):
 		stress  = symtensor2arrayForAll(sigma, dim)
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
-
 		if np.size(plsInd)>0:
 
 			# Compute plastic-strain increment
-			dgamma = computeDeltaGammaForAll(self.plasticLaw, self.lame_mu, a[plsInd], eta_trial[:, :, plsInd])
+			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.lame_mu, a[plsInd], eta_trial[:, :, plsInd])
 
 			# Update internal hardening variable
-			a_new[plsInd] = a[plsInd] + np.sqrt(2.0/3.0)*dgamma
+			a_new[plsInd] = a[plsInd] + np.sqrt(2.0/3.0)*dgamma_plsInd
 
 			# Compute df/dsigma
-			Normal = eta_trial[:, :, plsInd]/norm_trial[plsInd]
-			output[3*nvoigt+4:, plsInd] = symtensor2arrayForAll(Normal, dim)
+			Normal_plsInd = eta_trial[:, :, plsInd]/norm_trial[plsInd]
+			output[3*nvoigt+4:, plsInd] = symtensor2arrayForAll(Normal_plsInd, dim)
 
 			# Update stress
-			sigma[:, :, plsInd] -= 2*self.lame_mu*dgamma*Normal
+			sigma[:, :, plsInd] -= 2*self.lame_mu*dgamma_plsInd*Normal_plsInd
 			stress[:, plsInd] = symtensor2arrayForAll(sigma[:, :, plsInd], dim)
 
 			# Update plastic strain
-			Tpls[:, :, plsInd] += dgamma*Normal
+			Tpls[:, :, plsInd] += dgamma_plsInd*Normal_plsInd
 			pls_new[:, plsInd] = symtensor2arrayForAll(Tpls[:, :, plsInd], dim)
 
 			# Update backstress
-			Tb[:, :, plsInd] += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal
+			Tb[:, :, plsInd] += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
 			b_new[:, plsInd] = symtensor2arrayForAll(Tb[:, :, plsInd], dim)
 
 			# Update new coefficients
 			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
-			c1 = 2*self.lame_mu*dgamma/norm_trial[plsInd]
+			c1 = 2*self.lame_mu*dgamma_plsInd/norm_trial[plsInd]
 			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
 			Cep[0, plsInd] = self.lame_lambda + 2.0/3.0*self.lame_mu*c1
 			Cep[1, plsInd] = self.lame_mu*(1.0 - c1)
@@ -398,12 +280,10 @@ def symtensor2array(tensor, dim):
 	for i in range(dim):
 		array[k] = tensor[i, i]
 		k += 1
-
 	for i in range(dim-1):
 		for j in range(i+1, dim):
 			array[k] = tensor[i, j]
 			k += 1
-
 	return array
 
 def array2symtensor(array, dim):
@@ -412,24 +292,22 @@ def array2symtensor(array, dim):
 	for i in range(dim):
 		tensor[i, i] = array[k]
 		k += 1
-
 	for i in range(dim-1):
 		for j in range(i+1, dim):
 			tensor[i, j] = array[k] 
 			tensor[j, i] = array[k] 
 			k += 1
-
 	return tensor
 
-def evalOneTrace(tensor, dim):
+def evalTrace(tensor, dim):
 	trace = 0.0
 	for i in range(dim):
 		trace += tensor[i, i]
 	return trace
 
-def computeOneVMStress(tensor, dim):
-	trace  = evalOneTrace(tensor, dim)
-	dev    = np.copy(tensor)
+def computeVMStress(tensor, dim):
+	trace = evalTrace(tensor, dim)
+	dev   = np.copy(tensor)
 	for i in range(dim):
 		dev[i, i] -= 1.0/3.0*trace
 	vm = np.linalg.norm(dev)
@@ -443,12 +321,10 @@ def symtensor2arrayForAll(tensors, dim):
 	for i in range(dim):
 		array[k, :] = tensors[i, i, :]
 		k += 1
-
 	for i in range(dim-1):
 		for j in range(i+1, dim):
 			array[k, :] = tensors[i, j, :]
 			k += 1
-
 	return array
 
 def array2symtensorForAll(arrays, dim):
@@ -458,26 +334,24 @@ def array2symtensorForAll(arrays, dim):
 	for i in range(dim):
 		tensor[i, i, :] = arrays[k, :]
 		k += 1
-
 	for i in range(dim-1):
 		for j in range(i+1, dim):
 			tensor[i, j, :] = arrays[k, :] 
 			tensor[j, i, :] = arrays[k, :] 
 			k += 1
-
 	return tensor
 
-def evalMultiTraceVgt(arrays, dim):
+def evalTraceForAll(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	trace = np.zeros(nnz)
 	for i in range(dim):
 		trace += arrays[i, :]
 	return trace
 
-def computeMultiVMStressVgt(arrays, dim):
+def computeVMStressForAll(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	nvgt  = int(dim*(dim+1)/2)
-	trace = evalMultiTraceVgt(arrays, dim)
+	trace = evalTraceForAll(arrays, dim)
 	dev   = np.copy(arrays)
 	for i in range(dim):
 		dev[i, :] -= 1.0/3.0*trace

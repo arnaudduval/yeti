@@ -12,7 +12,7 @@
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
-from lib.lib_material import mechamat, computeMultiVMStressVgt
+from lib.lib_material import mechamat, computeVMStressForAll
 from lib.lib_boundary import boundaryCondition
 from lib.lib_job import mechaproblem
 
@@ -91,7 +91,7 @@ else:
 	stress_qpref = np.load(folder+'stress_quadPts_ref.npy')[:,:,-2]
 	stress_cpref = problem.L2projectionCtrlpts(datafield=stress_qpref)
 	stress_interp = problem.part.interpolateMeshgridField(u_ctrlpts=stress_cpref, nbDOF=3, sampleSize=samplesize)[-1]
-	stress_vm = computeMultiVMStressVgt(stress_interp, dim=2)
+	stress_vm = computeVMStressForAll(stress_interp, dim=2)
 	stress_interp = np.vstack([stress_interp, stress_vm])
 	np.save(folder+'stress_interp_ref2D.npy', stress_interp)
 

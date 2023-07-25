@@ -4,7 +4,7 @@ from lib.lib_material import (thermomat,
 							mechamat, 
 							clean_dirichlet, 
 							block_dot_product, 
-							computeMultiVMStressVgt)
+							computeVMStressForAll)
 from lib.lib_part import part
 from lib.lib_boundary import boundaryCondition, get_INCTable
 
@@ -419,7 +419,7 @@ class mechaproblem(problem):
 				strain = self.compute_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
-				output = self.material.returnMappingAlgorithmForAll(strain, pls_n0, a_n0, b_n0)
+				output = self.material.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
 				stress, pls_n1, a_n1, b_n1, Cep = output[:ddl, :], output[ddl:2*ddl, :], output[2*ddl, :], output[2*ddl+1:3*ddl+1, :], output[3*ddl+1:, :]
 
 				# Compute Fint 

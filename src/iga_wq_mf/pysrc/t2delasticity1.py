@@ -10,8 +10,8 @@
 from lib.__init__ import *
 from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
-from lib.lib_material import (mechamat, array2symtensorForAll, evalMultiTraceVgt, 
-					computeMultiVMStressVgt, symtensor2arrayForAll)
+from lib.lib_material import (mechamat, array2symtensorForAll, evalTraceForAll, 
+					computeVMStressForAll, symtensor2arrayForAll)
 from lib.lib_boundary import boundaryCondition
 from lib.lib_job import mechaproblem
 
@@ -74,13 +74,13 @@ model.exportResultsCP(u_ctrlpts=displacement, nbDOF=2, folder=folder)
 
 strain  = problem.compute_strain(displacement)
 Tstrain = array2symtensorForAll(strain, 2)
-traceStrain = evalMultiTraceVgt(strain, 2)
+traceStrain = evalTraceForAll(strain, 2)
 devStrain   = Tstrain
 for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
 Tstress = 2*problem.material.lame_mu*(devStrain)
 stress  = symtensor2arrayForAll(Tstress, 2)
-stress_vm = computeMultiVMStressVgt(stress, 2)
+stress_vm = computeVMStressForAll(stress, 2)
 
 disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
 disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
