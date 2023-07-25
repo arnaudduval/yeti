@@ -1,0 +1,7 @@
+A 2D square is clamped on one side and subjected to traction.
+Computation is made for different degrees and different refinement levels
+Error is plotted
+
+To run this case:
+python linear_analysis.py
+python plot.py
