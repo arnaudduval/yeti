@@ -4,15 +4,15 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 !! Compute elementary matrix and RHS vector
@@ -25,9 +25,9 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
             &   nb_load_additionalInfos,n_dist_elem, nb_n_dist, RHS,AMATRX)
 
     use parameters
-      
+
     implicit None
-      
+
     !! Input arguments
     !! ---------------
     integer, intent(in) :: NDOFEL,MCRD,NNODE,JELEM,NBINT
@@ -45,34 +45,34 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     dimension ADLMAG(nb_load),indDLoad(SUM(load_target_nbelem)),    &
         &     load_target_nbelem(nb_load),JDLType(nb_load),         &
         &     load_additionalInfos(nb_load_additionalInfos)
-      
+
     !! Output variables
     !! ----------------
     double precision, intent(out) :: RHS, AMATRX
     dimension RHS(NDOFEL), AMATRX(MCRD,MCRD,NNODE*(NNODE+1)/2)
-      
-      
+
+
     !! Local variables
     !! ---------------
-      
+
     !! Gauss points
     integer :: NbPtInt, n
     double precision :: GaussPdsCoord
     dimension GaussPdsCoord(MCRD+1,NBINT)
-      
+
     !! Nurbs basis functions
     double precision :: R, dRdx, DetJac
     dimension R(NNODE),dRdx(MCRD,NNODE)
-      
+
     !! Material behaviour
     double precision :: ddsdde
     dimension ddsdde(2*MCRD,2*MCRD)
-      
+
     !! Stiffness matrix
     integer :: k1,k2,ntens
     double precision :: stiff,dvol
     dimension stiff( MCRD,MCRD,NNODE*(NNODE+1)/2 )
-      
+
     !! Load vector
     integer :: i,j,kk,KNumFace,KTypeDload,numCP,numI,k3,iField
     integer :: kload, i_load
@@ -83,32 +83,32 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     double precision :: pointGP, pointA,pointB,vectD,vectAG,vectR,scal
     dimension pointGP(MCRD),pointA(MCRD),pointB(MCRD),vectD(MCRD),  &
         &     vectAG(MCRD),vectR(MCRD)
-      
+
     !! Initialization
 
     ntens   = 2*MCRD          !! Size of stiffness tensor
     NbPtInt = int( NBINT**(1.0/float(MCRD)) ) !! Nb of gauss pts per direction
     if (NbPtInt**MCRD<NBINT) NbPtInt = NbPtInt + 1
-      
+
     !! Compute Gauss points coordinates and weights
     call Gauss(NbPtInt,MCRD,GaussPdsCoord,0)
-      
+
     !! Stiffness matrix and load vector initialized to zero
     RHS(:)        = zero
     AMATRX(:,:,:) = zero
-      
+
     !! Material behaviour
     call material_lib(MATERIAL_PROPERTIES,TENSOR,MCRD,ddsdde)
- 
+
     !! Loop on integration points
     do n = 1,NBINT
         !! Compute NURBS basis functions and derivatives
        call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
-         
+
         !! Compute stiffness matrix
         call stiffmatrix_byCP(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,  &
             &        stiff)
-                  
+
         !! Assemble AMATRIX
         dvol = GaussPdsCoord(1,n)*ABS(detJac)
         AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
@@ -129,7 +129,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                 loadcount =loadcount+MCRD
                 pointB(:) =load_additionalInfos(loadcount:loadcount+MCRD)
                 loadcount =loadcount+MCRD
-               
+
                 vectD(:)  = pointB(:) - pointA(:)
                 vectD(:)  = vectD(:)/SQRT(SUM(vectD(:)*vectD(:)))
                 vectAG(:) = pointGP(:) - pointA(:)
@@ -147,7 +147,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
             kload = kload + load_target_nbelem(i_load)
         enddo
     enddo   !! End of the loop on integration points
-      
+
     !! Loop for load : find boundary loads
     kk = 0
     do i = 1,nb_load
@@ -161,13 +161,12 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                 loadcount=loadcount+1
             endif
             call Gauss (NbPtInt,MCRD,GaussPdsCoord,KNumFace)
-            
+
             FbL(:) = zero
             do n = 1,NbPtInt**(MCRD-1)
-               
+
                 call shapPress(R,VectNorm,DetJac,COORDS,        &
-                    &   GaussPdsCoord(2:,n),MCRD,KNumFace,KTypeDload,   &
-                    &   VectNorm)
+                    &   GaussPdsCoord(2:,n),MCRD,KNumFace,KTypeDload)
 
                 dvol = GaussPdsCoord(1,n)*DetJac
 
@@ -190,7 +189,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                     enddo
                 enddo
             enddo
-            
+
             !! Assemble RHS
             do k1 = 1,NDOFEL
                 RHS(k1) = RHS(k1) + FbL(k1)
@@ -198,127 +197,127 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
         endif
         kk = kk + load_target_nbelem(i)
     enddo
-      
+
 end subroutine UELMAT_byCP
 
 
-      
+
 !! ***************************************************************************
 !! *       THE FOLLOWING ROUTINES ARE OBSOLETE AND NOT USED ANYMORE          *
 !! ***************************************************************************
-      
-!       
-! 
-! 
-!       
+
+!
+!
+!
+!
 !       SUBROUTINE UELMAT(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,TENSOR,
 !      1     MATERIAL_PROPERTIES,nb_load,indDLoad,load_target_nbelem,
 !      2     JDLType,ADLMAG,RHS,AMATRX)
-!       
+!
 !       use parameters
-!       
+!
 !       Implicit None
-!       
+!
 ! c     Input arguments :
 ! c     ---------------
 !       Integer, intent(in) :: NDOFEL,MCRD,NNODE,JELEM,NBINT
 !       Character(len=*), intent(in) :: TENSOR
 !       Double precision, intent(in) :: COORDS, MATERIAL_PROPERTIES
 !       dimension COORDS(MCRD,NNODE),MATERIAL_PROPERTIES(2)
-!       
+!
 !       Integer, intent(in) :: indDLoad,load_target_nbelem,JDLType,nb_load
-!       
+!
 !       Double precision, intent(in) :: ADLMAG
 !       dimension ADLMAG(nb_load),
 !      &     load_target_nbelem(nb_load),JDLType(nb_load)
 !       dimension indDLoad(SUM(load_target_nbelem))
-!       
+!
 ! c     Output variables :
 ! c     ----------------
 !       Double precision, intent(out) :: RHS, AMATRX
 !       dimension RHS(NDOFEL), AMATRX(NDOFEL,NDOFEL)
-!             
-!       
+!
+!
 ! c     Local variables :
 ! c     ---------------
-!       
+!
 ! !     For gauss points
 !       Integer :: NbPtInt, n
 !       Double precision :: GaussPdsCoord
 !       dimension GaussPdsCoord(MCRD+1,NBINT)
-!       
+!
 ! !     For nurbs basis functions
 !       Double precision :: R, dRdx, DetJac
 !       dimension R(NNODE),dRdx(MCRD,NNODE)
-!       
+!
 ! !     For material behaviour
 !       Double precision :: ddsdde
 !       dimension ddsdde(2*MCRD,2*MCRD)
-!       
+!
 ! !     For stiffness matrix
 !       Integer :: k1,k2,ntens
 !       Double precision :: stiff,dvol
 !       dimension stiff(NDOFEL,NDOFEL)
-!       
+!
 ! !     For load vector
 !       Integer :: i,kk,KNumFace,KTypeDload,numPC,numI
 !       Double precision :: FbL,VectNorm, y
 !       dimension FbL(NDOFEL),VectNorm(MCRD)
-!       
-!       
-!       
+!
+!
+!
 ! C     ------------------------------------------------------------------
-! 
+!
 ! c     Initialization :
 ! c     --------------
 !       ntens   = 2*MCRD          ! size of stiffness tensor
 !       NbPtInt = int( NBINT**(1.0/float(MCRD)) ) ! nb gauss pts per dir.
 !       if (NbPtInt**MCRD<NBINT) NbPtInt = NbPtInt + 1
-!       
+!
 ! c     Defining Gauss points coordinates and weights
 !       call Gauss(NbPtInt,MCRD,GaussPdsCoord,0)
-!       
+!
 ! c     Stiffness matrix and load vector initialized to zero
 !       RHS(:) = zero
 !       AMATRX(:,:) = zero
-!       
+!
 ! c     Material behaviour
 !       call material_lib(MATERIAL_PROPERTIES,TENSOR,MCRD,ddsdde)
-! c     
+! c
 ! c     ..................................................................
 ! c
 ! C     Computation :
 ! c     -----------
-!       
-!       
+!
+!
 ! c     Loop on integration points
 !       Do n = 1,NBINT
 ! c     Computing NURBS basis functions and derivatives
 !          call shap (dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
-! 
+!
 ! c     Computing stiffness matrix
 !          call stiffmatrix(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,stiff)
-!                   
+!
 ! c     Assembling AMATRIX
-!          dvol = GaussPdsCoord(1,n)*detJac 
+!          dvol = GaussPdsCoord(1,n)*detJac
 !          Do k2 = 1,NDOFEL
 !             Do k1 = 1,k2 !1,NDOFEL
 !                AMATRX(k1,k2) = AMATRX(k1,k2) + stiff(k1,k2)*dvol
 !             Enddo
 !          Enddo
 !       Enddo
-!       
+!
 ! c     Symmetry
 !       Do k2 = 1,NDOFEL-1
 !          Do k1 = k2+1,NDOFEL
 !             AMATRX(k1,k2) = AMATRX(k2,k1)
 !          Enddo
 !       Enddo
-! 
+!
 ! c     End of the loop on integration points on main surf
 ! c
 ! c     ..................................................................
-! c     
+! c
 ! c     Loop for load : find boundary loads
 !       kk = 0
 !       Do i = 1,nb_load
@@ -327,12 +326,12 @@ end subroutine UELMAT_byCP
 ! c     Defining Gauss points coordinates and weights on surf(3D)/edge(2D)
 !             call LectCle (JDLType(i),KNumFace,KTypeDload)
 !             call Gauss (NbPtInt,MCRD,GaussPdsCoord,KNumFace)
-!             
+!
 !             FbL(:) = zero
 !             Do n = 1,NbPtInt**(MCRD-1)
-! 
+!
 !                If (KTypeDload==7) then
-!                   
+!
 !                call shapPress(R,VectNorm,DetJac,COORDS,
 !      &              GaussPdsCoord(2:,n),MCRD,KNumFace,2,
 !      &              VectNorm)
@@ -349,17 +348,17 @@ end subroutine UELMAT_byCP
 !      &                 VectNorm)
 !                   VectNorm(1:2) = zero
 !                   dvol = ADLMAG(i)*GaussPdsCoord(1,n)*DetJac
-!                   
+!
 !                Else
-!                   
+!
 !                   call shapPress(R,VectNorm,DetJac,COORDS,
 !      &                 GaussPdsCoord(2:,n),MCRD,KNumFace,KTypeDload,
 !      &                 VectNorm)
 !                   dvol = ADLMAG(i)*GaussPdsCoord(1,n)*DetJac
 !                Endif
-! 
-!                
-! 
+!
+!
+!
 !                Do numPC = 1,NNODE
 !                   numI = (NumPC-1)*MCRD
 !                   Do k2 = 1,MCRD
@@ -369,7 +368,7 @@ end subroutine UELMAT_byCP
 !                   Enddo
 !                Enddo
 !             Enddo
-!             
+!
 ! c     Assembling RHS
 !             Do k1 = 1,NDOFEL
 !                RHS(k1) = RHS(k1) + FbL(k1)
@@ -377,142 +376,142 @@ end subroutine UELMAT_byCP
 !          Endif
 !          kk = kk + load_target_nbelem(i)
 !       Enddo
-!       
+!
 !       End SUBROUTINE UELMAT
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
 !       SUBROUTINE UELMAT_wCentri(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,
 !      1     TENSOR,MATERIAL_PROPERTIES,nb_load,indDLoad,
 !      2     load_target_nbelem,JDLType,ADLMAG,RHS,AMATRX)
-!       
+!
 !       use parameters
-!       
+!
 !       Implicit None
-!       
+!
 ! c     Input arguments :
 ! c     ---------------
 !       Integer, intent(in) :: NDOFEL,MCRD,NNODE,JELEM,NBINT
 !       Character(len=*), intent(in) :: TENSOR
 !       Double precision, intent(in) :: COORDS, MATERIAL_PROPERTIES
 !       dimension COORDS(MCRD,NNODE),MATERIAL_PROPERTIES(2)
-!       
+!
 !       Integer, intent(in) :: indDLoad,load_target_nbelem,JDLType,nb_load
-!       
+!
 !       Double precision, intent(in) :: ADLMAG
 !       dimension ADLMAG(nb_load),
 !      &     load_target_nbelem(nb_load),JDLType(nb_load)
 !       dimension indDLoad(SUM(load_target_nbelem))
-!       
+!
 ! c     Output variables :
 ! c     ----------------
 !       Double precision, intent(out) :: RHS, AMATRX
 !       dimension RHS(NDOFEL), AMATRX(MCRD,MCRD,NNODE*(NNODE+1)/2)
-!       
-!       
+!
+!
 ! c     Local variables :
 ! c     ---------------
-!       
+!
 ! !     For gauss points
 !       Integer :: NbPtInt, n
 !       Double precision :: GaussPdsCoord
 !       dimension GaussPdsCoord(MCRD+1,NBINT)
-!       
+!
 ! !     For nurbs basis functions
 !       Double precision :: R, dRdx, DetJac
 !       dimension R(NNODE),dRdx(MCRD,NNODE)
-!       
+!
 ! !     For material behaviour
 !       Double precision :: ddsdde
 !       dimension ddsdde(2*MCRD,2*MCRD)
-!       
+!
 ! !     For stiffness matrix
 !       Integer :: k1,k2,ntens
 !       Double precision :: stiff,dvol
 !       dimension stiff( MCRD,MCRD,NNODE*(NNODE+1)/2 )
-!       
+!
 ! !     For load vector
 !       Integer :: i,kk,KNumFace,KTypeDload,numPC,numI
 !       Double precision :: FbL,VectNorm, y
 !       dimension FbL(NDOFEL),VectNorm(MCRD)
-!       
+!
 ! !      For centrifugal load
 !       Integer :: cp
 !       Double precision :: pointA,pointB,pointGP,vectU,normU,vectV,normV,
 !      &     vectW,vectD,distR,omegaRot,density
 !       dimension pointA(3),pointB(3),pointGP(3),vectU(3),vectV(3),
 !      &     vectW(3),vectD(3)
-! 
-! 
-!       
+!
+!
+!
 ! C     ------------------------------------------------------------------
-! 
+!
 ! c     Initialization :
 ! c     --------------
 !       ntens   = 2*MCRD          ! size of stiffness tensor
 !       NbPtInt = int( NBINT**(1.0/float(MCRD)) ) ! nb gauss pts per dir.
 !       if (NbPtInt**MCRD<NBINT) NbPtInt = NbPtInt + 1
-!       
+!
 !       pointA(:) = (/ zero,zero,zero /)
 !       pointB(:) = (/  one,zero,zero /)
 !       omegaRot  = 1000.d0
@@ -520,50 +519,50 @@ end subroutine UELMAT_byCP
 !       vectU(:)  = pointB(:) - pointA(:)
 !       call norm(vectU(:),3,normU)
 !       vectU(:) = vectU(:)/normU
-! 
-! 
+!
+!
 ! c     Defining Gauss points coordinates and weights
 !       call Gauss(NbPtInt,MCRD,GaussPdsCoord,0)
-!       
+!
 ! c     Stiffness matrix and load vector initialized to zero
 !       RHS(:)        = zero
 !       AMATRX(:,:,:) = zero
-!       
+!
 ! c     Material behaviour
 !       call material_lib(MATERIAL_PROPERTIES,TENSOR,MCRD,ddsdde)
-! c     
+! c
 ! c     ..................................................................
 ! c
 ! C     Computation :
 ! c     -----------
-!       
+!
 ! c     Loop on integration points
 !       Do n = 1,NBINT
 ! c     Computing NURBS basis functions and derivatives
 !          call shap (dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
-!          
+!
 ! c     Computing stiffness matrix
 !          call stiffmatrix_byCP(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,
 !      &        stiff)
-!                   
+!
 ! c     Assembling AMATRIX
 !          dvol = GaussPdsCoord(1,n)*detJac
 !          AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
-! 
+!
 ! c     Centrifugal load
 !          ! Gauss point location
 !          pointGP(:) = zero
 !          Do cp = 1,NNODE
 !             pointGP(:) = pointGP(:) + R(cp)*COORDS(:,cp)
 !          Enddo
-! 
+!
 !          ! Distance to rotation axis
 !          vectD(:) = zero
 !          call CROSS(pointGP(:)-pointA(:),vectU(:),vectD(:))
 !          call norm(vectD(:),3,distR)
 !          vectW(:) = vectD(:)/distR
 !          call CROSS(vectW(:),vectU(:),vectV(:))
-!          
+!
 !          ! update load vector
 !          kk = 0
 !          Do cp = 1,NNODE
@@ -573,14 +572,14 @@ end subroutine UELMAT_byCP
 !      &              - density*omegaRot**two*distR*vectV(i)*R(cp)*dvol
 !             Enddo
 !          Enddo
-!          
-!          
+!
+!
 !       Enddo
-!       
+!
 ! c     End of the loop on integration points on main surf
 ! c
 ! c     ..................................................................
-! c     
+! c
 ! c     Loop for load : find boundary loads
 !       kk = 0
 !       Do i = 1,nb_load
@@ -589,16 +588,16 @@ end subroutine UELMAT_byCP
 ! c     Defining Gauss points coordinates and weights on surf(3D)/edge(2D)
 !             call LectCle (JDLType(i),KNumFace,KTypeDload)
 !             call Gauss (NbPtInt,MCRD,GaussPdsCoord,KNumFace)
-!             
+!
 !             FbL(:) = zero
 !             Do n = 1,NbPtInt**(MCRD-1)
-!                
+!
 !                call shapPress(R,VectNorm,DetJac,COORDS,
 !      &              GaussPdsCoord(2:,n),MCRD,KNumFace,KTypeDload,
 !      &              VectNorm)
 !                dvol = ADLMAG(i)*GaussPdsCoord(1,n)*DetJac
-! 
-!                
+!
+!
 !                Do numPC = 1,NNODE
 !                   numI = (NumPC-1)*MCRD
 !                   Do k2 = 1,MCRD
@@ -608,7 +607,7 @@ end subroutine UELMAT_byCP
 !                   Enddo
 !                Enddo
 !             Enddo
-!             
+!
 ! c     Assembling RHS
 !             Do k1 = 1,NDOFEL
 !                RHS(k1) = RHS(k1) + FbL(k1)
@@ -616,116 +615,116 @@ end subroutine UELMAT_byCP
 !          Endif
 !          kk = kk + load_target_nbelem(i)
 !       Enddo
-!       
+!
 !       End SUBROUTINE UELMAT_wCentri
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
-! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
 ! c     ------------------------------------------------------------------
-! c     
+! c
 ! c     Formulation solide en utilisant les coordonnees curvilignes
-! c     
-! 
+! c
+!
 !       SUBROUTINE UELMAT_curvilinear(NDOFEL,MCRD,NNODE,JELEM,NBINT,
 !      1     COORDS,TENSOR,MATERIAL_PROPERTIES,nb_load,indDLoad,
 !      2     load_target_nbelem,JDLType,ADLMAG,RHS,AMATRX)
-!       
+!
 !       use parameters
 !       use nurbspatch
-!       
+!
 !       Implicit None
-!       
+!
 ! c     Input arguments :
 ! c     ---------------
 !       Integer, intent(in) :: NDOFEL,MCRD,NNODE,JELEM,NBINT
 !       Character(len=*), intent(in) :: TENSOR
 !       Double precision, intent(in) :: COORDS, MATERIAL_PROPERTIES
 !       dimension COORDS(MCRD,NNODE),MATERIAL_PROPERTIES(2)
-!       
+!
 !       Integer, intent(in) :: indDLoad,load_target_nbelem,JDLType,nb_load
-!       
+!
 !       Double precision, intent(in) :: ADLMAG
 !       dimension ADLMAG(nb_load),
 !      &     load_target_nbelem(nb_load),JDLType(nb_load)
 !       dimension indDLoad(SUM(load_target_nbelem))
-!       
+!
 ! c     Output variables :
 ! c     ----------------
 !       Double precision, intent(out) :: RHS, AMATRX
 !       dimension RHS(NDOFEL), AMATRX(MCRD,MCRD,NNODE*(NNODE+1)/2)
-!       
-!       
+!
+!
 ! c     Local variables :
 ! c     ---------------
-!       
+!
 ! !     For gauss points
 !       Integer :: NbPtInt, n
 !       Double precision :: GaussPdsCoord,PtGauss
 !       dimension GaussPdsCoord(MCRD+1,NBINT),PtGauss(MCRD+1)
-!       
+!
 ! !     For nurbs basis functions
 !       Double precision :: XI, R, dRdxi, DetJac
 !       dimension R(NNODE),dRdxi(NNODE,3),XI(3)
-!       
+!
 ! !     For curvilinear quantities
 !       Double precision :: AI,AAI,AAE,det,scal
 !       dimension AI(3,MCRD),AAI(MCRD,MCRD),AAE(MCRD,MCRD)
-! 
+!
 ! !     For material behaviour
 !       Double precision :: ddsdde,coef,coef1,coef2,E,nu
 !       dimension ddsdde(2*MCRD,2*MCRD)
-!       
+!
 ! !     For stiffness matrix
 !       Integer :: i,j, k1,k2,ntens,cp
 !       Double precision :: stiff,dvol,vectV,normV
 !       dimension stiff( MCRD,MCRD,NNODE*(NNODE+1)/2 ),vectV(3)
-!       
+!
 ! !     For load vector
 !       Integer :: kk,KNumFace,KTypeDload,numPC,numI
 !       Double precision :: FbL,VectNorm, y
 !       dimension FbL(NDOFEL),VectNorm(MCRD)
-!       
-!       
-!       
+!
+!
+!
 ! C     ------------------------------------------------------------------
-! 
+!
 ! c     Initialization :
 ! c     --------------
 !       ntens   = 2*MCRD          ! size of stiffness tensor
 !       NbPtInt = int( NBINT**(1.0/float(MCRD)) ) ! nb gauss pts per dir.
 !       if (NbPtInt**MCRD<NBINT) NbPtInt = NbPtInt + 1
-!       
+!
 ! c     Defining Gauss points coordinates and weights
 !       call Gauss(NbPtInt,MCRD,GaussPdsCoord,0)
-!       
+!
 ! c     Stiffness matrix and load vector initialized to zero
 !       RHS(:)        = zero
 !       AMATRX(:,:,:) = zero
-!       
+!
 ! c     Material behaviour
 !       !call material_lib(MATERIAL_PROPERTIES,TENSOR,MCRD,ddsdde)
 !       E  = MATERIAL_PROPERTIES(1)
@@ -733,19 +732,19 @@ end subroutine UELMAT_byCP
 !       coef  = E/(one-nu*nu)
 !       coef1 = E/two/(one+nu)
 !       coef2 = two*nu/(one-two*nu)
-! 
-! c     
+!
+! c
 ! c     ..................................................................
 ! c
 ! C     Computation :
 ! c     -----------
-!       
+!
 ! c     Loop on integration points
 !       Do n = 1,NBINT
 ! c     Computing NURBS basis functions and derivatives
 !          R(:)       = zero
 !          dRdxi(:,:) = zero
-!          
+!
 !          XI(:)      = zero
 !          PtGauss(:) = GaussPdsCoord(2:,n)
 !          DetJac     = GaussPdsCoord( 1,n)
@@ -755,7 +754,7 @@ end subroutine UELMAT_byCP
 !             DetJac  = DetJac * 0.5d0*(Ukv_elem(2,i) - Ukv_elem(1,i))
 !          End do
 !          call evalnurbs(XI,R,dRdxi)
-!          
+!
 ! c     Computing Covariant basis vectors
 !          AI(:,:) = zero
 !          Do i = 1,MCRD
@@ -763,7 +762,7 @@ end subroutine UELMAT_byCP
 !                AI(:MCRD,i) = AI(:MCRD,i) + dRdxi(cp,i)*COORDS(:,cp)
 !             Enddo
 !          Enddo
-!          
+!
 ! c     Computing material stiffness tensor
 !          AAI(:,:) = zero
 !          Do i = 1,MCRD
@@ -773,12 +772,12 @@ end subroutine UELMAT_byCP
 !             Enddo
 !          Enddo
 !          call MatrixInv(AAE, AAI, det, MCRD)
-!          
-!          
-!          
+!
+!
+!
 !          ddsdde(:,:) = zero
 !          if (TENSOR == 'PSTRESS') then
-!          
+!
 !          ddsdde(1,1) = AAE(1,1)*AAE(1,1)
 !          ddsdde(2,2) = AAE(2,2)*AAE(2,2)
 !          ddsdde(4,4) = 0.5d0*
@@ -790,38 +789,38 @@ end subroutine UELMAT_byCP
 !          ddsdde(4,1) = ddsdde(1,4)
 !          ddsdde(4,2) = ddsdde(2,4)
 !          ddsdde(:,:) = coef*ddsdde(:,:)
-!          
+!
 !          else
-!             
+!
 !          Do i = 1,MCRD
 !          ddsdde(i,i) = two*AAE(i,i)*AAE(i,i) + coef2*AAE(i,i)*AAE(i,i)
 !          Do j = i+1,MCRD
 !          ddsdde(i,j) = two*AAE(i,j)*AAE(i,j) + coef2*AAE(i,i)*AAE(j,j)
 !          Enddo
-!          
+!
 !          ddsdde(i,4) = two*AAE(i,1)*AAE(i,2) + coef2*AAE(i,i)*AAE(1,2)
 !          if (MCRD==3) then
 !          ddsdde(i,5) = two*AAE(i,1)*AAE(i,3) + coef2*AAE(i,i)*AAE(1,3)
 !          ddsdde(i,6) = two*AAE(i,2)*AAE(i,3) + coef2*AAE(i,i)*AAE(2,3)
 !          Endif
 !          Enddo
-!          
-!          ddsdde(4,4) = AAE(1,1)*AAE(2,2) + AAE(1,2)*AAE(2,1) 
+!
+!          ddsdde(4,4) = AAE(1,1)*AAE(2,2) + AAE(1,2)*AAE(2,1)
 !      &               + coef2*AAE(1,2)*AAE(1,2)
 !          if (MCRD==3) then
-!          ddsdde(5,5) = AAE(1,1)*AAE(3,3) + AAE(1,3)*AAE(3,1) 
+!          ddsdde(5,5) = AAE(1,1)*AAE(3,3) + AAE(1,3)*AAE(3,1)
 !      &               + coef2*AAE(1,3)*AAE(1,3)
-!          ddsdde(6,6) = AAE(2,2)*AAE(3,3) + AAE(2,3)*AAE(3,2) 
+!          ddsdde(6,6) = AAE(2,2)*AAE(3,3) + AAE(2,3)*AAE(3,2)
 !      &               + coef2*AAE(2,3)*AAE(2,3)
-!          
-!          ddsdde(4,5) = AAE(1,1)*AAE(2,3) + AAE(1,3)*AAE(2,1) 
+!
+!          ddsdde(4,5) = AAE(1,1)*AAE(2,3) + AAE(1,3)*AAE(2,1)
 !      &               + coef2*AAE(1,2)*AAE(1,3)
-!          ddsdde(4,6) = AAE(1,2)*AAE(2,3) + AAE(1,3)*AAE(2,2) 
+!          ddsdde(4,6) = AAE(1,2)*AAE(2,3) + AAE(1,3)*AAE(2,2)
 !      &               + coef2*AAE(1,2)*AAE(2,3)
-!          ddsdde(5,6) = AAE(1,2)*AAE(3,3) + AAE(1,3)*AAE(3,2) 
+!          ddsdde(5,6) = AAE(1,2)*AAE(3,3) + AAE(1,3)*AAE(3,2)
 !      &               + coef2*AAE(1,3)*AAE(2,3)
 !          Endif
-!          
+!
 !          ! - symmetry
 !          Do i = 2,ntens
 !          Do j = 1,i-1
@@ -829,14 +828,14 @@ end subroutine UELMAT_byCP
 !          Enddo
 !          Enddo
 !          ddsdde(:,:) = coef1*ddsdde(:,:)
-!          
+!
 !          Endif
-! 
-! 
+!
+!
 ! c     Computing stiffness matrix
 !          call stiffmatrix_curv(ntens,NNODE,MCRD,NDOFEL,ddsdde,AI,
 !      &        dRdxi(:,:MCRD),stiff)
-!          
+!
 ! c     Assembling AMATRIX
 !          call cross(AI(:,1),AI(:,2),vectV(:))
 !          if (MCRD==2) then
@@ -846,13 +845,13 @@ end subroutine UELMAT_byCP
 !          endif
 !          dvol   = normV*detJac
 !          AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
-!          
+!
 !       Enddo
-!       
+!
 ! c     End of the loop on integration points on main surf
 ! c
 ! c     ..................................................................
-! c     
+! c
 ! c     Loop for load : find boundary loads
 !       kk = 0
 !       Do i = 1,nb_load
@@ -861,16 +860,16 @@ end subroutine UELMAT_byCP
 ! c     Defining Gauss points coordinates and weights on surf(3D)/edge(2D)
 !             call LectCle (JDLType(i),KNumFace,KTypeDload)
 !             call Gauss (NbPtInt,MCRD,GaussPdsCoord,KNumFace)
-!             
+!
 !             FbL(:) = zero
 !             Do n = 1,NbPtInt**(MCRD-1)
-!                
+!
 !                call shapPress(R,VectNorm,DetJac,COORDS,
 !      &              GaussPdsCoord(2:,n),MCRD,KNumFace,KTypeDload,
 !      &              VectNorm)
 !                dvol = ADLMAG(i)*GaussPdsCoord(1,n)*DetJac
-! 
-!                
+!
+!
 !                Do numPC = 1,NNODE
 !                   numI = (NumPC-1)*MCRD
 !                   Do k2 = 1,MCRD
@@ -880,7 +879,7 @@ end subroutine UELMAT_byCP
 !                   Enddo
 !                Enddo
 !             Enddo
-!             
+!
 ! c     Assembling RHS
 !             Do k1 = 1,NDOFEL
 !                RHS(k1) = RHS(k1) + FbL(k1)
@@ -888,14 +887,14 @@ end subroutine UELMAT_byCP
 !          Endif
 !          kk = kk + load_target_nbelem(i)
 !       Enddo
-!       
+!
 !       !print*,''
 !       !Do i = 1,ntens
 !       !   print*,ddsdde(i,:ntens)
 !       !Enddo
-!       
+!
 !       End SUBROUTINE UELMAT_curvilinear
-! 
-! 
+!
+!
 
 
