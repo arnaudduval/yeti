@@ -223,7 +223,7 @@ class IGAparametrization:
         mechSet.append([self._COORDS[:, indCP], indCP.size])
         IEN = [tabCP[self._IEN[i] - 1] for i in listpatch]
         mechSet.append(IEN)
-        mechSet.append(self._MATERIAL_PROPERTIES[:, listpatch])
+        mechSet.append((self._MATERIAL_PROPERTIES[:, listpatch], self._N_MATERIAL_PROPERTIES[listpatch]))
         PROPS = [self._PROPS[i].copy() for i in listpatch]
         if updatePROPS:
             for i in range(0, len(listpatch)):
