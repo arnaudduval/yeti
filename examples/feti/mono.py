@@ -43,6 +43,7 @@ modeleIGA._NBPINT[ np.where(modeleIGA._ELT_TYPE == 'U00') ] = 6
 ndof = modeleIGA._nb_dof_free
 idof = modeleIGA._ind_dof_free[:ndof]-1
 
+
 t1 = time.time()
 data,row,col,Fb = build_stiffmatrix( *modeleIGA.get_inputs4system_elemStorage() )
 Kside = sp.coo_matrix((data,(row,col)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot),
