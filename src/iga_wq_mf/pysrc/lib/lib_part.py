@@ -143,12 +143,12 @@ class part():
 		inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
 		if self.dim == 2:
 			Jinterp, detJinterp = geophy.eval_jacobien_2d(*inputs)[:2]
-			posinterp = geophy.interpolate_meshgrid_2d(*inputs)
+			meshinterp = geophy.interpolate_meshgrid_2d(*inputs)
 		elif self.dim == 3: 
 			Jinterp, detJinterp = geophy.eval_jacobien_3d(*inputs)[:2]
-			posinterp = geophy.interpolate_meshgrid_3d(*inputs)
+			meshinterp = geophy.interpolate_meshgrid_3d(*inputs)
 
-		if u_ctrlpts is None: return posinterp, Jinterp, detJinterp
+		if u_ctrlpts is None: return meshinterp, Jinterp, detJinterp, None
 
 		# Get interpolation
 		u_temp = np.atleast_2d(u_ctrlpts)
@@ -158,7 +158,7 @@ class part():
 		elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
 		if nbDOF == 1: uinterp = np.ravel(uinterp)
 	
-		return posinterp, Jinterp, detJinterp, uinterp
+		return meshinterp, Jinterp, detJinterp, uinterp
 
 	def exportResultsCP(self, u_ctrlpts=None, folder=None, nbDOF=3, sampleSize=101): 
 		""" Export solution in VTK format. 
@@ -181,9 +181,9 @@ class part():
 		# ------------------
 		# Get interpolation
 		# ------------------
-		mesh_interp, _, detJ_interp, u_interp = self.interpolateMeshgridField(u_ctrlpts, nbDOF=nbDOF, sampleSize=sampleSize)
-		mean_detJ = statistics.mean(detJ_interp)
-		detJ_interp /= mean_detJ
+		meshinterp, Jinterp, detJinterp, u_interp = self.interpolateMeshgridField(u_ctrlpts, nbDOF=nbDOF, sampleSize=sampleSize)
+		mean_detJ = statistics.mean(detJinterp)
+		detJinterp /= mean_detJ
 
 		# ------------------
 		# Export results
@@ -199,10 +199,10 @@ class part():
 			for j in range(shape_pts[1]):
 				for i in range(shape_pts[0]):
 					pos = i + j * sampleSize + k * sampleSize**2
-					X1[i,j,k] = mesh_interp[0, pos]
-					X2[i,j,k] = mesh_interp[1, pos]
-					detJ[i,j,k] = detJ_interp[pos]
-					if self.dim == 3: X3[i,j,k] = mesh_interp[2, pos]
+					X1[i,j,k] = meshinterp[0, pos]
+					X2[i,j,k] = meshinterp[1, pos]
+					detJ[i,j,k] = detJinterp[pos]
+					if self.dim == 3: X3[i,j,k] = meshinterp[2, pos]
 					if u_interp is not None: 
 						u_interp = np.atleast_2d(u_interp)
 						for l in range(nbDOF):
