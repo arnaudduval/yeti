@@ -26,3 +26,4 @@ warnings_proj_patch*.txt
 
 examples/OPT_multi_stiffeners_position/Cylinder_multi.*
 examples/feti/results/*.vtu
+examples/feti/pcpg_cvrg.txt
