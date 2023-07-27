@@ -20,3 +20,4 @@ examples/OPT_multi_stiffeners_position/*/*.vtu
 examples/OPT_multi_stiffeners_position/*/*.vtk
 examples/OPT_multi_stiffeners_position/*/*.png
 examples/OPT_multi_stiffeners_position/Cylinder_multi.*
+examples/feti/results/*.vtu
