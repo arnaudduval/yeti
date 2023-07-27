@@ -94,7 +94,7 @@ if not dataExist:
 			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext=Fext[:, :lastStep], 
 														time_list=time_list[:lastStep], theta=1.0, thresholdNR=1e-8)
 			# np.savetxt(filename, resPCG)
-			model.exportResultsCP(u_ctrlpts=Tinout[:, lastStep-1], folder=folder, nbDOF=1)
+			model.exportResultsCP(fields=Tinout[:, lastStep-1], folder=folder, nbDOF=1)
 
 else:
 

@@ -66,11 +66,8 @@ Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
 # -------------
 # ELASTICITY
 # -------------
-start = time.time()
 displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-stop = time.time()
-print('CPU time: %5e' %(stop-start))
-model.exportResultsCP(u_ctrlpts=displacement, nbDOF=2, folder=folder)
+model.exportResultsCP(fields={'disp':displacement, 'temp':np.ravel(displacement[0, :])}, folder=folder)
 
 strain  = problem.compute_strain(displacement)
 Tstrain = array2symtensorForAll(strain, 2)
@@ -82,7 +79,7 @@ Tstress = 2*problem.material.lame_mu*(devStrain)
 stress  = symtensor2arrayForAll(Tstress, 2)
 stress_vm = computeVMStressForAll(stress, 2)
 
-disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, nbDOF=2, sampleSize=2500)[-1]
+disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, sampleSize=2500)[-1]
 disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
 disp_interp = np.vstack([disp_interp, disp_norm])
 np.save(folder+'disp_interp_ref.npy', disp_interp)

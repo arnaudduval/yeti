@@ -1,5 +1,6 @@
 """
 .. This module contains functions to construct specific geometries using only B-splines
+.. ATTENTION: it only use uniform and open knotvectors
 .. Joaquin Cornejo
 """
 
@@ -251,7 +252,6 @@ class Geomdl():
 	# ----------------
 	# CREATE GEOMETRY
 	# ----------------
-	# 1D
 	def __getCtrlPts_quarterCircle(self, degree, nbel):
 		nb_ctrlpts = degree + nbel
 		knotvector = createUniformMaxregularKnotvector(degree, nbel)
@@ -275,9 +275,8 @@ class Geomdl():
 		crv.degree  = degree
 		crv.ctrlpts = ctrlpts
 		crv.knotvector = knotvector
-		if nbel>1:
-			for knot in np.linspace(0, 1, nbel+1)[1:-1]:
-				operations.insert_knot(crv, [knot], [1])
+		for knot in np.linspace(0, 1, nbel+1)[1:-1]:
+			operations.insert_knot(crv, [knot], [1])
 		knotvector = crv.knotvector
 		ctrlpts    = np.array(crv.ctrlpts)[:, 0]
 		return knotvector, ctrlpts

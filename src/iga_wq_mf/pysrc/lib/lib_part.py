@@ -130,7 +130,9 @@ class part():
 	# POST-PROCESSING 
 	# ----------------
 
-	def interpolateMeshgridField(self, u_ctrlpts, nbDOF=3, sampleSize=101):
+	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=101, isAll=True):
+		# Initialize all outputs
+		meshinterp, Jinterp, detJinterp, uinterp = None, None, None, None
 
 		# Get basis using fortran
 		knots = np.linspace(0, 1, sampleSize)
@@ -140,27 +142,27 @@ class part():
 			basis.append(dersb); indices.append(indi); indices.append(indj)
 
 		# Get position and determinant 
-		inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
-		if self.dim == 2:
-			Jinterp, detJinterp = geophy.eval_jacobien_2d(*inputs)[:2]
-			meshinterp = geophy.interpolate_meshgrid_2d(*inputs)
-		elif self.dim == 3: 
-			Jinterp, detJinterp = geophy.eval_jacobien_3d(*inputs)[:2]
-			meshinterp = geophy.interpolate_meshgrid_3d(*inputs)
+		if isAll:
+			inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
+			if self.dim == 2:
+				Jinterp, detJinterp = geophy.eval_jacobien_2d(*inputs)[:2]
+				meshinterp = geophy.interpolate_meshgrid_2d(*inputs)
+			elif self.dim == 3: 
+				Jinterp, detJinterp = geophy.eval_jacobien_3d(*inputs)[:2]
+				meshinterp = geophy.interpolate_meshgrid_3d(*inputs)
 
-		if u_ctrlpts is None: return meshinterp, Jinterp, detJinterp, None
+		if u_ctrlpts is not None: 
+			u_temp = np.atleast_2d(u_ctrlpts)
+			nr = np.size(u_temp, axis=0)
+			inputs = [*self.dim*[sampleSize], *indices, *basis, u_temp]
 
-		# Get interpolation
-		u_temp = np.atleast_2d(u_ctrlpts)
-		inputs = [*self.dim*[sampleSize], *indices, *basis, u_temp]
+			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)    
+			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
+			if nr == 1: uinterp = np.ravel(uinterp)
 
-		if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)    
-		elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
-		if nbDOF == 1: uinterp = np.ravel(uinterp)
-	
 		return meshinterp, Jinterp, detJinterp, uinterp
 
-	def exportResultsCP(self, u_ctrlpts=None, folder=None, nbDOF=3, sampleSize=101): 
+	def exportResultsCP(self, fields={}, folder=None, sampleSize=101): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
@@ -172,91 +174,35 @@ class part():
 		if not os.path.isdir(folder): os.mkdir(folder)
 		print("File saved in %s" %folder)
 
-		if u_ctrlpts is None: pass
-		elif isinstance(u_ctrlpts, np.ndarray): 
-			if np.size(u_ctrlpts)%self.nbctrlpts_total != 0: 
-				raise Warning('Not enough control points')
-		else: raise Warning('Solution must be ndarray type')
+		# Only interpolate meshgrid
+		meshinterp, _, detJinterp = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
+		detJinterp /= statistics.mean(detJinterp)
 
-		# ------------------
-		# Get interpolation
-		# ------------------
-		meshinterp, Jinterp, detJinterp, u_interp = self.interpolateMeshgridField(u_ctrlpts, nbDOF=nbDOF, sampleSize=sampleSize)
-		mean_detJ = statistics.mean(detJinterp)
-		detJinterp /= mean_detJ
-
-		# ------------------
-		# Export results
-		# ------------------
-		shape_pts = [1, 1, 1]
-		for dim in range(self.dim): shape_pts[dim] = sampleSize
-		shape_pts  = tuple(shape_pts)
-		X1, X2, X3 = np.zeros(shape_pts), np.zeros(shape_pts), np.zeros(shape_pts)
-		U    = np.zeros((nbDOF, *shape_pts))
-		detJ = np.zeros(shape_pts)
-
-		for k in range(shape_pts[2]):
-			for j in range(shape_pts[1]):
-				for i in range(shape_pts[0]):
-					pos = i + j * sampleSize + k * sampleSize**2
-					X1[i,j,k] = meshinterp[0, pos]
-					X2[i,j,k] = meshinterp[1, pos]
-					detJ[i,j,k] = detJinterp[pos]
-					if self.dim == 3: X3[i,j,k] = meshinterp[2, pos]
-					if u_interp is not None: 
-						u_interp = np.atleast_2d(u_interp)
-						for l in range(nbDOF):
-							U[l,i,j,k] = u_interp[l, pos]
+		shape = [1, 1, 1]
+		for dim in range(self.dim): shape[dim] = sampleSize
+		shape = tuple(shape)
+		X = [np.zeros(shape) for i in range(3)]
+		for i in range(2): X[i] = np.reshape(np.ravel(meshinterp[i, :]), shape, order='F')
+		if self.dim == 3:  X[2] = np.reshape(np.ravel(meshinterp[-1, :]), shape, order='F')
 		
 		# Create point data 
 		pointData = {}
-		if u_interp is not None: 
-			for l in range(nbDOF):
-				varname = 'U' + str(l+1)
-				pointData[varname] = U[l, :, :, :]
-		pointData['detJ'] = detJ
+		for fieldname, fieldvalue in fields.items():
+			fieldvalue = np.atleast_2d(fieldvalue); nr = np.size(fieldvalue, axis=0)
+			fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
+			if nr>1:
+				for l in range(nr):
+					newfieldname = fieldname + str(l+1)
+					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), shape, order='F')
+			else:
+				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), shape, order='F')
+		pointData['detJ'] = np.reshape(np.ravel(detJinterp), shape, order='F')
 
 		# Export geometry
 		try: name    = self.name
 		except: name = 'ExportFile'
 		name = folder + name
-		gridToVTK(name, X1, X2, X3, pointData=pointData)
-		
+		gridToVTK(name, X[0], X[1], X[2], pointData=pointData)
+
 		return
 
-	# def exportResultsMeshgrid(self, data_interp:dict, folder=None): 
-	# 	""" Export solution in VTK format. 
-	# 		It is possible to use Paraview to visualize data
-	# 	"""
-
-	# 	if folder == None: 
-	# 		full_path = os.path.realpath(__file__)
-	# 		dirname = os.path.dirname
-	# 		folder = dirname(dirname(full_path)) + '/results/'
-	# 	if not os.path.isdir(folder): os.mkdir(folder)
-	# 	print("File saved in %s" %folder)
-
-	# 	mesh_interp  = data_interp.get('mesh', None)
-	# 	field_interp = data_interp.get('field', None)
-	# 	shape = data_interp.get('shape', None)
-	# 	if any([mesh_interp, field_interp, shape] is None): raise Warning('Please enter meshgrid or field')
-		
-	# 	dimension = np.size(shape)
-	# 	X = [np.zeros(shape) for i in range(3)]
-	# 	for i in range(dimension): X[i] = np.reshape(mesh_interp, shape)
-		
-	# 	# Create point data 
-	# 	pointData = {}
-	# 	for fieldname, fieldvalue in data_interp.items():
-	# 		nr, nc = np.shape(fieldvalue)
-	# 		for l in range(nr):
-	# 			newfieldname = fieldname + str(l+1)
-	# 			pointData[newfieldname] = np.reshape(fieldvalue[l, :], shape)
-
-	# 	# Export geometry
-	# 	try: name    = self.name
-	# 	except: name = 'ExportFile'
-	# 	name = folder + name
-	# 	gridToVTK(name, X[0], X[1], X[2], pointData=pointData)
-		
-	# 	return
