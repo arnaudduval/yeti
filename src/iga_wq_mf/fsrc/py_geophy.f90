@@ -200,10 +200,10 @@ subroutine eval_jacobien_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     double precision, intent(in) :: data_B_u, data_B_v
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: ctrlpts
-    dimension :: ctrlpts(2, nr_u*nr_v)
+    dimension :: ctrlpts(dimen, nr_u*nr_v)
 
     double precision, intent(out) :: JJ, detJJ, invJJ
-    dimension :: JJ(2, 2, nc_u*nc_v), detJJ(nc_u*nc_v), invJJ(2, 2, nc_u*nc_v)
+    dimension :: JJ(dimen, dimen, nc_u*nc_v), detJJ(nc_u*nc_v), invJJ(dimen, dimen, nc_u*nc_v)
 
     ! Local data
     !-----------
@@ -350,6 +350,7 @@ subroutine l2projection_ctrlpts_2d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
     end do
 
 end subroutine l2projection_ctrlpts_2d
+
 
 !! --------- TO ERASE EVENTUALLY
 
