@@ -22,14 +22,14 @@ folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 6, 6
+degree, cuts = 4, 5
 name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			'extra':{'Rin':1.e1, 'Rex':1.e2, 
-			'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
+			'extra':{'Rin':1.0, 'Rex':4.0}
+}
 quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 modelGeo = Geomdl(geoArgs)
@@ -37,20 +37,14 @@ modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs  = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3}
+matArgs  = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio': 0.3}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(model.nbctrlpts)
 table = np.zeros((2, 2, 2), dtype=int)
-if name == 'SQ':
-	table[0, 0, 0] = 1
-	table[0, 0, 1] = 1
-elif name == 'QA':
-	# table[1, 0, 0] = 1
-	table[1, 1, 0] = 1
-	table[1, 0, 1] = 1
-else: raise Warning('Not possible')
+table[1, 1, 0] = 1
+table[1, 0, 1] = 1
 boundary.add_DirichletDisplacement(table=table)
 
 # Elasticity problem
@@ -60,20 +54,9 @@ Fext = problem.eval_surfForce(forceSurf, nbFacePosition=1)
 # -------------
 # ELASTICITY
 # -------------
-displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-
-strain_qp  = problem.compute_strain(displacement)
-Tstrain_qp = array2symtensorForAll(strain_qp, 2)
-traceStrain_qp = evalTraceForAll(strain_qp, 2)
-devStrain_qp   = Tstrain_qp
-for i in range(2): devStrain_qp[i, i, :] -= 1.0/3.0*traceStrain_qp
-
-Tstress_qp = 2*problem.material.lame_mu*devStrain_qp
-stress_qp  = symtensor2arrayForAll(Tstress_qp, 2)
-stress_vm_qp = computeVMStressForAll(stress_qp, 2)
-print(np.max(stress_vm_qp))
-stress_vm_cp = problem.L2projectionCtrlpts(datafield=stress_vm_qp)
-model.exportResultsCP(fields={'disp':displacement, 'svm':stress_vm_cp}, folder=folder)
+displacement, _, stress_qp = problem.solveElasticityProblemFT(Fext=Fext)
+stress_cp = problem.L2projectionCtrlpts(datafield=stress_qp)
+model.exportResultsCP(fields={'disp':displacement, 'S':stress_cp}, folder=folder)
 
 # disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, sampleSize=2500)[-1]
 # disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)

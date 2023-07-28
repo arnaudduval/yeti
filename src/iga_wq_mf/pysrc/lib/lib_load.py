@@ -19,23 +19,20 @@ def forceVol(P:list):
 	return force
 
 def forceSurf(P:list):
-	Tx, R = 10.0, 10.0
+	Tx, rin = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
-	r_square = x**2+y**2
-	theta_times2 = 2.0*np.arcsin(y/np.sqrt(r_square))
-	div = R**2/r_square
-	PolarM = np.zeros((2, 2, nnz))
-	PolarM[0, 0, :] = Tx/2.0*(1.0 - div + np.cos(theta_times2)*(1.0 - 4.0*div + 3.0*div**2))
-	PolarM[1, 1, :] = Tx/2.0*(1.0 + div - np.cos(theta_times2)*(1.0 + 3.0*div**2))
-	PolarM[0, 1, :] = PolarM[1, 0, :] = -Tx/2.0*(1.0 + 2*div - 3*div**2)*np.sin(theta_times2)
-	Rot = np.zeros((2, 2, nnz))
-	Rot[0, 0, :] = Rot[1, 1, :] = np.cos(theta_times2/2.0)
-	Rot[0, 1, :] = np.sin(theta_times2/2.0); Rot[1, 0, :] = -Rot[0, 1, :]
-	tmp = np.einsum('mnl,njl->mjl', PolarM, Rot)
-	CartM = np.einsum('mil,mjl->ijl', Rot, tmp)
+	r_square = x**2 + y**2
+	theta_x2 = 2.0*np.arcsin(y/np.sqrt(r_square))
+	div = rin**2/r_square # Already squared
+
+	CartSt = np.zeros((2, 2, nnz))
+	CartSt[0, 0, :] = Tx*(1.0 - div*(1.5*np.cos(theta_x2) + np.cos(2.0*theta_x2)) + 1.5*div**2*np.cos(2.0*theta_x2))
+	CartSt[1, 1, :] = Tx*(-div*(0.5*np.cos(theta_x2) - np.cos(2.0*theta_x2)) - 1.5*div**2*np.cos(2.0*theta_x2))
+	CartSt[0, 1, :] = CartSt[1, 0, :] = Tx*(-div*(0.5*np.sin(theta_x2) + np.sin(2.0*theta_x2)) + 1.5*div**2*np.sin(2.0*theta_x2))	
+	
 	F = np.zeros((2, nnz))
-	F[0, :] = CartM[0, 0, :]*Rot[0, 0, :] + CartM[0, 1, :]*Rot[0, 1, :]
-	F[1, :] = CartM[1, 0, :]*Rot[0, 0, :] + CartM[1, 1, :]*Rot[0, 1, :]
+	F[0, :] = CartSt[0, 0, :]*x/np.sqrt(r_square) + CartSt[0, 1, :]*y/np.sqrt(r_square)
+	F[1, :] = CartSt[1, 0, :]*x/np.sqrt(r_square) + CartSt[1, 1, :]*y/np.sqrt(r_square)
 	return F
 
 def powden_cube(P: list):

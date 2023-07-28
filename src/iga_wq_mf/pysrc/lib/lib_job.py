@@ -369,7 +369,10 @@ class mechaproblem(problem):
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.mf_wq_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
-		return displacement, residue
+		strain = self.compute_strain(displacement)
+		stress = self.material.evalElasticStress(strain)
+		
+		return displacement, residue, stress
 
 	# Solve using python
 	def compute_strain(self, displacement, isVoigt=False):
@@ -447,10 +450,6 @@ class mechaproblem(problem):
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
-
-			# if i%3==0:
-			# 	np.save('stress_quadPts_ref.npy', stress_r)
-			# 	np.save('disp_ctrlPts_ref.npy', disp)
 
 		return disp, resPCG_list, stress_r
 

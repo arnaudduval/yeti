@@ -172,6 +172,14 @@ class mechamat(material):
 		coefs = fun(qp)*detJ
 		return coefs
 	
+	def evalElasticStress(self, strain):
+		Tstrain = array2symtensorForAll(strain, 2)
+		traceStrain = evalTraceForAll(strain, 2)
+		Tstress = 2*self.lame_mu*Tstrain
+		for i in range(2): Tstress[i, i, :] += self.lame_lambda*traceStrain
+		stress  = symtensor2arrayForAll(Tstress, 2)
+		return stress
+	
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
