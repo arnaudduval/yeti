@@ -18,6 +18,26 @@ def forceVol(P:list):
 	force = 0.4*np.sin(P/1e3)
 	return force
 
+def forceSurf(P:list):
+	Tx, R = 10.0, 10.0
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2+y**2
+	theta_times2 = 2.0*np.arcsin(y/np.sqrt(r_square))
+	div = R**2/r_square
+	PolarM = np.zeros((2, 2, nnz))
+	PolarM[0, 0, :] = Tx/2.0*(1.0 - div + np.cos(theta_times2)*(1.0 - 4.0*div + 3.0*div**2))
+	PolarM[1, 1, :] = Tx/2.0*(1.0 + div - np.cos(theta_times2)*(1.0 + 3.0*div**2))
+	PolarM[0, 1, :] = PolarM[1, 0, :] = -Tx/2.0*(1.0 + 2*div - 3*div**2)*np.sin(theta_times2)
+	Rot = np.zeros((2, 2, nnz))
+	Rot[0, 0, :] = Rot[1, 1, :] = np.cos(theta_times2/2.0)
+	Rot[0, 1, :] = np.sin(theta_times2/2.0); Rot[1, 0, :] = -Rot[0, 1, :]
+	tmp = np.einsum('ikl,kjl->ijl', PolarM, Rot)
+	CartM = np.einsum('kil,kjl->ijl', Rot, tmp)
+	F = np.zeros((2, nnz))
+	F[0, :] = CartM[0, 0, :]*Rot[0, 0, :] + CartM[0, 1, :]*Rot[0, 1, :]
+	F[1, :] = CartM[1, 0, :]*Rot[0, 0, :] + CartM[1, 1, :]*Rot[0, 1, :]
+	return F
+
 def powden_cube(P: list):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
 		f = -div(lambda * grad(u))

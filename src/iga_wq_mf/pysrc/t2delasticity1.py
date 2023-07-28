@@ -12,6 +12,7 @@ from lib.lib_geomdl import Geomdl
 from lib.lib_part import part
 from lib.lib_material import (mechamat, array2symtensorForAll, evalTraceForAll, 
 					computeVMStressForAll, symtensor2arrayForAll)
+from lib.lib_load import forceSurf
 from lib.lib_boundary import boundaryCondition
 from lib.lib_job import mechaproblem
 
@@ -21,13 +22,13 @@ folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 2, 5
-name = 'SQ'
+degree, cuts = 4, 6
+name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			'extra':{'Rin':5.e2, 'Rex':1.e3, 
+			'extra':{'Rin':1.e1, 'Rex':1.e3, 
 			'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
 quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
 
@@ -54,35 +55,29 @@ boundary.add_DirichletDisplacement(table=table)
 
 # Elasticity problem
 problem = mechaproblem(material, model, boundary)
-
-def forceSurfFun(P:list):
-	ref  = np.array([4e1, 0.0])
-	prop = np.zeros((2, np.size(P, axis=1)))
-	for i in range(2): prop[i, :] = ref[i] 
-	return prop
-
-Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=1)
+Fext = problem.eval_surfForce(forceSurf, nbFacePosition=1)
 
 # -------------
 # ELASTICITY
 # -------------
 displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-model.exportResultsCP(fields={'disp':displacement, 'temp':np.ravel(displacement[0, :])}, folder=folder)
 
-strain  = problem.compute_strain(displacement)
-Tstrain = array2symtensorForAll(strain, 2)
-traceStrain = evalTraceForAll(strain, 2)
-devStrain   = Tstrain
-for i in range(2): devStrain[i, i, :] -= 1.0/3.0*traceStrain
+strain_qp  = problem.compute_strain(displacement)
+Tstrain_qp = array2symtensorForAll(strain_qp, 2)
+traceStrain_qp = evalTraceForAll(strain_qp, 2)
+devStrain_qp   = Tstrain_qp
+for i in range(2): devStrain_qp[i, i, :] -= 1.0/3.0*traceStrain_qp
 
-Tstress = 2*problem.material.lame_mu*(devStrain)
-stress  = symtensor2arrayForAll(Tstress, 2)
-stress_vm = computeVMStressForAll(stress, 2)
+Tstress_qp = 2*problem.material.lame_mu*devStrain_qp
+stress_qp  = symtensor2arrayForAll(Tstress_qp, 2)
+stress_vm_qp = computeVMStressForAll(stress_qp, 2)
+stress_vm_cp = problem.L2projectionCtrlpts(datafield=stress_vm_qp)
+model.exportResultsCP(fields={'disp':displacement, 'svm':stress_vm_cp}, folder=folder)
 
-disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, sampleSize=2500)[-1]
-disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
-disp_interp = np.vstack([disp_interp, disp_norm])
-np.save(folder+'disp_interp_ref.npy', disp_interp)
+# disp_interp = problem.part.interpolateMeshgridField(u_ctrlpts=displacement, sampleSize=2500)[-1]
+# disp_norm = np.sqrt(disp_interp[0, :]**2+disp_interp[1, :]**2)
+# disp_interp = np.vstack([disp_interp, disp_norm])
+# np.save(folder+'disp_interp_ref.npy', disp_interp)
 
 # fig, ax = plt.subplots()
 # # Solve in fortran 

@@ -32,17 +32,17 @@ class problem():
 		coefs = np.atleast_2d(coefs)
 
 		# Calculate vector
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+		inputs = [np.ravel(coefs), *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
 		if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
 		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
 		# Solve linear system with fortran
 		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-				*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
+				*self.part.weights, np.atleast_2d(vector), self._nbIterPCG, self._thresholdPCG]
 		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
 
-		return u_interp
+		return np.ravel(u_interp)
 
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):

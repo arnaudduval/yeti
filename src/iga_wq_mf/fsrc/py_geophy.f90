@@ -71,14 +71,14 @@ end subroutine eval_jacobien_3d
 
 subroutine interpolate_meshgrid_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, nm_u, u_ctrlpts, u_interp)
+                            data_B_u, data_B_v, data_B_w, nm, u_ctrlpts, u_interp)
     !! Computes interpolation in 3D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
     implicit none 
     ! Input / output data
     ! ------------------- 
-    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, nm_u
+    integer, intent(in) ::  nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w, nm
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -86,10 +86,10 @@ subroutine interpolate_meshgrid_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
     double precision, intent(in) :: data_B_u, data_B_v, data_B_w
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm_u, nr_u*nr_v*nr_w)
+    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nm_u, nc_u*nc_v*nc_w)
+    dimension :: u_interp(nm, nc_u*nc_v*nc_w)
 
     ! Local data
     !-----------
@@ -105,7 +105,7 @@ subroutine interpolate_meshgrid_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nn
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    do i = 1, nm_u
+    do i = 1, nm
         call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
@@ -143,7 +143,7 @@ subroutine l2projection_ctrlpts_3d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
 
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
-    dimension :: b(nr_total)
+    dimension :: b(nm, nr_total)
     
     double precision, intent(out) :: x, resPCG
     dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
@@ -158,6 +158,7 @@ subroutine l2projection_ctrlpts_3d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     ones = 1.d0
+    allocate(struct)
     call init_3datastructure(struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
@@ -176,7 +177,7 @@ subroutine l2projection_ctrlpts_3d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
                     struct%bw_T(1, 1:nnz_u, :2), struct%bw_T(2, 1:nnz_v, :2), struct%bw_T(3, 1:nnz_w, :2), &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
                     struct%eigvec(1, 1:nr_u, 1:nr_u), struct%eigvec(2, 1:nr_v, 1:nr_v), &
-                    struct%eigvec(3, 1:nr_w, 1:nr_w), nbIterPCG, threshold, b, x(i, :), resPCG(i, :))
+                    struct%eigvec(3, 1:nr_w, 1:nr_w), nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
     end do
 
 end subroutine l2projection_ctrlpts_3d
@@ -247,24 +248,24 @@ end subroutine eval_jacobien_2d
 
 subroutine interpolate_meshgrid_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, nm_u, u_ctrlpts, u_interp)
+                            data_B_u, data_B_v, nm, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
     !! IN CSR FORMAT
 
     implicit none 
     ! Input / output data
     ! -------------------   
-    integer, intent(in) ::  nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v, nm_u
+    integer, intent(in) ::  nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v, nm
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_B_u, data_B_v
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm_u, nr_u*nr_v)
+    dimension :: u_ctrlpts(nm, nr_u*nr_v)
 
     double precision, intent(out) :: u_interp
-    dimension :: u_interp(nm_u, nc_u*nc_v)
+    dimension :: u_interp(nm, nc_u*nc_v)
 
     ! Local data
     !-----------
@@ -279,7 +280,7 @@ subroutine interpolate_meshgrid_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    do i = 1, nm_u
+    do i = 1, nm
         call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
@@ -314,7 +315,7 @@ subroutine l2projection_ctrlpts_2d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
 
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
-    dimension :: b(nr_total)
+    dimension :: b(nm, nr_total)
     
     double precision, intent(out) :: x, resPCG
     dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
@@ -329,6 +330,7 @@ subroutine l2projection_ctrlpts_2d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     ones = 1.d0
+    allocate(struct)
     call init_2datastructure(struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
@@ -346,7 +348,7 @@ subroutine l2projection_ctrlpts_2d(coefs, nm, nr_total, nc_total, nr_u, nc_u, nr
                     struct%indj_T(2, 1:nnz_v), struct%bw_T(1, 1:nnz_u, :2), struct%bw_T(2, 1:nnz_v, :2), &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, &
                     struct%eigvec(1, 1:nr_u, 1:nr_u), struct%eigvec(2, 1:nr_v, 1:nr_v), &
-                    nbIterPCG, threshold, b, x(i, :), resPCG(i, :))
+                    nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
     end do
 
 end subroutine l2projection_ctrlpts_2d
