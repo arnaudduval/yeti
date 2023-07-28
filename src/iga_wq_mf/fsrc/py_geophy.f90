@@ -356,8 +356,7 @@ subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
 
 end subroutine l2projection_ctrlpts_2d
 
-subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, &
-                            indi_u, indj_u, &
+subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
                             data_B_u, u_ctrlpts, JJ)
     !! Computes jacobien matrix, its determinant and its inverse in 2D
     !! IN CSR FORMAT
@@ -369,7 +368,7 @@ subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, &
     integer, parameter :: dimen = 1
     integer, intent(in) :: nm, nr_u, nc_u, nnz_u
     integer, intent(in) :: indi_u, indj_u
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u)
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
     double precision, intent(in) :: data_B_u
     dimension :: data_B_u(nnz_u, 2)
     double precision, intent(in) :: u_ctrlpts
@@ -381,16 +380,13 @@ subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, &
     ! Local data
     !-----------
     integer :: i
-    integer :: indi_T_u
-    dimension :: indi_T_u(nc_u+1)
-    integer ::  indj_T_u
-    dimension :: indj_T_u(nnz_u)
+    integer :: indi_T_u, indj_T_u
+    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
     double precision :: data_BT_u
     dimension :: data_BT_u(nnz_u, 2)
 
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     
-    ! Compute jacobien matrix
     do i = 1, nm
         call spmat_dot_dvec(nc_u, nr_u, nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 2), &
                         u_ctrlpts(i, :), JJ(i, 1, :))
@@ -398,8 +394,7 @@ subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, &
 
 end subroutine eval_jacobien_1d
 
-subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, &
-                            indi_u, indj_u, &
+subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
                             data_B_u, u_ctrlpts, u_interp)
     !! Computes interpolation in 2D case (from parametric space to physical space)
     !! IN CSR FORMAT
@@ -409,7 +404,7 @@ subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, &
     ! -------------------   
     integer, intent(in) :: nm, nr_u, nc_u, nnz_u
     integer, intent(in) :: indi_u, indj_u
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u)
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
     double precision, intent(in) :: data_B_u
     dimension :: data_B_u(nnz_u, 2)
     double precision, intent(in) :: u_ctrlpts
@@ -421,10 +416,8 @@ subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, &
     ! Local data
     !-----------
     integer :: i
-    integer :: indi_T_u
-    dimension :: indi_T_u(nc_u+1)
-    integer :: indj_T_u
-    dimension :: indj_T_u(nnz_u)
+    integer :: indi_T_u, indj_T_u
+    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
     double precision :: data_BT_u
     dimension :: data_BT_u(nnz_u, 2)
 
@@ -464,20 +457,20 @@ subroutine l2projection_ctrlpts_1d(coefs, nr_total, nc_total, nr_u, nc_u, &
     ! Local data
     ! ----------
     integer :: i 
-    double precision :: data_W_u_coefs
-    dimension :: data_W_u_coefs(nnz_u)
-    double precision :: weights, basis, masse
-    dimension :: weights(nr_u, nc_u), basis(nr_u, nc_u), masse(nr_u, nr_u)
+    double precision :: data_W_u_t
+    dimension :: data_W_u_t(nnz_u)
+    double precision :: weights_t, basis, A
+    dimension :: weights_t(nr_u, nc_u), basis(nr_u, nc_u), A(nr_u, nr_u)
 
     if (nr_total.ne.nr_u) stop 'Size problem'
     resPCG = threshold
     do i = 1, nnz_u
-        data_W_u_coefs(i) = data_W_u(i, 1) * coefs(indj_u(i)) 
+        data_W_u_t(i) = data_W_u(i, 1) * coefs(indj_u(i)) 
     end do
-    call csr2dense(nnz_u, indi_u, indj_u, data_W_u_coefs, nr_u, nc_u, weights)
+    call csr2dense(nnz_u, indi_u, indj_u, data_W_u_t, nr_u, nc_u, weights_t)
     call csr2dense(nnz_u, indi_u, indj_u, data_B_u(:, 1), nr_u, nc_u, basis)
-    masse = matmul(weights, transpose(basis))
-    call solve_linear_system(nr_u, nr_u, masse, b, x)
+    A = matmul(weights_t, transpose(basis))
+    call solve_linear_system(nr_u, nr_u, A, b, x)
 
 end subroutine l2projection_ctrlpts_1d
 
