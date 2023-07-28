@@ -275,7 +275,6 @@ class mechaproblem(problem):
 	
 	# Matrix free functions
 	def eval_mfStiffness(self, displacement, tensorArgs=None):
-		if self.part.dim != 3: raise Warning('Until now not done')
 		if tensorArgs is None: 
 			dimen  = self.part.dim
 			nvoigt = int(dimen*(dimen+1)/2)

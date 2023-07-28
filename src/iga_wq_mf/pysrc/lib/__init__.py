@@ -21,7 +21,7 @@ from mpltools import annotation
 from cycler import cycler
 
 # Default properties 
-markerSet = ['o', 'v', 's', 'X', '+', 'p']
+markerSet = ['o', 'v', 's', 'X', '+', 'p', '*']
 colorSet = ['#377eb8', '#ff7f00', '#4daf4a',
 			'#f781bf', '#a65628', '#984ea3',
 			'#999999', '#e41a1c', '#dede00']
