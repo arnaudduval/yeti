@@ -117,10 +117,12 @@ class part():
 		start = time.process_time()
 		inputs = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
-			self.Jqp, self.detJ, self.invJ = geophy.eval_jacobien_2d(*inputs)
+			self.Jqp = geophy.eval_jacobien_2d(*inputs)
+			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
 			self.qpPhy = geophy.interpolate_meshgrid_2d(*inputs)
 		if self.dim == 3:
-			self.Jqp, self.detJ, self.invJ = geophy.eval_jacobien_3d(*inputs)
+			self.Jqp = geophy.eval_jacobien_3d(*inputs)
+			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
 			self.qpPhy = geophy.interpolate_meshgrid_3d(*inputs)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
@@ -145,10 +147,12 @@ class part():
 		if isAll:
 			inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
 			if self.dim == 2:
-				Jinterp, detJinterp = geophy.eval_jacobien_2d(*inputs)[:2]
+				Jinterp = geophy.eval_jacobien_2d(*inputs)
+				detJinterp = geophy.eval_inverse_det(Jinterp)[0]
 				meshinterp = geophy.interpolate_meshgrid_2d(*inputs)
 			elif self.dim == 3: 
-				Jinterp, detJinterp = geophy.eval_jacobien_3d(*inputs)[:2]
+				Jinterp = geophy.eval_jacobien_3d(*inputs)
+				detJinterp = geophy.eval_inverse_det(Jinterp)[0]
 				meshinterp = geophy.interpolate_meshgrid_3d(*inputs)
 
 		if u_ctrlpts is not None: 

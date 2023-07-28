@@ -29,20 +29,22 @@ class problem():
 		if datafield is not None: coefs = datafield*self.part.detJ
 		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
 		if coefs is None: raise Warning('Missing data')
-		coefs = np.atleast_2d(coefs)
+		coefs = np.atleast_2d(coefs); nr = np.size(coefs, axis=0); u_interp = []
 
-		# Calculate vector
-		inputs = [np.ravel(coefs), *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
-		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
+		for i in range(nr):
+			# Calculate vector
+			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+			if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
+			if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
-		# Solve linear system with fortran
-		inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-				*self.part.weights, np.atleast_2d(vector), self._nbIterPCG, self._thresholdPCG]
-		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
-		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
+			# Solve linear system with fortran
+			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
+					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
+			if self.part.dim == 2: u_tmp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
+			if self.part.dim == 3: u_tmp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
+			u_interp.append(u_tmp)
 
-		return np.ravel(u_interp)
+		return np.array(u_interp)
 
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
@@ -305,40 +307,42 @@ class mechaproblem(problem):
 
 		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-		INC_quadpts = get_INCTable(self.part.nbqp)
+		# INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 		if direction>=2*self.part.dim: raise Warning('Not possible')
+		valrange = [i for i in range(self.part.dim)]
+		valrange.pop(direction)
 
 		# Get control points and quadrature points list
 		if side == 0: 
 			CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-			QPList = np.where(INC_quadpts[:, direction] == 0)[0]
-
+			# QPList = np.where(INC_quadpts[:, direction] == 0)[0]
 		elif side == 1: 
 			CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-			QPList = np.where(INC_quadpts[:, direction] == self.part.nbqp[direction]-1)[0]
+			# QPList = np.where(INC_quadpts[:, direction] == self.part.nbqp[direction]-1)[0]
 		
 		CPList = list(np.sort(CPList))
-		QPList = list(np.sort(QPList))
-
-		# Modify Jacobien matrix
-		valrange = [i for i in range(self.part.dim)]
-		valrange.pop(direction)
-		JJ = self.part.Jqp[:, :, QPList]
-		JJ = JJ[:, valrange, :]
-
-		# Get force values at quadrature points
-		qpPhy = self.part.qpPhy[:, QPList]
-		coefs = fun(qpPhy)
+		CtrlPts = self.part.ctrlpts[:, CPList]
 
 		# Compute surface force
-		nnz, indices, weights = [], [], []
+		nnz, indices, basis, weights = [], [], [], []
 		for _ in valrange:
-			nnz.append(self.part.nbqp[_]); weights.append(self.part.weights[_])
+			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
 			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
-		
-		if   self.part.dim == 2: tmp = plasticitysolver.wq_get_forcesurf_2d(coefs, JJ, *nnz, *indices, *weights)
-		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(coefs, JJ, *nnz, *indices, *weights)
+
+		inpts = [*nnz, *indices, *basis, CtrlPts]
+		if self.part.dim == 2: 
+			JJ = geophy.eval_jacobien_1d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
+		elif self.part.dim == 3:
+			JJ = geophy.eval_jacobien_2d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+
+		# Get force values at quadrature points
+		coefs = fun(qpPhy)
+		inpts = [coefs, JJ, *nnz, *indices, *weights]
+		if   self.part.dim == 2: tmp = plasticitysolver.wq_get_forcesurf_2d(*inpts)
+		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(*inpts)
 		vector[:, CPList] = tmp
 
 		for i in range(self.part.dim):

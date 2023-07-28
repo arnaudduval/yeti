@@ -31,8 +31,8 @@ def forceSurf(P:list):
 	Rot = np.zeros((2, 2, nnz))
 	Rot[0, 0, :] = Rot[1, 1, :] = np.cos(theta_times2/2.0)
 	Rot[0, 1, :] = np.sin(theta_times2/2.0); Rot[1, 0, :] = -Rot[0, 1, :]
-	tmp = np.einsum('ikl,kjl->ijl', PolarM, Rot)
-	CartM = np.einsum('kil,kjl->ijl', Rot, tmp)
+	tmp = np.einsum('mnl,njl->mjl', PolarM, Rot)
+	CartM = np.einsum('mil,mjl->ijl', Rot, tmp)
 	F = np.zeros((2, nnz))
 	F[0, :] = CartM[0, 0, :]*Rot[0, 0, :] + CartM[0, 1, :]*Rot[0, 1, :]
 	F[1, :] = CartM[1, 0, :]*Rot[0, 0, :] + CartM[1, 1, :]*Rot[0, 1, :]

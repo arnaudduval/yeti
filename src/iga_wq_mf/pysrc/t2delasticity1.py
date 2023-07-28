@@ -22,15 +22,15 @@ folder = os.path.dirname(full_path) + '/results/t2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 4, 6
+degree, cuts = 6, 6
 name = 'QA'
 
 # Create model 
 geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			'extra':{'Rin':1.e1, 'Rex':1.e3, 
+			'extra':{'Rin':1.e1, 'Rex':1.e2, 
 			'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
-quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
+quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
@@ -71,6 +71,7 @@ for i in range(2): devStrain_qp[i, i, :] -= 1.0/3.0*traceStrain_qp
 Tstress_qp = 2*problem.material.lame_mu*devStrain_qp
 stress_qp  = symtensor2arrayForAll(Tstress_qp, 2)
 stress_vm_qp = computeVMStressForAll(stress_qp, 2)
+print(np.max(stress_vm_qp))
 stress_vm_cp = problem.L2projectionCtrlpts(datafield=stress_vm_qp)
 model.exportResultsCP(fields={'disp':displacement, 'svm':stress_vm_cp}, folder=folder)
 
