@@ -5,13 +5,6 @@
 """
 import numpy as np
 
-def powden(P:list, dim=1):
-	if dim == 1  : x = P[:]
-	elif dim == 2: x = P[0, :]
-	elif dim == 3: x = P[0, :]
-	f = 0.0*np.sin(np.pi*x)
-	return f
-
 def forceVol(P:list):
 	# force = 5e3*np.sin(np.pi*P)
 	# force = 3e3*np.sin(np.pi*P)
@@ -31,9 +24,33 @@ def forceSurf(P:list):
 	CartSt[0, 1, :] = CartSt[1, 0, :] = Tx*(-div*(0.5*np.sin(theta_x2) + np.sin(2.0*theta_x2)) + 1.5*div**2*np.sin(2.0*theta_x2))	
 	
 	F = np.zeros((2, nnz))
-	F[0, :] = CartSt[0, 0, :]*x/np.sqrt(r_square) + CartSt[0, 1, :]*y/np.sqrt(r_square)
-	F[1, :] = CartSt[1, 0, :]*x/np.sqrt(r_square) + CartSt[1, 1, :]*y/np.sqrt(r_square)
+	F[0, :] = CartSt[0, 0, :]*np.cos(theta_x2/2.0) + CartSt[0, 1, :]*np.sin(theta_x2/2.0)
+	F[1, :] = CartSt[1, 0, :]*np.cos(theta_x2/2.0) + CartSt[1, 1, :]*np.sin(theta_x2/2.0)
 	return F
+
+def dispInfinitePlate(P:list):
+	Tx, rin, E, nu = 1.0, 1.0, 1.e3, 0.3
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	theta_x2 = 2*np.arcsin(y/np.sqrt(r_square))
+	div   = rin**2/r_square # Already squared
+	a     = rin*Tx*(1.0 + nu)/(2*E)
+
+	Polardisp = np.zeros((2, nnz))
+	Polardisp[0, :] = a*(div + 1 -nu + np.cos(theta_x2)*(-div**2 + 4.0*(1.0 - nu)*div + 1))
+	Polardisp[1, :] = -a*np.sin(theta_x2)*(div**2 + 2.0*(1.0 - 2.0*nu)*div + 1)
+
+	disp = np.zeros((2, nnz))
+	disp[0, :] = Polardisp[0, :]*np.cos(theta_x2/2.0) - Polardisp[1, :]*np.sin(theta_x2/2.0)
+	disp[1, :] = Polardisp[0, :]*np.sin(theta_x2/2.0) + Polardisp[1, :]*np.cos(theta_x2/2.0)
+	return disp
+
+def powden(P:list, dim=1):
+	if dim == 1  : x = P[:]
+	elif dim == 2: x = P[0, :]
+	elif dim == 3: x = P[0, :]
+	f = 0.0*np.sin(np.pi*x)
+	return f
 
 def powden_cube(P: list):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)

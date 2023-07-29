@@ -104,7 +104,7 @@ module matrixfreeplasticity
         ! Inputs 
         integer :: dimen, nvoigt
         double precision :: elasticmodulus, poissonratio, elasticlimit
-        double precision, dimension(:), pointer :: detJ=>null()
+        double precision, dimension(:), pointer :: detJ=>null(), massprop=>null()
         double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
@@ -164,7 +164,18 @@ contains
 
     end subroutine setup_geometry
 
-    subroutine setup_jacobiennormal(mat, CepArgs)
+    subroutine setup_massprop(mat, nnz, prop)
+
+        implicit none
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nnz
+        double precision, target, intent(in) ::  prop
+        dimension :: prop(nnz)
+        mat%massprop => prop
+
+    end subroutine 
+
+    subroutine setup_jacobiennormal(mat, MechArgs)
         !! Points to data of the mechanical behavior 
 
         implicit none
@@ -172,16 +183,16 @@ contains
         ! -------------------
         double precision, parameter :: threshold = 1.d-12
         type(mecamat), pointer :: mat
-        double precision, target, intent(in) :: CepArgs
-        dimension :: CepArgs(mat%nvoigt+3, mat%ncols_sp)
+        double precision, target, intent(in) :: MechArgs
+        dimension :: MechArgs(mat%nvoigt+3, mat%ncols_sp)
 
         ! Local data
         ! ----------
         double precision :: TNN(mat%dimen, mat%dimen)
         integer :: i
 
-        mat%CepArgs => CepArgs(:3, :)
-        mat%NN      => CepArgs(4:, :)
+        mat%CepArgs => MechArgs(:3, :)
+        mat%NN      => MechArgs(4:, :)
         if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJnn = 0.d0
         if (any(abs(mat%NN).gt.threshold)) then
@@ -527,6 +538,124 @@ contains
         end do
             
     end subroutine mf_wq_stiffness_3d
+
+    subroutine mf_wq_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
+        !! Computes M.u in 3D where M is mass matrix
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data 
+        ! -------------------
+        integer, parameter :: dimen = 2
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(dimen, nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(dimen, nr_total)
+
+        ! Local data 
+        ! ----------
+        integer :: i
+        double precision :: array_temp(nc_total)
+
+        if (nr_total.ne.nr_u*nr_v) stop 'Number of rows not equal'
+        array_out = 0.d0      
+        
+        do i = 1, dimen
+            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            array_in(i, :), array_temp)
+
+            array_temp = array_temp * mat%massprop * mat%detJ
+
+            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                array_temp, array_out(i, :))
+        end do
+        
+    end subroutine mf_wq_mass_2d
+
+    subroutine mf_wq_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+        !! Computes M.u in 3D where M is mass matrix
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data 
+        ! -------------------
+        integer, parameter :: dimen = 3
+        type(mecamat), pointer :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(dimen, nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(dimen, nr_total)
+
+        ! Local data 
+        ! ----------
+        integer :: i
+        double precision :: array_temp(nc_total)
+
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
+        array_out = 0.d0      
+        
+        do i = 1, dimen
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
+                            array_in(i, :), array_temp)
+
+            array_temp = array_temp * mat%massprop * mat%detJ
+
+            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                                array_temp, array_out(i, :))
+        end do
+        
+    end subroutine mf_wq_mass_3d
 
     subroutine wq_intforce_2d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)

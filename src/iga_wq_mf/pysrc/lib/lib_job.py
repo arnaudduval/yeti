@@ -1,5 +1,6 @@
 from lib.__init__ import *
-from lib.lib_base import eraseRowsCSR, array2csr_matrix
+from lib.lib_base import eraseRowsCSR
+from lib.lib_quadrules import GaussQuadrature
 from lib.lib_material import (thermomat, 
 							mechamat, 
 							clean_dirichlet, 
@@ -23,6 +24,50 @@ class problem():
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
+	
+	def L2NormOfError(self, fun_exact, u_ctrlpts):
+		""" Computes the norm L2 of the error. The fun_exact is the function of the exact solution. 
+			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
+			whether the default quadrature is weighted quadrature. 
+		"""
+		class box:
+			def __init__(self):
+				self.nbqp, self.indices, self.basis, self.parweights = [], [], [], []
+				return
+			
+		model = self.part; obj = box()
+		for i in range(model.dim):
+			quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
+			_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
+			indi, indj = dersIndices; parweights = quadRule._parametricWeights
+			
+			obj.nbqp.append(quadRule.nbqp); obj.indices.append(indi); obj.indices.append(indj)
+			obj.basis.append(dersBasis); obj.parweights.append(parweights)
+
+		u_tmp = np.atleast_2d(u_ctrlpts)
+		nr    = np.size(u_tmp, axis=0)
+		inputs = [*obj.nbqp, *obj.indices, *obj.basis]
+		if model.dim == 2:
+			Jqp = geophy.eval_jacobien_2d(*inputs, model.ctrlpts)
+			detJ, _ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inputs, model.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_2d(*inputs, u_tmp)
+		if model.dim == 3:
+			Jqp = geophy.eval_jacobien_3d(*inputs, model.ctrlpts)
+			detJ, _ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
+		if nr == 1: uinterp = np.ravel(uinterp)
+
+		u_exact = fun_exact(qpPhy)
+		tmp     = (u_exact - u_interp)**2 
+		if nr > 1: tmp = np.ravel(np.sum(tmp, axis=0))
+		tmp = tmp * detJ
+		matrix = np.reshape(tmp, tuple(obj.nbqp), order='F')
+		if model.dim == 2: error = np.einsum('i,j,ij->', obj.parweights[0], obj.parweights[1], matrix)
+		if model.dim == 3: error = np.einsum('i,j,k,ijk->', obj.parweights[0], obj.parweights[1], obj.parweights[2], matrix)
+		error = np.sqrt(error)
+		return error
 	
 	def L2projectionCtrlpts(self, funfield=None, datafield=None):
 		coefs = None
@@ -350,7 +395,7 @@ class mechaproblem(problem):
 		return vector
 
 	# Solve using fortran
-	def solveElasticityProblemFT(self, Fext, tensorArgs=None):
+	def solveElasticityProblemFT(self, Fext, mechArgs=None):
 		dod_total = deepcopy(self.boundary.mchdod)
 		for i, dod in enumerate(dod_total):
 			tmp = dod + 1; dod_total[i] = tmp
@@ -358,13 +403,13 @@ class mechaproblem(problem):
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		prop = [self.material.elasticmodulus, self.material.poissonratio, self.material.elasticlimit]
-		if tensorArgs is None:
-			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			tensorArgs[0, :] = self.material.lame_lambda
-			tensorArgs[1, :] = self.material.lame_mu
+		if mechArgs is None:
+			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs[0, :] = self.material.lame_lambda
+			mechArgs[1, :] = self.material.lame_mu
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, tensorArgs, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+				self.part.invJ, self.part.detJ, prop, mechArgs, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.mf_wq_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
 
@@ -438,7 +483,7 @@ class mechaproblem(problem):
 				if resNR <= self._thresholdNR: break
 				
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, tensorArgs=Cep)
+				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, mechArgs=Cep)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
