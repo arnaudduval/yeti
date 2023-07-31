@@ -364,7 +364,7 @@ class mechamat1D(part1D):
 
 		return disp, eps, sigma, plastic, moduleE
 
-def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='IGA', extension='.png'):
+def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='iga', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	basis, knots = quadRule.getSampleBasis(sampleSize=101)
 	displacement   = basis[0].T @ disp_cp

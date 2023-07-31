@@ -17,7 +17,7 @@ from pysrc.lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/t2delasticity/'
+folder = os.path.dirname(full_path) + '/results/d2delasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
@@ -46,10 +46,10 @@ for i, degree in enumerate(degree_list):
 		material = mechamat(matArgs)
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		model    = part(modelIGA, quadArgs=quadArgs)
+		modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 		# Set Dirichlet boundaries
-		boundary = boundaryCondition(model.nbctrlpts)
+		boundary = boundaryCondition(modelPhy.nbctrlpts)
 		table = np.zeros((2, 2, 2), dtype=int)
 		table[1, 1, 0] = 1
 		table[1, 0, 1] = 1
@@ -57,7 +57,7 @@ for i, degree in enumerate(degree_list):
 		enablePrint()
 
 		# Solve elastic problem
-		problem = mechaproblem(material, model, boundary)
+		problem = mechaproblem(material, modelPhy, boundary)
 		problem.addSolverConstraints(solverArgs=solverArgs)
 		Fext = problem.eval_surfForce(forceSurf_infPlate, nbFacePosition=1)
 		displacement, _, stress_qp = problem.solveElasticityProblemFT(Fext=Fext)
