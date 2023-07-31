@@ -7,14 +7,14 @@ The Laplace problem is:
 	T(0, t) = 0 and T(1, t) = 1
 """
 
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector, eraseRowsCSR, array2csr_matrix
-from lib.lib_quadrules import GaussQuadrature
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformMaxregularKnotvector, eraseRowsCSR, array2csr_matrix
+from pysrc.lib.lib_quadrules import GaussQuadrature
 from scipy import interpolate
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d1heat/'
+folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def build_sparse_matrix(basis, indi_in, indj_in):
@@ -42,13 +42,10 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 
 	# Get basis and weights in IgA 
 	indi, indj, [basis, weights] = eraseRowsCSR([0, -1], indi_in, indj_in, [basis_in, weights_in])
-	data_B0 = basis[:, 0]; data_B1 = basis[:, 1]
-	data_W0 = weights[:, 0]; data_W1 = weights[:, -1]
 
 	# Time scheme stability
 	mcoefs = np.ones(len(qp)); kcoefs = prop*np.ones(len(qp))
-	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(indi, indj, data_B0, data_W0, data_B1, 
-														data_W1, mcoefs, kcoefs, [0, 0])
+	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(mcoefs, kcoefs, indi, indj, basis, weights, [0, 0])
 	lambda_max  = max(eigenvalues)
 	t_stab      = 2/lambda_max
 
@@ -73,8 +70,6 @@ def plot_analysis(degree_list, cuts_list=None, nbel_list=None, filenumber=0, fol
 	if option == 2: name = 'time_osc_' + str(filenumber);  title = 'Minimum time step'
 	time_plot = np.loadtxt(folder + name + '.dat')
 	nbel_new, degree_new = np.meshgrid(nbel_list, degree_list)
-	# for i in range(len(degree_new)):
-	# 	nbel_new[i, :] += degree_list[i]
 	plot = ax.pcolormesh(nbel_new, degree_new, time_plot,
 						norm=mpl.colors.LogNorm(vmin=time_plot.min(), vmax=time_plot.max()),
 						cmap='viridis', shading='auto')
@@ -108,16 +103,14 @@ def plot_variable_degree(nbel, degree_list, cuts_list=None, nbel_list=None, file
 	fig.savefig(folder + name + '_' + str(nbel) + '_' + extension)
 	return
 
-data_exist  = True
+dataExist   = True
 degree_list = range(1, 7)
-nbel_list   = [i for i in range(4, 8)]
+nbel_list   =    [i for i in range(4, 8)]
 nbel_list.extend([i for i in range(8, 32, 2)])
 nbel_list.extend([i for i in range(32, 128, 16)])
-# nbel_list.extend([i for i in range(128, 513, 32)])
 prop_list   = [1., 1e-2, 1e-4, 1e-6]
-prop_list   = [1.]
 
-if not data_exist:
+if not dataExist:
 
 	for k, prop in enumerate(prop_list):
 		save_data1 = np.zeros((len(degree_list), len(nbel_list)))
@@ -127,10 +120,10 @@ if not data_exist:
 				t_stab, t_osc = scheme_analysis(prop, degree, nbel=nbel)
 				save_data1[i, j] = t_stab
 				save_data2[i, j] = t_osc
-		# name = 'time_stab_' + str(k) + '.dat'
-		# np.savetxt(folder + name, save_data1)
-		# name = 'time_osc_'  + str(k) + '.dat'
-		# np.savetxt(folder + name, save_data2)
+		name = 'time_stab_' + str(k) + '.dat'
+		np.savetxt(folder + name, save_data1)
+		name = 'time_osc_'  + str(k) + '.dat'
+		np.savetxt(folder + name, save_data2)
 else:
 	for filenumber in range(len(prop_list)):
 		plot_analysis(degree_list, nbel_list=nbel_list, filenumber=filenumber, folder=folder, option=1)

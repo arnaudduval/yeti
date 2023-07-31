@@ -3,6 +3,42 @@
 ! For mechanical properties, we suggest to go to plasticity module
 ! ==============================================
 
+subroutine eigen_decomposition_py(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
+                                data_B, data_W, robcond, eigval, eigvec)
+    !! Generalized eigen decomposition KU = MUD
+    !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    !! M: mass matrix, M = int B0 B0 dx = W00 * B0
+    !! U: eigenvectors matrix
+    !! D: diagonal of eigenvalues
+    !! IN CSR FORMAT
+    
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    double precision, parameter :: penalty = 100.0d0
+    integer, intent(in) :: nr, nc, nnz
+    double precision, intent(in) :: Mcoefs, Kcoefs
+    dimension :: Mcoefs(nc), Kcoefs(nc)
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: data_B, data_W
+    dimension :: data_B(nnz, 2), data_W(nnz, 4)
+    integer, intent(in) :: robcond
+    dimension :: robcond(2)
+            
+    double precision, intent(out) :: eigval, eigvec
+    dimension :: eigval(nr), eigvec(nr, nr)
+
+    ! Local data
+    ! ----------
+    double precision :: Kdiag, Mdiag
+    dimension :: Kdiag(nr), Mdiag(nr)
+
+    call eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
+                            data_B, data_W, robcond, eigval, eigvec, Kdiag, Mdiag)
+
+end subroutine eigen_decomposition_py
+
 subroutine eval_inverse_det(nr, nnz, M, detM, invM)
     !! Computes the inverse and determinant of a matrix in a format (:, :, nnz)
     use omp_lib
