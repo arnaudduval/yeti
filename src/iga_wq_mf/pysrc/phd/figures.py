@@ -14,19 +14,18 @@
 .. CASE 10: Plot example of results
 """
 
-from lib.__init__ import *
-from lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage, relativeError)
-from lib.lib_quadrules import *
-from lib.lib_geomdl import Geomdl
-from lib.lib_part import part
-from lib.lib_material import thermomat
-from lib.lib_boundary import boundaryCondition
-from lib.lib_job import heatproblem
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage, relativeError)
+from pysrc.lib.lib_quadrules import *
+from pysrc.lib.lib_geomdl import Geomdl
+from pysrc.lib.lib_part import part
+from pysrc.lib.lib_material import thermomat
+from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/phd/'
-if not os.path.isdir(folder): os.mkdir(folder)
+folder = os.path.dirname(full_path) + '/results/'
 
 def plot2DGeo(model:part):
 	"Plots a 2D geometry "

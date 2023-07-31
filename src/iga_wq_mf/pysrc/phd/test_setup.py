@@ -4,24 +4,23 @@
 .. Joaquin Cornejo 
 """
 
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector
-from lib.lib_quadrules import WeightedQuadrature
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformMaxregularKnotvector
+from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/test/'
-if not os.path.isdir(folder): os.mkdir(folder)
-folder_data = os.path.dirname(full_path) + '/lib/data/'
+folder2save = os.path.dirname(full_path) + '/results/'
+folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist   = False
-nbel        = 40 # or 40 or 64
+dataExist   = True
+nbel        = 64 # or 40 or 64
 degree_list = np.arange(2, 8)
 
 # Set filename
-filename_data = folder_data + 'setup_time_' + str(nbel) + '.dat'
-filename_figure = folder + 'setup_time_' + str(nbel) + '.pdf' 
+filename_data   = folder2find + 'setup_time_' + str(nbel) + '.dat'
+filename_figure = folder2save + 'setup_time_' + str(nbel) + '.png' 
 
 if not dataExist:
 
@@ -75,59 +74,42 @@ if not dataExist:
 else :
 
 	if nbel == 40:
-		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+		fig, ax = plt.subplots()
 
 		# Load data
-		mydata = np.loadtxt(filename_data)
-		litterature = pd.read_table(folder_data + 'setup_time_lit_40.dat', sep='\t', names=['degree', 'time'])
+		thiswork    = np.loadtxt(filename_data)
+		litterature = pd.read_table(folder2find + 'setup_time_lit_40.dat', sep='\t', names=['degree', 'time'])
 
-		ax1.loglog(litterature.degree, litterature.time, 'o--', label='Literature')
-		ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='This work')
+		ax.loglog(litterature.degree, litterature.time, 'o--', label='Literature')
+		ax.loglog(thiswork[:, 0], thiswork[:, 1], 'x--', label='This work')
 
 		# Compute slope
-		slope = np.polyfit(np.log10(mydata[:,0]), np.log10(mydata[:,1]), 1)[0]
+		slope = np.polyfit(np.log10(thiswork[:, 0]), np.log10(thiswork[:, 1]), 1)[0]
 		slope = round(slope, 3)
-		annotation.slope_marker((mydata[2,0], mydata[2,1]), slope, 
-								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+		annotation.slope_marker((thiswork[2, 0], thiswork[2, 1]), slope, poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 
-		# Reference
-		c1 = 0.125
-		xx = litterature.degree
-		yy = c1*xx**3
-		ax1.loglog(xx, yy, '-', label=r'$O(p^3)$')
-
-		ax1.legend()
-		ax1.set_xlim([2, 10])
-		ax1.set_ylim([1e-1, 1e3])
-		ax1.set_ylabel('CPU setup time (s)')
-		ax1.set_xlabel('Polynomial degree $p$')
-
+		ax.legend()
+		ax.set_xlim([2, 10])
+		ax.set_ylim([1e-1, 1e3])
+		ax.set_ylabel('CPU setup time (s)')
+		ax.set_xlabel('Polynomial degree $p$')
 		fig.tight_layout()
 		fig.savefig(filename_figure)
 
 	if nbel == 64:
-		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
+		fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 4))
 		
 		# Load data
-		mydata = np.loadtxt(filename_data)
-		litterature = pd.read_table(folder_data + 'setup_time_lit_64.dat', sep='\t', names=['degree', 'C', 'K'])
+		thiswork = np.loadtxt(filename_data)
+		litterature = pd.read_table(folder2find + 'setup_time_lit_64.dat', sep='\t', names=['degree', 'C', 'K'])
 
-		ax1.loglog(litterature.degree, litterature.C, 'o--', label='Literature')
-		ax1.loglog(mydata[:,0], mydata[:,1], 'x--', label='This work')
+		axs[0].loglog(litterature.degree, litterature.C, 'o--', label='Literature')
+		axs[0].loglog(thiswork[:,0], thiswork[:,1], 'x--', label='This work')
 
-		ax2.loglog(litterature.degree, litterature.K, 'o--')
-		ax2.loglog(mydata[:,0], mydata[:,2], 'x--')
+		axs[1].loglog(litterature.degree, litterature.K, 'o--')
+		axs[1].loglog(thiswork[:,0], thiswork[:,2], 'x--')
 
-		# Reference
-		c1, c2 = 0.6, 0.125
-		xx = litterature.degree
-		yy = c1*xx**3
-		yy2 = c2*xx**3
-		ax1.loglog(xx, yy, '-', label=r'$O(p^3)$')
-		ax2.loglog(xx, yy2, '-')
-		ax1.legend()
-
-		for ax in [ax1, ax2]:
+		for ax in axs:
 			ax.set_xlim([2, 10])
 			ax.set_ylim([1, 1e4])
 			ax.set_ylabel('CPU setup time (s)')
