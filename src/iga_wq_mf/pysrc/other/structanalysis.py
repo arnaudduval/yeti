@@ -1,6 +1,10 @@
 from pysrc.lib.lib_structanalysis import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector
 
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
+
 # Set global variables
 length       = 1.0
 degree, nbel = 4, 10 
@@ -28,8 +32,8 @@ Fext   = model.compute_volforce(Fu, Qw)
 u, w, theta = model.solve(Fext)
 
 # Post-treatement
-u_interp = model.interpolate_sampleField(u)[0]
-w_interp, x_interp = model.interpolate_sampleField(w)
+u_interp = model.interpolateMeshgridField(u)[0]
+w_interp, x_interp = model.interpolateMeshgridField(w)
 beam = x_interp + u_interp
 
 fig, ax = plt.subplots()
@@ -37,4 +41,4 @@ ax.plot(beam, w_interp)
 ax.set_ylabel('Deflection (m)')
 ax.set_xlabel('Position (m)')
 fig.tight_layout()
-fig.savefig('./Timoshenko.png')
+fig.savefig(folder + 'Timoshenko.png')

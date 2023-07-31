@@ -6,13 +6,14 @@
         - Is a linear problem
 """
 
-import os, sys, numpy as np
+import os, numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from scipy import interpolate
 
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/'
+folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 def compute_thermal_Fint_1D(C, K, T, dT):
 	"Returns the internal heat force in transient heat"
@@ -102,9 +103,6 @@ nbel  = 10; dh = 1/nbel
 T     = 0.02
 N     = 9
 time_list = np.linspace(0, T, N)
-# step_min  = ((dh**2)*capacity*density)/(6*theta*conductivity); 
-# print('Step time min: %.3e' %step_min)
-# print('Time used    : %.3e' %np.diff(time_list).min())
 
 # Assembly
 C = np.zeros((nbel+1, nbel+1))
@@ -122,7 +120,6 @@ solve_transient_heat_1D(C, K, time_list=time_list, dof=dof, dod=dod, Tinout=temp
 # ------------------
 # Post-treatement
 # ------------------
-# Plot
 f = interpolate.interp2d(np.linspace(0, 1, nbel+1), time_list, temperature.T, kind='linear')
 xnew = np.linspace(0, 1, 101)
 ynew = np.linspace(0, T, 101)

@@ -9,10 +9,12 @@ for each element j of size Deltaj. Here f_k (for k = j-1 and j+1)
 represents the flux at one of the boundaries (left if j-1 and right if j+1)   
 """
 
-import os, sys, numpy as np
+import os, numpy as np
 from matplotlib import pyplot as plt
+
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/'
+folder = os.path.dirname(full_path) + '/results/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 def gaussTable(order):
 	" Computes Gauss weights and positions in isoparametric space for a given degree "
@@ -320,7 +322,6 @@ Uctrlpts = rungekutta3(Utilde0, Tspan, kwargs)
 tinterp  = np.linspace(0, Tspan, nbSteps)
 xinterp, Uinterp = dgInterpolate(degree, nodes, Uctrlpts)
 
-# Plot
 fig, ax  = plt.subplots(nrows=1, ncols=1)
 ax.grid(False)
 im   = ax.contourf(xinterp, tinterp, Uinterp.T)

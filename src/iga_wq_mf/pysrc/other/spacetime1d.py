@@ -1,10 +1,10 @@
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisPy
-from lib.lib_quadrules import GaussQuadrature
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisPy
+from pysrc.lib.lib_quadrules import GaussQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d1heat/'
+folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Material and geometry
@@ -67,7 +67,6 @@ u[all_dof] = u_n
 # ------------------
 # Post-treatement
 # ------------------
-# Interpolate solution
 qp_sp, qp_t = np.linspace(0, 1, 101), np.linspace(0, 1, 101)
 basis_sp  = evalDersBasisPy(degree_sp, knotvector_sp, qp_sp) 
 basis_t   = evalDersBasisPy(degree_t, knotvector_t, qp_t)
