@@ -1,4 +1,4 @@
-from lib.__init__ import *
+from .__init__ import *
 
 class boundaryCondition():
 

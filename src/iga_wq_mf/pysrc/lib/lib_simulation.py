@@ -1,9 +1,9 @@
-from lib.__init__ import *
-from lib.lib_material import thermomat
-from lib.lib_geomdl import Geomdl
-from lib.lib_part import part
-from lib.lib_boundary import boundaryCondition
-from lib.lib_job import heatproblem
+from .__init__ import *
+from .lib_material import thermomat
+from .lib_geomdl import Geomdl
+from .lib_part import part
+from .lib_boundary import boundaryCondition
+from .lib_job import heatproblem
 
 class encoder():
 

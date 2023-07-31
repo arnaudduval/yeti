@@ -404,7 +404,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                                                     Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
     double precision :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_total)
-    double precision, dimension(:), allocatable :: Dphysical, Dparametric
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -439,13 +438,13 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
         kmean = 1.d0
 
-        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'TDC')) then 
+        if (methodPCG.eq.'TDC') then 
             call initialize_operator(oper, 3, (/nc_u, nc_v, nc_w/), (/.true., .true., .true./))
             call separatevariables_3d(oper, coefs)
             Mcoef_u = oper%MM(1, 1:nc_u); Mcoef_v = oper%MM(2, 1:nc_v); Mcoef_w = oper%MM(3, 1:nc_w)
             Kcoef_u = oper%KK(1, 1:nc_u); Kcoef_v = oper%KK(2, 1:nc_v); Kcoef_w = oper%KK(3, 1:nc_w)
 
-        else if ((methodPCG.eq.'JMS').or.(methodPCG.eq.'JMC')) then 
+        else if (methodPCG.eq.'JMC') then 
             call compute_mean_3d(mat, nc_u, nc_v, nc_w)
             kmean = mat%mean(:3)
         
@@ -467,22 +466,6 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                             U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
         deallocate(Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w)
         call setup_preconditionerdiag(solv, nr_total, Deigen)
-
-        if ((methodPCG.eq.'TDS').or.(methodPCG.eq.'JMS')) then
-
-            ! Find diagonal of preconditioner
-            allocate(Dparametric(nr_total))
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
-            
-            ! Find diagonal of real matrix
-            allocate(Dphysical(nr_total))
-            call wq_find_conductivity_diagonal_3D(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
-
-            call setup_scaling(solv, nr_total, Dparametric, Dphysical)
-        end if
         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
         ! Set solver
@@ -540,7 +523,6 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
                                                     Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
     double precision :: U_u, U_v, U_w, Deigen
     dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_total)
-    double precision, dimension(:), allocatable :: Dphysical, Dparametric, Dtemp
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -577,7 +559,7 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
         Mcoef_w = 1.d0; Kcoef_w = 1.d0
         kmean = 1.d0; cmean = 1.d0
 
-        if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'JMS')) then 
+        if (methodPCG.eq.'JMC') then 
             call compute_mean_3d(mat, nc_u, nc_v, nc_w)
             kmean = mat%mean(:3)
             cmean = mat%mean(4)
@@ -595,37 +577,10 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
 
         Deigen = cmean + thetadt*Deigen
         call setup_preconditionerdiag(solv, nr_total, Deigen)
-
-        if (methodPCG.eq.'JMS') then
-            allocate(Dparametric(nr_total), Dphysical(nr_total), Dtemp(nr_total))
-
-            ! Find diagonal of preconditioner
-            Dtemp = 0.d0
-            call kronvec3d(nr_w, Mdiag_w, nr_v, Mdiag_v, nr_u, Mdiag_u, Dtemp, cmean)
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, Mdiag_u, Mdiag_v, Mdiag_w, &
-                                        Kdiag_u, Kdiag_v, Kdiag_w, kmean, Dparametric)
-            Dparametric = Dtemp + thetadt*Dparametric
-
-            ! Find diagonal of real matrix 
-            Dtemp = 0.d0
-            call wq_find_capacity_diagonal_3D(Ccoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dtemp)
-            call wq_find_conductivity_diagonal_3D(Kcoefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                    nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                    data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Dphysical)
-            Dphysical = Dtemp + thetadt*Dphysical
-
-            call setup_scaling(solv, nr_total, Dparametric, Dphysical)
-        end if
         deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
 
         ! Condition number P^-1 A
         call compute_transientheat_cond(nc_total, Kcoefs, Ccoefs, kmean, cmean, kappa)
-        if (methodPCG.eq.'JMS') then
-            Dtemp = Dparametric/Dphysical
-            kappa = kappa*maxval(Dtemp)/minval(Dtemp)
-        end if
         print*, 'Method: ', methodPCG, ' condition number: ', kappa
 
         ! Set solver

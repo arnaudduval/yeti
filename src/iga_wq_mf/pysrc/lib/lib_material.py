@@ -1,5 +1,4 @@
-from lib.__init__ import *
-from numba import jit
+from .__init__ import *
 
 class material():
 

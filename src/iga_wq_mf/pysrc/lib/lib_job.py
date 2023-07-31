@@ -1,13 +1,13 @@
-from lib.__init__ import *
-from lib.lib_base import eraseRowsCSR
-from lib.lib_quadrules import GaussQuadrature
-from lib.lib_material import (thermomat, 
+from .__init__ import *
+from .lib_base import eraseRowsCSR
+from .lib_quadrules import GaussQuadrature
+from .lib_material import (thermomat, 
 							mechamat, 
 							clean_dirichlet, 
 							block_dot_product, 
 							computeVMStressForAll)
-from lib.lib_part import part
-from lib.lib_boundary import boundaryCondition, get_INCTable
+from .lib_part import part
+from .lib_boundary import boundaryCondition, get_INCTable
 
 class problem():
 	def __init__(self, part:part, boundary:boundaryCondition, solverArgs:dict):

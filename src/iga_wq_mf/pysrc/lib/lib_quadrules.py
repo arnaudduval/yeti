@@ -1,5 +1,5 @@
-from lib.__init__ import *
-from lib.lib_base import (legendreTable, lobattoTable, 
+from .__init__ import *
+from .lib_base import (legendreTable, lobattoTable, 
 						findMultiplicity, createUniformMaxregularKnotvector, 
 						insertRowCSR, evalDersBasisFortran, array2csr_matrix
 )

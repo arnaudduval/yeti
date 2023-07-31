@@ -1,7 +1,7 @@
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector, sigmoid
-from lib.thermomecha1D import thermo1D
-from lib.lib_load import *
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
+from pysrc.lib.thermomecha1D import thermo1D
+from pysrc.lib.lib_load import *
 
 # Select folder
 full_path = os.path.realpath(__file__)

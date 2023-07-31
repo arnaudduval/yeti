@@ -5,9 +5,9 @@
 """
 
 # My libraries
-from lib.__init__ import *
-from lib.lib_base import evalDersBasisFortran
-from lib.lib_quadrules import WeightedQuadrature, GaussQuadrature
+from .__init__ import *
+from .lib_base import evalDersBasisFortran
+from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part(): 
 

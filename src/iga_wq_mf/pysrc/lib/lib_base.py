@@ -9,6 +9,9 @@ from .__init__ import *
 # ==========================
 # GENERAL FUNCTIONS
 # ==========================
+def sigmoid(x, c1=1, c2=0):
+	f = 1.0/(1.0 + np.exp(-c1*(x - c2)))
+	return f
 
 def cropImage(filename):
 	from PIL import Image

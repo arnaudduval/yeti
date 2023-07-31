@@ -4,9 +4,9 @@
 .. Joaquin Cornejo
 """
 
-from lib.__init__ import *
-from lib.lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
-from lib.lib_material import plasticLaw
+from .__init__ import *
+from .lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
+from .lib_material import plasticLaw
 
 class part1D:
 	def __init__(self, kwargs:dict):

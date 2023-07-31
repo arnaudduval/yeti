@@ -75,39 +75,6 @@ contains
         
     end subroutine setup_preconditionerdiag
 
-    subroutine setup_scaling(solv, nr, factor_up, factor_down)
-
-        use omp_lib
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr
-        double precision, intent(in) :: factor_up, factor_down
-        dimension :: factor_up(nr), factor_down(nr)
-
-        ! Local data
-        ! ----------
-        integer :: i, nb_tasks
-        double precision, target :: factor
-        dimension :: factor(nr)
-        
-        solv%withscaling = .true.
-        
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr/nb_tasks)
-        do i = 1, nr
-            factor(i) = sqrt(factor_up(i)/factor_down(i))
-        end do  
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-
-        allocate(solv%factor(nr))
-        solv%factor = factor
-
-    end subroutine setup_scaling
-
     subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
@@ -465,7 +432,7 @@ module solverheat3
 
     use matrixfreeheat
     type cgsolver
-        logical :: withscaling = .false., withdiag = .false.
+        logical :: withdiag = .false.
         integer :: matrixfreetype = 1, dimen = 3
         double precision, dimension(:), allocatable :: factor
         double precision, dimension(:), pointer :: diag=>null()
@@ -545,39 +512,6 @@ contains
         
     end subroutine setup_preconditionerdiag
 
-    subroutine setup_scaling(solv, nr, factor_up, factor_down)
-
-        use omp_lib
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver), pointer :: solv
-        integer, intent(in) :: nr
-        double precision, intent(in) :: factor_up, factor_down
-        dimension :: factor_up(nr), factor_down(nr)
-
-        ! Local data
-        ! ----------
-        integer :: i, nb_tasks
-        double precision, target :: factor
-        dimension :: factor(nr)
-        
-        solv%withscaling = .true.
-        
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nr/nb_tasks)
-        do i = 1, nr
-            factor(i) = sqrt(factor_up(i)/factor_down(i))
-        end do  
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL 
-
-        allocate(solv%factor(nr))
-        solv%factor = factor
-
-    end subroutine setup_scaling
-
     subroutine applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
         !! Applied to steady heat problems
@@ -598,24 +532,12 @@ contains
         ! Local data
         ! ----------
         integer :: i, nb_tasks
-        double precision :: array_temp, dummy
-        dimension :: array_temp(nr_total), dummy(nr_total)
-
-        dummy = array_in
-        if (solv%withscaling) then
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-            do i = 1, nr_total
-                dummy(i) = solv%factor(i)*dummy(i) 
-            end do  
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        end if  
+        double precision :: array_temp
+        dimension :: array_temp(nr_total)
     
         ! Compute (Uw x Uv x Uu)'.array_in
         call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                        transpose(U_u), transpose(U_v), transpose(U_w), dummy, array_temp)
+                        transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
         
         if (solv%withdiag) then
             !$OMP PARALLEL 
@@ -629,19 +551,7 @@ contains
         end if
     
         ! Compute (Uw x Uv x Uu).array_temp
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, dummy)
-
-        if (solv%withscaling) then
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-            do i = 1, nr_total
-                dummy(i) = solv%factor(i)*dummy(i) 
-            end do  
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        end if
-        array_out = dummy
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
         
     end subroutine applyfastdiag
 

@@ -11,4 +11,5 @@
 *.npy
 
 # Folders
+__pycache__/
 results

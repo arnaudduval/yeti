@@ -4,9 +4,9 @@
 .. Joaquin Cornejo
 """
 
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisFortran
-from lib.lib_quadrules import GaussQuadrature
+from .__init__ import *
+from .lib_base import createUniformMaxregularKnotvector, evalDersBasisFortran
+from .lib_quadrules import GaussQuadrature
 
 class Geomdl():
 	def __init__(self, geoArgs:dict):
