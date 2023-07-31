@@ -414,34 +414,6 @@ subroutine fd_elasticity_2d(nr_total, nr_u, nr_v, U_u, U_v, eigen_diag, array_in
     
 end subroutine fd_elasticity_2d
 
-subroutine fd_elasticity_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to elasticity problems
-    !! by G. Sanaglli and M. Tani
-    
-    use solverplasticity3
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
-    dimension ::    U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w), &
-                    eigen_diag(dimen, nr_total), array_in(dimen, nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_total)
-
-    ! Local data
-    ! ----------
-    type(cgsolver), pointer :: solv
-
-    allocate(solv)
-    call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
-    
-end subroutine fd_elasticity_3d
-
 subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &

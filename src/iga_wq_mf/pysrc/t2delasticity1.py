@@ -25,8 +25,8 @@ E, nu = 1e3, 0.3
 trueEnergy = -135/32768*np.pi/E*(1024*nu**2 + 5*nu - 1019)
 name = 'QA'
 
-quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# quadArgs = {'quadrule': 'wq', 'type': 2}
+# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+quadArgs = {'quadrule': 'wq', 'type': 2}
 matArgs  = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-16}
 
@@ -35,7 +35,7 @@ degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 error_energy = np.ones(len(cuts_list))
 L2error_disp = np.ones(len(cuts_list))
-fig, ax  = plt.subplots()
+fig, ax  = plt.subplots(figsize=(8, 4))
 for i, degree in enumerate(degree_list):
 	for j, cuts in enumerate(cuts_list):
 		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -62,10 +62,11 @@ for i, degree in enumerate(degree_list):
 		Fext = problem.eval_surfForce(forceSurf, nbFacePosition=1)
 		displacement, _, stress_qp = problem.solveElasticityProblemFT(Fext=Fext)
 		error_energy[j] = abs(trueEnergy -  block_dot_product(2, Fext, displacement))/trueEnergy*100
-		# L2error_disp[j] = problem.L2NormOfError(dispInfinitePlate, displacement)
+		L2error_disp[j] = problem.L2NormOfError(dispInfinitePlate, displacement)
 
 	elsize = 1.0/2**cuts_list
-	ax.loglog(elsize, error_energy, marker=markerSet[i], label='degree p='+str(degree))
+	nbctrlpts = (2**cuts_list+degree)**2
+	ax.loglog(nbctrlpts, error_energy, marker=markerSet[i], label='degree p='+str(degree))
 	# ax.loglog(elsize, L2error_disp, marker=markerSet[i], label='degree p='+str(degree))
 
 	# if str(quadArgs['quadrule']) == 'wq':
@@ -74,17 +75,18 @@ for i, degree in enumerate(degree_list):
 	# 	# slope = round(slope, 1)
 	# 	# annotation.slope_marker((elsize[3], error_energy[3]), slope, 
 	# 	# 						poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-	# else: 
-	# 	slope = np.polyfit(np.log10(elsize[:3]),np.log10(error_energy[:3]), 1)[0]
-	# 	slope = round(slope, 1)
-	# 	annotation.slope_marker((elsize[2], error_energy[2]), slope, 
-	# 							poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+	if str(quadArgs['quadrule']) == 'iga':
+		slope = np.polyfit(np.log10(nbctrlpts[:3]),np.log10(error_energy[:3]), 1)[0]
+		slope = round(slope, 1)
+		annotation.slope_marker((nbctrlpts[2], error_energy[2]), slope, 
+								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 	
-	ax.set_ylabel('Relative error of energy')
-	ax.set_ylabel('L2 norm error')
-	ax.set_xlabel('Meshsize h')
+	ax.set_ylabel('Relative error of energy ' + r'$\frac{|U-U^{h}|}{|U|}$')
+	# ax.set_ylabel('L2 norm error')
+	# ax.set_xlabel('Meshsize h')
+	ax.set_xlabel('Total number of DOF')
 	ax.set_ylim(top=1e1, bottom=1e-14)
-	ax.set_xlim(left=2e-3, right=0.8)
+	ax.set_xlim(left=10, right=1e5)
 
 	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 	fig.tight_layout()

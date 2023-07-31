@@ -4,7 +4,7 @@
 ! ==============================================
 
 subroutine eval_inverse_det(nr, nnz, M, detM, invM)
-    
+    !! Computes the inverse and determinant of a matrix in a format (:, :, nnz)
     use omp_lib
     implicit none 
     ! Input / output data

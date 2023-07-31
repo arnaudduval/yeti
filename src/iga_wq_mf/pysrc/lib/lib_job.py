@@ -30,42 +30,48 @@ class problem():
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""
-		class box:
-			def __init__(self):
-				self.nbqp, self.indices, self.basis, self.parweights = [], [], [], []
-				return
-			
-		model = self.part; obj = box()
-		for i in range(model.dim):
-			quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
-			_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
-			indi, indj = dersIndices; parweights = quadRule._parametricWeights
-			
-			obj.nbqp.append(quadRule.nbqp); obj.indices.append(indi); obj.indices.append(indj)
-			obj.basis.append(dersBasis); obj.parweights.append(parweights)
+		# class box:
+		# 	def __init__(self):
+		# 		self.nbqp, self.indices, self.basis, self.parweights = [], [], [], []
+		# 		return
 
 		u_tmp = np.atleast_2d(u_ctrlpts)
 		nr    = np.size(u_tmp, axis=0)
-		inputs = [*obj.nbqp, *obj.indices, *obj.basis]
-		if model.dim == 2:
-			Jqp = geophy.eval_jacobien_2d(*inputs, model.ctrlpts)
-			detJ, _ = geophy.eval_inverse_det(Jqp)
-			qpPhy = geophy.interpolate_meshgrid_2d(*inputs, model.ctrlpts)
-			u_interp = geophy.interpolate_meshgrid_2d(*inputs, u_tmp)
-		if model.dim == 3:
-			Jqp = geophy.eval_jacobien_3d(*inputs, model.ctrlpts)
-			detJ, _ = geophy.eval_inverse_det(Jqp)
-			qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
-			u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
-		if nr == 1: uinterp = np.ravel(uinterp)
+		# obj   = box()
+		model = self.part
+		qpPhy, _, detJ, u_interp = model.interpolateMeshgridField(u_ctrlpts, sampleSize=2001)
+
+		# for i in range(model.dim):
+		# 	quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
+		# 	_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
+		# 	indi, indj = dersIndices; parweights = quadRule._parametricWeights
+			
+		# 	obj.nbqp.append(quadRule.nbqp); obj.indices.append(indi); obj.indices.append(indj)
+		# 	obj.basis.append(dersBasis); obj.parweights.append(parweights)
+
+		# inputs = [*obj.nbqp, *obj.indices, *obj.basis]
+		# if model.dim == 2:
+		# 	Jqp = geophy.eval_jacobien_2d(*inputs, model.ctrlpts)
+		# 	detJ, _ = geophy.eval_inverse_det(Jqp)
+		# 	qpPhy = geophy.interpolate_meshgrid_2d(*inputs, model.ctrlpts)
+		# 	u_interp = geophy.interpolate_meshgrid_2d(*inputs, u_tmp)
+		# if model.dim == 3:
+		# 	Jqp = geophy.eval_jacobien_3d(*inputs, model.ctrlpts)
+		# 	detJ, _ = geophy.eval_inverse_det(Jqp)
+		# 	qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
+		# 	u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
+		# if nr == 1: uinterp = np.ravel(uinterp)
 
 		u_exact = fun_exact(qpPhy)
 		tmp     = (u_exact - u_interp)**2 
 		if nr > 1: tmp = np.ravel(np.sum(tmp, axis=0))
 		tmp = tmp * detJ
-		matrix = np.reshape(tmp, tuple(obj.nbqp), order='F')
-		if model.dim == 2: error = np.einsum('i,j,ij->', obj.parweights[0], obj.parweights[1], matrix)
-		if model.dim == 3: error = np.einsum('i,j,k,ijk->', obj.parweights[0], obj.parweights[1], obj.parweights[2], matrix)
+		error = np.sum(tmp)
+		
+		# matrix = np.reshape(tmp, tuple(obj.nbqp), order='F')
+		# if model.dim == 2: error = np.einsum('i,j,ij->', obj.parweights[0], obj.parweights[1], matrix)
+		# if model.dim == 3: error = np.einsum('i,j,k,ijk->', obj.parweights[0], obj.parweights[1], obj.parweights[2], matrix)
+		
 		error = np.sqrt(error)
 		return error
 	

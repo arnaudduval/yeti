@@ -5,135 +5,6 @@
 ! It is implemented conjugated gradient algorithms to solve interpolation problems
 ! ====================================================
 
-subroutine fd_steady_heat_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, eigen_diag, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to steady heat problems
-    !! by G. Sanaglli and M. Tani
-    
-    use solverheat3
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, eigen_diag, array_in
-    dimension ::    U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), &
-                    eigen_diag(nr_total), array_in(nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! ----------
-    type(cgsolver), pointer :: solv
-
-    allocate(solv)
-    call setup_preconditionerdiag(solv, nr_total, eigen_diag)
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
-
-end subroutine fd_steady_heat_3d
-
-subroutine fd_interpolation_3d(nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applieg in control points interpolation problems
-    !! by G. Sanaglli and M. Tani
-    
-    use solverheat3
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, intent(in) :: nr_total, nr_u, nr_v, nr_w
-    double precision, intent(in) :: U_u, U_v, U_w, array_in
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), array_in(nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! ----------
-    type(cgsolver), pointer :: solv
-
-    allocate(solv)
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, nr_w, U_u, U_v, U_w, array_in, array_out)
-
-end subroutine fd_interpolation_3d
-
-subroutine wq_find_capacity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, diag)
-    !! Computes the diagonal of capacity matrix using sum-factorization algorithm
-    !! IN CSR FORMAT
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_total)
-    integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-    dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision, intent(out) :: diag
-    dimension :: diag(nr_u*nr_v*nr_w)
-
-    call csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u(:, 1), data_B_v(:, 1), data_B_w(:, 1), &
-                        data_W_u(:, 1), data_W_v(:, 1), data_W_w(:, 1), diag)
-
-end subroutine wq_find_capacity_diagonal_3d
-
-subroutine wq_find_conductivity_diagonal_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, diag)
-    !! Computes the diagonal of conductivity matrix using sum-factorization algorithm
-    !! IN CSR FORMAT
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: d = 3 
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(d, d, nc_total)
-    integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-    dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                    indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision, intent(out) :: diag
-    dimension :: diag(nr_u*nr_v*nr_w)
-
-    ! Local data
-    ! ----------
-    integer :: i, j, alpha, beta, zeta
-    dimension :: alpha(d), beta(d), zeta(d)
-    double precision :: diag_temp
-    dimension :: diag_temp(nr_u*nr_v*nr_w)
-
-    diag = 0.d0 
-    do j = 1, d
-        do i = 1, d
-            alpha = 1; alpha(i) = 2
-            beta = 1; beta(j) = 2
-            zeta = beta + (alpha - 1)*2
-            call csr_get_diag_3d(coefs(i, j, :), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u(:, beta(1)), data_B_v(:, beta(2)), data_B_w(:, beta(3)), &
-                                data_W_u(:, zeta(1)), data_W_v(:, zeta(2)), data_W_w(:, zeta(3)), diag_temp)
-            diag = diag + diag_temp        
-        end do
-    end do
-
-end subroutine wq_find_conductivity_diagonal_3d
-
 subroutine mf_wq_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
@@ -343,68 +214,6 @@ subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     
 end subroutine mf_wq_get_ku_3d
 
-subroutine mf_wq_get_spacetimeheat_3d(Ccoefs, Kcoefs, detG, nr_total, nc_sp, nc_time, nr_u, nc_u, nr_v, nc_v, &
-                            nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, &
-                            indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
-                            data_W_u, data_W_v, data_W_w, data_W_t, array_in, array_out)
-    !! Computes K.u where K is conductivity matrix in 3D 
-    !! This function is adapted to python
-    !! IN CSR FORMAT
-
-    use matrixfreeheat
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_total, nc_sp, nc_time, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-    double precision, intent(in) :: Ccoefs, Kcoefs, detG
-    dimension :: Ccoefs(nc_sp), Kcoefs(3, 3, nc_sp), detG(nc_time)
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w), &
-                    indi_t(nr_t+1), indj_t(nnz_t)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
-                    data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
-    double precision, intent(in) :: array_in
-    dimension :: array_in(nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(nr_total)
-
-    ! Local data
-    ! ----------
-    type(thermomat), pointer :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t, indj_T_u, indj_T_v, indj_T_w, indj_T_t
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
-    integer :: nc_total
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
-    
-    allocate(mat)
-    mat%dimen = 3
-    call setup_capacitycoefs(mat, nc_sp, Ccoefs)
-    call setup_conductivitycoefs(mat, nc_sp, Kcoefs)
-    call setup_timediscret(mat, nc_time, detG)
-
-    nc_total = nc_sp*nc_time
-    call mf_wq_spacetimeheat_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                            nnz_u, nnz_v, nnz_w, nnz_t,indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, &
-                            indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                            array_in, array_out)
-    
-end subroutine mf_wq_get_spacetimeheat_3d
-
 subroutine wq_get_heatvol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, result)
     !! Computes source vector in 3D
@@ -462,6 +271,46 @@ subroutine wq_get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
                         coefs, result)
 
 end subroutine wq_get_heatvol_3d
+
+subroutine wq_get_heatsurf_2d(coefs, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, array_out)
+    !! Computes boundary force vector in 3D 
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 2
+    integer, intent(in) :: nc_total, nr_u, nc_u, nnz_u
+    double precision, intent(in) :: coefs, JJ
+    dimension :: coefs(nc_total), JJ(dimen, dimen-1, nc_total)
+    integer, intent(in) :: indi_u, indj_u
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    double precision, intent(in) :: data_W_u
+    dimension :: data_W_u(nnz_u, 4)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u)
+
+    ! Local data
+    ! ----------
+    double precision :: new_coefs, dsurf, v1, W00
+    dimension :: new_coefs(nc_total), v1(dimen), W00(nr_u, nc_total)
+    integer :: i
+
+    if (nc_total.ne.nc_u) stop 'Not possible finde force surf'
+
+    ! Compute coefficients
+    do i = 1, nc_total
+        v1 = JJ(:, 1, i)
+        dsurf = sqrt(dot_product(v1, v1))
+        new_coefs(i) = coefs(i) * dsurf
+    end do
+
+    W00 = 0.d0
+    call csr2dense(nnz_u, indi_u, indj_u, data_W_u, nr_u, nc_total, W00)
+    array_out = matmul(W00, coefs)
+    
+end subroutine wq_get_heatsurf_2d
 
 subroutine wq_get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
