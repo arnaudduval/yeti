@@ -27,7 +27,7 @@ from pysrc.lib.lib_job import heatproblem
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 
-def plot2DGeo(model:part):
+def plot2DGeo(model:part, sampleSize=101):
 	"Plots a 2D geometry "
 
 	def plot_mesh(pts, shape, ax):
@@ -56,12 +56,11 @@ def plot2DGeo(model:part):
 
 		return
 
-	samplesize = model._sampleSize
 	ctrlpts = model.ctrlpts
 	evalpts = model.interpolateMeshgridField()[0]
 
-	X = np.asarray(evalpts[0, :].reshape((samplesize, samplesize)).tolist())
-	Y = np.asarray(evalpts[1, :].reshape((samplesize, samplesize)).tolist())
+	X = np.asarray(evalpts[0, :].reshape((sampleSize, sampleSize)).tolist())
+	Y = np.asarray(evalpts[1, :].reshape((sampleSize, sampleSize)).tolist())
 	Z = np.zeros(X.shape)
 
 	fig, ax = plt.subplots()
@@ -86,7 +85,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 8
+CASE      = 9
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -225,7 +224,7 @@ elif CASE == 3: # Quadrature points in IGA
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
 			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
-			quadRule    = GaussQuadrature(degree, knotvector)
+			quadRule    = GaussQuadrature(degree, knotvector, quadArgs={})
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
 			ax.plot(XX, YY, 'ko', markersize=1.2)
@@ -257,7 +256,7 @@ elif CASE == 4: # Quadrature points in WQ
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
 			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
-			quadRule    = WeightedQuadrature(degree, knotvector)
+			quadRule    = WeightedQuadrature(degree, knotvector, quadArgs={})
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
 			ax.plot(XX, YY, 'ko', markersize=1.2)
@@ -285,9 +284,9 @@ elif CASE == 5: # B-spline surface
 	filename = folder + 'BsplineSurface' + extension
 
 	# Surface properties
-	modelGeo = Geomdl(**{'name':'quarter_annulus'})
+	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus'})
 	modelIGA = modelGeo.getIGAParametrization()
-	model    = part(modelIGA)
+	model    = part(modelIGA, quadArgs={'quadrule':'iga'})
 	fig = plot2DGeo(model)
 	fig.savefig(filename, dpi=300) 
 
@@ -406,7 +405,7 @@ elif CASE == 7: # Convergence curve
 elif CASE == 8: # Weights W00 and W11
 
 	def case8(folder, extension):
-		WeightName = 0 # or 0
+		WeightName = 1 # or 0
 		if WeightName not in [0, 1]: raise Warning('Not possible')
 		if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
 		else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]

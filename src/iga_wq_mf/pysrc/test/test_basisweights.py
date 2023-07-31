@@ -9,7 +9,7 @@ from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(os.path.dirname(full_path)) + '/results/test/'
+folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 fig, axs   = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
