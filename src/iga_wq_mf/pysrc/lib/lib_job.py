@@ -1,11 +1,8 @@
 from .__init__ import *
 from .lib_base import eraseRowsCSR
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (thermomat, 
-							mechamat, 
-							clean_dirichlet, 
-							block_dot_product, 
-							computeVMStressForAll)
+from .lib_material import (thermomat, mechamat, 
+							clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition, get_INCTable
 
@@ -30,52 +27,46 @@ class problem():
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""
-		# class box:
-		# 	def __init__(self):
-		# 		self.nbqp, self.indices, self.basis, self.parweights = [], [], [], []
-		# 		return
-
 		u_tmp = np.atleast_2d(u_ctrlpts)
 		nr    = np.size(u_tmp, axis=0)
-		# obj   = box()
 		model = self.part
-		qpPhy, _, detJ, u_interp = model.interpolateMeshgridField(u_ctrlpts, sampleSize=2001)
 
-		# for i in range(model.dim):
-		# 	quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
-		# 	_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
-		# 	indi, indj = dersIndices; parweights = quadRule._parametricWeights
+		nbqp, indices, basis, parweights = [], [], [], []
+		for i in range(model.dim):
+			quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
+			_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
+			indi, indj = dersIndices; parweights = quadRule._parametricWeights
 			
-		# 	obj.nbqp.append(quadRule.nbqp); obj.indices.append(indi); obj.indices.append(indj)
-		# 	obj.basis.append(dersBasis); obj.parweights.append(parweights)
+			nbqp.append(quadRule.nbqp); indices.append(indi); indices.append(indj)
+			basis.append(dersBasis); parweights.append(parweights)
 
-		# inputs = [*obj.nbqp, *obj.indices, *obj.basis]
-		# if model.dim == 2:
-		# 	Jqp = geophy.eval_jacobien_2d(*inputs, model.ctrlpts)
-		# 	detJ, _ = geophy.eval_inverse_det(Jqp)
-		# 	qpPhy = geophy.interpolate_meshgrid_2d(*inputs, model.ctrlpts)
-		# 	u_interp = geophy.interpolate_meshgrid_2d(*inputs, u_tmp)
-		# if model.dim == 3:
-		# 	Jqp = geophy.eval_jacobien_3d(*inputs, model.ctrlpts)
-		# 	detJ, _ = geophy.eval_inverse_det(Jqp)
-		# 	qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
-		# 	u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
-		# if nr == 1: uinterp = np.ravel(uinterp)
+		inputs = [*nbqp, *indices, *basis]
+		if model.dim == 2:
+			Jqp = geophy.eval_jacobien_2d(*inputs, model.ctrlpts)
+			detJ, _ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inputs, model.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_2d(*inputs, u_tmp)
+		if model.dim == 3:
+			Jqp = geophy.eval_jacobien_3d(*inputs, model.ctrlpts)
+			detJ, _ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
+		if nr == 1: uinterp = np.ravel(uinterp)
 
-		u_exact = fun_exact(qpPhy)
-		tmp     = (u_exact - u_interp)**2 
-		if nr > 1: tmp = np.ravel(np.sum(tmp, axis=0))
-		tmp = tmp * detJ
-		error = np.sum(tmp)
+		u_exact    = fun_exact(qpPhy)
+		ue_diff_uh = (u_exact - u_interp)**2 
+		if nr > 1: ue_diff_uh = np.ravel(np.sum(ue_diff_uh, axis=0))
+		ue_diff_uh = ue_diff_uh * detJ
 		
-		# matrix = np.reshape(tmp, tuple(obj.nbqp), order='F')
-		# if model.dim == 2: error = np.einsum('i,j,ij->', obj.parweights[0], obj.parweights[1], matrix)
-		# if model.dim == 3: error = np.einsum('i,j,k,ijk->', obj.parweights[0], obj.parweights[1], obj.parweights[2], matrix)
-		
+		ue_diff_uh = np.reshape(ue_diff_uh, tuple(nbqp), order='F')
+		if model.dim == 2: error = np.einsum('i,j,ij->', parweights[0], parweights[1], ue_diff_uh)
+		if model.dim == 3: error = np.einsum('i,j,k,ijk->', parweights[0], parweights[1], parweights[2], ue_diff_uh)
 		error = np.sqrt(error)
+
 		return error
 	
 	def L2projectionCtrlpts(self, funfield=None, datafield=None):
+		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
 		coefs = None
 		if datafield is not None: coefs = datafield*self.part.detJ
 		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
@@ -198,29 +189,23 @@ class heatproblem(problem):
 		return vector
 
 	def interpolate_temperature(self, uctrlpts):
+		" Computes the temperature at the quadrature points "
 		basis   = self.part.basis
 		indices = self.part.indices
 		nbqp    = self.part.nbqp[:self.part.dim]
-
-		# Get position and determinant 
 		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
-		if self.part.dim == 2:
-			uinterp = geophy.interpolate_meshgrid_2d(*inputs)
-		elif self.part.dim == 3: 
-			uinterp = geophy.interpolate_meshgrid_3d(*inputs)
+		if self.part.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)
+		elif self.part.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
 		uinterp = np.ravel(uinterp)
 		return uinterp
 
 	# Solve using fortran
 	def solveSteadyHeatProblemFT(self, b, coefs=None):
-		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, 
-															self.part.detJ, self.part.qpPhy)
+		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, self.part.qpPhy)
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
-
 		return sol, residue
 	
 	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, args={}):
@@ -238,10 +223,8 @@ class heatproblem(problem):
 		
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-
 		if self.part.dim == 2: raise Warning('Until now not done')
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
-
 		return sol, residue
 
 	# Solve using python
@@ -333,14 +316,13 @@ class mechaproblem(problem):
 			tensorArgs[0, :] = self.material.lame_lambda
 			tensorArgs[1, :] = self.material.lame_mu
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, 
-	    			*self.part.basis, *self.part.weights, 
-					self.part.invJ, self.part.detJ, tensorArgs]
-		if   self.part.dim == 2:  result = plasticitysolver.mf_wq_get_su_2d(*inputs, displacement)
-		elif self.part.dim == 3:  result = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
-		return result
+	    			*self.part.basis, *self.part.weights, self.part.invJ, self.part.detJ, tensorArgs]
+		if   self.part.dim == 2: vector = plasticitysolver.mf_wq_get_su_2d(*inputs, displacement)
+		elif self.part.dim == 3: vector = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
+		return vector
 	
 	def eval_volForce(self, fun):
-		coefs = self.material.eval_volForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
+		coefs  = self.material.eval_volForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
 		if   self.part.dim == 2: vector = plasticitysolver.wq_get_forcevol_2d(*inputs)
 		elif self.part.dim == 3: vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
@@ -357,19 +339,14 @@ class mechaproblem(problem):
 
 		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-		# INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 		if direction>=2*self.part.dim: raise Warning('Not possible')
 		valrange = [i for i in range(self.part.dim)]
 		valrange.pop(direction)
 
 		# Get control points and quadrature points list
-		if side == 0: 
-			CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-			# QPList = np.where(INC_quadpts[:, direction] == 0)[0]
-		elif side == 1: 
-			CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-			# QPList = np.where(INC_quadpts[:, direction] == self.part.nbqp[direction]-1)[0]
+		if side == 0: CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+		elif side == 1: CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
 		
 		CPList = list(np.sort(CPList))
 		CtrlPts = self.part.ctrlpts[:, CPList]
@@ -395,8 +372,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(*inpts)
 		vector[:, CPList] = tmp
 
-		for i in range(self.part.dim):
-			vector[i, self.boundary.mchdod[i]] = 0.0
+		for i in range(self.part.dim): vector[i, self.boundary.mchdod[i]] = 0.0
 
 		return vector
 
@@ -427,29 +403,23 @@ class mechaproblem(problem):
 	# Solve using python
 	def compute_strain(self, displacement, isVoigt=False):
 		" Compute strain field from displacement field "
-
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
 		if   self.part.dim == 2: eps = plasticitysolver.interpolate_strain_2d(*inputs)
 		elif self.part.dim == 3: eps = plasticitysolver.interpolate_strain_3d(*inputs)
-
 		return eps
 	
 	def compute_intForce(self, stress):
 		"Compute internal force using sigma coefficients "
-
 		inputs = [stress, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ]
 		if   self.part.dim == 2: Fint = plasticitysolver.wq_get_intforce_2d(*inputs)
 		elif self.part.dim == 3: Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
-
 		return Fint
 	
 	def solvePlasticityProblemPy(self, Fext): 
 
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
-
 		d     = self.part.dim
 		ddl   = int(d*(d+1)/2)
-
 		nbqp_total = self.part.nbqp_total
 		pls_n0 = np.zeros((ddl, nbqp_total))
 		a_n0  = np.zeros(nbqp_total)

@@ -386,7 +386,7 @@ contains
                                     ones(1:datstruct%nrows(2)), datstruct%eigval(1, 1:datstruct%nrows(1)), &
                                     datstruct%eigval(2, 1:datstruct%nrows(2)), mean, datstruct%Deigen)
         else if (datstruct%dimen.eq.3) then
-            stop 'Not done yet'
+            stop 'eigendecomp not done yet'
         end if
 
     end subroutine eigendecomposition
