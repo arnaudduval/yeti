@@ -1,22 +1,19 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
 from pysrc.lib.thermomecha1D import thermo1D
-from pysrc.lib.lib_load import *
+from pysrc.lib.lib_load import powden
 
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1heat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def setKprop(T, prop=0.1):
-	# y = prop + prop*np.exp(-0.1*abs(T))
-	# y = prop + prop*2.0/(1.0 + np.exp(-5*(T-1.0)))
-	y   = np.ones(len(T))
+def setKprop(T):
+	y = np.ones(len(T))
 	return y
 
-def setCprop(T, prop=1.0):
-	# y = prop + prop*np.exp(-2.0*abs(T))
-	y   = np.ones(len(T))
+def setCprop(T):
+	y = np.ones(len(T))
 	return y
 
 # Set global variables
@@ -26,8 +23,7 @@ knotvector   = createUniformMaxregularKnotvector(degree, nbel)
 
 # Create geometry
 quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}
-geoArgs   = {'length': 1.0}
-args      = {'quadArgs': quadArgs, 'geoArgs': geoArgs}
+args      = {'quadArgs': quadArgs, 'geoArgs': {'length': 1.0}}
 model 	  = thermo1D(args)
 
 # Add material 
@@ -41,10 +37,9 @@ model.add_DirichletCondition(table=[1, 1])
 N = 20
 time_list = np.linspace(0, 0.02, N)
 print('Time step: %3e' %(time_list.max()/N))
-Fprop     = powden(model.qpPhy)
-FFend     = model.compute_volForce(Fprop)
-FFend     = np.atleast_2d(FFend).reshape(-1, 1)
-Fext      = np.kron(FFend, sigmoid(time_list))
+Fend = model.compute_volForce(powden(model.qpPhy))
+Fend = np.atleast_2d(Fend).reshape(-1, 1)
+Fext = np.kron(Fend, sigmoid(time_list))
 
 temperature = np.zeros(np.shape(Fext))
 temperature[0, :] = 0.0

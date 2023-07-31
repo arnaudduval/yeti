@@ -9,10 +9,10 @@
 .. Joaquin Cornejo 
 """
 
-from lib.__init__ import *
-from lib.lib_base import createUniformMaxregularKnotvector
-from lib.thermomecha1D import mechamat1D, plot_results
-from lib.lib_load import *
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformMaxregularKnotvector
+from pysrc.lib.thermomecha1D import mechamat1D, plot_results
+from pysrc.lib.lib_load import *
 
 # Select folder
 full_path = os.path.realpath(__file__)

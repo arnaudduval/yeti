@@ -6,12 +6,10 @@
 import numpy as np
 
 def forceVol(P:list):
-	# force = 5e3*np.sin(np.pi*P)
-	# force = 3e3*np.sin(np.pi*P)
 	force = 0.4*np.sin(P/1e3)
 	return force
 
-def forceSurf(P:list):
+def forceSurf_infPlate(P:list):
 	Tx, rin = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
@@ -28,7 +26,7 @@ def forceSurf(P:list):
 	F[1, :] = CartSt[1, 0, :]*np.cos(theta_x2/2.0) + CartSt[1, 1, :]*np.sin(theta_x2/2.0)
 	return F
 
-def dispInfinitePlate(P:list):
+def displacement_infPlate(P:list):
 	Tx, rin, E, nu = 1.0, 1.0, 1.e3, 0.3
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
