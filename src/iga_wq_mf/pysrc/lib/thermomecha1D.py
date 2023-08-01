@@ -184,14 +184,14 @@ class thermo1D(part1D):
 				if resNR <= self._thresholdNR: break
 
 				# Compute tangent matrix
-				Adof = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
-				AdofSparse = sp.csr_matrix(Adof)
+				A   = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
+				ASp = sp.csr_matrix(A)
 
 				# Compute delta dT 
-				ddVV = sp.linalg.spsolve(AdofSparse, dF)
+				vtmp = sp.linalg.spsolve(ASp, dF)
 
 				# Update values
-				VVn1[dof] += ddVV
+				VVn1[dof] += vtmp
 				TTn1[dof] = TTn1i0[dof] + theta*dt*VVn1[dof]
 
 			# Update values in output

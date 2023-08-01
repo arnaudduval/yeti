@@ -386,7 +386,10 @@ contains
                                     ones(1:datstruct%nrows(2)), datstruct%eigval(1, 1:datstruct%nrows(1)), &
                                     datstruct%eigval(2, 1:datstruct%nrows(2)), mean, datstruct%Deigen)
         else if (datstruct%dimen.eq.3) then
-            stop 'eigendecomp not done yet'
+            call find_parametric_diag_3d(datstruct%nrows(1), datstruct%nrows(2), datstruct%nrows(3), ones(1:datstruct%nrows(1)), &
+                                    ones(1:datstruct%nrows(2)), ones(1:datstruct%nrows(3)), &
+                                    datstruct%eigval(1, 1:datstruct%nrows(1)), datstruct%eigval(2, 1:datstruct%nrows(2)), &
+                                    datstruct%eigval(3, 1:datstruct%nrows(3)), mean, datstruct%Deigen)
         end if
 
     end subroutine eigendecomposition

@@ -74,12 +74,10 @@ class problem():
 		coefs = np.atleast_2d(coefs); nr = np.size(coefs, axis=0); u_interp = []
 
 		for i in range(nr):
-			# Calculate vector
 			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
 			if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
 			if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
 
-			# Solve linear system with fortran
 			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
 			if self.part.dim == 2: u_tmp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
@@ -94,7 +92,6 @@ class heatproblem(problem):
 		self.material = material
 		return
 	
-	# Matrix free functions
 	def get_input4MatrixFree(self, table=None):
 		" Returns necessary inputs to compute the product between a matrix and a vector "
 		
@@ -152,39 +149,37 @@ class heatproblem(problem):
 
 		vector = np.zeros(self.part.nbctrlpts_total)
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-		INC_quadpts = get_INCTable(self.part.nbqp)
 		direction, side = get_faceInfo(nbFacePosition)
 
-		# Get control points and quadrature points list
-		if side == 0: 
-			CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-			QPList = np.where(INC_quadpts[:, direction] == 0)[0]
-
-		elif side == 1: 
-			CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-			QPList = np.where(INC_quadpts[:, direction] == self.part.nbqp[direction]-1)[0]
-		
-		CPList = list(np.sort(CPList))
-		QPList = list(np.sort(QPList))
-
-		# Modify Jacobien matrix
+		if direction>=2*self.part.dim: raise Warning('Not possible')
 		valrange = [i for i in range(self.part.dim)]
 		valrange.pop(direction)
-		JJ = self.part.Jqp[:, :, QPList]
-		JJ = JJ[:, valrange, :]
 
-		# Get force values at quadrature points
-		qpPhy = self.part.qpPhy[:, QPList]
-		coefs = fun(qpPhy)
-
-		# Compute surface force
-		nnz, indices, weights = [], [], []
-		for _ in valrange:
-			nnz.append(self.part.nbqp[_]); weights.append(self.part.weights[_])
-			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
+		# Get control points and quadrature points list
+		if side == 0: CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+		elif side == 1:  CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
 		
-		tmp = plasticitysolver.wq_get_heatsurf_3d(coefs, JJ, *nnz, *indices, *weights)
-		vector[:, CPList] = tmp
+		CPList = list(np.sort(CPList))
+		CtrlPts = self.part.ctrlpts[:, CPList]
+
+		nnz, indices, basis, weights = [], [], [], []
+		for _ in valrange:
+			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
+			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
+
+		inpts = [*nnz, *indices, *basis, CtrlPts]
+		if self.part.dim == 2: 
+			JJ = geophy.eval_jacobien_1d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
+		elif self.part.dim == 3:
+			JJ = geophy.eval_jacobien_2d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+
+		coefs = fun(qpPhy)
+		inpts = [coefs, JJ, *nnz, *indices, *weights]
+		if   self.part.dim == 2: raise Warning('Not done yet')
+		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_heatsurf_3d(*inpts)
+		vector[CPList] = tmp
 
 		return vector
 
@@ -199,7 +194,6 @@ class heatproblem(problem):
 		uinterp = np.ravel(uinterp)
 		return uinterp
 
-	# Solve using fortran
 	def solveSteadyHeatProblemFT(self, b, coefs=None):
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, self.part.qpPhy)
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
@@ -227,13 +221,9 @@ class heatproblem(problem):
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
 		return sol, residue
 
-	# Solve using python
 	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):
-		m, n = np.shape(Tinout)
-		nbSteps         = len(time_list)
+		nbSteps = len(time_list)
 		nbctrlpts_total = self.part.nbctrlpts_total
-		if n != nbSteps: raise Warning('Not possible')
-		if m != nbctrlpts_total: raise Warning('Not possible')
 		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
 
 		VVn0 = np.zeros(nbctrlpts_total)
@@ -245,20 +235,19 @@ class heatproblem(problem):
 			dt1 = time_list[1] - time_list[0]
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
-			VVn0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] 
-					- (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		else:
-			raise Warning('At least 2 steps')
+			VVn0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		else: raise Warning('At least 2 steps')
 		
 		for i in range(1, nbSteps):
+			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
 			
 			# Get values of last step
 			TTn0 = np.copy(Tinout[:, i-1])
 
-			# Get approximative values of new step
-			TTn1 = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
+			# Get values of new step
+			TTn1  = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
 			TTn10 = np.copy(TTn1); VVn1 = np.zeros(np.shape(VVn0))
 			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i]-Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
 			Fstep = Fext[:, i]
@@ -266,34 +255,32 @@ class heatproblem(problem):
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
 
-				# Compute temperature and properties at each quadrature point
+				# Compute temperature at each quadrature point
 				TTinterp = self.interpolate_temperature(TTn1)
 			
 				# Compute internal force
-				inpt = self.part.qpPhy
-				inpt = np.row_stack((inpt, TTinterp*np.ones(np.size(inpt, axis=1))))
-				Ccoefs  = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
-				Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
+				inpt = np.row_stack((self.part.qpPhy, TTinterp))
+				Ccoefs = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
+				Kcoefs = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
 
 				CdTemp = self.eval_mfCapacity(VVn1, coefs=Ccoefs, table=np.zeros((3, 2), dtype=bool))
 				KTemp  = self.eval_mfConductivity(TTn1, coefs=Kcoefs, table=np.zeros((3, 2), dtype=bool))
 				Fint   = KTemp + CdTemp
 
 				# Compute residue
-				ddFF    = Fstep - Fint
-				ddFFdof = ddFF[dof]
-				resNR   = np.sqrt(np.dot(ddFFdof, ddFFdof))
+				dF    = Fstep[dof] - Fint[dof]
+				resNR = np.sqrt(np.dot(dF, dF))
 				print('NR error: %.5e' %resNR)
 				if resNR <= self._thresholdNR: break
 
 				# Iterative solver
 				resPCG = np.array([i, j+1])
-				ddVV, resPCGt = self.solveLinearTransientHeatProblemFT(dt, ddFFdof, Ccoefs=Ccoefs, Kcoefs=Kcoefs, theta=theta)
+				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dt, dF, Ccoefs=Ccoefs, Kcoefs=Kcoefs, theta=theta)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
 				# Update values
-				VVn1[dof] += ddVV
+				VVn1[dof] += vtmp
 				TTn1[dof] = TTn10[dof] + theta*dt*VVn1[dof]
 
 			Tinout[:, i] = np.copy(TTn1)
@@ -307,7 +294,6 @@ class mechaproblem(problem):
 		self.material = material
 		return
 	
-	# Matrix free functions
 	def eval_mfStiffness(self, displacement, tensorArgs=None):
 		if tensorArgs is None: 
 			dimen  = self.part.dim
@@ -340,6 +326,7 @@ class mechaproblem(problem):
 		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
+		
 		if direction>=2*self.part.dim: raise Warning('Not possible')
 		valrange = [i for i in range(self.part.dim)]
 		valrange.pop(direction)
@@ -351,7 +338,6 @@ class mechaproblem(problem):
 		CPList = list(np.sort(CPList))
 		CtrlPts = self.part.ctrlpts[:, CPList]
 
-		# Compute surface force
 		nnz, indices, basis, weights = [], [], [], []
 		for _ in valrange:
 			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
@@ -376,7 +362,6 @@ class mechaproblem(problem):
 
 		return vector
 
-	# Solve using fortran
 	def solveElasticityProblemFT(self, Fext, mechArgs=None):
 		dod_total = deepcopy(self.boundary.mchdod)
 		for i, dod in enumerate(dod_total):
@@ -400,7 +385,6 @@ class mechaproblem(problem):
 		
 		return displacement, residue, stress
 
-	# Solve using python
 	def compute_strain(self, displacement, isVoigt=False):
 		" Compute strain field from displacement field "
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
@@ -418,52 +402,62 @@ class mechaproblem(problem):
 	def solvePlasticityProblemPy(self, Fext): 
 
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
-		d     = self.part.dim
-		ddl   = int(d*(d+1)/2)
+		dimen  = self.part.dim
+		nvoigt = int(dimen*(dimen+1)/2)
 		nbqp_total = self.part.nbqp_total
-		pls_n0 = np.zeros((ddl, nbqp_total))
-		a_n0  = np.zeros(nbqp_total)
-		b_n0  = np.zeros((ddl, nbqp_total))
-		pls_n1 = np.zeros((ddl, nbqp_total))
-		a_n1  = np.zeros(nbqp_total)
-		b_n1  = np.zeros((ddl, nbqp_total))
-		stress = np.zeros((ddl, nbqp_total))
-		Cep   = np.zeros((ddl+3, nbqp_total))
-		disp  = np.zeros(np.shape(Fext))
-		stress_r = np.zeros((ddl, nbqp_total, np.shape(Fext)[2]))
+
+		# Internal variables
+		pls_n0 = np.zeros((nvoigt, nbqp_total))
+		a_n0   = np.zeros(nbqp_total)
+		b_n0   = np.zeros((nvoigt, nbqp_total))
+		pls_n1 = np.zeros((nvoigt, nbqp_total))
+		a_n1   = np.zeros(nbqp_total)
+		b_n1   = np.zeros((nvoigt, nbqp_total))
+		stress = np.zeros((nvoigt, nbqp_total))
+		mechArgs = np.zeros((nvoigt+3, nbqp_total))
+		
+		# Output variables
+		disp = np.zeros(np.shape(Fext))
+		stress_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext)[2]))
 		resPCG_list = []
 
 		for i in range(1, np.shape(Fext)[2]):
-
+			
+			# Get values of last step
 			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
+
+			# Get values of new step
 			Fstep = Fext[:, :, i]
 
 			print('Step: %d' %i)
-			for j in range(self._nbIterNR): # Solver Newton-Raphson
+			for j in range(self._nbIterNR):
 
-				# Compute strain as function of displacement
+				# Compute strain at each quadrature point
 				d_n1 = disp[:, :, i-1] + ddisp
 				strain = self.compute_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
 				output = self.material.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
-				stress, pls_n1, a_n1, b_n1, Cep = output[:ddl, :], output[ddl:2*ddl, :], output[2*ddl, :], output[2*ddl+1:3*ddl+1, :], output[3*ddl+1:, :]
+				stress, pls_n1, a_n1 = output[:nvoigt, :], output[nvoigt:2*nvoigt, :], output[2*nvoigt, :]
+				b_n1, mechArgs = output[2*nvoigt+1:3*nvoigt+1, :], output[3*nvoigt+1:, :]
 
-				# Compute Fint 
+				# Compute internal force 
 				Fint = self.compute_intForce(stress)
+				
+				# Compute residue
 				dF   = Fstep - Fint
 				clean_dirichlet(dF, self.boundary.mchdod) 
-				prod1 = block_dot_product(d, dF, dF)
-				resNR = np.sqrt(prod1)
+				resNR = np.sqrt(block_dot_product(dimen, dF, dF))
 				print('NR error: %.5e' %resNR)
 				if resNR <= self._thresholdNR: break
 				
+				# Iterative solver
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, mechArgs=Cep)
+				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, mechArgs=mechArgs)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
-				ddisp  += vtmp
+				ddisp += vtmp
 
 			disp[:, :, i] = d_n1
 			stress_r[:, :, i] = stress			
