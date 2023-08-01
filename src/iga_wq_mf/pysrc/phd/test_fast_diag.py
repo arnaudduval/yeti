@@ -6,7 +6,6 @@
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import (createUniformMaxregularKnotvector, eraseRowsCSR, 
-							# genEigenDecomposition,
 							# fastDiagonalization
 )
 from pysrc.lib.lib_quadrules import WeightedQuadrature
@@ -39,14 +38,14 @@ if not dataExist:
 			# Erase data
 			rows2erase = [0, -1]
 			indi_t, indj_t, [B_t, W_t] = eraseRowsCSR(rows2erase, indi, indj, [dersbasis, dersweights])
-			data_t = [B_t[:, 0], B_t[:, 1], W_t[:, 0], W_t[:, -1]]
 
 			# Compute fast diagonalization
 			nb_ctrlpts = weightedQuad.nbctrlpts - len(rows2erase)
 			V = np.random.random(nb_ctrlpts**3)
 			start = time.process_time()
 
-			eig_t, U_t = genEigenDecomposition(indi_t, indj_t, data_t)
+			mcoefs = np.ones(len(qp)); kcoefs = np.ones(len(qp))
+			eig_t, U_t = geophy.eigen_decomposition_py(mcoefs, kcoefs, indi, indj, B_t, W_t, [0, 0])
 			eig_diag = np.random.random(nb_ctrlpts**3)
 			array_out = fastDiagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
 			print(array_out[:10])
