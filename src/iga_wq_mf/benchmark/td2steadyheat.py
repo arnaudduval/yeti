@@ -67,7 +67,7 @@ def exactTemperature_quartCircle(P: list):
 
 # Set global variables
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# quadArgs = {'quadrule': 'wq', 'type': 2}
+quadArgs = {'quadrule': 'wq', 'type': 1}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
 
 # Create model 
