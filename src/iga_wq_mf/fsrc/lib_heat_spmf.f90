@@ -281,6 +281,48 @@ contains
     
     end subroutine update_capacitycoefs
 
+    subroutine compute_mean_2d(mat, nc_u, nc_v)
+        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: samplesize = 3**2
+        type(thermomat), pointer :: mat
+        integer, intent(in) :: nc_u, nc_v
+
+        ! Local data
+        ! ----------
+        integer :: i, j, l, genPos, pos
+        integer :: ind_u, ind_v, sample
+        dimension :: ind_u(3), ind_v(3), sample(samplesize)
+        
+        if (nc_u*nc_v.ne.mat%ncols_sp) stop 'Wrong dimensions'
+        pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
+        pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
+    
+        ! Select a set of coefficients
+        l = 1
+        do j = 1, 3
+            do i = 1, 3
+                genPos = ind_u(i) + (ind_v(j) - 1)*nc_u
+                sample(l) = genPos
+                l = l + 1
+            end do
+        end do
+
+        if (.not.allocated(mat%mean)) allocate(mat%mean(3))
+        mat%mean = 0.d0
+        if (associated(mat%Kcoefs)) then
+            call trapezoidal_rule_2d(3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
+            call trapezoidal_rule_2d(3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
+        end if
+        if (associated(mat%Ccoefs)) then
+            call trapezoidal_rule_2d(3, 3, mat%Ccoefs(sample), mat%mean(3))
+        end if   
+
+    end subroutine compute_mean_2d
+
     subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 

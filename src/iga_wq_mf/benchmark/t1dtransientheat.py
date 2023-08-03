@@ -1,3 +1,8 @@
+"""
+.. Test of 1D transient heat transfer 
+.. Author: Joaquin Cornejo
+"""
+
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
 from pysrc.lib.thermomecha1D import thermo1D

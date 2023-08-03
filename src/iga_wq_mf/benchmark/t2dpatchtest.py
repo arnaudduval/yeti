@@ -17,13 +17,11 @@ from pysrc.lib.lib_job import mechaproblem
 # Set global variables
 sampleSize   = 2500
 degree, cuts = 2, 8
-name = 'SQ'
 
 # Create model 
-geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			'extra':{'Rin':5.e2, 'Rex':1.e3, 
-			'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
+			'extra':{'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
 quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
 
 modelGeo = Geomdl(geoArgs)
@@ -68,8 +66,8 @@ disp_cp = problem.solveElasticityProblemFT(Fext=Fext)[0]
 stop = time.time()
 print('CPU time: %5e' %(stop-start))
 
-strain  = problem.compute_strain(disp_cp)
-stress  = problem.material.evalElasticStress(strain)
+strain = problem.compute_strain(disp_cp)
+stress = problem.material.evalElasticStress(strain)
 stress_vm = computeVMStressForAll(stress, 2)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
 print('Difference: %.4e' %(abs(stress_vm.max()-stress_vm.min())))

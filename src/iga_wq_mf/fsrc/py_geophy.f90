@@ -15,7 +15,6 @@ subroutine eigen_decomposition_py(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     implicit none 
     ! Input / output data
     ! -------------------
-    double precision, parameter :: penalty = 100.0d0
     integer, intent(in) :: nr, nc, nnz
     double precision, intent(in) :: Mcoefs, Kcoefs
     dimension :: Mcoefs(nc), Kcoefs(nc)

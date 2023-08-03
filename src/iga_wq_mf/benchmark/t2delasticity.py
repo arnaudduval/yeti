@@ -23,7 +23,6 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 E, nu = 1e3, 0.3
 trueEnergy = -135/32768*np.pi/E*(1024*nu**2 + 5*nu - 1019)
-name = 'QA'
 
 # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 quadArgs = {'quadrule': 'wq', 'type': 2}
@@ -33,12 +32,12 @@ solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-16}
 # Create model 
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
-error_energy = np.ones(len(cuts_list))
+error = np.ones(len(cuts_list))
 
 fig, ax  = plt.subplots(figsize=(8, 4))
 for i, degree in enumerate(degree_list):
 	for j, cuts in enumerate(cuts_list):
-		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+		geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 					'extra':{'Rin':1.0, 'Rex':4.0}
 		}
@@ -61,15 +60,15 @@ for i, degree in enumerate(degree_list):
 		problem.addSolverConstraints(solverArgs=solverArgs)
 		Fext = problem.eval_surfForce(forceSurf_infPlate, nbFacePosition=1)
 		displacement, _, stress_qp = problem.solveElasticityProblemFT(Fext=Fext)
-		error_energy[j] = abs(trueEnergy -  block_dot_product(2, Fext, displacement))/trueEnergy*100
+		error[j] = abs(trueEnergy -  block_dot_product(2, Fext, displacement))/trueEnergy*100
 
 	nbctrlpts = (2**cuts_list+degree)**2
-	ax.loglog(nbctrlpts, error_energy, marker=markerSet[i], label='degree p='+str(degree))
+	ax.loglog(nbctrlpts, error, marker=markerSet[i], label='degree p='+str(degree))
 
 	if str(quadArgs['quadrule']) == 'iga':
-		slope = np.polyfit(np.log10(nbctrlpts[:3]),np.log10(error_energy[:3]), 1)[0]
+		slope = np.polyfit(np.log10(nbctrlpts[:3]),np.log10(error[:3]), 1)[0]
 		slope = round(slope, 1)
-		annotation.slope_marker((nbctrlpts[2], error_energy[2]), slope, 
+		annotation.slope_marker((nbctrlpts[2], error[2]), slope, 
 								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 	
 	ax.set_ylabel('Relative error of energy ' + r'$\frac{|U-U^{h}|}{|U|}$')

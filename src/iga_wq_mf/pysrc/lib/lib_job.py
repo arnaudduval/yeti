@@ -31,14 +31,14 @@ class problem():
 		nr    = np.size(u_tmp, axis=0)
 		model = self.part
 
-		nbqp, indices, basis, parweights = [], [], [], []
+		nbqp, indices, basis, parweightsbyDir = [], [], [], []
 		for i in range(model.dim):
 			quadRule = GaussQuadrature(model.degree[i], model.knotvector[i], quadArgs={'type':'leg'})
 			_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
 			indi, indj = dersIndices; parweights = quadRule._parametricWeights
 			
 			nbqp.append(quadRule.nbqp); indices.append(indi); indices.append(indj)
-			basis.append(dersBasis); parweights.append(parweights)
+			basis.append(dersBasis); parweightsbyDir.append(parweights)
 
 		inputs = [*nbqp, *indices, *basis]
 		if model.dim == 2:
@@ -51,17 +51,26 @@ class problem():
 			detJ, _ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_3d(*inputs, model.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
-		if nr == 1: uinterp = np.ravel(uinterp)
+		if nr == 1: u_interp = np.ravel(u_interp)
 
-		u_exact    = fun_exact(qpPhy)
-		ue_diff_uh = (u_exact - u_interp)**2 
-		if nr > 1: ue_diff_uh = np.ravel(np.sum(ue_diff_uh, axis=0))
-		ue_diff_uh = ue_diff_uh * detJ
-		
-		ue_diff_uh = np.reshape(ue_diff_uh, tuple(nbqp), order='F')
-		if model.dim == 2: error = np.einsum('i,j,ij->', parweights[0], parweights[1], ue_diff_uh)
-		if model.dim == 3: error = np.einsum('i,j,k,ijk->', parweights[0], parweights[1], parweights[2], ue_diff_uh)
-		error = np.sqrt(error)
+		u_exact     = fun_exact(qpPhy)
+		ue_diff_uh2 = (u_exact - u_interp)**2 
+		ue2         = u_exact**2
+		if nr > 1: 
+			ue_diff_uh2 = np.ravel(np.sum(ue_diff_uh2, axis=0))
+			ue2         = np.ravel(np.sum(ue2, axis=0))
+		ue_diff_uh2 = ue_diff_uh2 * detJ
+		ue2         = ue2*detJ
+
+		ue_diff_uh2 = np.reshape(ue_diff_uh2, tuple(nbqp), order='F')
+		ue2         = np.reshape(ue2, tuple(nbqp), order='F')
+		if model.dim == 2: 
+			tmp   = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue2)
+			error = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue_diff_uh2)
+		if model.dim == 3: 
+			tmp   = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue2)
+			error = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue_diff_uh2)
+		error = np.sqrt(error/tmp)
 
 		return error
 	
@@ -119,7 +128,7 @@ class heatproblem(problem):
 	def eval_mfConductivity(self, u, coefs=None, table=None, args=None):
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, args)
-		if self.part.dim == 2: raise Warning('Until now not done')
+		if self.part.dim == 2: result = heatsolver.mf_wq_get_ku_2d(coefs, *inputs, u)
 		if self.part.dim == 3: result = heatsolver.mf_wq_get_ku_3d(coefs, *inputs, u)
 		return result
 	
@@ -198,7 +207,7 @@ class heatproblem(problem):
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, self.part.qpPhy)
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: raise Warning('Until now not done')
+		if self.part.dim == 2: sol, residue = heatsolver.mf_wq_steady_heat_2d(*inputs)
 		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
 		return sol, residue
 	
