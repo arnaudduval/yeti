@@ -66,56 +66,55 @@ def exactTemperature_quartCircle(P: list):
 	return u
 
 # Set global variables
-quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-quadArgs = {'quadrule': 'wq', 'type': 1}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
-
-# Create model 
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
-error_list  = np.ones(len(cuts_list))
 
-fig, ax = plt.subplots(figsize=(8, 4))
-for i, degree in enumerate(degree_list):
-	for j, cuts in enumerate(cuts_list):
-		geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-					'extra':{'Rin':1.0, 'Rex':4.0}
-		}
-		blockPrint()
-		material = thermomat()
-		material.addConductivity(conductivityProperty, isIsotropic=False)				
-		modelGeo = Geomdl(geoArgs)
-		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs=quadArgs)
+for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
+	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	error_list  = np.ones(len(cuts_list))
+	fig, ax = plt.subplots(figsize=(8, 4))
 
-		# Set Dirichlet boundaries
-		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletTemperature(table=np.ones((2, 2), dtype=int))
-		enablePrint()
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
+			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+						'extra':{'Rin':1.0, 'Rex':4.0}
+			}
+			blockPrint()
+			material = thermomat()
+			material.addConductivity(conductivityProperty, isIsotropic=False)				
+			modelGeo = Geomdl(geoArgs)
+			modelIGA = modelGeo.getIGAParametrization()
+			modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-		# Solve elastic problem
-		temperature = np.zeros(modelPhy.nbctrlpts_total)
-		problem = heatproblem(material, modelPhy, boundary)
-		problem.addSolverConstraints(solverArgs=solverArgs)
-		Fn      = problem.eval_volForce(powerDensity_quartCircle, indi=boundary.thdof)
-		temperature[boundary.thdof] = problem.solveSteadyHeatProblemFT(b=Fn)[0]
-		error_list[j] = problem.L2NormOfError(exactTemperature_quartCircle, temperature)
+			# Set Dirichlet boundaries
+			boundary = boundaryCondition(modelPhy.nbctrlpts)
+			boundary.add_DirichletTemperature(table=np.ones((2, 2), dtype=int))
+			enablePrint()
 
-	nbctrlpts_list = (2**cuts_list+degree)**2
-	ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree p='+str(degree))
+			# Solve elastic problem
+			temperature = np.zeros(modelPhy.nbctrlpts_total)
+			problem = heatproblem(material, modelPhy, boundary)
+			problem.addSolverConstraints(solverArgs=solverArgs)
+			Fn      = problem.eval_volForce(powerDensity_quartCircle, indi=boundary.thdof)
+			temperature[boundary.thdof] = problem.solveSteadyHeatProblemFT(b=Fn)[0]
+			error_list[j] = problem.L2NormOfError(exactTemperature_quartCircle, temperature)
 
-	if str(quadArgs['quadrule']) == 'iga':
-		slope = np.polyfit(np.log10(nbctrlpts_list[-5:]),np.log10(error_list[-5:]), 1)[0]
-		slope = round(slope, 1)
-		annotation.slope_marker((nbctrlpts_list[-2], error_list[-2]), slope, 
-								poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-		
-	ax.set_ylabel(r'$\displaystyle\sqrt{\frac{\int_\Omega \left(u-u^h\right)^2 d\Omega}{\int_\Omega u^2 d\Omega}}$')
-	ax.set_xlabel('Total number of DOF')
-	ax.set_ylim(top=1e1, bottom=1e-16)
-	ax.set_xlim(left=10, right=1e5)
+		nbctrlpts_list = (2**cuts_list+degree)**2
+		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
 
-	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	fig.tight_layout()
-	fig.savefig(folder + 'FigThickRing_' + str(quadArgs['quadrule']) +'.png')
+		if str(quadArgs['quadrule']) == 'iga':
+			slope = np.polyfit(np.log10(nbctrlpts_list[1:7]),np.log10(error_list[1:7]), 1)[0]
+			slope = round(slope, 1)
+			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
+									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+			
+		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+		ax.set_xlabel('Total number of DOF')
+		ax.set_ylim(top=1e0, bottom=1e-15)
+		ax.set_xlim(left=10, right=1e5)
+
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigThickRing_' + str(quadArgs['quadrule']) +'.png')

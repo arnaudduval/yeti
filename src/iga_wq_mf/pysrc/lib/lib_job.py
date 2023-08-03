@@ -65,12 +65,12 @@ class problem():
 		ue_diff_uh2 = np.reshape(ue_diff_uh2, tuple(nbqp), order='F')
 		ue2         = np.reshape(ue2, tuple(nbqp), order='F')
 		if model.dim == 2: 
-			tmp   = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue2)
-			error = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue_diff_uh2)
+			tmp1 = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue2)
+			tmp2 = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue_diff_uh2)
 		if model.dim == 3: 
-			tmp   = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue2)
-			error = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue_diff_uh2)
-		error = np.sqrt(error/tmp)
+			tmp1 = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue2)
+			tmp2 = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue_diff_uh2)
+		error = np.sqrt(tmp2/tmp1)
 
 		return error
 	
