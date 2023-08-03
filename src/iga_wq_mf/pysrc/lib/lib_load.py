@@ -9,40 +9,6 @@ def forceVol(P:list):
 	force = 0.4*np.sin(P/1e3)
 	return force
 
-def forceSurf_infPlate(P:list):
-	Tx, rin = 1.0, 1.0
-	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
-	r_square = x**2 + y**2
-	theta_x2 = 2.0*np.arcsin(y/np.sqrt(r_square))
-	div = rin**2/r_square # Already squared
-
-	CartSt = np.zeros((2, 2, nnz))
-	CartSt[0, 0, :] = Tx*(1.0 - div*(1.5*np.cos(theta_x2) + np.cos(2.0*theta_x2)) + 1.5*div**2*np.cos(2.0*theta_x2))
-	CartSt[1, 1, :] = Tx*(-div*(0.5*np.cos(theta_x2) - np.cos(2.0*theta_x2)) - 1.5*div**2*np.cos(2.0*theta_x2))
-	CartSt[0, 1, :] = CartSt[1, 0, :] = Tx*(-div*(0.5*np.sin(theta_x2) + np.sin(2.0*theta_x2)) + 1.5*div**2*np.sin(2.0*theta_x2))	
-	
-	F = np.zeros((2, nnz))
-	F[0, :] = CartSt[0, 0, :]*np.cos(theta_x2/2.0) + CartSt[0, 1, :]*np.sin(theta_x2/2.0)
-	F[1, :] = CartSt[1, 0, :]*np.cos(theta_x2/2.0) + CartSt[1, 1, :]*np.sin(theta_x2/2.0)
-	return F
-
-def displacement_infPlate(P:list):
-	Tx, rin, E, nu = 1.0, 1.0, 1.e3, 0.3
-	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
-	r_square = x**2 + y**2
-	theta_x2 = 2*np.arcsin(y/np.sqrt(r_square))
-	div   = rin**2/r_square # Already squared
-	a     = rin*Tx*(1.0 + nu)/(2*E)
-
-	Polardisp = np.zeros((2, nnz))
-	Polardisp[0, :] = a*(div + 1 -nu + np.cos(theta_x2)*(-div**2 + 4.0*(1.0 - nu)*div + 1))
-	Polardisp[1, :] = -a*np.sin(theta_x2)*(div**2 + 2.0*(1.0 - 2.0*nu)*div + 1)
-
-	disp = np.zeros((2, nnz))
-	disp[0, :] = Polardisp[0, :]*np.cos(theta_x2/2.0) - Polardisp[1, :]*np.sin(theta_x2/2.0)
-	disp[1, :] = Polardisp[0, :]*np.sin(theta_x2/2.0) + Polardisp[1, :]*np.cos(theta_x2/2.0)
-	return disp
-
 def powden(P:list, dim=1):
 	if dim == 1  : x = P[:]
 	elif dim == 2: x = P[0, :]
@@ -191,38 +157,5 @@ def temperature_rotring(P: list):
 	y = P[1, :]
 	z = P[2, :]
 	f = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
-
-	return f
-
-def powden_annulus(P: list):
-	""" u = (x**2 + y**2 - 1)*(x**2 + y**2 - 4)*sin(pi*x)*sin(pi*y)
-		f = -div(lambda * grad(u))
-	"""
-	x = P[0, :]
-	y = P[1, :]
-
-	# # Isotropy
-	# f = (2*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-	#     - 8*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
-	#     - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	#     - 4*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
-	#     - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	#     - 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
-	#     - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	#     - 4*y*np.pi*np.cos(np.pi*y)*np.sin(np.np.pi*x)*(x**2 + y**2 - 4) 
-	#     - 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
-	# )
-
-	# Anisotropy lambda = [1, 0; 0, 0.1]
-	f = ((11*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/10
-		- (4*y**2*np.sin(np.pi*x)*np.sin(np.pi*y))/5
-		- (11*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1))/5
-		- (11*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4))/5
-		- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)
-		- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4)
-		- (2*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1))/5
-		- (2*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4))/5
-		- 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
-	)
 
 	return f

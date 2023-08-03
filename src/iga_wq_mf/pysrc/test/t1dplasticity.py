@@ -1,7 +1,7 @@
 from lib.__init__ import *
-from lib.lib_base import (createUniformMaxregularKnotvector)
-from lib.thermomecha1D import mechamat1D, plot_results
-from lib.lib_load import *
+from lib.lib_base import createUniformMaxregularKnotvector
+from lib.thermomecha1D import mechamat1D
+from lib.lib_load import forceVol
 
 # Select folder
 full_path = os.path.realpath(__file__)

@@ -8,20 +8,16 @@
 .. CASE 4: Quadrature points in IGA-WQ approach
 .. CASE 5: B-spline surface
 .. CASE 6: FEM basis 
-.. CASE 7: Convergence curve
-.. CASE 8: Quadrature rules W00 or W11
-.. CASE 9: Plot 3D geometries
-.. CASE 10: Plot example of results
+.. CASE 7: Quadrature rules W00 or W11
+.. CASE 8: Plot 3D geometries
+.. CASE 9: Plot example of results
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage, relativeError)
+from pysrc.lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage)
 from pysrc.lib.lib_quadrules import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import thermomat
-from pysrc.lib.lib_boundary import boundaryCondition
-from pysrc.lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -85,7 +81,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 9
+CASE      = 8
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -322,87 +318,7 @@ elif CASE == 6: # FEM functions
 	
 	case6(folder, extension)
 
-elif CASE == 7: # Convergence curve
-
-	def powden(P:list):
-		x = P[:, 0]
-		y = P[:, 1]
-		f = np.sin(np.pi*x)*np.sin(np.pi*y)
-		return f
-
-	def solution(P:list): 
-		x, y = P
-		t = 1/(2*np.pi**2)*np.sin(np.pi*x)*np.sin(np.pi*y)
-		return t
-	
-	def case7(folder, extension):
-
-		# Set filename
-		filename = folder + 'ConvergenceIGA'+ extension
-
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
-		for degree in range(2, 8):
-			norm = []; nbel_list =[]
-			for cuts in range(1, 7):
-				print([degree, 2**cuts])
-
-				blockPrint()
-				# Create model
-				name     = 'SQ'
-				geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
-							'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-				quadArgs  = {'quadrule': 'wq', 'type': 1}
-
-				modelGeo = Geomdl(geoArgs)
-				modelIGA = modelGeo.getIGAParametrization()
-				model    = part(modelIGA, quadArgs=quadArgs)
-
-				# Add material 
-				material = thermomat()
-				material.addCapacity(1.0, isIsotropic=True)
-				material.addConductivity(np.eye(2), isIsotropic=True, shape=(2, 2))
-
-				# Block boundaries
-				boundary = boundaryCondition(model.nbctrlpts)
-				table = np.ones((2, 2), dtype=int)
-				boundary.add_DirichletDisplacement(table=table)
-				dof = boundary.thdof
-
-				# Solve
-				problem = heatproblem(material, model, boundary)
-				Kdd = problem.assemble_conductivity(model.qpPhy)[:, dof][dof, :]
-				Fd  = problem.eval_volForce(powden, indi=dof)
-				Td  = sp.linalg.spsolve(Kdd, Fd)  
-				T   = np.zeros(model.nbctrlpts_total); T[dof] = Td
-				enablePrint()
-
-				# Interpolate
-				output  = model.interpolateMeshgridField(u_ctrlpts=T, nbDOF=1)
-				qp_interp, u_interp = output[0], output[-1]
-				u_exact = [solution(qp_interp[:, i]) for i in range(len(u_interp))]
-				u_exact = np.array(u_exact)
-
-				# Relative error
-				error = relativeError(u_interp, u_exact)
-				norm.append(error)
-				nbel_list.append(2**cuts)
-				
-			ax.loglog(nbel_list, norm, label='Degree $p =$ ' + str(degree))
-			slope = np.polyfit(np.log10(nbel_list[1:5]),np.log10(norm[1:5]), 1)[0]
-			slope = round(slope)
-			annotation.slope_marker((nbel_list[3], norm[3]), slope, 
-									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
-		ax.set_ylabel('Relative error ' + r'$\displaystyle\frac{||u-u^h||_\infty}{||u||_\infty}$')   
-		fig.tight_layout()
-		fig.savefig(filename, dpi=300)
-		return
-	
-	case7(folder, extension)
-
-elif CASE == 8: # Weights W00 and W11
+elif CASE == 7: # Weights W00 and W11
 
 	def case8(folder, extension):
 		WeightName = 1 # or 0
@@ -458,7 +374,7 @@ elif CASE == 8: # Weights W00 and W11
 	
 	case8(folder, extension)
 
-elif CASE == 9: # 2D Geometries
+elif CASE == 8: # 2D Geometries
 
 	def case9(folder):
 		# Create model
@@ -507,7 +423,7 @@ elif CASE == 9: # 2D Geometries
 
 	case9(folder)
 
-elif CASE == 10: # 3D Geometries
+elif CASE == 9: # 3D Geometries
 
 	def case10(folder):
 		# Create model
