@@ -15,7 +15,7 @@
 
 subroutine interpolate_strain_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, invJ, u, isvoigt, strain)
+                                data_B_u, data_B_v, invJ, u, strain)
     !! Computes strain in 3D (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -31,7 +31,6 @@ subroutine interpolate_strain_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
     double precision, intent(in) :: invJ, u
     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v)
-    logical, intent(in) :: isvoigt
 
     double precision, intent(out) :: strain
     dimension :: strain(nvoigt, nc_total)
@@ -70,16 +69,11 @@ subroutine interpolate_strain_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,
         call symtensor2array(dimen, nvoigt, dersx, strain(:, j))
     end do
 
-    if (.not.isvoigt) return
-    do i = dimen+1, nvoigt
-        strain(i, :) = 2*strain(i, :)
-    end do
-
 end subroutine interpolate_strain_2d
 
 subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, invJ, u, isvoigt, strain)
+                                data_B_u, data_B_v, data_B_w, invJ, u, strain)
     !! Computes strain in 3D (from parametric space to physical space)
     !! IN CSR FORMAT
 
@@ -96,7 +90,6 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2)
     double precision, intent(in) :: invJ, u
     dimension :: invJ(dimen, dimen, nc_total), u(dimen, nr_u*nr_v*nr_w)
-    logical, intent(in) :: isvoigt
 
     double precision, intent(out) :: strain
     dimension :: strain(nvoigt, nc_total)
@@ -137,15 +130,10 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
         call symtensor2array(dimen, nvoigt, dersx, strain(:, j))
     end do
 
-    if (.not.isvoigt) return
-    do i = dimen+1, nvoigt
-        strain(i, :) = 2*strain(i, :)
-    end do
-
 end subroutine interpolate_strain_3d
 
-subroutine wq_get_forcevol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
+subroutine get_forcevol_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, detJ, prop, array_out)
     !! Computes volumetric force vector in 3D 
     !! IN CSR FORMAT
 
@@ -154,13 +142,13 @@ subroutine wq_get_forcevol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
     ! -------------------
     integer, parameter :: dimen = 2
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    double precision, intent(in) :: coefs
-    dimension :: coefs(dimen, nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+    double precision, intent(in) :: detJ, prop
+    dimension :: detJ(nc_total), prop(dimen, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v)
@@ -168,18 +156,21 @@ subroutine wq_get_forcevol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nn
     ! Local data
     ! ----------
     integer :: i
+    double precision :: tmp(nc_total)
 
     do i = 1, dimen
+        tmp = prop(i, :)*detJ
         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                            coefs(i, :), array_out(i, :))
+                            tmp, array_out(i, :))
     end do
 
-end subroutine wq_get_forcevol_2d
+end subroutine get_forcevol_2d
 
-subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
+subroutine get_forcevol_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, detJ, prop, array_out)
     !! Computes volumetric force vector in 3D 
     !! IN CSR FORMAT
 
@@ -188,14 +179,14 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     ! -------------------
     integer, parameter :: dimen = 3 
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(dimen, nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
                     indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+    double precision, intent(in) :: detJ, prop
+    dimension :: detJ(nc_total), prop(dimen, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v*nr_w)
@@ -203,18 +194,20 @@ subroutine wq_get_forcevol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     ! Local data
     ! ----------
     integer :: i
+    double precision :: tmp(nc_total)
 
     do i = 1, dimen
+        tmp = prop(i, :)*detJ
         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                            coefs(i, :), array_out(i, :))
+                            tmp, array_out(i, :))
     end do
 
-end subroutine wq_get_forcevol_3d
+end subroutine get_forcevol_3d
 
-subroutine wq_get_forcesurf_2d(vforce, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, array_out)
+subroutine get_forcesurf_2d(nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, JJ, prop, array_out)
     !! Computes boundary force vector in 3D 
     !! IN CSR FORMAT
 
@@ -223,12 +216,12 @@ subroutine wq_get_forcesurf_2d(vforce, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, 
     ! -------------------
     integer, parameter :: dimen = 2
     integer, intent(in) :: nc_total, nr_u, nc_u, nnz_u
-    double precision, intent(in) :: vforce, JJ
-    dimension :: vforce(dimen, nc_total), JJ(dimen, dimen-1, nc_total)
     integer, intent(in) :: indi_u, indj_u
     dimension :: indi_u(nr_u+1), indj_u(nnz_u)
     double precision, intent(in) :: data_W_u
     dimension :: data_W_u(nnz_u, 4)
+    double precision, intent(in) :: JJ, prop
+    dimension :: JJ(dimen, dimen-1, nc_total), prop(dimen, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u)
@@ -239,27 +232,27 @@ subroutine wq_get_forcesurf_2d(vforce, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, 
     dimension :: coefs(dimen, nc_total), v1(dimen), W00(nr_u, nc_total)
     integer :: i
 
-    if (nc_total.ne.nc_u) stop 'Not possible finde force surf'
+    if (nc_total.ne.nc_u) stop 'Not possible find force surf'
 
     ! Compute coefficients
     do i = 1, nc_total
         v1 = JJ(:, 1, i)
         dsurf = sqrt(dot_product(v1, v1))
-        coefs(:, i) = vforce(:, i) * dsurf
+        coefs(:, i) = prop(:, i)*dsurf
     end do
 
     ! Compute force
     W00 = 0.d0
-    call csr2dense(nnz_u, indi_u, indj_u, data_W_u, nr_u, nc_total, W00)
+    call csr2dense(nnz_u, indi_u, indj_u, data_W_u, nr_u, nc_u, W00)
 
     do i = 1, dimen
         array_out(i, :) = matmul(W00, coefs(i, :))
     end do
     
-end subroutine wq_get_forcesurf_2d
+end subroutine get_forcesurf_2d
 
-subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
+subroutine get_forcesurf_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, JJ, prop, array_out)
     !! Computes boundary force vector in 3D 
     !! IN CSR FORMAT
 
@@ -268,13 +261,13 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
     ! -------------------
     integer, parameter :: dimen = 3
     integer, intent(in) ::  nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    double precision, intent(in) :: vforce, JJ
-    dimension :: vforce(dimen, nc_total), JJ(dimen, dimen-1, nc_total)
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+    double precision, intent(in) :: JJ, prop
+    dimension :: JJ(dimen, dimen-1, nc_total), prop(dimen, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v)
@@ -291,7 +284,7 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
         v2 = JJ(:, 2, i)
         call crossproduct(v1, v2, v3)
         dsurf = sqrt(dot_product(v3, v3))
-        coefs(:, i) = vforce(:, i) * dsurf
+        coefs(:, i) = prop(:, i) * dsurf
     end do
 
     ! Compute force
@@ -301,11 +294,11 @@ subroutine wq_get_forcesurf_3d(vforce, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz
                         coefs(i, :), array_out(i, :))
     end do
     
-end subroutine wq_get_forcesurf_3d
+end subroutine get_forcesurf_3d
 
-subroutine wq_get_intforce_2d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
+subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, &
-                            invJ, detJ, array_out)
+                            invJ, detJ, stress, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
     !! IN CSR FORMAT
@@ -316,15 +309,13 @@ subroutine wq_get_intforce_2d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, n
     ! -------------------
     integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    double precision, intent(in) :: stress
-    dimension :: stress(nvoigt, nc_total)
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-    double precision, intent(in) :: invJ, detJ
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total) 
+    double precision, intent(in) :: invJ, detJ, stress
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), stress(nvoigt, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v)
@@ -338,14 +329,14 @@ subroutine wq_get_intforce_2d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, n
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v
-    call wq_intforce_2d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
+    call intforce_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, stress, array_out)
 
-end subroutine wq_get_intforce_2d
+end subroutine get_intforce_2d
 
-subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                            invJ, detJ, array_out)
+                            invJ, detJ, stress, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
     !! IN CSR FORMAT
@@ -356,16 +347,14 @@ subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     ! -------------------
     integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
     integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: stress
-    dimension :: stress(nvoigt, nc_total)
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
                     indi_w(nr_w+1), indj_w(nnz_w)
     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-    double precision, intent(in) :: invJ, detJ
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total) 
+    double precision, intent(in) :: invJ, detJ, stress
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), stress(nvoigt, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(dimen, nr_u*nr_v*nr_w)
@@ -379,12 +368,12 @@ subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v*nr_w
-    call wq_intforce_3d(mat, stress, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
+    call intforce_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, stress, array_out)
 
-end subroutine wq_get_intforce_3d
+end subroutine get_intforce_3d
 
-subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             invJ, detJ, MechArgs, array_in, array_out)
@@ -431,67 +420,14 @@ subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, MechArgs)
-    call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
 
-end subroutine mf_wq_get_su_2d
+end subroutine mf_get_su_2d
 
-subroutine mf_wq_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, &
-                            invJ, detJ, massprop, array_in, array_out)
-    !! Computes S.u in 3D where S is stiffness matrix. 
-    !! This function is adapted to python and ONLY for elastric materials
-    !! IN CSR FORMAT
-
-    use matrixfreeplasticity
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
-
-    double precision :: invJ, detJ, massprop
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), massprop(nc_total)
-
-    double precision, intent(in) :: array_in
-    dimension :: array_in(dimen, nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_total)
-
-    ! Local data 
-    ! ----------
-    type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
-    call setup_massprop(mat, nc_total, massprop)
-    call mf_wq_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_out)
-
-end subroutine mf_wq_get_mu_2d
-
-subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             invJ, detJ, MechArgs, array_in, array_out)
@@ -541,73 +477,17 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, MechArgs)
-    call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_wq_get_su_3d
+end subroutine mf_get_su_3d
 
-subroutine mf_wq_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            invJ, detJ, massprop, array_in, array_out)
-    !! Computes S.u in 3D where S is stiffness matrix. 
-    !! This function is adapted to python and ONLY for elastric materials
-    !! IN CSR FORMAT
-
-    use matrixfreeplasticity
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision :: invJ, detJ, massprop
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), massprop(nc_total)
-
-    double precision, intent(in) :: array_in
-    dimension :: array_in(dimen, nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_total)
-
-    ! Local data 
-    ! ----------
-    type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
-    call setup_massprop(mat, nc_total, massprop)
-    call mf_wq_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-
-end subroutine mf_wq_get_mu_3d
-
-subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, b, &
-                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, MechArgs, &
+                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, mechArgs, &
                             nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -636,8 +516,8 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     integer, intent(in) :: dod_u, dod_v
     dimension :: dod_u(ndu), dod_v(ndv)
 
-    double precision, intent(in) :: invJ, detJ, properties(3), MechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), MechArgs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -670,10 +550,10 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, MechArgs)
+    call setup_jacobiennormal(mat, mechArgs)
 
     if (methodPCG.eq.'WP') then 
-        ! Set solver
+
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                 data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
@@ -684,10 +564,8 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
         end if
 
-        call init_solver(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table)
-        call eigendecomposition(solv%dx_struct, mat%mean(1, 1, :))
-        call eigendecomposition(solv%dy_struct, mat%mean(2, 2, :))
+        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%mean)
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -698,12 +576,12 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         stop 'Unknown method'                    
     end if
 
-end subroutine mf_wq_elasticity_2d
+end subroutine solver_elasticity_2d
 
-subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, MechArgs, &
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, mechArgs, &
                             nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -734,8 +612,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
 
-    double precision, intent(in) :: invJ, detJ, properties(3), MechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), MechArgs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -770,10 +648,10 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, MechArgs)
+    call setup_jacobiennormal(mat, mechArgs)
 
     if (methodPCG.eq.'WP') then 
-        ! Set solver
+
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -785,13 +663,10 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
         end if
 
-        call init_solver(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                        data_W_u, data_W_v, data_W_w, table)
-        call eigendecomposition(solv%dx_struct, mat%mean(1, 1, :))
-        call eigendecomposition(solv%dy_struct, mat%mean(2, 2, :))
-        call eigendecomposition(solv%dz_struct, mat%mean(3, 3, :))
-
+                        data_W_u, data_W_v, data_W_w, table, mat%mean)
+        
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
@@ -800,4 +675,4 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
         stop 'Unknown method'                   
     end if
 
-end subroutine mf_wq_elasticity_3d
+end subroutine solver_elasticity_3d

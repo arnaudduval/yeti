@@ -187,7 +187,7 @@ class heatproblem(problem):
 		coefs = fun(qpPhy)
 		inpts = [coefs, JJ, *nnz, *indices, *weights]
 		if   self.part.dim == 2: raise Warning('Not done yet')
-		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_heatsurf_3d(*inpts)
+		elif self.part.dim == 3: tmp = plasticitysolver.get_heatsurf_3d(*inpts)
 		vector[CPList] = tmp
 
 		return vector
@@ -303,27 +303,40 @@ class mechaproblem(problem):
 		self.material = material
 		return
 	
-	def eval_mfStiffness(self, displacement, tensorArgs=None):
-		if tensorArgs is None: 
-			dimen  = self.part.dim
-			nvoigt = int(dimen*(dimen+1)/2)
-			tensorArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			tensorArgs[0, :] = self.material.lame_lambda
-			tensorArgs[1, :] = self.material.lame_mu
+	def eval_mfStiffness(self, array_in, mechArgs=None):
+		if mechArgs is None: 
+			dimen = self.part.dim; nvoigt = int(dimen*(dimen+1)/2)
+			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs[0, :] = self.material.lame_lambda
+			mechArgs[1, :] = self.material.lame_mu
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, 
-	    			*self.part.basis, *self.part.weights, self.part.invJ, self.part.detJ, tensorArgs]
-		if   self.part.dim == 2: vector = plasticitysolver.mf_wq_get_su_2d(*inputs, displacement)
-		elif self.part.dim == 3: vector = plasticitysolver.mf_wq_get_su_3d(*inputs, displacement)
-		return vector
+	    			*self.part.basis, *self.part.weights, self.part.invJ, self.part.detJ, mechArgs]
+		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inputs, array_in)
+		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inputs, array_in)
+		return array_out
 	
-	def eval_volForce(self, fun):
-		coefs  = self.material.eval_volForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if   self.part.dim == 2: vector = plasticitysolver.wq_get_forcevol_2d(*inputs)
-		elif self.part.dim == 3: vector = plasticitysolver.wq_get_forcevol_3d(*inputs)
-		return vector
+	def compute_strain(self, displacement):
+		" Compute strain field from displacement field "
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement]
+		if   self.part.dim == 2: strain = plasticitysolver.interpolate_strain_2d(*inputs)
+		elif self.part.dim == 3: strain = plasticitysolver.interpolate_strain_3d(*inputs)
+		return strain
 	
-	def eval_surfForce(self, fun, nbFacePosition):
+	def compute_intForce(self, stress):
+		"Compute internal force using sigma coefficients "
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ, stress]
+		if   self.part.dim == 2: intForce = plasticitysolver.get_intforce_2d(*inputs)
+		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inputs)
+		return intForce
+	
+	def eval_volForce(self, volfun):
+		prop   = volfun(self.part.qpPhy)
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		if   self.part.dim == 2: volForce = plasticitysolver.get_forcevol_2d(*inputs)
+		elif self.part.dim == 3: volForce = plasticitysolver.get_forcevol_3d(*inputs)
+		return volForce
+	
+	def eval_surfForce(self, surffun, nbFacePosition):
 		" Returns force vector at the surface. In 3D: surface integrals. "
 
 		def get_faceInfo(nb):
@@ -332,7 +345,7 @@ class mechaproblem(problem):
 			else: side = 0
 			return direction, side
 
-		vector = np.zeros((self.part.dim, self.part.nbctrlpts_total))
+		surfForce = np.zeros((self.part.dim, self.part.nbctrlpts_total))
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
 		
@@ -361,15 +374,15 @@ class mechaproblem(problem):
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 
 		# Get force values at quadrature points
-		coefs = fun(qpPhy)
-		inpts = [coefs, JJ, *nnz, *indices, *weights]
-		if   self.part.dim == 2: tmp = plasticitysolver.wq_get_forcesurf_2d(*inpts)
-		elif self.part.dim == 3: tmp = plasticitysolver.wq_get_forcesurf_3d(*inpts)
-		vector[:, CPList] = tmp
+		prop  = surffun(qpPhy)
+		inpts = [*nnz, *indices, *weights, JJ, prop]
+		if   self.part.dim == 2: tmp = plasticitysolver.get_forcesurf_2d(*inpts)
+		elif self.part.dim == 3: tmp = plasticitysolver.get_forcesurf_3d(*inpts)
+		surfForce[:, CPList] = tmp
 
-		for i in range(self.part.dim): vector[i, self.boundary.mchdod[i]] = 0.0
+		for i in range(self.part.dim): surfForce[i, self.boundary.mchdod[i]] = 0.0
 
-		return vector
+		return surfForce
 
 	def solveElasticityProblemFT(self, Fext, mechArgs=None):
 		dod_total = deepcopy(self.boundary.mchdod)
@@ -386,27 +399,13 @@ class mechaproblem(problem):
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if   self.part.dim == 2: displacement, residue = plasticitysolver.mf_wq_elasticity_2d(*inputs)
-		elif self.part.dim == 3: displacement, residue = plasticitysolver.mf_wq_elasticity_3d(*inputs)
+		if   self.part.dim == 2: displacement, residue = plasticitysolver.solver_elasticity_2d(*inputs)
+		elif self.part.dim == 3: displacement, residue = plasticitysolver.solver_elasticity_3d(*inputs)
 
 		strain = self.compute_strain(displacement)
 		stress = self.material.evalElasticStress(strain)
 		
 		return displacement, residue, stress
-
-	def compute_strain(self, displacement, isVoigt=False):
-		" Compute strain field from displacement field "
-		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement, isVoigt]
-		if   self.part.dim == 2: eps = plasticitysolver.interpolate_strain_2d(*inputs)
-		elif self.part.dim == 3: eps = plasticitysolver.interpolate_strain_3d(*inputs)
-		return eps
-	
-	def compute_intForce(self, stress):
-		"Compute internal force using sigma coefficients "
-		inputs = [stress, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ]
-		if   self.part.dim == 2: Fint = plasticitysolver.wq_get_intforce_2d(*inputs)
-		elif self.part.dim == 3: Fint = plasticitysolver.wq_get_intforce_3d(*inputs)
-		return Fint
 	
 	def solvePlasticityProblemPy(self, Fext): 
 

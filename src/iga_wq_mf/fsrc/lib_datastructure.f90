@@ -223,7 +223,7 @@ contains
         integer, dimension(:), allocatable :: indi_out, indj_out
         double precision, dimension(:, :), allocatable :: bw_out
 
-        if (dimen.ne.datstruct%dimen) stop 'table not well defined.'
+        if (dimen.ne.datstruct%dimen) stop 'table not well defined'
         call get_innernodes(datstruct, dimen, table)
 
         nr_new_list  = datstruct%nrows 

@@ -166,11 +166,6 @@ class mechamat(material):
 			self.lame_bulk = bulk
 		return
 		
-	def eval_volForceCoefficients(self, fun, detJ, qp):
-		qp = np.atleast_2d(qp)
-		coefs = fun(qp)*detJ
-		return coefs
-	
 	def evalElasticStress(self, strain):
 		Tstrain = array2symtensorForAll(strain, 2)
 		traceStrain = evalTraceForAll(strain, 2)

@@ -68,48 +68,13 @@ module solverplasticity3
 
     use matrixfreeplasticity
     use datastructure
+
     type cgsolver
         integer :: dimen = 3
-        type(structure) :: dx_struct, dy_struct, dz_struct
+        type(structure) :: disp_struct(3)
     end type cgsolver
 
 contains
-
-    subroutine init_solver(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w
-        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), &
-                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-        logical, intent(in) :: table
-        dimension :: table(solv%dimen, 2, solv%dimen)
-
-        call init_3datastructure(solv%dx_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-        call update_datastructure(solv%dx_struct, solv%dimen, table(:, :, 1))
-
-        call init_3datastructure(solv%dx_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-        call update_datastructure(solv%dy_struct, solv%dimen, table(:, :, 2))
-
-        call init_3datastructure(solv%dx_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-        call update_datastructure(solv%dz_struct, solv%dimen, table(:, :, 3))
-        
-    end subroutine init_solver
 
     subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -140,12 +105,47 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        call mf_wq_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
     end subroutine matrixfree_spMdV
+
+    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, mean)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver) :: solv
+        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+
+        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w
+        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), &
+                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+        logical, intent(in) :: table
+        dimension :: table(solv%dimen, 2, solv%dimen)
+        double precision, intent(in) :: mean
+        dimension :: mean(solv%dimen, solv%dimen)
+
+        ! Local data
+        ! ----------
+        integer :: i
+
+        do i = 1, solv%dimen
+            call init_3datastructure(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
+            call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            call eigendecomposition(solv%disp_struct(i), mean(i, :))
+        end do
+        
+    end subroutine initializefastdiag
 
     subroutine applyfastdiag(solv, nr_total, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -166,81 +166,30 @@ contains
 
         ! Local data
         ! ----------
-        integer :: nr_u, nr_v, nr_w
-        integer :: dimen
-        double precision :: array_temp
-        dimension :: array_temp(solv%dimen, nr_total)
+        integer :: nr_u, nr_v, nr_w, i
         double precision, allocatable, dimension(:) :: tmp
 
-        array_temp = 0.d0
         array_out = 0.d0
-        dimen = solv%dimen
 
-        ! Compute (Uv x Uu)'.array_in
-        nr_u = solv%dx_struct%nrows(1)
-        nr_v = solv%dx_struct%nrows(2)
-        nr_w = solv%dx_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%dx_struct%eigvec(1, 1:nr_u, 1:nr_u)), &
-                transpose(solv%dx_struct%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%dx_struct%eigvec(3, 1:nr_w, 1:nr_w)), &
-                array_in(1, solv%dx_struct%dof), tmp)
-        array_temp(1, solv%dx_struct%dof) = tmp
-        deallocate(tmp)
+        do i = 1, solv%dimen
+            ! Compute (Uv x Uu)'.array_in
+            nr_u = solv%disp_struct(i)%nrows(1)
+            nr_v = solv%disp_struct(i)%nrows(2)
+            nr_w = solv%disp_struct(i)%nrows(3)
+            allocate(tmp(nr_u*nr_v*nr_w))
 
-        nr_u = solv%dy_struct%nrows(1)
-        nr_v = solv%dy_struct%nrows(2)
-        nr_w = solv%dy_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%dy_struct%eigvec(1, 1:nr_u, 1:nr_u)), &
-                transpose(solv%dy_struct%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%dy_struct%eigvec(3, 1:nr_w, 1:nr_w)), &
-                array_in(2, solv%dy_struct%dof), tmp)
-        array_temp(2, solv%dy_struct%dof) = tmp
-        deallocate(tmp)
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
+            transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w)), &
+            array_in(i, solv%disp_struct(i)%dof), tmp)
 
-        nr_u = solv%dz_struct%nrows(1)
-        nr_v = solv%dz_struct%nrows(2)
-        nr_w = solv%dz_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%dz_struct%eigvec(1, 1:nr_u, 1:nr_u)), &
-                transpose(solv%dz_struct%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%dz_struct%eigvec(3, 1:nr_w, 1:nr_w)), &
-                array_in(3, solv%dz_struct%dof), tmp)
-        array_temp(3, solv%dz_struct%dof) = tmp
-        deallocate(tmp)
+            tmp = tmp/solv%disp_struct(i)%Deigen
 
-        array_temp(1, solv%dx_struct%dof) = array_temp(1, solv%dx_struct%dof)/solv%dx_struct%Deigen
-        array_temp(2, solv%dy_struct%dof) = array_temp(2, solv%dy_struct%dof)/solv%dy_struct%Deigen
-        array_temp(3, solv%dz_struct%dof) = array_temp(3, solv%dz_struct%dof)/solv%dz_struct%Deigen
-
-        ! Compute (Uv x Uu).array_temp
-        nr_u = solv%dx_struct%nrows(1)
-        nr_v = solv%dx_struct%nrows(2)
-        nr_w = solv%dx_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%dx_struct%eigvec(1, 1:nr_u, 1:nr_u), &
-                        solv%dx_struct%eigvec(2, 1:nr_v, 1:nr_v), solv%dx_struct%eigvec(3, 1:nr_w, 1:nr_w), &
-                        array_temp(1, solv%dx_struct%dof), tmp)
-        array_out(1, solv%dx_struct%dof) = tmp
-        deallocate(tmp)
-
-        nr_u = solv%dy_struct%nrows(1)
-        nr_v = solv%dy_struct%nrows(2)
-        nr_w = solv%dy_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%dy_struct%eigvec(1, 1:nr_u, 1:nr_u), &
-                        solv%dy_struct%eigvec(2, 1:nr_v, 1:nr_v), solv%dy_struct%eigvec(3, 1:nr_w, 1:nr_w), &
-                        array_temp(2, solv%dy_struct%dof), tmp)
-        array_out(2, solv%dy_struct%dof) = tmp
-        deallocate(tmp)
-
-        nr_u = solv%dz_struct%nrows(1)
-        nr_v = solv%dz_struct%nrows(2)
-        nr_w = solv%dz_struct%nrows(3)
-        allocate(tmp(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%dz_struct%eigvec(1, 1:nr_u, 1:nr_u), &
-                        solv%dz_struct%eigvec(2, 1:nr_v, 1:nr_v), solv%dz_struct%eigvec(3, 1:nr_w, 1:nr_w), &
-                        array_temp(2, solv%dy_struct%dof), tmp)
-        array_out(3, solv%dz_struct%dof) = tmp
-        deallocate(tmp)
+            ! Compute (Uv x Uu).array_temp
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
+            solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w), &
+            tmp, array_out(i, solv%disp_struct(i)%dof))
+            deallocate(tmp)
+        end do
 
     end subroutine applyfastdiag
 
@@ -288,7 +237,7 @@ contains
                         s(solv%dimen, nr_total), Ap(solv%dimen, nr_total), As(solv%dimen, nr_total)
         integer :: iter
 
-        x = 0.d0; r = b; 
+        x = 0.d0; r = b
         call reset_dirichletbound3(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
@@ -373,7 +322,7 @@ contains
                         Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
         integer :: iter
 
-        x = 0.d0; r = b; 
+        x = 0.d0; r = b
         call reset_dirichletbound3(nr_total, r, ndu, ndv, ndw, dod_u, dod_v, dod_w) 
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
@@ -424,43 +373,13 @@ module solverplasticity2
 
     use matrixfreeplasticity
     use datastructure
+    
     type cgsolver
         integer :: dimen = 2
-        type(structure) :: dx_struct, dy_struct
-    end type cgsolver
+        type(structure) :: disp_struct(2)
+        end type cgsolver
 
 contains
-
-    subroutine init_solver(solv, nr_u, nc_u, nr_v, nc_v, &
-                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, table)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
-                        indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_B_u, data_B_v, data_W_u, data_W_v
-        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), &
-                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-        logical, intent(in) :: table
-        dimension :: table(solv%dimen, 2, solv%dimen)
-
-        call init_2datastructure(solv%dx_struct, nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v)
-        call update_datastructure(solv%dx_struct, solv%dimen, table(:, :, 1))
-
-        call init_2datastructure(solv%dy_struct, nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v)
-        call update_datastructure(solv%dy_struct, solv%dimen, table(:, :, 2))
-        
-    end subroutine init_solver
 
     subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -491,12 +410,47 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        call mf_wq_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+        call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
 
     end subroutine matrixfree_spMdV
+
+    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, &
+                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, mean)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver) :: solv
+        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+
+        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
+                        indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_B_u, data_B_v, data_W_u, data_W_v
+        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), &
+                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+        logical, intent(in) :: table
+        dimension :: table(solv%dimen, 2, solv%dimen)
+        double precision, intent(in) :: mean
+        dimension :: mean(solv%dimen, solv%dimen)
+
+        ! Local data
+        ! ----------
+        integer :: i
+
+        do i = 1, solv%dimen
+            call init_2datastructure(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, &
+                                    nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+                                    data_B_u, data_B_v, data_W_u, data_W_v)
+            call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            call eigendecomposition(solv%disp_struct(i), mean(i, :))
+        end do
+        
+    end subroutine initializefastdiag
 
     subroutine applyfastdiag(solv, nr_total, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -517,56 +471,26 @@ contains
     
         ! Local data
         ! ----------
-        integer :: nr_u, nr_v
-        integer :: dimen
-        double precision :: array_temp
-        dimension :: array_temp(solv%dimen, nr_total)
+        integer :: nr_u, nr_v, i
         double precision, allocatable, dimension(:) :: tmp
 
-        array_temp = 0.d0
-        array_out = 0.d0
-        dimen = solv%dimen
+        array_out  = 0.d0
+        
+        do i = 1, solv%dimen
+            ! Compute (Uv x Uu)'.array_in
+            nr_u = solv%disp_struct(i)%nrows(1)
+            nr_v = solv%disp_struct(i)%nrows(2)
+            allocate(tmp(nr_u*nr_v))
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
+                    transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
 
-        ! Compute (Uv x Uu)'.array_in
-        nr_u = solv%dx_struct%nrows(1)
-        nr_v = solv%dx_struct%nrows(2)
-        allocate(tmp(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%dx_struct%eigvec(1, 1:nr_u, 1:nr_u)), &
-                        transpose(solv%dx_struct%eigvec(2, 1:nr_v, 1:nr_v)), array_in(1, solv%dx_struct%dof), &
-                        tmp)
-        array_temp(1, solv%dx_struct%dof) = tmp
-        deallocate(tmp)
+            tmp = tmp/solv%disp_struct(i)%Deigen
 
-        nr_u = solv%dy_struct%nrows(1)
-        nr_v = solv%dy_struct%nrows(2)
-        allocate(tmp(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%dy_struct%eigvec(1, 1:nr_u, 1:nr_u)), &
-                        transpose(solv%dy_struct%eigvec(2, 1:nr_v, 1:nr_v)), array_in(2, solv%dy_struct%dof), &
-                        tmp)
-        array_temp(2, solv%dy_struct%dof) = tmp
-        deallocate(tmp)
-
-        array_temp(1, solv%dx_struct%dof) = array_temp(1, solv%dx_struct%dof)/solv%dx_struct%Deigen
-        array_temp(2, solv%dy_struct%dof) = array_temp(2, solv%dy_struct%dof)/solv%dy_struct%Deigen
-
-        ! Compute (Uv x Uu).array_temp
-        nr_u = solv%dx_struct%nrows(1)
-        nr_v = solv%dx_struct%nrows(2)
-        allocate(tmp(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%dx_struct%eigvec(1, 1:nr_u, 1:nr_u), &
-                        solv%dx_struct%eigvec(2, 1:nr_v, 1:nr_v), array_temp(1, solv%dx_struct%dof), &
-                        tmp)
-        array_out(1, solv%dx_struct%dof) = tmp
-        deallocate(tmp)
-
-        nr_u = solv%dy_struct%nrows(1)
-        nr_v = solv%dy_struct%nrows(2)
-        allocate(tmp(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%dy_struct%eigvec(1, 1:nr_u, 1:nr_u), &
-                        solv%dy_struct%eigvec(2, 1:nr_v, 1:nr_v), array_temp(2, solv%dy_struct%dof), &
-                        tmp)
-        array_out(2, solv%dy_struct%dof) = tmp
-        deallocate(tmp)
+            ! Compute (Uv x Uu).array_temp
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
+                    solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), tmp, array_out(i, solv%disp_struct(i)%dof))
+            deallocate(tmp)
+        end do
 
     end subroutine applyfastdiag
 
@@ -699,7 +623,7 @@ contains
                         Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
         integer :: iter
 
-        x = 0.d0; r = b; 
+        x = 0.d0; r = b
         call reset_dirichletbound2(nr_total, r, ndu, ndv, dod_u, dod_v) 
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
