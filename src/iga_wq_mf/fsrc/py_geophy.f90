@@ -206,12 +206,11 @@ subroutine l2projection_ctrlpts_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! ----------
     type(thermomat), pointer :: mat
     type(cgsolver), pointer :: solv
-    type(structure), allocatable :: struct
+    type(structure) :: struct
     double precision :: ones(3)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     ones = 1.d0
-    allocate(struct)
     call init_3datastructure(struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
@@ -365,12 +364,11 @@ subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! ----------
     type(thermomat), pointer :: mat
     type(cgsolver), pointer :: solv
-    type(structure), allocatable :: struct
+    type(structure) :: struct
     double precision :: ones(2)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     ones = 1.d0
-    allocate(struct)
     call init_2datastructure(struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)

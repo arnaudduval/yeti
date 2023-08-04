@@ -42,7 +42,7 @@ subroutine get_genbasis_coo(degree, size_kv, knotvector, nb_knots, knots, basis,
 
     ! Local data
     ! ----------
-    type(genquadrature), allocatable :: obj
+    type(genquadrature) :: obj
     call init_genquad(obj, degree, knotvector)
     call get_basis_simplified_coo(obj, nb_knots, knots, basis, indices)
 
@@ -100,7 +100,7 @@ subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos,
 
     ! Local data
     ! ----------
-    type(weightedquadrature), allocatable :: obj
+    type(weightedquadrature) :: obj
 
     if (nbctrlpts.ne.size_kv-degree-1) stop 'Size problem in wq get basis coo'
     call init_wq(obj, degree, knotvector, quadptspos, B0shape, B1shape, method)

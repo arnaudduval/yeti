@@ -1,119 +1,15 @@
-subroutine eigendecomp_plasticity_2d(nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, &
-                                table, U_u, U_v, D_u, D_v)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 2
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
-
-    integer, intent(in) :: table
-    dimension :: table(dimen, 2, dimen)
-    double precision, intent(in) :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
-    dimension :: Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v)
-
-    double precision, intent(out) :: U_u, U_v
-    dimension :: U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v)
-    double precision, intent(out) :: D_u, D_v
-    dimension :: D_u(dimen, nr_u), D_v(dimen, nr_v)
-
-    ! Local data
-    ! -----------
-    integer :: i
-    double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v
-    
-    allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v))
-    do i = 1, dimen
-
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
-                                data_B_u, data_W_u, table(1, :, i), D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
-
-        call eigen_decomposition(nr_v, nc_v, Mcoef_v(i, :), Kcoef_v(i, :), nnz_v, indi_v, indj_v, &
-                                data_B_v, data_W_v, table(2, :, i), D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v)
-
-    end do
-
-    deallocate(Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
-    
-end subroutine eigendecomp_plasticity_2d
-
-subroutine eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, &
-                                Kcoef_u, Kcoef_v, Kcoef_w, table, U_u, U_v, U_w, D_u, D_v, D_w)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    integer, intent(in) :: table
-    dimension :: table(dimen, 2, dimen)
-    double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension :: Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Mcoef_w(dimen, nc_w), &
-                Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v), Kcoef_w(dimen, nc_w)
-
-    double precision, intent(out) :: U_u, U_v, U_w
-    dimension :: U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w)
-    double precision, intent(out) :: D_u, D_v, D_w
-    dimension :: D_u(dimen, nr_u), D_v(dimen, nr_v), D_w(dimen, nr_w)
-
-    ! Local data
-    ! -----------
-    integer :: i
-    double precision, allocatable, dimension(:) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
-                                                    
-    allocate(Kdiag_u(nr_u), Mdiag_u(nr_u), Kdiag_v(nr_v), Mdiag_v(nr_v), Kdiag_w(nr_w), Mdiag_w(nr_w))
-
-    do i = 1, dimen
-        call eigen_decomposition(nr_u, nc_u, Mcoef_u(i, :), Kcoef_u(i, :), nnz_u, indi_u, indj_u, &
-                                data_B_u, data_W_u, table(1, :, i), D_u(i, :), U_u(i, :, :), Kdiag_u, Mdiag_u)
-
-        call eigen_decomposition(nr_v, nc_v, Mcoef_v(i, :), Kcoef_v(i, :), nnz_v, indi_v, indj_v, &
-                                data_B_v, data_W_v, table(2, :, i), D_v(i, :), U_v(i, :, :), Kdiag_v, Mdiag_v)
-
-        call eigen_decomposition(nr_w, nc_w, Mcoef_w(i, :), Kcoef_w(i, :), nnz_w, indi_w, indj_w, &
-                                data_B_w, data_W_w, table(3, :, i), D_w(i, :), U_w(i, :, :), Kdiag_w, Mdiag_w) 
-    end do
-
-    deallocate(Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-
-end subroutine eigendecomp_plasticity_3d
-
 module matrixfreeplasticity
 
     implicit none
     type :: mecamat
     
-        ! Inputs 
         integer :: dimen, nvoigt
         double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJ=>null(), massprop=>null()
         double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
-        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
-        double precision, dimension(:, :, :), allocatable :: mean
-        
-        ! Outputs
+        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, mean
         double precision :: lambda, mu, bulk
-
-        ! Local
         integer :: ncols_sp
     
     end type mecamat
@@ -128,9 +24,8 @@ contains
         ! -------------------
         integer, intent(in) :: dimen
         double precision, intent(in) :: elasticmodulus, poissonratio, elasticlimit
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
 
-        allocate(mat)
         mat%dimen  = dimen
         mat%nvoigt = dimen*(dimen+1)/2
 
@@ -138,38 +33,38 @@ contains
         mat%elasticmodulus = elasticmodulus
         mat%poissonratio   = poissonratio
         mat%elasticlimit   = elasticlimit
-        mat%lambda  = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
-        mat%mu      = elasticmodulus/(2*(1+poissonratio))
-        mat%bulk    = mat%lambda + 2.d0/3.d0*mat%mu
+        mat%lambda = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
+        mat%mu     = elasticmodulus/(2*(1+poissonratio))
+        mat%bulk   = mat%lambda + 2.d0/3.d0*mat%mu
         allocate(mat%mean(mat%dimen, mat%dimen, mat%dimen))
-        mat%mean    = 1.d0
+        mat%mean   = 1.d0
 
     end subroutine initialize_mecamat
 
-    subroutine setup_geometry(mat, nc, invJ, detJ)
+    subroutine setup_geometry(mat, nnz, invJ, detJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
         !! It also computes and saves inv(JJ) inv(JJ).transpose
 
         implicit none
         ! Input / output data
         ! -------------------
-        type(mecamat), pointer :: mat
-        integer, intent(in) :: nc
+        type(mecamat) :: mat
+        integer, intent(in) :: nnz
         double precision, target, intent(in) :: invJ, detJ
-        dimension :: invJ(mat%dimen, mat%dimen, nc), detJ(nc)
+        dimension :: invJ(mat%dimen, mat%dimen, nnz), detJ(nnz)
 
         mat%invJ => invJ
         mat%detJ => detJ
-        mat%ncols_sp = nc
+        mat%ncols_sp = nnz
 
     end subroutine setup_geometry
 
     subroutine setup_massprop(mat, nnz, prop)
 
         implicit none
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nnz
-        double precision, target, intent(in) ::  prop
+        double precision, target, intent(in) :: prop
         dimension :: prop(nnz)
         mat%massprop => prop
 
@@ -182,7 +77,7 @@ contains
         ! Input / output data
         ! -------------------
         double precision, parameter :: threshold = 1.d-12
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         double precision, target, intent(in) :: MechArgs
         dimension :: MechArgs(mat%nvoigt+3, mat%ncols_sp)
 
@@ -195,12 +90,11 @@ contains
         mat%NN      => MechArgs(4:, :)
         if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJnn = 0.d0
-        if (any(abs(mat%NN).gt.threshold)) then
-            do i = 1,  mat%ncols_sp
-                call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), TNN)
-                mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), TNN)
-            end do
-        end if
+        if (all(abs(mat%NN).lt.threshold)) return
+        do i = 1,  mat%ncols_sp
+            call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), TNN)
+            mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), TNN)
+        end do
     end subroutine setup_jacobiennormal
 
     subroutine setup_jacobienjacobien(mat)
@@ -208,7 +102,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
 
         ! Local data
         ! ----------
@@ -222,20 +116,21 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_separationvariables_ijblock(i, j, dimen, nvoigt, nc_list, mat, MM, KK)
+    subroutine compute_separationvariables_ijblock(i, j, dimen, nvoigt, nc_list, mat, Mcoefs, Kcoefs)
+        
         use separatevariables
         implicit none 
         ! Input / output data
         ! -------------------
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: i, j, dimen, nvoigt, nc_list
         dimension :: nc_list(dimen)
 
-        double precision, intent(out) :: MM(dimen, maxval(nc_list)), KK(dimen, maxval(nc_list))
+        double precision, intent(out) :: Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
-        type(operator), allocatable :: oper
+        type(sepoperator) :: oper
         logical :: update(dimen)
         integer :: k, l, m, genpos
         double precision :: DD, coefs, NN, TNN
@@ -268,7 +163,7 @@ contains
         else if (dimen.eq.3) then
             call separatevariables_3d(oper, coefs)
         end if
-        MM = oper%MM; KK = oper%KK
+        Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
 
     end subroutine compute_separationvariables_ijblock
 
@@ -276,7 +171,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: i, j, dimen, nvoigt, samplesize, sample
         dimension :: sample(samplesize)
 
@@ -325,7 +220,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: dimen, nvoigt, nclist
         dimension :: nclist(dimen)
 
@@ -385,7 +280,7 @@ contains
         ! Input / output data 
         ! -------------------
         integer, parameter :: dimen = 2
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
 
         integer, intent(in) :: indi_T_u, indi_T_v
@@ -467,7 +362,7 @@ contains
         ! Input / output data 
         ! -------------------
         integer, parameter :: dimen = 3
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
 
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -550,7 +445,7 @@ contains
         ! Input / output data 
         ! -------------------
         integer, parameter :: dimen = 2
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
 
         integer, intent(in) :: indi_T_u, indi_T_v
@@ -587,7 +482,7 @@ contains
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             array_in(i, :), array_temp)
 
-            array_temp = array_temp * mat%massprop * mat%detJ
+            array_temp = array_temp*mat%massprop*mat%detJ
 
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, 1), &
@@ -608,7 +503,7 @@ contains
         ! Input / output data 
         ! -------------------
         integer, parameter :: dimen = 3
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
 
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -646,7 +541,7 @@ contains
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
                             array_in(i, :), array_temp)
 
-            array_temp = array_temp * mat%massprop * mat%detJ
+            array_temp = array_temp*mat%massprop*mat%detJ
 
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, 1), &
@@ -666,7 +561,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: dimen = 2
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
         double precision, intent(in) :: stress
         dimension :: stress(mat%nvoigt, nc_total)
@@ -717,7 +612,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: dimen = 3
-        type(mecamat), pointer :: mat
+        type(mecamat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         double precision, intent(in) :: stress
         dimension :: stress(mat%nvoigt, nc_total)

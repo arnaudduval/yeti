@@ -396,7 +396,7 @@ subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! ----------
     type(thermomat), pointer :: mat
     type(cgsolver), pointer :: solv
-    type(operator), allocatable :: oper
+    type(sepoperator) :: oper
     double precision :: kmean(2)
 
     ! Fast diagonalization
@@ -439,8 +439,8 @@ subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         if (methodPCG.eq.'TDC') then 
             call initialize_operator(oper, 2, (/nc_u, nc_v/), (/.true., .true./))
             call separatevariables_2d(oper, coefs)
-            Mcoef_u = oper%MM(1, 1:nc_u); Mcoef_v = oper%MM(2, 1:nc_v)
-            Kcoef_u = oper%KK(1, 1:nc_u); Kcoef_v = oper%KK(2, 1:nc_v)
+            Mcoef_u = oper%Mcoefs(1, 1:nc_u); Mcoef_v = oper%Mcoefs(2, 1:nc_v)
+            Kcoef_u = oper%Kcoefs(1, 1:nc_u); Kcoef_v = oper%Kcoefs(2, 1:nc_v)
 
         else if (methodPCG.eq.'JMC') then 
             call compute_mean_2d(mat, nc_u, nc_v)
@@ -508,7 +508,7 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! ----------
     type(thermomat), pointer :: mat
     type(cgsolver), pointer :: solv
-    type(operator), allocatable :: oper
+    type(sepoperator) :: oper
     double precision :: kmean(3)
 
     ! Fast diagonalization
@@ -553,8 +553,8 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         if (methodPCG.eq.'TDC') then 
             call initialize_operator(oper, 3, (/nc_u, nc_v, nc_w/), (/.true., .true., .true./))
             call separatevariables_3d(oper, coefs)
-            Mcoef_u = oper%MM(1, 1:nc_u); Mcoef_v = oper%MM(2, 1:nc_v); Mcoef_w = oper%MM(3, 1:nc_w)
-            Kcoef_u = oper%KK(1, 1:nc_u); Kcoef_v = oper%KK(2, 1:nc_v); Kcoef_w = oper%KK(3, 1:nc_w)
+            Mcoef_u = oper%Mcoefs(1, 1:nc_u); Mcoef_v = oper%Mcoefs(2, 1:nc_v); Mcoef_w = oper%Mcoefs(3, 1:nc_w)
+            Kcoef_u = oper%Kcoefs(1, 1:nc_u); Kcoef_v = oper%Kcoefs(2, 1:nc_v); Kcoef_w = oper%Kcoefs(3, 1:nc_w)
 
         else if (methodPCG.eq.'JMC') then 
             call compute_mean_3d(mat, nc_u, nc_v, nc_w)

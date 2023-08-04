@@ -1,18 +1,14 @@
 module separatevariables
 
     implicit none
-    integer, parameter :: maxit = 2
 
-    type operator
-        ! Inputs
-        integer :: dimen, ncols
+    type sepoperator
+        integer :: dimen, ncols, maxit = 2
         integer, dimension(:), allocatable :: nclist
         logical, dimension(:), allocatable :: update
+        double precision, dimension(:, :), allocatable :: Mcoefs, Kcoefs
 
-        ! Outputs
-        double precision, dimension(:, :), allocatable :: MM, KK
-
-    end type operator
+    end type sepoperator
 
 contains
 
@@ -21,22 +17,20 @@ contains
         implicit none
         ! Input /  output data
         ! --------------------
-        type(operator), allocatable :: obj
+        type(sepoperator) :: obj
         integer :: dimen, nclist
         logical :: update
         dimension :: nclist(dimen), update(dimen)
 
-        allocate(obj)
         obj%dimen  = dimen
-
         allocate(obj%nclist(dimen), obj%update(dimen))
         obj%nclist = nclist
         obj%update = update
         obj%ncols  = product(obj%nclist)
 
-        allocate(obj%MM(obj%dimen, maxval(obj%nclist)))
-        allocate(obj%KK(obj%dimen, maxval(obj%nclist)))
-        obj%MM = 1.d0; obj%KK = 1.d0
+        allocate(obj%Mcoefs(obj%dimen, maxval(obj%nclist)))
+        allocate(obj%Kcoefs(obj%dimen, maxval(obj%nclist)))
+        obj%Mcoefs = 1.d0; obj%Kcoefs = 1.d0
 
     end subroutine initialize_operator
 
@@ -48,7 +42,7 @@ contains
         ! Input /  output data
         ! --------------------
         integer, parameter :: dimen = 2
-        type(operator), allocatable :: obj
+        type(sepoperator) :: obj
         double precision, intent(in) :: CC
         dimension :: CC(dimen, dimen, obj%ncols)
 
@@ -64,13 +58,13 @@ contains
         if (obj%dimen.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2)
 
-        do iter = 1, maxit
+        do iter = 1, obj%maxit
             allocate(Vscript(nc_u, nc_v))
             do k = 1, dimen
                 do jv = 1, nc_v
                     do ju = 1, nc_u
                         genPos = ju + (jv-1)*nc_u
-                        UU = [obj%MM(1, ju), obj%MM(2, jv)] 
+                        UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv)] 
                         Vscript(ju, jv) = CC(k, k, genPos)*UU(k)/product(UU)
                     end do
                 end do
@@ -80,7 +74,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vscript(ju, :))
                         vmax = maxval(Vscript(ju, :))
-                        obj%KK(k, ju) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -88,7 +82,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vscript(:, jv))
                         vmax = maxval(Vscript(:, jv))
-                        obj%KK(k, jv) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -104,8 +98,8 @@ contains
                         do jv = 1, nc_v
                             do ju = 1, nc_u
                                 genPos = ju + (jv-1)*nc_u
-                                UU = [obj%MM(1, ju), obj%MM(2, jv)]
-                                WW = [obj%KK(1, ju), obj%KK(2, jv)]
+                                UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv)]
+                                WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv)]
                                 Wscript(c, ju, jv) = CC(k, k, genPos)*UU(k)*UU(l)&
                                                             /(product(UU)*WW(k))
                             end do
@@ -129,7 +123,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Nscript(ju, :))
                         vmax = maxval(Mscript(ju, :))
-                        obj%MM(k, ju) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -137,7 +131,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Nscript(:, jv))
                         vmax = maxval(Mscript(:, jv))
-                        obj%MM(k, jv) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -155,7 +149,7 @@ contains
         ! Input /  output data
         ! --------------------
         integer, parameter :: dimen = 3
-        type(operator), allocatable :: obj
+        type(sepoperator) :: obj
         double precision, intent(in) :: CC
         dimension :: CC(dimen, dimen, obj%ncols)
 
@@ -171,14 +165,14 @@ contains
         if (obj%dimen.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2); nc_w = obj%nclist(3)
 
-        do iter = 1, maxit
+        do iter = 1, obj%maxit
             allocate(Vscript(nc_u, nc_v, nc_w))
             do k = 1, dimen
                 do jw = 1, nc_w
                     do jv = 1, nc_v
                         do ju = 1, nc_u
                             genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            UU = [obj%MM(1, ju), obj%MM(2, jv), obj%MM(3, jw)] 
+                            UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw)] 
                             Vscript(ju, jv, jw) = CC(k, k, genPos)*UU(k)/product(UU)
                         end do
                     end do
@@ -189,7 +183,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vscript(ju, :, :))
                         vmax = maxval(Vscript(ju, :, :))
-                        obj%KK(k, ju) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -197,7 +191,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vscript(:, jv, :))
                         vmax = maxval(Vscript(:, jv, :))
-                        obj%KK(k, jv) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -205,7 +199,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Vscript(:, :, jw))
                         vmax = maxval(Vscript(:, :, jw))
-                        obj%KK(k, jw) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -222,8 +216,8 @@ contains
                             do jv = 1, nc_v
                                 do ju = 1, nc_u
                                     genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                                    UU = [obj%MM(1, ju), obj%MM(2, jv), obj%MM(3, jw)]
-                                    WW = [obj%KK(1, ju), obj%KK(2, jv), obj%KK(3, jw)]
+                                    UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw)]
+                                    WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw)]
                                     Wscript(c, ju, jv, jw) = CC(k, k, genPos)*UU(k)*UU(l)&
                                                                 /(product(UU)*WW(k))
                                 end do
@@ -250,7 +244,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Nscript(ju, :, :))
                         vmax = maxval(Mscript(ju, :, :))
-                        obj%MM(k, ju) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -258,7 +252,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Nscript(:, jv, :))
                         vmax = maxval(Mscript(:, jv, :))
-                        obj%MM(k, jv) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -266,7 +260,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Nscript(:, :, jw))
                         vmax = maxval(Mscript(:, :, jw))
-                        obj%MM(k, jw) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -284,7 +278,7 @@ contains
         ! Input /  output data
         ! --------------------
         integer, parameter :: dimen = 4
-        type(operator), pointer :: obj
+        type(sepoperator) :: obj
         double precision, intent(in) :: CC
         dimension :: CC(dimen, dimen, obj%ncols)
 
@@ -300,7 +294,7 @@ contains
         if (obj%dimen.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2); nc_w = obj%nclist(3); nc_t = obj%nclist(4)
 
-        do iter = 1, maxit
+        do iter = 1, obj%maxit
             allocate(Vscript(nc_u, nc_v, nc_w, nc_t))
             do k = 1, dimen
                 do jt = 1, nc_t
@@ -308,7 +302,7 @@ contains
                         do jv = 1, nc_v
                             do ju = 1, nc_u
                                 genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
-                                UU = [obj%MM(1, ju), obj%MM(2, jv), obj%MM(3, jw), obj%MM(4, jt)] 
+                                UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw), obj%Mcoefs(4, jt)] 
                                 Vscript(ju, jv, jw, jt) = CC(k, k, genPos)*UU(k)/product(UU)
                             end do
                         end do
@@ -320,7 +314,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vscript(ju, :, :, :))
                         vmax = maxval(Vscript(ju, :, :, :))
-                        obj%KK(k, ju) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -328,7 +322,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vscript(:, jv, :, :))
                         vmax = maxval(Vscript(:, jv, :, :))
-                        obj%KK(k, jv) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -336,7 +330,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Vscript(:, :, jw, :))
                         vmax = maxval(Vscript(:, :, jw, :))
-                        obj%KK(k, jw) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -344,7 +338,7 @@ contains
                     do jt = 1, nc_t
                         vmin = minval(Vscript(:, :, :, jt))
                         vmax = maxval(Vscript(:, :, :, jt))
-                        obj%KK(k, jt) = sqrt(vmin*vmax)
+                        obj%Kcoefs(k, jt) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -362,8 +356,8 @@ contains
                                 do jv = 1, nc_v
                                     do ju = 1, nc_u
                                         genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
-                                        UU = [obj%MM(1, ju), obj%MM(2, jv), obj%MM(3, jw), obj%MM(4, jt)]
-                                        WW = [obj%KK(1, ju), obj%KK(2, jv), obj%KK(3, jw), obj%KK(4, jt)]
+                                        UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw), obj%Mcoefs(4, jt)]
+                                        WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw), obj%Kcoefs(4, jt)]
                                         Wscript(c, ju, jv, jw, jt) = CC(k, k, genPos)*UU(k)*UU(l)&
                                                                     /(product(UU)*WW(k))
                                     end do
@@ -393,7 +387,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Nscript(ju, :, :, :))
                         vmax = maxval(Mscript(ju, :, :, :))
-                        obj%MM(k, ju) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -401,7 +395,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Nscript(:, jv, :, :))
                         vmax = maxval(Mscript(:, jv, :, :))
-                        obj%MM(k, jv) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -409,7 +403,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Nscript(:, :, jw, :))
                         vmax = maxval(Mscript(:, :, jw, :))
-                        obj%MM(k, jw) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -417,7 +411,7 @@ contains
                     do jt = 1, nc_t
                         vmin = minval(Nscript(:, :, :, jt))
                         vmax = maxval(Mscript(:, :, :, jt))
-                        obj%MM(k, jt) = sqrt(vmin*vmax)
+                        obj%Mcoefs(k, jt) = sqrt(vmin*vmax)
                     end do
                 end if
                 deallocate(Mscript, Nscript)

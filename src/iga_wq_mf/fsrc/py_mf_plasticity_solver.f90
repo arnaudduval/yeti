@@ -331,10 +331,9 @@ subroutine wq_get_intforce_2d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, n
 
     ! Local data
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: nr_total
 
-    allocate(mat)
     mat%dimen = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -373,10 +372,9 @@ subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
 
     ! Local data
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: nr_total
 
-    allocate(mat)
     mat%dimen = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -385,34 +383,6 @@ subroutine wq_get_intforce_3d(stress, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_out)
 
 end subroutine wq_get_intforce_3d
-
-subroutine fd_elasticity_2d(nr_total, nr_u, nr_v, U_u, U_v, eigen_diag, array_in, array_out)
-    !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !! Applied to elasticity problems
-    !! by G. Sanaglli and M. Tani
-    
-    use solverplasticity2
-    implicit none
-    ! Input / output  data 
-    !---------------------
-    integer, parameter :: dimen = 2
-    integer, intent(in) :: nr_total, nr_u, nr_v
-    double precision, intent(in) :: U_u, U_v, eigen_diag, array_in
-    dimension ::    U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), &
-                    eigen_diag(dimen, nr_total), array_in(dimen, nr_total)
-
-    double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_total)
-
-    ! Local data
-    ! ----------
-    type(cgsolver), pointer :: solv
-
-    allocate(solv)
-    call setup_preconditionerdiag(solv, dimen, nr_total, eigen_diag)
-    call applyfastdiag(solv, nr_total, nr_u, nr_v, U_u, U_v, array_in, array_out)
-    
-end subroutine fd_elasticity_2d
 
 subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -446,7 +416,7 @@ subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     ! Local data 
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v)
@@ -456,7 +426,6 @@ subroutine mf_wq_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -501,7 +470,7 @@ subroutine mf_wq_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     ! Local data 
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v)
@@ -511,7 +480,6 @@ subroutine mf_wq_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -557,7 +525,7 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
 
     ! Local data 
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
@@ -568,7 +536,6 @@ subroutine mf_wq_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -615,7 +582,7 @@ subroutine mf_wq_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
 
     ! Local data 
     ! ----------
-    type(mecamat), pointer :: mat
+    type(mecamat) :: mat
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
@@ -626,7 +593,6 @@ subroutine mf_wq_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    allocate(mat)
     mat%dimen  = dimen
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
@@ -684,8 +650,8 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     ! Local data
     ! -----------
-    type(mecamat), pointer :: mat
-    type(cgsolver), pointer :: solv
+    type(mecamat) :: mat
+    type(cgsolver) :: solv
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -705,7 +671,6 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, MechArgs)
-    allocate(solv)
 
     if (methodPCG.eq.'WP') then 
         ! Set solver
@@ -724,7 +689,7 @@ subroutine mf_wq_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         call eigendecomposition(solv%dx_struct, mat%mean(1, 1, :))
         call eigendecomposition(solv%dy_struct, mat%mean(2, 2, :))
 
-        call PBiCGSTAB2(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
@@ -783,15 +748,8 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     ! Local data
     ! -----------
-    type(mecamat), pointer :: mat
-    type(cgsolver), pointer :: solv
-    double precision, dimension(:, :, :), allocatable :: U_u, U_v, U_w
-    double precision, dimension(:, :), allocatable :: Deigen, D_u, D_v, D_w
-
-    integer :: i
-    double precision :: I_u, I_v, I_w
-    dimension :: I_u(nr_u), I_v(nr_v), I_w(nr_w)
-    double precision, dimension(:, :), allocatable ::  Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
+    type(mecamat) :: mat
+    type(cgsolver) :: solv
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -813,7 +771,6 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, MechArgs)
-    allocate(solv)
 
     if (methodPCG.eq.'WP') then 
         ! Set solver
@@ -824,35 +781,21 @@ subroutine mf_wq_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w,
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
-        allocate(Mcoef_u(dimen, nc_u), Mcoef_v(dimen, nc_v), Mcoef_w(dimen, nc_w), &
-                Kcoef_u(dimen, nc_u), Kcoef_v(dimen, nc_v), Kcoef_w(dimen, nc_w))
-        Mcoef_u = 1.d0; Kcoef_u = 1.d0
-        Mcoef_v = 1.d0; Kcoef_v = 1.d0
-        Mcoef_w = 1.d0; Kcoef_w = 1.d0
-
         if (methodPCG.eq.'JMC') then
             call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
         end if
 
-        allocate(U_u(dimen, nr_u, nr_u), U_v(dimen, nr_v, nr_v), U_w(dimen, nr_w, nr_w), &
-                D_u(dimen, nr_u), D_v(dimen, nr_v), D_w(dimen, nr_w))
-        call eigendecomp_plasticity_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                    data_W_u, data_W_v, data_W_w, Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, &
-                                    table, U_u, U_v, U_w, D_u, D_v, D_w)
+        call init_solver(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w, table)
+        call eigendecomposition(solv%dx_struct, mat%mean(1, 1, :))
+        call eigendecomposition(solv%dy_struct, mat%mean(2, 2, :))
+        call eigendecomposition(solv%dz_struct, mat%mean(3, 3, :))
 
-        allocate(Deigen(dimen, nr_total))
-        I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-        do i = 1, dimen
-            call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u(i, :), D_v(i, :), D_w(i, :), &
-                                        mat%mean(i, i, :), Deigen(i, :))
-        end do
-
-        call setup_preconditionerdiag(solv, dimen, nr_total, Deigen)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        U_u, U_v, U_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
+                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
     else 
         stop 'Unknown method'                   
     end if

@@ -317,12 +317,10 @@ end subroutine wq_solve_weights
 module quadrature_rules
 
     type :: genquadrature
-        ! Inputs
+
         integer :: degree
         double precision, dimension(:), pointer :: knotvector=>null()
-
-        ! Locals
-        double precision :: span_tol = 1.d-8, tol = 1.d-12
+        double precision :: span_threshold = 1.d-8, threshold = 1.d-12
         integer :: nbctrlpts, nbel, size_ukv, size_kv
         double precision, dimension(:), allocatable :: ukv
 
@@ -330,28 +328,20 @@ module quadrature_rules
 
     type :: gaussquadrature
 
-        ! Inputs
-        type(genquadrature), allocatable :: genquad
+        type(genquadrature) :: genquad
         integer :: order = 0
-
-        ! Outputs
         integer :: nbqp
         double precision, dimension(:), allocatable :: quadptspos, parametricweights
-        
-        ! Locals
         double precision, dimension(:), allocatable :: isopositions, isoweights
         
     end type gaussquadrature
 
     type ::  weightedquadrature
 
-        ! Inputs
-        type(genquadrature), allocatable :: genquad
+        type(genquadrature) :: genquad
         double precision, dimension(:), pointer :: quadptspos=>null()
         integer :: method = 1
         integer, dimension(:, :), pointer :: B0shape=>null(), B1shape=>null()
-
-        ! Outputs
         integer :: nbqp
 
     end type weightedquadrature
@@ -365,13 +355,12 @@ contains
         ! -------------------
         integer, intent(in) :: degree
         double precision, dimension(:), target, intent(in) :: knotvector
-        type(genquadrature), allocatable :: obj
+        type(genquadrature) :: obj
 
         ! local data
         ! ----------
         double precision, allocatable, dimension(:) :: nodes
 
-        if (.not.allocated(obj)) allocate(obj)
         obj%degree   = degree
         obj%knotvector => knotvector
         obj%size_kv   = size(knotvector) 
@@ -394,7 +383,7 @@ contains
         integer, intent(in) :: nb_knots
         double precision, intent(in) :: knots
         dimension :: knots(nb_knots)
-        type(genquadrature), allocatable :: obj
+        type(genquadrature) :: obj
 
         double precision, intent(out) :: basis
         dimension :: basis((obj%degree+1)*nb_knots, 2)
@@ -403,7 +392,7 @@ contains
         dimension :: indices((obj%degree+1)*nb_knots, 2)
 
         call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
-                            nb_knots, knots, basis, indices, obj%span_tol)
+                            nb_knots, knots, basis, indices, obj%span_threshold)
 
     end subroutine get_basis_simplified_coo
 
@@ -415,7 +404,7 @@ contains
         integer, intent(in) :: nb_knots
         double precision, intent(in) :: knots
         dimension :: knots(nb_knots)
-        type(genquadrature), allocatable :: obj
+        type(genquadrature) :: obj
         double precision, intent(out) :: B0, B1
         dimension :: B0(obj%nbctrlpts, nb_knots), B1(obj%nbctrlpts, nb_knots)
 
@@ -427,7 +416,7 @@ contains
         dimension :: indices((obj%degree+1)*nb_knots, 2)
 
         call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
-                            nb_knots, knots, basis, indices, obj%span_tol)
+                            nb_knots, knots, basis, indices, obj%span_threshold)
 
         call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0, 1), size(B0, 2), B0)
         call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 2), size(B1, 1), size(B1, 2), B1)
@@ -442,9 +431,8 @@ contains
         ! -------------------
         integer, intent(in) :: degree
         double precision, dimension(:), target, intent(in) :: knotvector
-        type(gaussquadrature), allocatable :: obj
+        type(gaussquadrature) :: obj
 
-        if (.not.allocated(obj)) allocate(obj)
         call init_genquad(obj%genquad, degree, knotvector)
 
     end subroutine init_gaussquad
@@ -453,7 +441,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(gaussquadrature), allocatable :: obj
+        type(gaussquadrature) :: obj
         
         ! Local data
         ! ----------
@@ -474,7 +462,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(gaussquadrature), allocatable :: obj
+        type(gaussquadrature) :: obj
 
         ! Local data
         ! ----------
@@ -500,7 +488,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(gaussquadrature), allocatable :: obj
+        type(gaussquadrature) :: obj
 
         ! Local data
         ! ----------
@@ -528,11 +516,10 @@ contains
         integer, intent(in) :: degree, method
         double precision, dimension(:), target, intent(in) :: knotvector, quadptspos
         integer, dimension(:, :), target, intent(in) :: B0shape, B1shape
-        type(weightedquadrature), allocatable :: obj
+        type(weightedquadrature) :: obj
 
         ! Local data
         ! ---------- 
-        if (.not.allocated(obj)) allocate(obj)
         call init_genquad(obj%genquad, degree, knotvector)
         if ((method.ge.1).and.(method.le.2)) obj%method = method
         obj%nbqp       = size(quadptspos)
@@ -554,7 +541,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(weightedquadrature), allocatable :: obj
+        type(weightedquadrature) :: obj
         double precision, intent(out) :: basis, weights
         dimension :: basis((obj%genquad%degree+1)*obj%nbqp, 2), weights((obj%genquad%degree+1)*obj%nbqp, 4)
 
@@ -570,12 +557,12 @@ contains
                         W10(obj%genquad%nbctrlpts, obj%nbqp), W11(obj%genquad%nbctrlpts, obj%nbqp)
         
         ! For space S^p_r
-        type(gaussquadrature), allocatable :: gauss_p0
+        type(gaussquadrature) :: gauss_p0
         double precision, allocatable, dimension(:, :) :: B0cgg_p0, B1cgg_p0    
         integer, allocatable, dimension(:, :) :: Bcgg_p0_int
     
         ! For space S^{p-1}_{r-1}
-        type(gaussquadrature), allocatable :: gauss_p1
+        type(gaussquadrature) :: gauss_p1
         integer :: size_kv_p1, degree_p1
         double precision, allocatable, dimension(:) :: knotvector_p1
         double precision, allocatable, dimension(:, :) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
@@ -630,8 +617,8 @@ contains
         allocate(Bcgg_p0_int(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
         allocate(Bcgg_p1_int(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
-        where (abs(B0cgg_p0).gt.obj%genquad%tol) Bcgg_p0_int = 1
-        where (abs(B0cgg_p1).gt.obj%genquad%tol) Bcgg_p1_int = 1
+        where (abs(B0cgg_p0).gt.obj%genquad%threshold) Bcgg_p0_int = 1
+        where (abs(B0cgg_p1).gt.obj%genquad%threshold) Bcgg_p1_int = 1
     
         ! --------------
         allocate(IIshape(gauss_p0%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
@@ -700,7 +687,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(weightedquadrature), allocatable :: obj
+        type(weightedquadrature) :: obj
         double precision, intent(out) :: basis, weights
         dimension :: basis((obj%genquad%degree+1)*obj%nbqp, 2), weights((obj%genquad%degree+1)*obj%nbqp, 4)
 
@@ -715,12 +702,12 @@ contains
                         W00(obj%genquad%nbctrlpts, obj%nbqp), W11(obj%genquad%nbctrlpts, obj%nbqp)
 
         ! For space S^p_r
-        type(gaussquadrature), allocatable :: gauss_p0
+        type(gaussquadrature) :: gauss_p0
         double precision, allocatable, dimension(:, :) :: B0cgg_p0, B1cgg_p0    
         integer, allocatable, dimension(:, :) :: Bcgg_p0_int
     
         ! For space S^p_{r-1}
-        type(gaussquadrature), allocatable :: gauss_p1
+        type(gaussquadrature) :: gauss_p1
         integer :: size_kv_p1, degree_p1
         double precision, allocatable, dimension(:) :: knotvector_p1
         double precision, allocatable, dimension(:, :) :: B0cgg_p1, B1cgg_p1, B0wq_p1, B1wq_p1
@@ -756,10 +743,10 @@ contains
         degree_p1  = obj%genquad%degree 
         size_kv_p1 = -1
         call increase_multiplicity(1, degree_p1, obj%genquad%size_kv, obj%genquad%knotvector, &
-                                size_kv_p1, knotvector_p1, obj%genquad%span_tol)
+                                size_kv_p1, knotvector_p1, obj%genquad%span_threshold)
         allocate(knotvector_p1(size_kv_p1))
         call increase_multiplicity(1, degree_p1, obj%genquad%size_kv, obj%genquad%knotvector, &
-                                size_kv_p1, knotvector_p1, obj%genquad%span_tol)
+                                size_kv_p1, knotvector_p1, obj%genquad%span_threshold)
         call init_gaussquad(gauss_p1, degree_p1, knotvector_p1)
 
         ! Find basis function values at Gauss points
@@ -778,8 +765,8 @@ contains
         allocate(Bcgg_p0_int(gauss_p0%genquad%nbctrlpts, gauss_p0%nbqp))
         allocate(Bcgg_p1_int(gauss_p1%genquad%nbctrlpts, gauss_p0%nbqp))
         Bcgg_p0_int = 0; Bcgg_p1_int = 0
-        where (abs(B0cgg_p0).gt.obj%genquad%tol) Bcgg_p0_int = 1
-        where (abs(B0cgg_p1).gt.obj%genquad%tol) Bcgg_p1_int = 1
+        where (abs(B0cgg_p0).gt.obj%genquad%threshold) Bcgg_p0_int = 1
+        where (abs(B0cgg_p1).gt.obj%genquad%threshold) Bcgg_p1_int = 1
 
         allocate(IIshape(gauss_p1%genquad%nbctrlpts, gauss_p0%genquad%nbctrlpts))
         IIshape = matmul(Bcgg_p1_int, transpose(Bcgg_p0_int))

@@ -118,25 +118,11 @@ module matrixfreeheat
         double precision, dimension(:), allocatable :: mean
 
         ! Local
-        integer :: ncols_sp, ncols_tm
+        integer :: ncols_sp
 
     end type thermomat
 
 contains
-
-    subroutine setup_timediscret(mat, nnz, detG)
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: detG
-        dimension :: detG(nnz)
-
-        mat%detG => detG
-        mat%ncols_tm = nnz
-
-    end subroutine setup_timediscret
 
     subroutine setup_geometry(mat, nnz, invJ, detJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
@@ -145,7 +131,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nnz
         double precision, target, intent(in) :: invJ, detJ
         dimension :: invJ(mat%dimen, mat%dimen, nnz), detJ(nnz)
@@ -159,10 +145,13 @@ contains
     subroutine setup_conductivitycoefs(mat, nnz, coefs)
 
         implicit none
-        type(thermomat), pointer :: mat
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  coefs
         dimension :: coefs(mat%dimen, mat%dimen, nnz)
+
         mat%Kcoefs => coefs
         mat%ncols_sp = nnz
 
@@ -171,10 +160,13 @@ contains
     subroutine setup_capacitycoefs(mat, nnz, coefs)
 
         implicit none
-        type(thermomat), pointer :: mat
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  coefs
         dimension :: coefs(nnz)
+
         mat%Ccoefs => coefs
         mat%ncols_sp = nnz
 
@@ -187,7 +179,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(out) :: info
 
         ! Local data
@@ -240,7 +232,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------  
-        type(thermomat), pointer :: mat    
+        type(thermomat) :: mat    
         integer, intent(out) :: info
     
         ! Local data
@@ -288,7 +280,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: samplesize = 3**2
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nc_u, nc_v
 
         ! Local data
@@ -330,7 +322,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: samplesize = 3**3
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nc_u, nc_v, nc_w
 
         ! Local data
@@ -381,7 +373,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
         dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
@@ -435,7 +427,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: dimen = 3
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
 
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -500,7 +492,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
 
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
@@ -544,102 +536,6 @@ contains
         
     end subroutine mf_wq_condcap_3d
 
-    subroutine mf_wq_spacetimeheat_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                                    nnz_u, nnz_v, nnz_w, nnz_t,indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, &
-                                    indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                                    array_in, array_out)
-        !! Computes K.u where K is conductivity matrix in 3D 
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(thermomat), pointer :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                            nnz_u, nnz_v, nnz_w, nnz_t
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t, indj_T_u, indj_T_v, indj_T_w, indj_T_t
-        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1), &
-                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data 
-        ! -----------
-        double precision :: array_temp_0, array_temp_1, array_temp_2
-        dimension :: array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total)
-        integer :: i, j, k, l, gen, alpha, beta, zeta
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-
-        if (nr_total.ne.nr_u*nr_v*nr_w*nr_t) stop 'Size problem'
-
-        call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 2), & 
-                            array_in, array_temp_0)
-        
-        do j = 1, mat%ncols_tm
-            do i = 1, mat%ncols_sp
-                gen = i + (j-1)*mat%ncols_sp
-                array_temp_0(gen) = array_temp_0(gen) * mat%Ccoefs(i)
-            end do
-        end do
-
-        call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
-                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                            nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                            nnz_t, indi_t, indj_t, data_W_t(:, 2), &
-                            array_temp_0, array_out)
-
-        do j = 1, dimen
-            beta = 1; beta(j) = 2
-            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
-                                nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), & 
-                                array_in, array_temp_0)
-
-            do i = 1, dimen
-                alpha = 1; alpha(i) = 2
-                zeta = beta + (alpha - 1)*2
-
-                do l = 1, mat%ncols_tm
-                    do k = 1, mat%ncols_sp
-                        gen = l + (k-1)*mat%ncols_sp
-                        array_temp_1(gen) = array_temp_0(gen) * mat%Kcoefs(i, j, k) * mat%detG(l)
-                    end do
-                end do
-
-                call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                    nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
-                                    nnz_t, indi_t, indj_t, data_W_t(:, 1), & 
-                                    array_temp_1, array_temp_2)
-
-                array_out = array_out + array_temp_2
-            end do
-        end do
-        
-    end subroutine mf_wq_spacetimeheat_3d
-
     !! Matrix free 2d functions 
     subroutine mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -651,7 +547,7 @@ contains
         implicit none 
         ! Input / output data
         ! -------------------
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
         integer, intent(in) :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
         dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
@@ -703,7 +599,7 @@ contains
         ! Input / output data
         ! -------------------
         integer, parameter :: dimen = 2
-        type(thermomat), pointer :: mat
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
 
         integer, intent(in) :: indi_T_u, indi_T_v

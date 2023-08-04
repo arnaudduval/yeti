@@ -19,7 +19,7 @@ contains
         ! Input / output data
         ! --------------------
         integer, parameter :: dimen = 1
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         integer, intent(in) :: nr_u, nc_u, nnz_u
         integer, intent(in) :: indi_u, indj_u
         dimension :: indi_u(nr_u+1), indj_u(nnz_u)
@@ -58,7 +58,7 @@ contains
         ! Input / output data
         ! --------------------
         integer, parameter :: dimen = 2
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
         integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
         dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
@@ -103,7 +103,7 @@ contains
         ! Input / output data
         ! --------------------
         integer, parameter :: dimen = 3
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
         integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
         dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
@@ -149,7 +149,7 @@ contains
         implicit none 
         ! Input / output data
         ! --------------------
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         integer, intent(in) :: dimen
         logical, intent(in) :: table
         dimension :: table(dimen, 2)
@@ -209,7 +209,7 @@ contains
         implicit none 
         ! Input / output data
         ! --------------------
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         integer, intent(in) :: dimen
         logical, intent(in) :: table
         dimension :: table(dimen, 2)
@@ -305,7 +305,7 @@ contains
         implicit none 
         ! Input / output data
         ! --------------------
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
 
         ! Local data
         ! ----------
@@ -340,7 +340,7 @@ contains
         implicit none 
         ! Input / output data
         ! --------------------
-        type(structure), allocatable :: datstruct
+        type(structure) :: datstruct
         double precision, intent(in) :: mean
         dimension :: mean(datstruct%dimen)
         
