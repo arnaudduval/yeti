@@ -72,7 +72,10 @@ contains
                             data_W_u, data_W_v, array_in, array_out)
 
         else 
-            stop 'function not defined'
+            call mf_condcap_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
         end if
 
     end subroutine matrixfree_spMdV

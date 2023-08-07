@@ -411,6 +411,8 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! ----------
     type(thermomat) :: mat
     type(cgsolver) :: solv
+    integer :: nc_list(dimen)
+    double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -429,6 +431,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
+    nc_list = (/nc_u, nc_v/)
 
     if (methodPCG.eq.'WP') then ! CG algorithm
         ! Set solver
@@ -436,10 +439,16 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, &
                 indj_u, indi_v, indj_v, data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
         
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, (/nc_u, nc_v/))
+            call compute_mean(mat, mat%dimen, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat%dimen, nc_list, mat, Mcoefs, Kcoefs)
+            call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -503,6 +512,8 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     ! ----------
     type(thermomat) :: mat
     type(cgsolver) :: solv
+    integer :: nc_list(dimen)
+    double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -520,6 +531,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
+    nc_list = (/nc_u, nc_v, nc_w/)
 
     if (methodPCG.eq.'WP') then ! CG algorithm
         ! Set solver
@@ -528,10 +540,16 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                 data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, (/nc_u, nc_v, nc_w/))
+            call compute_mean(mat, mat%dimen, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat%dimen, nc_list, mat, Mcoefs, Kcoefs)
+            call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -594,6 +612,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! ----------
     type(thermomat) :: mat
     type(cgsolver) :: solv
+    integer :: nc_list(dimen)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -610,7 +629,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, thetadt/)
+    mat%scalars = (/1.d0, thetadt/); nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 3
 
     if (methodPCG.eq.'WP') then 
@@ -622,7 +641,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, (/nc_u, nc_v/))
+            call compute_mean(mat, mat%dimen, nc_list)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -687,6 +706,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! ----------
     type(thermomat) :: mat
     type(cgsolver) :: solv
+    integer :: nc_list(dimen)
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -704,7 +724,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, thetadt/)
+    mat%scalars = (/1.d0, thetadt/); nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 3
 
     if (methodPCG.eq.'WP') then 
@@ -717,7 +737,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, (/nc_u, nc_v, nc_w/))
+            call compute_mean(mat, mat%dimen, nc_list)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

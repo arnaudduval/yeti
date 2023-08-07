@@ -2,12 +2,15 @@ module datastructure
 
     implicit none
     type :: structure
+
+        logical :: isseparate = .false.
         integer :: dimen, nr_total, nc_total
         integer, allocatable, dimension(:) :: nrows, ncols, nnzs, dof
         integer, allocatable, dimension(:, :) :: indi, indj, indi_T, indj_T
         double precision, allocatable, dimension(:) :: Deigen
         double precision, allocatable, dimension(:, :) :: eigval
         double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvec
+        double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
 
     end type structure
 
@@ -142,8 +145,27 @@ contains
         datstruct%bw(3, 1:nnz_w, 3:6) = data_W_w
         datstruct%nr_total = product(datstruct%nrows)
         datstruct%nc_total = product(datstruct%ncols)
+        allocate(datstruct%Mcoefs(dimen, maxval(datstruct%ncols)), &
+                datstruct%Kcoefs(dimen, maxval(datstruct%ncols)))
+        datstruct%Kcoefs = 1.d0; datstruct%Mcoefs = 1.d0
         
     end subroutine init_3datastructure
+
+    subroutine setup_coefs(datstruct, nnz, Mcoefs, Kcoefs)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(structure) :: datstruct
+        integer, intent(in) :: nnz
+        double precision, intent(in) :: Mcoefs, Kcoefs
+        dimension :: Mcoefs(datstruct%dimen, nnz), Kcoefs(datstruct%dimen, nnz)
+
+        if (nnz.ne.maxval(datstruct%ncols)) stop 'Size problem'
+        allocate(datstruct%Mcoefs(datstruct%dimen, maxval(datstruct%ncols)), &
+                datstruct%Kcoefs(datstruct%dimen, maxval(datstruct%ncols)))
+        datstruct%Mcoefs = Mcoefs; datstruct%Kcoefs = Kcoefs
+        datstruct%isseparate = .true.
+    end subroutine
 
     subroutine get_innernodes__(datstruct, dimen, table)
         implicit none 
@@ -350,11 +372,11 @@ contains
         integer, dimension(:), allocatable :: indi, indj
         double precision, dimension(:), allocatable :: ones, eigvalues, Mdiag, Kdiag
         double precision, dimension(:, :), allocatable :: bw, eigvectors
-        double precision, dimension(:), allocatable :: Mcoef, Kcoef
+        double precision, dimension(:), allocatable :: Mcoefs, Kcoefs
         
         ncols = maxval(datstruct%ncols)
-        allocate(Mcoef(ncols), Kcoef(ncols))
-        Mcoef = 1.d0; Kcoef = 1.d0
+        allocate(Mcoefs(ncols), Kcoefs(ncols))
+        Mcoefs = 1.d0; Kcoefs = 1.d0
 
         allocate(datstruct%eigval(datstruct%dimen, maxval(datstruct%nrows)), &
         datstruct%eigvec(datstruct%dimen, maxval(datstruct%nrows), maxval(datstruct%nrows)))
@@ -370,8 +392,13 @@ contains
             indj = datstruct%indj(i, 1:nnz)
             bw   = datstruct%bw(i, 1:nnz, :)
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
-            call eigen_decomposition(nr, nc, Mcoef(1:nc), Kcoef(1:nc), nnz, indi, indj, &
-                                    bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+            if (datstruct%isseparate) then 
+                call eigen_decomposition(nr, nc, datstruct%Mcoefs(i, 1:nc), datstruct%Kcoefs(i, 1:nc), nnz, indi, indj, &
+                                        bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+            else
+                call eigen_decomposition(nr, nc, Mcoefs(1:nc), Kcoefs(1:nc), nnz, indi, indj, &
+                                        bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+            end if
             datstruct%eigval(i, 1:nr) = eigvalues
             datstruct%eigvec(i, 1:nr, 1:nr) = eigvectors
             deallocate(indi, indj, bw, eigvalues, eigvectors, Mdiag, Kdiag)

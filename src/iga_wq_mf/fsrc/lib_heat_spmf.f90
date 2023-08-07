@@ -66,6 +66,45 @@ contains
 
     end subroutine setup_capacityprop
 
+    subroutine compute_separationvariables(dimen, nc_list, mat, Mcoefs, Kcoefs)
+        
+        use separatevariables
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: dimen, nc_list
+        dimension :: nc_list(dimen)
+
+        double precision, intent(out) :: Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list))
+
+        ! Local data
+        ! ----------
+        type(sepoperator) :: oper
+        logical :: update(dimen)
+        integer :: gp
+        double precision :: Cond
+        dimension :: Cond(dimen, dimen, mat%ncols_sp)
+
+        if (associated(mat%Kprop)) then
+            do gp = 1, mat%ncols_sp
+                Cond(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+                                    *mat%detJ(gp)
+            end do
+
+            update = .true.
+            call initialize_operator(oper, dimen, nc_list, update)
+            if (dimen.eq.2) then
+                call separatevariables_2d(oper, Cond)
+            else if (dimen.eq.3) then
+                call separatevariables_3d(oper, Cond)
+            end if
+
+            Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
+        end if
+        
+    end subroutine compute_separationvariables
+
     subroutine compute_mean(mat, dimen, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
@@ -386,6 +425,60 @@ contains
         end do
         
     end subroutine mf_conductivity_3d
+
+    subroutine mf_condcap_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, array_in, array_out)
+        !! Computes (alpha*C + beta*K).u where C and K are capacity and conductivity matrices respectively in 3D case
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data
+        ! ---------------
+        double precision :: array_tmp
+        dimension :: array_tmp(nr_total)
+
+        call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, array_in, array_out)
+
+        array_out = mat%scalars(1)*array_out
+
+        call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, array_in, array_tmp)
+
+        array_out = array_out + mat%scalars(2)*array_tmp
+        
+    end subroutine mf_condcap_2d
 
     subroutine mf_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
