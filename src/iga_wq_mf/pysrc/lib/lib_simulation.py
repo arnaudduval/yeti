@@ -86,40 +86,38 @@ class encoder():
 		if funTemp is not None:  
 			ud = problem.L2projectionCtrlpts(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
-			Fn = problem.eval_volForce(funPowDen, indi=dof) 
-			Knd_ud = problem.eval_mfConductivity(u, table=np.zeros((3, 2), dtype=bool), args=self._part.qpPhy)
-			Fn    -= Knd_ud[dof]
-		else:
-			Fn = problem.eval_volForce(funPowDen, indi=dof)
+			Knd_ud = problem.eval_mfConductivity(u)
+			Fext   = problem.eval_volForce(funPowDen) - Knd_ud
+		else: Fext = problem.eval_volForce(funPowDen)
 		
-		return Fn
+		return Fext
 	
-	def __run_iterativeSolver(self, problem:heatproblem, b):
+	def __run_iterativeSolver(self, problem:heatproblem, Fext):
 		" Solve steady heat problems using iterative solver "
 		start = time.process_time()
-		un, residue = problem.solveSteadyHeatProblemFT(b)
+		sol, residue = problem.solveSteadyHeatProblemFT(Fext)
 		stop = time.process_time()
 		time_t = stop - start 
-		return un, residue, time_t
+		return sol, residue, time_t
 
 	def simulate(self, material:thermomat, boundary:boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
 
 		if self._part is None: self.__create_model()
 		problem = heatproblem(material, self._part, boundary)
-		Fn      = self.__eval_heatForce(problem, self._funPowDen, self._funTemp)
+		Fext    = self.__eval_heatForce(problem, self._funPowDen, self._funTemp)
 
 		# Run iterative methods
 		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.__run_iterativeSolver(problem, b=Fn)[-1]
+			time_temp = self.__run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 
 		timeIter, resPCG = [], []; problem.addSolverConstraints({})
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			un, residue_t, time_temp = self.__run_iterativeSolver(problem, b=Fn)
+			un, residue_t, time_temp = self.__run_iterativeSolver(problem, Fext=Fext)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 				

@@ -96,8 +96,9 @@ class problem():
 			if self.part.dim == 2: u_tmp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
 			if self.part.dim == 3: u_tmp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
 			u_interp.append(u_tmp)
-
-		return np.array(u_interp)
+		u_interp = np.array(u_interp)
+		if nr == 1: u_interp = np.ravel(u_interp)
+		return u_interp
 
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):

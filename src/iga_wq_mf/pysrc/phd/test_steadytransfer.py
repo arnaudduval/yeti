@@ -9,11 +9,11 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = False
+dataExist   = True
 degree_list = np.arange(6, 7)
-cuts_list   = np.arange(4, 5)
-name_list   = ['vb', 'rqa']
-IterMethods = ["WP", "C", "JMC", "TDC"]
+cuts_list   = np.arange(6, 7)
+name_list   = ['cb', 'vb']
+IterMethods = ['WP', 'C', 'JMC']
 
 def setKprop(P:list):
 	x = P[0, :]
@@ -24,9 +24,9 @@ def setKprop(P:list):
 	for i in range(3): 
 		for j in range(3):
 			Kprop[i, j, :] = Kref[i, j] 
-	Kprop[0, 0, :] += 0.75*np.cos(np.pi*y)
-	Kprop[1, 1, :] += 2*np.exp(-(z-0.5)**2)
-	Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
+	# Kprop[0, 0, :] += 0.75*np.cos(np.pi*y)
+	# Kprop[1, 1, :] += 2*np.exp(-(z-0.5)**2)
+	# Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
 	return Kprop 
 
 for cuts in cuts_list:
