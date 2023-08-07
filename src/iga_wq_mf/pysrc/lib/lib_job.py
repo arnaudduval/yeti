@@ -84,8 +84,8 @@ class problem():
 
 		for i in range(nr):
 			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-			if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)
-			if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)
+			if self.part.dim == 2: vector = heatsolver.get_heatvol_2d(*inputs)
+			if self.part.dim == 3: vector = heatsolver.get_heatvol_3d(*inputs)
 
 			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
 					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
@@ -125,26 +125,26 @@ class heatproblem(problem):
 
 		return inputs
 	
-	def eval_mfConductivity(self, u, coefs=None, table=None, args=None):
+	def eval_mfConductivity(self, array_in, coefs=None, table=None, args=None):
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, args)
-		if self.part.dim == 2: result = heatsolver.mf_wq_get_ku_2d(coefs, *inputs, u)
-		if self.part.dim == 3: result = heatsolver.mf_wq_get_ku_3d(coefs, *inputs, u)
-		return result
+		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(coefs, *inputs, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(coefs, *inputs, array_in)
+		return array_out
 	
 	def eval_mfCapacity(self, u, coefs=None, table=None, args=None): 
 		inputs = self.get_input4MatrixFree(table=table)
 		if coefs is None: coefs  = self.material.eval_capacityCoefficients(self.part.detJ, args)
-		if self.part.dim == 2: raise Warning('Until now not done')
-		if self.part.dim == 3: result = heatsolver.mf_wq_get_cu_3d(coefs, *inputs, u)
+		if self.part.dim == 2: result = heatsolver.mf_get_cu_2d(coefs, *inputs, u)
+		if self.part.dim == 3: result = heatsolver.mf_get_cu_3d(coefs, *inputs, u)
 		return result
 
 	def eval_volForce(self, fun, indi=None): 
 		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
 		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
 		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if self.part.dim == 2: vector = heatsolver.wq_get_heatvol_2d(*inputs)[indi]
-		if self.part.dim == 3: vector = heatsolver.wq_get_heatvol_3d(*inputs)[indi]
+		if self.part.dim == 2: vector = heatsolver.get_heatvol_2d(*inputs)[indi]
+		if self.part.dim == 3: vector = heatsolver.get_heatvol_3d(*inputs)[indi]
 		return vector
 	
 	def eval_surfForce(self, fun, nbFacePosition):
@@ -207,8 +207,8 @@ class heatproblem(problem):
 		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, self.part.qpPhy)
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: sol, residue = heatsolver.mf_wq_steady_heat_2d(*inputs)
-		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_steady_heat_3d(*inputs)
+		if self.part.dim == 2: sol, residue = heatsolver.solver_steady_heat_2d(*inputs)
+		if self.part.dim == 3: sol, residue = heatsolver.solver_steady_heat_3d(*inputs)
 		return sol, residue
 	
 	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, args={}):
@@ -227,7 +227,7 @@ class heatproblem(problem):
 		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
 		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: raise Warning('Until now not done')
-		if self.part.dim == 3: sol, residue = heatsolver.mf_wq_lineartransient_heat_3d(*inputs)
+		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inputs)
 		return sol, residue
 
 	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):

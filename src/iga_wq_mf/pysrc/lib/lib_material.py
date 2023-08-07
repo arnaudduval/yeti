@@ -274,47 +274,6 @@ def block_dot_product(d, A, B):
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
 
-def symtensor2array(tensor, dim):
-	nvoigt = int(dim*(dim+1)/2)
-	array  = np.zeros(nvoigt)
-	k = 0
-	for i in range(dim):
-		array[k] = tensor[i, i]
-		k += 1
-	for i in range(dim-1):
-		for j in range(i+1, dim):
-			array[k] = tensor[i, j]
-			k += 1
-	return array
-
-def array2symtensor(array, dim):
-	tensor = np.zeros((dim, dim))
-	k = 0
-	for i in range(dim):
-		tensor[i, i] = array[k]
-		k += 1
-	for i in range(dim-1):
-		for j in range(i+1, dim):
-			tensor[i, j] = array[k] 
-			tensor[j, i] = array[k] 
-			k += 1
-	return tensor
-
-def evalTrace(tensor, dim):
-	trace = 0.0
-	for i in range(dim):
-		trace += tensor[i, i]
-	return trace
-
-def computeVMStress(tensor, dim):
-	trace = evalTrace(tensor, dim)
-	dev   = np.copy(tensor)
-	for i in range(dim):
-		dev[i, i] -= 1.0/3.0*trace
-	vm = np.linalg.norm(dev)
-	vm = np.sqrt(3.0/2.0)*vm
-	return vm
-
 def symtensor2arrayForAll(tensors, dim):
 	nvoigt = int(dim*(dim+1)/2); nnz = np.size(tensors, axis=2)
 	array  = np.zeros((nvoigt, nnz))

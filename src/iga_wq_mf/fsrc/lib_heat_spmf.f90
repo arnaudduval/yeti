@@ -113,8 +113,8 @@ module matrixfreeheat
         integer :: dimen = 3
         double precision :: scalars(2) = (/1.d0, 1.d0/)
 
-        double precision, dimension(:), pointer :: Cprop=>null(), Ccoefs=>null(), detJ=>null(), detG=>null()
-        double precision, dimension(:, :, :), pointer :: Kprop=>null(), Kcoefs=>null(), invJ=>null()
+        double precision, dimension(:), pointer :: Cprop=>null(), detJ=>null()
+        double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
         double precision, dimension(:), allocatable :: mean
 
         ! Local
@@ -142,402 +142,125 @@ contains
 
     end subroutine setup_geometry
 
-    subroutine setup_conductivitycoefs(mat, nnz, coefs)
+    subroutine setup_conductivityprop(mat, nnz, prop)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(thermomat) :: mat
         integer, intent(in) :: nnz
-        double precision, target, intent(in) ::  coefs
-        dimension :: coefs(mat%dimen, mat%dimen, nnz)
+        double precision, target, intent(in) ::  prop
+        dimension :: prop(mat%dimen, mat%dimen, nnz)
 
-        mat%Kcoefs => coefs
+        mat%Kprop => prop
         mat%ncols_sp = nnz
 
-    end subroutine setup_conductivitycoefs
+    end subroutine setup_conductivityprop
 
-    subroutine setup_capacitycoefs(mat, nnz, coefs)
+    subroutine setup_capacityprop(mat, nnz, prop)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(thermomat) :: mat
         integer, intent(in) :: nnz
-        double precision, target, intent(in) ::  coefs
-        dimension :: coefs(nnz)
+        double precision, target, intent(in) ::  prop
+        dimension :: prop(nnz)
 
-        mat%Ccoefs => coefs
+        mat%Cprop => prop
         mat%ncols_sp = nnz
 
-    end subroutine setup_capacitycoefs
+    end subroutine setup_capacityprop
 
-    subroutine update_conductivitycoefs(mat, info)
-        !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
+    ! subroutine compute_mean_2d(mat, nc_u, nc_v)
+    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
+
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, parameter :: samplesize = 3**2
+    !     type(thermomat) :: mat
+    !     integer, intent(in) :: nc_u, nc_v
+
+    !     ! Local data
+    !     ! ----------
+    !     integer :: i, j, l, genPos, pos
+    !     integer :: ind_u, ind_v, sample
+    !     dimension :: ind_u(3), ind_v(3), sample(samplesize)
         
-        use omp_lib
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(thermomat) :: mat
-        integer, intent(out) :: info
+    !     if (nc_u*nc_v.ne.mat%ncols_sp) stop 'Wrong dimensions'
+    !     pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
+    !     pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
+    
+    !     ! Select a set of coefficients
+    !     l = 1
+    !     do j = 1, 3
+    !         do i = 1, 3
+    !             genPos = ind_u(i) + (ind_v(j) - 1)*nc_u
+    !             sample(l) = genPos
+    !             l = l + 1
+    !         end do
+    !     end do
 
-        ! Local data
-        ! ----------
-        integer :: i, nnz, nb_tasks
-        double precision :: invJt, Kt
-        dimension :: invJt(mat%dimen, mat%dimen), Kt(mat%dimen, mat%dimen)  
+    !     if (.not.allocated(mat%mean)) allocate(mat%mean(3))
+    !     mat%mean = 0.d0
+    !     if (associated(mat%Kcoefs)) then
+    !         call trapezoidal_rule_2d(3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
+    !         call trapezoidal_rule_2d(3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
+    !     end if
+    !     if (associated(mat%Ccoefs)) then
+    !         call trapezoidal_rule_2d(3, 3, mat%Ccoefs(sample), mat%mean(3))
+    !     end if   
+
+    ! end subroutine compute_mean_2d
+
+    ! subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
+    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
+
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, parameter :: samplesize = 3**3
+    !     type(thermomat) :: mat
+    !     integer, intent(in) :: nc_u, nc_v, nc_w
+
+    !     ! Local data
+    !     ! ----------
+    !     integer :: i, j, k, l, genPos, pos
+    !     integer :: ind_u, ind_v, ind_w, sample
+    !     dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
         
-        info = 1
-        nnz  = mat%ncols_sp
+    !     if (nc_u*nc_v*nc_w.ne.mat%ncols_sp) stop 'Wrong dimensions'
+    !     pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
+    !     pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
+    !     pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
     
-        if (size(mat%Kprop, dim=3).eq.1) then 
-    
-            !$OMP PARALLEL PRIVATE(invJt, Kt)
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-            do i = 1, nnz
-                ! Compute K = invJ * prop * detJ * invJ'
-                invJt = mat%invJ(:, :, i)
-                Kt = mat%detJ(i) * matmul(invJt, mat%Kprop(:, :, 1)) 
-                mat%Kcoefs(:, :, i) = matmul(Kt, transpose(invJt))
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-    
-        else if (size(mat%Kprop, dim=3).eq.nnz) then 
-    
-            !$OMP PARALLEL PRIVATE(invJt, Kt)
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-            do i = 1, nnz
-                ! Compute K = invJ * prop * detJ * invJ'
-                invJt = mat%invJ(:, :, i)
-                Kt = mat%detJ(i) * matmul(invJt, mat%Kprop(:, :, i)) 
-                mat%Kcoefs(:, :, i) = matmul(Kt, transpose(invJt))
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL
-        else 
-            info = 0
-            print*, "Error computing thermal coefficient (Conductivity)"
-        end if
-    
-    end subroutine update_conductivitycoefs
+    !     ! Select a set of coefficients
+    !     l = 1
+    !     do k = 1, 3
+    !         do j = 1, 3
+    !             do i = 1, 3
+    !                 genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
+    !                 sample(l) = genPos
+    !                 l = l + 1
+    !             end do
+    !         end do
+    !     end do
 
-    subroutine update_capacitycoefs(mat, info)
-        !! Computes capacity coefficient coef = sigma * detJ
-        
-        use omp_lib
-        implicit none 
-        ! Input / output data
-        ! -------------------  
-        type(thermomat) :: mat    
-        integer, intent(out) :: info
-    
-        ! Local data
-        ! ----------
-        integer :: i, nnz, nb_tasks
-    
-        info = 1
-        nnz  = mat%ncols_sp
-    
-        if (size(mat%Cprop).eq.1) then 
-    
-            !$OMP PARALLEL
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-            do i = 1, nnz
-                ! Compute C = detJ  * prop
-                mat%Ccoefs(i) = mat%detJ(i) * mat%Cprop(1)
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-    
-        else if (size(mat%Cprop).eq.nnz) then
-    
-            !$OMP PARALLEL
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
-            do i = 1, nnz
-                ! Compute C = detJ  * prop
-                mat%Ccoefs(i) = mat%detJ(i) * mat%Cprop(i)
-            end do
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-    
-        else
-            info = 0
-            print*, "Error computing thermal coefficient (Capacity) "
-        end if
-    
-    end subroutine update_capacitycoefs
+    !     if (.not.allocated(mat%mean)) allocate(mat%mean(4))
+    !     mat%mean = 0.d0
+    !     if (associated(mat%Kcoefs)) then
+    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
+    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
+    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(3, 3, sample), mat%mean(3))
+    !     end if
+    !     if (associated(mat%Ccoefs)) then
+    !         call trapezoidal_rule_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
+    !     end if   
 
-    subroutine compute_mean_2d(mat, nc_u, nc_v)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+    ! end subroutine compute_mean_3d
 
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: samplesize = 3**2
-        type(thermomat) :: mat
-        integer, intent(in) :: nc_u, nc_v
-
-        ! Local data
-        ! ----------
-        integer :: i, j, l, genPos, pos
-        integer :: ind_u, ind_v, sample
-        dimension :: ind_u(3), ind_v(3), sample(samplesize)
-        
-        if (nc_u*nc_v.ne.mat%ncols_sp) stop 'Wrong dimensions'
-        pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-        pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-    
-        ! Select a set of coefficients
-        l = 1
-        do j = 1, 3
-            do i = 1, 3
-                genPos = ind_u(i) + (ind_v(j) - 1)*nc_u
-                sample(l) = genPos
-                l = l + 1
-            end do
-        end do
-
-        if (.not.allocated(mat%mean)) allocate(mat%mean(3))
-        mat%mean = 0.d0
-        if (associated(mat%Kcoefs)) then
-            call trapezoidal_rule_2d(3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
-            call trapezoidal_rule_2d(3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
-        end if
-        if (associated(mat%Ccoefs)) then
-            call trapezoidal_rule_2d(3, 3, mat%Ccoefs(sample), mat%mean(3))
-        end if   
-
-    end subroutine compute_mean_2d
-
-    subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: samplesize = 3**3
-        type(thermomat) :: mat
-        integer, intent(in) :: nc_u, nc_v, nc_w
-
-        ! Local data
-        ! ----------
-        integer :: i, j, k, l, genPos, pos
-        integer :: ind_u, ind_v, ind_w, sample
-        dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
-        
-        if (nc_u*nc_v*nc_w.ne.mat%ncols_sp) stop 'Wrong dimensions'
-        pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-        pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-        pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
-    
-        ! Select a set of coefficients
-        l = 1
-        do k = 1, 3
-            do j = 1, 3
-                do i = 1, 3
-                    genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
-                    sample(l) = genPos
-                    l = l + 1
-                end do
-            end do
-        end do
-
-        if (.not.allocated(mat%mean)) allocate(mat%mean(4))
-        mat%mean = 0.d0
-        if (associated(mat%Kcoefs)) then
-            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
-            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
-            call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(3, 3, sample), mat%mean(3))
-        end if
-        if (associated(mat%Ccoefs)) then
-            call trapezoidal_rule_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
-        end if   
-
-    end subroutine compute_mean_3d
-
-    !! Matrix free 3d functions
-
-    subroutine mf_wq_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes C.u where C is the capacity matrix in 3D 
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(thermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data 
-        ! ----------
-        double precision :: array_temp
-        dimension :: array_temp(nc_total)
-
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-
-        call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                            array_in, array_temp)
-
-        array_temp = array_temp * mat%Ccoefs
-
-        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
-                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                            nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                            array_temp, array_out)
-        
-    end subroutine mf_wq_capacity_3d
-
-    subroutine mf_wq_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes K.u where K is conductivity matrix in 3D 
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(thermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data 
-        ! -----------
-        double precision :: array_temp_0, array_temp_1, array_temp_2
-        dimension :: array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total)
-        integer :: i, j, alpha, beta, zeta
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-
-        array_out = 0.d0
-        do j = 1, dimen
-            beta = 1; beta(j) = 2
-            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
-                                array_in, array_temp_0)
-            do i = 1, dimen
-                alpha = 1; alpha(i) = 2
-                zeta = beta + (alpha - 1)*2
-                array_temp_1 = array_temp_0 * mat%Kcoefs(i, j, :)
-                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                    nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), & 
-                                    array_temp_1, array_temp_2)
-                array_out = array_out + array_temp_2
-            end do
-        end do
-        
-    end subroutine mf_wq_conductivity_3d
-
-    subroutine mf_wq_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes (alpha*C + beta*K).u where C and K are capacity and conductivity matrices respectively in 3D case
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(thermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(nr_total)
-
-        ! Local data
-        ! ---------------
-        double precision :: array_temp
-        dimension :: array_temp(nr_total)
-
-        call mf_wq_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, array_out)
-
-        array_out = mat%scalars(1)*array_out
-
-        call mf_wq_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, array_temp)
-
-        array_out = array_out + mat%scalars(2)*array_temp
-        
-    end subroutine mf_wq_condcap_3d
-
-    !! Matrix free 2d functions 
-    subroutine mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
@@ -569,26 +292,79 @@ contains
 
         ! Local data 
         ! ----------
-        double precision :: array_temp
-        dimension :: array_temp(nc_total)
+        double precision :: array_tmp
+        dimension :: array_tmp(nc_total)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
 
         call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            array_in, array_temp)
+                            array_in, array_tmp)
 
-        array_temp = array_temp * mat%Ccoefs
+        array_tmp = array_tmp*mat%Cprop*mat%detJ
 
         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                            array_temp, array_out)
+                            array_tmp, array_out)
         
-    end subroutine mf_wq_capacity_2d
+    end subroutine mf_capacity_2d
 
-    subroutine mf_wq_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+        !! Computes C.u where C is the capacity matrix in 3D 
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data 
+        ! ----------
+        double precision :: array_tmp
+        dimension :: array_tmp(nc_total)
+
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+
+        call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
+                            array_in, array_tmp)
+
+        array_tmp = array_tmp*mat%Cprop*mat%detJ
+
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                            nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                            array_tmp, array_out)
+        
+    end subroutine mf_capacity_3d
+
+    subroutine mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
@@ -624,12 +400,15 @@ contains
 
         ! Local data 
         ! -----------
-        double precision :: array_temp_0, array_temp_1, array_temp_2
-        dimension :: array_temp_0(nc_total), array_temp_1(nc_total), array_temp_2(nc_total)
+        double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
+        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nc_total), Kcoefs(dimen, dimen, nc_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+        do i = 1, nc_total
+            Kcoefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+        end do
 
         array_out = 0.d0
         do j = 1, dimen
@@ -637,20 +416,144 @@ contains
             call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                                 nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                                 nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                                array_in, array_temp_0)
+                                array_in, array_tmp_0)
             do i = 1, dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                array_temp_1 = array_temp_0 * mat%Kcoefs(i, j, :)
+                array_tmp_1 = array_tmp_0*Kcoefs(i, j, :)
                 call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                    array_temp_1, array_temp_2)
-                array_out = array_out + array_temp_2
+                                    array_tmp_1, array_tmp_2)
+                array_out = array_out + array_tmp_2
             end do
         end do
         
-    end subroutine mf_wq_conductivity_2d
+    end subroutine mf_conductivity_2d
+
+    subroutine mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+        !! Computes K.u where K is conductivity matrix in 3D 
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: dimen = 3
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data 
+        ! -----------
+        double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
+        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nc_total), Kcoefs(dimen, dimen, nc_total)
+        integer :: i, j, alpha, beta, zeta
+        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
+
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+
+        do i = 1, nc_total
+            Kcoefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+        end do
+
+        array_out = 0.d0
+        do j = 1, dimen
+            beta = 1; beta(j) = 2
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
+                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
+                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
+                                array_in, array_tmp_0)
+            do i = 1, dimen
+                alpha = 1; alpha(i) = 2
+                zeta = beta + (alpha - 1)*2
+                array_tmp_1 = array_tmp_0*Kcoefs(i, j, :)
+                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                    nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), & 
+                                    array_tmp_1, array_tmp_2)
+                array_out = array_out + array_tmp_2
+            end do
+        end do
+        
+    end subroutine mf_conductivity_3d
+
+    subroutine mf_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+        !! Computes (alpha*C + beta*K).u where C and K are capacity and conductivity matrices respectively in 3D case
+        !! IN CSR FORMAT
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
+
+        ! Local data
+        ! ---------------
+        double precision :: array_tmp
+        dimension :: array_tmp(nr_total)
+
+        call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        array_out = mat%scalars(1)*array_out
+
+        call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, array_in, array_tmp)
+
+        array_out = array_out + mat%scalars(2)*array_tmp
+        
+    end subroutine mf_condcap_3d
 
 end module matrixfreeheat
 

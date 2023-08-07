@@ -60,7 +60,7 @@ contains
 
     end subroutine setup_geometry
 
-    subroutine setup_jacobiennormal(mat, MechArgs)
+    subroutine setup_jacobiennormal(mat, mechArgs)
         !! Points to data of the mechanical behavior 
 
         implicit none
@@ -68,16 +68,16 @@ contains
         ! -------------------
         double precision, parameter :: threshold = 1.d-12
         type(mecamat) :: mat
-        double precision, target, intent(in) :: MechArgs
-        dimension :: MechArgs(mat%nvoigt+3, mat%ncols_sp)
+        double precision, target, intent(in) :: mechArgs
+        dimension :: mechArgs(mat%nvoigt+3, mat%ncols_sp)
 
         ! Local data
         ! ----------
         double precision :: TNN(mat%dimen, mat%dimen)
         integer :: i
 
-        mat%CepArgs => MechArgs(:3, :)
-        mat%NN      => MechArgs(4:, :)
+        mat%CepArgs => mechArgs(:3, :)
+        mat%NN      => mechArgs(4:, :)
         if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
         mat%JJnn = 0.d0
         if (all(abs(mat%NN).lt.threshold)) return

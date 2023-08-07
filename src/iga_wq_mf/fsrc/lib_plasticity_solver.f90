@@ -54,12 +54,12 @@ subroutine block_dot_product(nm, nr, A, B, result)
     ! Local data
     ! ----------
     integer :: i
-    double precision :: rtemp
+    double precision :: tmp
 
     result = 0.d0
     do i = 1, nm 
-        rtemp = dot_product(A(i, :), B(i, :))
-        result = result + rtemp
+        tmp = dot_product(A(i, :), B(i, :))
+        result = result + tmp
     end do
 
 end subroutine block_dot_product
@@ -167,12 +167,12 @@ contains
         ! Local data
         ! ----------
         integer :: nr_u, nr_v, nr_w, i
-        double precision, allocatable, dimension(:) :: tmp
+        double precision, allocatable, dimension(:) :: tmp, tmp2
 
         array_out = 0.d0
 
         do i = 1, solv%dimen
-            ! Compute (Uv x Uu)'.array_in
+            ! Compute (Uw x Uv x Uu)'.array_in
             nr_u = solv%disp_struct(i)%nrows(1)
             nr_v = solv%disp_struct(i)%nrows(2)
             nr_w = solv%disp_struct(i)%nrows(3)
@@ -184,11 +184,12 @@ contains
 
             tmp = tmp/solv%disp_struct(i)%Deigen
 
-            ! Compute (Uv x Uu).array_temp
+            ! Compute (Uw x Uv x Uu).array_tmp
+            allocate(tmp2(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
-            solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w), &
-            tmp, array_out(i, solv%disp_struct(i)%dof))
-            deallocate(tmp)
+            solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+            array_out(i, solv%disp_struct(i)%dof) = tmp2
+            deallocate(tmp, tmp2)
         end do
 
     end subroutine applyfastdiag
@@ -472,7 +473,7 @@ contains
         ! Local data
         ! ----------
         integer :: nr_u, nr_v, i
-        double precision, allocatable, dimension(:) :: tmp
+        double precision, allocatable, dimension(:) :: tmp, tmp2
 
         array_out  = 0.d0
         
@@ -486,10 +487,12 @@ contains
 
             tmp = tmp/solv%disp_struct(i)%Deigen
 
-            ! Compute (Uv x Uu).array_temp
+            ! Compute (Uv x Uu).array_tmp
+            allocate(tmp2(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
-                    solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), tmp, array_out(i, solv%disp_struct(i)%dof))
-            deallocate(tmp)
+                    solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), tmp, tmp2)
+            array_out(i, solv%disp_struct(i)%dof) = tmp2            
+            deallocate(tmp, tmp2)
         end do
 
     end subroutine applyfastdiag

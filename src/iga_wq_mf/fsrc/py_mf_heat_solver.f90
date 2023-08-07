@@ -5,7 +5,7 @@
 ! It is implemented conjugated gradient algorithms to solve interpolation problems
 ! ====================================================
 
-subroutine mf_wq_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             array_in, array_out)
@@ -38,7 +38,7 @@ subroutine mf_wq_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     ! Local data 
     ! ---------- 
-    type(thermomat), pointer :: mat
+    type(thermomat) :: mat
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v)
@@ -48,17 +48,15 @@ subroutine mf_wq_get_cu_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    allocate(mat)
     mat%dimen = 2
     call setup_capacitycoefs(mat, nc_total, coefs)
-
-    call mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
 
-end subroutine mf_wq_get_cu_2d
+end subroutine mf_get_cu_2d
 
-subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             array_in, array_out)
@@ -92,7 +90,7 @@ subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
 
     ! Local data 
     ! ---------- 
-    type(thermomat), pointer :: mat
+    type(thermomat) :: mat
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
@@ -103,17 +101,15 @@ subroutine mf_wq_get_cu_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    allocate(mat)
     mat%dimen = 3
     call setup_capacitycoefs(mat, nc_total, coefs)
-
-    call mf_wq_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_wq_get_cu_3d
+end subroutine mf_get_cu_3d
 
-subroutine mf_wq_get_ku_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_get_ku_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             array_in, array_out)
@@ -143,7 +139,7 @@ subroutine mf_wq_get_ku_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
+    type(thermomat) :: mat
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v)
@@ -153,17 +149,15 @@ subroutine mf_wq_get_ku_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
-    allocate(mat)
     mat%dimen = 2
     call setup_conductivitycoefs(mat, nc_total, coefs)
-
-    call mf_wq_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
     
-end subroutine mf_wq_get_ku_2d
+end subroutine mf_get_ku_2d
 
-subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             array_in, array_out)
@@ -195,7 +189,7 @@ subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
+    type(thermomat) :: mat
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
@@ -206,17 +200,15 @@ subroutine mf_wq_get_ku_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
-    allocate(mat)
     mat%dimen = 3
     call setup_conductivitycoefs(mat, nc_total, coefs)
-
-    call mf_wq_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
-end subroutine mf_wq_get_ku_3d
+end subroutine mf_get_ku_3d
 
-subroutine wq_get_heatvol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine get_heatvol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, result)
     !! Computes source vector in 3D
     !! IN CSR FORMAT
@@ -242,9 +234,9 @@ subroutine wq_get_heatvol_2d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz
                         nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         coefs, result)
 
-end subroutine wq_get_heatvol_2d
+end subroutine get_heatvol_2d
 
-subroutine wq_get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, result)
     !! Computes source vector in 3D
     !! IN CSR FORMAT
@@ -272,9 +264,9 @@ subroutine wq_get_heatvol_3d(coefs, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
                         nnz_w, indi_w, indj_w, data_W_w(:, 1), &
                         coefs, result)
 
-end subroutine wq_get_heatvol_3d
+end subroutine get_heatvol_3d
 
-subroutine wq_get_heatsurf_2d(coefs, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, array_out)
+subroutine get_heatsurf_2d(coefs, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, array_out)
     !! Computes boundary force vector in 3D 
     !! IN CSR FORMAT
 
@@ -312,9 +304,9 @@ subroutine wq_get_heatsurf_2d(coefs, JJ, nc_total, nr_u, nc_u, nnz_u, indi_u, in
     call csr2dense(nnz_u, indi_u, indj_u, data_W_u, nr_u, nc_total, W00)
     array_out = matmul(W00, coefs)
     
-end subroutine wq_get_heatsurf_2d
+end subroutine get_heatsurf_2d
 
-subroutine wq_get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_out)
     !! Computes source vector in 3D
     !! IN CSR FORMAT
@@ -356,9 +348,9 @@ subroutine wq_get_heatsurf_3d(coefs, JJ, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         new_coefs(:), array_out(:))
 
-end subroutine wq_get_heatsurf_3d
+end subroutine get_heatsurf_3d
 
-subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             b, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -394,8 +386,8 @@ subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
-    type(cgsolver), pointer :: solv
+    type(thermomat) :: mat
+    type(cgsolver) :: solv
     type(sepoperator) :: oper
     double precision :: kmean(2)
 
@@ -416,7 +408,6 @@ subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    allocate(mat, solv)
     mat%dimen = 2
     call setup_conductivitycoefs(mat, nc_total, coefs)
     solv%matrixfreetype = 2
@@ -466,9 +457,9 @@ subroutine mf_wq_steady_heat_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_W_u, data_W_v, U_u, U_v, nbIterPCG, threshold, b, x, resPCG)
     end if
 
-end subroutine mf_wq_steady_heat_2d
+end subroutine solver_steady_heat_2d
 
-subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             b, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -580,9 +571,9 @@ subroutine mf_wq_steady_heat_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_W_u, data_W_v, data_W_w, U_u, U_v, U_w, nbIterPCG, threshold, b, x, resPCG)
     end if
 
-end subroutine mf_wq_steady_heat_3d
+end subroutine solver_steady_heat_3d
 
-subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                                 b, thetadt, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -696,4 +687,4 @@ subroutine mf_wq_lineartransient_heat_3d(Ccoefs, Kcoefs, nr_total, nc_total, nr_
 
     end if
 
-end subroutine mf_wq_lineartransient_heat_3d
+end subroutine solver_lineartransient_heat_3d

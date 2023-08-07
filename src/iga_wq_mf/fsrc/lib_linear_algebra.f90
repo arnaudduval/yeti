@@ -963,7 +963,7 @@ subroutine get_indices_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     ! ---------
     integer :: iA, iB, genPos, jA, jB, c, nb_tasks
     integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C
-    integer, allocatable, dimension(:) :: indj_temp
+    integer, allocatable, dimension(:) :: indj_tmp
 
     dummy = nc_A
 
@@ -982,7 +982,7 @@ subroutine get_indices_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
         end do
     end do
 
-    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,indj_temp) 
+    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,indj_tmp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nr_A*nr_B/nb_tasks)
     ! Set indices j in csr format
@@ -991,20 +991,20 @@ subroutine get_indices_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
             ! Select row
             genPos = (iA - 1)*nr_B + iB
             nnz_row_C = indi_C(genPos+1) - indi_C(genPos)
-            allocate(indj_temp(nnz_row_C))
+            allocate(indj_tmp(nnz_row_C))
             
             ! Get values of C's row
             c = 0
             do jA = indi_A(iA), indi_A(iA+1) - 1        
                 do jB = indi_B(iB), indi_B(iB+1) - 1
                     c = c + 1
-                    indj_temp(c) = (indj_A(jA) - 1)*nc_B + indj_B(jB)
+                    indj_tmp(c) = (indj_A(jA) - 1)*nc_B + indj_B(jB)
                 end do
             end do
 
             ! Update values
-            indj_C(indi_C(genPos):indi_C(genPos+1)-1) = indj_temp
-            deallocate(indj_temp)
+            indj_C(indi_C(genPos):indi_C(genPos+1)-1) = indj_tmp
+            deallocate(indj_tmp)
         end do
     end do
     !$OMP END DO NOWAIT
@@ -1038,7 +1038,7 @@ subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
     ! ---------
     integer :: iA, iB, iC, genPos, jA, jB, jC, c, nb_tasks
     integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
-    integer, allocatable, dimension(:) :: indj_temp
+    integer, allocatable, dimension(:) :: indj_tmp
     
     dummy = nc_A
 
@@ -1060,7 +1060,7 @@ subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
         end do
     end do
 
-    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,jC,indj_temp) 
+    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,jC,indj_tmp) 
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_A*nr_B*nr_C/nb_tasks)
     ! Set indices j in csr format
@@ -1070,7 +1070,7 @@ subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                 ! Select row
                 genPos = iC + (iB-1)*nr_C + (iA - 1)*nr_C*nr_B
                 nnz_row_D = indi_D(genPos+1) - indi_D(genPos)
-                allocate(indj_temp(nnz_row_D))
+                allocate(indj_tmp(nnz_row_D))
                 
                 ! Get values of D's row
                 c = 0
@@ -1078,15 +1078,15 @@ subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
                     do jB = indi_B(iB), indi_B(iB+1) - 1
                         do jC = indi_C(iC), indi_C(iC+1) - 1
                             c = c + 1
-                            indj_temp(c) = (indj_A(jA)-1)*nc_B*nc_C &
+                            indj_tmp(c) = (indj_A(jA)-1)*nc_B*nc_C &
                                             + (indj_B(jB)-1)*nc_C + indj_C(jC)
                         end do
                     end do
                 end do
 
                 ! Update values
-                indj_D(indi_D(genPos):indi_D(genPos+1)-1) = indj_temp
-                deallocate(indj_temp)
+                indj_D(indi_D(genPos):indi_D(genPos+1)-1) = indj_tmp
+                deallocate(indj_tmp)
             end do
         end do
     end do

@@ -2,9 +2,8 @@ module solverheat2
 
     use matrixfreeheat
     type cgsolver
-        logical :: withscaling = .false., withdiag = .false.
+        logical :: withdiag = .false.
         integer :: matrixfreetype = 1, dimen = 2
-        double precision, dimension(:), allocatable :: factor
         double precision, dimension(:), pointer :: diag=>null()
     end type cgsolver
 
@@ -41,14 +40,14 @@ contains
 
         if (solv%matrixfreetype.eq.1) then
 
-            call mf_wq_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.2) then
 
-            call mf_wq_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
@@ -94,49 +93,25 @@ contains
         ! Local data
         ! ----------
         integer :: i, nb_tasks
-        double precision :: array_temp, dummy
-        dimension :: array_temp(nr_total), dummy(nr_total)
+        double precision :: array_tmp
+        dimension :: array_tmp(nr_total)
 
-        dummy = array_in
-        if (solv%withscaling) then
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-            do i = 1, nr_total
-                dummy(i) = solv%factor(i)*dummy(i) 
-            end do  
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        end if  
-    
         ! Compute (Uw x Uv x Uu)'.array_in
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(U_u), transpose(U_v), dummy, array_temp)
+        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(U_u), transpose(U_v), array_in, array_tmp)
         
         if (solv%withdiag) then
             !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
             !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
             do i = 1, nr_total
-                array_temp(i) = array_temp(i)/solv%diag(i)
+                array_tmp(i) = array_tmp(i)/solv%diag(i)
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
         end if
     
-        ! Compute (Uw x Uv x Uu).array_temp
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, U_u, U_v, array_temp, dummy)
-
-        if (solv%withscaling) then
-            !$OMP PARALLEL 
-            nb_tasks = omp_get_num_threads()
-            !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
-            do i = 1, nr_total
-                dummy(i) = solv%factor(i)*dummy(i) 
-            end do  
-            !$OMP END DO NOWAIT
-            !$OMP END PARALLEL 
-        end if
-        array_out = dummy
+        ! Compute (Uw x Uv x Uu).array_tmp
+        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, U_u, U_v, array_tmp, array_out)
         
     end subroutine applyfastdiag
 
@@ -356,8 +331,8 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
-        type(cgsolver), pointer :: solv
-        type(thermomat), pointer :: mat
+        type(cgsolver) :: solv
+        type(thermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
         integer, intent(in) :: indi_T_u, indi_T_v
         dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
@@ -470,21 +445,21 @@ contains
 
         if (solv%matrixfreetype.eq.1) then
 
-            call mf_wq_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.2) then
 
-            call mf_wq_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.3) then
 
-            call mf_wq_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            call mf_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -530,26 +505,26 @@ contains
         ! Local data
         ! ----------
         integer :: i, nb_tasks
-        double precision :: array_temp
-        dimension :: array_temp(nr_total)
+        double precision :: array_tmp
+        dimension :: array_tmp(nr_total)
     
         ! Compute (Uw x Uv x Uu)'.array_in
         call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                        transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_temp)
+                        transpose(U_u), transpose(U_v), transpose(U_w), array_in, array_tmp)
         
         if (solv%withdiag) then
             !$OMP PARALLEL 
             nb_tasks = omp_get_num_threads()
             !$OMP DO SCHEDULE(STATIC, nr_total/nb_tasks)
             do i = 1, nr_total
-                array_temp(i) = array_temp(i)/solv%diag(i)
+                array_tmp(i) = array_tmp(i)/solv%diag(i)
             end do
             !$OMP END DO NOWAIT
             !$OMP END PARALLEL
         end if
     
-        ! Compute (Uw x Uv x Uu).array_temp
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_temp, array_out)
+        ! Compute (Uw x Uv x Uu).array_tmp
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, U_u, U_v, U_w, array_tmp, array_out)
         
     end subroutine applyfastdiag
 
