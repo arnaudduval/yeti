@@ -1,110 +1,3 @@
-subroutine eigendecomp_heat_2d(nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, &
-                                Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v, mean, isDiag, &
-                                U_u, U_v, Deigen, Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
-
-    double precision, intent(in) :: Mcoef_u, Mcoef_v, Kcoef_u, Kcoef_v
-    dimension ::    Mcoef_u(nc_u), Mcoef_v(nc_v), &
-                    Kcoef_u(nc_u), Kcoef_v(nc_v)
-    double precision, intent(in) :: mean
-    dimension :: mean(2)
-    logical, intent(in) :: isDiag
-
-    double precision, intent(out) :: U_u, U_v, Deigen
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), Deigen(nr_u*nr_v)
-    double precision, intent(out) :: Mdiag_u, Mdiag_v, Kdiag_u, Kdiag_v
-    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Kdiag_u(nr_u), Kdiag_v(nr_v)
-
-    ! Local data
-    ! -----------
-    double precision :: D_u, D_v
-    dimension :: D_u(nr_u), D_v(nr_v)
-    double precision, dimension(:), allocatable :: I_u, I_v
-
-    ! Eigen decomposition
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u, data_W_u, (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
-
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v, data_W_v, (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
-
-    ! Find diagonal
-    if (.not.isDiag) return
-    allocate(I_u(nr_u), I_v(nr_v))
-    I_u = 1.d0; I_v = 1.d0
-    call find_parametric_diag_2d(nr_u, nr_v, I_u, I_v, D_u, D_v, mean, Deigen)
-    deallocate(I_u, I_v)
-
-end subroutine eigendecomp_heat_2d
-
-subroutine eigendecomp_heat_3d(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                                Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w, mean, isDiag, &
-                                U_u, U_v, U_w, Deigen, Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w)
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
-    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
-
-    double precision, intent(in) :: Mcoef_u, Mcoef_v, Mcoef_w, Kcoef_u, Kcoef_v, Kcoef_w
-    dimension ::    Mcoef_u(nc_u), Mcoef_v(nc_v), Mcoef_w(nc_w), &
-                    Kcoef_u(nc_u), Kcoef_v(nc_v), Kcoef_w(nc_w)
-    double precision, intent(in) :: mean
-    dimension :: mean(3)
-    logical, intent(in) :: isDiag
-
-    double precision, intent(out) :: U_u, U_v, U_w, Deigen
-    dimension :: U_u(nr_u, nr_u), U_v(nr_v, nr_v), U_w(nr_w, nr_w), Deigen(nr_u*nr_v*nr_w)
-    double precision, intent(out) :: Mdiag_u, Mdiag_v, Mdiag_w, Kdiag_u, Kdiag_v, Kdiag_w
-    dimension :: Mdiag_u(nr_u), Mdiag_v(nr_v), Mdiag_w(nr_w), Kdiag_u(nr_u), Kdiag_v(nr_v), Kdiag_w(nr_w)
-
-    ! Local data
-    ! -----------
-    double precision :: D_u, D_v, D_w
-    dimension :: D_u(nr_u), D_v(nr_v), D_w(nr_w)
-    double precision, dimension(:), allocatable :: I_u, I_v, I_w
-
-    ! Eigen decomposition
-    call eigen_decomposition(nr_u, nc_u, Mcoef_u, Kcoef_u, nnz_u, indi_u, indj_u, &
-                            data_B_u, data_W_u, (/0, 0/), D_u, U_u, Kdiag_u, Mdiag_u)
-
-    call eigen_decomposition(nr_v, nc_v, Mcoef_v, Kcoef_v, nnz_v, indi_v, indj_v, &
-                            data_B_v, data_W_v, (/0, 0/), D_v, U_v, Kdiag_v, Mdiag_v)  
-
-    call eigen_decomposition(nr_w, nc_w, Mcoef_w, Kcoef_w, nnz_w, indi_w, indj_w, &
-                            data_B_w, data_W_w, (/0, 0/), D_w, U_w, Kdiag_w, Mdiag_w)   
-
-    ! Find diagonal
-    if (.not.isDiag) return
-    allocate(I_u(nr_u), I_v(nr_v), I_w(nr_w))
-    I_u = 1.d0; I_v = 1.d0; I_w = 1.d0
-    call find_parametric_diag_3d(nr_u, nr_v, nr_w, I_u, I_v, I_w, D_u, D_v, D_w, mean, Deigen)
-    deallocate(I_u, I_v, I_w)
-
-end subroutine eigendecomp_heat_3d
-
 module matrixfreeheat
 
     implicit none
@@ -172,93 +65,88 @@ contains
 
     end subroutine setup_capacityprop
 
-    ! subroutine compute_mean_2d(mat, nc_u, nc_v)
-    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
+    subroutine compute_mean(mat, dimen, nclist)
+        !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
-    !     implicit none 
-    !     ! Input / output data
-    !     ! -------------------
-    !     integer, parameter :: samplesize = 3**2
-    !     type(thermomat) :: mat
-    !     integer, intent(in) :: nc_u, nc_v
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: dimen, nclist
+        dimension :: nclist(dimen)
 
-    !     ! Local data
-    !     ! ----------
-    !     integer :: i, j, l, genPos, pos
-    !     integer :: ind_u, ind_v, sample
-    !     dimension :: ind_u(3), ind_v(3), sample(samplesize)
+        ! Local data
+        ! ----------
+        integer :: i, j, k, c, gp, pos, ind(3)
+        integer, dimension(:), allocatable :: sample
+        integer, dimension(:, :), allocatable :: indlist
+        double precision, dimension(:, :, :), allocatable :: Kcoefs
+        double precision, dimension(:), allocatable :: Ccoefs
         
-    !     if (nc_u*nc_v.ne.mat%ncols_sp) stop 'Wrong dimensions'
-    !     pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-    !     pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
+        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
+        allocate(indlist(dimen, 3), sample(3**dimen))
+        do i = 1, dimen 
+            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
+            indlist(i, :) = ind
+        end do
+
+        if (.not.allocated(mat%mean)) allocate(mat%mean(dimen+1))
+        mat%mean = 0.d0
     
-    !     ! Select a set of coefficients
-    !     l = 1
-    !     do j = 1, 3
-    !         do i = 1, 3
-    !             genPos = ind_u(i) + (ind_v(j) - 1)*nc_u
-    !             sample(l) = genPos
-    !             l = l + 1
-    !         end do
-    !     end do
+        ! Select a set of coefficients
+        c = 1
+        if (dimen.eq.2) then
+            do j = 1, 3
+                do i = 1, 3
+                    gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+                    sample(c) = gp
+                    c = c + 1
+                end do
+            end do
+        else if (dimen.eq.3) then
+            do k = 1, 3
+                do j = 1, 3
+                    do i = 1, 3
+                        gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+                        sample(c) = gp
+                        c = c + 1
+                    end do
+                end do
+            end do
+        else
+            stop 'Not possible compute mean diagonal blocks'
+        end if
 
-    !     if (.not.allocated(mat%mean)) allocate(mat%mean(3))
-    !     mat%mean = 0.d0
-    !     if (associated(mat%Kcoefs)) then
-    !         call trapezoidal_rule_2d(3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
-    !         call trapezoidal_rule_2d(3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
-    !     end if
-    !     if (associated(mat%Ccoefs)) then
-    !         call trapezoidal_rule_2d(3, 3, mat%Ccoefs(sample), mat%mean(3))
-    !     end if   
+        if (associated(mat%Kprop)) then
+            allocate(Kcoefs(dimen, dimen, size(sample)))
+            do c = 1, size(sample)
+                gp = sample(c)
+                Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+                                *mat%detJ(gp)
+            end do
+            do i = 1, dimen
+                if (dimen.eq.2) then
+                    call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%mean(i))
+                else if (dimen.eq.3) then
+                    call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%mean(i))
+                end if
+            end do
+        end if
 
-    ! end subroutine compute_mean_2d
+        if (associated(mat%Cprop)) then
+            allocate(Ccoefs(size(sample)))
+            do c = 1, size(sample)
+                gp = sample(c)
+                Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
+            end do
+            if (dimen.eq.2) then
+                call trapezoidal_rule_2d(3, 3, Ccoefs, mat%mean(dimen+1))
+            else if (dimen.eq.3) then
+                call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%mean(dimen+1))
+            end if
+        end if   
 
-    ! subroutine compute_mean_3d(mat, nc_u, nc_v, nc_w)
-    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
-
-    !     implicit none 
-    !     ! Input / output data
-    !     ! -------------------
-    !     integer, parameter :: samplesize = 3**3
-    !     type(thermomat) :: mat
-    !     integer, intent(in) :: nc_u, nc_v, nc_w
-
-    !     ! Local data
-    !     ! ----------
-    !     integer :: i, j, k, l, genPos, pos
-    !     integer :: ind_u, ind_v, ind_w, sample
-    !     dimension :: ind_u(3), ind_v(3), ind_w(3), sample(samplesize)
-        
-    !     if (nc_u*nc_v*nc_w.ne.mat%ncols_sp) stop 'Wrong dimensions'
-    !     pos = int((nc_u+1)/2); ind_u = (/1, pos, nc_u/)
-    !     pos = int((nc_v+1)/2); ind_v = (/1, pos, nc_v/)
-    !     pos = int((nc_w+1)/2); ind_w = (/1, pos, nc_w/)
-    
-    !     ! Select a set of coefficients
-    !     l = 1
-    !     do k = 1, 3
-    !         do j = 1, 3
-    !             do i = 1, 3
-    !                 genPos = ind_u(i) + (ind_v(j) - 1)*nc_u + (ind_w(k) - 1)*nc_u*nc_v
-    !                 sample(l) = genPos
-    !                 l = l + 1
-    !             end do
-    !         end do
-    !     end do
-
-    !     if (.not.allocated(mat%mean)) allocate(mat%mean(4))
-    !     mat%mean = 0.d0
-    !     if (associated(mat%Kcoefs)) then
-    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(1, 1, sample), mat%mean(1))
-    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(2, 2, sample), mat%mean(2))
-    !         call trapezoidal_rule_3d(3, 3, 3, mat%Kcoefs(3, 3, sample), mat%mean(3))
-    !     end if
-    !     if (associated(mat%Ccoefs)) then
-    !         call trapezoidal_rule_3d(3, 3, 3, mat%Ccoefs(sample), mat%mean(4))
-    !     end if   
-
-    ! end subroutine compute_mean_3d
+    end subroutine compute_mean
 
     subroutine mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -556,129 +444,3 @@ contains
     end subroutine mf_condcap_3d
 
 end module matrixfreeheat
-
-subroutine compute_transientheat_cond(nnz, Kcoefs, Ccoefs, Kmean, Cmean, kappa)
-
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: Kcoefs, Ccoefs
-    dimension :: Kcoefs(dimen, dimen, nnz), Ccoefs(nnz)
-    double precision, intent(in) :: Kmean, Cmean
-    dimension :: Kmean(dimen)
-
-    double precision, intent(out) :: kappa
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-    double precision :: eye, KK, Kmean2, rho, x
-    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
-    double precision :: supKold, infKold, supCold, infCold, supKnew, infKnew, Cnew, supK, infK, supC, infC
-
-    eye = 0.d0
-    do i = 1, dimen
-        eye(i, i) = 1.d0
-    end do
-
-    do i = 1, dimen
-        kmean2(i) = 1.0/sqrt(Kmean(i))
-    end do
-
-    KK = Kcoefs(:, :, 1)
-    do i = 1, dimen
-        do j = 1, dimen
-            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-        end do
-    end do
-
-    call compute_geneigs(dimen, KK, eye, rho, x)
-    supKold = maxval(rho); infKold = minval(rho)
-    supCold = Ccoefs(1)/Cmean; infCold = Ccoefs(1)/Cmean
-
-    do k = 2, nnz
-        
-        KK = Kcoefs(:, :, k)
-        do i = 1, dimen
-            do j = 1, dimen
-                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-            end do
-        end do
-
-        call compute_geneigs(dimen, KK, eye, rho, x)
-        supKnew = maxval(rho); infKnew = minval(rho)
-        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
-        Cnew = Ccoefs(k)/Cmean
-        supC = max(supCold, Cnew); infC = min(infCold, Cnew)
-
-        supKold = supK; infKold = infK
-        supCold = supC; infCold = infC
-
-    end do
-    
-    kappa = max(supK, supC)/min(infK, infC)
-
-end subroutine compute_transientheat_cond
-
-subroutine compute_steadyheat_cond(nnz, Kcoefs, Kmean, kappa)
-    
-    implicit none
-    ! Input /  output data
-    ! --------------------
-    integer, parameter :: dimen = 3
-    integer, intent(in) :: nnz
-    double precision, intent(in) :: Kcoefs
-    dimension :: Kcoefs(dimen, dimen, nnz)
-    double precision, intent(in) :: Kmean
-    dimension :: Kmean(dimen)
-
-    double precision, intent(out) :: kappa
-    
-    ! Local data
-    ! ----------
-    integer :: i, j, k
-    double precision :: eye, KK, Kmean2, rho, x
-    dimension :: eye(dimen, dimen), KK(dimen, dimen), Kmean2(dimen), rho(dimen), x(dimen, dimen)
-    double precision :: supKold, infKold, supKnew, infKnew, supK, infK
-
-    eye = 0.d0
-    do i = 1, dimen
-        eye(i, i) = 1.d0
-    end do
-
-    do i = 1, dimen
-        kmean2(i) = 1.0/sqrt(Kmean(i))
-    end do
-
-    KK = Kcoefs(:, :, 1)
-    do i = 1, dimen
-        do j = 1, dimen
-            KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-        end do
-    end do
-
-    call compute_geneigs(dimen, KK, eye, rho, x)
-    supKold = maxval(rho); infKold = minval(rho)
-
-    do k = 2, nnz
-        
-        KK = Kcoefs(:, :, k)
-        do i = 1, dimen
-            do j = 1, dimen
-                KK(i, j) = KK(i, j) * Kmean2(i) * Kmean2(j)
-            end do
-        end do
-
-        call compute_geneigs(dimen, KK, eye, rho, x)
-        supKnew = maxval(rho); infKnew = minval(rho)
-        supK = max(supKold, supKnew); infK = min(infKold, infKnew)
-
-        supKold = supK; infKold = infK
-
-    end do
-    
-    kappa = supK/infK
-
-end subroutine compute_steadyheat_cond 

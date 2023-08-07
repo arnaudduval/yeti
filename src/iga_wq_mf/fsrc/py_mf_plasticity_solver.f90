@@ -486,9 +486,9 @@ end subroutine mf_get_su_3d
 
 subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, b, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, &
                             ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, mechArgs, &
-                            nbIterPCG, threshold, methodPCG, x, resPCG)
+                            Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -511,10 +511,10 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
     integer, intent(in) :: ndu, ndv
-    logical, intent(in) :: table
-    dimension :: table(dimen, 2, dimen) 
     integer, intent(in) :: dod_u, dod_v
     dimension :: dod_u(ndu), dod_v(ndv)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2, dimen) 
 
     double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
@@ -522,8 +522,8 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
 
-    double precision, intent(in) :: b
-    dimension :: b(dimen, nr_total)
+    double precision, intent(in) :: Fext
+    dimension :: Fext(dimen, nr_total)
     
     double precision, intent(out) :: x, resPCG
     dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
@@ -556,7 +556,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, b, x, resPCG)
+                data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
@@ -571,7 +571,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
-                        nbIterPCG, threshold, b, x, resPCG)
+                        nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method'                    
     end if
@@ -580,9 +580,9 @@ end subroutine solver_elasticity_2d
 
 subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, b, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, mechArgs, &
-                            nbIterPCG, threshold, methodPCG, x, resPCG)
+                            Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -607,10 +607,10 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     integer, intent(in) :: ndu, ndv, ndw
-    logical, intent(in) :: table
-    dimension :: table(dimen, 2, dimen) 
     integer, intent(in) :: dod_u, dod_v, dod_w
     dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2, dimen) 
 
     double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
@@ -618,8 +618,8 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
 
-    double precision, intent(in) :: b
-    dimension :: b(dimen, nr_total)
+    double precision, intent(in) :: Fext
+    dimension :: Fext(dimen, nr_total)
     
     double precision, intent(out) :: x, resPCG
     dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
@@ -655,7 +655,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
+                data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
@@ -670,7 +670,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, b, x, resPCG)
+                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method'                   
     end if

@@ -122,28 +122,28 @@ contains
         ! ----------
         type(sepoperator) :: oper
         logical :: update(dimen)
-        integer :: k, l, m, genpos
+        integer :: k, l, m, gp
         double precision :: DD, coefs, NN, TNN
         dimension :: DD(dimen, dimen), coefs(dimen, dimen, mat%ncols_sp), NN(nvoigt), TNN(dimen, dimen)
 
-        do genpos = 1, mat%ncols_sp
-            NN = mat%NN(:, genpos)
+        do gp = 1, mat%ncols_sp
+            NN = mat%NN(:, gp)
             call array2symtensor(dimen, size(NN), NN, TNN)
 
             DD = 0.d0
-            DD(i, j) = DD(i, j) + mat%CepArgs(1, genpos)
-            DD(j, i) = DD(j, i) + mat%CepArgs(2, genpos)
+            DD(i, j) = DD(i, j) + mat%CepArgs(1, gp)
+            DD(j, i) = DD(j, i) + mat%CepArgs(2, gp)
             if (i.eq.j) then
                 do k = 1, dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, genpos)
+                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
             end if
             do l = 1, dimen
                 do m = 1, dimen
-                    DD(l, m) = DD(l, m) + mat%CepArgs(3, genpos)*TNN(i, l)*TNN(j, m)
+                    DD(l, m) = DD(l, m) + mat%CepArgs(3, gp)*TNN(i, l)*TNN(j, m)
                 end do
             end do
-            coefs(:, :, genpos) = matmul(mat%invJ(:, :, genpos), matmul(DD, transpose(mat%invJ(:, :, genpos))))
+            coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
         end do
 
         update = .true.
@@ -169,29 +169,29 @@ contains
 
         ! Local data
         ! ----------
-        integer :: k, l, m, n, c, genpos
+        integer :: k, l, m, n, c, gp
         double precision :: DD, coefs, NN, TNN
         dimension :: DD(dimen, dimen), coefs(dimen, dimen, samplesize), NN(nvoigt), TNN(dimen, dimen)
 
         do c = 1, samplesize
-            genpos = sample(c)
-            NN = mat%NN(:, genpos)
+            gp = sample(c)
+            NN = mat%NN(:, gp)
             call array2symtensor(dimen, size(NN), NN, TNN)
 
             DD = 0.d0
-            DD(i, j) = DD(i, j) + mat%CepArgs(1, genpos)
-            DD(j, i) = DD(j, i) + mat%CepArgs(2, genpos)
+            DD(i, j) = DD(i, j) + mat%CepArgs(1, gp)
+            DD(j, i) = DD(j, i) + mat%CepArgs(2, gp)
             if (i.eq.j) then
                 do k = 1, dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, genpos)
+                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
             end if
             do l = 1, dimen
                 do m = 1, dimen
-                    DD(l, m) = DD(l, m) + mat%CepArgs(3, genpos)*TNN(i, l)*TNN(j, m)
+                    DD(l, m) = DD(l, m) + mat%CepArgs(3, gp)*TNN(i, l)*TNN(j, m)
                 end do
             end do
-            coefs(:, :, c) = matmul(mat%invJ(:, :, genpos), matmul(DD, transpose(mat%invJ(:, :, genpos))))
+            coefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
         end do
 
         do n = 1, dimen
@@ -216,7 +216,7 @@ contains
 
         ! Local data
         ! ----------
-        integer :: i, j, k, c, genpos, pos, ind(3)
+        integer :: i, j, k, c, gp, pos, ind(3)
         integer, dimension(:), allocatable :: sample
         integer, dimension(:, :), allocatable :: indlist
         double precision :: mean(dimen)
@@ -233,8 +233,8 @@ contains
         if (dimen.eq.2) then
             do j = 1, 3
                 do i = 1, 3
-                    genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
-                    sample(c) = genpos
+                    gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+                    sample(c) = gp
                     c = c + 1
                 end do
             end do
@@ -242,8 +242,8 @@ contains
             do k = 1, 3
                 do j = 1, 3
                     do i = 1, 3
-                        genpos = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
-                        sample(c) = genpos
+                        gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+                        sample(c) = gp
                         c = c + 1
                     end do
                 end do

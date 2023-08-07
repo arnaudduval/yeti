@@ -169,9 +169,9 @@ subroutine interpolate_meshgrid_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u
 
 end subroutine interpolate_meshgrid_3d
 
-subroutine l2projection_ctrlpts_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine l2projection_ctrlpts_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, invJ, detJ, &
                             b, nbIterPCG, threshold, x, resPCG)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
@@ -183,9 +183,8 @@ subroutine l2projection_ctrlpts_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     implicit none 
     ! Input / output data
     ! -------------------
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -195,6 +194,8 @@ subroutine l2projection_ctrlpts_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
+    double precision, intent(in) :: invJ, detJ
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
     dimension :: b(nr_total)
@@ -204,31 +205,41 @@ subroutine l2projection_ctrlpts_3d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
-    type(cgsolver), pointer :: solv
-    type(structure) :: struct
-    double precision :: ones(3) = 1.d0
+    type(thermomat) :: mat
+    type(cgsolver) :: solv
+
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+    logical :: table(dimen, 2)   
+    integer, dimension(:), allocatable :: dod 
+    double precision :: mean(dimen+1) = 1.d0
+    double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call init_3datastructure(struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-    call getcsr2csc(struct)
-    call eigendecomposition(struct, ones)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Set material and solver
-    allocate(mat, solv)
-    call setup_capacitycoefs(mat, nc_total, coefs)
+    mat%dimen = dimen; ones = 1.d0
+    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
-    call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                struct%indi_T(1, 1:nc_u+1), struct%indj_T(1, 1:nnz_u), struct%indi_T(2, 1:nc_v+1), &
-                struct%indj_T(2, 1:nnz_v), struct%indi_T(3, 1:nc_w+1), struct%indj_T(3, 1:nnz_w), &
-                struct%bw_T(1, 1:nnz_u, :2), struct%bw_T(2, 1:nnz_v, :2), struct%bw_T(3, 1:nnz_w, :2), &
-                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                struct%eigvec(1, 1:nr_u, 1:nr_u), struct%eigvec(2, 1:nr_v, 1:nr_v), &
-                struct%eigvec(3, 1:nr_w, 1:nr_w), nbIterPCG, threshold, b, x, resPCG)
+    table = .false.; solv%withdiag = .false.
+    call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                            data_W_u, data_W_v, data_W_w, table, mean)
 
+    allocate(dod(0))
+    call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_W_u, data_W_v, data_W_w, size(dod), dod, nbIterPCG, threshold, b, x, resPCG)
+            
 end subroutine l2projection_ctrlpts_3d
 
 subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -328,9 +339,9 @@ subroutine interpolate_meshgrid_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
 end subroutine interpolate_meshgrid_2d
 
-subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine l2projection_ctrlpts_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, invJ, detJ, &
                             b, nbIterPCG, threshold, x, resPCG)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
@@ -342,9 +353,8 @@ subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     implicit none 
     ! Input / output data
     ! -------------------
+    integer, parameter :: dimen = 2
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_total)
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -352,6 +362,8 @@ subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
+    double precision, intent(in) :: invJ, detJ
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
     dimension :: b(nr_total)
@@ -361,29 +373,37 @@ subroutine l2projection_ctrlpts_2d(coefs, nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
-    type(cgsolver), pointer :: solv
-    type(structure) :: struct
-    double precision :: ones(2) = 1.d0
+    type(thermomat) :: mat
+    type(cgsolver) :: solv
+
+    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+    logical :: table(dimen, 2)   
+    integer, dimension(:), allocatable :: dod 
+    double precision :: mean(dimen+1) = 1.d0
+    double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call init_2datastructure(struct, nr_u, nc_u, nr_v, nc_v, &
-                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v)
-    call getcsr2csc(struct)
-    call eigendecomposition(struct, ones)
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    ! Set material and solver
-    allocate(mat, solv)
-    call setup_capacitycoefs(mat, nc_total, coefs)
+    mat%dimen = dimen; ones = 1.d0
+    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
+    table = .false.; solv%withdiag = .false.
+    call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                            data_W_u, data_W_v, table, mean)
+
+    allocate(dod(0))
     call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                struct%indi_T(1, 1:nc_u+1), struct%indj_T(1, 1:nnz_u), struct%indi_T(2, 1:nc_v+1), &
-                struct%indj_T(2, 1:nnz_v), struct%bw_T(1, 1:nnz_u, :2), struct%bw_T(2, 1:nnz_v, :2), &
-                indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, &
-                struct%eigvec(1, 1:nr_u, 1:nr_u), struct%eigvec(2, 1:nr_v, 1:nr_v), &
-                nbIterPCG, threshold, b, x, resPCG)
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                data_W_u, data_W_v, size(dod), dod, nbIterPCG, threshold, b, x, resPCG)
 
 end subroutine l2projection_ctrlpts_2d
 
@@ -460,112 +480,3 @@ subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
     end do
 
 end subroutine interpolate_meshgrid_1d
-
-subroutine l2projection_ctrlpts_1d(coefs, nr_total, nc_total, nr_u, nc_u, &
-                            nnz_u, indi_u, indj_u, data_B_u, data_W_u, &
-                            b, nbIterPCG, threshold, x, resPCG)
-    !! Preconditioned conjugate gradient to solve interpolation problem
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nnz_u
-    double precision, intent(in) :: coefs
-    dimension :: coefs(nc_total)
-    integer, intent(in) :: indi_u, indj_u
-    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
-    double precision, intent(in) :: data_B_u, data_W_u
-    dimension :: data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
-
-    integer, intent(in) :: nbIterPCG
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nr_total)
-    
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nr_total), resPCG(nbIterPCG+1)
-
-    ! Local data
-    ! ----------
-    integer :: i 
-    double precision :: data_W_u_t
-    dimension :: data_W_u_t(nnz_u)
-    double precision :: weights_t, basis, A
-    dimension :: weights_t(nr_u, nc_u), basis(nr_u, nc_u), A(nr_u, nr_u)
-
-    if (nr_total.ne.nr_u) stop 'Size problem'
-    resPCG = threshold
-    do i = 1, nnz_u
-        data_W_u_t(i) = data_W_u(i, 1) * coefs(indj_u(i)) 
-    end do
-    call csr2dense(nnz_u, indi_u, indj_u, data_W_u_t, nr_u, nc_u, weights_t)
-    call csr2dense(nnz_u, indi_u, indj_u, data_B_u(:, 1), nr_u, nc_u, basis)
-    A = matmul(weights_t, transpose(basis))
-    call solve_linear_system(nr_u, nr_u, A, b, x)
-
-end subroutine l2projection_ctrlpts_1d
-
-!! --------- TO ERASE EVENTUALLY
-
-subroutine eval_capacity_coefficient(nnzJ, detJ, nnzP, prop, coefs, info)
-    !! Computes capacity coefficient coef = sigma * detJ
-    
-    use matrixfreeheat
-    implicit none 
-    ! Input / output data
-    ! -------------------  
-    integer, intent(in) :: nnzJ, nnzP
-    double precision, intent(in) :: detJ
-    dimension :: detJ(nnzJ)
-    double precision, target, intent(in) :: prop
-    dimension :: prop(nnzP)
-
-    integer, intent(out) :: info
-    double precision, intent(out) :: coefs
-    dimension :: coefs(nnzJ)
-
-    ! Local data
-    ! ----------
-    type(thermomat), pointer :: mat
-    double precision :: invJJ(1, 1, nnzJ)
-    
-    allocate(mat)
-    mat%dimen = 1; invJJ = 0.d0
-    call setup_geometry(mat, nnzJ, invJJ, detJ)
-    mat%Cprop => prop
-    allocate(mat%Ccoefs(nnzJ))
-    call update_capacitycoefs(mat, info)
-    coefs = mat%Ccoefs
-
-end subroutine eval_capacity_coefficient
-
-subroutine eval_conductivity_coefficient(dimen, nnzJ, invJ, detJ, nnzP, prop, coefs, info)
-    !! Computes conductivity coefficients coef = J^-1 lambda detJ J^-T
-    
-    use matrixfreeheat
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: dimen, nnzJ, nnzP
-    double precision, intent(in) :: invJ, detJ
-    dimension :: invJ(dimen, dimen, nnzJ), detJ(nnzJ)
-    double precision, target, intent(in) :: prop
-    dimension :: prop(dimen, dimen, nnzP)
-
-    integer, intent(out) :: info
-    double precision, intent(out) :: coefs
-    dimension :: coefs(dimen, dimen, nnzJ)
-
-    ! Local data
-    ! ----------
-    type(thermomat), pointer :: mat
-
-    allocate(mat)
-    mat%dimen = dimen
-    call setup_geometry(mat, nnzJ, invJ, detJ)
-    mat%Kprop => prop
-    allocate(mat%Kcoefs(dimen, dimen, nnzJ))
-    call update_conductivitycoefs(mat, info)
-    coefs = mat%Kcoefs
-    
-end subroutine eval_conductivity_coefficient

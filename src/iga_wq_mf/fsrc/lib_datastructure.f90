@@ -145,7 +145,7 @@ contains
         
     end subroutine init_3datastructure
 
-    subroutine get_innernodes(datstruct, dimen, table)
+    subroutine get_innernodes__(datstruct, dimen, table)
         implicit none 
         ! Input / output data
         ! --------------------
@@ -203,7 +203,7 @@ contains
             stop 'Not possible get boundary nodes'
         end if
 
-    end subroutine get_innernodes
+    end subroutine get_innernodes__
 
     subroutine update_datastructure(datstruct, dimen, table)
         implicit none 
@@ -224,7 +224,7 @@ contains
         double precision, dimension(:, :), allocatable :: bw_out
 
         if (dimen.ne.datstruct%dimen) stop 'table not well defined'
-        call get_innernodes(datstruct, dimen, table)
+        call get_innernodes__(datstruct, dimen, table)
 
         nr_new_list  = datstruct%nrows 
         nnz_new_list = 0

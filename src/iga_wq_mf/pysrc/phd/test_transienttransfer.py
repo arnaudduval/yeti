@@ -83,7 +83,7 @@ if not dataExist:
 
 			# Solve
 			lastStep = 3
-			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext=Fext[:, :lastStep], 
+			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
 														time_list=time_list[:lastStep], theta=1.0)
 			np.savetxt(filename, resPCG)
 			model.exportResultsCP(fields={'temperature': Tinout[:, lastStep-1]}, folder=folder)

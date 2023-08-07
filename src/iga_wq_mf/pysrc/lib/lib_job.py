@@ -14,6 +14,10 @@ class problem():
 		self.addSolverConstraints(solverArgs)
 		return
 	
+	def __getInputs(self):
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
+		return inpts
+
 	def addSolverConstraints(self, solverArgs:dict):
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 30)
@@ -76,19 +80,19 @@ class problem():
 	
 	def L2projectionCtrlpts(self, funfield=None, datafield=None):
 		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
-		coefs = None
-		if datafield is not None: coefs = datafield*self.part.detJ
-		if funfield is not None:  coefs = funfield(self.part.qpPhy)*self.part.detJ
-		if coefs is None: raise Warning('Missing data')
-		coefs = np.atleast_2d(coefs); nr = np.size(coefs, axis=0); u_interp = []
+		prop = None
+		if datafield is not None: prop = datafield
+		if funfield is not None:  prop = funfield(self.part.qpPhy) # To modify if function depends on other fields
+		if prop is None: raise Warning('Missing data')
+		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0); u_interp = []
 
 		for i in range(nr):
-			inputs = [coefs[i, :], *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
+			inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop[i, :]]
 			if self.part.dim == 2: vector = heatsolver.get_heatvol_2d(*inputs)
 			if self.part.dim == 3: vector = heatsolver.get_heatvol_3d(*inputs)
 
-			inputs = [self.part.detJ, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-					*self.part.weights, vector, self._nbIterPCG, self._thresholdPCG]
+			inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
+					*self.part.weights, self.part.invJ, self.part.detJ, vector, self._nbIterPCG, self._thresholdPCG]
 			if self.part.dim == 2: u_tmp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
 			if self.part.dim == 3: u_tmp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
 			u_interp.append(u_tmp)
@@ -101,53 +105,30 @@ class heatproblem(problem):
 		self.material = material
 		return
 	
-	def get_input4MatrixFree(self, table=None):
-		" Returns necessary inputs to compute the product between a matrix and a vector "
-		
-		if table is None: table = self.boundary.thDirichletTable
-		indices, basis, weights = [], [], []
-		for i in range(self.part.dim):
-			# Select data
-			if np.array_equal(table[i, :], [0, 0]): rows2erase = []
-			if np.array_equal(table[i, :], [0, 1]): rows2erase = [-1]
-			if np.array_equal(table[i, :], [1, 0]): rows2erase = [0]
-			if np.array_equal(table[i, :], [1, 1]): rows2erase = [0, -1]
-			indi_t, indj_t, data_t = eraseRowsCSR(rows2erase, 
-									self.part.indices[2*i], self.part.indices[2*i+1],  
-									[self.part.basis[i], self.part.weights[i]])
-			
-			# Extract data and append to list
-			[basist, weightst] = data_t
-			indices.append(indi_t); indices.append(indj_t) 
-			basis.append(basist); weights.append(weightst)
-
-		inputs = [*self.part.nbqp[:self.part.dim], *indices, *basis, *weights]
-
-		return inputs
-	
-	def eval_mfConductivity(self, array_in, coefs=None, table=None, args=None):
-		inputs = self.get_input4MatrixFree(table=table)
-		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, args)
-		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(coefs, *inputs, array_in)
-		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(coefs, *inputs, array_in)
+	def eval_mfConductivity(self, array_in, args=None):
+		if args is None: args = self.part.qpPhy
+		prop = self.material.conductivity(args)
+		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, prop]
+		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
 		return array_out
 	
-	def eval_mfCapacity(self, u, coefs=None, table=None, args=None): 
-		inputs = self.get_input4MatrixFree(table=table)
-		if coefs is None: coefs  = self.material.eval_capacityCoefficients(self.part.detJ, args)
-		if self.part.dim == 2: result = heatsolver.mf_get_cu_2d(coefs, *inputs, u)
-		if self.part.dim == 3: result = heatsolver.mf_get_cu_3d(coefs, *inputs, u)
-		return result
+	def eval_mfCapacity(self, array_in, args=None): 
+		if args is None: args = self.part.qpPhy
+		prop = self.material.capacity(args)
+		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, prop]
+		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
+		return array_out
 
-	def eval_volForce(self, fun, indi=None): 
-		if indi is None: indi = np.arange(self.part.nbctrlpts_total, dtype=int)
-		coefs = self.material.eval_heatForceCoefficients(fun, self.part.detJ, self.part.qpPhy)
-		inputs = [coefs, *self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights]
-		if self.part.dim == 2: vector = heatsolver.get_heatvol_2d(*inputs)[indi]
-		if self.part.dim == 3: vector = heatsolver.get_heatvol_3d(*inputs)[indi]
-		return vector
+	def eval_volForce(self, volfun): 
+		prop  = volfun(self.part.qpPhy)
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		if self.part.dim == 2: volForce = heatsolver.get_heatvol_2d(*inpts)
+		if self.part.dim == 3: volForce = heatsolver.get_heatvol_3d(*inpts)
+		return volForce
 	
-	def eval_surfForce(self, fun, nbFacePosition):
+	def eval_surfForce(self, surffun, nbFacePosition):
 		if self.part.dim != 3: raise Warning('Method only for 3D geometries')
 
 		def get_faceInfo(nb):
@@ -156,7 +137,7 @@ class heatproblem(problem):
 			else: side = 0
 			return direction, side
 
-		vector = np.zeros(self.part.nbctrlpts_total)
+		surfForce = np.zeros(self.part.nbctrlpts_total)
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
 
@@ -184,59 +165,50 @@ class heatproblem(problem):
 			JJ = geophy.eval_jacobien_2d(*inpts)
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 
-		coefs = fun(qpPhy)
-		inpts = [coefs, JJ, *nnz, *indices, *weights]
-		if   self.part.dim == 2: raise Warning('Not done yet')
-		elif self.part.dim == 3: tmp = plasticitysolver.get_heatsurf_3d(*inpts)
-		vector[CPList] = tmp
+		prop = surffun(qpPhy)
+		inpts = [*nnz, *indices, *weights, JJ, prop]
+		if   self.part.dim == 2: tmp = heatsolver.get_heatsurf_2d(*inpts)
+		elif self.part.dim == 3: tmp = heatsolver.get_heatsurf_3d(*inpts)
+		surfForce[CPList] = tmp
 
-		return vector
+		return surfForce
 
-	def interpolate_temperature(self, uctrlpts):
+	def interpolate_temperature(self, u_ctrlpts):
 		" Computes the temperature at the quadrature points "
-		basis   = self.part.basis
-		indices = self.part.indices
-		nbqp    = self.part.nbqp[:self.part.dim]
-		inputs = [*nbqp, *indices, *basis, np.atleast_2d(uctrlpts)]
-		if self.part.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)
-		elif self.part.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, np.atleast_2d(u_ctrlpts)]
+		if self.part.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)
+		elif self.part.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
 		uinterp = np.ravel(uinterp)
 		return uinterp
 
-	def solveSteadyHeatProblemFT(self, b, coefs=None):
-		if coefs is None: coefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, self.part.qpPhy)
-		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
-		inputs = [coefs, *tmp, b, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: sol, residue = heatsolver.solver_steady_heat_2d(*inputs)
-		if self.part.dim == 3: sol, residue = heatsolver.solver_steady_heat_3d(*inputs)
-		return sol, residue
+	def solveSteadyHeatProblemFT(self, Fext, args=None):
+		dod = deepcopy(self.boundary.thdod) + 1
+		if args is None: args = self.part.qpPhy
+		prop = self.material.conductivity(args)
+		inpts = [*super().__getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+				prop, Fext,  self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if self.part.dim == 2: temperature, residue = heatsolver.solver_steady_heat_2d(*inpts)
+		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
+		return temperature, residue
 	
-	def solveLinearTransientHeatProblemFT(self, dt, b, theta=1.0, Ccoefs=None, Kcoefs=None, args={}):
-		if Ccoefs is None: 
-			temperature = args.get('temperature')
-			inpt = self.part.qpPhy
-			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
-			Ccoefs  = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
-			
-		if Kcoefs is None:
-			temperature = args.get('temperature')
-			inpt = self.part.qpPhy
-			inpt = np.row_stack((inpt, temperature*np.ones(np.size(inpt, axis=1))))
-			Kcoefs  = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
-		
-		tmp = self.get_input4MatrixFree(table=self.boundary.thDirichletTable)
-		inputs = [Ccoefs, Kcoefs, *tmp, b, theta*dt, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: raise Warning('Until now not done')
-		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inputs)
+	def solveLinearTransientHeatProblemFT(self, Fext, thetadt, args=None):
+		dod = deepcopy(self.boundary.thdod) + 1
+		if args is None: args = self.part.qpPhy
+		Cprop = self.material.capacity(args)
+		Kprop = self.material.conductivity(args)
+
+		inpts = [*super().__getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if self.part.dim == 2: sol, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
+		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return sol, residue
 
-	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext, theta=1.0):
-		nbSteps = len(time_list)
+	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0):
 		nbctrlpts_total = self.part.nbctrlpts_total
+		nbSteps = len(time_list)
 		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
 
 		VVn0 = np.zeros(nbctrlpts_total)
-		resPCG_list = []
 		if nbSteps == 2:
 			dt = time_list[1] - time_list[0]
 			VVn0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
@@ -247,6 +219,7 @@ class heatproblem(problem):
 			VVn0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		else: raise Warning('At least 2 steps')
 		
+		resPCG_list = []
 		for i in range(1, nbSteps):
 			
 			# Get delta time
@@ -257,9 +230,9 @@ class heatproblem(problem):
 
 			# Get values of new step
 			TTn1  = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
-			TTn10 = np.copy(TTn1); VVn1 = np.zeros(np.shape(VVn0))
+			TTn10 = np.copy(TTn1); VVn1 = np.zeros(nbctrlpts_total)
 			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i]-Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
-			Fstep = Fext[:, i]
+			Fstep = Fext_list[:, i]
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
@@ -268,29 +241,26 @@ class heatproblem(problem):
 				TTinterp = self.interpolate_temperature(TTn1)
 			
 				# Compute internal force
-				inpt = np.row_stack((self.part.qpPhy, TTinterp))
-				Ccoefs = self.material.eval_capacityCoefficients(self.part.detJ, inpt)
-				Kcoefs = self.material.eval_conductivityCoefficients(self.part.invJ, self.part.detJ, inpt)
-
-				CdTemp = self.eval_mfCapacity(VVn1, coefs=Ccoefs, table=np.zeros((3, 2), dtype=bool))
-				KTemp  = self.eval_mfConductivity(TTn1, coefs=Kcoefs, table=np.zeros((3, 2), dtype=bool))
-				Fint   = KTemp + CdTemp
+				args = np.row_stack((self.part.qpPhy, TTinterp))
+				CdT  = self.eval_mfCapacity(VVn1, args=args)
+				KT   = self.eval_mfConductivity(TTn1, args=args)
+				Fint = KT + CdT
 
 				# Compute residue
-				dF    = Fstep[dof] - Fint[dof]
+				dF    = Fstep - Fint; dF[dod] = 0.0
 				resNR = np.sqrt(np.dot(dF, dF))
 				print('NR error: %.5e' %resNR)
 				if resNR <= self._thresholdNR: break
 
 				# Iterative solver
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dt, dF, Ccoefs=Ccoefs, Kcoefs=Kcoefs, theta=theta)
+				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dF, thetadt=theta*dt, args=args)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
 				# Update values
-				VVn1[dof] += vtmp
-				TTn1[dof] = TTn10[dof] + theta*dt*VVn1[dof]
+				VVn1 += vtmp
+				TTn1 = TTn10 + theta*dt*VVn1
 
 			Tinout[:, i] = np.copy(TTn1)
 			VVn0 = np.copy(VVn1)
@@ -309,10 +279,9 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.material.lame_lambda
 			mechArgs[1, :] = self.material.lame_mu
-		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, 
-	    			*self.part.basis, *self.part.weights, self.part.invJ, self.part.detJ, mechArgs]
-		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inputs, array_in)
-		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inputs, array_in)
+		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, mechArgs]
+		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inpts, array_in)
+		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
 		return array_out
 	
 	def compute_strain(self, displacement):
@@ -373,7 +342,6 @@ class mechaproblem(problem):
 			JJ = geophy.eval_jacobien_2d(*inpts)
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 
-		# Get force values at quadrature points
 		prop  = surffun(qpPhy)
 		inpts = [*nnz, *indices, *weights, JJ, prop]
 		if   self.part.dim == 2: tmp = plasticitysolver.get_forcesurf_2d(*inpts)
@@ -385,9 +353,9 @@ class mechaproblem(problem):
 		return surfForce
 
 	def solveElasticityProblemFT(self, Fext, mechArgs=None):
-		dod_total = deepcopy(self.boundary.mchdod)
-		for i, dod in enumerate(dod_total):
-			tmp = dod + 1; dod_total[i] = tmp
+		dod = deepcopy(self.boundary.mchdod)
+		for i, tmp in enumerate(dod):
+			tmp = tmp + 1; dod[i] = tmp
 
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
@@ -396,9 +364,8 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.material.lame_lambda
 			mechArgs[1, :] = self.material.lame_mu
-		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-				*self.part.weights, Fext, *dod_total, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, mechArgs, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		inputs = [*super().__getInputs(), *dod, self.boundary.mchDirichletTable, 
+				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.solver_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.solver_elasticity_3d(*inputs)
 
@@ -407,7 +374,7 @@ class mechaproblem(problem):
 		
 		return displacement, residue, stress
 	
-	def solvePlasticityProblemPy(self, Fext): 
+	def solvePlasticityProblemPy(self, Fext_list): 
 
 		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
 		dimen  = self.part.dim
@@ -425,17 +392,17 @@ class mechaproblem(problem):
 		mechArgs = np.zeros((nvoigt+3, nbqp_total))
 		
 		# Output variables
-		disp = np.zeros(np.shape(Fext))
-		stress_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext)[2]))
+		disp = np.zeros(np.shape(Fext_list))
+		stress_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext_list)[2]))
 		resPCG_list = []
 
-		for i in range(1, np.shape(Fext)[2]):
+		for i in range(1, np.shape(Fext_list)[2]):
 			
 			# Get values of last step
 			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
 
 			# Get values of new step
-			Fstep = Fext[:, :, i]
+			Fstep = Fext_list[:, :, i]
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):

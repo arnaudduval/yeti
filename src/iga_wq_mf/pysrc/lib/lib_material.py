@@ -68,22 +68,6 @@ class thermomat(material):
 		if isIsotropic: self._isConductivityIsotropic = True
 		self.conductivity = super().setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
-	
-	def eval_capacityCoefficients(self, detJ, inpt): 
-		prop = self.capacity(inpt)
-		coefs, info = geophy.eval_capacity_coefficient(detJ, prop)
-		if info == 0: raise Warning('It is not possible to compute coefficients')
-		return coefs
-	
-	def eval_conductivityCoefficients(self, invJ, detJ, inpt):
-		prop = self.conductivity(inpt)
-		coefs, info = geophy.eval_conductivity_coefficient(invJ, detJ, prop)
-		if info == 0: raise Warning('It is not possible to compute coefficients')
-		return coefs
-	
-	def eval_heatForceCoefficients(self, fun, detJ, inpt): 
-		coefs = fun(inpt)*detJ
-		return coefs
 
 class plasticLaw():
 	def __init__(self, elasticmodulus, elasticlimit, plasticArgs:dict):
