@@ -215,7 +215,7 @@ subroutine l2projection_ctrlpts_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, n
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
-    double precision :: mean(dimen+1) = 1.d0
+    double precision :: mean(dimen) = 1.d0
     double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
@@ -383,7 +383,7 @@ subroutine l2projection_ctrlpts_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
-    double precision :: mean(dimen+1) = 1.d0
+    double precision :: mean(dimen) = 1.d0
     double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'

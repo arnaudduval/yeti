@@ -8,7 +8,8 @@ module matrixfreeheat
 
         double precision, dimension(:), pointer :: Cprop=>null(), detJ=>null()
         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
-        double precision, dimension(:), allocatable :: mean
+        double precision, dimension(3) :: Kmean = 1.d0
+        double precision :: Cmean = 1.d0
 
         ! Local
         integer :: ncols_sp
@@ -89,9 +90,6 @@ contains
             pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
             indlist(i, :) = ind
         end do
-
-        if (.not.allocated(mat%mean)) allocate(mat%mean(dimen+1))
-        mat%mean = 0.d0
     
         ! Select a set of coefficients
         c = 1
@@ -126,9 +124,9 @@ contains
             end do
             do i = 1, dimen
                 if (dimen.eq.2) then
-                    call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%mean(i))
+                    call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
                 else if (dimen.eq.3) then
-                    call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%mean(i))
+                    call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
                 end if
             end do
         end if
@@ -140,9 +138,9 @@ contains
                 Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
             end do
             if (dimen.eq.2) then
-                call trapezoidal_rule_2d(3, 3, Ccoefs, mat%mean(dimen+1))
+                call trapezoidal_rule_2d(3, 3, Ccoefs, mat%Cmean)
             else if (dimen.eq.3) then
-                call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%mean(dimen+1))
+                call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%Cmean)
             end if
         end if   
 

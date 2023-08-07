@@ -12,12 +12,15 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector
 from pysrc.lib.thermomecha1D import mechamat1D, plot_results
-from pysrc.lib.lib_load import forceVol
 
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
+
+def forceVol(P:list):
+	force = 0.4*np.sin(P/1e3)
+	return force
 
 # Set global variables
 samplesize = 2500

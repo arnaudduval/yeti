@@ -6,7 +6,6 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
 from pysrc.lib.thermomecha1D import thermo1D
-from pysrc.lib.lib_load import powden
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -42,8 +41,7 @@ model.add_DirichletCondition(table=[1, 1])
 N = 20
 time_list = np.linspace(0, 0.02, N)
 print('Time step: %3e' %(time_list.max()/N))
-Fend = model.compute_volForce(powden(model.qpPhy))
-Fend = np.atleast_2d(Fend).reshape(-1, 1)
+Fend = np.zeros((model.nbctrlpts, 1))
 Fext = np.kron(Fend, sigmoid(time_list))
 
 temperature = np.zeros(np.shape(Fext))

@@ -14,7 +14,7 @@ class problem():
 		self.addSolverConstraints(solverArgs)
 		return
 	
-	def __getInputs(self):
+	def _getInputs(self):
 		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, *self.part.weights]
 		return inpts
 
@@ -108,7 +108,7 @@ class heatproblem(problem):
 	def eval_mfConductivity(self, array_in, args=None):
 		if args is None: args = self.part.qpPhy
 		prop = self.material.conductivity(args)
-		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, prop]
+		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
 		return array_out
@@ -116,7 +116,7 @@ class heatproblem(problem):
 	def eval_mfCapacity(self, array_in, args=None): 
 		if args is None: args = self.part.qpPhy
 		prop = self.material.capacity(args)
-		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, prop]
+		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
 		return array_out
@@ -185,7 +185,7 @@ class heatproblem(problem):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		prop = self.material.conductivity(args)
-		inpts = [*super().__getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+		inpts = [*super()._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				prop, Fext,  self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_steady_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
@@ -196,8 +196,7 @@ class heatproblem(problem):
 		if args is None: args = self.part.qpPhy
 		Cprop = self.material.capacity(args)
 		Kprop = self.material.conductivity(args)
-
-		inpts = [*super().__getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+		inpts = [*super()._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: sol, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
@@ -206,7 +205,7 @@ class heatproblem(problem):
 	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0):
 		nbctrlpts_total = self.part.nbctrlpts_total
 		nbSteps = len(time_list)
-		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
+		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 
 		VVn0 = np.zeros(nbctrlpts_total)
 		if nbSteps == 2:
@@ -279,7 +278,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.material.lame_lambda
 			mechArgs[1, :] = self.material.lame_mu
-		inpts = [*super().__getInputs(), self.part.invJ, self.part.detJ, mechArgs]
+		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
 		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inpts, array_in)
 		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
 		return array_out
@@ -364,7 +363,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.material.lame_lambda
 			mechArgs[1, :] = self.material.lame_mu
-		inputs = [*super().__getInputs(), *dod, self.boundary.mchDirichletTable, 
+		inputs = [*super()._getInputs(), *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.solver_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.solver_elasticity_3d(*inputs)

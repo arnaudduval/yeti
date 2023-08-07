@@ -94,11 +94,10 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			enablePrint()
 
 			# Solve elastic problem
-			temperature = np.zeros(modelPhy.nbctrlpts_total)
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fn      = problem.eval_volForce(powerDensity_quartCircle, indi=boundary.thdof)
-			temperature[boundary.thdof] = problem.solveSteadyHeatProblemFT(Fext=Fn)[0]
+			Fext = problem.eval_volForce(powerDensity_quartCircle)
+			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
 			error_list[j] = problem.L2NormOfError(exactTemperature_quartCircle, temperature)
 
 		nbctrlpts_list = (2**cuts_list+degree)**2

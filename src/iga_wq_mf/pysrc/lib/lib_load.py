@@ -5,17 +5,6 @@
 """
 import numpy as np
 
-def forceVol(P:list):
-	force = 0.4*np.sin(P/1e3)
-	return force
-
-def powden(P:list, dim=1):
-	if dim == 1  : x = P[:]
-	elif dim == 2: x = P[0, :]
-	elif dim == 3: x = P[0, :]
-	f = 0.0*np.sin(np.pi*x)
-	return f
-
 def powden_cube(P: list):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
 		f = -div(lambda * grad(u))

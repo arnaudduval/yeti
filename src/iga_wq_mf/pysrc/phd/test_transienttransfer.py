@@ -1,6 +1,5 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import sigmoid
-from pysrc.lib.lib_load import powden
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_material import thermomat
@@ -34,7 +33,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 dataExist   = False
 geo_list    = ['CB', 'VB']
-IterMethods = ['C', 'JMC']
+IterMethods = ['C', 'JMC', 'WP']
 example     = 2
 if   example == 1: nbSteps = 41
 elif example == 2: nbSteps = 6
@@ -55,7 +54,7 @@ if not dataExist:
 
 			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()
-			model    = part(modelIGA, quadArgs=quadArgs)
+			modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 			# Add material 
 			material = thermomat()
@@ -63,30 +62,31 @@ if not dataExist:
 			material.addCapacity(setCprop, isIsotropic=False) 
 
 			# Block boundaries
-			boundary = boundaryCondition(model.nbctrlpts)
+			boundary = boundaryCondition(modelPhy.nbctrlpts)
 			boundary.add_DirichletTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
 			boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
 			# ---------------------
 			# Transient model
 			# ---------------------
-			problem = heatproblem(material, model, boundary)
-			problem._methodPCG = PCGmethod
+			solverArgs = {'PCGmethod': PCGmethod}
+			problem = heatproblem(material, modelPhy, boundary)
+			problem.addSolverConstraints(solverArgs=solverArgs)
 
 			# Create a Dirichlet condition
-			Tinout = np.zeros((model.nbctrlpts_total, len(time_list)))
+			Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
 			for i in range(1, len(time_list)): Tinout[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
 
 			# Add external force 
-			Fend = problem.eval_volForce(powden)
-			Fext = np.kron(np.atleast_2d(Fend).reshape(-1, 1), sigmoid(time_list))
+			Fend = np.zeros((problem.part.nbctrlpts_total, 1))
+			Fext = np.kron(Fend, sigmoid(time_list))
 
 			# Solve
 			lastStep = 3
 			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
 														time_list=time_list[:lastStep], theta=1.0)
 			np.savetxt(filename, resPCG)
-			model.exportResultsCP(fields={'temperature': Tinout[:, lastStep-1]}, folder=folder)
+			modelPhy.exportResultsCP(fields={'temperature': Tinout[:, lastStep-1]}, folder=folder)
 
 else:
 

@@ -443,7 +443,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%mean)
+                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Kmean(:dimen))
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
@@ -501,8 +501,8 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
     ! Local data
     ! ----------
-    type(thermomat), pointer :: mat
-    type(cgsolver), pointer :: solv
+    type(thermomat) :: mat
+    type(cgsolver) :: solv
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -516,7 +516,6 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    allocate(mat, solv)
     mat%dimen = dimen
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -537,7 +536,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%mean)
+                                data_W_u, data_W_v, data_W_w, table, mat%Kmean(:dimen))
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -628,8 +627,8 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
-                                data_W_u, data_W_v, table, mat%mean)
-        solv%temp_struct%Deigen =  mat%mean(mat%dimen+1) + thetadt*solv%temp_struct%Deigen
+                                data_W_u, data_W_v, table, mat%Kmean(:dimen))
+        solv%temp_struct%Deigen = mat%Cmean + thetadt*solv%temp_struct%Deigen
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
@@ -723,9 +722,8 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%mean)
-        solv%temp_struct%Deigen =  mat%mean(mat%dimen+1) + thetadt*solv%temp_struct%Deigen
-
+                                data_W_u, data_W_v, data_W_w, table, mat%Kmean(:mat%dimen))
+        solv%temp_struct%Deigen = mat%Cmean + thetadt*solv%temp_struct%Deigen
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

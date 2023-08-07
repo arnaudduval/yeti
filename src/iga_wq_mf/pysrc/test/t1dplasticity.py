@@ -1,12 +1,15 @@
 from lib.__init__ import *
 from lib.lib_base import createUniformMaxregularKnotvector
 from lib.thermomecha1D import mechamat1D
-from lib.lib_load import forceVol
 
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1plasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
+
+def forceVol(P:list):
+	force = 0.4*np.sin(P/1e3)
+	return force
 
 # Set global variables
 matArgs   = {'elastic_modulus':2e5, 'elastic_limit':100, 'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}

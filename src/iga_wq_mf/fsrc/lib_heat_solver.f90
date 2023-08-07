@@ -79,7 +79,7 @@ contains
 
     subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, &
                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                data_B_u, data_B_v, data_W_u, data_W_v, table, mean)
+                data_B_u, data_B_v, data_W_u, data_W_v, table, Kmean)
 
         implicit none
         ! Input / output data
@@ -95,14 +95,14 @@ contains
                     data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
         logical, intent(in) :: table
         dimension :: table(solv%dimen, 2)
-        double precision, intent(in) :: mean
-        dimension :: mean(solv%dimen+1)
+        double precision, intent(in) :: Kmean
+        dimension :: Kmean(solv%dimen)
 
         call init_2datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
-        call eigendecomposition(solv%temp_struct, mean(:solv%dimen))
+        call eigendecomposition(solv%temp_struct, Kmean)
     
     end subroutine initializefastdiag
 
@@ -383,7 +383,7 @@ contains
 
     subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, mean)
+                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, Kmean)
 
         implicit none
         ! Input / output data
@@ -399,14 +399,14 @@ contains
                     data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
         logical, intent(in) :: table
         dimension :: table(solv%dimen, 2)
-        double precision, intent(in) :: mean
-        dimension :: mean(solv%dimen+1)
+        double precision, intent(in) :: Kmean
+        dimension :: Kmean(solv%dimen)
 
         call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
-        call eigendecomposition(solv%temp_struct, mean(:solv%dimen))
+        call eigendecomposition(solv%temp_struct, Kmean)
     
     end subroutine initializefastdiag
 
