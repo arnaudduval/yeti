@@ -221,7 +221,7 @@ contains
         integer, dimension(:, :), allocatable :: indlist
         double precision :: mean(dimen)
         
-        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
+        if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
         allocate(indlist(dimen, 3), sample(3**dimen))
         do i = 1, dimen 
             pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
@@ -249,7 +249,7 @@ contains
                 end do
             end do
         else
-            stop 'Not possible compute mean diagonal blocks'
+            stop 'Try 2 or 3 dimensions'
         end if
 
         do i = 1, dimen
@@ -301,7 +301,7 @@ contains
         dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
                         t4(nc_total), t5(nc_total), t6(nr_total), t7(nr_total)
 
-        if (nr_total.ne.nr_u*nr_v) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         array_out = 0.d0       
         do j = 1, dimen
             do l = 1, dimen
@@ -383,7 +383,7 @@ contains
         dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
                         t4(nc_total), t5(nc_total), t6(nr_total), t7(nr_total)
 
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
         array_out = 0.d0       
         do j = 1, dimen
             do l = 1, dimen
@@ -452,7 +452,7 @@ contains
         dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
         integer :: i, k, alpha(dimen), zeta(dimen)
         
-        if (nr_total.ne.nr_u*nr_v) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         
         do i = 1, nc_total
             call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
@@ -504,7 +504,7 @@ contains
         dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
         integer :: i, k, alpha(dimen), zeta(dimen)
         
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Number of rows not equal'
+        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
         
         do i = 1, nc_total
             call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)

@@ -123,7 +123,7 @@ contains
         double precision, dimension(:, :, :), allocatable :: Kcoefs
         double precision, dimension(:), allocatable :: Ccoefs
         
-        if (product(nclist).ne.mat%ncols_sp) stop 'Wrong dimensions'
+        if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
         allocate(indlist(dimen, 3), sample(3**dimen))
         do i = 1, dimen 
             pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
@@ -151,7 +151,7 @@ contains
                 end do
             end do
         else
-            stop 'Not possible compute mean diagonal blocks'
+            stop 'Try 2 or 3 dimensions'
         end if
 
         if (associated(mat%Kprop)) then

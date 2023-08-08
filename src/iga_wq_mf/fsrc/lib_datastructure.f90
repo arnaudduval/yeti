@@ -181,7 +181,7 @@ contains
         integer :: ndof, c, i, j, k
         integer, dimension(dimen) :: inf, sup, tmp
 
-        if (dimen.ne.datstruct%dimen) stop 'table not well defined.'
+        if (dimen.ne.datstruct%dimen) stop 'Not the same dimension'
 
         inf = 1; sup = datstruct%nrows
         do i = 1, dimen
@@ -222,7 +222,7 @@ contains
             end do
 
         else
-            stop 'Not possible get boundary nodes'
+            stop 'Try 2 or 3 dimensions'
         end if
 
     end subroutine get_innernodes__
@@ -245,7 +245,7 @@ contains
         integer, dimension(:), allocatable :: indi_out, indj_out
         double precision, dimension(:, :), allocatable :: bw_out
 
-        if (dimen.ne.datstruct%dimen) stop 'table not well defined'
+        if (dimen.ne.datstruct%dimen) stop 'Not the same dimension'
         call get_innernodes__(datstruct, dimen, table)
 
         nr_new_list  = datstruct%nrows 

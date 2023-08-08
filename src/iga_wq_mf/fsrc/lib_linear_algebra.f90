@@ -28,7 +28,7 @@ subroutine diff_array(repeat, nnz, array_in, array_out)
     double precision :: tmp(nnz)
     integer :: i, j
 
-    if ((repeat.ge.nnz).or.(repeat.lt.0)) stop 'Problem in diff array'
+    if ((repeat.ge.nnz).or.(repeat.lt.0)) stop 'Something went wrong in diff array'
 
     array_out = array_in
 
@@ -114,7 +114,7 @@ subroutine linspace(x0, xf, nnz, array)
     integer :: i
     double precision :: h 
 
-    if (nnz.le.1) stop 'Problem in linspace'
+    if (nnz.le.1) stop 'Try greater than one'
 
     array(1) = x0; array(nnz) = xf
 

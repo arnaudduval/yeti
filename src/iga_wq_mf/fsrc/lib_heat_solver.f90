@@ -379,7 +379,7 @@ contains
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         else 
-            stop 'function not defined'
+            stop 'Not coded'
         end if
 
     end subroutine matrixfree_spMdV

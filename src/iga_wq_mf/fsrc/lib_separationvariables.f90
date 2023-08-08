@@ -100,8 +100,8 @@ contains
                                 genPos = ju + (jv-1)*nc_u
                                 UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv)]
                                 WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv)]
-                                Wlk(c, ju, jv) = CC(k, k, genPos)*UU(k)*UU(l)&
-                                                            /(product(UU)*WW(k))
+                                Wlk(c, ju, jv) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                                            /(product(UU)*WW(l))
                             end do
                         end do
                     end if
@@ -216,8 +216,8 @@ contains
                                     genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
                                     UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw)]
                                     WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw)]
-                                    Wlk(c, ju, jv, jw) = CC(k, k, genPos)*UU(k)*UU(l)&
-                                                                /(product(UU)*WW(k))
+                                    Wlk(c, ju, jv, jw) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                                                /(product(UU)*WW(l))
                                 end do
                             end do
                         end do
@@ -354,8 +354,8 @@ contains
                                         genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
                                         UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw), obj%Mcoefs(4, jt)]
                                         WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw), obj%Kcoefs(4, jt)]
-                                        Wlk(c, ju, jv, jw, jt) = CC(k, k, genPos)*UU(k)*UU(l)&
-                                                                    /(product(UU)*WW(k))
+                                        Wlk(c, ju, jv, jw, jt) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                                                    /(product(UU)*WW(l))
                                     end do
                                 end do
                             end do

@@ -232,7 +232,7 @@ subroutine get_forcesurf_2d(nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_
     dimension :: coefs(dimen, nc_total), v1(dimen), W00(nr_u, nc_total)
     integer :: i
 
-    if (nc_total.ne.nc_u) stop 'Not possible find force surf'
+    if (nc_total.ne.nc_u) stop 'Size problem'
 
     ! Compute coefficients
     do i = 1, nc_total
