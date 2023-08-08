@@ -106,131 +106,86 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_separationvariables_ijblock(i, j, dimen, nvoigt, nc_list, mat, Mcoefs, Kcoefs)
+    subroutine compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
         
         use separatevariables
         implicit none 
         ! Input / output data
         ! -------------------
         type(mecamat) :: mat
-        integer, intent(in) :: i, j, dimen, nvoigt, nc_list
-        dimension :: nc_list(dimen)
+        integer, intent(in) :: nc_list
+        dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list))
+        double precision, intent(out) :: Mcoefs(mat%dimen, mat%dimen, maxval(nc_list)), &
+                                        Kcoefs(mat%dimen, mat%dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
         type(sepoperator) :: oper
-        logical :: update(dimen)
-        integer :: k, l, m, gp
+        logical :: update(mat%dimen)
+        integer :: i, j, k, gp
         double precision :: DD, coefs, NN, TNN
-        dimension :: DD(dimen, dimen), coefs(dimen, dimen, mat%ncols_sp), NN(nvoigt), TNN(dimen, dimen)
+        dimension :: DD(mat%dimen, mat%dimen), coefs(mat%dimen, mat%dimen, mat%ncols_sp), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
 
-        do gp = 1, mat%ncols_sp
-            NN = mat%NN(:, gp)
-            call array2symtensor(dimen, size(NN), NN, TNN)
+        do i = 1, mat%dimen
+            do gp = 1, mat%ncols_sp
+                NN = mat%NN(:, gp)
+                call array2symtensor(mat%dimen, size(NN), NN, TNN)
 
-            DD = 0.d0
-            DD(i, j) = DD(i, j) + mat%CepArgs(1, gp)
-            DD(j, i) = DD(j, i) + mat%CepArgs(2, gp)
-            if (i.eq.j) then
-                do k = 1, dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
+                DD = 0.d0
+                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp)
+                DD(i, i) = DD(i, i) + mat%CepArgs(2, gp)
+                do j = 1, mat%dimen
+                    DD(j, j) = DD(j, j) + mat%CepArgs(2, gp)
                 end do
-            end if
-            do l = 1, dimen
-                do m = 1, dimen
-                    DD(l, m) = DD(l, m) + mat%CepArgs(3, gp)*TNN(i, l)*TNN(j, m)
+                do j = 1, mat%dimen
+                    do k = 1, mat%dimen
+                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    end do
                 end do
+                coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
-            coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-        end do
 
-        update = .true.
-        call initialize_operator(oper, dimen, nc_list, update)
-        if (dimen.eq.2) then
-            call separatevariables_2d(oper, coefs)
-        else if (dimen.eq.3) then
-            call separatevariables_3d(oper, coefs)
-        end if
-        Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
-
-    end subroutine compute_separationvariables_ijblock
-
-    subroutine compute_mean_ijblock(i, j, dimen, nvoigt, mat, samplesize, sample, mean)
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(mecamat) :: mat
-        integer, intent(in) :: i, j, dimen, nvoigt, samplesize, sample
-        dimension :: sample(samplesize)
-
-        double precision, intent(out) :: mean(dimen)
-
-        ! Local data
-        ! ----------
-        integer :: k, l, m, n, c, gp
-        double precision :: DD, coefs, NN, TNN
-        dimension :: DD(dimen, dimen), coefs(dimen, dimen, samplesize), NN(nvoigt), TNN(dimen, dimen)
-
-        do c = 1, samplesize
-            gp = sample(c)
-            NN = mat%NN(:, gp)
-            call array2symtensor(dimen, size(NN), NN, TNN)
-
-            DD = 0.d0
-            DD(i, j) = DD(i, j) + mat%CepArgs(1, gp)
-            DD(j, i) = DD(j, i) + mat%CepArgs(2, gp)
-            if (i.eq.j) then
-                do k = 1, dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
-                end do
+            update = .true.
+            call initialize_operator(oper, mat%dimen, nc_list, update)
+            if (mat%dimen.eq.2) then
+                call separatevariables_2d(oper, coefs)
+            else if (mat%dimen.eq.3) then
+                call separatevariables_3d(oper, coefs)
             end if
-            do l = 1, dimen
-                do m = 1, dimen
-                    DD(l, m) = DD(l, m) + mat%CepArgs(3, gp)*TNN(i, l)*TNN(j, m)
-                end do
-            end do
-            coefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+            Mcoefs(i, :, :) = oper%Mcoefs; Kcoefs(i, :, :) = oper%Kcoefs
         end do
+    end subroutine compute_separationvariables_diagblocks
 
-        do n = 1, dimen
-            if (dimen.eq.2) then
-                call trapezoidal_rule_2d(3, 3, coefs(n, n, :), mean(n))
-            else if (dimen.eq.3) then
-                call trapezoidal_rule_3d(3, 3, 3, coefs(n, n, :), mean(n))
-            end if
-        end do   
-
-    end subroutine compute_mean_ijblock
-
-    subroutine compute_mean_diagblocks(mat, dimen, nvoigt, nclist)
+    subroutine compute_mean_diagblocks(mat, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
         ! Input / output data
         ! -------------------
         type(mecamat) :: mat
-        integer, intent(in) :: dimen, nvoigt, nclist
-        dimension :: nclist(dimen)
+        integer, intent(in) :: nclist
+        dimension :: nclist(mat%dimen)
 
         ! Local data
         ! ----------
         integer :: i, j, k, c, gp, pos, ind(3)
         integer, dimension(:), allocatable :: sample
         integer, dimension(:, :), allocatable :: indlist
-        double precision :: mean(dimen)
-        
+        double precision :: DD, TNN, NN
+        dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt)
+        double precision, allocatable, dimension(:, :, :) :: coefs
+
         if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
-        allocate(indlist(dimen, 3), sample(3**dimen))
-        do i = 1, dimen 
+        allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
+        do i = 1, mat%dimen 
             pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
             indlist(i, :) = ind
         end do
     
         ! Select a set of coefficients
         c = 1
-        if (dimen.eq.2) then
+        if (mat%dimen.eq.2) then
             do j = 1, 3
                 do i = 1, 3
                     gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
@@ -238,7 +193,7 @@ contains
                     c = c + 1
                 end do
             end do
-        else if (dimen.eq.3) then
+        else if (mat%dimen.eq.3) then
             do k = 1, 3
                 do j = 1, 3
                     do i = 1, 3
@@ -251,10 +206,35 @@ contains
         else
             stop 'Try 2 or 3 dimensions'
         end if
-
-        do i = 1, dimen
-            call compute_mean_ijblock(i, i, dimen, nvoigt, mat, size(sample), sample, mean)
-            mat%mean(i, :) = mean
+        
+        allocate(coefs(mat%dimen, mat%dimen, size(sample)))
+        do i = 1, mat%dimen
+            do c = 1, size(sample)
+                gp = sample(c)
+                NN = mat%NN(:, gp)
+                call array2symtensor(mat%dimen, size(NN), NN, TNN)
+    
+                DD = 0.d0
+                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp)
+                DD(i, i) = DD(i, i) + mat%CepArgs(2, gp)
+                do j = 1, mat%dimen
+                    DD(j, j) = DD(j, j) + mat%CepArgs(2, gp)
+                end do
+                do j = 1, mat%dimen
+                    do k = 1, mat%dimen
+                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    end do
+                end do
+                coefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+            end do
+    
+            do j = 1, mat%dimen
+                if (mat%dimen.eq.2) then
+                    call trapezoidal_rule_2d(3, 3, coefs(j, j, :), mat%mean(i, j))
+                else if (mat%dimen.eq.3) then
+                    call trapezoidal_rule_3d(3, 3, 3, coefs(j, j, :), mat%mean(i, j))
+                end if
+            end do   
         end do
 
     end subroutine compute_mean_diagblocks

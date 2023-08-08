@@ -66,54 +66,78 @@ contains
 
     end subroutine setup_capacityprop
 
-    subroutine compute_separationvariables(dimen, nc_list, mat, Mcoefs, Kcoefs)
+    subroutine compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
         
         use separatevariables
         implicit none 
         ! Input / output data
         ! -------------------
         type(thermomat) :: mat
-        integer, intent(in) :: dimen, nc_list
-        dimension :: nc_list(dimen)
+        integer, intent(in) :: nc_list
+        dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list))
+        double precision, intent(out) :: Mcoefs(mat%dimen, maxval(nc_list)), Kcoefs(mat%dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
         type(sepoperator) :: oper
-        logical :: update(dimen)
         integer :: gp
-        double precision :: Cond
-        dimension :: Cond(dimen, dimen, mat%ncols_sp)
+        integer, allocatable, dimension(:) :: nc_list_t
+        logical, allocatable, dimension(:) :: update
+        double precision, allocatable, dimension(:, :, :) :: CC
 
         if (associated(mat%Kprop)) then
-            do gp = 1, mat%ncols_sp
-                Cond(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-                                    *mat%detJ(gp)
-            end do
+            if (.not.associated(mat%Cprop)) then
+                allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+                do gp = 1, mat%ncols_sp
+                    CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+                                        *mat%detJ(gp)
+                end do
 
-            update = .true.
-            call initialize_operator(oper, dimen, nc_list, update)
-            if (dimen.eq.2) then
-                call separatevariables_2d(oper, Cond)
-            else if (dimen.eq.3) then
-                call separatevariables_3d(oper, Cond)
+                update = .true.; nc_list_t = nc_list
+                call initialize_operator(oper, mat%dimen, nc_list_t, update)
+                if (mat%dimen.eq.2) then
+                    call separatevariables_2d(oper, CC)
+                else if (mat%dimen.eq.3) then
+                    call separatevariables_3d(oper, CC)
+                end if
+
+                Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
+
+            else
+                allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+                do gp = 1, mat%ncols_sp
+                    CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
+                    matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                    CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
+                end do
+
+                update = .true.; update(mat%dimen+1) = .false.
+                nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+                call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+                if (mat%dimen.eq.2) then
+                    call separatevariables_3d(oper, CC)
+                else if (mat%dimen.eq.3) then
+                    call separatevariables_4d(oper, CC)
+                end if
+
+                Mcoefs = oper%Mcoefs(:mat%dimen, :); Kcoefs = oper%Kcoefs(:mat%dimen, :)
             end if
-
-            Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
+        else
+            stop 'Conductivity not defined'
         end if
         
     end subroutine compute_separationvariables
 
-    subroutine compute_mean(mat, dimen, nclist)
+    subroutine compute_mean(mat, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
         ! Input / output data
         ! -------------------
         type(thermomat) :: mat
-        integer, intent(in) :: dimen, nclist
-        dimension :: nclist(dimen)
+        integer, intent(in) :: nclist
+        dimension :: nclist(mat%dimen)
 
         ! Local data
         ! ----------
@@ -124,15 +148,15 @@ contains
         double precision, dimension(:), allocatable :: Ccoefs
         
         if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
-        allocate(indlist(dimen, 3), sample(3**dimen))
-        do i = 1, dimen 
+        allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
+        do i = 1, mat%dimen 
             pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
             indlist(i, :) = ind
         end do
     
         ! Select a set of coefficients
         c = 1
-        if (dimen.eq.2) then
+        if (mat%dimen.eq.2) then
             do j = 1, 3
                 do i = 1, 3
                     gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
@@ -140,7 +164,7 @@ contains
                     c = c + 1
                 end do
             end do
-        else if (dimen.eq.3) then
+        else if (mat%dimen.eq.3) then
             do k = 1, 3
                 do j = 1, 3
                     do i = 1, 3
@@ -155,16 +179,16 @@ contains
         end if
 
         if (associated(mat%Kprop)) then
-            allocate(Kcoefs(dimen, dimen, size(sample)))
+            allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
             do c = 1, size(sample)
                 gp = sample(c)
                 Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
                                 *mat%detJ(gp)
             end do
-            do i = 1, dimen
-                if (dimen.eq.2) then
+            do i = 1, mat%dimen
+                if (mat%dimen.eq.2) then
                     call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-                else if (dimen.eq.3) then
+                else if (mat%dimen.eq.3) then
                     call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
                 end if
             end do
@@ -176,9 +200,9 @@ contains
                 gp = sample(c)
                 Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
             end do
-            if (dimen.eq.2) then
+            if (mat%dimen.eq.2) then
                 call trapezoidal_rule_2d(3, 3, Ccoefs, mat%Cmean)
-            else if (dimen.eq.3) then
+            else if (mat%dimen.eq.3) then
                 call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%Cmean)
             end if
         end if   

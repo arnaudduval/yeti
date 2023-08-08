@@ -442,12 +442,12 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, nc_list)
+            call compute_mean(mat, nc_list)
         end if
 
         if (methodPCG.eq.'TDC') then
             allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
-            call compute_separationvariables(mat%dimen, nc_list, mat, Mcoefs, Kcoefs)
+            call compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
             call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
         end if
 
@@ -543,12 +543,12 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, nc_list)
+            call compute_mean(mat, nc_list)
         end if
 
         if (methodPCG.eq.'TDC') then
             allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
-            call compute_separationvariables(mat%dimen, nc_list, mat, Mcoefs, Kcoefs)
+            call compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
             call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
         end if
 
@@ -641,7 +641,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, nc_list)
+            call compute_mean(mat, nc_list)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -737,7 +737,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
 
         if (methodPCG.eq.'JMC') then 
-            call compute_mean(mat, mat%dimen, nc_list)
+            call compute_mean(mat, nc_list)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

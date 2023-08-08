@@ -532,6 +532,8 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    integer :: i, nc_list(dimen)
+    double precision, allocatable, dimension(:, :, :) :: Mcoefs, Kcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -551,6 +553,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, mechArgs)
+    nc_list = (/nc_u, nc_v/)
 
     if (methodPCG.eq.'WP') then 
 
@@ -558,10 +561,18 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                 data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, Fext, x, resPCG)
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then
-            call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v/))
+            call compute_mean_diagblocks(mat, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(Mcoefs(dimen, dimen, maxval(nc_list)), Kcoefs(dimen, dimen, maxval(nc_list)))
+            call compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
+            do i = 1, dimen
+                call setup_coefs(solv%disp_struct(i), maxval(nc_list), Mcoefs(i, :, :), Kcoefs(i, :, :))
+            end do
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -628,6 +639,8 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    integer :: i, nc_list(dimen)
+    double precision, allocatable, dimension(:, :, :) :: Mcoefs, Kcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -649,6 +662,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_jacobiennormal(mat, mechArgs)
+    nc_list = (/nc_u, nc_v, nc_w/)
 
     if (methodPCG.eq.'WP') then 
 
@@ -657,10 +671,18 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                 data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then
-            call compute_mean_diagblocks(mat, mat%dimen, mat%nvoigt, (/nc_u, nc_v, nc_w/))
+            call compute_mean_diagblocks(mat, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(Mcoefs(dimen, dimen, maxval(nc_list)), Kcoefs(dimen, dimen, maxval(nc_list)))
+            call compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
+            do i = 1, dimen
+                call setup_coefs(solv%disp_struct(i), maxval(nc_list), Mcoefs(i, :, :), Kcoefs(i, :, :))
+            end do
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
