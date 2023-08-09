@@ -33,7 +33,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 dataExist   = False
 geo_list    = ['CB', 'VB']
-IterMethods = ['C', 'JMC', 'WP']
+IterMethods = ['C', 'JMC', 'TDC', 'WP']
 example     = 2
 if   example == 1: nbSteps = 41
 elif example == 2: nbSteps = 6
