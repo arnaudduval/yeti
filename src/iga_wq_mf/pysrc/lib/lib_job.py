@@ -6,6 +6,12 @@ from .lib_material import (thermomat, mechamat,
 from .lib_part import part
 from .lib_boundary import boundaryCondition, get_INCTable
 
+def get_faceInfo(nb):
+	direction = int(np.floor(nb/2))
+	if nb%2 == 1: side = 1
+	else: side = 0
+	return direction, side
+
 class problem():
 	def __init__(self, part:part, boundary:boundaryCondition, solverArgs:dict):
 		self.material = None
@@ -25,8 +31,55 @@ class problem():
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
+
+	def eval_volForce(self, volfun): 
+		prop = volfun(self.part.qpPhy)
+		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		if self.part.dim == 2: volForce = geophy.get_forcevol_2d(*inpts)
+		if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
+		if nr == 1: volForce = np.ravel(volForce)
+		return volForce	
 	
-	def L2NormOfError(self, fun_exact, u_ctrlpts):
+	def eval_surfForce(self, surffun, nbFacePosition):
+
+		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
+		direction, side = get_faceInfo(nbFacePosition)
+
+		if direction>=2*self.part.dim: raise Warning('Not possible')
+		valrange = [i for i in range(self.part.dim)]
+		valrange.pop(direction)
+
+		# Get control points and quadrature points list
+		if side == 0: CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+		elif side == 1:  CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
+		
+		CPList = list(np.sort(CPList))
+		CtrlPts = self.part.ctrlpts[:, CPList]
+
+		nnz, indices, basis, weights = [], [], [], []
+		for _ in valrange:
+			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
+			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
+
+		inpts = [*nnz, *indices, *basis, CtrlPts]
+		if self.part.dim == 2: 
+			JJ = geophy.eval_jacobien_1d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
+		elif self.part.dim == 3:
+			JJ = geophy.eval_jacobien_2d(*inpts)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+
+		prop = surffun(qpPhy); prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
+		inpts = [*nnz, *indices, *weights, JJ, prop]
+		if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
+		elif self.part.dim == 3: tmp = geophy.get_forcesurf_3d(*inpts)
+		surfForce = np.zeros((nr, self.part.nbctrlpts_total))
+		surfForce[:, CPList] = tmp
+		if nr == 1: surfForce = np.ravel(surfForce)
+		return surfForce
+	
+	def L2NormOfError(self, exactfun, u_ctrlpts):
 		""" Computes the norm L2 of the error. The fun_exact is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
@@ -57,7 +110,7 @@ class problem():
 			u_interp = geophy.interpolate_meshgrid_3d(*inputs, u_tmp)
 		if nr == 1: u_interp = np.ravel(u_interp)
 
-		u_exact     = fun_exact(qpPhy)
+		u_exact     = exactfun(qpPhy)
 		ue_diff_uh2 = (u_exact - u_interp)**2 
 		ue2         = u_exact**2
 		if nr > 1: 
@@ -78,25 +131,24 @@ class problem():
 
 		return error
 	
-	def L2projectionCtrlptsVol(self, funfield=None, datafield=None):
+	def L2projectionCtrlptsSurf(self, nbFacePosition, funfield=None, datafield=None):
 		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
-		prop = None
+
+		return
+
+	def L2projectionCtrlptsVol(self, volfun=None, datafield=None):
+		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
 		if datafield is not None: prop = datafield
-		if funfield is not None:  prop = funfield(self.part.qpPhy) # To modify if function depends on other fields
-		if prop is None: raise Warning('Missing data')
-		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0); u_interp = []
+		if volfun is not None:    prop = volfun(self.part.qpPhy)
+		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		if self.part.dim == 2: vector = geophy.get_forcevol_2d(*inputs)
+		if self.part.dim == 3: vector = geophy.get_forcevol_3d(*inputs)
 
-		for i in range(nr):
-			inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop[i, :]]
-			if self.part.dim == 2: vector = heatsolver.get_heatvol_2d(*inputs)
-			if self.part.dim == 3: vector = heatsolver.get_heatvol_3d(*inputs)
-
-			inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
-					*self.part.weights, self.part.invJ, self.part.detJ, vector, self._nbIterPCG, self._thresholdPCG]
-			if self.part.dim == 2: u_tmp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
-			if self.part.dim == 3: u_tmp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
-			u_interp.append(u_tmp)
-		u_interp = np.array(u_interp)
+		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, 
+				*self.part.weights, self.part.invJ, self.part.detJ, vector, self._nbIterPCG, self._thresholdPCG]
+		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inputs)
+		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inputs)
 		if nr == 1: u_interp = np.ravel(u_interp)
 		return u_interp
 
@@ -121,58 +173,6 @@ class heatproblem(problem):
 		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
 		return array_out
-
-	def eval_volForce(self, volfun): 
-		prop  = volfun(self.part.qpPhy)
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
-		if self.part.dim == 2: volForce = heatsolver.get_heatvol_2d(*inpts)
-		if self.part.dim == 3: volForce = heatsolver.get_heatvol_3d(*inpts)
-		return volForce
-	
-	def eval_surfForce(self, surffun, nbFacePosition):
-		if self.part.dim != 3: raise Warning('Method only for 3D geometries')
-
-		def get_faceInfo(nb):
-			direction = int(np.floor(nb/2))
-			if nb%2 == 1: side = 1
-			else: side = 0
-			return direction, side
-
-		surfForce = np.zeros(self.part.nbctrlpts_total)
-		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-		direction, side = get_faceInfo(nbFacePosition)
-
-		if direction>=2*self.part.dim: raise Warning('Not possible')
-		valrange = [i for i in range(self.part.dim)]
-		valrange.pop(direction)
-
-		# Get control points and quadrature points list
-		if side == 0: CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-		elif side == 1:  CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-		
-		CPList = list(np.sort(CPList))
-		CtrlPts = self.part.ctrlpts[:, CPList]
-
-		nnz, indices, basis, weights = [], [], [], []
-		for _ in valrange:
-			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
-			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
-
-		inpts = [*nnz, *indices, *basis, CtrlPts]
-		if self.part.dim == 2: 
-			JJ = geophy.eval_jacobien_1d(*inpts)
-			qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
-		elif self.part.dim == 3:
-			JJ = geophy.eval_jacobien_2d(*inpts)
-			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
-
-		prop = surffun(qpPhy)
-		inpts = [*nnz, *indices, *weights, JJ, prop]
-		if   self.part.dim == 2: tmp = heatsolver.get_heatsurf_2d(*inpts)
-		elif self.part.dim == 3: tmp = heatsolver.get_heatsurf_3d(*inpts)
-		surfForce[CPList] = tmp
-
-		return surfForce
 
 	def interpolate_temperature(self, u_ctrlpts):
 		" Computes the temperature at the quadrature points "
@@ -284,7 +284,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
 		return array_out
 	
-	def compute_strain(self, displacement):
+	def interpolate_strain(self, displacement):
 		" Compute strain field from displacement field "
 		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement]
 		if   self.part.dim == 2: strain = plasticitysolver.interpolate_strain_2d(*inputs)
@@ -297,60 +297,6 @@ class mechaproblem(problem):
 		if   self.part.dim == 2: intForce = plasticitysolver.get_intforce_2d(*inputs)
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inputs)
 		return intForce
-	
-	def eval_volForce(self, volfun):
-		prop   = volfun(self.part.qpPhy)
-		inputs = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
-		if   self.part.dim == 2: volForce = plasticitysolver.get_forcevol_2d(*inputs)
-		elif self.part.dim == 3: volForce = plasticitysolver.get_forcevol_3d(*inputs)
-		return volForce
-	
-	def eval_surfForce(self, surffun, nbFacePosition):
-		" Returns force vector at the surface. In 3D: surface integrals. "
-
-		def get_faceInfo(nb):
-			direction = int(np.floor(nb/2))
-			if nb%2 == 1: side = 1
-			else: side = 0
-			return direction, side
-
-		surfForce = np.zeros((self.part.dim, self.part.nbctrlpts_total))
-		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-		direction, side = get_faceInfo(nbFacePosition)
-		
-		if direction>=2*self.part.dim: raise Warning('Not possible')
-		valrange = [i for i in range(self.part.dim)]
-		valrange.pop(direction)
-
-		# Get control points and quadrature points list
-		if side == 0: CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-		elif side == 1: CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-		
-		CPList = list(np.sort(CPList))
-		CtrlPts = self.part.ctrlpts[:, CPList]
-
-		nnz, indices, basis, weights = [], [], [], []
-		for _ in valrange:
-			nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
-			indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
-
-		inpts = [*nnz, *indices, *basis, CtrlPts]
-		if self.part.dim == 2: 
-			JJ = geophy.eval_jacobien_1d(*inpts)
-			qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
-		elif self.part.dim == 3:
-			JJ = geophy.eval_jacobien_2d(*inpts)
-			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
-
-		prop  = surffun(qpPhy)
-		inpts = [*nnz, *indices, *weights, JJ, prop]
-		if   self.part.dim == 2: tmp = plasticitysolver.get_forcesurf_2d(*inpts)
-		elif self.part.dim == 3: tmp = plasticitysolver.get_forcesurf_3d(*inpts)
-		surfForce[:, CPList] = tmp
-
-		for i in range(self.part.dim): surfForce[i, self.boundary.mchdod[i]] = 0.0
-
-		return surfForce
 
 	def solveElasticityProblemFT(self, Fext, mechArgs=None):
 		dod = deepcopy(self.boundary.mchdod)
@@ -369,7 +315,7 @@ class mechaproblem(problem):
 		if   self.part.dim == 2: displacement, residue = plasticitysolver.solver_elasticity_2d(*inputs)
 		elif self.part.dim == 3: displacement, residue = plasticitysolver.solver_elasticity_3d(*inputs)
 
-		strain = self.compute_strain(displacement)
+		strain = self.interpolate_strain(displacement)
 		stress = self.material.evalElasticStress(strain)
 		
 		return displacement, residue, stress
@@ -409,7 +355,7 @@ class mechaproblem(problem):
 
 				# Compute strain at each quadrature point
 				d_n1 = disp[:, :, i-1] + ddisp
-				strain = self.compute_strain(d_n1)
+				strain = self.interpolate_strain(d_n1)
 	
 				# Closest point projection in perfect plasticity
 				output = self.material.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)

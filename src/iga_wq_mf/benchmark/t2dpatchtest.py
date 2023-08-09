@@ -66,7 +66,7 @@ disp_cp = problem.solveElasticityProblemFT(Fext=Fext)[0]
 stop = time.time()
 print('CPU time: %5e' %(stop-start))
 
-strain = problem.compute_strain(disp_cp)
+strain = problem.interpolate_strain(disp_cp)
 stress = problem.material.evalElasticStress(strain)
 stress_vm = computeVMStressForAll(stress, 2)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
