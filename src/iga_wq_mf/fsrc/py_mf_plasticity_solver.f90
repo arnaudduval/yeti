@@ -498,6 +498,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     use matrixfreeplasticity
     use solverplasticity2
+    use datastructure
     implicit none 
     ! Input / output data
     ! -------------------
@@ -533,7 +534,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(mecamat) :: mat
     type(cgsolver) :: solv
     integer :: i, nc_list(dimen)
-    double precision, allocatable, dimension(:, :, :) :: Mcoefs, Kcoefs
+    double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -568,10 +569,11 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         end if
 
         if (methodPCG.eq.'TDC') then
-            allocate(Mcoefs(dimen, dimen, maxval(nc_list)), Kcoefs(dimen, dimen, maxval(nc_list)))
-            call compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
+            allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
+            call compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_coefs(solv%disp_struct(i), maxval(nc_list), Mcoefs(i, :, :), Kcoefs(i, :, :))
+                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
+                                univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
 
@@ -603,6 +605,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
 
     use matrixfreeplasticity
     use solverplasticity3
+    use datastructure
     implicit none 
     ! Input / output data
     ! -------------------
@@ -640,7 +643,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     type(mecamat) :: mat
     type(cgsolver) :: solv
     integer :: i, nc_list(dimen)
-    double precision, allocatable, dimension(:, :, :) :: Mcoefs, Kcoefs
+    double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -678,10 +681,11 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
         end if
 
         if (methodPCG.eq.'TDC') then
-            allocate(Mcoefs(dimen, dimen, maxval(nc_list)), Kcoefs(dimen, dimen, maxval(nc_list)))
-            call compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
+            allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
+            call compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_coefs(solv%disp_struct(i), maxval(nc_list), Mcoefs(i, :, :), Kcoefs(i, :, :))
+                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
+                                            univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
 

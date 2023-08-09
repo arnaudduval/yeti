@@ -106,7 +106,7 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_separationvariables_diagblocks(mat, nc_list, Mcoefs, Kcoefs)
+    subroutine compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
         
         use separatevariables
         implicit none 
@@ -116,8 +116,8 @@ contains
         integer, intent(in) :: nc_list
         dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: Mcoefs(mat%dimen, mat%dimen, maxval(nc_list)), &
-                                        Kcoefs(mat%dimen, mat%dimen, maxval(nc_list))
+        double precision, intent(out) :: univMcoefs(mat%dimen, mat%dimen, maxval(nc_list)), &
+                                        univKcoefs(mat%dimen, mat%dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
@@ -126,6 +126,9 @@ contains
         integer :: i, j, k, gp
         double precision :: DD, coefs, NN, TNN
         dimension :: DD(mat%dimen, mat%dimen), coefs(mat%dimen, mat%dimen, mat%ncols_sp), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
+
+        update = .true.
+        call initialize_operator(oper, mat%dimen, nc_list, update)
 
         do i = 1, mat%dimen
             do gp = 1, mat%ncols_sp
@@ -146,14 +149,12 @@ contains
                 coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
 
-            update = .true.
-            call initialize_operator(oper, mat%dimen, nc_list, update)
             if (mat%dimen.eq.2) then
                 call separatevariables_2d(oper, coefs)
             else if (mat%dimen.eq.3) then
                 call separatevariables_3d(oper, coefs)
             end if
-            Mcoefs(i, :, :) = oper%Mcoefs; Kcoefs(i, :, :) = oper%Kcoefs
+            univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
         end do
     end subroutine compute_separationvariables_diagblocks
 

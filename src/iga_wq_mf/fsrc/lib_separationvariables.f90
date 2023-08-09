@@ -3,10 +3,10 @@ module separatevariables
     implicit none
 
     type sepoperator
-        integer :: dimen, ncols, maxit = 2
+        integer :: dimen, ncols, maxit = 4
         integer, dimension(:), allocatable :: nclist
         logical, dimension(:), allocatable :: update
-        double precision, dimension(:, :), allocatable :: Mcoefs, Kcoefs
+        double precision, dimension(:, :), allocatable :: univmasscoefs, univstiffcoefs
 
     end type sepoperator
 
@@ -28,9 +28,9 @@ contains
         obj%update = update
         obj%ncols  = product(obj%nclist)
 
-        allocate(obj%Mcoefs(obj%dimen, maxval(obj%nclist)))
-        allocate(obj%Kcoefs(obj%dimen, maxval(obj%nclist)))
-        obj%Mcoefs = 1.d0; obj%Kcoefs = 1.d0
+        allocate(obj%univmasscoefs(obj%dimen, maxval(obj%nclist)))
+        allocate(obj%univstiffcoefs(obj%dimen, maxval(obj%nclist)))
+        obj%univmasscoefs = 1.d0; obj%univstiffcoefs = 1.d0
 
     end subroutine initialize_operator
 
@@ -64,7 +64,7 @@ contains
                 do jv = 1, nc_v
                     do ju = 1, nc_u
                         genPos = ju + (jv-1)*nc_u
-                        UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv)] 
+                        UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)] 
                         Vk(ju, jv) = CC(k, k, genPos)*UU(k)/product(UU)
                     end do
                 end do
@@ -74,7 +74,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vk(ju, :))
                         vmax = maxval(Vk(ju, :))
-                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -82,7 +82,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vk(:, jv))
                         vmax = maxval(Vk(:, jv))
-                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -98,8 +98,8 @@ contains
                         do jv = 1, nc_v
                             do ju = 1, nc_u
                                 genPos = ju + (jv-1)*nc_u
-                                UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv)]
-                                WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv)]
+                                UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)]
+                                WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv)]
                                 Wlk(c, ju, jv) = CC(l, l, genPos)*UU(k)*UU(l)&
                                                             /(product(UU)*WW(l))
                             end do
@@ -121,7 +121,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Wlkmin(ju, :))
                         vmax = maxval(Wlkmax(ju, :))
-                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -129,7 +129,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Wlkmin(:, jv))
                         vmax = maxval(Wlkmax(:, jv))
-                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -170,7 +170,7 @@ contains
                     do jv = 1, nc_v
                         do ju = 1, nc_u
                             genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                            UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw)] 
+                            UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)] 
                             Vk(ju, jv, jw) = CC(k, k, genPos)*UU(k)/product(UU)
                         end do
                     end do
@@ -181,7 +181,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vk(ju, :, :))
                         vmax = maxval(Vk(ju, :, :))
-                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -189,7 +189,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vk(:, jv, :))
                         vmax = maxval(Vk(:, jv, :))
-                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -197,7 +197,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Vk(:, :, jw))
                         vmax = maxval(Vk(:, :, jw))
-                        obj%Kcoefs(k, jw) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -214,8 +214,8 @@ contains
                             do jv = 1, nc_v
                                 do ju = 1, nc_u
                                     genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
-                                    UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw)]
-                                    WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw)]
+                                    UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)]
+                                    WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), obj%univstiffcoefs(3, jw)]
                                     Wlk(c, ju, jv, jw) = CC(l, l, genPos)*UU(k)*UU(l)&
                                                                 /(product(UU)*WW(l))
                                 end do
@@ -240,7 +240,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Wlkmin(ju, :, :))
                         vmax = maxval(Wlkmax(ju, :, :))
-                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -248,7 +248,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Wlkmin(:, jv, :))
                         vmax = maxval(Wlkmax(:, jv, :))
-                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -256,7 +256,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Wlkmin(:, :, jw))
                         vmax = maxval(Wlkmax(:, :, jw))
-                        obj%Mcoefs(k, jw) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -298,7 +298,8 @@ contains
                         do jv = 1, nc_v
                             do ju = 1, nc_u
                                 genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
-                                UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw), obj%Mcoefs(4, jt)] 
+                                UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), &
+                                        obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)] 
                                 Vk(ju, jv, jw, jt) = CC(k, k, genPos)*UU(k)/product(UU)
                             end do
                         end do
@@ -310,7 +311,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Vk(ju, :, :, :))
                         vmax = maxval(Vk(ju, :, :, :))
-                        obj%Kcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -318,7 +319,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Vk(:, jv, :, :))
                         vmax = maxval(Vk(:, jv, :, :))
-                        obj%Kcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -326,7 +327,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Vk(:, :, jw, :))
                         vmax = maxval(Vk(:, :, jw, :))
-                        obj%Kcoefs(k, jw) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -334,7 +335,7 @@ contains
                     do jt = 1, nc_t
                         vmin = minval(Vk(:, :, :, jt))
                         vmax = maxval(Vk(:, :, :, jt))
-                        obj%Kcoefs(k, jt) = sqrt(vmin*vmax)
+                        obj%univstiffcoefs(k, jt) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -352,8 +353,10 @@ contains
                                 do jv = 1, nc_v
                                     do ju = 1, nc_u
                                         genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
-                                        UU = [obj%Mcoefs(1, ju), obj%Mcoefs(2, jv), obj%Mcoefs(3, jw), obj%Mcoefs(4, jt)]
-                                        WW = [obj%Kcoefs(1, ju), obj%Kcoefs(2, jv), obj%Kcoefs(3, jw), obj%Kcoefs(4, jt)]
+                                        UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), &
+                                                obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)]
+                                        WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), &
+                                                obj%univstiffcoefs(3, jw), obj%univstiffcoefs(4, jt)]
                                         Wlk(c, ju, jv, jw, jt) = CC(l, l, genPos)*UU(k)*UU(l)&
                                                                     /(product(UU)*WW(l))
                                     end do
@@ -382,7 +385,7 @@ contains
                     do ju = 1, nc_u
                         vmin = minval(Wlkmin(ju, :, :, :))
                         vmax = maxval(Wlkmax(ju, :, :, :))
-                        obj%Mcoefs(k, ju) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, ju) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -390,7 +393,7 @@ contains
                     do jv = 1, nc_v
                         vmin = minval(Wlkmin(:, jv, :, :))
                         vmax = maxval(Wlkmax(:, jv, :, :))
-                        obj%Mcoefs(k, jv) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jv) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -398,7 +401,7 @@ contains
                     do jw = 1, nc_w
                         vmin = minval(Wlkmin(:, :, jw, :))
                         vmax = maxval(Wlkmax(:, :, jw, :))
-                        obj%Mcoefs(k, jw) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jw) = sqrt(vmin*vmax)
                     end do
                 end if
 
@@ -406,7 +409,7 @@ contains
                     do jt = 1, nc_t
                         vmin = minval(Wlkmin(:, :, :, jt))
                         vmax = maxval(Wlkmax(:, :, :, jt))
-                        obj%Mcoefs(k, jt) = sqrt(vmin*vmax)
+                        obj%univmasscoefs(k, jt) = sqrt(vmin*vmax)
                     end do
                 end if
                 deallocate(Wlkmax, Wlkmin)

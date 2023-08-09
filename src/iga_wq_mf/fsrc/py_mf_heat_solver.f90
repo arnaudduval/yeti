@@ -7,7 +7,7 @@
 
 subroutine mf_get_cu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, &
+                        data_B_u, data_B_v, data_W_u, data_W_v, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
     !! Computes C.u where C is capacity matrix in 3D
     !! This function is adapted to python
@@ -27,6 +27,7 @@ subroutine mf_get_cu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
+    logical, intent(in) :: isLumped
     double precision, intent(in) :: invJ, detJ, prop
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
     double precision, intent(in) :: array_in
@@ -47,7 +48,7 @@ subroutine mf_get_cu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen
+    mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
     call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -58,7 +59,7 @@ end subroutine mf_get_cu_2d
 
 subroutine mf_get_cu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
     !! Computes C.u where C is capacity matrix in 3D
     !! This function is adapted to python
@@ -79,6 +80,7 @@ subroutine mf_get_cu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+    logical, intent(in) :: isLumped
     double precision, intent(in) :: invJ, detJ, prop
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
     double precision, intent(in) :: array_in
@@ -100,7 +102,7 @@ subroutine mf_get_cu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen = dimen
+    mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
     call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -376,7 +378,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     use matrixfreeheat
     use solverheat2
-
+    use datastructure
     implicit none 
     ! Input / output data
     ! -------------------
@@ -412,7 +414,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(thermomat) :: mat
     type(cgsolver) :: solv
     integer :: nc_list(dimen)
-    double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -440,15 +442,15 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                 indj_u, indi_v, indj_v, data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
         
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
         if (methodPCG.eq.'TDC') then
-            allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
-            call compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
-            call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+                                        univMcoefs, univKcoefs)
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -475,7 +477,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
     use matrixfreeheat
     use solverheat3
-
+    use datastructure
     implicit none 
     ! Input / output data
     ! -------------------
@@ -513,7 +515,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     type(thermomat) :: mat
     type(cgsolver) :: solv
     integer :: nc_list(dimen)
-    double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -547,19 +549,20 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
         end if
 
         if (methodPCG.eq.'TDC') then
-            allocate(Mcoefs(dimen, maxval(nc_list)), Kcoefs(dimen, maxval(nc_list)))
-            call compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
-            call setup_coefs(solv%temp_struct, maxval(nc_list), Mcoefs, Kcoefs)
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+                                        univMcoefs, univKcoefs)
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                                 data_W_u, data_W_v, data_W_w, table, mat%Kmean(:dimen))
-
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+
     else 
         stop 'Unknown method' 
     end if
@@ -568,7 +571,7 @@ end subroutine solver_steady_heat_3d
 
 subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, ndod, dod, table, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndod, dod, table, &
                                 invJ, detJ, Cprop, Kprop, thetadt, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
@@ -590,6 +593,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
+    logical, intent(in) :: isLumped
     integer, intent(in) :: ndod
     integer, intent(in) :: dod
     dimension :: dod(ndod)
@@ -613,6 +617,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     type(thermomat) :: mat
     type(cgsolver) :: solv
     integer :: nc_list(dimen)
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
@@ -625,7 +630,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen
+    mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
@@ -638,10 +643,17 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                 data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
         
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+                                        univMcoefs, univKcoefs)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -660,7 +672,7 @@ end subroutine solver_lineartransient_heat_2d
 
 subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, ndod, dod, table, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, ndod, dod, table, &
                                 invJ, detJ, Cprop, Kprop, thetadt, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
@@ -684,6 +696,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
+    logical, intent(in) :: isLumped
     integer, intent(in) :: ndod
     integer, intent(in) :: dod
     dimension :: dod(ndod)
@@ -707,6 +720,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     type(thermomat) :: mat
     type(cgsolver) :: solv
     integer :: nc_list(dimen)
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
     ! Csr format
     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
@@ -720,7 +734,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen = dimen
+    mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
@@ -734,10 +748,17 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                 data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
         
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C')) then
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+                                        univMcoefs, univKcoefs)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

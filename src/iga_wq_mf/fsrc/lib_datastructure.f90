@@ -10,7 +10,7 @@ module datastructure
         double precision, allocatable, dimension(:) :: Deigen
         double precision, allocatable, dimension(:, :) :: eigval
         double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvec
-        double precision, allocatable, dimension(:, :) :: Mcoefs, Kcoefs
+        double precision, allocatable, dimension(:, :) :: univmasscoefs, univstiffcoefs
 
     end type structure
 
@@ -145,27 +145,23 @@ contains
         datstruct%bw(3, 1:nnz_w, 3:6) = data_W_w
         datstruct%nr_total = product(datstruct%nrows)
         datstruct%nc_total = product(datstruct%ncols)
-        allocate(datstruct%Mcoefs(dimen, maxval(datstruct%ncols)), &
-                datstruct%Kcoefs(dimen, maxval(datstruct%ncols)))
-        datstruct%Kcoefs = 1.d0; datstruct%Mcoefs = 1.d0
-        
+
     end subroutine init_3datastructure
 
-    subroutine setup_coefs(datstruct, nnz, Mcoefs, Kcoefs)
+    subroutine setup_univariatecoefs(datstruct, nr, nc, univmasscoefs, univstiffcoefs)
         implicit none 
         ! Input / output data
         ! --------------------
         type(structure) :: datstruct
-        integer, intent(in) :: nnz
-        double precision, intent(in) :: Mcoefs, Kcoefs
-        dimension :: Mcoefs(datstruct%dimen, nnz), Kcoefs(datstruct%dimen, nnz)
+        integer, intent(in) :: nr, nc
+        double precision, intent(in) :: univmasscoefs, univstiffcoefs
+        dimension :: univmasscoefs(nr, nc), univstiffcoefs(nr, nc)
 
-        if (nnz.ne.maxval(datstruct%ncols)) stop 'Size problem'
-        allocate(datstruct%Mcoefs(datstruct%dimen, maxval(datstruct%ncols)), &
-                datstruct%Kcoefs(datstruct%dimen, maxval(datstruct%ncols)))
-        datstruct%Mcoefs = Mcoefs; datstruct%Kcoefs = Kcoefs
+        allocate(datstruct%univmasscoefs(nr, nc), datstruct%univstiffcoefs(nr, nc))
+        datstruct%univmasscoefs  = univmasscoefs
+        datstruct%univstiffcoefs = univstiffcoefs
         datstruct%isseparate = .true.
-    end subroutine
+    end subroutine setup_univariatecoefs
 
     subroutine get_innernodes__(datstruct, dimen, table)
         implicit none 
@@ -372,15 +368,22 @@ contains
         integer, dimension(:), allocatable :: indi, indj
         double precision, dimension(:), allocatable :: ones, eigvalues, Mdiag, Kdiag
         double precision, dimension(:, :), allocatable :: bw, eigvectors
-        double precision, dimension(:), allocatable :: Mcoefs, Kcoefs
+        double precision, dimension(:), allocatable :: univMcoefs, univKcoefs
         
         ncols = maxval(datstruct%ncols)
-        allocate(Mcoefs(ncols), Kcoefs(ncols))
-        Mcoefs = 1.d0; Kcoefs = 1.d0
+        allocate(univMcoefs(ncols), univKcoefs(ncols))
+        univMcoefs = 1.d0; univKcoefs = 1.d0
 
         allocate(datstruct%eigval(datstruct%dimen, maxval(datstruct%nrows)), &
         datstruct%eigvec(datstruct%dimen, maxval(datstruct%nrows), maxval(datstruct%nrows)))
         datstruct%eigval = 0.d0; datstruct%eigvec = 0.d0
+
+        if (datstruct%isseparate) then
+            if (size(datstruct%univmasscoefs, 1).lt.datstruct%dimen) stop 'Size problem univmass'
+            if (size(datstruct%univmasscoefs, 2).lt.ncols) stop 'Size problem univmass'
+            if (size(datstruct%univstiffcoefs, 1).lt.datstruct%dimen) stop 'Size problem univstiff'
+            if (size(datstruct%univstiffcoefs, 2).lt.ncols) stop 'Size problem univstiff'
+        end if
 
         ! Eigen decomposition
         do i = 1, datstruct%dimen
@@ -393,10 +396,10 @@ contains
             bw   = datstruct%bw(i, 1:nnz, :)
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
             if (datstruct%isseparate) then 
-                call eigen_decomposition(nr, nc, datstruct%Mcoefs(i, 1:nc), datstruct%Kcoefs(i, 1:nc), nnz, indi, indj, &
-                                        bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+                call eigen_decomposition(nr, nc, datstruct%univmasscoefs(i, 1:nc), datstruct%univstiffcoefs(i, 1:nc), &
+                                        nnz, indi, indj, bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
             else
-                call eigen_decomposition(nr, nc, Mcoefs(1:nc), Kcoefs(1:nc), nnz, indi, indj, &
+                call eigen_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
                                         bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
             end if
             datstruct%eigval(i, 1:nr) = eigvalues

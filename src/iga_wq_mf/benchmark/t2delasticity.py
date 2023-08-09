@@ -23,47 +23,56 @@ def forceSurf_infPlate(P:list):
 	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	theta_x2 = 2.0*np.arcsin(y/np.sqrt(r_square))
 	b = a**2/r_square # Already squared
+	theta = np.arcsin(y/np.sqrt(r_square))
 
-	PolarSt = np.zeros((3, nnz))
-	PolarSt[0, :] = Tx/2.0*(1.0 - b + np.cos(theta_x2)*(1.0 - 4.0*b + 3.0*b**2)) 
-	PolarSt[1, :] = Tx/2.0*(1.0 + b - np.cos(theta_x2)*(1.0 + 3.0*b**2))
-	PolarSt[2, :] = -Tx/2.0*(1.0 + 2.0*b - 3.0*b**2)*np.sin(theta_x2)	
+	# theta_x2 = 2.0*theta
+	# PolarSt = np.zeros((3, nnz))
+	# PolarSt[0, :] = Tx/2.0*(1.0 - b + np.cos(theta_x2)*(1.0 - 4.0*b + 3.0*b**2)) 
+	# PolarSt[1, :] = Tx/2.0*(1.0 + b - np.cos(theta_x2)*(1.0 + 3.0*b**2))
+	# PolarSt[2, :] = -Tx/2.0*(1.0 + 2.0*b - 3.0*b**2)*np.sin(theta_x2)	
 	
-	theta  = theta_x2/2.0
-	CartSt = np.zeros((3, nnz))
-	CartSt[0, :] = PolarSt[0, :]*(np.cos(theta))**2 + PolarSt[1, :]*(np.sin(theta))**2 - PolarSt[2, :]*(np.sin(theta_x2)) 
-	CartSt[1, :] = PolarSt[0, :]*(np.sin(theta))**2 + PolarSt[1, :]*(np.cos(theta))**2 + PolarSt[2, :]*(np.sin(theta_x2)) 
-	CartSt[2, :] = PolarSt[2, :]*np.cos(theta_x2) + 0.5*np.sin(theta_x2)*(PolarSt[0, :] - PolarSt[1, :])
+	# CartSt = np.zeros((3, nnz))
+	# CartSt[0, :] = PolarSt[0, :]*(np.cos(theta))**2 + PolarSt[1, :]*(np.sin(theta))**2 - PolarSt[2, :]*(np.sin(theta_x2)) 
+	# CartSt[1, :] = PolarSt[0, :]*(np.sin(theta))**2 + PolarSt[1, :]*(np.cos(theta))**2 + PolarSt[2, :]*(np.sin(theta_x2)) 
+	# CartSt[2, :] = PolarSt[2, :]*np.cos(theta_x2) + 0.5*np.sin(theta_x2)*(PolarSt[0, :] - PolarSt[1, :])
+
+	# F = np.zeros((2, nnz))
+	# F[0, :] = CartSt[0, :]*np.cos(theta) + CartSt[2, :]*np.sin(theta)
+	# F[1, :] = CartSt[2, :]*np.cos(theta) + CartSt[1, :]*np.sin(theta)
 
 	F = np.zeros((2, nnz))
-	F[0, :] = CartSt[0, :]*np.cos(theta) + CartSt[2, :]*np.sin(theta)
-	F[1, :] = CartSt[2, :]*np.cos(theta) + CartSt[1, :]*np.sin(theta)
+	F[0, :] = Tx/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
+	F[1, :] = Tx/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
 
 def exactDisplacement_infPlate(P:list):
 	Tx, a, E, nu = 1.0, 1.0, 1.e3, 0.3
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	theta_x2 = 2*np.arcsin(y/np.sqrt(r_square))
+	theta = np.arcsin(y/np.sqrt(r_square))
 	b = a**2/r_square # Already squared
 	c = Tx*(1.0 + nu)*np.sqrt(r_square)/(2*E)
 
-	PolarDisp = np.zeros((2, nnz))
-	PolarDisp[0, :] = c*((b + 1 - 2.0*nu) + np.cos(theta_x2)*(-b**2 + 4.0*(1.0 - nu)*b + 1))
-	PolarDisp[1, :] = -c*np.sin(theta_x2)*(b**2 + 2.0*(1.0 - 2.0*nu)*b + 1)
+	# theta_x2  = 2.0*theta
+	# PolarDisp = np.zeros((2, nnz))
+	# PolarDisp[0, :] = c*((b + 1.0 - 2.0*nu) + np.cos(theta_x2)*(-b**2 + 4.0*(1.0 - nu)*b + 1.0))
+	# PolarDisp[1, :] = -c*np.sin(theta_x2)*(b**2 + 2.0*(1.0 - 2.0*nu)*b + 1.0)
 
-	theta = theta_x2/2.0
-	disp  = np.zeros((2, nnz))
-	disp[0, :] = PolarDisp[0, :]*np.cos(theta) - PolarDisp[1, :]*np.sin(theta)
-	disp[1, :] = PolarDisp[0, :]*np.sin(theta) + PolarDisp[1, :]*np.cos(theta)
+	# disp  = np.zeros((2, nnz))
+	# disp[0, :] = PolarDisp[0, :]*np.cos(theta) - PolarDisp[1, :]*np.sin(theta)
+	# disp[1, :] = PolarDisp[0, :]*np.sin(theta) + PolarDisp[1, :]*np.cos(theta)
+
+	disp = np.zeros((2, nnz))
+	disp[0, :] = c*(2*(1-nu)*np.cos(theta) + b*(4*(1-nu)*np.cos(theta) + np.cos(3*theta)) - b**2*np.cos(3*theta))
+	disp[1, :] = c*(-2*nu*np.sin(theta) + b*(2*(-1 + 2*nu)*np.sin(theta) + np.sin(3*theta)) - b**2*np.sin(3*theta))
+	
 	return disp
 
 # Set global variables
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu}
-solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
+solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 

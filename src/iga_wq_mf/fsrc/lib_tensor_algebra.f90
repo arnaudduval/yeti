@@ -1009,7 +1009,7 @@ end subroutine csr_get_diag_3d
 ! Fast Diagonalization method
 ! ----------------------------
 
-subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
+subroutine eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                                 data_B, data_W, robcond, eigval, eigvec, Kdiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -1023,8 +1023,8 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! -------------------
     double precision, parameter :: penalty = 100.0d0
     integer, intent(in) :: nr, nc, nnz
-    double precision, intent(in) :: Mcoefs, Kcoefs
-    dimension :: Mcoefs(nc), Kcoefs(nc)
+    double precision, intent(in) :: univMcoefs, univKcoefs
+    dimension :: univMcoefs(nc), univKcoefs(nc)
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B, data_W
@@ -1047,7 +1047,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     data_Bt = data_B(:, 1)
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_Bt(j) = data_Bt(j)*Mcoefs(indj(j))
+            data_Bt(j) = data_Bt(j)*univMcoefs(indj(j))
         end do
     end do
 
@@ -1063,7 +1063,7 @@ subroutine eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     data_Bt = data_B(:, 2)
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
-            data_Bt(j) = data_Bt(j)*Kcoefs(indj(j))
+            data_Bt(j) = data_Bt(j)*univKcoefs(indj(j))
         end do
     end do
 

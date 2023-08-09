@@ -2,18 +2,14 @@ module matrixfreeheat
 
     implicit none
     type thermomat
-        ! Inputs 
         integer :: dimen = 3
+        logical :: isLumped = .false.
         double precision :: scalars(2) = (/1.d0, 1.d0/)
-
         double precision, dimension(:), pointer :: Cprop=>null(), detJ=>null()
         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
         double precision, dimension(3) :: Kmean = 1.d0
         double precision :: Cmean = 1.d0
-
-        ! Local
         integer :: ncols_sp
-
     end type thermomat
 
 contains
@@ -102,7 +98,7 @@ contains
                     call separatevariables_3d(oper, CC)
                 end if
 
-                Mcoefs = oper%Mcoefs; Kcoefs = oper%Kcoefs
+                Mcoefs = oper%univmasscoefs; Kcoefs = oper%univstiffcoefs
 
             else
                 allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
@@ -121,7 +117,7 @@ contains
                     call separatevariables_4d(oper, CC)
                 end if
 
-                Mcoefs = oper%Mcoefs(:mat%dimen, :); Kcoefs = oper%Kcoefs(:mat%dimen, :)
+                Mcoefs = oper%univmasscoefs(:mat%dimen, :); Kcoefs = oper%univstiffcoefs(:mat%dimen, :)
             end if
         else
             stop 'Conductivity not defined'
@@ -241,15 +237,16 @@ contains
 
         ! Local data 
         ! ----------
-        double precision :: array_tmp
-        dimension :: array_tmp(nc_total)
+        double precision :: tmp_in, array_tmp
+        dimension :: tmp_in(nr_total), array_tmp(nc_total)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+        tmp_in = array_in; if (mat%isLumped) tmp_in = 1.d0
 
         call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            array_in, array_tmp)
+                            tmp_in, array_tmp)
 
         array_tmp = array_tmp*mat%Cprop*mat%detJ
 
@@ -257,6 +254,7 @@ contains
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             array_tmp, array_out)
+        if (mat%isLumped) array_out = array_out*array_in
         
     end subroutine mf_capacity_2d
 
@@ -292,16 +290,17 @@ contains
 
         ! Local data 
         ! ----------
-        double precision :: array_tmp
-        dimension :: array_tmp(nc_total)
+        double precision :: tmp_in, array_tmp
+        dimension :: tmp_in(nr_total), array_tmp(nc_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+        tmp_in = array_in; if (mat%isLumped) tmp_in = 1.d0
 
         call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                            array_in, array_tmp)
+                            tmp_in, array_tmp)
 
         array_tmp = array_tmp*mat%Cprop*mat%detJ
 
@@ -310,6 +309,7 @@ contains
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
                             array_tmp, array_out)
+        if (mat%isLumped) array_out = array_out*array_in
         
     end subroutine mf_capacity_3d
 

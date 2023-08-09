@@ -114,10 +114,10 @@ class heatproblem(problem):
 		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
 		return array_out
 	
-	def eval_mfCapacity(self, array_in, args=None): 
+	def eval_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = self.part.qpPhy
 		prop = self.material.capacity(args)
-		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
+		inpts = [*super()._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
 		return array_out
@@ -192,18 +192,18 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveLinearTransientHeatProblemFT(self, Fext, thetadt, args=None):
+	def solveLinearTransientHeatProblemFT(self, Fext, thetadt, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		Cprop = self.material.capacity(args)
 		Kprop = self.material.conductivity(args)
-		inpts = [*super()._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+		inpts = [*super()._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: sol, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return sol, residue
 
-	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0):
+	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total
 		nbSteps = len(time_list)
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
@@ -242,7 +242,7 @@ class heatproblem(problem):
 			
 				# Compute internal force
 				args = np.row_stack((self.part.qpPhy, TTinterp))
-				CdT  = self.eval_mfCapacity(VVn1, args=args)
+				CdT  = self.eval_mfCapacity(VVn1, args=args, isLumped=isLumped)
 				KT   = self.eval_mfConductivity(TTn1, args=args)
 				Fint = KT + CdT
 
@@ -254,7 +254,7 @@ class heatproblem(problem):
 
 				# Iterative solver
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dF, thetadt=theta*dt, args=args)
+				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dF, theta*dt, args=args, isLumped=isLumped)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 

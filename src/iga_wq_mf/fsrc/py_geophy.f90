@@ -3,7 +3,7 @@
 ! For mechanical properties, we suggest to go to plasticity module
 ! ==============================================
 
-subroutine eigen_decomposition_py(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
+subroutine eigen_decomposition_py(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                                 data_B, data_W, robcond, eigval, eigvec)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -16,8 +16,8 @@ subroutine eigen_decomposition_py(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     ! Input / output data
     ! -------------------
     integer, intent(in) :: nr, nc, nnz
-    double precision, intent(in) :: Mcoefs, Kcoefs
-    dimension :: Mcoefs(nc), Kcoefs(nc)
+    double precision, intent(in) :: univMcoefs, univKcoefs
+    dimension :: univMcoefs(nc), univKcoefs(nc)
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B, data_W
@@ -33,7 +33,7 @@ subroutine eigen_decomposition_py(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
     double precision :: Kdiag, Mdiag
     dimension :: Kdiag(nr), Mdiag(nr)
 
-    call eigen_decomposition(nr, nc, Mcoefs, Kcoefs, nnz, indi, indj, &
+    call eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                             data_B, data_W, robcond, eigval, eigvec, Kdiag, Mdiag)
 
 end subroutine eigen_decomposition_py

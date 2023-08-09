@@ -11,9 +11,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = True
 degree_list = np.arange(6, 7)
-cuts_list   = np.arange(6, 7)
+cuts_list   = np.arange(4, 5)
 name_list   = ['cb', 'vb']
-IterMethods = ['WP', 'C', 'JMC']
+IterMethods = ['WP', 'C', 'JMC', 'TDC']
 
 def setKprop(P:list):
 	x = P[0, :]
