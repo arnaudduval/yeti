@@ -84,7 +84,7 @@ class encoder():
 		nbctrlpts_total = problem.part.nbctrlpts_total
 
 		if funTemp is not None:  
-			ud = problem.L2projectionCtrlpts(funfield=funTemp)[dod]
+			ud = problem.L2projectionCtrlptsVol(funfield=funTemp)[dod]
 			u  = np.zeros(nbctrlpts_total); u[dod] = ud
 			Knd_ud = problem.eval_mfConductivity(u)
 			Fext   = problem.eval_volForce(funPowDen) - Knd_ud

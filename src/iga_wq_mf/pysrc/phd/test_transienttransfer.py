@@ -63,8 +63,8 @@ if not dataExist:
 
 			# Block boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
-			boundary.add_DirichletTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
-			boundary.add_DirichletTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
+			boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
+			boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
 
 			# ---------------------
 			# Transient model

@@ -75,7 +75,7 @@ class boundaryCondition():
 		self.thdof = np.sort(np.array(list(dof), dtype=int))
 		return
 
-	def add_DirichletTemperature(self, table=None, temperature=0.0):
+	def add_DirichletConstTemperature(self, table=None, temperature=0.0):
 		"This function is first tentative of adding constant boundary conditions "
 		table = np.array(table, dtype=bool)
 		if not np.any(table == True): raise Warning('At least one blocked face is needed')
@@ -84,10 +84,8 @@ class boundaryCondition():
 		self.thDirichletTable += table
 		
 		if np.isscalar(temperature): 
-			self.thDirichletBound[dod_total] = temperature*np.ones(len(dod_total))
-		else: 
-			if len(temperature) != len(dod_total): raise Warning('Not possible')
-			self.thDirichletBound[dod_total] = temperature		
+			self.thDirichletBound[dod_total] = temperature
+		else: raise Warning('Not possible')
 		tmp = np.append(self.thdod, dod_total)
 		self.thdod = np.array(tmp, dtype=int)
 		self.__update_thDirichletBound()

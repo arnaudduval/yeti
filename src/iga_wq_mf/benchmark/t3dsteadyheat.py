@@ -1,9 +1,6 @@
 """
-.. Test of elastoplasticity 2D
-.. We test how elasticity module works
-.. SI (Steel) : 
-..      - Stress : MPa (200e3)
-..      - Length : mm
+.. Test of steady heat transfer 3D
+.. In this case we impose a function as a temperature over a surface
 .. Joaquin Cornejo 
 """
 
@@ -20,49 +17,60 @@ folder = os.path.dirname(full_path) + '/results/d2steadyheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(P:list):
-	x = P[0, :]
-	y = P[1, :]
-	Kref  = np.array([[1, 0.5],[0.5, 2]])
-	Kprop = np.zeros((2, 2, len(x)))
-	for i in range(2): 
-		for j in range(2):
+	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	Kprop = np.zeros((3, 3, np.size(P, axis=1)))
+	for i in range(3): 
+		for j in range(3):
 			Kprop[i, j, :] = Kref[i, j] 
+	# Kprop[0, 0, :] += 0.75*np.cos(np.pi*y)
+	# Kprop[1, 1, :] += 2*np.exp(-(z-0.5)**2)
+	# Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
 	return Kprop 
 
-def powerDensity_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-16)
+def powerDensity_rotRing(P: list):
+	""" u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z)
 		f = -div(lambda * grad(u))
 	"""
 	x = P[0, :]
 	y = P[1, :]
+	z = P[2, :]
 
-	f = (3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
-	- 16*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
-	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 8*x*y*np.sin(np.pi*x)*np.sin(np.pi*y) 
-	- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
-	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
-	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
-	- 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
+	# # Isotropy
+	# f = (8*x*y**4*np.sin(np.pi*z) + 8*x**3*y**2*np.sin(np.pi*z) 
+	#     + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) + 16*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+	#     + 2*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+	#     - x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+	# )
+
+	# Anisotropy
+	f = (16*x*y**4*np.sin(np.pi*z) 
+	+ 8*x**2*y**3*np.sin(np.pi*z) 
+	+ 8*x**3*y**2*np.sin(np.pi*z) 
+	+ 2*y**3*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+	+ 2*y**3*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+	+ 26*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+	+ 4*x**2*y*np.sin(np.pi*z)*(x**2 + y**2 - 1) 
+	+ 26*x*y**2*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+	+ 4*x**2*y*np.sin(np.pi*z)*(x**2 + y**2 - 4) 
+	+ 4*x*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+	+ 2*y*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+	+ (y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4))/5 
+	+ x*y**3*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1) 
+	+ x*y**3*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 4) 
+	+ (2*x**2*y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1))/5 
+	+ (2*x**2*y**2*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 4))/5 
+	- 3*x*y**2*np.pi**2*np.sin(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
+	+ x*y*np.pi*np.cos(np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
 	)
 
 	return f
 
-def exactTemperature_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
-		f = -div(lambda * grad(u))
-	"""
+def exactTemperature_rotRing(P: list):
+	" T = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*sin(pi*z) "
 	x = P[0, :]
 	y = P[1, :]
-
-	u = np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 -1)*(x**2 + y**2 - 16)
+	z = P[2, :]
+	u = -(x**2 + y**2 - 1)*(x**2 + y**2 - 4)*x*(y**2)*np.sin(np.pi*z)
 	return u
 
 # Set global variables
@@ -77,9 +85,8 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 	for i, degree in enumerate(degree_list):
 		for j, cuts in enumerate(cuts_list):
-			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+			geoArgs = {'name': 'RQA', 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-						'extra':{'Rin':1.0, 'Rex':4.0}
 			}
 			blockPrint()
 			material = thermomat()
@@ -90,15 +97,15 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 			# Set Dirichlet boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
-			boundary.add_DirichletTemperature(table=np.ones((2, 2), dtype=int))
+			boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=int))
 			enablePrint()
 
 			# Solve elastic problem
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fext = problem.eval_volForce(powerDensity_quartCircle)
+			Fext = problem.eval_volForce(powerDensity_rotRing)
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError(exactTemperature_quartCircle, temperature)
+			error_list[j] = problem.L2NormOfError(exactTemperature_rotRing, temperature)
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))

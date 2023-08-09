@@ -53,7 +53,7 @@ if not dataExist:
 
 		# Block boundaries
 		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
+		boundary.add_DirichletConstTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
 		problem = heatproblem(material, modelPhy, boundary)
 
 		nrows = modelPhy.nbctrlpts[0] - 2

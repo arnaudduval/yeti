@@ -78,7 +78,7 @@ class problem():
 
 		return error
 	
-	def L2projectionCtrlpts(self, funfield=None, datafield=None):
+	def L2projectionCtrlptsVol(self, funfield=None, datafield=None):
 		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
 		prop = None
 		if datafield is not None: prop = datafield
