@@ -60,7 +60,7 @@ if not dataExist:
 		V = np.random.random(nrows**3)
 
 		# # --------------
-		# # Compute matrix
+		# # Compute matrix !!! to add
 		# # --------------
 		# dof = problem.boundary.thdof 
 		# CC  = problem.eval_capacity_matrix()[:, dof][dof, :]
@@ -75,13 +75,13 @@ if not dataExist:
 		# Compute MF product
 		# ------------------
 		start = time.process_time()
-		problem.eval_mfCapacity(V, args=problem.part.qpPhy)
+		problem.compute_mfCapacity(V, args=problem.part.qpPhy)
 		stop = time.process_time()
 		timeMF_Mass_matrix[i, 1] = stop - start
 		# np.savetxt(folder_data+'matvec_MF_Mass_'+'.dat', timeMF_Mass_matrix)
 
 		start = time.process_time()
-		problem.eval_mfConductivity(V, args=problem.part.qpPhy)
+		problem.compute_mfConductivity(V, args=problem.part.qpPhy)
 		stop = time.process_time()
 		timeMF_Stiff_matrix[i, 1] = stop - start
 		# np.savetxt(folder_data+'matvec_MF_Stiff_'+'.dat', timeMF_Stiff_matrix)

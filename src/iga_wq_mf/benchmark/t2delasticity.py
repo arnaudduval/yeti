@@ -104,7 +104,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			# Solve elastic problem
 			problem = mechaproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fext = problem.eval_surfForce(forceSurf_infPlate, nbFacePosition=1)
+			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)
 			start = time.process_time()
 			displacement, _, stress_qp = problem.solveElasticityProblemFT(Fext=Fext)
 			stop = time.process_time()

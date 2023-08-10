@@ -126,63 +126,7 @@ class part():
 			self.qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
-		return
-	
-	# def L2projectionCtrlptsSurf(self, surffun, nbFacePosition):
-	# 	" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
-	# 	INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-	# 	direction, side = get_faceInfo(nbFacePosition)
-	# 	if direction>=2*self.part.dim: raise Warning('Not possible')
-	# 	valrange = [i for i in range(self.part.dim)]
-	# 	valrange.pop(direction)
-	# 	if side == 0:   CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-	# 	elif side == 1: CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-	# 	CPList = list(np.sort(CPList)); CtrlPts = self.part.ctrlpts[:, CPList]
-
-	# 	nnz, indices, basis, weights = [], [], [], []
-	# 	for _ in valrange:
-	# 		nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
-	# 		indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
-	# 	inpts = [*nnz, *indices, *basis, CtrlPts]
-	# 	if self.part.dim == 2: 
-	# 		Jqp = geophy.eval_jacobien_1d(*inpts)
-	# 		qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
-	# 	elif self.part.dim == 3:
-	# 		Jqp = geophy.eval_jacobien_2d(*inpts)
-	# 		qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
-		
-	# 	prop = surffun(qpPhy); prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
-	# 	inpts = [*nnz, *indices, *weights, Jqp, prop]
-	# 	if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
-	# 	elif self.part.dim == 3: tmp = geophy.get_forcesurf_3d(*inpts)
-	# 	surfForce = np.zeros((nr, self.part.nbctrlpts_total))
-	# 	surfForce[:, CPList] = tmp
-		
-	# 	nc = np.size(Jqp, axis=2); detJ = np.zeros(nc)
-	# 	if self.part.dim == 2:
-	# 		for i in range(nc):
-	# 			v1 = Jqp[:, 0, i]
-	# 			detJ[i] = np.sqrt(np.dot(v1, v1))
-	# 	elif self.part.dim == 3:
-	# 		for i in range(nc):
-	# 			v1 = Jqp[:, 0, i]; v2 = Jqp[:, 1, i]
-	# 			v3 = np.cross(v1, v2)
-	# 			detJ[i] = np.sqrt(np.dot(v3, v3))
-
-	# 	inpts = [*nnz, *indices, *basis, *weights, detJ, surfForce, self._nbIterPCG, self._thresholdPCG]
-	# 	if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_1d(*inpts)
-	# 	if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
-	# 	if nr == 1: u_interp = np.ravel(u_interp)
-	# 	return
-
-	# def L2projectionCtrlptsVol(self, volfun):
-	# 	" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
-	# 	volForce = self.eval_volForce(volfun); nr = np.size(volForce, axis=0)
-	# 	inpts = [*self._getInputs(), self.part.detJ, volForce, self._nbIterPCG, self._thresholdPCG]
-	# 	if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
-	# 	if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
-	# 	if nr == 1: u_interp = np.ravel(u_interp)
-	# 	return u_interp
+		return	
 
 	# ----------------
 	# POST-PROCESSING 

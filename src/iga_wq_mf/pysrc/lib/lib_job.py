@@ -26,7 +26,7 @@ class problem():
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 
-	def eval_volForce(self, volfun): 
+	def compute_volForce(self, volfun): 
 		prop = volfun(self.part.qpPhy)
 		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
 		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
@@ -35,7 +35,7 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def eval_surfForce(self, surffun, nbFacePosition):
+	def compute_surfForce(self, surffun, nbFacePosition):
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
 		if direction>=2*self.part.dim: raise Warning('Not possible')
@@ -118,14 +118,22 @@ class problem():
 
 		return error
 
-
+	def L2projectionCtrlptsVol(self, volfun):
+		" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
+		volForce = self.compute_volForce(volfun); nr = np.size(volForce, axis=0)
+		inpts = [*self._getInputs(), self.part.detJ, volForce, self._nbIterPCG, self._thresholdPCG]
+		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
+		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
+		if nr == 1: u_interp = np.ravel(u_interp)
+		return u_interp
+	
 class heatproblem(problem):
 	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return
 	
-	def eval_mfConductivity(self, array_in, args=None):
+	def compute_mfConductivity(self, array_in, args=None):
 		if args is None: args = self.part.qpPhy
 		prop = self.material.conductivity(args)
 		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
@@ -133,7 +141,7 @@ class heatproblem(problem):
 		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
 		return array_out
 	
-	def eval_mfCapacity(self, array_in, args=None, isLumped=False): 
+	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = self.part.qpPhy
 		prop = self.material.capacity(args)
 		inpts = [*super()._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
@@ -209,8 +217,8 @@ class heatproblem(problem):
 			
 				# Compute internal force
 				args = np.row_stack((self.part.qpPhy, TTinterp))
-				CdT  = self.eval_mfCapacity(VVn1, args=args, isLumped=isLumped)
-				KT   = self.eval_mfConductivity(TTn1, args=args)
+				CdT  = self.compute_mfCapacity(VVn1, args=args, isLumped=isLumped)
+				KT   = self.compute_mfConductivity(TTn1, args=args)
 				Fint = KT + CdT
 
 				# Compute residue
@@ -240,7 +248,7 @@ class mechaproblem(problem):
 		self.material = material
 		return
 	
-	def eval_mfStiffness(self, array_in, mechArgs=None):
+	def compute_mfStiffness(self, array_in, mechArgs=None):
 		if mechArgs is None: 
 			dimen = self.part.dim; nvoigt = int(dimen*(dimen+1)/2)
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))

@@ -156,7 +156,7 @@ class simulate():
 		modelPhy = part(modelIGA, quadArgs)
 
 		problem = heatproblem(material, modelPhy, boundary)
-		Fext    = problem.eval_volForce(self._funPowDen)
+		Fext    = problem.compute_volForce(self._funPowDen)
 
 		# Run iterative methods
 		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})

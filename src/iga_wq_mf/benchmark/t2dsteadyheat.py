@@ -66,7 +66,7 @@ cuts_list   = np.arange(2, 9)
 
 for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-	error_list  = np.ones(len(cuts_list))
+	error_list = np.ones(len(cuts_list))
 	fig, ax = plt.subplots(figsize=(8, 4))
 
 	for i, degree in enumerate(degree_list):
@@ -90,7 +90,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			# Solve elastic problem
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fext = problem.eval_volForce(powerDensity_quartCircle)
+			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
 			error_list[j] = problem.L2NormOfError(exactTemperature_quartCircle, temperature)
 
@@ -110,4 +110,4 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigThickRing_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigQuartCircle_' + str(quadArgs['quadrule']) +'.png')

@@ -58,7 +58,7 @@ def forceSurfFun(P:list):
 	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
-Fext = problem.eval_surfForce(forceSurfFun, nbFacePosition=3)
+Fext = problem.compute_surfForce(forceSurfFun, nbFacePosition=3)
 
 # Solve in fortran 
 start = time.time()

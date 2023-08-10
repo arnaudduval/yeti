@@ -84,8 +84,7 @@ class boundaryCondition():
 		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
 		self.thDirichletTable += table
 		
-		if np.isscalar(temperature): 
-			self.thDirichletBound[dod_total] = temperature
+		if np.isscalar(temperature): self.thDirichletBound[dod_total] = temperature
 		else: raise Warning('Not possible')
 		tmp = np.append(self.thdod, dod_total)
 		self.thdod = np.array(tmp, dtype=int)
