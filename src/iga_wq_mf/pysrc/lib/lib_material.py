@@ -151,11 +151,11 @@ class mechamat(material):
 		return
 		
 	def evalElasticStress(self, strain):
-		Tstrain = array2symtensorForAll(strain, 2)
-		traceStrain = evalTraceForAll(strain, 2)
+		Tstrain = array2symtensor4All(strain, 2)
+		traceStrain = evalTrace4All(strain, 2)
 		Tstress = 2*self.lame_mu*Tstrain
 		for i in range(2): Tstress[i, i, :] += self.lame_lambda*traceStrain
-		stress  = symtensor2arrayForAll(Tstress, 2)
+		stress  = symtensor2array4All(Tstress, 2)
 		return stress
 	
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
@@ -182,10 +182,10 @@ class mechamat(material):
 
 		output  = np.zeros((4*(nvoigt+1), nnz))
 		Cep     = np.zeros((3, nnz))
-		Tstrain = array2symtensorForAll(strain, dim)
-		Tpls    = array2symtensorForAll(pls, dim)
-		Tb      = array2symtensorForAll(b, dim)
-		traceStrain = evalTraceForAll(strain, dim)
+		Tstrain = array2symtensor4All(strain, dim)
+		Tpls    = array2symtensor4All(pls, dim)
+		Tb      = array2symtensor4All(b, dim)
+		traceStrain = evalTrace4All(strain, dim)
 		devStrain   = Tstrain
 		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
@@ -202,7 +202,7 @@ class mechamat(material):
 		for i in range(dim): sigma[i, i, :] += self.lame_bulk*traceStrain
 		Cep[0, :] = self.lame_lambda; Cep[1, :] = self.lame_mu
 		pls_new = pls; a_new = a; b_new = b
-		stress  = symtensor2arrayForAll(sigma, dim)
+		stress  = symtensor2array4All(sigma, dim)
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
 		if np.size(plsInd)>0:
@@ -215,19 +215,19 @@ class mechamat(material):
 
 			# Compute df/dsigma
 			Normal_plsInd = eta_trial[:, :, plsInd]/norm_trial[plsInd]
-			output[3*nvoigt+4:, plsInd] = symtensor2arrayForAll(Normal_plsInd, dim)
+			output[3*nvoigt+4:, plsInd] = symtensor2array4All(Normal_plsInd, dim)
 
 			# Update stress
 			sigma[:, :, plsInd] -= 2*self.lame_mu*dgamma_plsInd*Normal_plsInd
-			stress[:, plsInd] = symtensor2arrayForAll(sigma[:, :, plsInd], dim)
+			stress[:, plsInd] = symtensor2array4All(sigma[:, :, plsInd], dim)
 
 			# Update plastic strain
 			Tpls[:, :, plsInd] += dgamma_plsInd*Normal_plsInd
-			pls_new[:, plsInd] = symtensor2arrayForAll(Tpls[:, :, plsInd], dim)
+			pls_new[:, plsInd] = symtensor2array4All(Tpls[:, :, plsInd], dim)
 
 			# Update backstress
 			Tb[:, :, plsInd] += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
-			b_new[:, plsInd] = symtensor2arrayForAll(Tb[:, :, plsInd], dim)
+			b_new[:, plsInd] = symtensor2array4All(Tb[:, :, plsInd], dim)
 
 			# Update tangent coefficients
 			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
@@ -258,7 +258,7 @@ def block_dot_product(d, A, B):
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
 
-def symtensor2arrayForAll(tensors, dim):
+def symtensor2array4All(tensors, dim):
 	nvoigt = int(dim*(dim+1)/2); nnz = np.size(tensors, axis=2)
 	array  = np.zeros((nvoigt, nnz))
 	k = 0
@@ -271,7 +271,7 @@ def symtensor2arrayForAll(tensors, dim):
 			k += 1
 	return array
 
-def array2symtensorForAll(arrays, dim):
+def array2symtensor4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	tensor = np.zeros((dim, dim, nnz))
 	k = 0
@@ -285,17 +285,17 @@ def array2symtensorForAll(arrays, dim):
 			k += 1
 	return tensor
 
-def evalTraceForAll(arrays, dim):
+def evalTrace4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	trace = np.zeros(nnz)
 	for i in range(dim):
 		trace += arrays[i, :]
 	return trace
 
-def computeVMStressForAll(arrays, dim):
+def computeVMStress4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	nvgt  = int(dim*(dim+1)/2)
-	trace = evalTraceForAll(arrays, dim)
+	trace = evalTrace4All(arrays, dim)
 	dev   = np.copy(arrays)
 	for i in range(dim):
 		dev[i, :] -= 1.0/3.0*trace

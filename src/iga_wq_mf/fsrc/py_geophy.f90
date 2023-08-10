@@ -171,7 +171,7 @@ end subroutine interpolate_meshgrid_3d
 
 subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, invJ, detJ, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, detJ, &
                             b, nbIterPCG, threshold, x, resPCG)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
@@ -194,8 +194,8 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision, intent(in) :: invJ, detJ
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total)
+    double precision, intent(in) :: detJ
+    dimension :: detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
     dimension :: b(nm, nr_total)
@@ -217,7 +217,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
-    double precision :: ones(nc_total)
+    double precision :: ones(nc_total), dummy(dimen, dimen, nc_total)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
@@ -225,8 +225,8 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Set material and solver
-    mat%dimen = dimen; ones = 1.d0
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%dimen = dimen; ones = 1.d0; dummy = 0.d0
+    call setup_geometry(mat, nc_total, dummy, detJ)
     call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
@@ -344,7 +344,7 @@ end subroutine interpolate_meshgrid_2d
 
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, invJ, detJ, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, detJ, &
                             b, nbIterPCG, threshold, x, resPCG)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
@@ -365,8 +365,8 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    double precision, intent(in) :: invJ, detJ
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total)
+    double precision, intent(in) :: detJ
+    dimension :: detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
     dimension :: b(nm, nr_total)
@@ -388,14 +388,14 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
-    double precision :: ones(nc_total)
+    double precision :: ones(nc_total), dummy(dimen, dimen, nc_total)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen; ones = 1.d0
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%dimen = dimen; ones = 1.d0; dummy = 0.d0
+    call setup_geometry(mat, nc_total, dummy, detJ)
     call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
@@ -487,7 +487,53 @@ subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
 
 end subroutine interpolate_meshgrid_1d
 
-subroutine get_forcevol_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
+subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
+                            nnz_u, indi_u, indj_u, data_B_u, data_W_u, detJ, &
+                            b, nbIterPCG, threshold, x, resPCG)
+    !! Preconditioned conjugate gradient to solve interpolation problem
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nm, nr_total, nc_total, nr_u, nc_u, nnz_u
+    integer, intent(in) :: indi_u, indj_u
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    double precision, intent(in) :: data_B_u, data_W_u
+    dimension :: data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
+
+    double precision, intent(in) :: detJ
+    dimension :: detJ(nc_total)
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold, b
+    dimension :: b(nm, nr_total)
+    
+    double precision, intent(out) :: x, resPCG
+    dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    integer :: i 
+    double precision :: data_Wt
+    dimension :: data_Wt(nnz_u)
+    double precision :: WW, BB, A
+    dimension :: WW(nr_u, nc_u), BB(nr_u, nc_u), A(nr_u, nr_u)
+
+    if (nr_total.ne.nr_u) stop 'Size problem'
+    resPCG = threshold
+    do i = 1, nnz_u
+        data_Wt(i) = data_W_u(i, 1) * detJ(indj_u(i)) 
+    end do
+    call csr2dense(nnz_u, indi_u, indj_u, data_Wt, nr_u, nc_u, WW)
+    call csr2dense(nnz_u, indi_u, indj_u, data_B_u(:, 1), nr_u, nc_u, BB)
+    A = matmul(WW, transpose(BB))
+    do i = 1, nm
+        call solve_linear_system(nr_u, nr_u, A, b(i, :), x(i, :))
+    end do
+
+end subroutine l2projection_ctrlpts_1d
+
+subroutine get_forcevol_2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, detJ, prop, array_out)
     !! Computes volumetric force vector in 3D 
     !! IN CSR FORMAT
@@ -495,25 +541,24 @@ subroutine get_forcevol_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
     double precision, intent(in) :: detJ, prop
-    dimension :: detJ(nc_total), prop(dimen, nc_total)
+    dimension :: detJ(nc_total), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_u*nr_v)
+    dimension :: array_out(nm, nr_u*nr_v)
 
     ! Local data
     ! ----------
     integer :: i
     double precision :: tmp(nc_total)
 
-    do i = 1, dimen
+    do i = 1, nm
         tmp = prop(i, :)*detJ
         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
@@ -523,7 +568,7 @@ subroutine get_forcevol_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_
 
 end subroutine get_forcevol_2d
 
-subroutine get_forcevol_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+subroutine get_forcevol_3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, detJ, prop, array_out)
     !! Computes volumetric force vector in 3D 
@@ -532,8 +577,7 @@ subroutine get_forcevol_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3 
-    integer, intent(in) :: nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -541,17 +585,17 @@ subroutine get_forcevol_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
     double precision, intent(in) :: detJ, prop
-    dimension :: detJ(nc_total), prop(dimen, nc_total)
+    dimension :: detJ(nc_total), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_u*nr_v*nr_w)
+    dimension :: array_out(nm, nr_u*nr_v*nr_w)
 
     ! Local data
     ! ----------
     integer :: i
     double precision :: tmp(nc_total)
 
-    do i = 1, dimen
+    do i = 1, nm
         tmp = prop(i, :)*detJ
         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
@@ -562,7 +606,7 @@ subroutine get_forcevol_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
 
 end subroutine get_forcevol_3d
 
-subroutine get_forcesurf_2d(nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, JJ, prop, array_out)
+subroutine get_forcesurf_2d(nm, nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_u, JJ, prop, array_out)
     !! Computes boundary force vector in 3D 
     !! IN CSR FORMAT
 
@@ -570,21 +614,21 @@ subroutine get_forcesurf_2d(nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 2
-    integer, intent(in) :: nc_total, nr_u, nc_u, nnz_u
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nnz_u
     integer, intent(in) :: indi_u, indj_u
     dimension :: indi_u(nr_u+1), indj_u(nnz_u)
     double precision, intent(in) :: data_W_u
     dimension :: data_W_u(nnz_u, 4)
     double precision, intent(in) :: JJ, prop
-    dimension :: JJ(dimen, dimen-1, nc_total), prop(dimen, nc_total)
+    dimension :: JJ(dimen, dimen-1, nc_total), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_u)
+    dimension :: array_out(nm, nr_u)
 
     ! Local data
     ! ----------
     double precision :: coefs, dsurf, v1, W00
-    dimension :: coefs(dimen, nc_total), v1(dimen), W00(nr_u, nc_total)
+    dimension :: coefs(nm, nc_total), v1(dimen), W00(nr_u, nc_total)
     integer :: i
 
     if (nc_total.ne.nc_u) stop 'Size problem'
@@ -596,17 +640,14 @@ subroutine get_forcesurf_2d(nc_total, nr_u, nc_u, nnz_u, indi_u, indj_u, data_W_
         coefs(:, i) = prop(:, i)*dsurf
     end do
 
-    ! Compute force
-    W00 = 0.d0
     call csr2dense(nnz_u, indi_u, indj_u, data_W_u, nr_u, nc_u, W00)
-
-    do i = 1, dimen
+    do i = 1, nm
         array_out(i, :) = matmul(W00, coefs(i, :))
     end do
     
 end subroutine get_forcesurf_2d
 
-subroutine get_forcesurf_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+subroutine get_forcesurf_3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, JJ, prop, array_out)
     !! Computes boundary force vector in 3D 
     !! IN CSR FORMAT
@@ -615,22 +656,22 @@ subroutine get_forcesurf_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 3
-    integer, intent(in) ::  nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-    integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_W_u, data_W_v
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
     double precision, intent(in) :: JJ, prop
-    dimension :: JJ(dimen, dimen-1, nc_total), prop(dimen, nc_total)
+    dimension :: JJ(dimen, dimen-1, nc_total), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(dimen, nr_u*nr_v)
+    dimension :: array_out(nm, nr_u*nr_v)
 
     ! Local data
     ! ----------
     double precision :: coefs, dsurf, v1, v2, v3
-    dimension :: coefs(dimen, nc_total), v1(dimen), v2(dimen), v3(dimen)
+    dimension :: coefs(nm, nc_total), v1(dimen), v2(dimen), v3(dimen)
     integer :: i
 
     ! Compute coefficients
@@ -639,11 +680,10 @@ subroutine get_forcesurf_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
         v2 = JJ(:, 2, i)
         call crossproduct(v1, v2, v3)
         dsurf = sqrt(dot_product(v3, v3))
-        coefs(:, i) = prop(:, i) * dsurf
+        coefs(:, i) = prop(:, i)*dsurf
     end do
 
-    ! Compute force
-    do i = 1, dimen
+    do i = 1, nm
         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, &
                         data_W_u(:, 1), nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                         coefs(i, :), array_out(i, :))

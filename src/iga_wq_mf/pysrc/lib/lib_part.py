@@ -6,7 +6,7 @@
 
 # My libraries
 from .__init__ import *
-from .lib_base import evalDersBasisFortran
+from .lib_base import evalDersBasisFortran, get_INCTable, get_faceInfo
 from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part(): 
@@ -115,26 +115,82 @@ class part():
 
 		print('Evaluating jacobien and physical position')
 		start = time.process_time()
-		inputs = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
+		inpts = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
-			self.Jqp = geophy.eval_jacobien_2d(*inputs)
+			self.Jqp = geophy.eval_jacobien_2d(*inpts)
 			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
-			self.qpPhy = geophy.interpolate_meshgrid_2d(*inputs)
+			self.qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 		if self.dim == 3:
-			self.Jqp = geophy.eval_jacobien_3d(*inputs)
+			self.Jqp = geophy.eval_jacobien_3d(*inpts)
 			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
-			self.qpPhy = geophy.interpolate_meshgrid_3d(*inputs)
+			self.qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
 		return
 	
+	# def L2projectionCtrlptsSurf(self, surffun, nbFacePosition):
+	# 	" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
+	# 	INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
+	# 	direction, side = get_faceInfo(nbFacePosition)
+	# 	if direction>=2*self.part.dim: raise Warning('Not possible')
+	# 	valrange = [i for i in range(self.part.dim)]
+	# 	valrange.pop(direction)
+	# 	if side == 0:   CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
+	# 	elif side == 1: CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
+	# 	CPList = list(np.sort(CPList)); CtrlPts = self.part.ctrlpts[:, CPList]
+
+	# 	nnz, indices, basis, weights = [], [], [], []
+	# 	for _ in valrange:
+	# 		nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
+	# 		indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
+	# 	inpts = [*nnz, *indices, *basis, CtrlPts]
+	# 	if self.part.dim == 2: 
+	# 		Jqp = geophy.eval_jacobien_1d(*inpts)
+	# 		qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
+	# 	elif self.part.dim == 3:
+	# 		Jqp = geophy.eval_jacobien_2d(*inpts)
+	# 		qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+		
+	# 	prop = surffun(qpPhy); prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
+	# 	inpts = [*nnz, *indices, *weights, Jqp, prop]
+	# 	if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
+	# 	elif self.part.dim == 3: tmp = geophy.get_forcesurf_3d(*inpts)
+	# 	surfForce = np.zeros((nr, self.part.nbctrlpts_total))
+	# 	surfForce[:, CPList] = tmp
+		
+	# 	nc = np.size(Jqp, axis=2); detJ = np.zeros(nc)
+	# 	if self.part.dim == 2:
+	# 		for i in range(nc):
+	# 			v1 = Jqp[:, 0, i]
+	# 			detJ[i] = np.sqrt(np.dot(v1, v1))
+	# 	elif self.part.dim == 3:
+	# 		for i in range(nc):
+	# 			v1 = Jqp[:, 0, i]; v2 = Jqp[:, 1, i]
+	# 			v3 = np.cross(v1, v2)
+	# 			detJ[i] = np.sqrt(np.dot(v3, v3))
+
+	# 	inpts = [*nnz, *indices, *basis, *weights, detJ, surfForce, self._nbIterPCG, self._thresholdPCG]
+	# 	if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_1d(*inpts)
+	# 	if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
+	# 	if nr == 1: u_interp = np.ravel(u_interp)
+	# 	return
+
+	# def L2projectionCtrlptsVol(self, volfun):
+	# 	" Given the solution field (function or scattered points), it computes the L2 projection, ie. the value at control points. "
+	# 	volForce = self.eval_volForce(volfun); nr = np.size(volForce, axis=0)
+	# 	inpts = [*self._getInputs(), self.part.detJ, volForce, self._nbIterPCG, self._thresholdPCG]
+	# 	if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
+	# 	if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
+	# 	if nr == 1: u_interp = np.ravel(u_interp)
+	# 	return u_interp
+
 	# ----------------
 	# POST-PROCESSING 
 	# ----------------
 
 	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=101, isAll=True):
 		# Initialize all outputs
-		meshinterp, Jinterp, detJinterp, uinterp = None, None, None, None
+		qpPhy, Jqp, detJ, uinterp = None, None, None, None
 
 		# Get basis using fortran
 		knots = np.linspace(0, 1, sampleSize)
@@ -145,26 +201,26 @@ class part():
 
 		# Get position and determinant 
 		if isAll:
-			inputs = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
+			inpts = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
 			if self.dim == 2:
-				Jinterp = geophy.eval_jacobien_2d(*inputs)
-				detJinterp = geophy.eval_inverse_det(Jinterp)[0]
-				meshinterp = geophy.interpolate_meshgrid_2d(*inputs)
+				Jqp   = geophy.eval_jacobien_2d(*inpts)
+				detJ  = geophy.eval_inverse_det(Jqp)[0]
+				qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 			elif self.dim == 3: 
-				Jinterp = geophy.eval_jacobien_3d(*inputs)
-				detJinterp = geophy.eval_inverse_det(Jinterp)[0]
-				meshinterp = geophy.interpolate_meshgrid_3d(*inputs)
+				Jqp   = geophy.eval_jacobien_3d(*inpts)
+				detJ  = geophy.eval_inverse_det(Jqp)[0]
+				qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
 
 		if u_ctrlpts is not None: 
-			u_temp = np.atleast_2d(u_ctrlpts)
-			nr = np.size(u_temp, axis=0)
-			inputs = [*self.dim*[sampleSize], *indices, *basis, u_temp]
+			tmp = np.atleast_2d(u_ctrlpts)
+			nr  = np.size(tmp, axis=0)
+			inpts = [*self.dim*[sampleSize], *indices, *basis, tmp]
 
-			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inputs)    
-			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inputs)
+			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
+			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
 			if nr == 1: uinterp = np.ravel(uinterp)
 
-		return meshinterp, Jinterp, detJinterp, uinterp
+		return qpPhy, Jqp, detJ, uinterp
 
 	def exportResultsCP(self, fields={}, folder=None, sampleSize=101): 
 		""" Export solution in VTK format. 
@@ -179,15 +235,15 @@ class part():
 		print("File saved in %s" %folder)
 
 		# Only interpolate meshgrid
-		meshinterp, _, detJinterp = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
-		detJinterp /= statistics.mean(detJinterp)
+		qpPhy, _, detJ = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
+		detJ /= statistics.mean(detJ)
 
 		shape = [1, 1, 1]
 		for dim in range(self.dim): shape[dim] = sampleSize
 		shape = tuple(shape)
 		X = [np.zeros(shape) for i in range(3)]
-		for i in range(2): X[i] = np.reshape(np.ravel(meshinterp[i, :]), shape, order='F')
-		if self.dim == 3:  X[2] = np.reshape(np.ravel(meshinterp[-1, :]), shape, order='F')
+		for i in range(2): X[i] = np.reshape(np.ravel(qpPhy[i, :]), shape, order='F')
+		if self.dim == 3:  X[2] = np.reshape(np.ravel(qpPhy[-1, :]), shape, order='F')
 		
 		# Create point data 
 		pointData = {}
@@ -200,7 +256,7 @@ class part():
 					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), shape, order='F')
 			else:
 				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), shape, order='F')
-		pointData['detJ'] = np.reshape(np.ravel(detJinterp), shape, order='F')
+		pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
 
 		# Export geometry
 		try: name    = self.name

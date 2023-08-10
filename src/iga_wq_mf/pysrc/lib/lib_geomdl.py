@@ -5,7 +5,7 @@
 """
 
 from .__init__ import *
-from .lib_base import createUniformMaxregularKnotvector, evalDersBasisFortran
+from .lib_base import createUniformMaxregularKnotvector
 from .lib_quadrules import GaussQuadrature
 
 class Geomdl():

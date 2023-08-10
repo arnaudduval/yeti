@@ -1,4 +1,5 @@
 from .__init__ import *
+from .lib_base import get_INCTable
 
 class boundaryCondition():
 
@@ -130,15 +131,3 @@ class boundaryCondition():
 			self.mchdod[i] = np.array(tmp, dtype=int)
 		self.__update_mchDirichletBound()
 		return 
-
-def get_INCTable(nnzByDimension):
-	" Sets topology table, also known as INC: NURBS coordinates. "
-	# Create INC: NURBS coordinates
-	nnz_total = np.prod(nnzByDimension)
-	table = np.zeros((nnz_total, 3), dtype= int)
-	for i3 in range(nnzByDimension[2]): 
-		for i2 in range(nnzByDimension[1]): 
-			for i1 in range(nnzByDimension[0]):
-				genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1]
-				table[genPos, :] = [i1, i2, i3]
-	return table

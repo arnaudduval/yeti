@@ -10,7 +10,7 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import (mechamat, computeVMStressForAll)
+from pysrc.lib.lib_material import (mechamat, computeVMStress4All)
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import mechaproblem
 
@@ -68,6 +68,6 @@ print('CPU time: %5e' %(stop-start))
 
 strain = problem.interpolate_strain(disp_cp)
 stress = problem.material.evalElasticStress(strain)
-stress_vm = computeVMStressForAll(stress, 2)
+stress_vm = computeVMStress4All(stress, 2)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
 print('Difference: %.4e' %(abs(stress_vm.max()-stress_vm.min())))
