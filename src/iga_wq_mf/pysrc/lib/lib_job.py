@@ -96,7 +96,7 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def L2NormOfError(self, exactfun, u_ctrlpts):
+	def L2NormOfError_withExactFun(self, exactfun, u_ctrlpts):
 		""" Computes the norm L2 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
