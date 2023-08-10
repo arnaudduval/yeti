@@ -6,7 +6,7 @@ from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_simulation import steadydecoder
 
-def powden_cube(P: list):
+def powerDensity_cube(P: list):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
 		f = -div(lambda * grad(u))
 	"""
@@ -26,7 +26,7 @@ def powden_cube(P: list):
 
 	return f
 
-def powden_prism(P: list):
+def powerDensity_prism(P: list):
 	""" u = (-5*x+6*y+45)*(5*x+6*y-45)*x*(x-6)*sin(pi*z)
 		f = -div(lambda * grad(u))
 	"""
@@ -57,7 +57,7 @@ def powden_prism(P: list):
 	
 	return f
 
-def powden_thickring(P: list):
+def powerDensity_thickRing(P: list):
 	""" u = sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
@@ -211,7 +211,7 @@ cuts_list   = np.arange(4, 5)
 name_list   = ['cb', 'vb', 'tr']
 IterMethods = ['WP', 'C', 'JMC', 'TDC']
 
-def setKprop(P:list):
+def conductivityProperty(P:list):
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
@@ -229,9 +229,9 @@ for cuts in cuts_list:
 	for degree in degree_list:
 		for name in name_list: 
 
-			if name   == 'cb' : funpow = powden_cube 
-			elif name == 'vb' : funpow = powden_prism 
-			elif name == 'tr' : funpow = powden_thickring 
+			if name   == 'cb' : funpow = powerDensity_cube 
+			elif name == 'vb' : funpow = powerDensity_prism 
+			elif name == 'tr' : funpow = powerDensity_thickRing 
 
 			inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': name, 'isGauss': False, 
 					'funPowerDensity': funpow, 'IterMethods': IterMethods, 'folder': folder}
@@ -239,7 +239,7 @@ for cuts in cuts_list:
 			
 			if not dataExist:
 				mat = thermomat()
-				mat.addConductivity(setKprop, isIsotropic=False)				
+				mat.addConductivity(conductivityProperty, isIsotropic=False)				
 				boundary = boundaryCondition(simulation._nbctrlpts*np.ones(3, dtype=int))
 				boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=bool))
 				simulation.simulate(material=mat, boundary=boundary, overwrite=True)

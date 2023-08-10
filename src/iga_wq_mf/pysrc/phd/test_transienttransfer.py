@@ -6,7 +6,7 @@ from pysrc.lib.lib_material import thermomat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import heatproblem
 
-def setKprop(P:list):
+def conductivityProperty(P:list):
 	cst = 10
 	T   = P[3, :]
 	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
@@ -19,7 +19,7 @@ def setKprop(P:list):
 			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(T-1.0))))
 	return Kprop 
 
-def setCprop(P:list):
+def capacityProperty(P:list):
 	cst = 1.0
 	T = P[3, :]
 	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
@@ -32,7 +32,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 dataExist   = False
-geo_list    = ['CB', 'VB']
+geo_list    = ['cb', 'vb']
 IterMethods = ['C', 'JMC', 'TDC', 'WP']
 example     = 2
 if   example == 1: nbSteps = 41
@@ -58,8 +58,8 @@ if not dataExist:
 
 			# Add material 
 			material = thermomat()
-			material.addConductivity(setKprop, isIsotropic=False) 
-			material.addCapacity(setCprop, isIsotropic=False) 
+			material.addConductivity(conductivityProperty, isIsotropic=False) 
+			material.addCapacity(capacityProperty, isIsotropic=False) 
 
 			# Block boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
@@ -86,7 +86,6 @@ if not dataExist:
 			resPCG = problem.solveNLTransientHeatProblemPy(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
 														time_list=time_list[:lastStep], theta=1.0)
 			np.savetxt(filename, resPCG)
-			modelPhy.exportResultsCP(fields={'temperature': Tinout[:, lastStep-1]}, folder=folder)
 
 else:
 

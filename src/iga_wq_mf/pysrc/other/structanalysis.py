@@ -1,5 +1,6 @@
-from pysrc.lib.lib_structanalysis import *
+from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector
+from pysrc.other.lib_structanalysis import Timoshenko
 
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'

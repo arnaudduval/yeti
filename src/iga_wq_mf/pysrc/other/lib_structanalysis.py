@@ -1,5 +1,5 @@
-from .__init__ import *
-from .thermomecha1D import part1D
+from pysrc.lib.__init__ import *
+from pysrc.lib.thermomecha1D import part1D
 
 class Timoshenko(part1D):
 	def __init__(self, kwargs:dict):
