@@ -113,7 +113,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			# Solve elastic problem
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fsurf = problem.compute_surfForce(heatFlux_thickRing, nbFacePosition=1)
+			Fsurf = problem.compute_surfForce(heatFlux_thickRing, nbFacePosition=1)[0]
 			Fvol  = problem.compute_volForce(powerDensity_thickRing)
 			Fext  = Fvol + Fsurf
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
@@ -129,4 +129,4 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigThickRing2_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigThickRing_' + str(quadArgs['quadrule']) +'.png')

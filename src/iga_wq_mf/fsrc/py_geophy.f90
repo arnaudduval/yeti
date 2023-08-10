@@ -38,6 +38,43 @@ subroutine eigen_decomposition_py(nr, nc, univMcoefs, univKcoefs, nnz, indi, ind
 
 end subroutine eigen_decomposition_py
 
+subroutine eval_normal(nr, nc_total, JJ, normal)
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, nc_total
+    double precision, intent(in) :: JJ
+    dimension :: JJ(nr, nr-1, nc_total)
+
+    double precision, intent(out) :: normal 
+    dimension :: normal(nr, nc_total)
+
+    ! Local data
+    ! ----------
+    integer :: i
+    double precision, dimension(3) :: t1, t2, t3
+    double precision :: norm
+
+    if ((nr.lt.2).or.(nr.gt.3)) stop 'Size problem'
+    t1 = 0.d0; t2 = 0.d0; normal = 0.d0
+    if (nr.eq.3) then 
+        do i = 1, nc_total
+            t1 = JJ(:, 1, i); t2 = JJ(:, 2, i)
+            call crossproduct(t1, t2, t3)
+            norm = norm2(t3)
+            normal(:, i) = t3/norm
+        end do
+    else
+        t2(3) = 1.d0
+        do i = 1, nc_total
+            t1(:nr) = JJ(:, 1, i)
+            call crossproduct(t1, t2, t3)
+            norm = norm2(t3)
+            normal(:, i) = t3(:nr)/norm
+        end do
+    end if
+end subroutine eval_normal
+
 subroutine eval_inverse_det(nr, nnz, M, detM, invM)
     !! Computes the inverse and determinant of a matrix in a format (:, :, nnz)
     use omp_lib

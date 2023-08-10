@@ -119,17 +119,6 @@ def get_INCTable(nnzByDimension):
 				table[genPos, :] = [i1, i2, i3]
 	return table
 
-def crossProd4All(v1, v2):
-	m1 = np.shape(v1, axis=0); m2 = np.shape(v2, axis=0)
-	if m1 != 3 or m2 != 3: raise Warning('Size problem')
-	nnz1 = np.shape(v1, axis=1); nnz2 = np.shape(v2, axis=1)
-	if nnz1 != nnz2: raise Warning('Size problem')
-	v3 = np.zeros((3, nnz1))
-	v3[0, :] = v1[1, :]*v2[2, :] - v1[2, :]*v2[1, :]
-	v3[1, :] = v1[2, :]*v2[0, :] - v1[0, :]*v2[2, :]
-	v3[2, :] = v1[0, :]*v2[1, :] - v1[1, :]*v2[0, :]
-	return v3
-
 # ==========================
 # B-SPLINE FUNCTIONS
 # ==========================
