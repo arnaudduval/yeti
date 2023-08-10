@@ -14,9 +14,6 @@ def powerDensity_cube(P: list):
 	y = P[1, :]
 	z = P[2, :]
 
-	# # Isotropy
-	# f = 3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
-
 	# Anisotropy
 	f = (6*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
 	- (np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*z)*np.sin(np.pi*y))/5 
@@ -33,13 +30,6 @@ def powerDensity_prism(P: list):
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
-
-	# # Isotropy
-	# f = (10*x*np.sin(np.pi*z)*(5*x + 6*y - 45) - 22*x*np.sin(np.pi*z)*(x - 6) 
-	#     - 10*x*np.sin(np.pi*z)*(6*y - 5*x + 45) - 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-	#     - 10*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) + 10*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
-	#     + x*np.pi**2*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-	# )/1000
 
 	# Anisotropy
 	f = (4*x*np.sin(np.pi*z)*(5*x + 6*y - 45) 
@@ -64,18 +54,6 @@ def powerDensity_thickRing(P: list):
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :] 
-
-	# # Isotropy
-	# f = (75*np.pi**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
-	#     - 8*y**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
-	#     - 4*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
-	#     - 4*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
-	#     - 8*x**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z) 
-	#     - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
-	#     - 20*x*np.pi*np.cos(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4) 
-	#     - 20*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1) 
-	#     - 20*y*np.pi*np.cos(5*np.pi*y)*np.sin(5*np.pi*x)*np.sin(5*np.pi*z)*(x**2 + y**2 - 4)
-	# )
 
 	# Anisotropy
 	f = (150*np.pi**2*np.sin(5*np.pi*x)*np.sin(5*np.pi*y)*np.sin(5*np.pi*z)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)

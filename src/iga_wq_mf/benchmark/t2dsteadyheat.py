@@ -16,10 +16,8 @@ folder = os.path.dirname(full_path) + '/results/d2steadyheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(P:list):
-	x = P[0, :]
-	y = P[1, :]
 	Kref  = np.array([[1, 0.5],[0.5, 2]])
-	Kprop = np.zeros((2, 2, len(x)))
+	Kprop = np.zeros((2, 2, np.size(P, axis=1)))
 	for i in range(2): 
 		for j in range(2):
 			Kprop[i, j, :] = Kref[i, j] 
