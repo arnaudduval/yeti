@@ -1,5 +1,5 @@
 from .__init__ import *
-from .lib_base import get_faceInfo, get_INCTable
+from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
 from .lib_material import (thermomat, mechamat, 
 							clean_dirichlet, block_dot_product)
@@ -26,7 +26,7 @@ class problem():
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 	
-	def __getInfoOverSurface(self, nbFacePosition):
+	def __getInfo4surfForce(self, nbFacePosition):
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
 		if direction>=2*self.part.dim: raise Warning('Not possible')
@@ -54,7 +54,7 @@ class problem():
 			The surffun is a Neumann like function, ie, in transfer heat q = - (k grad(T)).normal
 			and in elasticity t = sigma.normal
 		"""
-		nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfoOverSurface(nbFacePosition)
+		nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfo4surfForce(nbFacePosition)
 		prop = surffun(qpPhy); prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
 		inpts = [*nnz, *indices, *weights, Jqp, prop]
 		if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
@@ -65,7 +65,7 @@ class problem():
 		return surfForce, CPList
 	
 	def compute_surfForce_woNormal(self, gradfun, nbFacePosition):
-		nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfoOverSurface(nbFacePosition)
+		nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfo4surfForce(nbFacePosition)
 
 		normal_qpPhy = geophy.eval_normal(Jqp)
 		if np.any(np.array([0, 3, 4], dtype=int) == nbFacePosition): normal_qpPhy = -normal_qpPhy 
@@ -96,38 +96,52 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def L2NormOfError_withExactFun(self, exactfun, u_ctrlpts):
+	def L2NormOfError(self, u_ctrlpts, L2NormArgs:dict):
 		""" Computes the norm L2 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
-		"""
-		tmp = np.atleast_2d(u_ctrlpts)
-		nr  = np.size(tmp, axis=0)
-		modelIGA = self.part
-
-		nbqp, indices, basis, parweightsbyDir = [], [], [], []
-		for i in range(modelIGA.dim):
-			quadRule = GaussQuadrature(modelIGA.degree[i], modelIGA.knotvector[i], quadArgs={'type':'leg'})
-			_, dersIndices, dersBasis, _ = quadRule.getQuadratureRulesInfo()
-			indi, indj = dersIndices; parweights = quadRule._parametricWeights
+		"""	
+		# Compute u interpolation
+		nr = np.size(np.atleast_2d(u_ctrlpts), axis=0)
+		nbqp, quadPts, indices, basis, parametricWeights = [], [], [], [], []
+		for i in range(self.part.dim):
+			quadRule = GaussQuadrature(self.part.degree[i], self.part.knotvector[i], quadArgs={'type':'leg'})
+			quadPtsByDir, indicesByDir, basisByDir, _ = quadRule.getQuadratureRulesInfo()
+			indi, indj = indicesByDir; parweightsByDir = quadRule._parametricWeights
 			
-			nbqp.append(quadRule.nbqp); indices.append(indi); indices.append(indj)
-			basis.append(dersBasis); parweightsbyDir.append(parweights)
+			nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
+			basis.append(basisByDir); parametricWeights.append(parweightsByDir)
 
 		inpts = [*nbqp, *indices, *basis]
-		if modelIGA.dim == 2:
-			Jqp = geophy.eval_jacobien_2d(*inpts, modelIGA.ctrlpts)
+		if self.part.dim == 2:
+			Jqp = geophy.eval_jacobien_2d(*inpts, self.part.ctrlpts)
 			detJ, _ = geophy.eval_inverse_det(Jqp)
-			qpPhy = geophy.interpolate_meshgrid_2d(*inpts, modelIGA.ctrlpts)
-			u_interp = geophy.interpolate_meshgrid_2d(*inpts, tmp)
-		if modelIGA.dim == 3:
-			Jqp = geophy.eval_jacobien_3d(*inpts, modelIGA.ctrlpts)
+			qpPhy = geophy.interpolate_meshgrid_2d(*inpts, self.part.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ctrlpts))
+		if self.part.dim == 3:
+			Jqp = geophy.eval_jacobien_3d(*inpts, self.part.ctrlpts)
 			detJ, _ = geophy.eval_inverse_det(Jqp)
-			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, modelIGA.ctrlpts)
-			u_interp = geophy.interpolate_meshgrid_3d(*inpts, tmp)
+			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, self.part.ctrlpts)
+			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
 		if nr == 1: u_interp = np.ravel(u_interp)
 
-		u_exact     = exactfun(qpPhy)
+		# Compute u exact
+		u_exact  = None
+		exactfun = L2NormArgs.get('exactFunction', None)
+		if callable(exactfun): u_exact = exactfun(qpPhy)
+		refPart  = L2NormArgs.get('referencePart', None); u_ref = L2NormArgs.get('u_ref', None)
+		if isinstance(refPart, part) and isinstance(u_ref, np.ndarray):
+			nbqpExact, basisExact, indicesExact = [], [], []
+			for i in range(self.part.dim):
+				basis, indi, indj = evalDersBasisFortran(refPart.degree[i], refPart.knotvector[i], quadPts[i])
+				nbqpExact.append(len(quadPts)); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+			inpts = [*nbqpExact, *indicesExact, *basisExact, np.atleast_2d(u_ref)]
+			if self.dim == 2:   u_exact = geophy.interpolate_meshgrid_2d(*inpts)    
+			elif self.dim == 3: u_exact = geophy.interpolate_meshgrid_3d(*inpts)
+			if nr == 1: u_exact = np.ravel(u_exact)
+		if u_exact is None: raise Warning('Not possible')
+
+		# Compute error
 		ue_diff_uh2 = (u_exact - u_interp)**2 
 		ue2         = u_exact**2
 		if nr > 1: 
@@ -138,12 +152,12 @@ class problem():
 
 		ue_diff_uh2 = np.reshape(ue_diff_uh2, tuple(nbqp), order='F')
 		ue2         = np.reshape(ue2, tuple(nbqp), order='F')
-		if modelIGA.dim == 2: 
-			tmp1 = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue2)
-			tmp2 = np.einsum('i,j,ij->', parweightsbyDir[0], parweightsbyDir[1], ue_diff_uh2)
-		if modelIGA.dim == 3: 
-			tmp1 = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue2)
-			tmp2 = np.einsum('i,j,k,ijk->', parweightsbyDir[0], parweightsbyDir[1], parweightsbyDir[2], ue_diff_uh2)
+		if self.part.dim == 2: 
+			tmp1 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue2)
+			tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue_diff_uh2)
+		if self.part.dim == 3: 
+			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue2)
+			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue_diff_uh2)
 		error = np.sqrt(tmp2/tmp1)
 
 		return error

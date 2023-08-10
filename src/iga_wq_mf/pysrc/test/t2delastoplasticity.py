@@ -45,7 +45,7 @@ def exactDisplacement_infPlate(P:list):
 # Set global variables
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu, 
-			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}} # Any law, it does not matter
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
@@ -81,7 +81,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
 			Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 			Fext_list[:, :, 1] += problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 			displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
-			error_list[j] = problem.L2NormOfError_withExactFun(exactDisplacement_infPlate, displacement[:, :, -1])
+			error_list[j] = problem.L2NormOfError(displacement[:, :, -1], L2NormArgs={'exactFunction':exactDisplacement_infPlate})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))

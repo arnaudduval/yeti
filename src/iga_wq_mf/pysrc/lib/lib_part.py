@@ -156,9 +156,8 @@ class part():
 				qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
 
 		if u_ctrlpts is not None: 
-			tmp = np.atleast_2d(u_ctrlpts)
-			nr  = np.size(tmp, axis=0)
-			inpts = [*self.dim*[sampleSize], *indices, *basis, tmp]
+			nr    = np.size(np.atleast_2d(u_ctrlpts), axis=0)
+			inpts = [*self.dim*[sampleSize], *indices, *basis, np.atleast_2d(u_ctrlpts)]
 
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
 			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)

@@ -92,7 +92,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError_withExactFun(exactTemperature_quartCircle, temperature)
+			error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_quartCircle})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))

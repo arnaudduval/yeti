@@ -102,7 +102,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			Fvol = problem.compute_volForce(powerDensity_rotRing)
 			Fext = Fvol + Fsurf			
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError_withExactFun(exactTemperature_rotRing, temperature)
+			error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_rotRing})
 
 		nbctrlpts_list = (2**cuts_list+degree)**3
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))

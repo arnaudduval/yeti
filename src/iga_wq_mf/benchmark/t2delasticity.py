@@ -103,7 +103,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError_withExactFun(exactDisplacement_infPlate, displacement)
+			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
