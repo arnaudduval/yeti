@@ -1,9 +1,5 @@
 """
-.. Test of elastoplasticity 2D
-.. We test how elasticity module works
-.. SI (Steel) : 
-..      - Stress : MPa (200e3)
-..      - Length : mm
+.. Test of elasticity 2D
 .. Joaquin Cornejo 
 """
 

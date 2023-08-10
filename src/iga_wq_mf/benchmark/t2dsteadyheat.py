@@ -1,5 +1,5 @@
 """
-.. Test of elastoplasticity 2D
+.. Test of steady heat transfer 2D
 .. Joaquin Cornejo 
 """
 

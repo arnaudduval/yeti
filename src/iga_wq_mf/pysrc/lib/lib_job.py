@@ -379,7 +379,7 @@ class mechaproblem(problem):
 				
 				# Iterative solver
 				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveElasticityProblemFT(Fext=dF, mechArgs=mechArgs)
+				vtmp, resPCGt, _ = self.solveElasticityProblemFT(Fext=dF, mechArgs=mechArgs)
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
