@@ -20,7 +20,7 @@ degree_list = np.arange(2, 8)
 
 # Set filename
 filename_data   = folder2find + 'setup_time_' + str(nbel) + '.dat'
-filename_figure = folder2save + 'setup_time_' + str(nbel) + '.png' 
+filename_figure = folder2save + 'setup_time_' + str(nbel) + '.pdf' 
 
 if not dataExist:
 

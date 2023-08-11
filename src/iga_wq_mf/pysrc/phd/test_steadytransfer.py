@@ -224,5 +224,5 @@ for cuts in cuts_list:
 
 			else :
 				simuOutput = steadydecoder(simulation._filename)
-				simuOutput.plot_results(extension='.png', plotLegend=True)
+				simuOutput.plot_results(extension='.pdf', plotLegend=True)
 				

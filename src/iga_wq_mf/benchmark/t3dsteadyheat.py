@@ -90,19 +90,61 @@ def exactTemperature_thickRing(P: list):
 	u = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)*(x**2 + y**2 - 1)
 	return u
 
+def powerDensity_rotRing(P: list):
+	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
+		f = -div(lambda * grad(u))
+	"""
+	x = P[0, :]
+	y = P[1, :]
+	z = P[2, :]
+	
+	f = (6*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
+		- (np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*z)*np.sin(np.pi*y))/5 
+		- (np.pi**2*np.cos(np.pi*y)*np.cos(np.pi*z)*np.sin(np.pi*x))/2 
+		- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*z)
+	)
+
+	return f
+
+def heatFlux_rotRing(P:list):
+	x = P[0, :]; y = P[1, :]; z = P[2, :]; nnz = np.size(P, axis=1)
+	flux = np.zeros((3, nnz))
+	flux[0, :] = (np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z) 
+				+ (np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*np.sin(np.pi*z))/2
+				+ (np.pi*np.cos(np.pi*z)*np.sin(np.pi*x)*np.sin(np.pi*y))/10
+	)
+	flux[1, :] = ((np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z))/2 
+				+ 2*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*np.sin(np.pi*z) 
+				+ (np.pi*np.cos(np.pi*z)*np.sin(np.pi*x)*np.sin(np.pi*y))/4
+	)
+	flux[2, :] = ((np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z))/10 
+				+ (np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*np.sin(np.pi*z))/4 
+				+ 3*np.pi*np.cos(np.pi*z)*np.sin(np.pi*x)*np.sin(np.pi*y)
+	)
+
+	return flux
+
+def exactTemperature_rotRing(P: list):
+	" T = sin(pi*x)*sin(pi*y)*sin(pi*z) "
+	x = P[0, :]; y = P[1, :]; z = P[2, :]
+	u = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z)
+	return u
+
 # Set global variables
+geoName = 'RQA' # 'RQA' or 'TR'
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
-degree_list = np.array([2, 3, 4, 6])
+degree_list = np.array([2, 3, 4])
 cuts_list   = np.arange(2, 7)
 
-for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
+# for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
+for quadrule, quadtype in zip(['iga'], ['leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 	fig, ax = plt.subplots(figsize=(8, 4))
 
 	for i, degree in enumerate(degree_list):
 		for j, cuts in enumerate(cuts_list):
-			geoArgs = {'name': 'TR', 'degree': degree*np.ones(3, dtype=int), 
+			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 			}
 			blockPrint()
@@ -113,7 +155,12 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 			# Set Dirichlet boundaries
-			table = np.ones((3, 2), dtype=int); table[0, 1] = 0
+			table = np.zeros((3, 2), dtype=int)
+			if geoName == 'TR': 
+				table = 1; table[0, 1] = 0
+			elif geoName == 'RQA':
+				table[1, 1] = 1; table[2, :] = 1
+
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
 			boundary.add_DirichletConstTemperature(table=table)
 			enablePrint()
@@ -121,11 +168,21 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 			# Solve elastic problem
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
-			Fsurf = problem.compute_surfForce(heatFlux_thickRing, nbFacePosition=1)[0]
-			Fvol  = problem.compute_volForce(powerDensity_thickRing)
+			if geoName == 'TR':
+				Fsurf = problem.compute_surfForce(heatFlux_thickRing, nbFacePosition=1)[0]
+				Fvol  = problem.compute_volForce(powerDensity_thickRing)
+			elif geoName == 'RQA':
+				Fsurf1, CPList1 = problem.compute_surfForce_woNormal(heatFlux_rotRing, nbFacePosition=0)
+				Fsurf2, CPList2 = problem.compute_surfForce_woNormal(heatFlux_rotRing, nbFacePosition=1)
+				Fsurf3, CPList3 = problem.compute_surfForce_woNormal(heatFlux_rotRing, nbFacePosition=2)
+				Fsurf = Fsurf1 + Fsurf2 + Fsurf3
+				Fvol = problem.compute_volForce(powerDensity_rotRing)
 			Fext  = Fvol + Fsurf
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_thickRing})
+			if geoName == 'TR':
+				error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_thickRing})
+			elif geoName == 'RQA':
+				error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_rotRing})
 
 		nbctrlpts_list = (2**cuts_list+degree)**3
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
@@ -137,4 +194,4 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigThickRing_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')

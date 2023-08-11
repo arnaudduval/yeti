@@ -15,7 +15,7 @@ from pysrc.lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d2delastoplasticity/'
+folder = os.path.dirname(full_path) + '/results/d2elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceSurf_infPlate(P:list):
@@ -69,20 +69,22 @@ def exactDisplacement_infPlate(P:list):
 	return disp
 
 # Set global variables
+geoName = 'QA'
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
-for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
+for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 	fig, ax    = plt.subplots(figsize=(8, 4))
+	time_list  = np.zeros((len(degree_list), len(cuts_list)))
 
 	for i, degree in enumerate(degree_list):
 		for j, cuts in enumerate(cuts_list):
-			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 						'extra':{'Rin':1.0, 'Rex':4.0}
 			}
@@ -104,13 +106,17 @@ for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
 			problem = mechaproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+			start = time.process_time()
 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+			stop = time.process_time()
+			time_list[i, j] = stop - start
+			np.savetxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype), time_list)
 			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
 
-		if str(quadArgs['quadrule']) == 'iga':
+		if quadrule == 'iga':
 			slope = np.polyfit(np.log10(nbctrlpts_list[:4]),np.log10(error_list[:4]), 1)[0]
 			slope = round(slope, 1)
 			annotation.slope_marker((nbctrlpts_list[3], error_list[3]), slope, 
@@ -122,4 +128,17 @@ for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
 		ax.set_xlim(left=10, right=1e5)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigInfinitePlate2_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
+	
+	time_list = np.loadtxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype))
+	fig, ax = plt.subplots(figsize=(8, 4))
+	for j, cuts in enumerate(cuts_list):
+		ax.plot(degree_list, time_list[:, j], label=r'$nb_{el}=$' + ' ' + str(2**cuts))
+	ax.set_xlabel('degree ' + r'$p$')
+	ax.set_ylabel('CPU time (s)')
+	ax.set_xlim(left=1, right=9)
+	ax.set_ylim(bottom=1e-2, top=1e3)
+	ax.set_yscale('symlog')
+	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	fig.tight_layout()
+	fig.savefig(folder + 'FigTime' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')

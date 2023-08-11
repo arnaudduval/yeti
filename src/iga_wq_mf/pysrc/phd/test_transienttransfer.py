@@ -127,7 +127,7 @@ else:
 			ax.set_ybound(lower=1e-12, upper=10)
 
 		axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		filename = folder + 'TransientNL_' + geo + str(example) + '.png'
+		filename = folder + 'TransientNL_' + geo + str(example) + '.pdf'
 		fig.tight_layout()
 		fig.savefig(filename)
 
@@ -153,6 +153,6 @@ else:
 	# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
 	# 	ax.set_ybound(lower=1e-12, upper=10)
 
-	# 	filename = folder + 'TransientNL_' + geo + '.png'
+	# 	filename = folder + 'TransientNL_' + geo + '.pdf'
 	# 	fig.tight_layout()
 	# 	fig.savefig(filename)

@@ -80,7 +80,7 @@ else:
 	ax.set_ylabel('CPU time (s)')
 	ax.set_ylim([0.01, 100])
 	fig.tight_layout()
-	fig.savefig(folder2save + 'FastDiag')
+	fig.savefig(folder2save + 'FastDiag' + '.pdf')
 
 	if withReference:
 		fig, ax = plt.subplots()
@@ -99,4 +99,4 @@ else:
 		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
 		ax.set_ylabel('CPU time (s)')
 		fig.tight_layout()
-		fig.savefig(folder2save + 'FastDiag_lit')
+		fig.savefig(folder2save + 'FastDiag_lit' + '.pdf')

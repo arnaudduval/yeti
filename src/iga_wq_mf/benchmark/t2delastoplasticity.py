@@ -43,6 +43,7 @@ def exactDisplacement_infPlate(P:list):
 	return disp
 
 # Set global variables
+geoName = 'QA'
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu, 
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}} # Any law, it does not matter
@@ -50,14 +51,14 @@ solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
-for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
+for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 	fig, ax    = plt.subplots(figsize=(8, 4))
 
 	for i, degree in enumerate(degree_list):
 		for j, cuts in enumerate(cuts_list):
-			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 						'extra':{'Rin':1.0, 'Rex':4.0}
 			}
@@ -92,4 +93,4 @@ for quadrule, quadtype in zip(['wq', 'iga'], [2, 'leg']):
 		ax.set_xlim(left=10, right=1e5)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigInfinitePlatePlasto2_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigConvergencePls' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')

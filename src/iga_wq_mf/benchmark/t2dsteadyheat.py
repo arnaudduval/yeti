@@ -65,18 +65,19 @@ def exactTemperature_quartCircle(P: list):
 	return u
 
 # Set global variables
+geoName = 'QA'
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
-for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
+for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 	fig, ax = plt.subplots(figsize=(8, 4))
 
 	for i, degree in enumerate(degree_list):
 		for j, cuts in enumerate(cuts_list):
-			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 						'extra':{'Rin':1.0, 'Rex':4.0}
 			}
@@ -102,7 +103,7 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
 
-		if str(quadArgs['quadrule']) == 'iga':
+		if quadrule == 'iga':
 			slope = np.polyfit(np.log10(nbctrlpts_list[1:7]),np.log10(error_list[1:7]), 1)[0]
 			slope = round(slope, 1)
 			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
@@ -115,4 +116,4 @@ for quadrule, quadtype in zip(['wq', 'iga'], [1, 'leg']):
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigQuartCircle_' + str(quadArgs['quadrule']) +'.png')
+		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')

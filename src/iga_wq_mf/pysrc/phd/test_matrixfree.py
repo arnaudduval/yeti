@@ -113,4 +113,4 @@ else:
 	ax.set_xlim([1, 11])
 	ax.set_ylim([0.01, 100])
 	fig.tight_layout()
-	fig.savefig(folder2save + 'ProductMF')
+	fig.savefig(folder2save + 'ProductMF' + '.pdf')
