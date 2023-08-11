@@ -134,10 +134,10 @@ class problem():
 			nbqpExact, basisExact, indicesExact = [], [], []
 			for i in range(self.part.dim):
 				basis, indi, indj = evalDersBasisFortran(refPart.degree[i], refPart.knotvector[i], quadPts[i])
-				nbqpExact.append(len(quadPts)); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 			inpts = [*nbqpExact, *indicesExact, *basisExact, np.atleast_2d(u_ref)]
-			if self.dim == 2:   u_exact = geophy.interpolate_meshgrid_2d(*inpts)    
-			elif self.dim == 3: u_exact = geophy.interpolate_meshgrid_3d(*inpts)
+			if self.part.dim == 2:   u_exact = geophy.interpolate_meshgrid_2d(*inpts)    
+			elif self.part.dim == 3: u_exact = geophy.interpolate_meshgrid_3d(*inpts)
 			if nr == 1: u_exact = np.ravel(u_exact)
 		if u_exact is None: raise Warning('Not possible')
 

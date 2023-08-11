@@ -31,11 +31,11 @@ def forceSurf_infPlate(P:list):
 # Set global variables
 nsteps = 15
 E, nu = 2e11, 0.3
-matArgs    = {'elastic_modulus':E, 'elastic_limit':1e8, 'poisson_ratio': nu, 
+matArgs    = {'elastic_modulus':E, 'elastic_limit':8e15, 'poisson_ratio': nu, 
 			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
-solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC'}
+solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold':1e-5}
 
-degree, cuts = 8, 6
+degree, cuts = 8, 7
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 
 geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
