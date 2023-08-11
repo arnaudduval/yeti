@@ -231,7 +231,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision, intent(in) :: detJ
+    double precision, target, intent(in) :: detJ
     dimension :: detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
@@ -254,7 +254,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
-    double precision :: ones(nc_total), dummy(dimen, dimen, nc_total)
+    double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
@@ -262,8 +262,8 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Set material and solver
-    mat%dimen = dimen; ones = 1.d0; dummy = 0.d0
-    call setup_geometry(mat, nc_total, dummy, detJ)
+    mat%dimen = dimen; ones = 1.d0
+    mat%detJ => detJ; mat%ncols_sp = nc_total
     call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
@@ -402,7 +402,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    double precision, intent(in) :: detJ
+    double precision, target, intent(in) :: detJ
     dimension :: detJ(nc_total)
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold, b
@@ -425,14 +425,14 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical :: table(dimen, 2)   
     integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
-    double precision :: ones(nc_total), dummy(dimen, dimen, nc_total)
+    double precision :: ones(nc_total)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen; ones = 1.d0; dummy = 0.d0
-    call setup_geometry(mat, nc_total, dummy, detJ)
+    mat%dimen = dimen; ones = 1.d0
+    mat%detJ => detJ; mat%ncols_sp = nc_total
     call setup_capacityprop(mat, nc_total, ones)
     solv%matrixfreetype = 1
 
