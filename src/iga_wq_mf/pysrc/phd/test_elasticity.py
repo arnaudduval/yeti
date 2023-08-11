@@ -114,7 +114,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = False
+dataExist   = True
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(6, 7)
 name_list   = ['qa', 'sq']
@@ -131,7 +131,7 @@ for cuts in cuts_list:
 			
 			if not dataExist:
 				mat = mechamat(matArgs)
-				nbctrlpts = np.zeros(3, dtype=int); nbctrlpts[:2] = simulation._nbctrlpts
+				nbctrlpts = np.ones(3, dtype=int); nbctrlpts[:2] = simulation._nbctrlpts
 				boundary = boundaryCondition(nbctrlpts)
 				table = np.zeros((2, 2, 2), dtype=int)
 				table[0, 0, 0] = 1
@@ -141,5 +141,5 @@ for cuts in cuts_list:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension='.pdf', plotLegend=True)
+				simuOutput.plot_results(extension='_EL.pdf', plotLegend=True)
 				

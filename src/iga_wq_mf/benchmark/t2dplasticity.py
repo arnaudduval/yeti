@@ -1,0 +1,90 @@
+"""
+.. Test of elastoplasticity 2D
+.. We test how elastoplasticity module works
+.. Joaquin Cornejo 
+"""
+
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_geomdl import Geomdl
+from pysrc.lib.lib_part import part
+from pysrc.lib.lib_material import mechamat
+from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_job import mechaproblem
+import pickle
+
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/d2elastoplasticity/'
+if not os.path.isdir(folder): os.mkdir(folder)
+
+with open(folder + 'refpart.pkl', 'rb') as inp:
+    refPart = pickle.load(inp)
+u_ref = np.load(folder + 'u_ref')
+
+def forceSurf_infPlate(P:list):
+	Tx, a = 5e7, 1.0
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	b = a**2/r_square # Already squared
+	theta = np.arcsin(y/np.sqrt(r_square))
+
+	F = np.zeros((2, nnz))
+	F[0, :] = Tx/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
+	F[1, :] = Tx/2*3*np.sin(3*theta)*(b**2 - b)
+	return F
+
+# Set global variables
+nsteps = 15
+geoName = 'QA'
+E, nu = 2e11, 0.3
+matArgs    = {'elastic_modulus':E, 'elastic_limit':1.0, 'poisson_ratio': nu, 
+			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}} # Any law, it does not matter
+solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC'}
+degree_list = np.array([2, 3, 4, 6, 8])
+cuts_list   = np.arange(2, 7)
+
+for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
+	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	error_list = np.ones(len(cuts_list))
+	fig, ax    = plt.subplots(figsize=(8, 4))
+
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
+			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+						'extra':{'Rin':1.0, 'Rex':4.0}
+			}
+			blockPrint()
+			material = mechamat(matArgs)
+			modelGeo = Geomdl(geoArgs)
+			modelIGA = modelGeo.getIGAParametrization()
+			modelPhy = part(modelIGA, quadArgs=quadArgs)
+
+			# Set Dirichlet boundaries
+			boundary = boundaryCondition(modelPhy.nbctrlpts)
+			table = np.zeros((2, 2, 2), dtype=int)
+			table[1, 1, 0] = 1
+			table[1, 0, 1] = 1
+			boundary.add_DirichletDisplacement(table=table)
+			enablePrint()
+
+			# Solve elastic problem
+			problem = mechaproblem(material, modelPhy, boundary)
+			problem.addSolverConstraints(solverArgs=solverArgs)
+			Fend = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+			Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, nsteps+1))
+			for i in range(1, nsteps+1): Fext_list[:, :, i] = i/nsteps*Fend
+			displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
+			error_list[j] = problem.L2NormOfError(displacement[:, :, -1], 
+							L2NormArgs={'referencePart':refPart, 'u_ref': u_ref})
+
+		nbctrlpts_list = (2**cuts_list+degree)**2
+		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
+		
+		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+		ax.set_xlabel('Total number of DOF')
+		ax.set_ylim(top=1e0, bottom=1e-15)
+		ax.set_xlim(left=10, right=1e4)
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigConvergencePls' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
