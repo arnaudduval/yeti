@@ -1,6 +1,6 @@
 from .__init__ import *
 
-class steadydecoder(): 
+class decoder(): 
 
 	def __init__(self, filename=None): 
 
@@ -128,7 +128,7 @@ class steadydecoder():
 		markers = ['o', 'v', 's', 'X', '+', 'p']
 
 		# Set figure parameters
-		fig, ax = plt.subplots(nrows=1, ncols=1)
+		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 		for i, pcgmethod in enumerate(new_method_list):
 			residue_method = np.asarray(residue[i])
 			residue_method = residue_method[residue_method>threshold]
@@ -137,7 +137,7 @@ class steadydecoder():
 
 		ax.set_ylim(top=10.0, bottom=threshold)
 		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
 
 		# if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		ax.legend(loc='best')

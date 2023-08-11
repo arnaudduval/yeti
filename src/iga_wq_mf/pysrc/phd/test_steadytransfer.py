@@ -4,7 +4,7 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import heatproblem
-from pysrc.lib.lib_simulation import steadydecoder
+from pysrc.lib.lib_simulation import decoder
 
 def powerDensity_cube(P: list):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
@@ -165,7 +165,8 @@ class simulate():
 			time_temp = self.__run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 
-		timeIter, resPCG = [], []; problem.addSolverConstraints({})
+		timeIter, resPCG = [], []; problem.addSolverConstraints({'nbIterationsPCG':100, 'PCGThreshold':1e-12})
+
 		for im in self._iterMethods:
 			problem._methodPCG = im
 			un, residue_t, time_temp = self.__run_iterativeSolver(problem, Fext=Fext)
@@ -185,7 +186,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = True
 degree_list = np.arange(6, 7)
-cuts_list   = np.arange(4, 5)
+cuts_list   = np.arange(5, 6)
 name_list   = ['cb', 'vb', 'tr']
 IterMethods = ['WP', 'C', 'JMC', 'TDC']
 
@@ -223,6 +224,6 @@ for cuts in cuts_list:
 				simulation.simulate(material=mat, boundary=boundary, overwrite=True)
 
 			else :
-				simuOutput = steadydecoder(simulation._filename)
+				simuOutput = decoder(simulation._filename)
 				simuOutput.plot_results(extension='.pdf', plotLegend=True)
 				
