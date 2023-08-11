@@ -1,11 +1,5 @@
 """
 .. Test of elastoplasticity 1D
-.. We test how elasticity module works
-.. SI (Steel) : 
-..      - Stress : MPa
-..      - Length : mm
-..      - Force  : N
-..      - Mass   : metric ton 
 .. Joaquin Cornejo 
 """
 
@@ -15,7 +9,7 @@ from pysrc.lib.thermomecha1D import mechamat1D, plot_results
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d1plasticity/'
+folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceVol(P:list):

@@ -1,3 +1,9 @@
+"""
+    In this file, we explore the ideas behind space-time Galerkin formulation
+    applied to a Isogeometric Analysis. It can be useful to compare the results with 
+    "classic" formulation using a time-integration scheme.
+"""
+
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisPy
 from pysrc.lib.lib_quadrules import GaussQuadrature

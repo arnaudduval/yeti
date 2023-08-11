@@ -10,7 +10,7 @@ from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder2save = os.path.dirname(full_path) + '/results/'
+folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables

@@ -9,14 +9,14 @@ from pysrc.lib.thermomecha1D import thermo1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d1heat/'
+folder = os.path.dirname(full_path) + '/results/d1transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def setKprop(T):
+def conductivityProperty(T):
 	y = np.ones(len(T))
 	return y
 
-def setCprop(T):
+def capacityProperty(T):
 	y = np.ones(len(T))
 	return y
 
@@ -31,7 +31,7 @@ args      = {'quadArgs': quadArgs, 'geoArgs': {'length': 1.0}}
 model 	  = thermo1D(args)
 
 # Add material 
-matArgs = {'heattheta': 1.0, 'conductivity': setKprop, 'capacity': setCprop}
+matArgs = {'heattheta': 1.0, 'conductivity': conductivityProperty, 'capacity': capacityProperty}
 model.activate_thermal(matArgs)
 
 # Add boundary condition

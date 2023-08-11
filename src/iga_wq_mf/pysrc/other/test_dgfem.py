@@ -1,69 +1,21 @@
 """
-This file contains Discontinue Galerkin Finite Elements Methods algorithms
-The strong form of the equation to be solved looks like:
-du/dt + a df/dx = 0
-where f depends on u which depends on x and t
-The discretization of the weak form looks like:
-duj/dt + a (f_j+1 - f_j-1)/(2*Deltaj) = 0
-for each element j of size Deltaj. Here f_k (for k = j-1 and j+1) 
-represents the flux at one of the boundaries (left if j-1 and right if j+1)   
+	This file contains Discontinue Galerkin Finite Elements Methods algorithms
+	The strong form of the equation to be solved looks like:
+	du/dt + a df/dx = 0
+	where f depends on u which depends on x and t
+	The discretization of the weak form looks like:
+	duj/dt + a (f_j+1 - f_j-1)/(2*Deltaj) = 0
+	for each element j of size Deltaj. Here f_k (for k = j-1 and j+1) 
+	represents the flux at one of the boundaries (left if j-1 and right if j+1)   
 """
 
 import os, numpy as np
 from matplotlib import pyplot as plt
+from pysrc.lib.lib_base import legendreTable
 
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
-
-def gaussTable(order):
-	" Computes Gauss weights and positions in isoparametric space for a given degree "
-
-	if order == 1:
-		pos = [0.0]
-		wgt = [2.0]
-	elif order == 2:
-		pos = [ -0.57735026918962576,
-				0.57735026918962576]
-
-		wgt = [ 1.0,
-				1.0]
-	elif order == 3:
-		pos = [ -0.77459666924148337,
-				0.0,
-				0.77459666924148337]
-
-		wgt = [ 5.0 / 9.0,
-				8.0 / 9.0,
-				5.0 / 9.0]
-	elif order == 4:
-		pos = [ -0.8611363115940526,
-				-0.3399810435848563,
-				0.3399810435848563, 
-				0.8611363115940526]
-
-		wgt = [ 0.3478548451374539,
-				0.6521451548625461,
-				0.6521451548625461,
-				0.3478548451374539]	
-	elif order == 5:
-		pos = [ -0.9061798459386640,
-				-0.5384693101056831,
-				0.0,
-				0.5384693101056831,
-				0.9061798459386640]
-
-		wgt = [ 0.2369268850561891,
-				0.4786286704993665,
-				0.5688888888888889,
-				0.4786286704993665,
-				0.2369268850561891]
-	else: raise Warning('Not degree found')
-
-	# Change type of arrays
-	pos, wgt = np.array(pos), np.array(wgt)
-
-	return pos, wgt
 
 def find_span(array, x, threshold=1e-8):
 	"Find the span of an array where the value x is located"
@@ -151,7 +103,7 @@ def dgGetMass(degree, nodes):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+2)
+		gaussPos, gaussWeight = legendreTable(degree+2)
 		b0 = dgEvalPolyBasis(gaussPos, degree)[0]
 
 		# Get quadrature points in physical space
@@ -181,7 +133,7 @@ def dgGetForce(degree, nodes, Uctrlpts, funFU):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+2)
+		gaussPos, gaussWeight = legendreTable(degree+2)
 		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
 
 		# Get quadrature points in physical space
@@ -223,7 +175,7 @@ def dgGetU0(degree, nodes, funU0):
 		xj       = 0.5*(xfj + xij)
 
 		# Get quadrature points and weights in parametric space
-		gaussPos, gaussWeight = gaussTable(degree+2)
+		gaussPos, gaussWeight = legendreTable(degree+2)
 		b0, b1 = dgEvalPolyBasis(gaussPos, degree)
 
 		# Get quadrature points in physical space

@@ -1,5 +1,7 @@
 """
 .. Test of elasticity 2D
+.. A square plate is under uniaxial traction (following x or y). 
+.. It has been imposed symetry conditions, so the strains has to be the same everywhere
 .. Joaquin Cornejo 
 """
 

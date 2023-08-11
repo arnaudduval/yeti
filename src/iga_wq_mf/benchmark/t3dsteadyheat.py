@@ -1,5 +1,13 @@
 """
 .. Test of steady heat transfer 3D
+.. The geometry is a thick ring
+.. All the boundary conditions are considered Dirichlet-like except for one
+.. where we imposed a Neumann boundary condition. 
+.. The heat flux at the boundary is computed by h = - k grad(T) . normal
+.. In this example the normal is "known" but can be computed as well.
+.. The heat source is computed by f = -grad(k grad T) where T is a given function
+.. We compute the relative L2 norm using the exact solution T
+.. The convergence curves are traced for IGA-Legendre and IGA-WQ
 .. Joaquin Cornejo 
 """
 
@@ -12,7 +20,7 @@ from pysrc.lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d3steadyheat/'
+folder = os.path.dirname(full_path) + '/results/d3transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(P:list):

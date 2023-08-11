@@ -4,7 +4,7 @@ from lib.thermomecha1D import mechamat1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d1plasticity/'
+folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceVol(P:list):

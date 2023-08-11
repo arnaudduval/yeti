@@ -1,6 +1,8 @@
 """
 .. Test of elasticity 2D
-.. We test how elasticity module works
+.. Infinite plate with a hole under uniaxial traction. 
+.. The analytical solution of this problem is given by Timoshenko
+.. The convergence curves are traced for IGA-Legendre and IGA-WQ
 .. Joaquin Cornejo 
 """
 
@@ -13,7 +15,7 @@ from pysrc.lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d2delasticity/'
+folder = os.path.dirname(full_path) + '/results/d2delastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceSurf_infPlate(P:list):

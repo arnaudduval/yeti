@@ -13,7 +13,7 @@ from pysrc.lib.lib_job import mechaproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def forceSurf_infPlate(P:list):

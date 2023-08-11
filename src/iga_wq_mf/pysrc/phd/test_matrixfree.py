@@ -13,7 +13,7 @@ from pysrc.lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder2save = os.path.dirname(full_path) + '/results/'
+folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
@@ -114,20 +114,3 @@ else:
 	ax.set_ylim([0.01, 100])
 	fig.tight_layout()
 	fig.savefig(folder2save + 'ProductMF')
-
-	if withReference:
-
-		fig, ax = plt.subplots()
-		file   = pd.read_table(folder2find + 'matvec_MF_lit.dat', sep='\t', names=['degree', 'Cu64']) 
-		values = [file.Cu64]
-		labels = ['MF-WQ Mass']
-
-		for value, label in zip(values, labels): ax.semilogy(file.degree, value, 'o--', label=label)
-
-		ax.legend(loc='best')
-		ax.set_xlabel('Degree')
-		ax.set_ylabel('CPU time (s)')
-		ax.set_xlim([1, 11])
-		ax.set_ylim([0.001, 10])
-		fig.tight_layout()
-		fig.savefig(folder2save + 'ProductMF_lit')

@@ -1,3 +1,7 @@
+"""
+	In this file we develop the ideas in structural analysis
+"""
+
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector
 from pysrc.other.lib_structanalysis import Timoshenko

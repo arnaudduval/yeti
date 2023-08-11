@@ -21,7 +21,7 @@ from pysrc.lib.lib_part import part
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path) + '/results/phdfig/'
 
 def plot2DGeo(model:part, sampleSize=101):
 	"Plots a 2D geometry "

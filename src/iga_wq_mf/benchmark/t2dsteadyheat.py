@@ -1,5 +1,10 @@
 """
 .. Test of steady heat transfer 2D
+.. The geometry is a quart of a annulus
+.. All the boundary conditions are considered Dirichlet-like 
+.. The heat source is computed by f = -grad(k grad T) where T is a given function
+.. We compute the relative L2 norm using the exact solution T
+.. The convergence curves are traced for IGA-Legendre and IGA-WQ
 .. Joaquin Cornejo 
 """
 
@@ -12,7 +17,7 @@ from pysrc.lib.lib_job import heatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/d2steadyheat/'
+folder = os.path.dirname(full_path) + '/results/d2transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(P:list):
