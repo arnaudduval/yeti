@@ -202,7 +202,7 @@ class IGAparametrization:
         mechSet.append([self._ELT_TYPE[listpatch], self._NBPINT[listpatch],
                         self._TENSOR[listpatch], self._mcrd])
         indCP = np.unique(np.concatenate(
-            np.array([self._indCPbyPatch[i] for i in listpatch]))) - 1
+            np.array([self._indCPbyPatch[i] for i in listpatch], dtype=object))) - 1
         tabCP = np.zeros(self._nb_cp, dtype=np.intp)
         tabCP[indCP] = np.arange(1, indCP.size+1)
         mechSet.append([self._COORDS[:, indCP], indCP.size])
