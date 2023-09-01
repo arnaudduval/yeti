@@ -31,10 +31,11 @@ nb_ref[0,(2,3)] = r+2
 nb_deg[0,4] = p
 nb_ref[0,4] = r
 
-# completeIGA.refine(nb_ref,nb_deg,additional_knots)
+completeIGA.refine(nb_ref, nb_deg, additional_knots)
 completeIGA._NBPINT[ np.where(completeIGA._ELT_TYPE == 'U00') ] = 6
 
 multipleIGA = ddmanip.automaticDomainDecomposition(completeIGA)
+
 
 dd = []
 count = 0
@@ -42,31 +43,21 @@ for modeleIGA in multipleIGA:
     dd.append( IGAsubdomain(modeleIGA,count) )
     count += 1
 
-
-# FETI Analysis
-# -------------
-
-print('-'*4,'\nFETI analysis')
-
-# --
-# factorization
-ti = time.time()
-for domain in dd:
-    print('A')
+for i, domain in enumerate(dd):
+    print("Domaine ", i)
     domain.set_stiffnessMATRIX()
-    print('B')
+    print("Taille K : ", domain._K2solve.shape)
+    print("Taille f : ", domain._f2solve.shape)
     domain.set_couplingMATRIX()
-    print('C')
+    print("Taille C : ", domain._C2solve.shape)
     domain.set_factorizationMATRIX(tol=1.0e-6)
-    print('D')
+    print("Factorisation")
+    print("taille LU : ", domain._LU._LU.shape)
+    print("taille P : ", domain._LU._P.shape)
+    print("taille R : ", domain._LU.R.shape)
     domain.set_admissibleconstMATRIX()
-    print('E')
-print(' Local Assembly and Factorization\n (duration : %.2f s).' % (time.time() - ti))
-exit()
 
-# --
-# coarse problem
-ti = time.time()
+# Coarse problem
 tabWeak = []
 for domain in dd:
     interfaceInfos = domain.get_weakInfos()
@@ -86,11 +77,5 @@ for domain in dd:
 feti.set_RHSt(localt)
 feti.set_RHSe(locale)
 
-
-# print(feti._matrixQ)
-print(feti._matrixG)
-exit()
 feti.solve_coarsePB()
-exit()
 feti.set_projectorP()
-print(' Build and resolution of feti coarse problem\n (duration : %.2f s).' % (time.time() - ti))

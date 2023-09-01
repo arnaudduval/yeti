@@ -7,6 +7,7 @@ import time
 #IGA module
 from solver import PCPGortho
 from preprocessing.igaparametrization import IGAparametrization
+from preprocessing.igaparametrization import IGAmanip as manip
 from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 from coupling.cplgmatrix import cplg_matrix
 import reconstructionSOL as rsol
@@ -20,11 +21,11 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-p = 2
-r = 2
+p = 1
+r = 1
 # domains
 nb_deg[:2,:2] = p
-nb_ref[:2, 0] = r+1
+nb_ref[:2, 0] = r #r+1
 nb_ref[:2, 1] = r
 # curves
 nb_ref[0,(2,3)] = r+2
@@ -171,40 +172,72 @@ if True:
 
 
 
-# RESULTION Decomposition de Domaine
+# RESOLUTION Decomposition de Domaine
 time2 = time.time()
-ip1 = np.array([1])
-ip2 = np.array([2])
+ip1 = np.array([0])
+ip2 = np.array([1])
 ipl = np.array([7,8])
 
 dof1 = np.array([],dtype=np.intp)
 for p in ip1:
-    dof1 = np.concatenate((dof1,np.repeat(np.unique(modeleIGA._IEN[p])-1,3)*3
-                           + np.tile(np.array([0,1,2]),modeleIGA._indCPbyPatch[p].size)))
+    dof1 = np.concatenate((dof1,np.repeat(np.unique(modeleIGA._IEN[p])-1,2)*2
+                           + np.tile(np.array([0,1]),modeleIGA._indCPbyPatch[p].size)))
 dof1 = np.intersect1d(dof1,idof)
 
 K1  = Ktot[dof1,:][:,dof1]
 F1  = Fb[dof1]
 LU1 = sp.linalg.splu(K1)
 
+
 dof2 = np.array([],dtype=np.intp)
 for p in ip2:
-    dof2 = np.concatenate((dof2,np.repeat(np.unique(modeleIGA._IEN[p])-1,3)*3
-                           + np.tile(np.array([0,1,2]),modeleIGA._indCPbyPatch[p].size)))
-#dof2 = np.intersect1d(dof2,idof)
+    dof2 = np.concatenate((dof2,np.repeat(np.unique(modeleIGA._IEN[p])-1,2)*2
+                           + np.tile(np.array([0,1]),modeleIGA._indCPbyPatch[p].size)))
+
+# Inutile car le ss domaine 2 n'a pas de CL de Dirichlet
+dof2 = np.intersect1d(dof2,idof)
+
 K2   = Ktot[dof2,:][:,dof2]
 
+sp.save_npz('/home/aduval1/temp/K2', K2)
+
+exit()
+
+# Indices des points de controle decrivant les coins
 iv2 = manip.get_vertexCPindice(modeleIGA._Nkv,modeleIGA._Jpqr,modeleIGA._dim,num_patch=ip2[0])
-ddlr= np.array([(modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+0,
-                (modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+1,
-                (modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+2,
-                (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]-1)*3+0,
-                (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]-1)*3+2,
-                (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]  )*3+0])
+print("iv2 : ", iv2)
+print("ip2 : ", ip2)
+print(modeleIGA._indCPbyPatch[ip2[0]])
+print(modeleIGA._indCPbyPatch[ip2[0]][iv2])
+
+# TEST
+
+# FIN TEST
+
+# ddlr= np.array([(modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+0,
+#                 (modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+1,
+#                 (modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*3+2,
+#                 (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]-1)*3+0,
+#                 (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]-1)*3+2,
+#                 (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]  )*3+0])
+
+# EN 2D, à tester
+ddlr= np.array([(modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*2+0,
+                (modeleIGA._indCPbyPatch[ip2[0]][iv2[0]]-1)*2+1,
+                (modeleIGA._indCPbyPatch[ip2[0]][iv2[1]]-1)*2+0])
+
+
+print(ddlr)
+
+
 dof2pp = np.setxor1d(dof2,ddlr)
+print(dof2pp)
 K2pp = Ktot[dof2pp,:][:,dof2pp]
 K2pr = Ktot[dof2pp,:][:,ddlr]
+print(K2pp.shape)
+print(K2pr.shape)
 
+exit()
 ddlr_loc = np.zeros(6,dtype=np.intp)
 for i in np.arange(0,6):
     ddlr_loc[i] = np.where(dof2 == ddlr[i])[0][0]
