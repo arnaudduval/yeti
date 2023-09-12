@@ -7,14 +7,14 @@ Theory
    :local:
    :backlinks: none
 
+Details about general sensitivities computation can be found in :cite:`hirschler_new_2021`.
+The specific case of embedded patches is described in :cite:`guerder_isogeometric_2022`.
+
 Sensibilities of embedded solid element
 =======================================
 
 Problem formulation
 -------------------
-
-Details about general sensitivities computation can be found in :cite:`hirschler_new_2021`.
-The specific case of embedded patches is described in :cite:`guerder_isogeometric_2022`.
 
 We consider a domain :math:`\Omega \in \mathbb{R}^3` with a boudary :math:`\Gamma`.
 This domain is subjected to body force :math:`g`, boundary traction :math:`t` and prescribed
