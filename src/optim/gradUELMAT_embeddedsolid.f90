@@ -18,6 +18,11 @@
 !! Implemented for 3D case
 !! TODO : should be adapted to work with 2D case
 
+!! Details can be found in :
+!! Marie Guerder. IsoGeometric analysis and shape optimisation of aircraft compressor 
+!! blades. Mechanics [physics.med-ph]. Université de Lyon, 2022.
+!! https://theses.hal.science/tel-03859679
+
 subroutine gradUELMAT10adj(activeElementMap, nb_elemMap,    &
                     &      sctr,        &
                     &      Uelem, UAelem,               &
