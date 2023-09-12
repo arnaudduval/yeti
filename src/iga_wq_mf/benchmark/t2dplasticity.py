@@ -22,7 +22,7 @@ with open(folder + 'refpart.pkl', 'rb') as inp:
 u_ref = np.load(folder + 'u_ref.npy')
 
 def forceSurf_infPlate(P:list):
-	Tx, a = 5e7, 1.0
+	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
 	b = a**2/r_square # Already squared
@@ -36,15 +36,16 @@ def forceSurf_infPlate(P:list):
 # Set global variables
 nsteps = 15
 geoName = 'QA'
-E, nu = 2e11, 0.3
-matArgs    = {'elastic_modulus':E, 'elastic_limit':8e15, 'poisson_ratio': nu, 
-			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
-solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold':1e-5}
+E, nu = 1e3, 0.3
+matArgs    = {'elastic_modulus':E, 'elastic_limit':2, 'poisson_ratio': nu, 
+			# 'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+			'plasticLaw': {'name':'linear', 'theta':1, 'Hbar':10*E}}
+solverArgs = {'nbIterationsPCG':200, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold':1e-9}
 
-degree_list = np.array([2, 3, 4, 6, 8])
-cuts_list   = np.arange(2, 5)
+degree_list = np.array([2, 3, 4, 6])
+cuts_list   = np.arange(2, 7)
 
-for quadrule, quadtype in zip(['iga'], ['leg']):
+for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 	fig, ax    = plt.subplots(figsize=(8, 4))
@@ -76,8 +77,8 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 			Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, nsteps+1))
 			for k in range(1, nsteps+1): Fext_list[:, :, k] = k/nsteps*Fend
 			displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
-			error_list[j] = problem.L2NormOfError(displacement[:, :, 1], 
-							L2NormArgs={'referencePart':refPart, 'u_ref': u_ref[:, :, 1]})
+			error_list[j] = problem.L2NormOfError(displacement[:, :, 12], 
+							L2NormArgs={'referencePart':refPart, 'u_ref': u_ref[:, :, 12]})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
@@ -88,4 +89,4 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 		ax.set_xlim(left=10, right=1e4)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergencePlasticity' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
+		fig.savefig(folder + 'FigConvergencePlastic2' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')

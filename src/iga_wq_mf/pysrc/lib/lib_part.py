@@ -6,7 +6,7 @@
 
 # My libraries
 from .__init__ import *
-from .lib_base import evalDersBasisFortran, get_INCTable, get_faceInfo
+from .lib_base import evalDersBasisFortran
 from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part(): 
@@ -93,23 +93,6 @@ class part():
 
 		return
 	
-	def addQuadratureRule(self, direction:int, quadArgs:dict):
-		if direction<0 or direction>=self.dim: raise Warning('Direction not valid')
-		name = quadArgs.get('quadrule', None)
-		if name == 'iga':
-			quadRule = GaussQuadrature(self.degree[direction], self.knotvector[direction], quadArgs=quadArgs)
-		elif name == 'wq':
-			quadRule = WeightedQuadrature(self.degree[direction], self.knotvector[direction], quadArgs=quadArgs)
-		else: raise Warning('Insert a valid quadrature rule')
-
-		# Update quadrature rule
-		_, dersIndices, dersBasis, dersWeights = quadRule.getQuadratureRulesInfo()
-		nbqp = quadRule.nbqp; indi, indj = dersIndices
-		self.nbqp[direction] = nbqp; self.indices[2*direction] = indi; self.indices[2*direction+1] = indj
-		self.basis[direction] = dersBasis; self.weights[direction] = dersWeights
-		self.nbqp_total = np.prod(self.nbqp)
-		return
-	
 	def __setJacobienPhysicalPoints(self):
 		" Computes jacobien and physical position "
 
@@ -131,6 +114,47 @@ class part():
 	# ----------------
 	# POST-PROCESSING 
 	# ----------------
+	def compute_mesh_parameter(self):
+		maxval = 0
+		nbqp, indices, basis = [], [], []
+		for i in range(self.dim):
+			knots = np.unique(self.knotvector[i])
+			dersBasis, indi, indj = evalDersBasisFortran(self.degree[i], self.knotvector[i], knots)
+			nbqp.append(len(knots)); indices.append(indi); indices.append(indj); basis.append(dersBasis)
+		
+		inpts = [*nbqp[:self.dim], *indices, *basis, self.ctrlpts]
+		if self.dim == 2:
+			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+			for j in range(nbqp[1]-1):
+				for i in range(nbqp[0]-1):
+					parGridIndices = [i + j*nbqp[0], 
+									i + (j + 1)*nbqp[0],
+									i + 1 + j*nbqp[0], 
+									i + 1 + (j + 1)*nbqp[0]]
+					dist1 = np.linalg.norm(qpPhy[:, parGridIndices[0]] - qpPhy[:, parGridIndices[3]])
+					dist2 = np.linalg.norm(qpPhy[:, parGridIndices[1]] - qpPhy[:, parGridIndices[2]])
+					maxval = np.max([maxval, dist1, dist2])
+
+		if self.dim == 3:
+			qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
+			for k in range(nbqp[2]-1):
+				for j in range(nbqp[1]-1):
+					for i in range(nbqp[0]-1):
+						parGridIndices = [i + j*nbqp[0] + k*nbqp[0]*nbqp[1], 
+										i + j*nbqp[0] + (k + 1)*nbqp[0]*nbqp[1],
+										i + (j + 1)*nbqp[0] + k*nbqp[0]*nbqp[1],
+										i + (j + 1)*nbqp[0] + (k + 1)*nbqp[0]*nbqp[1], 
+										i + 1 + j*nbqp[0] + k*nbqp[0]*nbqp[1], 
+										i + 1 + j*nbqp[0] + (k + 1)*nbqp[0]*nbqp[1], 
+										i + 1 + (j + 1)*nbqp[0] + k*nbqp[0]*nbqp[1], 
+										i + 1 + (j + 1)*nbqp[0] + (k + 1)*nbqp[0]*nbqp[1]]
+						dist1 = np.linalg.norm(qpPhy[:, parGridIndices[0]] - qpPhy[:, parGridIndices[7]])
+						dist2 = np.linalg.norm(qpPhy[:, parGridIndices[1]] - qpPhy[:, parGridIndices[6]])
+						dist3 = np.linalg.norm(qpPhy[:, parGridIndices[2]] - qpPhy[:, parGridIndices[5]])
+						dist4 = np.linalg.norm(qpPhy[:, parGridIndices[3]] - qpPhy[:, parGridIndices[4]])
+						maxval = np.max([maxval, dist1, dist2, dist3, dist4])
+		
+		return maxval
 
 	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=101, isAll=True):
 		# Initialize all outputs

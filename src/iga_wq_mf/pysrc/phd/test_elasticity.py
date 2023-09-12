@@ -77,6 +77,7 @@ class simulate():
 	def simulate(self, material:mechamat, boundary:boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
 
+		blockPrint()
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int)}
@@ -95,13 +96,17 @@ class simulate():
 			problem._methodPCG = im
 			time_temp = self.__run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
-
+		enablePrint()
 		timeIter, resPCG = [], []; problem.addSolverConstraints({'nbIterationsPCG':100, 'PCGThreshold':1e-12})
+		print(self._degree, self._nbcuts)
 		for im in self._iterMethods:
 			problem._methodPCG = im
 			un, residue_t, time_temp = self.__run_iterativeSolver(problem, Fext=Fext)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
+			print(time_temp, len(residue_t[residue_t>0.0]))
+
+		print('--')
 				
 		# Write file
 		output = {'nbIterPCG': problem._nbIterPCG, 'iterMethods': self._iterMethods, 'timeNoIter':timeNoIter, 'timeIter': timeIter, 'resPCG': resPCG}
@@ -114,10 +119,10 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = True
+dataExist   = True 
 degree_list = np.arange(6, 7)
 cuts_list   = np.arange(6, 7)
-name_list   = ['qa', 'sq']
+name_list   = ['qa']
 IterMethods = ['WP', 'C', 'JMC', 'TDC']
 matArgs     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3}
 

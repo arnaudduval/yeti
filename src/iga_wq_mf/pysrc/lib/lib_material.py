@@ -75,10 +75,11 @@ class plasticLaw():
 		self.__elasticmodulus = elasticmodulus
 		self._Kfun = None; self._Kderfun = None
 		self._Hfun = None; self._Hderfun = None
-		lawName = plasticArgs.get('name', '').lower()
-		if   lawName == 'linear': self.__setLinearModel(plasticArgs)
-		elif lawName == 'swift' : self.__setSwiftModel(plasticArgs)
-		elif lawName == 'voce'  : self.__setVoceModel(plasticArgs)
+		
+		self._plasticArgs = plasticArgs
+		if   plasticArgs['name'] == 'linear': self.__setLinearModel(plasticArgs)
+		elif plasticArgs['name'] == 'swift' : self.__setSwiftModel(plasticArgs)
+		elif plasticArgs['name'] == 'voce'  : self.__setVoceModel(plasticArgs)
 		else: raise Warning('Unknown method')
 		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
 		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
@@ -115,6 +116,24 @@ class plasticLaw():
 		self._Hfun = lambda a: (1 - theta)*Hbar*a
 		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
 		self._Hderfun = lambda a: (1 - theta)*Hbar*np.ones(np.size(a))
+		return
+	
+	def __setExponential(self, plasticArgs:dict):
+		theta = plasticArgs.get('theta', None)
+		Hbar  = plasticArgs.get('Hbar', None)
+		Kinf  = plasticArgs.get('Kinf', None)
+		Kzero = plasticArgs.get('Kzero', None)
+		delta = plasticArgs.get('delta', None)
+		
+		def h(a):
+			return  Kinf - (Kinf - Kzero)*np.exp(-delta*a) + Hbar*a
+		def dh(a):
+			return (Kinf - Kzero)*delta*np.exp(-delta*a) + Hbar
+
+		self._Kfun = lambda a: theta*h(a)
+		self._Hfun = lambda a: (1 - theta)*h(a)
+		self._Kderfun = lambda a: theta*dh(a)
+		self._Hderfun = lambda a: (1 - theta)*dh(a)
 		return
 	
 class mechamat(material):
@@ -164,16 +183,20 @@ class mechamat(material):
 		"""
 
 		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
-			dgamma = np.zeros(np.size(a_n0))
-			a_n1 = a_n0
-			for i in range(nbIter):
-				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
-				G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(0, 1)) 
-					- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
-				if np.all(np.abs(G)<=threshold): break
-				dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
-				dgamma -= G/dG
-				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
+			if law._plasticArgs['name'] == 'linear':
+				f_trial = np.linalg.norm(eta_trial, axis=(0, 1)) - np.sqrt(2.0/3.0)*law._Kfun(a_n0)
+				dgamma  = f_trial/(2.0*lame_mu + 2.0*law._plasticArgs['Hbar']/3.0)
+			else:
+				dgamma = np.zeros(np.size(a_n0))
+				a_n1 = a_n0
+				for i in range(nbIter):
+					dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
+					G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(0, 1)) 
+						- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
+					if np.all(np.abs(G)<=threshold): break
+					dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
+					dgamma -= G/dG
+					a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
 			return dgamma
 
 		nvoigt, nnz = np.shape(strain)

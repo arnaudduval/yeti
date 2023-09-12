@@ -76,13 +76,73 @@ solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
-for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
+# for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
+# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+# 	meshparam  = np.ones(len(cuts_list))
+# 	error_list = np.ones(len(cuts_list))
+# 	fig, ax    = plt.subplots(figsize=(8, 4))
+# 	time_list  = np.zeros((len(degree_list), len(cuts_list)))
+
+# 	for i, degree in enumerate(degree_list):
+# 		for j, cuts in enumerate(cuts_list):
+# 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
+# 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+# 						'extra':{'Rin':1.0, 'Rex':4.0}
+# 			}
+# 			blockPrint()
+# 			material = mechamat(matArgs)
+# 			modelGeo = Geomdl(geoArgs)
+# 			modelIGA = modelGeo.getIGAParametrization()
+# 			modelPhy = part(modelIGA, quadArgs=quadArgs)
+# 			meshparam[j] = modelPhy.compute_mesh_parameter()
+
+# 			# Set Dirichlet boundaries
+# 			boundary = boundaryCondition(modelPhy.nbctrlpts)
+# 			table = np.zeros((2, 2, 2), dtype=int)
+# 			table[1, 1, 0] = 1
+# 			table[1, 0, 1] = 1
+# 			boundary.add_DirichletDisplacement(table=table)
+# 			enablePrint()
+
+# 			# Solve elastic problem
+# 			problem = mechaproblem(material, modelPhy, boundary)
+# 			problem.addSolverConstraints(solverArgs=solverArgs)
+# 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+# 			start = time.process_time()
+# 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+# 			stop = time.process_time()
+# 			time_list[i, j] = stop - start
+# 			np.savetxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype), time_list)
+# 			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
+
+# 		ax.loglog(meshparam, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
+# 		if quadrule == 'iga':
+# 			slope = np.polyfit(np.log10(meshparam[2:-2]),np.log10(error_list[2:-2]), 1)[0]
+# 			slope = round(slope, 1)
+# 			annotation.slope_marker((meshparam[4], error_list[4]), slope, 
+# 									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
+			
+# 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+# 		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+# 		ax.set_ylim(top=1e0, bottom=1e-15)
+# 		ax.set_xlim(left=1e-2, right=2)
+# 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+# 		fig.tight_layout()
+# 		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
+	
+normalPlot = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
+onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
+
+fig, ax = plt.subplots(figsize=(8, 7))
+for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	meshparam  = np.ones(len(cuts_list))
 	error_list = np.ones(len(cuts_list))
-	fig, ax    = plt.subplots(figsize=(8, 4))
 	time_list  = np.zeros((len(degree_list), len(cuts_list)))
 
 	for i, degree in enumerate(degree_list):
+		color = colorSet[i]
 		for j, cuts in enumerate(cuts_list):
 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
@@ -93,6 +153,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()
 			modelPhy = part(modelIGA, quadArgs=quadArgs)
+			meshparam[j] = modelPhy.compute_mesh_parameter()
 
 			# Set Dirichlet boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
@@ -106,39 +167,15 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			problem = mechaproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-			start = time.process_time()
 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-			stop = time.process_time()
-			time_list[i, j] = stop - start
-			np.savetxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype), time_list)
 			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
 
-		nbctrlpts_list = (2**cuts_list+degree)**2
-		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
-
-		if quadrule == 'iga':
-			slope = np.polyfit(np.log10(nbctrlpts_list[:4]),np.log10(error_list[:4]), 1)[0]
-			slope = round(slope, 1)
-			annotation.slope_marker((nbctrlpts_list[3], error_list[3]), slope, 
-									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-			
+		ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
-		ax.set_xlabel('Total number of DOF')
-		ax.set_ylim(top=1e0, bottom=1e-15)
-		ax.set_xlim(left=10, right=1e5)
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+		ax.set_ylim(top=1e-2, bottom=1e-14)
+		ax.set_xlim(left=1e-2, right=2)
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
+		fig.savefig(folder + 'FigConvergenceAll' +  geoName + '.pdf')
 	
-	time_list = np.loadtxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype))
-	fig, ax = plt.subplots(figsize=(8, 4))
-	for j, cuts in enumerate(cuts_list):
-		ax.plot(degree_list, time_list[:, j], label=r'$nb_{el}=$' + ' ' + str(2**cuts))
-	ax.set_xlabel('degree ' + r'$p$')
-	ax.set_ylabel('CPU time (s)')
-	ax.set_xlim(left=1, right=9)
-	ax.set_ylim(bottom=1e-2, top=1e3)
-	ax.set_yscale('symlog')
-	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	fig.tight_layout()
-	fig.savefig(folder + 'FigTime' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
