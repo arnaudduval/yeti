@@ -45,8 +45,7 @@ class part():
 	def __read_degree(self, modelIGA:IGAparametrization): 
 		" Reads degree from model "
 		degree = modelIGA._Jpqr.flatten()
-		if any(p == 1 for p in degree[:self.dim]): 
-			raise Warning('Model must have at least degree p = 2')
+		if any(p == 1 for p in degree[:self.dim]): print('ATTENTION: Model must have at least degree 2')
 		return degree
 
 	def __read_dimension(self, modelIGA:IGAparametrization):

@@ -28,7 +28,7 @@ class Geomdl():
 		# Set degree
 		degree = np.ones(3, dtype= int)
 		degree[:dimen] = np.array(obj._degree)
-		if any(p == 1 for p in degree[:dimen]): raise Warning('Model must have at least degree 2')
+		if any(p == 1 for p in degree[:dimen]): print('ATTENTION: Model must have at least degree 2')
 		info['degree'] = degree
 
 		# Set knot vector

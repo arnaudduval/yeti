@@ -1,7 +1,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (thermomat, mechamat, 
+from .lib_material import (thermomat, mechamat, computeVMStress4All,
 							clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
@@ -359,6 +359,7 @@ class mechaproblem(problem):
 		# Output variables
 		disp = np.zeros(np.shape(Fext_list))
 		stress_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext_list)[2]))
+		strain_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext_list)[2]))
 		resPCG_list = []
 
 		for i in range(1, np.shape(Fext_list)[2]):
@@ -385,11 +386,8 @@ class mechaproblem(problem):
 				Fint = self.compute_intForce(stress)
 				
 				# Compute residue
-				dF   = Fstep - Fint
+				dF = Fstep - Fint
 				clean_dirichlet(dF, self.boundary.mchdod) 
-				resNR = np.sqrt(block_dot_product(dimen, dF, dF))
-				print('NR error: %.5e' %resNR)
-				if resNR <= self._thresholdNR: break
 				
 				# Iterative solver
 				resPCG = np.array([i, j+1])
@@ -397,10 +395,18 @@ class mechaproblem(problem):
 				resPCG = np.append(resPCG, resPCGt)
 				resPCG_list.append(resPCG)
 
+				# Update
 				ddisp += vtmp
+				
+				if j == 0: dEnergyRef = abs(block_dot_product(dimen, ddisp, dF))
+				resNR = abs(block_dot_product(dimen, ddisp, dF))
+				print('NR error: %.5e' %resNR)
+				if j>0 and resNR<=self._thresholdNR*dEnergyRef: break
 
 			disp[:, :, i] = d_n1
-			stress_r[:, :, i] = stress			
+			stress_r[:, :, i] = stress	
+			strain_r[:, :, i] = strain
+
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)

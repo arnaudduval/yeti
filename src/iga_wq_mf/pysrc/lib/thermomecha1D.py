@@ -339,9 +339,6 @@ class mechamat1D(part1D):
 				# Compute residue
 				Fint = self.compute_intForce(stress)
 				dF 	 = Fstep[dof] - Fint[dof]
-				resNR = np.sqrt(np.dot(dF, dF))
-				print('Rhapson with error %.5e' %resNR)
-				if resNR <= self._thresholdNR: break
 
 				# Compute tangent matrix
 				Stangent = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
@@ -352,6 +349,12 @@ class mechamat1D(part1D):
 
 				# Update values
 				d_n1[dof] = disp[dof, i-1] + ddisp
+
+				if j == 0: dEnergyRef = abs(np.dot(ddisp, dF))
+				resNR = abs(np.dot(ddisp, dF))
+				print('Rhapson with error %.5e' %resNR)
+				if j>0 and resNR <= self._thresholdNR*dEnergyRef: break
+
 
 			# Update values in output
 			disp[:, i]    = d_n1

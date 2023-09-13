@@ -182,7 +182,7 @@ class mechamat(material):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=20, threshold=1e-9):
+		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=50, threshold=1e-9):
 			if law._plasticArgs['name'] == 'linear':
 				f_trial = np.linalg.norm(eta_trial, axis=(0, 1)) - np.sqrt(2.0/3.0)*law._Kfun(a_n0)
 				dgamma  = f_trial/(2.0*lame_mu + 2.0*law._plasticArgs['Hbar']/3.0)
