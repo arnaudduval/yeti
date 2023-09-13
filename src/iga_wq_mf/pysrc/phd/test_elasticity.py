@@ -69,7 +69,7 @@ class simulate():
 	def __run_iterativeSolver(self, problem:mechaproblem, Fext):
 		" Solve steady heat problems using iterative solver "
 		start = time.process_time()
-		sol, residue, _ = problem.solveElasticityProblemFT(Fext)
+		sol, residue = problem.solveElasticityProblemFTm(Fext)
 		stop = time.process_time()
 		time_t = stop - start 
 		return sol, residue, time_t

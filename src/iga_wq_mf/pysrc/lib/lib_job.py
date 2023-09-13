@@ -1,7 +1,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (thermomat, mechamat, computeVMStress4All,
+from .lib_material import (thermomat, mechamat,
 							clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
@@ -193,13 +193,13 @@ class heatproblem(problem):
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
 		return array_out
 
-	def interpolate_temperature(self, u_ctrlpts):
+	def interpolate_temperature(self, T_ctrlpts):
 		" Computes the temperature at the quadrature points "
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, np.atleast_2d(u_ctrlpts)]
-		if self.part.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)
-		elif self.part.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
-		uinterp = np.ravel(uinterp)
-		return uinterp
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, np.atleast_2d(T_ctrlpts)]
+		if self.part.dim == 2:   T_interp = geophy.interpolate_meshgrid_2d(*inpts)
+		elif self.part.dim == 3: T_interp = geophy.interpolate_meshgrid_3d(*inpts)
+		T_interp = np.ravel(T_interp)
+		return T_interp
 
 	def solveSteadyHeatProblemFT(self, Fext, args=None):
 		dod = deepcopy(self.boundary.thdod) + 1
@@ -218,73 +218,73 @@ class heatproblem(problem):
 		Kprop = self.material.conductivity(args)
 		inpts = [*super()._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: sol, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
-		if self.part.dim == 3: sol, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
-		return sol, residue
+		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
+		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
+		return temperature, residue
 
 	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0, isLumped=False):
-		nbctrlpts_total = self.part.nbctrlpts_total
-		nbSteps = len(time_list)
+		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 
-		VVn0 = np.zeros(nbctrlpts_total)
-		if nbSteps == 2:
+		# Compute inital velocity using interpolation
+		V_n0 = np.zeros(nbctrlpts_total)
+		if nsteps == 2:
 			dt = time_list[1] - time_list[0]
-			VVn0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
-		elif nbSteps > 2:
+			V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
+		elif nsteps > 2:
 			dt1 = time_list[1] - time_list[0]
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
-			VVn0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+			V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		else: raise Warning('At least 2 steps')
 		
-		resPCG_list = []
-		for i in range(1, nbSteps):
+		AllresPCG = []
+		for i in range(1, nsteps):
 			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
 			
 			# Get values of last step
-			TTn0 = np.copy(Tinout[:, i-1])
+			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			TTn1  = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
-			TTn10 = np.copy(TTn1); VVn1 = np.zeros(nbctrlpts_total)
-			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i]-Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
-			Fstep = Fext_list[:, i]
+			d0_n1 = d_n0 + dt*(1.0 - theta)*V_n0
+			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod]  = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
+			Fext_n1 = Fext_list[:, i]
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
 
 				# Compute temperature at each quadrature point
-				TTinterp = self.interpolate_temperature(TTn1)
+				dj_n1 = d0_n1 + theta*dt*V_n1
+				temperature = self.interpolate_temperature(dj_n1)
 			
 				# Compute internal force
-				args = np.row_stack((self.part.qpPhy, TTinterp))
-				CdT  = self.compute_mfCapacity(VVn1, args=args, isLumped=isLumped)
-				KT   = self.compute_mfConductivity(TTn1, args=args)
-				Fint = KT + CdT
+				args = np.row_stack((self.part.qpPhy, temperature))
+				Fint_dj = self.compute_mfCapacity(V_n1, args=args, isLumped=isLumped) + self.compute_mfConductivity(dj_n1, args=args)
 
 				# Compute residue
-				dF    = Fstep - Fint; dF[dod] = 0.0
-				resNR = np.sqrt(np.dot(dF, dF))
-				print('NR error: %.5e' %resNR)
-				if resNR <= self._thresholdNR: break
+				r_dj = Fext_n1 - Fint_dj
+				r_dj[dod] = 0.0
 
 				# Iterative solver
-				resPCG = np.array([i, j+1])
-				vtmp, resPCGt = self.solveLinearTransientHeatProblemFT(dF, theta*dt, args=args, isLumped=isLumped)
-				resPCG = np.append(resPCG, resPCGt)
-				resPCG_list.append(resPCG)
+				resPCGj = np.array([i, j+1])
+				deltaV, resPCG = self.solveLinearTransientHeatProblemFT(r_dj, theta*dt, args=args, isLumped=isLumped)
+				resPCGj = np.append(resPCGj, resPCG); AllresPCG.append(resPCGj)
 
 				# Update values
-				VVn1 += vtmp
-				TTn1 = TTn10 + theta*dt*VVn1
+				V_n1 += deltaV
 
-			Tinout[:, i] = np.copy(TTn1)
-			VVn0 = np.copy(VVn1)
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error: %.5e' %resNRj)
+				if j>0 and resNRj<=self._thresholdNR*resNR0: break
 
-		return resPCG_list
+			Tinout[:, i] = np.copy(dj_n1)
+			V_n0 = np.copy(V_n1)
+
+		return AllresPCG
 
 class mechaproblem(problem):
 	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
@@ -317,7 +317,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce
 
-	def solveElasticityProblemFT(self, Fext, mechArgs=None):
+	def solveElasticityProblemFTm(self, Fext, mechArgs=None):
 		dod = deepcopy(self.boundary.mchdod)
 		for i, tmp in enumerate(dod):
 			tmp = tmp + 1; dod[i] = tmp
@@ -331,13 +331,10 @@ class mechaproblem(problem):
 			mechArgs[1, :] = self.material.lame_mu
 		inpts = [*super()._getInputs(), *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if   self.part.dim == 2: displacement, residue = plasticitysolver.solver_elasticity_2d(*inpts)
-		elif self.part.dim == 3: displacement, residue = plasticitysolver.solver_elasticity_3d(*inpts)
-
-		strain = self.interpolate_strain(displacement)
-		stress = self.material.evalElasticStress(strain)
+		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
+		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_elasticity_3d(*inpts)
 		
-		return displacement, residue, stress
+		return displacement, resPCG
 	
 	def solvePlasticityProblemPy(self, Fext_list): 
 
@@ -345,6 +342,7 @@ class mechaproblem(problem):
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		nbqp_total = self.part.nbqp_total
+		nsteps = np.shape(Fext_list)[2]
 
 		# Internal variables
 		pls_n0 = np.zeros((nvoigt, nbqp_total))
@@ -357,25 +355,26 @@ class mechaproblem(problem):
 		mechArgs = np.zeros((nvoigt+3, nbqp_total))
 		
 		# Output variables
-		disp = np.zeros(np.shape(Fext_list))
-		stress_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext_list)[2]))
-		strain_r = np.zeros((nvoigt, nbqp_total, np.shape(Fext_list)[2]))
-		resPCG_list = []
+		Alldisplacement = np.zeros(np.shape(Fext_list))
+		Allstress 		= np.zeros((nvoigt, nbqp_total, nsteps))
+		Allstrain 		= np.zeros((nvoigt, nbqp_total, nsteps))
+		AllresPCG 		= []
 
-		for i in range(1, np.shape(Fext_list)[2]):
+		for i in range(1, nsteps):
 			
 			# Get values of last step
-			ddisp = np.zeros(np.shape(disp[:, :, i-1]))
+			d_n0  = Alldisplacement[:, :, i-1]
 
 			# Get values of new step
-			Fstep = Fext_list[:, :, i]
+			V_n1    = np.zeros(np.shape(d_n0))
+			Fext_n1 = Fext_list[:, :, i]
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
 
 				# Compute strain at each quadrature point
-				d_n1 = disp[:, :, i-1] + ddisp
-				strain = self.interpolate_strain(d_n1)
+				dj_n1  = d_n0 + V_n1
+				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
 				output = self.material.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
@@ -383,33 +382,33 @@ class mechaproblem(problem):
 				b_n1, mechArgs = output[2*nvoigt+1:3*nvoigt+1, :], output[3*nvoigt+1:, :]
 
 				# Compute internal force 
-				Fint = self.compute_intForce(stress)
+				Fint_dj = self.compute_intForce(stress)
 				
 				# Compute residue
-				dF = Fstep - Fint
-				clean_dirichlet(dF, self.boundary.mchdod) 
+				r_dj = Fext_n1 - Fint_dj
+				clean_dirichlet(r_dj, self.boundary.mchdod) 
 				
 				# Iterative solver
-				resPCG = np.array([i, j+1])
-				vtmp, resPCGt, _ = self.solveElasticityProblemFT(Fext=dF, mechArgs=mechArgs)
-				resPCG = np.append(resPCG, resPCGt)
-				resPCG_list.append(resPCG)
+				resPCGj = np.array([i, j+1])
+				deltaV, resPCG = self.solveElasticityProblemFTm(Fext=r_dj, mechArgs=mechArgs)
+				resPCGj = np.append(resPCGj, resPCG); AllresPCG.append(resPCGj)
 
-				# Update
-				ddisp += vtmp
+				# Update values
+				V_n1 += deltaV
 				
-				if j == 0: dEnergyRef = abs(block_dot_product(dimen, ddisp, dF))
-				resNR = abs(block_dot_product(dimen, ddisp, dF))
-				print('NR error: %.5e' %resNR)
-				if j>0 and resNR<=self._thresholdNR*dEnergyRef: break
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(block_dot_product(dimen, V_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error: %.5e' %resNRj)
+				if j>0 and resNRj<=self._thresholdNR*resNR0: break
 
-			disp[:, :, i] = d_n1
-			stress_r[:, :, i] = stress	
-			strain_r[:, :, i] = strain
+			Alldisplacement[:, :, i] = dj_n1
+			Allstress[:, :, i] = stress	
+			Allstrain[:, :, i] = strain
 
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
 
-		return disp, resPCG_list, stress_r
+		return Alldisplacement, AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain}
 
