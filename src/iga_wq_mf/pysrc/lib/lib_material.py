@@ -228,7 +228,7 @@ class mechamat(material):
 		stress  = symtensor2array4All(sigma, dim)
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
-		if np.size(plsInd)>0:
+		if np.size(plsInd) > 0:
 
 			# Compute plastic-strain increment
 			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.lame_mu, a[plsInd], eta_trial[:, :, plsInd])

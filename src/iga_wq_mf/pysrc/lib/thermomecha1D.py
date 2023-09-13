@@ -7,6 +7,7 @@
 from .__init__ import *
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
 from .lib_material import plasticLaw
+from .lib_base import evalDersBasisPy
 
 class part1D:
 	def __init__(self, kwargs:dict):
@@ -22,8 +23,8 @@ class part1D:
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresholdNR = solverArgs.get('NRThreshold', 1.e-8)
-		self._nbIterNR    = solverArgs.get('nbIterationsNR', 20)
+		self._thresholdNR = solverArgs.get('NRThreshold', 1.e-10)
+		self._nbIterNR    = solverArgs.get('nbIterationsNR', 50)
 		return
 	
 	def __setGeometry(self, geoArgs:dict):
@@ -85,6 +86,40 @@ class part1D:
 		masseSparse = sp.csr_matrix(masse)
 		u_ctrlpts = sp.linalg.spsolve(masseSparse, force)
 		return u_ctrlpts
+	
+	def L2NormOfError(self, u_ctrlpts, L2NormArgs:dict):
+		""" Computes the norm L2 of the error. The exactfun is the function of the exact solution. 
+			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
+			whether the default quadrature is weighted quadrature. 
+		"""	
+		
+		# Compute u interpolation
+		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
+		quadPts  = quadRule.getQuadratureRulesInfo()[0]
+		denseBasis = quadRule.getDenseQuadRules()[0]
+		parametricWeights = quadRule._parametricWeights
+		
+		qpPhy = quadPts*self.detJ
+		u_interp = denseBasis[0].T @ u_ctrlpts
+
+		# Compute u exact
+		u_exact  = None
+		exactfun = L2NormArgs.get('exactFunction', None)
+		if callable(exactfun): u_exact = exactfun(qpPhy)
+		refPart  = L2NormArgs.get('referencePart', None); u_ref = L2NormArgs.get('u_ref', None)
+		if isinstance(refPart, part1D) and isinstance(u_ref, np.ndarray):
+			denseBasisExact = evalDersBasisPy(refPart.degree, refPart.knotvector, quadPts)
+			u_exact = denseBasisExact[0].T @ u_ref
+		if u_exact is None: raise Warning('Not possible')
+
+		# Compute error
+		ue_diff_uh2 = (u_exact - u_interp)**2 * self.detJ
+		ue2         = u_exact**2 * self.detJ
+
+		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
+		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)
+		error = np.sqrt(tmp2/tmp1)
+		return error
 
 class thermo1D(part1D):
 	def __init__(self, kwargs:dict):
@@ -104,8 +139,8 @@ class thermo1D(part1D):
 	def compute_volForce(self, Fprop):
 		" Computes 'volumetric' source vector in 1D "
 		Fcoefs = Fprop*self.detJ
-		F = self.weights[0] @ Fcoefs 
-		return F
+		Fvol = self.weights[0] @ Fcoefs 
+		return Fvol
 
 	def compute_intForce(self, Kprop, Cprop, T, dT, isLumped=False):
 		"Returns the internal heat force in transient heat"
@@ -141,62 +176,63 @@ class thermo1D(part1D):
 
 		theta = self._temporaltheta
 		dod   = self.dod; dof = self.dof
-		VVn0  = np.zeros(self.nbctrlpts)
+		V_n0  = np.zeros(self.nbctrlpts)
 
-		# Compute initial velocity from boundary conditions (for i = 0)
+		# Compute initial velocity using interpolation
 		if np.shape(Tinout)[1] == 2:
 			dt = time_list[1] - time_list[0]
-			VVn0[dod] = (Tinout[dod, 1] - Tinout[dod, 0])/dt
+			V_n0[dod] = (Tinout[dod, 1] - Tinout[dod, 0])/dt
 		elif np.shape(Tinout)[1] >= 2:
 			dt1 = time_list[1] - time_list[0]
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
-			VVn0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+			V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
 
 		for i in range(1, np.shape(Tinout)[1]):
+			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
 
 			# Get values of last step
-			TTn0 = np.copy(Tinout[:, i-1])
+			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			TTn1 = TTn0 + dt*(1-theta)*VVn0; TTn1[dod] = np.copy(Tinout[dod, i])
-			TTn1i0 = np.copy(TTn1); VVn1 = np.zeros(len(TTn1))
-			VVn1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1-theta)*VVn0[dod])
-			Fstep = Fext[:, i]
+			d0_n1 = d_n0 + dt*(1 - theta)*V_n0
+			V_n1 = np.zeros(self.nbctrlpts); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
+			Fext_n1 = Fext[:, i]
 
-			for j in range(self._nbIterNR): # Newton-Raphson
-
+			print('Step: %d' %i)
+			for j in range(self._nbIterNR): 
+				
 				# Interpolate temperature
-				T_interp = self.interpolate_temperature(TTn1)
+				dj_n1 = d0_n1 + theta*dt*V_n1
+				temperature = self.interpolate_temperature(dj_n1)
 
-				# Get capacity and conductivity properties
-				Kprop = self.conductivity(T_interp)
-				Cprop = self.capacity(T_interp)
+				# Compute internal force
+				Kprop = self.conductivity(temperature)
+				Cprop = self.capacity(temperature)
+				Fint_dj = self.compute_intForce(Kprop, Cprop, dj_n1, V_n1, isLumped=isLumped)
 
 				# Compute residue
-				Fint = self.compute_intForce(Kprop, Cprop, TTn1, VVn1, isLumped=isLumped)
-				dF = Fstep[dof] - Fint[dof]
-				resNR = np.sqrt(np.dot(dF, dF))
-				print('Rhapson with error %.5e' %resNR)
-				if resNR <= self._thresholdNR: break
-
-				# Compute tangent matrix
-				A   = self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)]
-				ASp = sp.csr_matrix(A)
-
-				# Compute delta dT 
-				vtmp = sp.linalg.spsolve(ASp, dF)
+				r_dj = Fext_n1 - Fint_dj
+				r_dj[dod] = 0.0
+				
+				# Direct solver
+				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)])
+				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update values
-				VVn1[dof] += vtmp
-				TTn1[dof] = TTn1i0[dof] + theta*dt*VVn1[dof]
+				V_n1[dof] += deltaV
+
+				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('Rhapson with error %.5e' %resNRj)
+				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
 
 			# Update values in output
-			Tinout[:, i] = np.copy(TTn1)
-			VVn0 = np.copy(VVn1)
+			Tinout[:, i] = np.copy(dj_n1)
+			V_n0 = np.copy(V_n1)
 
 		return 
 
@@ -220,7 +256,7 @@ class mechamat1D(part1D):
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
 
-		def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-9):
+		def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-10):
 			dgamma = np.zeros(np.size(a_n0))
 			a_n1   = a_n0 
 			for i in range(nbIter):
@@ -229,26 +265,29 @@ class mechamat1D(part1D):
 				if np.all(np.abs(G)<=threshold): break
 				dG = - (E + law._Hderfun(a_n1) + law._Kderfun(a_n1))
 				dgamma -= G/dG
-				a_n1   = a_n0 + dgamma
+				a_n1 = a_n0 + dgamma
 			return dgamma
 
 		nnz = np.size(strain)
-		output  = np.zeros((5, nnz))
+		output = np.zeros((5, nnz))
 
 		# Compute trial stress
-		sigma_trial = self.elasticmodulus*(strain - pls)
-		eta_trial   = sigma_trial - b
+		s_trial = self.elasticmodulus*(strain - pls)
+		
+		# Computed shifted stress 
+		eta_trial = s_trial - b
 
 		# Check yield status
 		f_trial = np.abs(eta_trial) - self.plasticLaw._Kfun(a)
-		stress  = sigma_trial
+		Cep   = self.elasticmodulus*np.ones(nnz)
 		pls_new = pls
 		a_new = a
 		b_new = b
-		Cep   = self.elasticmodulus*np.ones(nnz)
+		stress  = s_trial
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
-		if np.size(plsInd)>0:
+		if np.size(plsInd) > 0:
+
 			# Compute plastic-strain increment
 			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
 			
@@ -259,7 +298,7 @@ class mechamat1D(part1D):
 			Normal_plsInd = np.sign(eta_trial[plsInd])
 
 			# Update stress
-			stress[plsInd] = sigma_trial[plsInd] - dgamma_plsInd*self.elasticmodulus*Normal_plsInd
+			stress[plsInd] = s_trial[plsInd] - dgamma_plsInd*self.elasticmodulus*Normal_plsInd
 			
 			# Update plastic strain
 			pls_new[plsInd] = pls[plsInd] + dgamma_plsInd*Normal_plsInd
@@ -277,14 +316,14 @@ class mechamat1D(part1D):
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
-		eps = self.basis[1].T @ disp * self.invJ
-		return eps
+		strain = self.basis[1].T @ disp * self.invJ
+		return strain
 
 	def compute_volForce(self, b): 
 		" Computes volumetric force in 1D. "
 		Fcoefs = self.detJ*np.ones(self.nbqp)
-		F = self.weights[0] @ np.diag(Fcoefs) @ b.T
-		return F
+		Fvol = self.weights[0] @ np.diag(Fcoefs) @ b.T
+		return Fvol
 
 	def compute_intForce(self, sigma):
 		""" Computes internal force Fint. 
@@ -307,71 +346,72 @@ class mechamat1D(part1D):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
-		nbqp = self.nbqp; dof  = self.dof
+		nbqp = self.nbqp; dof = self.dof; dod = self.dod
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
-		Cep, stress = np.zeros(nbqp), np.zeros(nbqp)
-		disp = np.zeros(np.shape(Fext))
+		stress, Cep = np.zeros(nbqp), np.zeros(nbqp)
+		Alldisplacement = np.zeros(np.shape(Fext))
 
-		eps     = np.zeros((nbqp, np.shape(Fext)[1]))
-		plastic = np.zeros((nbqp, np.shape(Fext)[1]))
-		sigma  = np.zeros((nbqp, np.shape(Fext)[1]))
-		moduleE = np.zeros((nbqp, np.shape(Fext)[1]))
+		Allstrain  = np.zeros((nbqp, np.shape(Fext)[1]))
+		Allplastic = np.zeros((nbqp, np.shape(Fext)[1]))
+		Allstress  = np.zeros((nbqp, np.shape(Fext)[1]))
+		AllCep = np.zeros((nbqp, np.shape(Fext)[1]))
 
 		for i in range(1, np.shape(Fext)[1]):
+			
 			# Get values of last step
-			d_n1  = np.copy(disp[:, i-1])
+			d_n0 = np.copy(Alldisplacement[:, i-1])
 			
 			# Get values of new step
-			ddisp = np.zeros(len(dof)) 
-			Fstep = np.copy(Fext[:, i])
+			V_n1 = np.zeros(self.nbctrlpts) 
+			Fext_n1 = np.copy(Fext[:, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Newton-Raphson 
 				
-				# Compute strain
-				strain = self.interpolate_strain(d_n1)
+				# Compute strain at each quadrature point
+				dj_n1 = d_n0 + V_n1
+				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
-				output = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
+				output = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
 				stress, pls_n1, a_n1, b_n1, Cep = output[0, :], output[1, :], output[2, :], output[3, :], output[4, :]
 
-				# Compute residue
-				Fint = self.compute_intForce(stress)
-				dF 	 = Fstep[dof] - Fint[dof]
-
-				# Compute tangent matrix
-				Stangent = self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)]
-				SSparse  = sp.csr_matrix(Stangent)
+				# Compute internal force 
+				Fint_dj = self.compute_intForce(stress)
 				
-				# Compute delta disp
-				ddisp += sp.linalg.spsolve(SSparse, dF)
+				# Compute residue
+				r_dj = Fext_n1 - Fint_dj
+				r_dj[dod] = 0.0
 
+				# Direct solver
+				tangentS = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
+				deltaV = sp.linalg.spsolve(tangentS, r_dj[dof])
+				
 				# Update values
-				d_n1[dof] = disp[dof, i-1] + ddisp
+				V_n1[dof] += deltaV
 
-				if j == 0: dEnergyRef = abs(np.dot(ddisp, dF))
-				resNR = abs(np.dot(ddisp, dF))
-				print('Rhapson with error %.5e' %resNR)
-				if j>0 and resNR <= self._thresholdNR*dEnergyRef: break
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(np.dot(V_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('Rhapson with error %.5e' %resNRj)
+				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
 
-
-			# Update values in output
-			disp[:, i]    = d_n1
-			eps[:, i]     = strain
-			sigma[:, i]   = stress
-			plastic[:, i] = pls_n1
-			moduleE[:, i] = Cep
+			Alldisplacement[:, i] = dj_n1
+			Allstrain[:, i] = strain
+			Allstress[:, i] = stress
+			Allplastic[:, i] = pls_n1
+			AllCep[:, i] = Cep
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return disp, eps, sigma, plastic, moduleE
+		return Alldisplacement, Allstrain, Allstress, Allplastic, AllCep
 
 def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='iga', extension='.png'):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	basis, knots = quadRule.getSampleBasis(sampleSize=101)
 	displacement   = basis[0].T @ disp_cp
-	strain_interp  = basis[1].T @ disp_cp
+	strain_interp  = basis[1].T @ disp_cp / JJ
 	plastic_interp = basis[0].T @ plastic_cp
 	stress_interp  = basis[0].T @ stress_cp
 
@@ -379,7 +419,7 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	N = np.shape(disp_cp)[1]
 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	units = ['mm', r'$\times 10^{-3}$', 'MPa']
+	units = ['mm', '', 'MPa']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
@@ -400,7 +440,7 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
 		ax.plot(strain_interp[pos, :], stress_interp[pos, :])
 		ax.set_ylabel('Stress (MPa)')
-		ax.set_xlabel('Strain (mm/m)')
+		ax.set_xlabel('Total strain (-)')
 		ax.set_ylim(bottom=0.0, top=200)
 		ax.set_xlim(left=0.0, right=strain_interp.max())
 

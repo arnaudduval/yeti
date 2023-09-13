@@ -249,7 +249,7 @@ class heatproblem(problem):
 
 			# Get values of new step
 			d0_n1 = d_n0 + dt*(1.0 - theta)*V_n0
-			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod]  = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
+			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
 			Fext_n1 = Fext_list[:, i]
 
 			print('Step: %d' %i)
@@ -363,7 +363,7 @@ class mechaproblem(problem):
 		for i in range(1, nsteps):
 			
 			# Get values of last step
-			d_n0  = Alldisplacement[:, :, i-1]
+			d_n0 = np.copy(Alldisplacement[:, :, i-1])
 
 			# Get values of new step
 			V_n1    = np.zeros(np.shape(d_n0))
