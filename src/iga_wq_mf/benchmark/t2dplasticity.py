@@ -38,8 +38,7 @@ nsteps = 15
 geoName = 'QA'
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':2, 'poisson_ratio': nu, 
-			# 'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
-			'plasticLaw': {'name':'linear', 'theta':1, 'Hbar':10*E}}
+			'plasticLaw': {'Isoname':'linear', 'Eiso':E}}
 solverArgs = {'nbIterationsPCG':200, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold':1e-9}
 
 degree_list = np.array([2, 3, 4, 6])

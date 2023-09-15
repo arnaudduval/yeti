@@ -70,70 +70,60 @@ class thermomat(material):
 		return
 
 class plasticLaw():
-	def __init__(self, elasticmodulus, elasticlimit, plasticArgs:dict):
-		self.__elasticlimit   = elasticlimit
-		self.__elasticmodulus = elasticmodulus
-		self._Kfun = None; self._Kderfun = None
-		self._Hfun = None; self._Hderfun = None
-		
+	def __init__(self, elasticlimit, plasticArgs:dict):
+		self.__elasticlimit = elasticlimit
+		self._IsotropicHard = None; self._IsotropicHardDer = None
+		self._KinematicHard = None; self._KinematicHardDer = None
 		self._plasticArgs = plasticArgs
-		if   plasticArgs['name'] == 'linear': self.__setLinearModel(plasticArgs)
-		elif plasticArgs['name'] == 'swift' : self.__setSwiftModel(plasticArgs)
-		elif plasticArgs['name'] == 'voce'  : self.__setVoceModel(plasticArgs)
+
+		# Define Isotropic hardening
+		isoname = plasticArgs.get('Isoname', None)
+		if   isoname == 'linear': self.__setIsoLinearModel(plasticArgs)
+		elif isoname == 'swift' : self.__setIsoSwiftModel(plasticArgs)
+		elif isoname == 'voce'  : self.__setIsoVoceModel(plasticArgs)
 		else: raise Warning('Unknown method')
-		funlist = [self._Hfun, self._Hderfun, self._Kfun, self._Kderfun]
+
+		# Define kinematic hardening
+		kinename = plasticArgs.get('Kinename', None)
+		if   kinename == 'linear': self.__setKineLinearModel(plasticArgs)
+		else: 
+			print('By default, we do not consider kinematic hardening')
+			self.__setKineNoneModel(plasticArgs)
+
+		funlist = [self._KinematicHard, self._KinematicHardDer, self._IsotropicHard, self._IsotropicHardDer]
 		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
 		return	
 	
-	def __setLinearModel(self, plasticArgs:dict):
-		theta = plasticArgs.get('theta', None)
-		Hbar  = plasticArgs.get('Hbar', None)
-		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a 
-		self._Hfun = lambda a: (1 - theta)*Hbar*a
-		self._Kderfun = lambda a: theta*Hbar*np.ones(np.size(a))
-		self._Hderfun = lambda a: (1 - theta)*Hbar*np.ones(np.size(a))
+	def __setIsoLinearModel(self, plasticArgs:dict):
+		Eiso = plasticArgs.get('Eiso', None)
+		self._IsotropicHard = lambda a: self.__elasticlimit + Eiso*a 
+		self._IsotropicHardDer = lambda a: Eiso*np.ones(np.size(a))
 		return
 	
-	def __setSwiftModel(self, plasticArgs:dict):
-		K = plasticArgs.get('K', None)
-		n = plasticArgs.get('exp', None)
-		def localKderfun(a):
-			with np.errstate(divide='ignore'):
-				y = np.where(a==0.0, 1e10*self.__elasticmodulus, (self.__elasticmodulus/K)*n*(a/K)**(n-1))
-			return y
-		self._Kfun = lambda a: self.__elasticlimit + self.__elasticmodulus*(a/K)**n
-		self._Hfun = lambda a: np.zeros(np.size(a))
-		self._Kderfun = lambda a: localKderfun(a)
-		self._Hderfun = lambda a: np.zeros(np.size(a))
+	def __setIsoSwiftModel(self, plasticArgs:dict):
+		e0 = plasticArgs.get('e0', None)
+		n = plasticArgs.get('n', None)
+		self._IsotropicHard = lambda a: self.__elasticlimit*(1 + a/e0)**n
+		self._IsotropicHardDer = lambda a: self.__elasticlimit*n/e0*(1 + a/e0)**(n - 1)
 		return
 	
-	def __setVoceModel(self, plasticArgs:dict):
-		theta = plasticArgs.get('theta', None)
-		Hbar  = plasticArgs.get('Hbar', None)
-		Kinf  = plasticArgs.get('Kinf', None)
-		delta = plasticArgs.get('delta', None)
-		self._Kfun = lambda a: self.__elasticlimit + theta*Hbar*a + Kinf*(1.0 - np.exp(-delta*a))
-		self._Hfun = lambda a: (1 - theta)*Hbar*a
-		self._Kderfun = lambda a: theta*Hbar + Kinf*delta*np.exp(-delta*a) 
-		self._Hderfun = lambda a: (1 - theta)*Hbar*np.ones(np.size(a))
+	def __setIsoVoceModel(self, plasticArgs:dict):
+		ssat = plasticArgs.get('ssat', None)
+		beta = plasticArgs.get('beta', None)
+		self._IsotropicHard = lambda a: self.__elasticlimit +  ssat*(1.0 - np.exp(-beta*a))
+		self._IsotropicHardDer = lambda a: ssat*beta*np.exp(-beta*a) 
 		return
 	
-	def __setExponential(self, plasticArgs:dict):
-		theta = plasticArgs.get('theta', None)
-		Hbar  = plasticArgs.get('Hbar', None)
-		Kinf  = plasticArgs.get('Kinf', None)
-		Kzero = plasticArgs.get('Kzero', None)
-		delta = plasticArgs.get('delta', None)
-		
-		def h(a):
-			return  Kinf - (Kinf - Kzero)*np.exp(-delta*a) + Hbar*a
-		def dh(a):
-			return (Kinf - Kzero)*delta*np.exp(-delta*a) + Hbar
-
-		self._Kfun = lambda a: theta*h(a)
-		self._Hfun = lambda a: (1 - theta)*h(a)
-		self._Kderfun = lambda a: theta*dh(a)
-		self._Hderfun = lambda a: (1 - theta)*dh(a)
+	def __setKineNoneModel(self, plasticArgs:dict):
+		self._KinematicHard = lambda a: np.zeros(np.size(a))
+		self._KinematicHardDer = lambda a: np.zeros(np.size(a))
+		return
+	
+	def __setKineLinearModel(self, plasticArgs:dict):
+		Ek = plasticArgs.get('Ekine', None)
+		print('If working in 2 or 3 dimensions, please be sure of scailing the coefficients by 2/3')
+		self._KinematicHard = lambda a: Ek*np.ones(np.size(a))
+		self._KinematicHardDer = lambda a: np.zeros(np.size(a))
 		return
 	
 class mechamat(material):
@@ -152,7 +142,7 @@ class mechamat(material):
 		tmp = matArgs.get('plasticLaw', None)
 		if isinstance(tmp, dict): 
 			self._isPlasticityPossible = True
-			self.plasticLaw = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
+			self.plasticLaw = plasticLaw(self.elasticlimit, tmp)
 		self.__setExtraMechanicalProperties()
 		return
 	
@@ -183,36 +173,34 @@ class mechamat(material):
 		"""
 
 		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=50, threshold=1e-9):
-			if law._plasticArgs['name'] == 'linear':
-				f_trial = np.linalg.norm(eta_trial, axis=(0, 1)) - np.sqrt(2.0/3.0)*law._Kfun(a_n0)
-				dgamma  = f_trial/(2.0*lame_mu + 2.0*law._plasticArgs['Hbar']/3.0)
-			else:
-				dgamma = np.zeros(np.size(a_n0))
-				a_n1 = a_n0
-				for i in range(nbIter):
-					dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
-					G  = (-np.sqrt(2.0/3.0)*law._Kfun(a_n1) + np.linalg.norm(eta_trial, axis=(0, 1)) 
-						- (2.0*lame_mu*dgamma + np.sqrt(2.0/3.0)*dH))
-					if np.all(np.abs(G)<=threshold): break
-					dG = - 2.0*(lame_mu + (law._Hderfun(a_n1) + law._Kderfun(a_n1))/3.0)
-					dgamma -= G/dG
-					a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
+			dgamma = np.zeros(np.size(a_n0))
+			a_n1 = a_n0
+			for i in range(nbIter):
+				G  = (np.linalg.norm(eta_trial, axis=(0, 1)) - (2.0*lame_mu + law._KinematicHard(a_n1))*dgamma
+				- np.sqrt(2.0/3.0)*law._IsotropicHard(a_n1))
+				if np.all(np.abs(G)<=threshold): break
+				dG = -(2.0*lame_mu + law._KinematicHard(a_n1) 
+					+ np.sqrt(2.0/3.0)*dgamma*law._KinematicHardDer(a_n1) 
+					+ 2.0/3.0*law._IsotropicHardDer(a_n1))
+				dgamma -= G/dG
+				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
 			return dgamma
 
 		nvoigt, nnz = np.shape(strain)
 		if nvoigt   == 3: dim = 2
 		elif nvoigt == 6: dim = 3
 
-		output  = np.zeros((4*(nvoigt+1), nnz))
-		Cep     = np.zeros((3, nnz))
+		output  = np.zeros((4*(nvoigt+1), nnz)); Cep = np.zeros((3, nnz))
 		Tstrain = array2symtensor4All(strain, dim)
 		Tpls    = array2symtensor4All(pls, dim)
 		Tb      = array2symtensor4All(b, dim)
+
+		# Compute strain deviator
 		traceStrain = evalTrace4All(strain, dim)
 		devStrain   = Tstrain
 		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
-		# Compute trial stress
+		# Compute trial stress deviator
 		s_trial = 2*self.lame_mu*(devStrain - Tpls)
 
 		# Compute shifted stress
@@ -220,7 +208,7 @@ class mechamat(material):
 
 		# Check yield status
 		norm_trial = np.linalg.norm(eta_trial, axis=(0, 1))
-		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._Kfun(a)
+		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._IsotropicHard(a)
 		sigma   = s_trial
 		for i in range(dim): sigma[i, i, :] += self.lame_bulk*traceStrain
 		Cep[0, :] = self.lame_lambda; Cep[1, :] = self.lame_mu
@@ -236,7 +224,7 @@ class mechamat(material):
 			# Update internal hardening variable
 			a_new[plsInd] = a[plsInd] + np.sqrt(2.0/3.0)*dgamma_plsInd
 
-			# Compute df/dsigma
+			# Compute d f_trial/d eta_trial
 			Normal_plsInd = eta_trial[:, :, plsInd]/norm_trial[plsInd]
 			output[3*nvoigt+4:, plsInd] = symtensor2array4All(Normal_plsInd, dim)
 
@@ -249,15 +237,17 @@ class mechamat(material):
 			pls_new[:, plsInd] = symtensor2array4All(Tpls[:, :, plsInd], dim)
 
 			# Update backstress
-			Tb[:, :, plsInd] += np.sqrt(2.0/3.0)*(self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
+			Tb[:, :, plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
 			b_new[:, plsInd] = symtensor2array4All(Tb[:, :, plsInd], dim)
 
 			# Update tangent coefficients
-			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
-			c1 = 2*self.lame_mu*dgamma_plsInd/norm_trial[plsInd]
-			c2 = 1.0/(1+somme/(3*self.lame_mu)) - c1
-			Cep[0, plsInd] = self.lame_lambda + 2.0/3.0*self.lame_mu*c1
-			Cep[1, plsInd] = self.lame_mu*(1.0 - c1)
+			sumofterms = (3.0*self.plasticLaw._KinematicHard(a_new[plsInd]) 
+						+ 2.0*self.plasticLaw._IsotropicHardDer(a_new[plsInd]) 
+						+ np.sqrt(6.0)*dgamma_plsInd*self.plasticLaw._KinematicHardDer(a_new[plsInd]))
+			c1 = 1.0 - 2.0*self.lame_mu*dgamma_plsInd/norm_trial[plsInd]
+			c2 = 1.0/(1.0 + sumofterms/(6.0*self.lame_mu)) + c1 - 1.0
+			Cep[0, plsInd] = self.lame_lambda + 2.0/3.0*self.lame_mu*(1.0 - c1)
+			Cep[1, plsInd] = self.lame_mu*c1
 			Cep[2, plsInd] = -2.0*self.lame_mu*c2
 
 		output[0:nvoigt, :] = stress; output[nvoigt:2*nvoigt, :] = pls_new; output[2*nvoigt, :] = a_new

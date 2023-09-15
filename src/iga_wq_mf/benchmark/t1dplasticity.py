@@ -21,7 +21,7 @@ def forceVol(P:list):
 nbSteps = 50
 geoArgs = {'length': 1.e3}
 matArgs = {'elastic_modulus':2e5, 'elastic_limit':100,
-			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}}
+			'plasticLaw': {'Isoname': 'swift', 'e0':2e4, 'n':0.5}} #!!!!!!!!!!!!!!!!!!
 
 degree, nbel = 8, 1024
 knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=degree)

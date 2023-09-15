@@ -46,7 +46,7 @@ def exactDisplacement_infPlate(P:list):
 geoName = 'QA'
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu, 
-			'plasticLaw': {'name': 'swift', 'K':2e4, 'exp':0.5}} # Any law, it does not matter
+			'plasticLaw': {'Isoname': 'swift'}} # Any law, it does not matter
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)

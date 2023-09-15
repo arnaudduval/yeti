@@ -248,7 +248,7 @@ class mechamat1D(part1D):
 		tmp = matArgs.get('plasticLaw', None)
 		if isinstance(tmp, dict):  
 			self._isPlasticityPossible = True
-			self.plasticLaw            = plasticLaw(self.elasticmodulus, self.elasticlimit, tmp)
+			self.plasticLaw            = plasticLaw(self.elasticlimit, tmp)
 		return 
 
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
@@ -260,10 +260,10 @@ class mechamat1D(part1D):
 			dgamma = np.zeros(np.size(a_n0))
 			a_n1   = a_n0 
 			for i in range(nbIter):
-				dH = law._Hfun(a_n1) - law._Hfun(a_n0) 
-				G  = -law._Kfun(a_n1) + np.abs(eta_trial) - (E*dgamma + dH)
+				G  = np.abs(eta_trial) - (E + law._KinematicHard(a_n1))*dgamma -law._IsotropicHard(a_n1)
 				if np.all(np.abs(G)<=threshold): break
-				dG = - (E + law._Hderfun(a_n1) + law._Kderfun(a_n1))
+				dG = - (E + law._KinematicHard(a_n1) + dgamma*law._KinematicHardDer(a_n1)
+						+ law._IsotropicHardDer(a_n1))
 				dgamma -= G/dG
 				a_n1 = a_n0 + dgamma
 			return dgamma
@@ -278,7 +278,7 @@ class mechamat1D(part1D):
 		eta_trial = s_trial - b
 
 		# Check yield status
-		f_trial = np.abs(eta_trial) - self.plasticLaw._Kfun(a)
+		f_trial = np.abs(eta_trial) - self.plasticLaw._IsotropicHard(a)
 		Cep   = self.elasticmodulus*np.ones(nnz)
 		pls_new = pls
 		a_new = a
@@ -298,16 +298,16 @@ class mechamat1D(part1D):
 			Normal_plsInd = np.sign(eta_trial[plsInd])
 
 			# Update stress
-			stress[plsInd] = s_trial[plsInd] - dgamma_plsInd*self.elasticmodulus*Normal_plsInd
+			stress[plsInd] -= self.elasticmodulus*dgamma_plsInd*Normal_plsInd
 			
 			# Update plastic strain
-			pls_new[plsInd] = pls[plsInd] + dgamma_plsInd*Normal_plsInd
+			pls_new[plsInd] += dgamma_plsInd*Normal_plsInd
 
 			# Update backstress
-			b_new[plsInd] = b[plsInd] + (self.plasticLaw._Hfun(a_new[plsInd]) - self.plasticLaw._Hfun(a[plsInd]))*Normal_plsInd
+			b_new[plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
 			
 			# Update tangent coefficients
-			somme = self.plasticLaw._Kderfun(a_new[plsInd]) + self.plasticLaw._Hderfun(a_new[plsInd])
+			somme = self.plasticLaw._IsotropicHardDer(a_new[plsInd]) + self.plasticLaw._KinematicHard(a_new[plsInd])
 			Cep[plsInd] = self.elasticmodulus*somme/(self.elasticmodulus + somme)
 
 		output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
