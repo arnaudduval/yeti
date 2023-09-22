@@ -139,8 +139,9 @@ class decoder():
 		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
 
-		# if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		ax.legend(loc='best')
+		if plotLegend:
+			# if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+			ax.legend(loc='best')
 		fig.tight_layout()
 		fig.savefig(savename)
 

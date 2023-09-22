@@ -7,10 +7,16 @@ from pysrc.lib.lib_job import mechaproblem
 from pysrc.lib.lib_simulation import decoder
 
 def forceSurfFun(P:list):
-	ref  = np.array([0.0, 4e1])
-	prop = np.zeros((2, np.size(P, axis=1)))
-	for i in range(2): prop[i, :] = ref[i] 
-	return prop
+	Tx, a = 1.0, 1.0
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	b = a**2/r_square # Already squared
+	theta = np.arcsin(y/np.sqrt(r_square))
+
+	F = np.zeros((2, nnz))
+	F[0, :] = Tx/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
+	F[1, :] = Tx/2*3*np.sin(3*theta)*(b**2 - b)
+	return F
 
 class simulate():
 
@@ -104,7 +110,7 @@ class simulate():
 			un, residue_t, time_temp = self.__run_iterativeSolver(problem, Fext=Fext)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
-			print(time_temp, len(residue_t[residue_t>0.0]))
+			print(im, time_temp, len(residue_t[residue_t>0.0]))
 
 		print('--')
 				
@@ -119,11 +125,11 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = True 
-degree_list = np.arange(6, 7)
-cuts_list   = np.arange(6, 7)
+dataExist   = False 
+degree_list = np.arange(4, 7)
+cuts_list   = np.arange(9, 10)
 name_list   = ['qa']
-IterMethods = ['WP', 'C', 'JMC', 'TDC']
+IterMethods = ['JMC']
 matArgs     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3}
 
 for cuts in cuts_list:
@@ -146,5 +152,5 @@ for cuts in cuts_list:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension='_EL.pdf', plotLegend=True)
+				simuOutput.plot_results(extension='_EL.pdf', plotLegend=False)
 				
