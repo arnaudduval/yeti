@@ -1,4 +1,4 @@
-from .__init__ import *
+from pysrc.lib.__init__ import *
 
 class decoder(): 
 

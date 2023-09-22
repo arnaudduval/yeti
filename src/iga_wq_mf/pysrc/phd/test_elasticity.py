@@ -4,7 +4,7 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import mechaproblem
-from pysrc.lib.lib_simulation import decoder
+from pysrc.phd.lib_simulation import decoder
 
 def forceSurfFun(P:list):
 	Tx, a = 1.0, 1.0

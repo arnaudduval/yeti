@@ -7,10 +7,9 @@
 .. CASE 3: Quadrature points in IGA-Galerkin approach
 .. CASE 4: Quadrature points in IGA-WQ approach
 .. CASE 5: B-spline surface
-.. CASE 6: FEM basis 
-.. CASE 7: Quadrature rules W00 or W11
-.. CASE 8: Plot 3D geometries
-.. CASE 9: Plot example of results
+.. CASE 6: Quadrature rules W00 or W11
+.. CASE 7: Plot 3D geometries
+.. CASE 8: Plot example of results
 """
 
 from pysrc.lib.__init__ import *
@@ -59,18 +58,21 @@ def plot2DGeo(model:part, sampleSize=101):
 	Y = np.asarray(evalpts[1, :].reshape((sampleSize, sampleSize)).tolist())
 	Z = np.zeros(X.shape)
 
-	fig, ax = plt.subplots()
+	fig, ax = plt.subplots(figsize=(4.5, 4.5))
 	ax.grid(None)
-	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
-	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control points')
 	plot_mesh(ctrlpts, model.nbctrlpts, ax)
-	ax.set_xticks(np.arange(0, max(evalpts[:,0])+2, 1.0))
-	ax.set_yticks(np.arange(0, max(evalpts[:,1])+1, 1.0))
+	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
+	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control\n Points')
+	
+	ax.set_xticks(np.arange(0, np.ceil(max(evalpts[:, 0]))+2, 1.0))
+	ax.set_yticks(np.arange(0, np.ceil(max(evalpts[:, 1]))+1, 1.0))
+	ax.set_xlim(left=-0.25, right=2.25)
+	ax.set_ylim(bottom=-0.25, top=2.25)
 
-	ax.axis('equal')
-	ax.legend()
-	ax.set_xlabel(r'$X_1$')
-	ax.set_ylabel(r'$X_2$')
+	ax.legend(loc='lower left')
+	ax.set_aspect('equal', adjustable='box')
+	ax.set_xlabel(r'$x_1$')
+	ax.set_ylabel(r'$x_2$')
 	fig.tight_layout()
 	
 	return fig
@@ -106,12 +108,12 @@ if CASE == 0: # B-spline curve
 		x = evalpts[:, 0]; y = evalpts[:, 1]
 		
 		fig, ax = plt.subplots(nrows=1, ncols=1)
-		ax.plot(x, y, label='B-spline curve')
-		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points')
+		ax.plot(x, y, label='B-Spline curve')
+		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control Points')
 
 		ax.legend()
-		ax.set_xlabel(r'$X_1$')
-		ax.set_ylabel(r'$X_2$')
+		ax.set_xlabel(r'$x_1$')
+		ax.set_ylabel(r'$x_2$')
 		ax.axis('equal')
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
@@ -141,8 +143,8 @@ elif CASE == 1: # Univariate functions
 		for ax in [ax1, ax2]:
 			ax.set_xlabel(r'$\xi$')
 			ax.set_xticks(np.linspace(0, 1, nbel+1))
-		ax1.set_ylabel(r'$B_{i,p}(\xi)$')
-		ax2.set_ylabel(r"${B'}_{i,p}(\xi)$")
+		ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
+		ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 		return
@@ -185,10 +187,10 @@ elif CASE == 2: # Bivariate functions
 
 			axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
 			axs[0,0].set_xlabel(r'$\xi_1$')
-			axs[0,0].set_ylabel(r'$B_{i_1,p_1}(\xi_1)$')
+			axs[0,0].set_ylabel(r'$\hat{b}_{A_1,\,p_1}$')
 			axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
 			axs[1,1].set_ylabel(r'$\xi_2$')
-			axs[1,1].set_xlabel(r'$B_{i_2,p_2}(\xi_2)$')
+			axs[1,1].set_xlabel(r'$\hat{b}_{A_2,\,p_2}$')
 			axs[1,1].set_xticks([0, 1])
 			fig.tight_layout()
 			fig.savefig(filename, dpi=300) 
@@ -286,42 +288,10 @@ elif CASE == 5: # B-spline surface
 	fig = plot2DGeo(model)
 	fig.savefig(filename, dpi=300) 
 
-elif CASE == 6: # FEM functions 
+elif CASE == 6: # Weights W00 and W11
 
 	def case6(folder, extension):
-		# Set filename
-		filename = folder + 'FEM_Functions' + extension
-
-		# Functions in isoparametric space 
-		x  = np.linspace(-1, 1, 90)
-		f1 = x*(x-1)/2
-		f2 = (1-x**2)
-		f3 = x*(x+1)/2
-
-		# Parametric space properties
-		nbel  = 4
-		knots = np.linspace(0, 1, nbel+1)
-
-		fig, ax = plt.subplots()
-		for _ in range(nbel):
-			x0 = knots[_]; x1 = knots[_+1]
-			xtemp = x0*(1-x)/2 + x1*(1+x)/2
-			ax.plot(xtemp, f1, color=colorSet[_])
-			ax.plot(xtemp, f2, color=colorSet[_])
-			ax.plot(xtemp, f3, color=colorSet[_])
-		
-		ax.set_xlabel(r'$\xi$')
-		ax.set_xticks([0, 0.5, 1])
-		fig.tight_layout()
-		fig.savefig(filename, dpi=300)
-		return
-	
-	case6(folder, extension)
-
-elif CASE == 7: # Weights W00 and W11
-
-	def case8(folder, extension):
-		WeightName = 1 # or 0
+		WeightName = 0 # or 0
 		if WeightName not in [0, 1]: raise Warning('Not possible')
 		if WeightName == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
 		else:               ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
@@ -372,13 +342,13 @@ elif CASE == 7: # Weights W00 and W11
 		fig.savefig(filename, dpi=300)
 		return
 	
-	case8(folder, extension)
+	case6(folder, extension)
 
-elif CASE == 8: # 2D Geometries
+elif CASE == 7: # 2D Geometries
 
-	def case9(folder):
+	def case7(folder):
 		# Create model
-		name    = 'SQ'
+		name    = 'QA'
 		filename = folder + 'VTK_' + name + '.png'
 		degree, cuts = 5, 5
 		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -421,11 +391,11 @@ elif CASE == 8: # 2D Geometries
 		os.remove(fileVTK + '.vts')
 		cropImage(filename)
 
-	case9(folder)
+	case7(folder)
 
-elif CASE == 9: # 3D Geometries
+elif CASE == 8: # 3D Geometries
 
-	def case10(folder):
+	def case8(folder):
 		# Create model
 		name    = 'TR'
 		filename = folder + 'VTK_' + name + '.png'
@@ -477,6 +447,6 @@ elif CASE == 9: # 3D Geometries
 		cropImage(filename)
 		return
 	
-	case10(folder)
+	case8(folder)
 
 else: raise Warning('Case unkwnon')

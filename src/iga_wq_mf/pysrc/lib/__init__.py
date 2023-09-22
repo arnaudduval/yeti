@@ -21,8 +21,8 @@ from mpltools import annotation
 from cycler import cycler
 
 # Default properties 
-markerSet = ['o', 'v', 's', 'X', '+', 'p', '*']
-colorSet = ['#377eb8', '#ff7f00', '#4daf4a',
+markerList = ['o', 'v', 's', 'X', '+', 'p', '*']
+colorList  = ['#377eb8', '#ff7f00', '#4daf4a',
 			'#f781bf', '#a65628', '#984ea3',
 			'#999999', '#e41a1c', '#dede00']
 mpl.rcParams['text.usetex'] = True
@@ -34,12 +34,12 @@ mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 mpl.rcParams["axes.grid"] = True
-mpl.rcParams['axes.prop_cycle'] = cycler('color', colorSet)
+mpl.rcParams['axes.prop_cycle'] = cycler('color', colorList)
 
 import pyvista as pv
 pv.rcParams['transparent_background'] = True
 pv.global_theme.font.family = 'times'
-pv.global_theme.font.color = 'black'
+pv.global_theme.font.color  = 'black'
 
 # Define size
 SMALL_SIZE, MEDIUM_SIZE, BIGGER_SIZE = 14, 16, 18

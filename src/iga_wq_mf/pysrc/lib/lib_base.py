@@ -20,10 +20,11 @@ def cropImage(filename):
 	colorY, colorX = np.where(np.all(na!=[255, 255, 255], axis=2))
 
 	# Find first and last row containing colored pixels
-	top, bottom = colorY[0], colorY[-1]
+	top, bottom = min(colorY), max(colorY)
+	left, right = min(colorX), max(colorX)
 
 	# Extract region of Interest
-	ROI = na[top:bottom, :]
+	ROI = na[top:bottom, left:right]
 	Image.fromarray(ROI).save(filename)
 	return 
 

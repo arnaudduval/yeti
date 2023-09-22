@@ -142,7 +142,7 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 	time_list  = np.zeros((len(degree_list), len(cuts_list)))
 
 	for i, degree in enumerate(degree_list):
-		color = colorSet[i]
+		color = colorList[i]
 		for j, cuts in enumerate(cuts_list):
 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 

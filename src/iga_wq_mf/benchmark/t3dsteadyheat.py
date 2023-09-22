@@ -185,7 +185,7 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 				error_list[j] = problem.L2NormOfError(temperature, L2NormArgs={'exactFunction':exactTemperature_rotRing})
 
 		nbctrlpts_list = (2**cuts_list+degree)**3
-		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
+		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))
 			
 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 		ax.set_xlabel('Total number of DOF')

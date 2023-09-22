@@ -100,9 +100,9 @@ density      = 1.0
 # Discretization
 theta = 0.5
 nbel  = 10; dh = 1/nbel
-T     = 0.02
-N     = 9
-time_list = np.linspace(0, T, N)
+tspan     = 0.02
+nbsteps   = 9
+time_list = np.linspace(0, tspan, nbsteps)
 
 # Assembly
 C = np.zeros((nbel+1, nbel+1))
@@ -122,7 +122,7 @@ solve_transient_heat_1D(C, K, time_list=time_list, dof=dof, dod=dod, Tinout=temp
 # ------------------
 f = interpolate.interp2d(np.linspace(0, 1, nbel+1), time_list, temperature.T, kind='linear')
 xnew = np.linspace(0, 1, 101)
-ynew = np.linspace(0, T, 101)
+ynew = np.linspace(0, tspan, 101)
 znew = f(xnew, ynew)
 
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,4))

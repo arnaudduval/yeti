@@ -85,7 +85,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			error_list[j] = problem.L2NormOfError(displacement[:, :, -1], L2NormArgs={'exactFunction':exactDisplacement_infPlate})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
-		ax.loglog(nbctrlpts_list, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
+		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))
 		
 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 		ax.set_xlabel('Total number of DOF')

@@ -12,7 +12,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-fig, axs   = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
+fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 nbel_list = [2**i for i in np.arange(3, 6)]
 
 for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
@@ -24,34 +24,26 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 			knotvector = createUniformMaxregularKnotvector(degree, nbel)
 			nb_ctrlpts = len(knotvector) - degree - 1
 
-			# --------
-			# FORTRAN
-			# --------
+			# WQ
 			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			[B0f, B1f] = basis; [W00f, W01f, W10f, W11f] = weights
 
-			# Calculate I
 			I00f = W00f @ B0f.T; I01f = W01f @ B1f.T
 			I10f = W10f @ B0f.T; I11f = W11f @ B1f.T
 
-			# ----------
-			# REFERENCE
-			# ----------
+			# IGA
 			gaussQuad = GaussQuadrature(degree, knotvector, {})
 			gaussQuad.getQuadratureRulesInfo()
 			basis, weights = gaussQuad.getDenseQuadRules()
 			[B0, B1] = basis
 			[W00, W01, W10, W11] = weights
 
-			# Calculate I
 			I00 = W00 @ B0.T; I01 = W01 @ B1.T
 			I10 = W10 @ B0.T; I11 = W11 @ B1.T
 
-			# ---------------
 			# Compare results 
-			# ---------------
 			if varName   == 'I00': var1 = I00; var2 = I00f
 			elif varName == 'I01': var1 = I01; var2 = I01f 
 			elif varName == 'I10': var1 = I10; var2 = I10f
