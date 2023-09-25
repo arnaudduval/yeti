@@ -22,23 +22,8 @@ def forceSurf_infPlate(P:list):
 	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	b = a**2/r_square # Already squared
+	b = a**2/r_square
 	theta = np.arcsin(y/np.sqrt(r_square))
-
-	# theta_x2 = 2.0*theta
-	# PolarSt = np.zeros((3, nnz))
-	# PolarSt[0, :] = Tx/2.0*(1.0 - b + np.cos(theta_x2)*(1.0 - 4.0*b + 3.0*b**2)) 
-	# PolarSt[1, :] = Tx/2.0*(1.0 + b - np.cos(theta_x2)*(1.0 + 3.0*b**2))
-	# PolarSt[2, :] = -Tx/2.0*(1.0 + 2.0*b - 3.0*b**2)*np.sin(theta_x2)	
-	
-	# CartSt = np.zeros((3, nnz))
-	# CartSt[0, :] = PolarSt[0, :]*(np.cos(theta))**2 + PolarSt[1, :]*(np.sin(theta))**2 - PolarSt[2, :]*(np.sin(theta_x2)) 
-	# CartSt[1, :] = PolarSt[0, :]*(np.sin(theta))**2 + PolarSt[1, :]*(np.cos(theta))**2 + PolarSt[2, :]*(np.sin(theta_x2)) 
-	# CartSt[2, :] = PolarSt[2, :]*np.cos(theta_x2) + 0.5*np.sin(theta_x2)*(PolarSt[0, :] - PolarSt[1, :])
-
-	# F = np.zeros((2, nnz))
-	# F[0, :] = CartSt[0, :]*np.cos(theta) + CartSt[2, :]*np.sin(theta)
-	# F[1, :] = CartSt[2, :]*np.cos(theta) + CartSt[1, :]*np.sin(theta)
 
 	F = np.zeros((2, nnz))
 	F[0, :] = Tx/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
@@ -46,21 +31,12 @@ def forceSurf_infPlate(P:list):
 	return F
 
 def exactDisplacement_infPlate(P:list):
-	Tx, a, E, nu = 1.0, 1.0, 1.e3, 0.3
+	Tx, a, E, nu = 1.0, 1.0, 1.e3, 0.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
 	theta = np.arcsin(y/np.sqrt(r_square))
 	b = a**2/r_square # Already squared
 	c = Tx*(1.0 + nu)*np.sqrt(r_square)/(2*E)
-
-	# theta_x2  = 2.0*theta
-	# PolarDisp = np.zeros((2, nnz))
-	# PolarDisp[0, :] = c*((b + 1.0 - 2.0*nu) + np.cos(theta_x2)*(-b**2 + 4.0*(1.0 - nu)*b + 1.0))
-	# PolarDisp[1, :] = -c*np.sin(theta_x2)*(b**2 + 2.0*(1.0 - 2.0*nu)*b + 1.0)
-
-	# disp  = np.zeros((2, nnz))
-	# disp[0, :] = PolarDisp[0, :]*np.cos(theta) - PolarDisp[1, :]*np.sin(theta)
-	# disp[1, :] = PolarDisp[0, :]*np.sin(theta) + PolarDisp[1, :]*np.cos(theta)
 
 	disp = np.zeros((2, nnz))
 	disp[0, :] = c*(2*(1-nu)*np.cos(theta) + b*(4*(1-nu)*np.cos(theta) + np.cos(3*theta)) - b**2*np.cos(3*theta))
@@ -70,66 +46,13 @@ def exactDisplacement_infPlate(P:list):
 
 # Set global variables
 geoName = 'QA'
-E, nu = 1e3, 0.3
+E, nu = 1e3, 0.0
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio':nu}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
-# for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
-# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-# 	meshparam  = np.ones(len(cuts_list))
-# 	error_list = np.ones(len(cuts_list))
-# 	fig, ax    = plt.subplots(figsize=(8, 4))
-# 	time_list  = np.zeros((len(degree_list), len(cuts_list)))
-
-# 	for i, degree in enumerate(degree_list):
-# 		for j, cuts in enumerate(cuts_list):
-# 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
-# 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-# 						'extra':{'Rin':1.0, 'Rex':4.0}
-# 			}
-# 			blockPrint()
-# 			material = mechamat(matArgs)
-# 			modelGeo = Geomdl(geoArgs)
-# 			modelIGA = modelGeo.getIGAParametrization()
-# 			modelPhy = part(modelIGA, quadArgs=quadArgs)
-# 			meshparam[j] = modelPhy.compute_mesh_parameter()
-
-# 			# Set Dirichlet boundaries
-# 			boundary = boundaryCondition(modelPhy.nbctrlpts)
-# 			table = np.zeros((2, 2, 2), dtype=int)
-# 			table[1, 1, 0] = 1
-# 			table[1, 0, 1] = 1
-# 			boundary.add_DirichletDisplacement(table=table)
-# 			enablePrint()
-
-# 			# Solve elastic problem
-# 			problem = mechaproblem(material, modelPhy, boundary)
-# 			problem.addSolverConstraints(solverArgs=solverArgs)
-# 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-# 			start = time.process_time()
-# 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-# 			stop = time.process_time()
-# 			time_list[i, j] = stop - start
-# 			np.savetxt(folder + 'CPUtime' + geoName + '_' + quadrule + str(quadtype), time_list)
-# 			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
-
-# 		ax.loglog(meshparam, error_list, marker=markerSet[i], label='degree '+r'$p=\,$'+str(degree))
-# 		if quadrule == 'iga':
-# 			slope = np.polyfit(np.log10(meshparam[2:-2]),np.log10(error_list[2:-2]), 1)[0]
-# 			slope = round(slope, 1)
-# 			annotation.slope_marker((meshparam[4], error_list[4]), slope, 
-# 									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-			
-# 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
-# 		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-# 		ax.set_ylim(top=1e0, bottom=1e-15)
-# 		ax.set_xlim(left=1e-2, right=2)
-# 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-# 		fig.tight_layout()
-# 		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) + '.pdf')
-	
+# Plot results
 normalPlot = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
 onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
@@ -177,5 +100,5 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 		ax.set_ylim(top=1e-2, bottom=1e-14)
 		ax.set_xlim(left=1e-2, right=2)
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceAll' +  geoName + '.pdf')
+		fig.savefig(folder + 'FigConvergenceAll2' +  geoName + '.pdf')
 	

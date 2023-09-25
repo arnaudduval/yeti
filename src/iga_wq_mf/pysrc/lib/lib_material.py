@@ -81,6 +81,7 @@ class plasticLaw():
 		if   isoname == 'linear': self.__setIsoLinearModel(plasticArgs)
 		elif isoname == 'swift' : self.__setIsoSwiftModel(plasticArgs)
 		elif isoname == 'voce'  : self.__setIsoVoceModel(plasticArgs)
+		elif isoname == 'none' : self.__setIsoNoneModel()
 		else: raise Warning('Unknown method')
 
 		# Define kinematic hardening
@@ -88,11 +89,16 @@ class plasticLaw():
 		if   kinename == 'linear': self.__setKineLinearModel(plasticArgs)
 		else: 
 			print('By default, we do not consider kinematic hardening')
-			self.__setKineNoneModel(plasticArgs)
+			self.__setKineNoneModel()
 
 		funlist = [self._KinematicHard, self._KinematicHardDer, self._IsotropicHard, self._IsotropicHardDer]
 		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
 		return	
+	
+	def __setIsoNoneModel(self):
+		self._IsotropicHard = lambda a: np.zeros(np.size(a))
+		self._IsotropicHardDer = lambda a: np.zeros(np.size(a))
+		return
 	
 	def __setIsoLinearModel(self, plasticArgs:dict):
 		Eiso = plasticArgs.get('Eiso', None)
@@ -114,7 +120,7 @@ class plasticLaw():
 		self._IsotropicHardDer = lambda a: ssat*beta*np.exp(-beta*a) 
 		return
 	
-	def __setKineNoneModel(self, plasticArgs:dict):
+	def __setKineNoneModel(self):
 		self._KinematicHard = lambda a: np.zeros(np.size(a))
 		self._KinematicHardDer = lambda a: np.zeros(np.size(a))
 		return

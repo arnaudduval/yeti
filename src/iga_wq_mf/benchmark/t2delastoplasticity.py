@@ -20,7 +20,7 @@ def forceSurf_infPlate(P:list):
 	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	b = a**2/r_square # Already squared
+	b = a**2/r_square 
 	theta = np.arcsin(y/np.sqrt(r_square))
 
 	F = np.zeros((2, nnz))
@@ -33,7 +33,7 @@ def exactDisplacement_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
 	theta = np.arcsin(y/np.sqrt(r_square))
-	b = a**2/r_square # Already squared
+	b = a**2/r_square
 	c = Tx*(1.0 + nu)*np.sqrt(r_square)/(2*E)
 
 	disp = np.zeros((2, nnz))
@@ -46,7 +46,7 @@ def exactDisplacement_infPlate(P:list):
 geoName = 'QA'
 E, nu = 1e3, 0.3
 matArgs    = {'elastic_modulus':E, 'elastic_limit':1e10, 'poisson_ratio': nu, 
-			'plasticLaw': {'Isoname': 'swift'}} # Any law, it does not matter
+				'plasticLaw': {'Isoname': 'none'}}
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
