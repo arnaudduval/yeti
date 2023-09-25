@@ -4,7 +4,7 @@
 .. Joaquin Cornejo
 """
 
-from .__init__ import *
+from . import *
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature
 from .lib_material import plasticLaw
 from .lib_base import evalDersBasisPy

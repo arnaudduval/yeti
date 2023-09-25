@@ -5,7 +5,7 @@
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
-from pysrc.lib.thermomecha1D import thermo1D
+from pysrc.lib.lib_1d import thermo1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
