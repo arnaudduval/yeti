@@ -1,4 +1,71 @@
 from pysrc.lib.__init__ import *
+from pysrc.lib.lib_job import heatproblem, mechaproblem
+
+class simulate():
+
+	def __init__(self, simuArgs:dict):
+
+		self._name 		= simuArgs.get('name', '').lower()
+		self._degree 	= simuArgs.get('degree', 2)
+		self._nbcuts 	= simuArgs.get('nb_refinementByDirection', 2)
+		self._nbctrlpts = int(self._degree + 2**self._nbcuts) 
+		
+		self._isGaussQuad = simuArgs.get('isGauss', False)
+		self._funforce    = simuArgs.get('funforce', None)
+		self._iterMethods = simuArgs.get('IterMethods', ['WP'])
+		
+		self._filename = simuArgs.get('folder', './') + self.__make_filename() 
+		
+		return
+	
+	def __make_filename(self):
+		" Make up filename using input information "
+		# Get text file name
+		filename = (self._name 
+					+ '_p_' + str(self._degree) 
+					+ '_nbel_' + str(2**self._nbcuts)
+		)
+		if self._isGaussQuad: filename += '_IGAG'
+		else: filename += '_IGAWQ'
+		filename += '.txt'
+		return filename
+
+	def write_resultsFile(self, inputs:dict): 
+		" Writes and exports simulation data in .txt file "
+		
+		nbIterPCG   = inputs['nbIterPCG']
+		iterMethods = inputs['iterMethods']
+		timeNoIter  = inputs['timeNoIter']
+		timeIter    = inputs['timeIter']
+		residuePCG  = inputs['resPCG']
+		
+		with open(self._filename, 'w') as f:
+			f.write('** RESULTS **\n')
+			f.write('** Iterative solver ' + ','.join([item for item in iterMethods]) + '\n')
+			f.write('** Number of iterations ' + '{:d}\n'.format(nbIterPCG))
+
+			for i, method in enumerate(iterMethods):
+				f.write('**' + method + '\n')
+				f.write('*Time prepare ' + method +'\n')
+				f.write('{:E}\n'.format(timeNoIter[i]))
+				f.write('*Time iter ' + method +'\n')
+				f.write('{:E}\n'.format(timeIter[i]))
+				f.write('*Residue ' + method + '\n')
+				f.writelines(['{:E}'.format(res) + '\n'
+								for res in residuePCG[i]]) 
+		return
+	
+	def run_iterativeSolver(self, problem, Fext):
+		" Solve steady heat problems using iterative solver "
+		start = time.process_time()
+		if isinstance(problem, heatproblem):
+			sol, residue = problem.solveSteadyHeatProblemFT(Fext)
+		elif isinstance(problem, mechaproblem):
+			sol, residue = problem.solveElasticityProblemFT(Fext)
+		stop = time.process_time()
+		time_t = stop - start 
+		return sol, residue, time_t
+
 
 class decoder(): 
 

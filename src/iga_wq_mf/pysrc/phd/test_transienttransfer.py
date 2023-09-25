@@ -7,7 +7,7 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import heatproblem
 
 def conductivityProperty(P:list):
-	cst = 10
+	cst = 10.0
 	T   = P[3, :]
 	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
 	Kprop = np.zeros((3, 3, len(T)))
@@ -21,7 +21,7 @@ def conductivityProperty(P:list):
 
 def capacityProperty(P:list):
 	cst = 1.0
-	T = P[3, :]
+	T   = P[3, :]
 	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
 	return Cprop
 
@@ -123,7 +123,7 @@ else:
 		axs[1].set_title('Last NR iterations')
 		for ax in axs:
 			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
 			ax.set_ybound(lower=1e-12, upper=10)
 
 		axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -150,7 +150,7 @@ else:
 
 	# 	ax.legend(bbox_to_anchor=(-0.25, 1.02, 1.25, 0.2), loc='lower left', mode='expand', ncol=3)
 	# 	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-	# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_\infty}{||b||_\infty}$')
+	# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
 	# 	ax.set_ybound(lower=1e-12, upper=10)
 
 	# 	filename = folder + 'TransientNL_' + geo + '.pdf'

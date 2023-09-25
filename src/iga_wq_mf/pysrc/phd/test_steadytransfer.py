@@ -4,7 +4,7 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import heatproblem
-from pysrc.phd.lib_simulation import decoder
+from pysrc.phd.lib_simulation import decoder, simulate
 
 def conductivityProperty(P:list):
 	dimen = np.size(P, axis=0)
@@ -120,67 +120,11 @@ def powerDensity_quartCircle(P: list):
 
 	return f
 
-class simulate():
+class heatsimulate(simulate):
 
 	def __init__(self, simuArgs:dict):
-
-		self._name 		= simuArgs.get('name', '').lower()
-		self._degree 	= simuArgs.get('degree', 2)
-		self._nbcuts 	= simuArgs.get('nb_refinementByDirection', 2)
-		self._nbctrlpts = int(self._degree + 2**self._nbcuts) 
-		
-		self._isGaussQuad = simuArgs.get('isGauss', False)
-		self._funPowDen   = simuArgs.get('funPowerDensity', None)
-		self._iterMethods = simuArgs.get('IterMethods', ['WP'])
-		
-		self._filename = simuArgs.get('folder', './') + self.__make_filename() 
-		
+		super().__init__(simuArgs)
 		return
-	
-	def __make_filename(self):
-		" Make up filename using input information "
-		# Get text file name
-		filename = (self._name 
-					+ '_p_' + str(self._degree) 
-					+ '_nbel_' + str(2**self._nbcuts)
-		)
-		if self._isGaussQuad: filename += '_IGAG'
-		else: filename += '_IGAWQ'
-		filename += '.txt'
-		return filename
-
-	def write_resultsFile(self, inputs:dict): 
-		" Writes and exports simulation data in .txt file "
-		
-		nbIterPCG   = inputs['nbIterPCG']
-		iterMethods = inputs['iterMethods']
-		timeNoIter  = inputs['timeNoIter']
-		timeIter    = inputs['timeIter']
-		residuePCG  = inputs['resPCG']
-		
-		with open(self._filename, 'w') as f:
-			f.write('** RESULTS **\n')
-			f.write('** Iterative solver ' + ','.join([item for item in iterMethods]) + '\n')
-			f.write('** Number of iterations ' + '{:d}\n'.format(nbIterPCG))
-
-			for i, method in enumerate(iterMethods):
-				f.write('**' + method + '\n')
-				f.write('*Time prepare ' + method +'\n')
-				f.write('{:E}\n'.format(timeNoIter[i]))
-				f.write('*Time iter ' + method +'\n')
-				f.write('{:E}\n'.format(timeIter[i]))
-				f.write('*Residue ' + method + '\n')
-				f.writelines(['{:E}'.format(res) + '\n'
-								for res in residuePCG[i]]) 
-		return
-	
-	def __run_iterativeSolver(self, problem:heatproblem, Fext):
-		" Solve steady heat problems using iterative solver "
-		start = time.process_time()
-		sol, residue = problem.solveSteadyHeatProblemFT(Fext)
-		stop = time.process_time()
-		time_t = stop - start 
-		return sol, residue, time_t
 
 	def simulate(self, material:thermomat, boundary:boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
@@ -196,13 +140,13 @@ class simulate():
 		modelPhy = part(modelIGA, quadArgs)
 
 		problem = heatproblem(material, modelPhy, boundary)
-		Fext    = problem.compute_volForce(self._funPowDen)
+		Fext    = problem.compute_volForce(self._funforce)
 
 		# Run iterative methods
 		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			time_temp = self.__run_iterativeSolver(problem, Fext=Fext)[-1]
+			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 		enablePrint()
 
@@ -210,11 +154,10 @@ class simulate():
 		print(self._degree, self._nbcuts)
 		for im in self._iterMethods:
 			problem._methodPCG = im
-			un, residue_t, time_temp = self.__run_iterativeSolver(problem, Fext=Fext)
+			un, residue_t, time_temp = self.run_iterativeSolver(problem, Fext=Fext)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
 			print(im, time_temp, len(residue_t[residue_t>0.0]))
-
 		print('--')
 				
 		# Write file
@@ -230,7 +173,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = False
 degree_list = np.arange(4, 7)
-cuts_list   = np.arange(9, 10)
+cuts_list   = np.arange(5, 8)
 name_list   = ['qa']
 IterMethods = ['JMC']
 
@@ -244,8 +187,8 @@ for cuts in cuts_list:
 			elif name == 'qa' : funpow = powerDensity_quartCircle
 
 			inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': name, 'isGauss': False, 
-					'funPowerDensity': funpow, 'IterMethods': IterMethods, 'folder': folder}
-			simulation = simulate(inputs)  
+					'funforce': funpow, 'IterMethods': IterMethods, 'folder': folder}
+			simulation = heatsimulate(inputs)  
 			
 			if not dataExist:
 				mat = thermomat()
