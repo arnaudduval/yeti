@@ -1,6 +1,6 @@
 from .__init__ import *
 from .lib_base import (legendreTable, lobattoTable, 
-						findMultiplicity, createUniformMaxregularKnotvector, 
+						findMultiplicity, createUniformKnotvector_Rmultiplicity, 
 						insertRowCSR, evalDersBasisFortran, array2csr_matrix
 )
 
@@ -236,7 +236,7 @@ class WeightedQuadrature(QuadratureRules):
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			# Create model
 			degree_model = self.degree
-			kv_model     = createUniformMaxregularKnotvector(degree_model, degree_model + 3)
+			kv_model     = createUniformKnotvector_Rmultiplicity(degree_model, degree_model + 3)
 			kwargs       = {'type': self._wqType, 'extra': self._extraArgs}
 			WQmodel      = WeightedQuadrature(degree_model, kv_model, quadArgs=kwargs)
 			WQmodel.__findQuadraturePositions()

@@ -201,7 +201,7 @@ def rungekutta3(Utilde0, Tspan, kwargs:dict):
 		M dU/dt = L(U), M U(0) = Utilde0 in th interval [0, Tspan].
 		It uses Runge-Kutta order 3 method
 	"""
-	nbSteps = kwargs.get('nsteps', 2)  # At least 2 steps
+	nbsteps = kwargs.get('nsteps', 2)  # At least 2 steps
 	degree  = kwargs.get('degree')
 	nodes   = kwargs.get('nodes')
 	funFU   = kwargs.get('funFU')
@@ -210,12 +210,12 @@ def rungekutta3(Utilde0, Tspan, kwargs:dict):
 	M = dgGetMass(degree, nodes)
 
 	# Get real U0
-	U  = np.zeros((nbel*(degree+1), nbSteps))
+	U  = np.zeros((nbel*(degree+1), nbsteps))
 	U[:, 0] = np.linalg.solve(M, Utilde0)
 
-	if nbSteps < 2: raise Warning('At least 2 steps')
-	dt = Tspan/(nbSteps-1)
-	for step in range(1, nbSteps):
+	if nbsteps < 2: raise Warning('At least 2 steps')
+	dt = Tspan/(nbsteps-1)
+	for step in range(1, nbsteps):
 		U_n0 = U[:, step-1]
 		FU_n_tilde = dgGetForce(degree, nodes, U_n0, funFU)
 		FU_n = np.linalg.solve(M, FU_n_tilde)

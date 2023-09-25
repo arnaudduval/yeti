@@ -13,7 +13,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import (createUniformMaxregularKnotvector, evalDersBasisPy, cropImage)
+from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, evalDersBasisPy, cropImage)
 from pysrc.lib.lib_quadrules import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
@@ -94,7 +94,7 @@ if CASE == 0: # B-spline curve
 
 		# Create the curve 
 		degree, nbel = 2, 4
-		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
+		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		crv            = BSpline.Curve()
 		crv.degree     = degree
 		crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], 
@@ -130,7 +130,7 @@ elif CASE == 1: # Univariate functions
 		# B-spline properties 
 		degree, nbel = 3, 4
 		multiplicity = 1
-		knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=multiplicity)
+		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray(); B1 = basis[0].toarray()
@@ -159,7 +159,7 @@ elif CASE == 2: # Bivariate functions
 
 		# B-Spline properties
 		degree, nbel = 3, 4
-		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
+		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray()
@@ -221,7 +221,7 @@ elif CASE == 3: # Quadrature points in IGA
 		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
-			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
+			knotvector  = createUniformKnotvector_Rmultiplicity(degree, nbel)
 			quadRule    = GaussQuadrature(degree, knotvector, quadArgs={})
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
@@ -253,7 +253,7 @@ elif CASE == 4: # Quadrature points in WQ
 		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
 		degree = 4
 		for ax, nbel in zip([ax1, ax2], [8, 32]):
-			knotvector  = createUniformMaxregularKnotvector(degree, nbel)
+			knotvector  = createUniformKnotvector_Rmultiplicity(degree, nbel)
 			quadRule    = WeightedQuadrature(degree, knotvector, quadArgs={})
 			quadRule.getQuadratureRulesInfo()
 			XX, YY      = np.meshgrid(quadRule.quadPtsPos, quadRule.quadPtsPos)
@@ -284,8 +284,8 @@ elif CASE == 5: # B-spline surface
 	# Surface properties
 	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus'})
 	modelIGA = modelGeo.getIGAParametrization()
-	model    = part(modelIGA, quadArgs={'quadrule':'iga'})
-	fig = plot2DGeo(model)
+	modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
+	fig = plot2DGeo(modelPhy)
 	fig.savefig(filename, dpi=300) 
 
 elif CASE == 6: # Weights W00 and W11
@@ -302,7 +302,7 @@ elif CASE == 6: # Weights W00 and W11
 		# B-spline properties 
 		WeightPos    = 2
 		degree, nbel = 2, 3
-		knotvector   = createUniformMaxregularKnotvector(degree, nbel)
+		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		quadRule     = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
 		quadRule.getQuadratureRulesInfo()
 		basis, knots = quadRule.getSampleBasis()
@@ -316,7 +316,7 @@ elif CASE == 6: # Weights W00 and W11
 		if WeightName == 0:
 			Bref = B
 		else:
-			kvref = createUniformMaxregularKnotvector(degree-1, nbel)
+			kvref = createUniformKnotvector_Rmultiplicity(degree-1, nbel)
 			Bref = evalDersBasisPy(degree-1, kvref, knots)[0]
 			Bref = Bref.toarray()
 
@@ -357,8 +357,8 @@ elif CASE == 7: # 2D Geometries
 
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		model    = part(modelIGA, quadArgs=quadArgs)
-		model.exportResultsCP(folder=folder)
+		modelPhy = part(modelIGA, quadArgs=quadArgs)
+		modelPhy.exportResultsCP(folder=folder)
 		
 		# Read data
 		fileVTK   = folder + 'IGAparametrization'
@@ -406,8 +406,8 @@ elif CASE == 8: # 3D Geometries
 
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		model    = part(modelIGA, quadArgs=quadArgs)
-		model.exportResultsCP(folder=folder)
+		modelPhy = part(modelIGA, quadArgs=quadArgs)
+		modelPhy.exportResultsCP(folder=folder)
 
 		# Read data
 		fileVTK   = folder + 'IGAparametrization'

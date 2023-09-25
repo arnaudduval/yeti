@@ -5,7 +5,7 @@
 
 import pickle
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import QuadratureRules
 from pysrc.lib.lib_1d import mechamat1D
 
@@ -23,8 +23,8 @@ def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, f
 	stress_interp  = basis[0].T @ stress_cp
 
 	# Plot fields
-	N = np.shape(disp_cp)[1]
-	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
+	nbsteps   = np.shape(disp_cp)[1]
+	XX, STEPS = np.meshgrid(knots*JJ, np.arange(nbsteps))
 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
 	units = ['mm', '', 'MPa']
 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
@@ -61,13 +61,13 @@ def forceVol(P:list):
 	return force
 
 # Set global variables
-nbSteps = 50
+nbsteps = 50
 geoArgs = {'length': 1.e3}
 matArgs = {'elastic_modulus':2e5, 'elastic_limit':100,
 			'plasticLaw': {'Isoname': 'swift', 'e0':2e4, 'n':0.5}} #!!!!!!!!!!!!!!!!!!
 
 degree, nbel = 8, 1024
-knotvector   = createUniformMaxregularKnotvector(degree, nbel, multiplicity=degree)
+knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=degree)
 
 # Create geometry
 quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
@@ -84,10 +84,10 @@ modelPhy.activate_mechanical(matArgs)
 modelPhy.add_DirichletCondition(table=[1, 0])
 
 # Define boundaries conditions
-Fext    = np.zeros((modelPhy.nbctrlpts, 2*nbSteps + 1))
+Fext    = np.zeros((modelPhy.nbctrlpts, 2*nbsteps + 1))
 Fextref = modelPhy.compute_volForce(forceVol(modelPhy.qpPhy))
-for i in range(0, nbSteps+1): Fext[:, i] = i/nbSteps*Fextref
-for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fextref
+for i in range(0, nbsteps+1): Fext[:, i] = i/nbsteps*Fextref
+for i in range(nbsteps+1, 2*nbsteps+1): Fext[:, i] = (2*nbsteps - i)/nbsteps*Fextref
 
 # Solve
 disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = modelPhy.solve(Fext=Fext)

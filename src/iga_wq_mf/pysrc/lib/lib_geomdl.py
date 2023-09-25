@@ -5,7 +5,7 @@
 """
 
 from .__init__ import *
-from .lib_base import createUniformMaxregularKnotvector
+from .lib_base import createUniformKnotvector_Rmultiplicity
 from .lib_quadrules import GaussQuadrature
 
 class Geomdl():
@@ -254,7 +254,7 @@ class Geomdl():
 	# ----------------
 	def __getCtrlPts_quarterCircle(self, degree, nbel):
 		nb_ctrlpts = degree + nbel
-		knotvector = createUniformMaxregularKnotvector(degree, nbel)
+		knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 		gaussQuad = GaussQuadrature(degree, knotvector, quadArgs=quadArgs)
 		gaussQuad.getQuadratureRulesInfo()
@@ -269,7 +269,7 @@ class Geomdl():
 		return knotvector, ctrlpts
 	
 	def __getCtrlPts_line(self, degree, nbel):
-		knotvector = createUniformMaxregularKnotvector(degree, 1)
+		knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
 		ctrlpts    = [[i/degree, 0.0] for i in range(degree+1)]
 		crv = BSpline.Curve()
 		crv.degree  = degree

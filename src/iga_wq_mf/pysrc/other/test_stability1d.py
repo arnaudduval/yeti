@@ -8,7 +8,7 @@ The Laplace problem is:
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector, eraseRowsCSR, array2csr_matrix
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, eraseRowsCSR, array2csr_matrix
 from pysrc.lib.lib_quadrules import GaussQuadrature
 from scipy import interpolate
 
@@ -34,7 +34,7 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 	"""
 
 	if cuts is not None: nbel = int(2**cuts)
-	knotvector = createUniformMaxregularKnotvector(degree, nbel, multiplicity=degree)
+	knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=degree)
 
 	gaussQuad = GaussQuadrature(degree, knotvector, {})
 	info = gaussQuad.getQuadratureRulesInfo()

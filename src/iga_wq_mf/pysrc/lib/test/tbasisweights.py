@@ -4,7 +4,7 @@
 .. Joaquin Cornejo 
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector, relativeError
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, relativeError
 from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 # Select folder
@@ -21,7 +21,7 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 		error_list = []
 
 		for nbel in nbel_list: 
-			knotvector = createUniformMaxregularKnotvector(degree, nbel)
+			knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# WQ

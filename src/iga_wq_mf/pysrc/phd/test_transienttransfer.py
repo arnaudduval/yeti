@@ -35,13 +35,13 @@ dataExist   = False
 geo_list    = ['cb', 'vb']
 IterMethods = ['C', 'JMC', 'TDC', 'WP']
 example     = 2
-if   example == 1: nbSteps = 41
-elif example == 2: nbSteps = 6
+if   example == 1: nbsteps = 41
+elif example == 2: nbsteps = 6
 
 if not dataExist:
 
 	degree, cuts = 6, 5
-	time_list    = np.linspace(0, 0.25, nbSteps)  
+	time_list    = np.linspace(0, 0.25, nbsteps)  
 
 	for PCGmethod in IterMethods:
 		for geo in geo_list:

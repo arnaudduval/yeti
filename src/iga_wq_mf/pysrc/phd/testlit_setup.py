@@ -7,7 +7,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Select folder
@@ -31,7 +31,7 @@ if not dataExist:
 	
 	for i, degree in enumerate(degree_list):
 
-		knotvector = createUniformMaxregularKnotvector(degree, nbel)
+		knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		weightedQuad = WeightedQuadrature(degree, knotvector)
 		info = weightedQuad.getQuadratureRulesInfo()
 		qp, [indi, indj], dersbasis, dersweights = info

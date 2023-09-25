@@ -4,7 +4,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector, sigmoid
+from pysrc.lib.lib_base import createUniformCurve, sigmoid
 from pysrc.lib.lib_1d import thermo1D
 
 # Select folder
@@ -23,25 +23,24 @@ def capacityProperty(T):
 # Set global variables
 length       = 1.0
 degree, nbel = 6, 100 
-knotvector   = createUniformMaxregularKnotvector(degree, nbel)
+crv = createUniformCurve(degree, nbel, length)
 
 # Create geometry
-quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'wq'}
-args      = {'quadArgs': quadArgs, 'geoArgs': {'length': 1.0}}
-model 	  = thermo1D(args)
+args     = {'quadArgs': {'quadrule': 'wq'}}
+modelPhy = thermo1D(crv, args)
 
 # Add material 
 matArgs = {'heattheta': 1.0, 'conductivity': conductivityProperty, 'capacity': capacityProperty}
-model.activate_thermal(matArgs)
+modelPhy.activate_thermal(matArgs)
 
 # Add boundary condition
-model.add_DirichletCondition(table=[1, 1])
+modelPhy.add_DirichletCondition(table=[1, 1])
 
 # Define external force	
-N = 20
-time_list = np.linspace(0, 0.02, N)
-print('Time step: %3e' %(time_list.max()/N))
-Fend = np.zeros((model.nbctrlpts, 1))
+nbsteps   = 20
+time_list = np.linspace(0, 0.02, nbsteps)
+print('Time step: %3e' %(time_list.max()/nbsteps))
+Fend = np.zeros((modelPhy.nbctrlpts, 1))
 Fext = np.kron(Fend, sigmoid(time_list))
 
 temperature = np.zeros(np.shape(Fext))
@@ -49,8 +48,8 @@ temperature[0, :] = 0.0
 temperature[-1,:] = 1.0
 
 # Solve
-model.solve(Fext=Fext, time_list=time_list, Tinout=temperature)
-temp_interp, x_interp = model.interpolateMeshgridField(temperature)
+modelPhy.solve(Fext=Fext, time_list=time_list, Tinout=temperature)
+temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min())
 
 # ------------------

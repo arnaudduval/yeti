@@ -37,14 +37,14 @@ class part1D:
 		quadRule.getQuadratureRulesInfo()
 		self.quadRule = quadRule
 		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
-		self.nbqp = len(self.qpPhy)
+		self.nbqp = quadRule.nbqp
 		return
 	
 	def __setJacobienPhysicalPoints(self):
-		self.Jqp  = self.basis[1] @ self.ctrlpts
+		self.Jqp  = self.basis[1].T @ self.ctrlpts
 		self.detJ = np.abs(self.Jqp)
 		self.invJ = 1.0/self.Jqp
-		self.qpPhy = self.basis[0] @ self.ctrlpts
+		self.qpPhy = self.basis[0].T @ self.ctrlpts
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -81,14 +81,14 @@ class part1D:
 		if isSample: basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
 		else: 		 basis 		  = self.quadRule.getDenseQuadRules()[0]
 		u_interp = basis[0].T @ u_ctrlpts
-		if isSample: x_interp = self.detJ * knots
+		if isSample: x_interp = basis[0].T @ self.ctrlpts
 		else: 		 x_interp = self.qpPhy
 		return u_interp, x_interp
 	
 	def L2projectionCtrlptsVol(self, u_ref):
 		" Interpolate control point field (from parametric to physical space) "
-		masse = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ self.basis[0].T
-		force = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ u_ref
+		masse = self.weights[0] @ np.diag(self.detJ) @ self.basis[0].T
+		force = self.weights[0] @ np.diag(self.detJ) @ u_ref
 		massesp   = sp.csr_matrix(masse)
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
@@ -105,7 +105,7 @@ class part1D:
 		denseBasis = quadRule.getDenseQuadRules()[0]
 		parametricWeights = quadRule._parametricWeights
 		
-		qpPhy = quadPts*self.detJ
+		qpPhy = denseBasis[0].T @ self.ctrlpts 
 		u_interp = denseBasis[0].T @ u_ctrlpts
 
 		# Compute u exact
@@ -128,8 +128,8 @@ class part1D:
 		return error
 
 class thermo1D(part1D):
-	def __init__(self, kwargs:dict):
-		super().__init__(kwargs)	
+	def __init__(self, part, kwargs:dict):
+		super().__init__(part, kwargs)	
 		return
 	
 	def activate_thermal(self, matArgs:dict):
@@ -162,7 +162,7 @@ class thermo1D(part1D):
 			C = int_Omega B Cprop B dx = int [0, 1] B Cprop det J B dxi
 		"""
 
-		Kcoefs = Kprop * self.invJ
+		Kcoefs = Kprop*self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
 		Ccoefs = Cprop * self.detJ
 		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
@@ -238,8 +238,8 @@ class thermo1D(part1D):
 		return 
 
 class mechamat1D(part1D):
-	def __init__(self, kwargs:dict):
-		super().__init__(kwargs)		
+	def __init__(self, part, kwargs:dict):
+		super().__init__(part, kwargs)		
 		return
 	
 	def activate_mechanical(self, matArgs:dict):

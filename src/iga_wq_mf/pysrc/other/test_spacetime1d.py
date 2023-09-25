@@ -5,7 +5,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformMaxregularKnotvector, evalDersBasisPy
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisPy
 from pysrc.lib.lib_quadrules import GaussQuadrature
 
 # Select folder
@@ -20,7 +20,7 @@ Tspan          = 0.02
 
 # Space discretization
 degree_sp, nbel = 2, 10
-knotvector_sp   = createUniformMaxregularKnotvector(degree_sp, nbel)
+knotvector_sp   = createUniformKnotvector_Rmultiplicity(degree_sp, nbel)
 spDscrt         = GaussQuadrature(degree_sp, knotvector_sp, {})
 spDscrt.getQuadratureRulesInfo()
 spDenseBasis, spDenseWeights = spDscrt.getDenseQuadRules()
@@ -33,8 +33,8 @@ Kcfs     = Cond/length * np.ones(spDscrt.nbqp)
 Stiff_sp = spDenseWeights[-1] @ np.diag(Kcfs) @ spDenseBasis[1].T 
 
 # Time discretization
-degree_t, nsteps  = 2, 9
-knotvector_t      = createUniformMaxregularKnotvector(degree_t, nsteps)
+degree_t, nbsteps  = 2, 9
+knotvector_t      = createUniformKnotvector_Rmultiplicity(degree_t, nbsteps)
 tmDscrt           = GaussQuadrature(degree_t, knotvector_t, {})
 tmDscrt.getQuadratureRulesInfo()
 tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()

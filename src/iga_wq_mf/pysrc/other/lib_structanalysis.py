@@ -2,8 +2,8 @@ from pysrc.lib.__init__ import *
 from pysrc.lib.lib_1d import part1D
 
 class Timoshenko(part1D):
-	def __init__(self, kwargs:dict):
-		super().__init__(kwargs)
+	def __init__(self, part, kwargs:dict):
+		super().__init__(part, kwargs)
 		
 		self._area, self._inertia, self._Ks = None, None, None
 		geoArgs  = kwargs.get('geoArgs', {})

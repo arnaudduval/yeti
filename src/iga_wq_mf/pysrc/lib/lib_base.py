@@ -124,7 +124,7 @@ def get_INCTable(nnzByDimension):
 # B-SPLINE FUNCTIONS
 # ==========================
 
-def createUniformMaxregularKnotvector(p, nbel, multiplicity=1):
+def createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=1):
 	" Creates an uniform and open knot-vector with a given regularity "
 
 	kv_unique = np.linspace(0., 1., nbel + 1)[1 : -1]
@@ -143,6 +143,17 @@ def createUniformMaxregularKnotvector(p, nbel, multiplicity=1):
 	knotvector = np.array(knotvector)
 	
 	return knotvector
+
+def createUniformCurve(p, nbel, length):
+	knotvector = createUniformKnotvector_Rmultiplicity(p, 1)
+	ctrlpts    = [[i*length/p, 0.0] for i in range(p+1)]
+	crv = BSpline.Curve()
+	crv.degree  = p
+	crv.ctrlpts = ctrlpts
+	crv.knotvector = knotvector
+	for knot in np.linspace(0, 1, nbel+1)[1:-1]:
+		operations.insert_knot(crv, [knot], [1])
+	return crv
 
 def findInterpolationSpan(array, x, threshold=1e-8):
 	span = 1
