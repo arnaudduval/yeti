@@ -10,7 +10,7 @@ def forceSurfFun(P:list):
 	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	b = a**2/r_square # Already squared
+	b = a**2/r_square
 	theta = np.arcsin(y/np.sqrt(r_square))
 
 	F = np.zeros((2, nnz))
@@ -75,7 +75,7 @@ class simulate():
 	def __run_iterativeSolver(self, problem:mechaproblem, Fext):
 		" Solve steady heat problems using iterative solver "
 		start = time.process_time()
-		sol, residue = problem.solveElasticityProblemFTm(Fext)
+		sol, residue = problem.solveElasticityProblemFT(Fext)
 		stop = time.process_time()
 		time_t = stop - start 
 		return sol, residue, time_t

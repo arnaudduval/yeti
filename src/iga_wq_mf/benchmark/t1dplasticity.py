@@ -13,6 +13,48 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+# def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='iga', extension='.png'):
+# 	from mpl_toolkits.axes_grid1 import make_axes_locatable
+# 	basis, knots = quadRule.getSampleBasis(sampleSize=101)
+# 	displacement   = basis[0].T @ disp_cp
+# 	strain_interp  = basis[1].T @ disp_cp / JJ
+# 	plastic_interp = basis[0].T @ plastic_cp
+# 	stress_interp  = basis[0].T @ stress_cp
+
+# 	# Plot fields
+# 	N = np.shape(disp_cp)[1]
+# 	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
+# 	names = ['Displacement field', 'Plastic strain field', 'Stress field']
+# 	units = ['mm', '', 'MPa']
+# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+# 	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
+# 		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+# 		ax.set_title(name)
+# 		ax.set_ylabel('Step')
+# 		ax.set_xlabel('Position (mm)')
+# 		ax.grid(False)
+# 		divider = make_axes_locatable(ax)
+# 		cax = divider.append_axes('right', size='5%', pad=0.05)
+# 		cbar = fig.colorbar(im, cax=cax)
+# 		cbar.ax.set_title(unit)
+
+# 	fig.tight_layout()
+# 	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
+
+# 	# Plot stress-strain of single point
+# 	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
+# 	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
+# 		ax.plot(strain_interp[pos, :], stress_interp[pos, :])
+# 		ax.set_ylabel('Stress (MPa)')
+# 		ax.set_xlabel('Total strain (-)')
+# 		ax.set_ylim(bottom=0.0, top=200)
+# 		ax.set_xlim(left=0.0, right=strain_interp.max())
+
+# 	fig.tight_layout()
+# 	fig.savefig(folder + 'TractionCurve' + method + extension)
+# 	return
+
+
 def forceVol(P:list):
 	force = 0.4*np.sin(P/1e3)
 	return force
@@ -49,6 +91,6 @@ for i in range(nbSteps+1, 2*nbSteps+1): Fext[:, i] = (2*nbSteps - i)/nbSteps*Fex
 # Solve
 disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = modelPhy.solve(Fext=Fext)
 np.save(folder+'disp', disp_cp)
-plastic_cp  = modelPhy.L2projectionCtrlpts(plastic_qp)
-stress_cp 	= modelPhy.L2projectionCtrlpts(stress_qp)
+plastic_cp  = modelPhy.L2projectionCtrlptsVol(plastic_qp)
+stress_cp 	= modelPhy.L2projectionCtrlptsVol(stress_qp)
 plot_results(modelPhy.quadRule, geoArgs['length'], disp_cp, plastic_cp, stress_cp, folder=folder, method=quadArgs['quadrule'])

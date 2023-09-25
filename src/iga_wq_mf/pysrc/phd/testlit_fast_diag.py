@@ -1,6 +1,8 @@
 """
 .. Test of fast diagonalization
 .. We verify speed of fast diagonalization as direct method to solve Sylvester system
+.. TO DO:
+	rebuild the functions to compute fast diagonalization 
 .. Joaquin Cornejo 
 """
 

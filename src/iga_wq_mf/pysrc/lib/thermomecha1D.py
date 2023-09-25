@@ -5,32 +5,26 @@
 """
 
 from .__init__ import *
-from .lib_quadrules import GaussQuadrature, WeightedQuadrature, QuadratureRules
+from .lib_quadrules import GaussQuadrature, WeightedQuadrature
 from .lib_material import plasticLaw
 from .lib_base import evalDersBasisPy
 
 class part1D:
-	def __init__(self, kwargs:dict):
-		geoArgs  = kwargs.get('geoArgs', {})
-		self.__setGeometry(geoArgs)
+	def __init__(self, part:BSpline.Curve, kwargs:dict):
+		
+		self.degree     = part.degree
+		self.knotvector = np.array(part.knotvector)
+		self.ctrlpts    = np.array(part.ctrlpts)[:, 0]
+		self.nbctrlpts  = len(self.ctrlpts)
 
-		quadArgs = kwargs.get('quadArgs', {})
-		self.degree     = quadArgs.get('degree', 2)
-		self.knotvector = quadArgs.get('knotvector', np.array([0, 0, 0, 0.5, 1, 1, 1]))
-		self.nbctrlpts  = len(self.knotvector) - self.degree - 1
-		self.__setQuadratureRules(quadArgs)
+		self.__setQuadratureRules(kwargs.get('quadArgs', {}))
+		self.__setJacobienPhysicalPoints()
 		self.addSolverConstraints(kwargs.get('solverArgs', {}))
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresholdNR = solverArgs.get('NRThreshold', 1.e-10)
+		self._thresholdNR = solverArgs.get('NRThreshold', 1e-10)
 		self._nbIterNR    = solverArgs.get('nbIterationsNR', 50)
-		return
-	
-	def __setGeometry(self, geoArgs:dict):
-		self.Jqp  = geoArgs.get('length', 1.0)
-		self.detJ = self.Jqp
-		self.invJ = 1.0/self.Jqp
 		return
 	
 	def __setQuadratureRules(self, quadArgs:dict):
@@ -43,8 +37,14 @@ class part1D:
 		quadRule.getQuadratureRulesInfo()
 		self.quadRule = quadRule
 		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
-		self.qpPhy = quadRule.quadPtsPos*self.Jqp
-		self.nbqp  = len(self.qpPhy)
+		self.nbqp = len(self.qpPhy)
+		return
+	
+	def __setJacobienPhysicalPoints(self):
+		self.Jqp  = self.basis[1] @ self.ctrlpts
+		self.detJ = np.abs(self.Jqp)
+		self.invJ = 1.0/self.Jqp
+		self.qpPhy = self.basis[0] @ self.ctrlpts
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -71,6 +71,12 @@ class part1D:
 		self.density        = matArgs.get('density', None)
 		return
 	
+	def compute_volForce(self, volfun):
+		" Computes 'volumetric' source vector in 1D "
+		prop = volfun(self.qpPhy)*self.detJ
+		volForce = self.weights[0] @ prop 
+		return volForce
+	
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
 		if isSample: basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
 		else: 		 basis 		  = self.quadRule.getDenseQuadRules()[0]
@@ -79,12 +85,12 @@ class part1D:
 		else: 		 x_interp = self.qpPhy
 		return u_interp, x_interp
 	
-	def L2projectionCtrlpts(self, u_ref):
+	def L2projectionCtrlptsVol(self, u_ref):
 		" Interpolate control point field (from parametric to physical space) "
 		masse = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ self.basis[0].T
 		force = self.weights[0] @ np.diag(self.detJ*np.ones(self.nbqp)) @ u_ref
-		masseSparse = sp.csr_matrix(masse)
-		u_ctrlpts = sp.linalg.spsolve(masseSparse, force)
+		massesp   = sp.csr_matrix(masse)
+		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
 	
 	def L2NormOfError(self, u_ctrlpts, L2NormArgs:dict):
@@ -136,12 +142,6 @@ class thermo1D(part1D):
 		T_interp = self.basis[0].T @ T_ctrlpts
 		return T_interp
 
-	def compute_volForce(self, Fprop):
-		" Computes 'volumetric' source vector in 1D "
-		Fcoefs = Fprop*self.detJ
-		Fvol = self.weights[0] @ Fcoefs 
-		return Fvol
-
 	def compute_intForce(self, Kprop, Cprop, T, dT, isLumped=False):
 		"Returns the internal heat force in transient heat"
 
@@ -167,9 +167,9 @@ class thermo1D(part1D):
 		Ccoefs = Cprop * self.detJ
 		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
-		M = C + self._temporaltheta*dt*K
+		tangentM = C + self._temporaltheta*dt*K
 
-		return M
+		return tangentM
 
 	def solve(self, Fext=None, time_list=None, Tinout=None, isLumped=False):
 		" Solves transient heat problem in 1D. "
@@ -225,6 +225,7 @@ class thermo1D(part1D):
 				# Update values
 				V_n1[dof] += deltaV
 
+				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('Rhapson with error %.5e' %resNRj)
@@ -319,12 +320,6 @@ class mechamat1D(part1D):
 		strain = self.basis[1].T @ disp * self.invJ
 		return strain
 
-	def compute_volForce(self, b): 
-		" Computes volumetric force in 1D. "
-		Fcoefs = self.detJ*np.ones(self.nbqp)
-		Fvol = self.weights[0] @ np.diag(Fcoefs) @ b.T
-		return Fvol
-
 	def compute_intForce(self, sigma):
 		""" Computes internal force Fint. 
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
@@ -338,9 +333,9 @@ class mechamat1D(part1D):
 			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Scoefs = Cep*self.invJ
-		S = self.weights[-1] @ np.diag(Scoefs) @ self.basis[1].T 
-		return S
+		coefs = Cep*self.invJ
+		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
+		return tangentM
 
 	def solve(self, Fext=None):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
@@ -385,8 +380,8 @@ class mechamat1D(part1D):
 				r_dj[dod] = 0.0
 
 				# Direct solver
-				tangentS = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
-				deltaV = sp.linalg.spsolve(tangentS, r_dj[dof])
+				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
+				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
 				
 				# Update values
 				V_n1[dof] += deltaV
@@ -406,44 +401,3 @@ class mechamat1D(part1D):
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
 		return Alldisplacement, Allstrain, Allstress, Allplastic, AllCep
-
-def plot_results(quadRule:QuadratureRules, JJ, disp_cp, plastic_cp, stress_cp, folder=None, method='iga', extension='.png'):
-	from mpl_toolkits.axes_grid1 import make_axes_locatable
-	basis, knots = quadRule.getSampleBasis(sampleSize=101)
-	displacement   = basis[0].T @ disp_cp
-	strain_interp  = basis[1].T @ disp_cp / JJ
-	plastic_interp = basis[0].T @ plastic_cp
-	stress_interp  = basis[0].T @ stress_cp
-
-	# Plot fields
-	N = np.shape(disp_cp)[1]
-	XX, STEPS = np.meshgrid(knots*JJ, np.arange(N))
-	names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	units = ['mm', '', 'MPa']
-	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
-	for ax, variable, name, unit in zip([ax1, ax2, ax3], [displacement, plastic_interp, stress_interp], names, units):
-		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
-		ax.set_title(name)
-		ax.set_ylabel('Step')
-		ax.set_xlabel('Position (mm)')
-		ax.grid(False)
-		divider = make_axes_locatable(ax)
-		cax = divider.append_axes('right', size='5%', pad=0.05)
-		cbar = fig.colorbar(im, cax=cax)
-		cbar.ax.set_title(unit)
-
-	fig.tight_layout()
-	fig.savefig(folder + 'ElastoPlasticity' + method + extension)
-
-	# Plot stress-strain of single point
-	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(14,4))
-	for ax, pos in zip([ax1, ax2, ax3], [25, 50, 75]):
-		ax.plot(strain_interp[pos, :], stress_interp[pos, :])
-		ax.set_ylabel('Stress (MPa)')
-		ax.set_xlabel('Total strain (-)')
-		ax.set_ylim(bottom=0.0, top=200)
-		ax.set_xlim(left=0.0, right=strain_interp.max())
-
-	fig.tight_layout()
-	fig.savefig(folder + 'TractionCurve' + method + extension)
-	return

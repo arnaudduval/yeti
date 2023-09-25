@@ -19,10 +19,10 @@ class problem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
-		self._nbIterNR     = solverArgs.get('nbIterationsNR', 30)
-		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-10)
-		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
+		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
+		self._nbIterNR     = solverArgs.get('nbIterationsNR', 50)
+		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
+		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-10)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 	
@@ -51,7 +51,7 @@ class problem():
 
 	def compute_surfForce(self, surffun, nbFacePosition):
 		""" Computes the surface foce over the boundary of a geometry. 
-			The surffun is a Neumann like function, ie, in transfer heat q = - (k grad(T)).normal
+			The surffun is a Neumann like function, ie, in transfer heat q = -(k grad(T)).normal
 			and in elasticity t = sigma.normal
 		"""
 		nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfo4surfForce(nbFacePosition)
@@ -279,7 +279,7 @@ class heatproblem(problem):
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if j>0 and resNRj<=self._thresholdNR*resNR0: break
+				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(V_n1)
@@ -317,7 +317,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce
 
-	def solveElasticityProblemFTm(self, Fext, mechArgs=None):
+	def solveElasticityProblemFT(self, Fext, mechArgs=None):
 		dod = deepcopy(self.boundary.mchdod)
 		for i, tmp in enumerate(dod):
 			tmp = tmp + 1; dod[i] = tmp
@@ -390,7 +390,7 @@ class mechaproblem(problem):
 				
 				# Iterative solver
 				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self.solveElasticityProblemFTm(Fext=r_dj, mechArgs=mechArgs)
+				deltaV, resPCG = self.solveElasticityProblemFT(Fext=r_dj, mechArgs=mechArgs)
 				resPCGj = np.append(resPCGj, resPCG); AllresPCG.append(resPCGj)
 
 				# Update values
@@ -400,7 +400,7 @@ class mechaproblem(problem):
 				resNRj = abs(block_dot_product(dimen, V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if j>0 and resNRj<=self._thresholdNR*resNR0: break
+				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
 
 			Alldisplacement[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	

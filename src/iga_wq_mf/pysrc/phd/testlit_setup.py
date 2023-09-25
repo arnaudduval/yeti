@@ -1,6 +1,8 @@
 """
 .. Test of setup time
 .. We test how much time it takes to compute K and C matrices
+.. TO DO:
+	rebuild the functions to assemble the matrices
 .. Joaquin Cornejo 
 """
 
