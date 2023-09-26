@@ -9,7 +9,7 @@ from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/'
+folder = os.path.dirname(full_path)
 if not os.path.isdir(folder): os.mkdir(folder)
 
 fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
@@ -61,4 +61,4 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 
 axs[-1, -1].legend(bbox_to_anchor= (1.05, 1.0), loc='upper left')
 fig.tight_layout()
-fig.savefig(folder + 'Error_basisweights' + '.png')
+fig.savefig(folder + '/Error_basisweights' + '.png')

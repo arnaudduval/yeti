@@ -21,7 +21,7 @@ def capacityProperty(T):
 	return y
 
 # Set global variables
-length       = 1.0
+length = 1.0
 degree, nbel = 6, 100 
 crv = createUniformCurve(degree, nbel, length)
 
