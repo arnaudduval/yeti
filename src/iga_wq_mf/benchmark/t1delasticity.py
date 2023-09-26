@@ -16,10 +16,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 E, cst  = 2e11, 3.5e8
 length  = 1
-nbsteps = 251
-time_list = np.linspace(0, np.pi, nbsteps)
-matArgs   = {'elastic_modulus':E, 'elastic_limit':1e8, 'plasticLaw': {'Isoname': 'linear', 'Eiso':E/10}}
-isReference = True
+matArgs   = {'elastic_modulus':E, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'linear', 'Eiso':2e10}}
+isReference = False
 
 def forceVol(P:list):
 	force = cst*(P - 1/10*P**2)
@@ -32,24 +30,31 @@ if isReference:
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy = mechamat1D(crv, args)
 
-	with open(folder + 'refpartpl.pkl', 'wb') as outp:
+	with open(folder + 'refpartel.pkl', 'wb') as outp:
 		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
 
 	modelPhy.activate_mechanical(matArgs)
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-	Fext = np.kron(Fend, np.sin(time_list))
+	Fext = np.kron(Fend, [0, 1])
 	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = modelPhy.solve(Fext=Fext)
-	np.save(folder+'disppl', disp_cp)
+	np.save(folder+'dispel', disp_cp)
 
 else: 
+	def exactDisplacement(P:list):
+		u = cst/E*(-P**3/6 + P**4/120 + (length**2/6 - length**3/120)*P)
+		return u
+	
+	def exactDisplacementdiff(P:list):
+		u = cst/E*(-P**2/2 + P**3/30 + (length**2/6 - length**3/120))
+		return u
 
-	disp_ref = np.load(folder + 'disppl.npy')
-	with open(folder + 'refpartpl.pkl', 'rb') as inp:
+	disp_ref = np.load(folder + 'dispel.npy')
+	with open(folder + 'refpartel.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
-	degree_list = np.arange(1, 5)
-	cuts_list   = np.arange(3, 9)
+	degree_list = np.arange(1, 4)
+	cuts_list   = np.arange(2, 9)
 	error_list  = np.zeros(len(cuts_list))
 
 	fig, ax = plt.subplots()
@@ -64,24 +69,25 @@ else:
 			modelPhy.activate_mechanical(matArgs)
 			modelPhy.add_DirichletCondition(table=[1, 1])
 			Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-			Fext = np.kron(Fend, np.sin(time_list))
+			Fext = np.kron(Fend, [0, 1])
 
 			blockPrint()
-			step = 50
-			disp_cp = modelPhy.solve(Fext=Fext[:, :step+1])[0]
+			disp_cp = modelPhy.solve(Fext=Fext)[0]
 			enablePrint()
 
-			error_list[j] = modelPhy.L2NormOfError(disp_cp[:, -1], L2NormArgs={'part_ref':part_ref, 
-																			'u_ref': disp_ref[:, step]})		
+			# error_list[j] = modelPhy.H1NormOfError(disp_cp[:, -1], H1NormArgs={'exactFunction0': exactDisplacement, 
+			# 														'exactFunction1': exactDisplacementdiff})
+			error_list[j] = modelPhy.H1NormOfError(disp_cp[:, -1], H1NormArgs={'part_ref': part_ref, 
+																	'u_ref': disp_ref[:, -1]})		
 
-		ax.semilogy(2**cuts_list, error_list, label='deg. '+str(degree))
-		ax.set_ylabel('L2 Relative error (\%)')
-		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+		ax.semilogy(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
+		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
+		ax.set_xlabel('Number of elements')
 		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 		ax.set_xticks([8, 32, 128, 256])
-		ax.set_ylim(bottom=1e-8, top=1e1)
+		ax.set_ylim(bottom=1e-10, top=1e0)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigPlasticity' +'.png')
+		fig.savefig(folder + 'FigElasticityH1app' +'.png')

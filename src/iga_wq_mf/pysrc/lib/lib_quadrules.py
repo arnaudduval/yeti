@@ -42,11 +42,11 @@ class QuadratureRules:
 		denseBasis, denseWeights = [], []
 		indi, indj = self.dersIndices
 		for i in range(np.size(self.dersBasis, axis=1)):
-			tmp = array2csr_matrix(self.dersBasis[:, i], indi, indj, isfortran=isFortran)
+			tmp = array2csr_matrix(self.dersBasis[:, i], indi, indj, isFortran=isFortran)
 			denseBasis.append(tmp)
 
 		for i in range(np.size(self.dersWeights, axis=1)):
-			tmp = array2csr_matrix(self.dersWeights[:, i], indi, indj, isfortran=isFortran)
+			tmp = array2csr_matrix(self.dersWeights[:, i], indi, indj, isFortran=isFortran)
 			denseWeights.append(tmp)
 		self._denseBasis, self._denseWeights = denseBasis, denseWeights
 		return denseBasis, denseWeights

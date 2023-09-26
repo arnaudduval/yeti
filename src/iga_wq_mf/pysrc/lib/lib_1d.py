@@ -36,7 +36,7 @@ class part1D:
 		else: raise Warning('Not found')
 		quadRule.getQuadratureRulesInfo()
 		self.quadRule = quadRule
-		self.basis, self.weights = quadRule.getDenseQuadRules(isFortran=True)	
+		self.basis, self.weights = quadRule.getDenseQuadRules()	
 		self.nbqp = quadRule.nbqp
 		return
 	
@@ -106,21 +106,64 @@ class part1D:
 		parametricWeights = quadRule._parametricWeights
 		
 		qpPhy = denseBasis[0].T @ self.ctrlpts 
+		detJ  = denseBasis[1].T @ self.ctrlpts
 		u_interp = denseBasis[0].T @ u_ctrlpts
 
 		# Compute u exact
 		u_exact  = None
 		exactfun = L2NormArgs.get('exactFunction', None)
 		if callable(exactfun): u_exact = exactfun(qpPhy)
-		refPart  = L2NormArgs.get('referencePart', None); u_ref = L2NormArgs.get('u_ref', None)
-		if isinstance(refPart, part1D) and isinstance(u_ref, np.ndarray):
-			denseBasisExact = evalDersBasisPy(refPart.degree, refPart.knotvector, quadPts)
+		part_ref = L2NormArgs.get('part_ref', None); u_ref = L2NormArgs.get('u_ref', None)
+		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
+			denseBasisExact = evalDersBasisPy(part_ref.degree, part_ref.knotvector, quadPts)
 			u_exact = denseBasisExact[0].T @ u_ref
 		if u_exact is None: raise Warning('Not possible')
 
 		# Compute error
-		ue_diff_uh2 = (u_exact - u_interp)**2 * self.detJ
-		ue2         = u_exact**2 * self.detJ
+		ue_diff_uh2 = (u_exact - u_interp)**2 * detJ
+		ue2         = u_exact**2 * detJ
+
+		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
+		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)
+		error = np.sqrt(tmp2/tmp1)
+		return error
+	
+	def H1NormOfError(self, u_ctrlpts, H1NormArgs:dict):
+		""" Computes the norm H1 of the error. The exactfun is the function of the exact solution. 
+			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
+			whether the default quadrature is weighted quadrature. 
+		"""	
+		
+		# Compute u interpolation
+		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
+		quadPts  = quadRule.getQuadratureRulesInfo()[0]
+		denseBasis = quadRule.getDenseQuadRules()[0]
+		parametricWeights = quadRule._parametricWeights
+		
+		qpPhy = denseBasis[0].T @ self.ctrlpts 
+		detJ  = denseBasis[1].T @ self.ctrlpts
+		u0_interp = denseBasis[0].T @ u_ctrlpts
+		u1_interp = denseBasis[1].T @ u_ctrlpts / detJ
+
+		# Compute u exact
+		u_exact0, u_exact1 = None, None
+		exactfun0 = H1NormArgs.get('exactFunction0', None)
+		exactfun1 = H1NormArgs.get('exactFunction1', None)
+		if callable(exactfun0): 
+			u_exact0 = exactfun0(qpPhy)
+			u_exact1 = exactfun1(qpPhy)
+
+		part_ref = H1NormArgs.get('part_ref', None); u_ref = H1NormArgs.get('u_ref', None)
+		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
+			denseBasisExact = evalDersBasisPy(part_ref.degree, part_ref.knotvector, quadPts)
+			u_exact0 = denseBasisExact[0].T @ u_ref
+			u_exact1 = denseBasisExact[1].T @ u_ref / detJ
+
+		if u_exact0 is None and u_exact1 is None: raise Warning('Not possible')
+
+		# Compute error
+		ue_diff_uh2 = ((u_exact0 - u0_interp)**2 + (u_exact1 - u1_interp)**2)* detJ
+		ue2         = (u_exact0**2 + u_exact1**2)* detJ
 
 		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
 		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)
@@ -267,6 +310,7 @@ class mechamat1D(part1D):
 						+ law._IsotropicHardDer(a_n1))
 				dgamma -= G/dG
 				a_n1 = a_n0 + dgamma
+			if i == nbIter: raise Warning('Convergence problem')
 			return dgamma
 
 		nnz = np.size(strain)
@@ -280,11 +324,11 @@ class mechamat1D(part1D):
 
 		# Check yield status
 		f_trial = np.abs(eta_trial) - self.plasticLaw._IsotropicHard(a)
-		Cep   = self.elasticmodulus*np.ones(nnz)
-		pls_new = pls
-		a_new = a
-		b_new = b
-		stress  = s_trial
+		Cep     = self.elasticmodulus*np.ones(nnz)
+		pls_new = np.copy(pls)
+		a_new  = np.copy(a)
+		b_new  = np.copy(b)
+		stress = np.copy(s_trial)
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
 		if np.size(plsInd) > 0:
@@ -293,7 +337,7 @@ class mechamat1D(part1D):
 			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
 			
 			# Update internal hardening variable
-			a_new[plsInd] = a[plsInd] + dgamma_plsInd
+			a_new[plsInd] += dgamma_plsInd
 			
 			# Compute df/dsigma
 			Normal_plsInd = np.sign(eta_trial[plsInd])

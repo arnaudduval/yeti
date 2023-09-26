@@ -203,7 +203,7 @@ class mechamat(material):
 
 		# Compute strain deviator
 		traceStrain = evalTrace4All(strain, dim)
-		devStrain   = Tstrain
+		devStrain   = np.copy(Tstrain)
 		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
 
 		# Compute trial stress deviator
@@ -215,10 +215,10 @@ class mechamat(material):
 		# Check yield status
 		norm_trial = np.linalg.norm(eta_trial, axis=(0, 1))
 		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._IsotropicHard(a)
-		sigma   = s_trial
+		sigma   = np.copy(s_trial)
 		for i in range(dim): sigma[i, i, :] += self.lame_bulk*traceStrain
 		Cep[0, :] = self.lame_lambda; Cep[1, :] = self.lame_mu
-		pls_new = pls; a_new = a; b_new = b
+		pls_new = np.copy(pls); a_new = np.copy(a); b_new = np.copy(b)
 		stress  = symtensor2array4All(sigma, dim)
 
 		plsInd = np.nonzero(f_trial>threshold)[0]

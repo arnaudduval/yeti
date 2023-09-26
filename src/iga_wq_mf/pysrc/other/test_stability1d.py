@@ -18,8 +18,8 @@ folder = os.path.dirname(full_path) + '/results/stability/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def build_sparse_matrix(basis, indi_in, indj_in):
-	B0  = array2csr_matrix(basis[:, 0], indi_in, indj_in, isfortran=True)
-	B1  = array2csr_matrix(basis[:, -1], indi_in, indj_in, isfortran=True)
+	B0  = array2csr_matrix(basis[:, 0], indi_in, indj_in, isFortran=True)
+	B1  = array2csr_matrix(basis[:, -1], indi_in, indj_in, isFortran=True)
 	return B0.toarray(), B1.toarray()
 
 def scheme_analysis(prop, degree, cuts=None, nbel=None):

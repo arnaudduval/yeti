@@ -93,10 +93,10 @@ def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
 
 	return indi_out, indj_out, data_out
 
-def array2csr_matrix(data, indi, indj, isfortran=True):
+def array2csr_matrix(data, indi, indj, isFortran=True):
 	indjcopy = np.copy(indj)
 	indicopy = np.copy(indi)
-	if isfortran: 
+	if isFortran: 
 		indjcopy = indjcopy - 1
 		indicopy = indicopy - 1 
 	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy))
