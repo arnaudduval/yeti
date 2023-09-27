@@ -49,37 +49,38 @@ else:
 		part_ref = pickle.load(inp)
 
 	degree_list = np.arange(1, 4)
-	cuts_list   = np.arange(3, 9)
+	cuts_list   = np.arange(2, 9)
 	error_list  = np.zeros(len(cuts_list))
 
-	fig, ax = plt.subplots()
-	for degree in degree_list:
-		for j, cuts in enumerate(cuts_list):
-			nbel = 2**cuts
-			crv = createUniformCurve(degree, nbel, length)
+	for step in range(125, 127):
+		fig, ax = plt.subplots()
+		for degree in degree_list:
+			for j, cuts in enumerate(cuts_list):
+				nbel = 2**cuts
+				crv = createUniformCurve(degree, nbel, length)
 
-			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-			modelPhy = mechamat1D(crv, args)
+				args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
+				modelPhy = mechamat1D(crv, args)
 
-			modelPhy.activate_mechanical(matArgs)
-			modelPhy.add_DirichletCondition(table=[1, 1])
-			Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-			Fext = np.kron(Fend, np.sin(time_list))
+				modelPhy.activate_mechanical(matArgs)
+				modelPhy.add_DirichletCondition(table=[1, 1])
+				Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
+				Fext = np.kron(Fend, np.sin(time_list))
 
-			blockPrint()
-			step = 100
-			disp_cp = modelPhy.solve(Fext=Fext[:, :step+1])[0]
-			enablePrint()
+				blockPrint()
+				# step = 96
+				disp_cp = modelPhy.solve(Fext=Fext[:, :step+1])[0]
+				enablePrint()
 
-			error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref':part_ref, 
-																			'u_ref': disp_ref[:, step]})		
+				error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref':part_ref, 
+																				'u_ref': disp_ref[:, step]})		
 
-		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
-		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
-		ax.set_xlabel('Number of elements')
-		ax.set_ylim(bottom=1e-5, top=1e0)
-		ax.set_xlim(left=2, right=10**3)
+			ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
+			ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
+			ax.set_xlabel('Number of elements')
+			ax.set_ylim(bottom=1e-5, top=1e0)
+			ax.set_xlim(left=1, right=10**3)
 
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		fig.tight_layout()
-		fig.savefig(folder + 'FigPlasticity' + str(step) +'.png')
+			ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+			fig.tight_layout()
+			fig.savefig(folder + 'FigPlasticity' + str(step) +'.pdf')

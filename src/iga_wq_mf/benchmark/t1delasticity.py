@@ -16,7 +16,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 E, cst  = 2e11, 3.5e8
 length  = 1
-matArgs   = {'elastic_modulus':E, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'linear', 'Eiso':2e10}}
+matArgs = {'elastic_modulus':E, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'linear', 'Eiso':2e10}}
 isReference = False
 
 def forceVol(P:list):
@@ -75,17 +75,17 @@ else:
 			disp_cp = modelPhy.solve(Fext=Fext)[0]
 			enablePrint()
 
-			error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
-																	'exactFunctionDers': exactDisplacementdiff})
-			# error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
-			# 														'u_ref': disp_ref[:, -1]})		
+			# error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
+			# 														'exactFunctionDers': exactDisplacementdiff})
+			error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
+																	'u_ref': disp_ref[:, -1]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
 		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
 		ax.set_xlabel('Number of elements')
 		ax.set_ylim(bottom=1e-10, top=1e0)
-		ax.set_xlim(left=2, right=10**3)
+		ax.set_xlim(left=1, right=10**3)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigElasticityH1exact' +'.png')
+		fig.savefig(folder + 'FigElasticityH1app' +'.png')
