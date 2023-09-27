@@ -76,8 +76,8 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, nsteps+1))
 			for k in range(1, nsteps+1): Fext_list[:, :, k] = k/nsteps*Fend
 			displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
-			error_list[j] = problem.L2NormOfError(displacement[:, :, 12], 
-							L2NormArgs={'referencePart':refPart, 'u_ref': u_ref[:, :, 12]})
+			error_list[j] = problem.normOfError(displacement[:, :, 12], 
+							normArgs={'referencePart':refPart, 'u_ref': u_ref[:, :, 12]})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))

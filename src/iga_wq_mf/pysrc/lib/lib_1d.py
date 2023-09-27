@@ -109,37 +109,36 @@ class part1D:
 		
 		qpPhy = denseBasis[0].T @ self.ctrlpts 
 		detJ  = denseBasis[1].T @ self.ctrlpts
-		u0_interp = denseBasis[0].T @ u_ctrlpts
-		u1_interp = denseBasis[1].T @ u_ctrlpts / detJ
+		u_interp = denseBasis[0].T @ u_ctrlpts
+		if typeNorm == 'h1': uders_interp = denseBasis[1].T @ u_ctrlpts / detJ
 
 		# Compute u exact
-		u0_exact, u1_exact = None, None
+		u_exact, uders_exact = None, None
+
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
-		if callable(exactfun) and callable(exactfunders): 
-			u0_exact = exactfun(qpPhy)
-			u1_exact = exactfunders(qpPhy)
+		if callable(exactfun): u_exact = exactfun(qpPhy)
+		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
 		
 		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
 			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
-			u0_exact = denseBasisExact[0].T @ u_ref
-			u1_exact = denseBasisExact[1].T @ u_ref / detJ
+			u_exact = denseBasisExact[0].T @ u_ref
+			if typeNorm == 'h1': 
+				detJExact  = denseBasisExact[1].T @ part_ref.ctrlpts
+				uders_exact = denseBasisExact[1].T @ u_ref / detJExact
 			
-		if u0_exact is None: raise Warning('Not possible')
-
 		# Compute error
-		if typeNorm == 'l2':
-			ue_diff_uh2 = (u0_exact - u0_interp)**2*detJ
-			ue2         = u0_exact**2*detJ
-		elif typeNorm == 'h1':
-			ue_diff_uh2 = ((u0_exact - u0_interp)**2 + (u1_exact - u1_interp)**2)*detJ
-			ue2         = (u0_exact**2 + u1_exact**2)*detJ
+		ue_df_uh2 = (u_exact - u_interp)**2*detJ
+		ue2       = u_exact**2*detJ
+		if typeNorm == 'h1':
+			ue_df_uh2 += (uders_exact - uders_interp)**2*detJ
+			ue2       += uders_exact**2*detJ
 
 		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
-		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)
+		tmp2 = np.einsum('i,i->', parametricWeights, ue_df_uh2)
 		error = np.sqrt(tmp2/tmp1)
 		return error
 

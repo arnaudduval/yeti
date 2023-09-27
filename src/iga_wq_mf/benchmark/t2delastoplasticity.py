@@ -82,7 +82,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 			Fext_list[:, :, 1] += problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 			displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
-			error_list[j] = problem.L2NormOfError(displacement[:, :, -1], L2NormArgs={'exactFunction':exactDisplacement_infPlate})
+			error_list[j] = problem.normOfError(displacement[:, :, -1], normArgs={'exactFunction':exactDisplacement_infPlate})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))

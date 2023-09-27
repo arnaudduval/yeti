@@ -96,11 +96,15 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def L2NormOfError(self, u_ctrlpts, L2NormArgs:dict):
-		""" Computes the norm L2 of the error. The exactfun is the function of the exact solution. 
+	def normOfError(self, u_ctrlpts, normArgs:dict):
+		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""	
+		typeNorm = normArgs.get('type', 'l2').lower()
+		if typeNorm != 'l2' and typeNorm != 'h1': raise Warning('Unknown norm')
+		if typeNorm == 'h1': raise Warning('To be tested')
+
 		# Compute u interpolation
 		nr = np.size(np.atleast_2d(u_ctrlpts), axis=0)
 		nbqp, quadPts, indices, basis, parametricWeights = [], [], [], [], []
@@ -115,49 +119,74 @@ class problem():
 		inpts = [*nbqp, *indices, *basis]
 		if self.part.dim == 2:
 			Jqp = geophy.eval_jacobien_2d(*inpts, self.part.ctrlpts)
-			detJ, _ = geophy.eval_inverse_det(Jqp)
+			detJ, invJ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts, self.part.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ctrlpts))
+			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ctrlpts))
+
 		if self.part.dim == 3:
 			Jqp = geophy.eval_jacobien_3d(*inpts, self.part.ctrlpts)
-			detJ, _ = geophy.eval_inverse_det(Jqp)
+			detJ, invJ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, self.part.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
+			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
+
+		if typeNorm == 'h1': uders_interp = np.einsum('kjl,kil->ijl', derstemp, invJ)
 		if nr == 1: u_interp = np.ravel(u_interp)
 
 		# Compute u exact
-		u_exact  = None
-		exactfun = L2NormArgs.get('exactFunction', None)
+		u_exact, uders_exact = None, None
+
+		exactfun = normArgs.get('exactFunction', None)
+		exactfunders = normArgs.get('exactFunctionDers', None)
 		if callable(exactfun): u_exact = exactfun(qpPhy)
-		refPart  = L2NormArgs.get('referencePart', None); u_ref = L2NormArgs.get('u_ref', None)
-		if isinstance(refPart, part) and isinstance(u_ref, np.ndarray):
+		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
+
+		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
+		if isinstance(part_ref, part) and isinstance(u_ref, np.ndarray):
 			nbqpExact, basisExact, indicesExact = [], [], []
 			for i in range(self.part.dim):
-				basis, indi, indj = evalDersBasisFortran(refPart.degree[i], refPart.knotvector[i], quadPts[i])
+				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
 				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-			inpts = [*nbqpExact, *indicesExact, *basisExact, np.atleast_2d(u_ref)]
-			if self.part.dim == 2:   u_exact = geophy.interpolate_meshgrid_2d(*inpts)    
-			elif self.part.dim == 3: u_exact = geophy.interpolate_meshgrid_3d(*inpts)
+			inpts = [*nbqpExact, *indicesExact, *basisExact]
+			if self.part.dim == 2:   
+				u_exact = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ref))    
+				if typeNorm == 'h1':
+					JqpExact = geophy.eval_jacobien_2d(*inpts, part_ref.ctrlpts)
+					_, invJExact = geophy.eval_inverse_det(JqpExact) 
+					derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ref))
+			elif self.part.dim == 3: 
+				u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))
+				if typeNorm == 'h1': 
+					JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
+					_, invJExact = geophy.eval_inverse_det(JqpExact)
+					derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
+
+			if typeNorm == 'h1': uders_exact = np.einsum('kjl,kil->ijl', derstemp, invJExact)
 			if nr == 1: u_exact = np.ravel(u_exact)
-		if u_exact is None: raise Warning('Not possible')
 
 		# Compute error
-		ue_diff_uh2 = (u_exact - u_interp)**2 
-		ue2         = u_exact**2
+		ue_df_uh2 = (u_exact - u_interp)**2 
+		ue2       = u_exact**2
 		if nr > 1: 
-			ue_diff_uh2 = np.ravel(np.sum(ue_diff_uh2, axis=0))
-			ue2         = np.ravel(np.sum(ue2, axis=0))
-		ue_diff_uh2 = ue_diff_uh2 * detJ
-		ue2         = ue2*detJ
+			ue_df_uh2 = np.ravel(np.sum(ue_df_uh2, axis=0))
+			ue2       = np.ravel(np.sum(ue2, axis=0))
 
-		ue_diff_uh2 = np.reshape(ue_diff_uh2, tuple(nbqp), order='F')
-		ue2         = np.reshape(ue2, tuple(nbqp), order='F')
+		if typeNorm == 'h1':
+			ue_df_uh2 += np.ravel(np.sum((uders_exact - uders_interp)**2, axis=(0, 1)))
+			ue2       += np.ravel(np.sum(uders_exact**2, axis=(0, 1)))
+
+		ue_df_uh2 = ue_df_uh2*detJ
+		ue2       = ue2*detJ
+
+		ue_df_uh2 = np.reshape(ue_df_uh2, tuple(nbqp), order='F')
+		ue2       = np.reshape(ue2, tuple(nbqp), order='F')
 		if self.part.dim == 2: 
 			tmp1 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue2)
-			tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue_diff_uh2)
+			tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue_df_uh2)
 		if self.part.dim == 3: 
 			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue2)
-			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue_diff_uh2)
+			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue_df_uh2)
 		error = np.sqrt(tmp2/tmp1)
 
 		return error

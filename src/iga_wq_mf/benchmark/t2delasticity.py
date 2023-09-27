@@ -91,7 +91,7 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 			displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.L2NormOfError(displacement, L2NormArgs={'exactFunction':exactDisplacement_infPlate})
+			error_list[j] = problem.normOfError(displacement, normArgs={'exactFunction':exactDisplacement_infPlate})
 
 		ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
