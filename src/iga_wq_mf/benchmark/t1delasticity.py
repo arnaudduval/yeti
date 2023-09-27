@@ -80,13 +80,11 @@ else:
 			error_list[j] = modelPhy.H1NormOfError(disp_cp[:, -1], H1NormArgs={'part_ref': part_ref, 
 																	'u_ref': disp_ref[:, -1]})		
 
-		ax.semilogy(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
+		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
 		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
 		ax.set_xlabel('Number of elements')
-		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-		ax.set_xticks([8, 32, 128, 256])
 		ax.set_ylim(bottom=1e-10, top=1e0)
+		ax.set_xlim(left=2, right=10**3)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()

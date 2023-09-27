@@ -19,7 +19,7 @@ length  = 1
 nbsteps = 251
 time_list = np.linspace(0, np.pi, nbsteps)
 matArgs   = {'elastic_modulus':E, 'elastic_limit':1e8, 'plasticLaw': {'Isoname': 'linear', 'Eiso':E/10}}
-isReference = True
+isReference = False
 
 def forceVol(P:list):
 	force = cst*(P - 1/10*P**2)
@@ -48,7 +48,7 @@ else:
 	with open(folder + 'refpartpl.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
-	degree_list = np.arange(1, 5)
+	degree_list = np.arange(1, 4)
 	cuts_list   = np.arange(3, 9)
 	error_list  = np.zeros(len(cuts_list))
 
@@ -67,21 +67,19 @@ else:
 			Fext = np.kron(Fend, np.sin(time_list))
 
 			blockPrint()
-			step = 50
+			step = 100
 			disp_cp = modelPhy.solve(Fext=Fext[:, :step+1])[0]
 			enablePrint()
 
-			error_list[j] = modelPhy.L2NormOfError(disp_cp[:, -1], L2NormArgs={'part_ref':part_ref, 
+			error_list[j] = modelPhy.H1NormOfError(disp_cp[:, -1], H1NormArgs={'part_ref':part_ref, 
 																			'u_ref': disp_ref[:, step]})		
 
-		ax.semilogy(2**cuts_list, error_list, label='deg. '+str(degree))
-		ax.set_ylabel('L2 Relative error (\%)')
-		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
-		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-		ax.set_xticks([8, 32, 128, 256])
-		ax.set_ylim(bottom=1e-8, top=1e1)
+		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
+		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
+		ax.set_xlabel('Number of elements')
+		ax.set_ylim(bottom=1e-5, top=1e0)
+		ax.set_xlim(left=2, right=10**3)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigPlasticity' +'.png')
+		fig.savefig(folder + 'FigPlasticity' + str(step) +'.png')

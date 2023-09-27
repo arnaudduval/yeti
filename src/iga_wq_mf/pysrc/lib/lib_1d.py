@@ -7,7 +7,7 @@
 from . import *
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature
 from .lib_material import plasticLaw
-from .lib_base import evalDersBasisPy
+from .lib_base import evalDersBasisPy, evalDersBasisFortran, array2csr_matrix
 
 class part1D:
 	def __init__(self, part:BSpline.Curve, kwargs:dict):
@@ -115,8 +115,11 @@ class part1D:
 		if callable(exactfun): u_exact = exactfun(qpPhy)
 		part_ref = L2NormArgs.get('part_ref', None); u_ref = L2NormArgs.get('u_ref', None)
 		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
-			denseBasisExact = evalDersBasisPy(part_ref.degree, part_ref.knotvector, quadPts)
+			denseBasisExact = []
+			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
+			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
 			u_exact = denseBasisExact[0].T @ u_ref
+			
 		if u_exact is None: raise Warning('Not possible')
 
 		# Compute error
@@ -155,7 +158,10 @@ class part1D:
 
 		part_ref = H1NormArgs.get('part_ref', None); u_ref = H1NormArgs.get('u_ref', None)
 		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
-			denseBasisExact = evalDersBasisPy(part_ref.degree, part_ref.knotvector, quadPts)
+			denseBasisExact = []
+			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
+			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
+
 			u_exact0 = denseBasisExact[0].T @ u_ref
 			u_exact1 = denseBasisExact[1].T @ u_ref / detJ
 
