@@ -93,50 +93,14 @@ class part1D:
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
 	
-	def L2NormOfError(self, u_ctrlpts, L2NormArgs:dict):
-		""" Computes the norm L2 of the error. The exactfun is the function of the exact solution. 
+	def normOfError(self, u_ctrlpts, normArgs:dict):
+		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""	
-		
-		# Compute u interpolation
-		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
-		quadPts  = quadRule.getQuadratureRulesInfo()[0]
-		denseBasis = quadRule.getDenseQuadRules()[0]
-		parametricWeights = quadRule._parametricWeights
-		
-		qpPhy = denseBasis[0].T @ self.ctrlpts 
-		detJ  = denseBasis[1].T @ self.ctrlpts
-		u_interp = denseBasis[0].T @ u_ctrlpts
+		typeNorm = normArgs.get('type', 'l2').lower()
+		if typeNorm != 'l2' and typeNorm != 'h1': raise Warning('Unknown norm')
 
-		# Compute u exact
-		u_exact  = None
-		exactfun = L2NormArgs.get('exactFunction', None)
-		if callable(exactfun): u_exact = exactfun(qpPhy)
-		part_ref = L2NormArgs.get('part_ref', None); u_ref = L2NormArgs.get('u_ref', None)
-		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
-			denseBasisExact = []
-			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
-			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
-			u_exact = denseBasisExact[0].T @ u_ref
-			
-		if u_exact is None: raise Warning('Not possible')
-
-		# Compute error
-		ue_diff_uh2 = (u_exact - u_interp)**2 * detJ
-		ue2         = u_exact**2 * detJ
-
-		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
-		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)
-		error = np.sqrt(tmp2/tmp1)
-		return error
-	
-	def H1NormOfError(self, u_ctrlpts, H1NormArgs:dict):
-		""" Computes the norm H1 of the error. The exactfun is the function of the exact solution. 
-			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
-			whether the default quadrature is weighted quadrature. 
-		"""	
-		
 		# Compute u interpolation
 		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
 		quadPts  = quadRule.getQuadratureRulesInfo()[0]
@@ -149,27 +113,30 @@ class part1D:
 		u1_interp = denseBasis[1].T @ u_ctrlpts / detJ
 
 		# Compute u exact
-		u_exact0, u_exact1 = None, None
-		exactfun0 = H1NormArgs.get('exactFunction0', None)
-		exactfun1 = H1NormArgs.get('exactFunction1', None)
-		if callable(exactfun0): 
-			u_exact0 = exactfun0(qpPhy)
-			u_exact1 = exactfun1(qpPhy)
-
-		part_ref = H1NormArgs.get('part_ref', None); u_ref = H1NormArgs.get('u_ref', None)
+		u0_exact, u1_exact = None, None
+		exactfun = normArgs.get('exactFunction', None)
+		exactfunders = normArgs.get('exactFunctionDers', None)
+		if callable(exactfun) and callable(exactfunders): 
+			u0_exact = exactfun(qpPhy)
+			u1_exact = exactfunders(qpPhy)
+		
+		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
 			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
-
-			u_exact0 = denseBasisExact[0].T @ u_ref
-			u_exact1 = denseBasisExact[1].T @ u_ref / detJ
-
-		if u_exact0 is None and u_exact1 is None: raise Warning('Not possible')
+			u0_exact = denseBasisExact[0].T @ u_ref
+			u1_exact = denseBasisExact[1].T @ u_ref / detJ
+			
+		if u0_exact is None: raise Warning('Not possible')
 
 		# Compute error
-		ue_diff_uh2 = ((u_exact0 - u0_interp)**2 + (u_exact1 - u1_interp)**2)* detJ
-		ue2         = (u_exact0**2 + u_exact1**2)* detJ
+		if typeNorm == 'l2':
+			ue_diff_uh2 = (u0_exact - u0_interp)**2*detJ
+			ue2         = u0_exact**2*detJ
+		elif typeNorm == 'h1':
+			ue_diff_uh2 = ((u0_exact - u0_interp)**2 + (u1_exact - u1_interp)**2)*detJ
+			ue2         = (u0_exact**2 + u1_exact**2)*detJ
 
 		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
 		tmp2 = np.einsum('i,i->', parametricWeights, ue_diff_uh2)

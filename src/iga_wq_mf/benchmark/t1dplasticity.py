@@ -71,7 +71,7 @@ else:
 			disp_cp = modelPhy.solve(Fext=Fext[:, :step+1])[0]
 			enablePrint()
 
-			error_list[j] = modelPhy.H1NormOfError(disp_cp[:, -1], H1NormArgs={'part_ref':part_ref, 
+			error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref':part_ref, 
 																			'u_ref': disp_ref[:, step]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
