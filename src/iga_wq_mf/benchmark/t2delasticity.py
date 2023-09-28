@@ -21,7 +21,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 TRACTION, RINT = 1.0, 1.0
-YOUNG, POISSON = 1e3, 0.0
+YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON}
 SOLVERARGS  = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
@@ -38,7 +38,7 @@ def forceSurf_infPlate(P:list):
 	F[1, :] = TRACTION/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
 
-def simulation(degree, cuts, quadArgs):
+def simulate(degree, cuts, quadArgs):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 				'extra':{'Rin':1.0, 'Rex':4.0}
@@ -68,7 +68,7 @@ def simulation(degree, cuts, quadArgs):
 if isReference:
 	degree, cuts = 7, 8
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	problem, displacement, _ = simulation(degree, cuts, quadArgs)
+	problem, displacement, _ = simulate(degree, cuts, quadArgs)
 	np.save(folder + 'dispel', displacement)
 	with open(folder + 'refpartel.pkl', 'wb') as outp:
 		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
@@ -90,21 +90,20 @@ else:
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
-		time_list  = np.zeros((len(degree_list), len(cuts_list)))
 
 		for i, degree in enumerate(degree_list):
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulation(degree, cuts, quadArgs)
-				error_list[j] = problem.normOfError(displacement, normArgs={'part_ref':part_ref, 'u_ref':disp_ref})
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs)
+				error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref})
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
 			ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-			ax.set_ylim(top=1e-2, bottom=1e-14)
+			ax.set_ylim(top=1, bottom=1e-14)
 			ax.set_xlim(left=1e-2, right=2)
 			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAllH1' +  GEONAME + '.pdf')
+			fig.savefig(folder + 'FigConvergenceAll03L2' +  GEONAME + '.pdf')
 		

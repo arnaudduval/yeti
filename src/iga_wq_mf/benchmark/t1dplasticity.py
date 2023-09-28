@@ -30,9 +30,9 @@ def simulate(degree, nbel, args, step=-2):
 	modelPhy.activate_mechanical(MATARGS)
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-	Fext = np.kron(Fref, np.sin(TIME_LIST))
+	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	blockPrint()
-	displacement = modelPhy.solve(Fext=Fext[:, :step+1])[0]
+	displacement = modelPhy.solve(Fext_list=Fext_list[:, :step+1])[0]
 	enablePrint()
 	return modelPhy, displacement
 

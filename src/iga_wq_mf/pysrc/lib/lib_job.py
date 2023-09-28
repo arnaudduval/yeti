@@ -123,25 +123,23 @@ class problem():
 			u_interp = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ctrlpts))
 			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ctrlpts))
 
-		if self.part.dim == 3:
+		elif self.part.dim == 3:
 			Jqp = geophy.eval_jacobien_3d(*inpts, self.part.ctrlpts)
 			detJ, invJ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, self.part.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
 			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
-
-		if typeNorm == 'h1': uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ)
-		if nr == 1: 
-			u_interp = u_interp[0, :]
-			uders_interp = uders_interp[0, :, :]
+	
+		u_interp = np.atleast_2d(u_interp)
+		if typeNorm == 'h1': uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
 
 		# Compute u exact
 		u_exact, uders_exact = None, None
 
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
-		if callable(exactfun): u_exact = exactfun(qpPhy)
-		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
+		if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
+		if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(qpPhy))
 
 		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part) and isinstance(u_ref, np.ndarray):
@@ -163,19 +161,16 @@ class problem():
 					_, invJExact = geophy.eval_inverse_det(JqpExact)
 					derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
 
-			if typeNorm == 'h1': uders_exact = np.einsum('kjl,kil->ijl', derstemp, invJExact)
-			if nr == 1: u_exact = np.ravel(u_exact)
+			u_exact = np.atleast_2d(u_exact)
+			if typeNorm == 'h1': uders_exact = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJExact))
 
 		# Compute error
-		ue_df_uh2 = (u_exact - u_interp)**2 
-		ue2       = u_exact**2
-		if nr > 1: 
-			ue_df_uh2 = np.ravel(np.sum(ue_df_uh2, axis=0))
-			ue2       = np.ravel(np.sum(ue2, axis=0))
+		ue_df_uh2 = np.einsum('il->l', (u_exact - u_interp)**2)
+		ue2       = np.einsum('il->l', u_exact**2)
 
 		if typeNorm == 'h1':
-			ue_df_uh2 += np.ravel(np.sum((uders_exact - uders_interp)**2, axis=(0, 1)))
-			ue2       += np.ravel(np.sum(uders_exact**2, axis=(0, 1)))
+			ue_df_uh2 += np.einsum('ijl->l', (uders_exact - uders_interp)**2)
+			ue2 += np.einsum('ijl->l', uders_exact**2)
 
 		ue_df_uh2 = ue_df_uh2*detJ
 		ue2       = ue2*detJ

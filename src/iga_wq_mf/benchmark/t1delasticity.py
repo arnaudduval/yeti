@@ -29,7 +29,7 @@ def simulate(degree, nbel, args):
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext = np.kron(Fref, [0, 1])
-	displacement = modelPhy.solve(Fext=Fext)[0]
+	displacement = modelPhy.solve(Fext_list=Fext)[0]
 	return modelPhy, displacement
 
 if isReference:

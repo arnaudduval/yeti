@@ -353,7 +353,7 @@ class mechamat1D(part1D):
 		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
 		return tangentM
 
-	def solve(self, Fext=None):
+	def solve(self, Fext_list=None):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -361,21 +361,21 @@ class mechamat1D(part1D):
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		stress, Cep = np.zeros(nbqp), np.zeros(nbqp)
-		Alldisplacement = np.zeros(np.shape(Fext))
+		Alldisplacement = np.zeros(np.shape(Fext_list))
 
-		Allstrain  = np.zeros((nbqp, np.shape(Fext)[1]))
-		Allplastic = np.zeros((nbqp, np.shape(Fext)[1]))
-		Allstress  = np.zeros((nbqp, np.shape(Fext)[1]))
-		AllCep = np.zeros((nbqp, np.shape(Fext)[1]))
+		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
+		Allplastic = np.zeros((nbqp, np.shape(Fext_list)[1]))
+		Allstress  = np.zeros((nbqp, np.shape(Fext_list)[1]))
+		AllCep = np.zeros((nbqp, np.shape(Fext_list)[1]))
 
-		for i in range(1, np.shape(Fext)[1]):
+		for i in range(1, np.shape(Fext_list)[1]):
 			
 			# Get values of last step
 			d_n0 = np.copy(Alldisplacement[:, i-1])
 			
 			# Get values of new step
 			V_n1 = np.zeros(self.nbctrlpts) 
-			Fext_n1 = np.copy(Fext[:, i])
+			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Newton-Raphson 
