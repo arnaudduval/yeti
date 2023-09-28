@@ -113,11 +113,11 @@ else:
 
 				newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
 				axs[0].semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
-							color=colorList[i], linewidth=0.5)
+							color=COLORLIST[i], linewidth=0.5)
 				
 				newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
 				axs[1].semilogy(np.arange(len(newresidue)), newresidue, '-', alpha=opacity, 
-							color=colorList[i], linewidth=0.5)
+							color=COLORLIST[i], linewidth=0.5)
 
 		axs[0].set_title('First NR iterations')
 		axs[1].set_title('Last NR iterations')

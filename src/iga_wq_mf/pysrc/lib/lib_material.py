@@ -96,7 +96,7 @@ class plasticLaw():
 		return	
 	
 	def __setIsoNoneModel(self):
-		self._IsotropicHard = lambda a: np.zeros(np.size(a))
+		self._IsotropicHard = lambda a: 1e6*self.__elasticlimit*np.ones(np.size(a))
 		self._IsotropicHardDer = lambda a: np.zeros(np.size(a))
 		return
 	

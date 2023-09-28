@@ -1,5 +1,5 @@
 """
-.. Test of elastoplasticity 1D
+.. Test of elasticity 1D
 .. Joaquin Cornejo 
 """
 
@@ -14,40 +14,40 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-E, cst  = 2e11, 3.5e8
-length  = 1
-matArgs = {'elastic_modulus':E, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'linear', 'Eiso':2e10}}
+YOUNG, CST, LENGTH = 2e11, 3.5e8, 1
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'none'}}
 isReference = False
 
 def forceVol(P:list):
-	force = cst*(P - 1/10*P**2)
+	force = CST*(P - 1/10*P**2)
 	return force
+
+def simulate(degree, nbel, args):
+	crv = createUniformCurve(degree, nbel, LENGTH)
+	modelPhy = mechamat1D(crv, args)
+	modelPhy.activate_mechanical(MATARGS)
+	modelPhy.add_DirichletCondition(table=[1, 1])
+	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
+	Fext = np.kron(Fref, [0, 1])
+	displacement = modelPhy.solve(Fext=Fext)[0]
+	return modelPhy, displacement
 
 if isReference:
 
 	degree, nbel = 2, 4096
-	crv = createUniformCurve(degree, nbel, length)
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-	modelPhy = mechamat1D(crv, args)
-
-	with open(folder + 'refpartel.pkl', 'wb') as outp:
+	modelPhy, displacement = simulate(degree, nbel, args)
+	np.save(folder + 'dispel', displacement)
+	with open(folder + 'refpartpl.pkl', 'wb') as outp:
 		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
-
-	modelPhy.activate_mechanical(matArgs)
-	modelPhy.add_DirichletCondition(table=[1, 1])
-	Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-	Fext = np.kron(Fend, [0, 1])
-	disp_cp, strain_qp, stress_qp, plastic_qp, Cep_qp = modelPhy.solve(Fext=Fext)
-	np.save(folder+'dispel', disp_cp)
-
-else: 
-	def exactDisplacement(P:list):
-		u = cst/E*(-P**3/6 + P**4/120 + (length**2/6 - length**3/120)*P)
-		return u
 	
-	def exactDisplacementdiff(P:list):
-		u = cst/E*(-P**2/2 + P**3/30 + (length**2/6 - length**3/120))
-		return u
+else: 
+
+	def exactDisplacement(P:list):
+		return CST/YOUNG*(-P**3/6 + P**4/120 + (LENGTH**2/6 - LENGTH**3/120)*P)
+	
+	def exactDisplacementDers(P:list):
+		return CST/YOUNG*(-P**2/2 + P**3/30 + (LENGTH**2/6 - LENGTH**3/120))
 
 	disp_ref = np.load(folder + 'dispel.npy')
 	with open(folder + 'refpartel.pkl', 'rb') as inp:
@@ -61,23 +61,11 @@ else:
 	for degree in degree_list:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
-			crv = createUniformCurve(degree, nbel, length)
-
 			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-			modelPhy = mechamat1D(crv, args)
-
-			modelPhy.activate_mechanical(matArgs)
-			modelPhy.add_DirichletCondition(table=[1, 1])
-			Fend = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-			Fext = np.kron(Fend, [0, 1])
-
-			blockPrint()
-			disp_cp = modelPhy.solve(Fext=Fext)[0]
-			enablePrint()
-
-			# error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
+			modelPhy, displacement = simulate(degree, nbel, args)
+			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
 			# 														'exactFunctionDers': exactDisplacementdiff})
-			error_list[j] = modelPhy.normOfError(disp_cp[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
+			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
 																	'u_ref': disp_ref[:, -1]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')

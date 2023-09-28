@@ -106,8 +106,8 @@ else:
 				r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
 				r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts)]
 
-	ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=$ ' + str(2**cuts), marker=markerList[0])
-	for i, [value, label] in enumerate(zip(values, labels)): ax.semilogy(degree, value, '--', label=label, marker=markerList[i+1])
+	ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=$ ' + str(2**cuts), marker=MARKERLIST[0])
+	for i, [value, label] in enumerate(zip(values, labels)): ax.semilogy(degree, value, '--', label=label, marker=MARKERLIST[i+1])
 
 	ax.legend(loc='best')
 	ax.set_xlabel('Degree ' + r'$p$')

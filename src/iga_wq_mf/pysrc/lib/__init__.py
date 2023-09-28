@@ -21,8 +21,8 @@ from mpltools import annotation
 from cycler import cycler
 
 # Default properties 
-markerList = ['o', 'v', 's', 'X', '+', 'p', '*']
-colorList  = ['#377eb8', '#ff7f00', '#4daf4a',
+MARKERLIST = ['o', 'v', 's', 'X', '+', 'p', '*']
+COLORLIST  = ['#377eb8', '#ff7f00', '#4daf4a',
 			'#f781bf', '#a65628', '#984ea3',
 			'#999999', '#e41a1c', '#dede00']
 mpl.rcParams['text.usetex'] = True
@@ -34,7 +34,7 @@ mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 mpl.rcParams["axes.grid"] = True
-mpl.rcParams['axes.prop_cycle'] = cycler('color', colorList)
+mpl.rcParams['axes.prop_cycle'] = cycler('color', COLORLIST)
 
 import pyvista as pv
 pv.rcParams['transparent_background'] = True

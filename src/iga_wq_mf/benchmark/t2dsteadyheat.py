@@ -120,7 +120,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 												'exactFunctionDers':exactDiffTemperature_quartCircle})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
-		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))
+		ax.loglog(nbctrlpts_list, error_list, marker=MARKERLIST[i], label='degree '+r'$p=\,$'+str(degree))
 
 		if quadrule == 'iga':
 			slope = np.polyfit(np.log10(nbctrlpts_list[1:7]),np.log10(error_list[1:7]), 1)[0]
