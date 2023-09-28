@@ -53,7 +53,7 @@ degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
 # Plot results
-normalPlot = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
+normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
 onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 

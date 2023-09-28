@@ -103,7 +103,6 @@ class problem():
 		"""	
 		typeNorm = normArgs.get('type', 'l2').lower()
 		if typeNorm != 'l2' and typeNorm != 'h1': raise Warning('Unknown norm')
-		if typeNorm == 'h1': raise Warning('To be tested')
 
 		# Compute u interpolation
 		nr = np.size(np.atleast_2d(u_ctrlpts), axis=0)
@@ -131,8 +130,10 @@ class problem():
 			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
 			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
 
-		if typeNorm == 'h1': uders_interp = np.einsum('kjl,kil->ijl', derstemp, invJ)
-		if nr == 1: u_interp = np.ravel(u_interp)
+		if typeNorm == 'h1': uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ)
+		if nr == 1: 
+			u_interp = u_interp[0, :]
+			uders_interp = uders_interp[0, :, :]
 
 		# Compute u exact
 		u_exact, uders_exact = None, None

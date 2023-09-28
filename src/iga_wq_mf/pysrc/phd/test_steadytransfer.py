@@ -95,7 +95,7 @@ def powerDensity_thickRing(P: list):
 	return f
 
 def powerDensity_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-16)
+	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
 		f = -div(lambda * grad(u))
 	"""
 	x = P[0, :]

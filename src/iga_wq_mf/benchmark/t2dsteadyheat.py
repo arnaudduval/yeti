@@ -64,6 +64,24 @@ def exactTemperature_quartCircle(P: list):
 	u = np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 -1)*(x**2 + y**2 - 16)
 	return u
 
+def exactDiffTemperature_quartCircle(P: list):
+	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
+		f = -div(lambda * grad(u))
+	"""
+	x = P[0, :]
+	y = P[1, :]
+
+	uders = np.zeros((2, np.size(P, axis=1)))
+	uders[0, :] = (2*x*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+				+ 2*x*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
+				+ np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16))
+
+	uders[1, :] = (2*y*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+				+ 2*y*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
+				+ np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16))
+
+	return uders
+
 # Set global variables
 geoName = 'QA'
 solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
@@ -98,7 +116,8 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = problem.solveSteadyHeatProblemFT(Fext=Fext)[0]
-			error_list[j] = problem.normOfError(temperature, normArgs={'exactFunction':exactTemperature_quartCircle})
+			error_list[j] = problem.normOfError(temperature, normArgs={'type':'H1','exactFunction':exactTemperature_quartCircle,
+												'exactFunctionDers':exactDiffTemperature_quartCircle})
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=markerList[i], label='degree '+r'$p=\,$'+str(degree))
@@ -109,11 +128,11 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
 									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 			
-		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
 		ax.set_xlabel('Total number of DOF')
 		ax.set_ylim(top=1e0, bottom=1e-15)
 		ax.set_xlim(left=10, right=1e5)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergence' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')
+		fig.savefig(folder + 'FigConvergenceH1' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')
