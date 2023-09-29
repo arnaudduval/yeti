@@ -8,7 +8,8 @@ from pysrc.phd.lib_simulation import decoder, simulate
 
 def conductivityProperty(P:list):
 	dimen = np.size(P, axis=0)
-	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	# Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	Kref  = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 3]])
 	Kprop = np.zeros((dimen, dimen, np.size(P, axis=1)))
 	for i in range(dimen): 
 		for j in range(dimen):
@@ -132,7 +133,8 @@ class heatsimulate(simulate):
 		blockPrint()
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
-					'degree': self._degree*np.ones(3, dtype=int)}
+					'degree': self._degree*np.ones(3, dtype=int), 
+					'extra':{'Rin':1.0, 'Rex':1.3}}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}
@@ -172,15 +174,14 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 dataExist   = False
-degree_list = np.arange(4, 7)
-cuts_list   = np.arange(5, 8)
-name_list   = ['QA']
-IterMethods = ['WP', 'C', 'JMC']
+degree_list = np.arange(4, 5)
+cuts_list   = np.arange(5, 6)
+name_list   = ['qa']
+IterMethods = ['WP', 'C', 'JMC', 'TDC']
 
 for cuts in cuts_list:
 	for degree in degree_list:
 		for name in name_list: 
-
 			if name   == 'cb' : funpow = powerDensity_cube 
 			elif name == 'vb' : funpow = powerDensity_prism 
 			elif name == 'tr' : funpow = powerDensity_thickRing 
@@ -194,7 +195,7 @@ for cuts in cuts_list:
 				mat = heatmat()
 				mat.addConductivity(conductivityProperty, isIsotropic=False)
 				nbctrlpts = simulation._nbctrlpts*np.ones(3, dtype=int)
-				if name == 'QA': nbctrlpts[-1] = 1
+				if name == 'qa': nbctrlpts[-1] = 1
 				boundary = boundaryCondition(nbctrlpts)
 				boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=bool))
 				simulation.simulate(material=mat, boundary=boundary, overwrite=True)

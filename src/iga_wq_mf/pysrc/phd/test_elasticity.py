@@ -18,21 +18,6 @@ def forceSurf_infPlate(P:list):
 	F[1, :] = Tx/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
 
-def exactDisplacement_infPlate(P:list):
-	Tx, a = 1.0, 1.0
-	E, nu = 1e3, 0.3
-	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
-	r_square = x**2 + y**2
-	theta = np.arcsin(y/np.sqrt(r_square))
-	b = a**2/r_square # Already squared
-	c = Tx*(1.0 + nu)*np.sqrt(r_square)/(2*E)
-
-	disp = np.zeros((2, nnz))
-	disp[0, :] = c*(2*(1-nu)*np.cos(theta) + b*(4*(1-nu)*np.cos(theta) + np.cos(3*theta)) - b**2*np.cos(3*theta))
-	disp[1, :] = c*(-2*nu*np.sin(theta) + b*(2*(-1 + 2*nu)*np.sin(theta) + np.sin(3*theta)) - b**2*np.sin(3*theta))
-	
-	return disp
-
 class mechasimulate(simulate):
 	def __init__(self, simuArgs:dict):
 		super().__init__(simuArgs)
@@ -45,7 +30,8 @@ class mechasimulate(simulate):
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int),
-					'extra':{'Rin':1.0, 'Rex':4.0}}
+					'extra':{'Rin':1.0, 'Rex':6.0}
+					}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}
@@ -84,10 +70,10 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 GEONAME = 'QA'
-DEGREE_LIST = np.arange(4, 7)
-CUTS_LIST   = np.arange(5, 8)
-ITERMETHODS = ['WP', 'C', 'JMC']
-MATARGS     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3}
+DEGREE_LIST = np.arange(4, 5)
+CUTS_LIST   = np.arange(5, 6)
+ITERMETHODS = ['WP', 'C', 'JMC', 'TDC']
+MATARGS     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.25}
 dataExist   = False 
 
 for cuts in CUTS_LIST:

@@ -42,7 +42,7 @@ def forceSurf_infPlate(P:list):
 def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-				'extra':{'Rin':1.0, 'Rex':4.0}
+				'extra':{'Rin':RINT, 'Rex':4.0}
 				}
 	blockPrint()
 	material = mechamat(MATARGS)

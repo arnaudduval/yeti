@@ -134,13 +134,15 @@ contains
             do gp = 1, mat%ncols_sp
                 NN = mat%NN(:, gp)
                 call array2symtensor(mat%dimen, size(NN), NN, TNN)
-
+                
+                ! Elastic
                 DD = 0.d0
-                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp)
-                DD(i, i) = DD(i, i) + mat%CepArgs(2, gp)
-                do j = 1, mat%dimen
-                    DD(j, j) = DD(j, j) + mat%CepArgs(2, gp)
+                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+                do k = 1, mat%dimen
+                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
+
+                ! Plastic
                 do j = 1, mat%dimen
                     do k = 1, mat%dimen
                         DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
@@ -215,17 +217,20 @@ contains
                 NN = mat%NN(:, gp)
                 call array2symtensor(mat%dimen, size(NN), NN, TNN)
     
+                ! Elastic
                 DD = 0.d0
-                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp)
-                DD(i, i) = DD(i, i) + mat%CepArgs(2, gp)
-                do j = 1, mat%dimen
-                    DD(j, j) = DD(j, j) + mat%CepArgs(2, gp)
+                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+                do k = 1, mat%dimen
+                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
+
+                ! Plastic
                 do j = 1, mat%dimen
                     do k = 1, mat%dimen
                         DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
                     end do
                 end do
+
                 coefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
     

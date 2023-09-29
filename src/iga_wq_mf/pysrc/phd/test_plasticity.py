@@ -43,7 +43,7 @@ if not dataExist:
 
 		geoArgs = {'name': 'QA', 'degree': DEGREE*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': CUTS*np.ones(3, dtype=int), 
-				'extra':{'Rin':1.0, 'Rex':4.0}
+				# 'extra':{'Rin':1.0, 'Rex':4.0}
 				}
 		# quadArgs  = {'quadrule': 'wq', 'type': 1}
 		quadArgs  = {'quadrule': 'iga'}
