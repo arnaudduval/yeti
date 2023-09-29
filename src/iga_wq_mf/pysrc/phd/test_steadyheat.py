@@ -174,8 +174,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 dataExist   = False
 degree_list = np.arange(4, 7)
 cuts_list   = np.arange(5, 8)
-name_list   = ['qa']
-IterMethods = ['JMC']
+name_list   = ['QA']
+IterMethods = ['WP', 'C', 'JMC']
 
 for cuts in cuts_list:
 	for degree in degree_list:
@@ -194,7 +194,7 @@ for cuts in cuts_list:
 				mat = heatmat()
 				mat.addConductivity(conductivityProperty, isIsotropic=False)
 				nbctrlpts = simulation._nbctrlpts*np.ones(3, dtype=int)
-				if name == 'qa': nbctrlpts[-1] = 1
+				if name == 'QA': nbctrlpts[-1] = 1
 				boundary = boundaryCondition(nbctrlpts)
 				boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=bool))
 				simulation.simulate(material=mat, boundary=boundary, overwrite=True)

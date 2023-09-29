@@ -421,6 +421,8 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
                         nbIterPCG, threshold, Fext, x, resPCG)
+        print *, methodPCG, count(resPCG /= 0.0)
+        
     else 
         stop 'Unknown method'                    
     end if

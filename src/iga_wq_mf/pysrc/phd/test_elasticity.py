@@ -44,7 +44,8 @@ class mechasimulate(simulate):
 		blockPrint()
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
-					'degree': self._degree*np.ones(3, dtype=int)}
+					'degree': self._degree*np.ones(3, dtype=int),
+					'extra':{'Rin':1.0, 'Rex':4.0}}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}
@@ -82,31 +83,30 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+GEONAME = 'QA'
+DEGREE_LIST = np.arange(4, 7)
+CUTS_LIST   = np.arange(5, 8)
+ITERMETHODS = ['WP', 'C', 'JMC']
+MATARGS     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3}
 dataExist   = False 
-degree_list = np.arange(4, 7)
-cuts_list   = np.arange(5, 8)
-name_list   = ['qa']
-IterMethods = ['JMC']
-matArgs     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3}
 
-for cuts in cuts_list:
-	for degree in degree_list:
-		for name in name_list: 
+for cuts in CUTS_LIST:
+	for degree in DEGREE_LIST:
 
-			inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': name, 'isGauss': False, 
-					'funforce': forceSurf_infPlate, 'IterMethods': IterMethods, 'folder': folder}
-			simulation = mechasimulate(inputs)  
+		inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': GEONAME, 'isGauss': False, 
+				'funforce': forceSurf_infPlate, 'IterMethods': ITERMETHODS, 'folder': folder}
+		simulation = mechasimulate(inputs)  
+		
+		if not dataExist:
+			mat = mechamat(MATARGS)
+			nbctrlpts = np.ones(3, dtype=int); nbctrlpts[:2] = simulation._nbctrlpts
+			boundary = boundaryCondition(nbctrlpts)
+			table = np.zeros((2, 2, 2), dtype=int)
+			table[0, 0, 0] = 1; table[1, 0, 1] = 1
+			boundary.add_DirichletDisplacement(table=table)
+			simulation.simulate(material=mat, boundary=boundary, overwrite=True)
+
+		else :
+			simuOutput = decoder(simulation._filename)
+			simuOutput.plot_results(extension='_EL.pdf', plotLegend=False)
 			
-			if not dataExist:
-				mat = mechamat(matArgs)
-				nbctrlpts = np.ones(3, dtype=int); nbctrlpts[:2] = simulation._nbctrlpts
-				boundary = boundaryCondition(nbctrlpts)
-				table = np.zeros((2, 2, 2), dtype=int)
-				table[0, 0, 0] = 1; table[1, 0, 1] = 1
-				boundary.add_DirichletDisplacement(table=table)
-				simulation.simulate(material=mat, boundary=boundary, overwrite=True)
-
-			else :
-				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension='_EL.pdf', plotLegend=False)
-				
