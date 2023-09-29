@@ -23,7 +23,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 TRACTION, RINT = 1.0, 1.0
 YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON}
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
+		'plasticLaw': {'Isoname':'none'}}
 SOLVERARGS  = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 isReference = False
 
@@ -38,7 +39,7 @@ def forceSurf_infPlate(P:list):
 	F[1, :] = TRACTION/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
 
-def simulate(degree, cuts, quadArgs):
+def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 				'extra':{'Rin':1.0, 'Rex':4.0}
@@ -61,8 +62,14 @@ def simulate(degree, cuts, quadArgs):
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
 	problem.addSolverConstraints(solverArgs=SOLVERARGS)
-	Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-	displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+	if useElastoAlgo:
+		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
+		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+		tmp = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
+		displacement = tmp[:, :, -1]
+	else:
+		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+		displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
 	return problem, displacement, meshparam
 
 if isReference:
@@ -95,7 +102,7 @@ else:
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs)
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
 				error_list[j] = problem.normOfError(displacement, normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -105,5 +112,5 @@ else:
 			ax.set_ylim(top=1, bottom=1e-14)
 			ax.set_xlim(left=1e-2, right=2)
 			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAllH1' +  GEONAME + '.pdf')
+			fig.savefig(folder + 'FigConvergenceAllH1elpl' +  GEONAME + '.pdf')
 		

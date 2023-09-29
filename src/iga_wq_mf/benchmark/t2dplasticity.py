@@ -20,13 +20,13 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 TRACTION, RINT = 1.0, 1.0
 YOUNG, POISSON = 1e3, 0.3
-NBSTEPS = 15
+NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2, 'poisson_ratio': POISSON, 
 			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
-SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC'}
-isReference = True
+SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold': 1e-9}
+isReference = False
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -70,7 +70,7 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	return problem, displacement, meshparam
 
 if isReference:
-	degree, cuts = 3, 10 
+	degree, cuts = 4, 7
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _ = simulate(degree, cuts, quadArgs)
 	np.save(folder + 'disppl', displacement)
@@ -79,38 +79,33 @@ if isReference:
 
 else:
 
-	# Plot results
-	normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
-	onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
-	onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
-
-	degree_list = np.array([2, 3, 4, 6])
+	degree_list = np.array([1, 2, 3])
 	cuts_list   = np.arange(2, 7)
 
 	with open(folder + 'refpartpl.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 	disp_ref = np.load(folder + 'disppl.npy')
 
-	fig, ax    = plt.subplots(figsize=(8, 7))
-	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-		quadArgs = {'quadrule': quadrule, 'type': quadtype}
-		error_list = np.ones(len(cuts_list))
-		
-		for i, degree in enumerate(degree_list):
-			meshparam = np.ones(len(cuts_list))
-			color = COLORLIST[i]
-			for j, cuts in enumerate(cuts_list):
-				step = 12
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, step)
-				error_list[j] = problem.normOfError(displacement[:, :, step], 
-								normArgs={'referencePart':part_ref, 'u_ref': disp_ref[:, :, step]})
+	fig, ax = plt.subplots(figsize=(9,6))
+	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	error_list = np.ones(len(cuts_list))
+	
+	for i, degree in enumerate(degree_list):
+		meshparam = np.ones(len(cuts_list))
+		color = COLORLIST[i]
+		for j, cuts in enumerate(cuts_list):
+			step = 45
+			problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, step)
+			error_list[j] = problem.normOfError(displacement[:, :, step], 
+							normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
 
-			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
-						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
-			ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-			ax.set_ylim(top=1, bottom=1e-14)
-			ax.set_xlim(left=1e-2, right=2)
-			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergencePlasticityAllH1' +  GEONAME + '.pdf')
-		
+		ax.loglog(meshparam, error_list, color=color, marker='o', markerfacecolor='w',
+					markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
+		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+		ax.set_ylim(top=1, bottom=1e-10)
+		ax.set_xlim(left=1e-1, right=2)
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigConvergencePlasticityAllH1' + str(step) +  GEONAME + '.pdf')
+	
