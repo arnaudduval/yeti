@@ -103,14 +103,14 @@ else:
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
 				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
-				error_list[j] = problem.normOfError(displacement, normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
+				error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref})
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
+			ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 			ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-			ax.set_ylim(top=1, bottom=1e-14)
+			ax.set_ylim(top=1e-2, bottom=1e-14)
 			ax.set_xlim(left=1e-2, right=2)
 			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAllH1elpl' +  GEONAME + '.pdf')
+			fig.savefig(folder + 'FigConvergenceAll03L2' +  GEONAME + '.pdf')
 		

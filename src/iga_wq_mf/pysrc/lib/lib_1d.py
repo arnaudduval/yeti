@@ -142,7 +142,7 @@ class part1D:
 		error = np.sqrt(tmp2/tmp1)
 		return error
 
-class thermo1D(part1D):
+class heattransfer1D(part1D):
 	def __init__(self, part, kwargs:dict):
 		super().__init__(part, kwargs)	
 		return
@@ -252,7 +252,7 @@ class thermo1D(part1D):
 
 		return 
 
-class mechamat1D(part1D):
+class mechanics1D(part1D):
 	def __init__(self, part, kwargs:dict):
 		super().__init__(part, kwargs)		
 		return

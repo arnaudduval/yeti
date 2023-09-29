@@ -1,7 +1,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (thermomat, mechamat,
+from .lib_material import (heatmat, mechamat,
 							clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
@@ -197,7 +197,7 @@ class problem():
 		return u_interp
 	
 class heatproblem(problem):
-	def __init__(self, material:thermomat, part:part, boundary:boundaryCondition, solverArgs={}):
+	def __init__(self, material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
 		self.material = material
 		return

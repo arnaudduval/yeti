@@ -9,7 +9,7 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import thermomat
+from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import heatproblem
 
@@ -49,7 +49,7 @@ if not dataExist:
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 		# Add material 
-		material = thermomat()
+		material = heatmat()
 		material.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]), isIsotropic=True) 
 		material.addCapacity(1.0, isIsotropic=True) 
 

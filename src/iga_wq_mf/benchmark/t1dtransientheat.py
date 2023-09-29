@@ -5,7 +5,7 @@
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve, sigmoid
-from pysrc.lib.lib_1d import thermo1D
+from pysrc.lib.lib_1d import heattransfer1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -27,7 +27,7 @@ crv = createUniformCurve(degree, nbel, length)
 
 # Create geometry
 args     = {'quadArgs': {'quadrule': 'wq'}}
-modelPhy = thermo1D(crv, args)
+modelPhy = heattransfer1D(crv, args)
 
 # Add material 
 matArgs = {'heattheta': 1.0, 'conductivity': conductivityProperty, 'capacity': capacityProperty}

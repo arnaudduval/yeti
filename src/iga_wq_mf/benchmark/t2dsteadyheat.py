@@ -11,7 +11,7 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import thermomat
+from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import heatproblem
 
@@ -100,7 +100,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 						'extra':{'Rin':1.0, 'Rex':4.0}
 			}
 			blockPrint()
-			material = thermomat()
+			material = heatmat()
 			material.addConductivity(conductivityProperty, isIsotropic=False)				
 			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()

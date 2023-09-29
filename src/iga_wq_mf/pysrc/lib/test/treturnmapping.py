@@ -1,6 +1,6 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
-from pysrc.lib.lib_1d import mechamat1D
+from pysrc.lib.lib_1d import mechanics1D
 from pysrc.lib.lib_material import mechamat, symtensor2array4All
 
 # # 1 DIMENSION

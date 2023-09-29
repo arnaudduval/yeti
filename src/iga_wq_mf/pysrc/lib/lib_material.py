@@ -42,7 +42,7 @@ class material():
 			raise Warning('Not implemented')
 		return prop
 
-class thermomat(material):
+class heatmat(material):
 	def __init__(self):
 		super().__init__()
 		self.density      = None

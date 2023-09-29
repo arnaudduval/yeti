@@ -1,5 +1,5 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_material import thermomat
+from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
@@ -126,7 +126,7 @@ class heatsimulate(simulate):
 		super().__init__(simuArgs)
 		return
 
-	def simulate(self, material:thermomat, boundary:boundaryCondition, overwrite=True):
+	def simulate(self, material:heatmat, boundary:boundaryCondition, overwrite=True):
 		" Runs simulation using given input information "
 
 		blockPrint()
@@ -191,7 +191,7 @@ for cuts in cuts_list:
 			simulation = heatsimulate(inputs)  
 			
 			if not dataExist:
-				mat = thermomat()
+				mat = heatmat()
 				mat.addConductivity(conductivityProperty, isIsotropic=False)
 				nbctrlpts = simulation._nbctrlpts*np.ones(3, dtype=int)
 				if name == 'qa': nbctrlpts[-1] = 1
