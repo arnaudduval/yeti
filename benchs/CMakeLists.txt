@@ -1,4 +1,4 @@
-# Copyright 2020-2022 Arnaud Duval
+# Copyright 2020-2023 Arnaud Duval
 
 # This file is part of Yeti.
 #

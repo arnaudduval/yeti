@@ -1,5 +1,5 @@
 # Copyright 2018-2021 Thibaut Hirschler
-# Copyright 2020-2022 Arnaud Duval
+# Copyright 2020-2023 Arnaud Duval
 # Copyright 2021 Marie Guerder
 
 # This file is part of Yeti.

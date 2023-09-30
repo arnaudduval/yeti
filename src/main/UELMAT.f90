@@ -1,6 +1,6 @@
 !! Copyright 2011 Florian Maurin
 !! Copyright 2016-2020 Thibaut Hirschler
-!! Copyright 2019-2021 Arnaud Duval
+!! Copyright 2019-2023 Arnaud Duval
 
 !! This file is part of Yeti.
 !!
