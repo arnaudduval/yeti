@@ -45,12 +45,14 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
     dimension COORDSall(3,nb_cp)
 
     integer, intent(in) :: indDLoad, load_target_nbelem, JDLType,   &
-        &   nb_load, nb_load_additionalInfos
+        &   nb_load, len_load_additionalInfos,                      &
+        &   nb_load_additionalInfos
 
     double precision, intent(in) :: ADLMAG, load_additionalInfos
     dimension ADLMAG(nb_load),      &
         &   load_target_nbelem(nb_load), JDLType(nb_load),  &
-        &   load_additionalInfos(nb_load_additionalInfos)
+        &   load_additionalInfos(len_load_additionalInfos), &
+        &   nb_load_additionalInfos(nb_load)
     dimension indDLoad(SUM(load_target_nbelem))
 
     !! Output variables
@@ -116,7 +118,7 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
         &   VectNorm(MCRD)
 
     !! - centrifugal load
-    integer :: loadcount
+    integer :: load_addinfos_count
     double precision :: pointGP, pointA, pointB, vectD, vectAG, vectR,  &
         &   scal
     dimension pointGP(MCRD), pointA(MCRD), pointB(MCRD), vectD(MCRD),   &
@@ -263,7 +265,7 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
 
         !! 5. Body loads
         !! .............
-        loadcount = 1
+        load_addinfos_count = 1
         kload = 0
         do i = 1, nb_load
             !! Centrifugal load
@@ -280,12 +282,12 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
                 !! Compute distance to rotation axis
                 !! - Start point
                 pointA(:) =                 &
-                    &   load_additionalInfos(loadcount: loadcount+MCRD)
-                loadcount = loadcount + MCRD
+                    &   load_additionalInfos(load_addinfos_count:       &
+                    &                        load_addinfos_count+MCRD)
                 !! - End point
                 pointB(:) =                 &
-                    &   load_additionalInfos(loadcount: loadcount+MCRD)
-                loadcount = loadcount + MCRD
+                    &   load_additionalInfos(load_addinfos_count+MCRD:  &
+                    &                        load_addinfos_count+2*MCRD)
                 !! - Direction vector
                 vectD(:) = pointB(:) - pointA(:)
                 vectD(:) = vectD(:) / SQRT(SUM(vectD(:)*vectD(:)))  ! Normalise
@@ -307,14 +309,14 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
                 enddo
             endif
             kload = kload + load_target_nbelem(i)
+            load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i)
         enddo
 
     enddo  !! End of the loop on integration points
 
     !! Loop for load : find boundary loads
-
+    load_addinfos_count = 1
     kk = 0
-
     do i = 1, nb_load
         if ((JDLTYPE(i)>9 .AND. JDLTYPE(i)<100) .AND.       &
             &   ANY(indDLoad(kk+1:kk+load_target_nbelem(i))==JELEM)) then
@@ -323,8 +325,7 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
             call LectCle(JDLType(i), KNumFace, KTypeDload)
             if (KTypeDload == 4) then
                 !! Get Index of nodal distribution
-                iField = int(load_additionalInfos(loadcount))
-                loadcount = loadcount + 1
+                iField = int(load_additionalInfos(load_addinfos_count))
             endif
             call Gauss(NbPtInt, MCRD, GaussPdsCoord, KNumFace)
 
@@ -517,6 +518,7 @@ subroutine UELMAT10(NDOFEL, MCRD, NNODE, NNODEmap, nb_cp, JELEM,            &
         endif
 
         kk = kk + load_target_nbelem(i)
+        load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i)
 
     enddo
 end subroutine UELMAT10

@@ -240,6 +240,7 @@ subroutine sys_linmat_lindef_static(Kdata,Krow,Kcol,F,  &
                         &   COORDS3D,TENSOR_patch,MAT_patch,RHO(NumPatch),      &
                         &   nb_load,indDLoad,load_target_nbelem,JDLType,ADLMAG, &
                         &   load_additionalInfos,SIZE(load_additionalInfos),    &
+                        &   nb_load_additionalInfos,                            &
                         &   n_dist_elem,nb_n_dist,                              &
                         &   RHS(:NDOFEL),AMATRX(:,:,:nnodeSum))
 
