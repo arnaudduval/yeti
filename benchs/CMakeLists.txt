@@ -66,6 +66,10 @@ add_test(NAME dload-triangle-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload
 add_test(NAME dload-uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME dload-uniform-field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 
+# Combination of different loads with extra parameters, given in different orders
+add_test(NAME load_combination COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/beam_dload_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
+add_test(NAME load_combination_order COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/beam_dload_triangle_centrif.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
+
 # Static shell analysis where a single element is loaded with pressure
 add_test(NAME shell_1_element_load-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_1elt.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
 add_test(NAME shell_1_element_load-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_9elts.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
@@ -193,6 +197,8 @@ set_tests_properties(
                      dload-triangle-2
                      dload-uniform
                      dload-uniform-field
+                     load_combination
+                     load_combination_order
                      shell_1_element_load-1
                      shell_1_element_load-2
                      leastsquare-projection-1patch

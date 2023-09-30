@@ -22,7 +22,8 @@
 subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
             &   TENSOR,MATERIAL_PROPERTIES,DENSITY,nb_load,indDLoad,    &
             &   load_target_nbelem,JDLType,ADLMAG,load_additionalInfos, &
-            &   nb_load_additionalInfos,n_dist_elem, nb_n_dist, RHS,AMATRX)
+            &   len_load_additionalInfos, nb_load_additionalInfos, &
+            &   n_dist_elem, nb_n_dist, RHS,AMATRX)
 
     use parameters
 
@@ -39,12 +40,14 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
         &     n_dist_elem(nb_n_dist,NNODE)
 
     integer, intent(in) :: indDLoad,load_target_nbelem,JDLType, &
-        &     nb_load,nb_load_additionalInfos, nb_n_dist
+        &     nb_load,len_load_additionalInfos, nb_n_dist,  &
+        &     nb_load_additionalInfos
 
     double precision, intent(in) :: ADLMAG,load_additionalInfos
     dimension ADLMAG(nb_load),indDLoad(SUM(load_target_nbelem)),    &
         &     load_target_nbelem(nb_load),JDLType(nb_load),         &
-        &     load_additionalInfos(nb_load_additionalInfos)
+        &     load_additionalInfos(len_load_additionalInfos),       &
+        &     nb_load_additionalInfos(nb_load)
 
     !! Output variables
     !! ----------------
@@ -78,8 +81,10 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     integer :: kload, i_load
     double precision :: FbL,VectNorm, y, f_mag
     dimension FbL(NDOFEL),VectNorm(MCRD)
-    !! centrifugal load
-    integer :: loadcount
+
+    !! loads requiring additional information
+    !! (centrufugal body force, distributed pressure, ...)
+    integer :: load_addinfos_count  ! Index for number of additional infos
     double precision :: pointGP, pointA,pointB,vectD,vectAG,vectR,scal
     dimension pointGP(MCRD),pointA(MCRD),pointB(MCRD),vectD(MCRD),  &
         &     vectAG(MCRD),vectR(MCRD)
@@ -103,7 +108,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     !! Loop on integration points
     do n = 1,NBINT
         !! Compute NURBS basis functions and derivatives
-       call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
+        call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
 
         !! Compute stiffness matrix
         call stiffmatrix_byCP(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,  &
@@ -114,51 +119,55 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
         AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
 
         !! body load
-        loadcount = 1
+        load_addinfos_count = 1
         kload = 0
         do i_load = 1,nb_load
-            if ((JDLTYPE(i_load)==101) .and. ANY(indDLoad(kload+1:kload+load_target_nbelem(i_load))==JELEM)) then
-                !! Centrifugal load
-                !! Gauss point location
-                pointGP(:) = zero
-                do numCP = 1,NNODE
-                    pointGP(:) = pointGP(:) + R(numCP)*COORDS(:,numCP)
-                enddo
-                !! Distance to rotation axis
-                pointA(:) =load_additionalInfos(loadcount:loadcount+MCRD)
-                loadcount =loadcount+MCRD
-                pointB(:) =load_additionalInfos(loadcount:loadcount+MCRD)
-                loadcount =loadcount+MCRD
-
-                vectD(:)  = pointB(:) - pointA(:)
-                vectD(:)  = vectD(:)/SQRT(SUM(vectD(:)*vectD(:)))
-                vectAG(:) = pointGP(:) - pointA(:)
-                call dot(vectAG(:),vectD(:),scal)
-                vectR(:)   = vectAG(:) - scal*vectD(:)
-                !! Update load vector
-                kk = 0
-                do numCP = 1,NNODE
-                    do j = 1,MCRD
-                        kk = kk+1
-                        RHS(kk) = RHS(kk) + DENSITY*ADLMAG(i_load)**two*vectR(j)*R(numCP)*dvol
+            if (JDLTYPE(i_load)==101) then
+                if (ANY(indDLoad(kload+1:kload+load_target_nbelem(i_load))==JELEM)) then
+                    !! Centrifugal load
+                    !! Gauss point location
+                    pointGP(:) = zero
+                    do numCP = 1,NNODE
+                        pointGP(:) = pointGP(:) + R(numCP)*COORDS(:,numCP)
                     enddo
-                enddo
+                    !! Distance to rotation axis
+                    pointA(:) = load_additionalInfos(load_addinfos_count:    &
+                                &                    load_addinfos_count+MCRD)
+                    pointB(:) = load_additionalInfos(load_addinfos_count+MCRD:   &
+                                &                    load_addinfos_count+2*MCRD)
+
+                    vectD(:)  = pointB(:) - pointA(:)
+                    vectD(:)  = vectD(:)/SQRT(SUM(vectD(:)*vectD(:)))
+                    vectAG(:) = pointGP(:) - pointA(:)
+                    call dot(vectAG(:),vectD(:),scal)
+                    vectR(:)   = vectAG(:) - scal*vectD(:)
+                    !! Update load vector
+                    kk = 0
+                    do numCP = 1,NNODE
+                        do j = 1,MCRD
+                            kk = kk+1
+                            RHS(kk) = RHS(kk) + DENSITY*ADLMAG(i_load)**two*vectR(j)*R(numCP)*dvol
+                        enddo
+                    enddo
+                endif
             endif
             kload = kload + load_target_nbelem(i_load)
+            load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i_load)
         enddo
     enddo   !! End of the loop on integration points
 
     !! Loop for load : find boundary loads
+    load_addinfos_count = 1
     kk = 0
-    do i = 1,nb_load
-        if ((JDLTYPE(i)>9 .AND. JDLTYPE(i)<100) .AND.   &
-                &   ANY(indDLoad(kk+1:kk+load_target_nbelem(i))==JELEM)) then
+    do i_load = 1,nb_load
+        if ((JDLTYPE(i_load)>9 .AND. JDLTYPE(i_load)<100) .AND.   &
+                &   ANY(indDLoad(kk+1:kk+load_target_nbelem(i_load))==JELEM)) then
             !! Define Gauss points coordinates and weights on surf(3D)/edge(2D)
-            call LectCle (JDLType(i),KNumFace,KTypeDload)
+            call LectCle (JDLType(i_load),KNumFace,KTypeDload)
+
             if (KTypeDload == 4) then
                 !! Get Index of nodal distribution
-                iField = int(load_additionalInfos(loadcount))
-                loadcount=loadcount+1
+                iField = int(load_additionalInfos(load_addinfos_count))
             endif
             call Gauss (NbPtInt,MCRD,GaussPdsCoord,KNumFace)
 
@@ -178,7 +187,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                     enddo
                 !! Uniform pressure case
                 else
-                    f_mag = ADLMAG(i)
+                    f_mag = ADLMAG(i_load)
                 endif
 
                 do numCP = 1,NNODE
@@ -195,7 +204,8 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
                 RHS(k1) = RHS(k1) + FbL(k1)
             enddo
         endif
-        kk = kk + load_target_nbelem(i)
+        kk = kk + load_target_nbelem(i_load)
+        load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i_load)
     enddo
 
 end subroutine UELMAT_byCP

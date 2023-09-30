@@ -92,10 +92,23 @@ class IGAparametrization:
         self._ADLMAG = mechanicalSettings[2][2]
         self._load_target_nbelem = mechanicalSettings[2][3]
         self._nb_load = mechanicalSettings[2][4]
+
+        # Case where additional loading information are defined
+        # (centrifugal force axis, distribution,...)
         if len(mechanicalSettings[2]) > 5:
             self._additionalLoadInfos = mechanicalSettings[2][5]
         else:
             self._additionalLoadInfos = []
+        self._nb_additionalLoadInfos = np.zeros(self._nb_load, dtype=int)
+
+        for i_load, load_type in enumerate(self._JDLType):
+            if load_type == 101:
+                # centrifugal body force, additional infos = rotation axis
+                self._nb_additionalLoadInfos[i_load] = 6
+            elif load_type % 10 == 4:
+                # distributed pressure, additional infos = distribution index
+                self._nb_additionalLoadInfos[i_load] = 1
+
         # self._nb_cload= mechanicalSettings[2][5]
 
         # Nodes info
@@ -577,7 +590,8 @@ class IGAparametrization:
         if self._nb_load > 0:
             loadinfos = [self._indDLoad_flat, self._JDLType, self._ADLMAG,
                          self._load_target_nbelem, self._nb_load,
-                         self._additionalLoadInfos_flat]
+                         self._additionalLoadInfos_flat,
+                         self._nb_additionalLoadInfos]
             distribnodalload = []
             icount = 0
             for nodaldistrib in self._nodal_distributions.values():
@@ -591,7 +605,7 @@ class IGAparametrization:
         else:
             i0 = np.zeros(1, dtype=np.intp)
             v0 = np.zeros(1, dtype=np.float64)
-        return [i0, i0, v0, i0, 1, np.array([]), np.zeros((1, self._nb_cp))]
+        return [i0, i0, v0, i0, 1, np.array([]), np.array([]), np.zeros((1, self._nb_cp))]
 
     def _get_bcs_info(self):
         """Get attributes related to boundary conditions."""
@@ -1471,6 +1485,7 @@ class IGAparametrization:
         bcs_infos = self._get_bcs_info()
         if np.shape(COORDS) != np.shape(self._COORDS):
             COORDS = self._COORDS
+
         inputs = [activeElem, nb_data, COORDS, self._IEN_flat,
                   self._elementsByPatch, self._Nkv, self._Ukv_flat,
                   self._Nijk, self._weight_flat, self._Jpqr,
@@ -1478,9 +1493,9 @@ class IGAparametrization:
                   self._MATERIAL_PROPERTIES[:2, :], self._N_MATERIAL_PROPERTIES[:],
                   self._MATERIAL_PROPERTIES[2, :], self._TENSOR_flat,
                   load_infos[0], load_infos[1], load_infos[2], load_infos[3],
-                  load_infos[5], bcs_infos[0], bcs_infos[1], bcs_infos[2],
+                  load_infos[5], load_infos[6], bcs_infos[0], bcs_infos[1], bcs_infos[2],
                   self._ind_dof_free, self._nb_dof_free, self._mcrd,
-                  self._NBPINT, self._nnode, load_infos[6], bcs_infos[-1],
+                  self._NBPINT, self._nnode, load_infos[-1], bcs_infos[-1],
                   load_infos[4], self._nb_patch, self._nb_elem, self._nb_cp,
                   self._nb_dof_tot]
 
