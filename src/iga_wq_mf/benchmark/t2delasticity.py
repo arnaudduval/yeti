@@ -20,7 +20,7 @@ folder = os.path.dirname(full_path) + '/results/d2elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TRACTION, RINT = 1.0, 1.0
+TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
@@ -42,7 +42,7 @@ def forceSurf_infPlate(P:list):
 def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-				'extra':{'Rin':RINT, 'Rex':4.0}
+				'extra':{'Rin':RINT, 'Rex':REXT}
 				}
 	blockPrint()
 	material = mechamat(MATARGS)

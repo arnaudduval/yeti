@@ -188,7 +188,7 @@ class part():
 
 		return qpPhy, Jqp, detJ, uinterp
 
-	def exportResultsCP(self, fields={}, folder=None, sampleSize=101): 
+	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, name='out'): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
@@ -225,10 +225,7 @@ class part():
 		pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
 
 		# Export geometry
-		try: name    = self.name
-		except: name = 'ExportFile'
-		name = folder + name
-		gridToVTK(name, X[0], X[1], X[2], pointData=pointData)
+		gridToVTK(folder + name, X[0], X[1], X[2], pointData=pointData)
 
 		return
 

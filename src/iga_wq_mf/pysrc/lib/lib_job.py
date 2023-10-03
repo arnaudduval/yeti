@@ -187,9 +187,14 @@ class problem():
 
 		return error
 
-	def L2projectionCtrlptsVol(self, volfun):
+	def L2projectionCtrlpts(self, u_atqp):
 		" Given the solution field (function) over a physical space, it computes the L2 projection, ie. the value at control points. "
-		volForce = self.compute_volForce(volfun); volForce = np.atleast_2d(volForce); nr = np.size(volForce, axis=0)
+		prop = np.atleast_2d(u_atqp); nr = np.size(prop, axis=0)
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		if self.part.dim == 2: volForce = geophy.get_forcevol_2d(*inpts)
+		if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
+
+		volForce = np.atleast_2d(volForce)
 		inpts = [*self._getInputs(), self.part.detJ, volForce, self._nbIterPCG, self._thresholdPCG]
 		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
@@ -383,6 +388,7 @@ class mechaproblem(problem):
 		Alldisplacement = np.zeros(np.shape(Fext_list))
 		Allstress 		= np.zeros((nvoigt, nbqp_total, nsteps))
 		Allstrain 		= np.zeros((nvoigt, nbqp_total, nsteps))
+		Allhardening    = np.zeros((1, nbqp_total, nsteps))
 		AllresPCG 		= []
 
 		for i in range(1, nsteps):
@@ -430,10 +436,11 @@ class mechaproblem(problem):
 			Alldisplacement[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
 			Allstrain[:, :, i] = strain
+			Allhardening[0, :, i] = a_n1
 
 			pls_n0 = np.copy(pls_n1)
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
 
-		return Alldisplacement, AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain}
+		return Alldisplacement, AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 

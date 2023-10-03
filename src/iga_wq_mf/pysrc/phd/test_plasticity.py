@@ -12,7 +12,7 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TRACTION, RINT = 1.0, 1.0
+TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 NBSTEPS = 101
@@ -43,7 +43,7 @@ if not dataExist:
 
 		geoArgs = {'name': 'QA', 'degree': DEGREE*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': CUTS*np.ones(3, dtype=int), 
-				# 'extra':{'Rin':1.0, 'Rex':4.0}
+				'extra':{'Rin':RINT, 'Rex':REXT}
 				}
 		# quadArgs  = {'quadrule': 'wq', 'type': 1}
 		quadArgs  = {'quadrule': 'iga'}
@@ -57,8 +57,7 @@ if not dataExist:
 		# Set Dirichlet boundaries
 		boundary = boundaryCondition(modelPhy.nbctrlpts)
 		table = np.zeros((2, 2, 2), dtype=int)
-		table[1, 1, 0] = 1
-		table[1, 0, 1] = 1
+		table[1, 1, 0] = 1; table[1, 0, 1] = 1
 		boundary.add_DirichletDisplacement(table=table)
 		enablePrint()
 

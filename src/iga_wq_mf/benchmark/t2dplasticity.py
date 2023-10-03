@@ -18,15 +18,15 @@ folder = os.path.dirname(full_path) + '/results/d2elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TRACTION, RINT = 1.0, 1.0
+TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2, 'poisson_ratio': POISSON, 
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
 			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
 SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold': 1e-9}
-isReference = False
+isReference = True
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -42,7 +42,7 @@ def forceSurf_infPlate(P:list):
 def simulate(degree, cuts, quadArgs, step=-2):
 	geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-				'extra':{'Rin':RINT, 'Rex':4.0}
+				'extra':{'Rin':RINT, 'Rex':REXT}
 			}
 	blockPrint()
 	material = mechamat(MATARGS)
@@ -65,17 +65,21 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 	Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 	for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref
-	displacement = problem.solvePlasticityProblemPy(Fext_list=Fext_list[:, :, :step+1])[0]
+	displacement, _, internalVars = problem.solvePlasticityProblemPy(Fext_list=Fext_list[:, :, :step+1])
 	
-	return problem, displacement, meshparam
+	return problem, displacement, meshparam, internalVars
 
 if isReference:
-	degree, cuts = 4, 7
+	degree, cuts = 4, 5
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	problem, displacement, _ = simulate(degree, cuts, quadArgs)
-	np.save(folder + 'disppl', displacement)
-	with open(folder + 'refpartpl.pkl', 'wb') as outp:
-		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs, step=50)
+	# np.save(folder + 'disppl', displacement)
+	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
+	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	hardening_qp = internalVars.get('hardening', None)
+	for i in range(30, 50, 3):
+		hardening_cp = problem.L2projectionCtrlpts(hardening_qp[:, :, i])
+		problem.part.exportResultsCP(fields={'hardening': hardening_cp}, name='pls'+str(i))
 
 else:
 
@@ -95,7 +99,7 @@ else:
 		color = COLORLIST[i]
 		for j, cuts in enumerate(cuts_list):
 			step = 45
-			problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, step)
+			problem, displacement, meshparam[j], _= simulate(degree, cuts, quadArgs, step)
 			error_list[j] = problem.normOfError(displacement[:, :, step], 
 							normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
 

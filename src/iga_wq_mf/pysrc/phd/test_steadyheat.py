@@ -96,26 +96,26 @@ def powerDensity_thickRing(P: list):
 	return f
 
 def powerDensity_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
+	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
 	x = P[0, :]
 	y = P[1, :]
 
-	f = (3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
+	f = (3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
 	- 16*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
 	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
+	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
 	- 8*x*y*np.sin(np.pi*x)*np.sin(np.pi*y) 
-	- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
+	- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
 	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
 	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
+	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4) 
 	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
 	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
+	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4) 
 	- 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
 	)
 
@@ -134,7 +134,7 @@ class heatsimulate(simulate):
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int), 
-					'extra':{'Rin':1.0, 'Rex':1.3}}
+					'extra':{'Rin':1.0, 'Rex':2.0}}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}

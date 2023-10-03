@@ -6,16 +6,33 @@ from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import mechaproblem
 from pysrc.phd.lib_simulation import decoder, simulate
 
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/paper/'
+if not os.path.isdir(folder): os.mkdir(folder)
+
+
+# Set global variables
+TRACTION, RINT, REXT = 1.0, 1.0, 2.0
+YOUNG, POISSON = 1e3, 0.3
+GEONAME = 'QA'
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISSON, 
+			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
+
+DEGREE_LIST = np.arange(4, 5)
+CUTS_LIST   = np.arange(5, 6)
+ITERMETHODS = ['WP', 'C', 'JMC', 'TDC']
+dataExist   = False 
+
 def forceSurf_infPlate(P:list):
-	Tx, a = 1.0, 1.0
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
 	r_square = x**2 + y**2
-	b = a**2/r_square
+	b = RINT**2/r_square # Already squared
 	theta = np.arcsin(y/np.sqrt(r_square))
 
 	F = np.zeros((2, nnz))
-	F[0, :] = Tx/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
-	F[1, :] = Tx/2*3*np.sin(3*theta)*(b**2 - b)
+	F[0, :] = TRACTION/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
+	F[1, :] = TRACTION/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
 
 class mechasimulate(simulate):
@@ -30,7 +47,7 @@ class mechasimulate(simulate):
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int),
-					'extra':{'Rin':1.0, 'Rex':6.0}
+					'extra':{'Rin':RINT, 'Rex':REXT}
 					}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
@@ -63,18 +80,6 @@ class mechasimulate(simulate):
 		if overwrite: self.write_resultsFile(output)
 
 		return un
-
-# Select folder
-full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/'
-if not os.path.isdir(folder): os.mkdir(folder)
-
-GEONAME = 'QA'
-DEGREE_LIST = np.arange(4, 5)
-CUTS_LIST   = np.arange(5, 6)
-ITERMETHODS = ['WP', 'C', 'JMC', 'TDC']
-MATARGS     = {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.25}
-dataExist   = False 
 
 for cuts in CUTS_LIST:
 	for degree in DEGREE_LIST:

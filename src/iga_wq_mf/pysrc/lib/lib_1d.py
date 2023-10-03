@@ -85,10 +85,10 @@ class part1D:
 		else: 		 x_interp = self.qpPhy
 		return u_interp, x_interp
 	
-	def L2projectionCtrlptsVol(self, u_ref):
+	def L2projectionCtrlpts(self, u_atqp):
 		" Interpolate control point field (from parametric to physical space) "
 		masse = self.weights[0] @ np.diag(self.detJ) @ self.basis[0].T
-		force = self.weights[0] @ np.diag(self.detJ) @ u_ref
+		force = self.weights[0] @ np.diag(self.detJ) @ u_atqp
 		massesp   = sp.csr_matrix(masse)
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts

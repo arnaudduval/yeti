@@ -29,56 +29,59 @@ def conductivityProperty(P:list):
 	return Kprop 
 
 def powerDensity_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-16)
+	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
 	x = P[0, :]
 	y = P[1, :]
 
-	f = (3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
+	f = (3*np.pi**2*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
 	- 16*y**2*np.sin(np.pi*x)*np.sin(np.pi*y) 
 	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
+	- 6*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
 	- 8*x*y*np.sin(np.pi*x)*np.sin(np.pi*y) 
-	- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16) 
+	- np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4) 
 	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
 	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
+	- 4*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+	- 2*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4) 
 	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
 	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
-	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 16) 
+	- 2*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+	- 8*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 4) 
 	- 8*x**2*np.sin(np.pi*x)*np.sin(np.pi*y)
 	)
 
 	return f
 
 def exactTemperature_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
+	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
 	x = P[0, :]
 	y = P[1, :]
 
-	u = np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 -1)*(x**2 + y**2 - 16)
+	u = np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 -1)*(x**2 + y**2 - 4)
 	return u
 
 def exactDiffTemperature_quartCircle(P: list):
-	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-16)
-		f = -div(lambda * grad(u))
+	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
+		uders = grad(u)
 	"""
 	x = P[0, :]
 	y = P[1, :]
 
 	uders = np.zeros((1, 2, np.size(P, axis=1)))
+
 	uders[0, 0, :] = (2*x*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-				+ 2*x*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-				+ np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16))
+				+ 2*x*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4) 
+				+ np.pi*np.cos(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+				)
 
 	uders[0, 1, :] = (2*y*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
-				+ 2*y*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 16) 
-				+ np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 16))
+				+ 2*y*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 4)
+				+ np.pi*np.cos(np.pi*y)*np.sin(np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 4)
+				)
 
 	return uders
 
@@ -97,7 +100,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 		for j, cuts in enumerate(cuts_list):
 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-						'extra':{'Rin':1.0, 'Rex':4.0}
+						'extra':{'Rin':1.0, 'Rex':2.0}
 			}
 			blockPrint()
 			material = heatmat()
