@@ -17,7 +17,7 @@ YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISSON, 
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
 			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
 ITERMETHODS = ['C', 'JMC', 'TDC']
 dataExist = True
@@ -36,7 +36,7 @@ def forceSurf_infPlate(P:list):
 if not dataExist:
 
 	DEGREE, CUTS = 3, 6
-	STEP = 30
+	STEP = 50
 	
 	for PCGmethod in ITERMETHODS:
 		filename = folder + 'ResPCGpls_' + GEONAME + '_' + PCGmethod + '.dat'        

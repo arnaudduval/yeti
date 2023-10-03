@@ -202,6 +202,7 @@ class decoder():
 			ax.semilogy(np.arange(len(residue_method)), residue_method, '-',
 						label=pcgmethod, marker=markers[i])
 
+		ax.set_xlim(right=100)
 		ax.set_ylim(top=10.0, bottom=threshold)
 		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')

@@ -54,8 +54,7 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
 	table = np.zeros((2, 2, 2), dtype=int)
-	table[1, 1, 0] = 1
-	table[1, 0, 1] = 1
+	table[1, 1, 0] = 1; table[1, 0, 1] = 1
 	boundary.add_DirichletDisplacement(table=table)
 	enablePrint()
 
@@ -89,20 +88,20 @@ else:
 	step_list  = range(20, step_max, 2)
 	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
 
-	# with open(folder + 'refpartpl.pkl', 'rb') as inp:
-	# 	part_ref = pickle.load(inp)
-	# disp_ref = np.load(folder + 'disppl.npy')
-	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	with open(folder + 'refpartpl.pkl', 'rb') as inp:
+		part_ref = pickle.load(inp)
+	disp_ref = np.load(folder + 'disppl.npy')
+	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	
-	# for i, degree in enumerate(degree_list):
-	# 	for j, cuts in enumerate(cuts_list):
-	# 		problem, displacement, _, _= simulate(degree, cuts, quadArgs, step_max)
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
+			problem, displacement, _, _= simulate(degree, cuts, quadArgs, step_max)
 
-	# 		for k, step in enumerate(step_list):
-	# 			error_list[k, i, j] = problem.normOfError(displacement[:, :, step], 
-	# 							normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
+			for k, step in enumerate(step_list):
+				error_list[k, i, j] = problem.normOfError(displacement[:, :, step], 
+								normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
 
-	# np.save(folder + 'plasticity2D', error_list)
+	np.save(folder + 'plasticity2D', error_list)
 	error_list = np.load(folder + 'plasticity2D.npy')
 
 	for k, step in enumerate(step_list):

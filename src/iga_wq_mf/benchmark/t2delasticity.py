@@ -54,8 +54,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
 	table = np.zeros((2, 2, 2), dtype=int)
-	table[1, 1, 0] = 1
-	table[1, 0, 1] = 1
+	table[1, 1, 0] = 1; table[1, 0, 1] = 1
 	boundary.add_DirichletDisplacement(table=table)
 	enablePrint()
 
