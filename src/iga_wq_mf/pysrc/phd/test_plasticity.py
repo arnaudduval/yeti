@@ -20,7 +20,7 @@ TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISSON, 
 			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
 ITERMETHODS = ['C', 'JMC', 'TDC']
-dataExist = False
+dataExist = True
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -45,8 +45,7 @@ if not dataExist:
 				'nb_refinementByDirection': CUTS*np.ones(3, dtype=int), 
 				'extra':{'Rin':RINT, 'Rex':REXT}
 				}
-		# quadArgs  = {'quadrule': 'wq', 'type': 1}
-		quadArgs  = {'quadrule': 'iga'}
+		quadArgs  = {'quadrule': 'wq', 'type': 1}
 		
 		blockPrint()
 		material = mechamat(MATARGS)
@@ -74,7 +73,7 @@ if not dataExist:
 
 else:
 
-	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 
 	for i, PCGmethod in enumerate(ITERMETHODS):
 		filename = folder + 'ResPCGpls_' + GEONAME + '_' + PCGmethod + '.dat'
@@ -84,15 +83,36 @@ else:
 		elif PCGmethod == "JMC": labelmethod = 'This work'
 		elif PCGmethod == "TDC": labelmethod = 'Literature'
 		
+		maxStep = int(np.max(resPCG[:, 0]))
+		for j in range(2, maxStep):
+			opacity = (maxStep - j + 1)*1.0/(maxStep - 1)
+			ind = np.where(resPCG[:, 0]==j)
+
+			newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
+			axs[0].semilogy(np.arange(len(newresidue)), newresidue, alpha=opacity, 
+						color=COLORLIST[i], linewidth=0.5)
+			
+			newresidue = resPCG[np.max(ind)-1, 2:]; newresidue = newresidue[newresidue>0]
+			axs[1].semilogy(np.arange(len(newresidue)), newresidue, alpha=opacity, 
+						color=COLORLIST[i], linewidth=0.5)
+			
 		ind = np.where(resPCG[:, 0]==1)
 		newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
-		ax.semilogy(np.arange(len(newresidue)), newresidue, '-', 
-					linewidth=2.5, marker=MARKERLIST[i], label=labelmethod)
+		axs[0].semilogy(np.arange(len(newresidue)), newresidue, marker='s', color=COLORLIST[i], label=labelmethod, linewidth=0.5)
+		
+		newresidue = resPCG[np.max(ind)-1, 2:]; newresidue = newresidue[newresidue>0]
+		axs[1].semilogy(np.arange(len(newresidue)), newresidue, marker='s', color=COLORLIST[i], label=labelmethod, linewidth=0.5)
 
-	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
-	ax.set_ybound(lower=1e-12, upper=10)
 
-	filename = folder + 'plasticityNL_' + GEONAME + '.pdf'
+	axs[0].set_title('First NR iterations')
+	axs[1].set_title('Last NR iterations')
+	for ax in axs:
+		ax.set_xlim(left=0, right=70)
+		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+		ax.set_ybound(lower=1e-12, upper=10)
+
+	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	filename = folder + 'PlasticityNL_' + '.pdf'
 	fig.tight_layout()
 	fig.savefig(filename)

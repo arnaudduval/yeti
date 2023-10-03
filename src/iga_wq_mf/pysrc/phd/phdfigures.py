@@ -83,7 +83,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 8
+CASE      = 9
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -448,5 +448,41 @@ elif CASE == 8: # 3D Geometries
 		return
 	
 	case8(folder)
+
+elif CASE == 9:
+
+	def case9(folder):		
+		# Read data
+		fileVTK = os.path.dirname(os.path.realpath(__file__)) + '/data/'
+		fileVTK = fileVTK + 'pls48'
+		grid    = pv.read(fileVTK + '.vts')
+		filename = folder + 'pls48.png'
+		
+		sargs = dict(
+				title = 'Plastic strain field',
+				title_font_size=50,
+				label_font_size=40,
+				shadow=True,
+				n_labels=2,
+				fmt="%.2e",
+				position_x=0.2, 
+				position_y=0.1,
+		)
+		pv.start_xvfb()
+		plotter = pv.Plotter(off_screen=True)
+		plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		
+		plotter.camera_position  = 'xy'
+		plotter.camera.zoom(0.8)
+
+		plotter.background_color = 'white'
+		plotter.window_size = [1600, 1600]
+		plotter.screenshot(filename)
+		cropImage(filename)
+
+		return
+	
+	case9(folder)
+
 
 else: raise Warning('Case unkwnon')

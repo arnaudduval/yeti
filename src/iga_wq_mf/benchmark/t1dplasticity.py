@@ -32,20 +32,46 @@ def simulate(degree, nbel, args, step=-2):
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	blockPrint()
-	displacement = modelPhy.solve(Fext_list=Fext_list[:, :step+1])[0]
+	displacement, strain, stress, plastic, Cep = modelPhy.solve(Fext_list=Fext_list[:, :step+1])
 	enablePrint()
-	return modelPhy, displacement
+	return modelPhy, displacement, stress, plastic
 
 
 if isReference:
 
 	degree, nbel = 2, 4096
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-	modelPhy, displacement = simulate(degree, nbel, args)
+	modelPhy, displacement, stress, plastic = simulate(degree, nbel, args)
 	np.save(folder + 'dispel', displacement)
 	with open(folder + 'refpartpl.pkl', 'wb') as outp:
 		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
-	
+
+	# plastic_cp = modelPhy.L2projectionCtrlpts(plastic)
+	# stress_cp  = modelPhy.L2projectionCtrlpts(stress)
+	# from mpl_toolkits.axes_grid1 import make_axes_locatable
+	# basis = modelPhy.quadRule.getSampleBasis(sampleSize=101)[0]
+	# displacement_interp = basis[0].T @ displacement
+	# plastic_interp = basis[0].T @ plastic_cp
+	# stress_interp  = basis[0].T @ stress_cp
+	# qpPhy_interp   = basis[0].T @ modelPhy.ctrlpts
+
+	# # Plot fields
+	# XX, STEPS = np.meshgrid(qpPhy_interp, np.arange(1, NBSTEPS))
+	# names = ['Displacement field', 'Plastic strain field', 'Stress field']
+	# fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+	# for ax, variable, name in zip([ax1, ax2, ax3], [displacement_interp, plastic_interp, stress_interp], names):
+	# 	im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+	# 	ax.set_title(name)
+	# 	ax.set_ylabel('Step')
+	# 	ax.set_xlabel('Position')
+	# 	ax.grid(False)
+	# 	divider = make_axes_locatable(ax)
+	# 	cax  = divider.append_axes('right', size='5%', pad=0.05)
+	# 	cbar = fig.colorbar(im, cax=cax)
+
+	# fig.tight_layout()
+	# fig.savefig(folder + 'ElastoPlasticity1D' + '.png')
+
 else: 
 
 	disp_ref = np.load(folder + 'disppl.npy')

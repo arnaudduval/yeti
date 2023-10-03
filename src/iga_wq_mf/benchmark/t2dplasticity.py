@@ -26,7 +26,7 @@ GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
 			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
 SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold': 1e-9}
-isReference = True
+isReference = False
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -70,12 +70,12 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	return problem, displacement, meshparam, internalVars
 
 if isReference:
-	degree, cuts = 4, 5
+	degree, cuts = 4, 7
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs, step=50)
-	# np.save(folder + 'disppl', displacement)
-	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
-	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	np.save(folder + 'disppl', displacement)
+	with open(folder + 'refpartpl.pkl', 'wb') as outp:
+		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 	hardening_qp = internalVars.get('hardening', None)
 	for i in range(30, 50, 3):
 		hardening_cp = problem.L2projectionCtrlpts(hardening_qp[:, :, i])
@@ -85,31 +85,50 @@ else:
 
 	degree_list = np.array([1, 2, 3])
 	cuts_list   = np.arange(2, 7)
+	step_max    = 50
+	step_list  = range(20, step_max, 2)
+	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
 
-	with open(folder + 'refpartpl.pkl', 'rb') as inp:
-		part_ref = pickle.load(inp)
-	disp_ref = np.load(folder + 'disppl.npy')
-
-	fig, ax = plt.subplots(figsize=(9,6))
-	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	error_list = np.ones(len(cuts_list))
+	# with open(folder + 'refpartpl.pkl', 'rb') as inp:
+	# 	part_ref = pickle.load(inp)
+	# disp_ref = np.load(folder + 'disppl.npy')
+	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	
-	for i, degree in enumerate(degree_list):
-		meshparam = np.ones(len(cuts_list))
-		color = COLORLIST[i]
-		for j, cuts in enumerate(cuts_list):
-			step = 45
-			problem, displacement, meshparam[j], _= simulate(degree, cuts, quadArgs, step)
-			error_list[j] = problem.normOfError(displacement[:, :, step], 
-							normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
+	# for i, degree in enumerate(degree_list):
+	# 	for j, cuts in enumerate(cuts_list):
+	# 		problem, displacement, _, _= simulate(degree, cuts, quadArgs, step_max)
 
-		ax.loglog(meshparam, error_list, color=color, marker='o', markerfacecolor='w',
-					markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+	# 		for k, step in enumerate(step_list):
+	# 			error_list[k, i, j] = problem.normOfError(displacement[:, :, step], 
+	# 							normArgs={'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
+
+	# np.save(folder + 'plasticity2D', error_list)
+	error_list = np.load(folder + 'plasticity2D.npy')
+
+	for k, step in enumerate(step_list):
+		fig, ax = plt.subplots(figsize=(9,6))
+		for i, degree in enumerate(degree_list):
+			color = COLORLIST[i]
+			meshparam_list = np.zeros(len(cuts_list))
+			for j, cuts in enumerate(cuts_list):
+				geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+					'extra':{'Rin':RINT, 'Rex':REXT}
+				}
+				quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+				blockPrint()
+				modelGeo = Geomdl(geoArgs)
+				modelIGA = modelGeo.getIGAParametrization()
+				modelPhy = part(modelIGA, quadArgs=quadArgs)
+				meshparam = modelPhy.compute_mesh_parameter(); meshparam_list[j] = meshparam
+				enablePrint()
+
+			ax.loglog(meshparam_list, error_list[k, i, :], color=color, marker='o', markerfacecolor='w',
+						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
 		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
 		ax.set_ylim(top=1, bottom=1e-10)
-		ax.set_xlim(left=1e-1, right=2)
+		ax.set_xlim(left=5e-2, right=1e0)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
 		fig.savefig(folder + 'FigConvergencePlasticityAllH1' + str(step) +  GEONAME + '.pdf')
-	

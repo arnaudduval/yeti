@@ -11,7 +11,6 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-
 # Set global variables
 TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
@@ -21,8 +20,8 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISS
 
 DEGREE_LIST = np.arange(4, 5)
 CUTS_LIST   = np.arange(5, 6)
-ITERMETHODS = ['WP', 'C', 'JMC', 'TDC']
-dataExist   = False 
+ITERMETHODS = ['C', 'JMC', 'TDC']
+dataExist   = True 
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
