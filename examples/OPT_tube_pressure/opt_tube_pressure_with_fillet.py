@@ -207,7 +207,7 @@ if __name__ == "__main__":
         print((f'\nIteration {iopt:03}'))
         pp.generatevtu(*opt_pb.coarse_parametrization.get_inputs4postprocVTU(
             f'opt_coarse_w_fillet{iopt:02}', np.zeros_like(opt_pb.coarse_parametrization.coords),
-            nb_ref=3*np.array([1, 1, 1]),Flag=np.array([False]*3)))
+            nb_ref=6*np.array([1, 1, 1]),Flag=np.array([False]*3)))
 
         opt_pb.coarse_parametrization.generate_vtk4controlMeshVisu(
             f'opt_ctrl_coarse_w_fillet{iopt:02}',0)
@@ -218,6 +218,49 @@ if __name__ == "__main__":
                         f'opt_fine_w_fillet{iopt:02}',  sol.transpose(),
                         nb_ref=3*np.array([1, 1, 1]),
                         Flag=np.array([True, False, False])))
+
+        # Postprocessing of hull
+        if 'U0' in opt_pb.coarse_parametrization._ELT_TYPE:
+            # Set refinement and variables to process
+            output = np.array([False, False, False])
+            nb_ref_visu = np.array([6, 6, 6])
+            # Loop on U0 patches
+            ii = 1
+            for idx in np.where(opt_pb.coarse_parametrization._ELT_TYPE == 'U0')[0]:
+                filename = \
+                    'couplingU5_{}_hullobj{}'.format(ii, iopt)
+                # # Generate control mesh (.vtk. file)
+                # modeleIGA.generate_vtk4controlMeshVisu(filename, idx)
+                # Initialise
+                idx = np.array([idx])
+                inputs = [filename, output, nb_ref_visu]
+                # Get geometrical settings
+                geoSet = opt_pb.coarse_parametrization.get_geometricSettings_somePatch(idx)
+                # Get mechanical settings
+                mechSet = opt_pb.coarse_parametrization.get_mechanicalSettings_somePatch(idx)
+                inputs.append(np.zeros_like(np.array(mechSet[1][0])))
+                # Build inputs list to pass to function
+                inputs.append(mechSet[1][0])  # COORDS
+                inputs.append(np.concatenate(mechSet[2]).ravel())  # IEN
+                inputs.append(geoSet[6])  # elementsByPatch
+                inputs.append(geoSet[1])  # Nkv
+                inputs.append(np.concatenate(geoSet[2][0]).ravel())  # Ukv
+                inputs.append(geoSet[4])  # Nijk
+                inputs.append(np.concatenate(geoSet[5]).ravel())  # weigth
+                inputs.append(geoSet[3])  # Jpqr
+                inputs.append('U1')  # ELT_TYPE
+                inputs.append(np.array([[0.0], [0.0]]))  # MATERIAL PROPERTIES
+                inputs.append('/THREED')  # TENSOR
+                inputs.append(mechSet[4][0][0].tolist())  # PROPS
+                inputs.append(mechSet[4][1])  # JPROPS
+                inputs.append(geoSet[8])  # nnode
+                inputs.append(geoSet[7])  # nb_patch
+                inputs.append(geoSet[9])  # nb_elem
+                inputs.append(mechSet[1][1])  # nb_cp
+                inputs.append(mechSet[0][3])  # MCRD
+                # Generate .vtu file
+                pp.generatevtu(*inputs)
+                ii += 1
 
         if CREATE_PLOTS:
             comp_values.append(opt_pb.compute_compliance_discrete(x_k))
