@@ -314,6 +314,161 @@ contains
 
     end subroutine PBiCGSTAB
 
+    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: d = 3
+        type(cgsolver) :: solv
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+
+        integer, intent(in) :: ndod
+        integer, intent(in) :: dod
+        dimension :: dod(ndod)
+
+        logical, intent(in) :: ishigher
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold
+        
+        double precision, intent(out) :: eigenvec, eigenval
+        dimension :: eigenvec(nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: k, ii
+        double precision, dimension(d, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(d, d) :: AA1, BB1
+        double precision, dimension(d) :: delta
+        double precision, dimension(nr_total) :: u, v, g, gtil, p, tmp
+        double precision :: q, norm
+        double precision, allocatable, dimension(:) :: ll
+        double precision, allocatable, dimension(:, :) :: qq
+    
+        call random_number(eigenvec)
+        call reset_dirichletbound1(nr_total, eigenvec, ndod, dod)
+        norm = norm2(eigenvec)
+        eigenvec = eigenvec/norm
+
+        call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, eigenvec, u)
+        call reset_dirichletbound1(nr_total, u, ndod, dod)
+
+        q = sqrt(dot_product(eigenvec, u))
+        eigenvec = eigenvec/q; u = u/q
+        call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, eigenvec, v)
+        call reset_dirichletbound1(nr_total, v, ndod, dod)
+        eigenval = dot_product(eigenvec, v)
+        p = 0.d0
+        norm = 1.d0
+
+        do k = 1, nbIterPCG
+            if (norm.le.threshold) return
+    
+            g = v - eigenval*u
+            norm = norm2(g)
+            call applyfastdiag(solv, nr_total, g, gtil)
+            call reset_dirichletbound1(nr_total, gtil, ndod, dod)
+            g = gtil
+
+            RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
+            RM2(1, :) = v; RM3(1, :) = u;
+            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v,  -g, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM2(2, :) = tmp
+            
+            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, p, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM2(3, :) = tmp
+                        
+            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, -g, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM3(2, :) = tmp
+
+            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, p, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM3(3, :) = tmp
+            
+            call rayleigh_submatrix(d, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+            call rayleigh_submatrix(d, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
+
+            if (k.eq.1) then
+                allocate(ll(d-1), qq(d-1, d-1))
+                call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+            else
+                allocate(ll(d), qq(d, d))
+                call compute_geneigs(size(ll), AA1, BB1, ll, qq)
+            end if
+            
+            if (ishigher) then 
+                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
+            else
+                eigenval = minval(ll); ii = minloc(ll, dim=1)
+            end if
+
+            delta = 0.d0
+            if (k.eq.1) then
+                delta(:2) = qq(:, ii)
+            else
+                delta = qq(:, ii)
+            end if
+    
+            p = -g*delta(2) + p*delta(3)
+            eigenvec = eigenvec*delta(1) + p
+            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,&
+                            nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                            data_W_u, data_W_v, eigenvec, u)
+            call reset_dirichletbound1(nr_total, u, ndod, dod)
+            
+            q = sqrt(dot_product(eigenvec, u))
+            eigenvec = eigenvec/q; u = u/q
+            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, eigenvec, v)
+            call reset_dirichletbound1(nr_total, v, ndod, dod)
+            
+            norm = norm2(g)
+            deallocate(ll, qq)
+        end do
+
+    end subroutine LOBPCGSTAB
+
 end module solverheat2
 
 module solverheat3
@@ -621,5 +776,162 @@ contains
         end do
 
     end subroutine PBiCGSTAB
+
+    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: d = 3
+        type(cgsolver) :: solv
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+
+        integer, intent(in) :: ndod
+        integer, intent(in) :: dod
+        dimension :: dod(ndod)
+
+        logical, intent(in) :: ishigher
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold
+        
+        double precision, intent(out) :: eigenvec, eigenval
+        dimension :: eigenvec(nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: k, ii
+        double precision, dimension(d, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(d, d) :: AA1, BB1
+        double precision, dimension(d) :: delta
+        double precision, dimension(nr_total) :: u, v, g, gtil, p, tmp
+        double precision :: q, norm
+        double precision, allocatable, dimension(:) ::  ll
+        double precision, allocatable, dimension(:, :) ::  qq
+
+        call random_number(eigenvec)
+        call reset_dirichletbound1(nr_total, eigenvec, ndod, dod)
+        norm = norm2(eigenvec)
+        eigenvec = eigenvec/norm
+
+        call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, u)
+        call reset_dirichletbound1(nr_total, u, ndod, dod)
+        
+        q = sqrt(dot_product(eigenvec, u))
+        eigenvec = eigenvec/q; u = u/q
+        call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+        call reset_dirichletbound1(nr_total, v, ndod, dod)
+        
+        eigenval = dot_product(eigenvec, v)
+        p = 0.d0
+        norm = 1.d0
+
+        do k = 1, nbIterPCG
+            if (norm.le.threshold) return
+    
+            g = v - eigenval*u
+            norm = norm2(g)
+            call applyfastdiag(solv, nr_total, g, gtil)
+            call reset_dirichletbound1(nr_total, gtil, ndod, dod)
+            g = gtil
+
+            RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
+            RM2(1, :) = v; RM3(1, :) = u;
+            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM2(2, :) = tmp
+
+            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM2(3, :) = tmp
+
+            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM3(2, :) = tmp
+            
+            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            RM3(3, :) = tmp
+            
+            call rayleigh_submatrix(d, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+            call rayleigh_submatrix(d, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
+
+            if (k.eq.1) then
+                allocate(ll(d-1), qq(d-1, d-1))
+                call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+            else
+                allocate(ll(d), qq(d, d))
+                call compute_geneigs(size(ll), AA1, BB1, ll, qq)
+            end if
+            
+            if (ishigher) then 
+                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
+            else
+                eigenval = minval(ll); ii = minloc(ll, dim=1)
+            end if
+
+            delta = 0.d0
+            if (k.eq.1) then
+                delta(:2) = qq(:, ii)
+            else
+                delta = qq(:, ii)
+            end if
+    
+            p = -g*delta(2) + p*delta(3)
+            eigenvec = eigenvec*delta(1) + p
+            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, eigenvec, u)
+            call reset_dirichletbound1(nr_total, u, ndod, dod)
+            
+            q = sqrt(dot_product(eigenvec, u))
+            eigenvec = eigenvec/q; u = u/q
+            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+            call reset_dirichletbound1(nr_total, v, ndod, dod)
+            
+            norm = norm2(g)
+            deallocate(ll, qq)
+        end do
+
+    end subroutine LOBPCGSTAB
 
 end module solverheat3

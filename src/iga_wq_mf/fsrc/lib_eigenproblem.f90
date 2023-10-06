@@ -169,7 +169,7 @@ subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
 
 end subroutine rayleighquotient
 
-subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
+subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, ishigher, nbIter, threshold)
     !! Locally optimal block preconditioned conjugate gradient algorithm (LOBCPG) for 
     !! computing the greatest eigenvalue of A x = rho B x
     !! C is a preconditioner
@@ -180,8 +180,8 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     ! Input / output data
     ! ------------------- 
     integer, parameter :: d = 3
-    double precision, parameter :: tol_singular = 1.d-10
     integer, intent(in) :: nr, nbIter
+    logical, intent(in) :: ishigher
     double precision, intent(in) :: A, B, C, threshold
     dimension :: A(nr, nr), B(nr, nr), C(nr, nr)
 
@@ -192,10 +192,12 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     ! ----------
     integer :: k, ii
     double precision, dimension(d, nr) :: RM1, RM2, RM3
-    double precision, dimension(d, d) :: AA1, BB1, qq
-    double precision, dimension(d) :: ll, delta
+    double precision, dimension(d, d) :: AA1, BB1
+    double precision, dimension(d) :: delta
     double precision, dimension(nr) :: u, v, g, gtil, p
     double precision :: q, norm
+    double precision, allocatable, dimension(:) ::  ll
+    double precision, allocatable, dimension(:, :) ::  qq
 
     call random_number(x)
     norm = norm2(x)
@@ -207,7 +209,6 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
     v = matmul(A, x)
     rho = dot_product(x, v)
     p = 0.d0
-
     norm = 1.d0
 
     do k = 1, nbIter
@@ -222,18 +223,29 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
         RM2(1, :) = v; RM2(2, :) = -matmul(A, g); RM2(3, :) = matmul(A, p)
         RM3(1, :) = u; RM3(2, :) = -matmul(B, g); RM3(3, :) = matmul(B, p)
 
-        call rayleigh_submatrix(d, nr, RM1, RM2, AA1)
-        call rayleigh_submatrix(d, nr, RM1, RM3, BB1)
+        call rayleigh_submatrix(d, nr, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+        call rayleigh_submatrix(d, nr, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
 
-        if (norm2(p).lt.tol_singular) then
-            qq = 0.d0; ll = 0.d0
-            call compute_geneigs(d-1, AA1(:2, :2), BB1(:2, :2), ll(:2), qq(:2, :2))
+        if (k.eq.1) then
+            allocate(ll(d-1), qq(d-1, d-1))
+            call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
         else
-            call compute_geneigs(d, AA1, BB1, ll, qq)
+            allocate(ll(d), qq(d, d))
+            call compute_geneigs(size(ll), AA1, BB1, ll, qq)
         end if
 
-        rho = maxval(ll); ii = maxloc(ll, dim=1)
-        delta = qq(:, ii)
+        if (ishigher) then
+            rho = maxval(ll); ii = maxloc(ll, dim=1)
+        else
+            rho = minval(ll); ii = minloc(ll, dim=1)
+        end if
+
+        delta = 0.d0
+        if (k.eq.1) then
+            delta(:2) = qq(:, ii)
+        else
+            delta = qq(:, ii)
+        end if
 
         p = -g*delta(2) + p*delta(3)
         x = x*delta(1) + p
@@ -242,6 +254,7 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, nbIter, threshold)
         x = x/q; u = u/q
         v = matmul(A, x)
         norm = norm2(g)
+        deallocate(ll, qq)
     end do
 
 end subroutine locally_optimal_block_pcg

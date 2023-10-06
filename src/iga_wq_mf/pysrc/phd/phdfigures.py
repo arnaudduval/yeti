@@ -83,7 +83,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 9
+CASE      = 5
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -279,10 +279,11 @@ elif CASE == 4: # Quadrature points in WQ
 elif CASE == 5: # B-spline surface
 
 	# Set filename
-	filename = folder + 'BsplineSurface' + extension
+	filename = folder + 'BsplineSurface2' + extension
 
 	# Surface properties
-	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus'})
+	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': np.ones(3, dtype=int), 
+				'nb_refinementByDirection': 2*np.ones(3, dtype=int)})
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
 	fig = plot2DGeo(modelPhy)

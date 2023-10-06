@@ -85,7 +85,7 @@ else:
 	onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
 	onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 
-	degree_list = np.array([2, 3, 4, 6, 8])
+	degree_list = np.array([2, 3, 4, 5])
 	cuts_list   = np.arange(2, 9)
 
 	disp_ref = np.load(folder + 'dispel.npy')
@@ -101,15 +101,19 @@ else:
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
-				error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref})
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
+				error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref}, isRelative=False)
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+			
+			# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
+			# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
+			ax.set_ylabel(r'$\displaystyle |u - u^h|_{H_1(\Omega)}$')
+
 			ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-			ax.set_ylim(top=1e-2, bottom=1e-14)
-			ax.set_xlim(left=1e-2, right=2)
+			ax.set_ylim(top=1e-4, bottom=1e-18)
+			ax.set_xlim(left=1e-2, right=1)
 			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAll03L2' +  GEONAME + '.pdf')
+			fig.savefig(folder + 'FigConvergenceAllsemiH1' +  GEONAME + '.pdf')
 		

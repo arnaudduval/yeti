@@ -96,16 +96,15 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def normOfError(self, u_ctrlpts, normArgs:dict):
+	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""	
 		typeNorm = normArgs.get('type', 'l2').lower()
-		if typeNorm != 'l2' and typeNorm != 'h1': raise Warning('Unknown norm')
+		if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
 
 		# Compute u interpolation
-		nr = np.size(np.atleast_2d(u_ctrlpts), axis=0)
 		nbqp, quadPts, indices, basis, parametricWeights = [], [], [], [], []
 		for i in range(self.part.dim):
 			quadRule = GaussQuadrature(self.part.degree[i], self.part.knotvector[i], quadArgs={'type':'leg'})
@@ -121,21 +120,20 @@ class problem():
 			detJ, invJ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts, self.part.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ctrlpts))
-			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ctrlpts))
 
 		elif self.part.dim == 3:
 			Jqp = geophy.eval_jacobien_3d(*inpts, self.part.ctrlpts)
 			detJ, invJ = geophy.eval_inverse_det(Jqp)
 			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, self.part.ctrlpts)
 			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
-			if typeNorm == 'h1': derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
 	
-		u_interp = np.atleast_2d(u_interp)
-		if typeNorm == 'h1': uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
+		u_interp = np.atleast_2d(u_interp); uders_interp = None
+		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
 
 		# Compute u exact
 		u_exact, uders_exact = None, None
-
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
 		if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
@@ -150,40 +148,44 @@ class problem():
 			inpts = [*nbqpExact, *indicesExact, *basisExact]
 			if self.part.dim == 2:   
 				u_exact = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ref))    
-				if typeNorm == 'h1':
-					JqpExact = geophy.eval_jacobien_2d(*inpts, part_ref.ctrlpts)
-					_, invJExact = geophy.eval_inverse_det(JqpExact) 
-					derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ref))
+				JqpExact = geophy.eval_jacobien_2d(*inpts, part_ref.ctrlpts)
+				_, invJExact = geophy.eval_inverse_det(JqpExact) 
+				derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ref))
 			elif self.part.dim == 3: 
 				u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))
-				if typeNorm == 'h1': 
-					JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
-					_, invJExact = geophy.eval_inverse_det(JqpExact)
-					derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
+				JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
+				_, invJExact = geophy.eval_inverse_det(JqpExact)
+				derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
 
 			u_exact = np.atleast_2d(u_exact)
-			if typeNorm == 'h1': uders_exact = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJExact))
+			uders_exact = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJExact))
 
 		# Compute error
-		ue_df_uh2 = np.einsum('il->l', (u_exact - u_interp)**2)
-		ue2       = np.einsum('il->l', u_exact**2)
+		uedfuf2_l2, uedfuf2_sh1 = 0., 0.
+		ue2_l2, ue2_sh1 = 0., 0.
 
-		if typeNorm == 'h1':
-			ue_df_uh2 += np.einsum('ijl->l', (uders_exact - uders_interp)**2)
-			ue2 += np.einsum('ijl->l', uders_exact**2)
+		if typeNorm == 'l2' or typeNorm == 'h1':
+			uedfuf2_l2 += np.einsum('il->l', (u_exact - u_interp)**2)
+			ue2_l2     += np.einsum('il->l', u_exact**2)
 
-		ue_df_uh2 = ue_df_uh2*detJ
-		ue2       = ue2*detJ
+		if typeNorm == 'h1' or typeNorm == 'semih1':
+			uedfuf2_sh1 += np.einsum('ijl->l', (uders_exact - uders_interp)**2)
+			ue2_sh1     += np.einsum('ijl->l', uders_exact**2)
 
-		ue_df_uh2 = np.reshape(ue_df_uh2, tuple(nbqp), order='F')
-		ue2       = np.reshape(ue2, tuple(nbqp), order='F')
+		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ
+		norm2 = (ue2_l2 + ue2_sh1)*detJ
+
+		norm1 = np.reshape(norm1, tuple(nbqp), order='F')
+		norm2 = np.reshape(norm2, tuple(nbqp), order='F')
 		if self.part.dim == 2: 
-			tmp1 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue2)
-			tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], ue_df_uh2)
+			tmp1 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], norm1)
+			tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], norm2)
 		if self.part.dim == 3: 
-			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue2)
-			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], ue_df_uh2)
-		error = np.sqrt(tmp2/tmp1)
+			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm1)
+			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm2)
+			
+		if isRelative: error = np.sqrt(tmp1/tmp2)
+		else:          error = np.sqrt(tmp1)
 
 		return error
 
@@ -200,6 +202,14 @@ class problem():
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
 		if nr == 1: u_interp = np.ravel(u_interp)
 		return u_interp
+	
+	def compute_eigs_LOBPCG(self, ishigher=False):
+		dod = deepcopy(self.boundary.thdod) + 1
+		inpts = [*self._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+				ishigher, self._nbIterPCG, self._thresholdPCG]
+		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_2d(*inpts)
+		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_3d(*inpts)
+		return eigenval, eigenvec
 	
 class heatproblem(problem):
 	def __init__(self, material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
