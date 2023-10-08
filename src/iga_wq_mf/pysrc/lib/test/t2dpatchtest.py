@@ -65,7 +65,7 @@ stop = time.time()
 print('CPU time: %5e' %(stop-start))
 
 strain = problem.interpolate_strain(disp_cp)
-stress = problem.material.evalElasticStress(strain)
+stress = problem.mechamaterial.evalElasticStress(strain)
 stress_vm = computeVMStress4All(stress, 2)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
 print('Difference: %.4e' %(abs(stress_vm.max()-stress_vm.min())))

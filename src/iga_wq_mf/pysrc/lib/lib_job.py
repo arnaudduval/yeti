@@ -1,14 +1,12 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat, mechamat,
-							clean_dirichlet, block_dot_product)
+from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
 
 class problem():
 	def __init__(self, part:part, boundary:boundaryCondition, solverArgs:dict):
-		self.material = None
 		self.part     = part
 		self.boundary = boundary
 		self.addSolverConstraints(solverArgs)
@@ -214,12 +212,12 @@ class problem():
 class heatproblem(problem):
 	def __init__(self, material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
-		self.material = material
+		self.heatmaterial = material
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
 		if args is None: args = self.part.qpPhy
-		prop = self.material.conductivity(args)
+		prop = self.heatmaterial.conductivity(args)
 		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
@@ -227,7 +225,7 @@ class heatproblem(problem):
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = self.part.qpPhy
-		prop = self.material.capacity(args)
+		prop = self.heatmaterial.capacity(args)
 		inpts = [*super()._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
@@ -244,7 +242,7 @@ class heatproblem(problem):
 	def solveSteadyHeatProblemFT(self, Fext, args=None):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
-		prop = self.material.conductivity(args)
+		prop = self.heatmaterial.conductivity(args)
 		inpts = [*super()._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				prop, Fext,  self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_steady_heat_2d(*inpts)
@@ -254,8 +252,8 @@ class heatproblem(problem):
 	def solveLinearTransientHeatProblemFT(self, Fext, thetadt, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
-		Cprop = self.material.capacity(args)
-		Kprop = self.material.conductivity(args)
+		Cprop = self.heatmaterial.capacity(args)
+		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*super()._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
@@ -329,15 +327,15 @@ class heatproblem(problem):
 class mechaproblem(problem):
 	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
-		self.material = material
+		self.mechamaterial = material
 		return
 	
 	def compute_mfStiffness(self, array_in, mechArgs=None):
 		if mechArgs is None: 
 			dimen = self.part.dim; nvoigt = int(dimen*(dimen+1)/2)
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			mechArgs[0, :] = self.material.lame_lambda
-			mechArgs[1, :] = self.material.lame_mu
+			mechArgs[0, :] = self.mechamaterial.lame_lambda
+			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
 		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inpts, array_in)
 		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
@@ -364,11 +362,11 @@ class mechaproblem(problem):
 
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
-		prop = [self.material.elasticmodulus, self.material.poissonratio, self.material.elasticlimit]
+		prop = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
 		if mechArgs is None:
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
-			mechArgs[0, :] = self.material.lame_lambda
-			mechArgs[1, :] = self.material.lame_mu
+			mechArgs[0, :] = self.mechamaterial.lame_lambda
+			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*super()._getInputs(), *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
@@ -378,7 +376,7 @@ class mechaproblem(problem):
 	
 	def solvePlasticityProblemPy(self, Fext_list): 
 
-		if not self.material._isPlasticityPossible: raise Warning('Plasticity not defined')
+		if not self.mechamaterial._isPlasticityPossible: raise Warning('Plasticity not defined')
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		nbqp_total = self.part.nbqp_total
@@ -418,7 +416,7 @@ class mechaproblem(problem):
 				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
-				output = self.material.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
+				output = self.mechamaterial.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
 				stress, pls_n1, a_n1 = output[:nvoigt, :], output[nvoigt:2*nvoigt, :], output[2*nvoigt, :]
 				b_n1, mechArgs = output[2*nvoigt+1:3*nvoigt+1, :], output[3*nvoigt+1:, :]
 
@@ -454,3 +452,10 @@ class mechaproblem(problem):
 
 		return Alldisplacement, AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
+class thermomechaproblem(heatproblem, mechaproblem):
+
+	def __init__(self, heatmaterial:heatmat, mechamaterial:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
+		super().__init__(part, boundary, solverArgs)
+		self.mechamaterial = mechamaterial
+		self.heatmaterial  = heatmaterial
+		return
