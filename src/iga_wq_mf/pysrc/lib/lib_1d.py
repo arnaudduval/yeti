@@ -93,13 +93,13 @@ class part1D:
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
 	
-	def normOfError(self, u_ctrlpts, normArgs:dict):
+	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
 		"""	
 		typeNorm = normArgs.get('type', 'l2').lower()
-		if typeNorm != 'l2' and typeNorm != 'h1': raise Warning('Unknown norm')
+		if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
 
 		# Compute u interpolation
 		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
@@ -110,11 +110,10 @@ class part1D:
 		qpPhy = denseBasis[0].T @ self.ctrlpts 
 		detJ  = denseBasis[1].T @ self.ctrlpts
 		u_interp = denseBasis[0].T @ u_ctrlpts
-		if typeNorm == 'h1': uders_interp = denseBasis[1].T @ u_ctrlpts / detJ
+		uders_interp = denseBasis[1].T @ u_ctrlpts / detJ
 
 		# Compute u exact
 		u_exact, uders_exact = None, None
-
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
 		if callable(exactfun): u_exact = exactfun(qpPhy)
@@ -126,20 +125,29 @@ class part1D:
 			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
 			u_exact = denseBasisExact[0].T @ u_ref
-			if typeNorm == 'h1': 
-				detJExact  = denseBasisExact[1].T @ part_ref.ctrlpts
-				uders_exact = denseBasisExact[1].T @ u_ref / detJExact
+			invJExact = denseBasisExact[1].T @ part_ref.ctrlpts
+			uders_exact = denseBasisExact[1].T @ u_ref / invJExact
 			
 		# Compute error
-		ue_df_uh2 = (u_exact - u_interp)**2*detJ
-		ue2       = u_exact**2*detJ
-		if typeNorm == 'h1':
-			ue_df_uh2 += (uders_exact - uders_interp)**2*detJ
-			ue2       += uders_exact**2*detJ
+		uedfuf2_l2, uedfuf2_sh1 = 0., 0.
+		ue2_l2, ue2_sh1 = 0., 0.
 
-		tmp1 = np.einsum('i,i->', parametricWeights, ue2)
-		tmp2 = np.einsum('i,i->', parametricWeights, ue_df_uh2)
-		error = np.sqrt(tmp2/tmp1)
+		if typeNorm == 'l2' or typeNorm == 'h1':
+			uedfuf2_l2 += (u_exact - u_interp)**2
+			ue2_l2     += u_exact**2
+
+		if typeNorm == 'h1' or typeNorm == 'semih1':
+			uedfuf2_sh1 += (uders_exact - uders_interp)**2
+			ue2_sh1     += uders_exact**2
+
+		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ
+		norm2 = (ue2_l2 + ue2_sh1)*detJ
+
+		tmp1 = np.einsum('i,i->', parametricWeights, norm1)
+		tmp2 = np.einsum('i,i->', parametricWeights, norm2)
+
+		if isRelative: error = np.sqrt(tmp1/tmp2)
+		else:          error = np.sqrt(tmp1)
 		return error
 
 class heattransfer1D(part1D):
