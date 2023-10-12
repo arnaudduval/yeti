@@ -28,14 +28,6 @@ def cropImage(filename):
 	Image.fromarray(ROI).save(filename)
 	return 
 
-def relativeError(array_interp, array_th, relType='inf'):
-	error = array_th - array_interp
-	if   relType == 'inf': arg = np.inf
-	elif relType == 'fro': arg = None
-	try:    relError = np.linalg.norm(error, ord=arg)/np.linalg.norm(array_th, ord=arg)
-	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
-	return relError
-
 def eraseRowsCSR(rows2er, indi_in, indj_in, data_in, isfortran=True):
 	" Returns new data after erasing rows in CSR format "
 	

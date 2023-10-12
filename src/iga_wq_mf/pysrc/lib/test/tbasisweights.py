@@ -4,8 +4,17 @@
 .. Joaquin Cornejo 
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, relativeError
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
+
+def relativeError(array_interp, array_th, relType='inf'):
+	error = array_th - array_interp
+	if   relType == 'inf': arg = np.inf
+	elif relType == 'fro': arg = None
+	try:    relError = np.linalg.norm(error, ord=arg)/np.linalg.norm(array_th, ord=arg)
+	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
+	return relError
+
 
 # Select folder
 full_path = os.path.realpath(__file__)
