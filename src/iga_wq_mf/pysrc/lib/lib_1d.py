@@ -7,7 +7,7 @@
 from . import *
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature
 from .lib_material import plasticLaw
-from .lib_base import evalDersBasisPy, evalDersBasisFortran, array2csr_matrix
+from .lib_base import evalDersBasisFortran, array2csr_matrix
 
 class part1D:
 	def __init__(self, part:BSpline.Curve, kwargs:dict):
@@ -150,7 +150,7 @@ class part1D:
 		else:          error = np.sqrt(tmp1)
 		return error
 
-class heattransfer1D(part1D):
+class heatproblem1D(part1D):
 	def __init__(self, part, kwargs:dict):
 		super().__init__(part, kwargs)	
 		return
@@ -159,23 +159,24 @@ class heattransfer1D(part1D):
 		super().activate_thermal(matArgs)
 		self._temporaltheta = matArgs.get('heattheta', 1.0)
 		return 
+	
+	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
+		Ccoefs = Cprop * self.detJ
+		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		if isLumped: C = np.diag(C.sum(axis=1))
+		array_out = C @ array_in
+		return array_out
+	
+	def compute_mfConductivity(self, Kprop, array_in):
+		Kcoefs = Kprop*self.invJ
+		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
+		array_out = K @ array_in
+		return array_out
 
 	def interpolate_temperature(self, T_ctrlpts):
 		" Interpolate temperature in 1D "
 		T_interp = self.basis[0].T @ T_ctrlpts
 		return T_interp
-
-	def compute_intForce(self, Kprop, Cprop, T, dT, isLumped=False):
-		"Returns the internal heat force in transient heat"
-
-		Kcoefs = Kprop*self.invJ
-		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
-		Ccoefs = Cprop * self.detJ
-		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
-		if isLumped: C = np.diag(C.sum(axis=1))
-		Fint = C @ dT + K @ T
-
-		return Fint
 
 	def compute_tangentMatrix(self, Kprop, Cprop, dt, isLumped=False):
 		""" Computes tangent matrix in transient heat
@@ -194,7 +195,7 @@ class heattransfer1D(part1D):
 
 		return tangentM
 
-	def solve(self, Tinout, Fext_list, time_list, isLumped=False):
+	def solveTransientHeatProblem(self, Tinout, Fext_list, time_list, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
@@ -234,7 +235,7 @@ class heattransfer1D(part1D):
 				# Compute internal force
 				Kprop = self.conductivity(temperature)
 				Cprop = self.capacity(temperature)
-				Fint_dj = self.compute_intForce(Kprop, Cprop, dj_n1, V_n1, isLumped=isLumped)
+				Fint_dj = self.compute_mfCapacity(Cprop, V_n1, isLumped=isLumped) + self.compute_mfConductivity(Kprop, dj_n1)
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -361,7 +362,7 @@ class mechanics1D(part1D):
 		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
 		return tangentM
 
-	def solve(self, dispinout, Fext_list):
+	def solvePlasticityProblem(self, dispinout, Fext_list):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -371,7 +372,7 @@ class mechanics1D(part1D):
 		stress, Cep = np.zeros(nbqp), np.zeros(nbqp)
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
-		Allplastic = np.zeros((nbqp, np.shape(Fext_list)[1]))
+		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allstress  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		AllCep = np.zeros((nbqp, np.shape(Fext_list)[1]))
 
@@ -419,9 +420,9 @@ class mechanics1D(part1D):
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = strain
 			Allstress[:, i] = stress
-			Allplastic[:, i] = pls_n1
+			Allplseq[:, i]  = a_n1
 			AllCep[:, i] = Cep
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return Allstrain, Allstress, Allplastic, AllCep
+		return Allstrain, Allstress, Allplseq, AllCep

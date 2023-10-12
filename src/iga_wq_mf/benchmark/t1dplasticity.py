@@ -14,11 +14,11 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-YOUNG, CST, LENGTH  = 2e11, 3.5e8, 1
+YOUNG, CST, LENGTH  = 2e11, 4.e8, 1
 NBSTEPS = 251
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS   = {'elastic_modulus':YOUNG, 'elastic_limit':1e8, 'plasticLaw': {'Isoname': 'linear', 'Eiso':YOUNG/10}}
-isReference = False
+isReference = True
 
 def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
@@ -27,51 +27,52 @@ def forceVol(P:list):
 def simulate(degree, nbel, args, step=-2):
 	crv = createUniformCurve(degree, nbel, LENGTH)
 	modelPhy = mechanics1D(crv, args)
+	model2return = deepcopy(modelPhy)
 	modelPhy.activate_mechanical(MATARGS)
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	displacement = np.zeros(np.shape(Fext_list))
-	blockPrint()
-	strain, stress, plastic, Cep = modelPhy.solve(displacement, Fext_list[:, :step+1])
-	enablePrint()
-	return modelPhy, displacement, stress, plastic
+	# blockPrint()
+	strain, stress, plasticeq, Cep = modelPhy.solvePlasticityProblem(displacement, Fext_list[:, :step+1])
+	# enablePrint()
+	return model2return, displacement[:, :step+1], stress, plasticeq
 
 
 if isReference:
 
-	degree, nbel = 2, 4096
+	degree, nbel = 2, 2048
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-	modelPhy, displacement, stress, plastic = simulate(degree, nbel, args)
+	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
 	np.save(folder + 'dispel', displacement)
 	with open(folder + 'refpartpl.pkl', 'wb') as outp:
 		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
 
-	# plastic_cp = modelPhy.L2projectionCtrlpts(plastic)
-	# stress_cp  = modelPhy.L2projectionCtrlpts(stress)
-	# from mpl_toolkits.axes_grid1 import make_axes_locatable
-	# basis = modelPhy.quadRule.getSampleBasis(sampleSize=101)[0]
-	# displacement_interp = basis[0].T @ displacement
-	# plastic_interp = basis[0].T @ plastic_cp
-	# stress_interp  = basis[0].T @ stress_cp
-	# qpPhy_interp   = basis[0].T @ modelPhy.ctrlpts
+	plasticeq_cp = modelPhy.L2projectionCtrlpts(plasticeq)
+	stress_cp  = modelPhy.L2projectionCtrlpts(stress)
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	basis = modelPhy.quadRule.getSampleBasis(sampleSize=101)[0]
+	displacement_interp = basis[0].T @ displacement
+	plasticeq_interp = basis[0].T @ plasticeq_cp
+	stress_interp  = basis[0].T @ stress_cp
+	qpPhy_interp   = basis[0].T @ modelPhy.ctrlpts
 
-	# # Plot fields
-	# XX, STEPS = np.meshgrid(qpPhy_interp, np.arange(1, NBSTEPS))
-	# names = ['Displacement field', 'Plastic strain field', 'Stress field']
-	# fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
-	# for ax, variable, name in zip([ax1, ax2, ax3], [displacement_interp, plastic_interp, stress_interp], names):
-	# 	im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
-	# 	ax.set_title(name)
-	# 	ax.set_ylabel('Step')
-	# 	ax.set_xlabel('Position')
-	# 	ax.grid(False)
-	# 	divider = make_axes_locatable(ax)
-	# 	cax  = divider.append_axes('right', size='5%', pad=0.05)
-	# 	cbar = fig.colorbar(im, cax=cax)
+	# Plot fields
+	XX, STEPS = np.meshgrid(qpPhy_interp, np.arange(1, NBSTEPS))
+	names = ['Displacement field', 'Plastic strain field', 'Stress field']
+	fig, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3, figsize=(16, 4))
+	for ax, variable, name in zip([ax1, ax2, ax3], [displacement_interp, plasticeq_interp, stress_interp], names):
+		im = ax.pcolormesh(XX, STEPS, variable.T, cmap='PuBu_r', shading='linear')
+		ax.set_title(name)
+		ax.set_ylabel('Step')
+		ax.set_xlabel('Position')
+		ax.grid(False)
+		divider = make_axes_locatable(ax)
+		cax  = divider.append_axes('right', size='5%', pad=0.05)
+		cbar = fig.colorbar(im, cax=cax)
 
-	# fig.tight_layout()
-	# fig.savefig(folder + 'ElastoPlasticity1D' + '.png')
+	fig.tight_layout()
+	fig.savefig(folder + 'ElastoPlasticity1D' + '.png')
 
 else: 
 

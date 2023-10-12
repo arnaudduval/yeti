@@ -8,7 +8,7 @@ conductivity: 55 W/(m.K)
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve, sigmoid
-from pysrc.lib.lib_1d import heattransfer1D
+from pysrc.lib.lib_1d import heatproblem1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -30,7 +30,7 @@ crv = createUniformCurve(degree, nbel, length)
 
 # Create geometry
 args     = {'quadArgs': {'quadrule': 'iga'}}
-modelPhy = heattransfer1D(crv, args)
+modelPhy = heatproblem1D(crv, args)
 
 # Add material 
 matArgs = {'heattheta': 1.0, 'conductivity': conductivityProperty, 'capacity': capacityProperty}
@@ -50,7 +50,7 @@ temperature = np.zeros(np.shape(Fext_list))
 temperature[-1, 1:] = 1
 
 # Solve
-modelPhy.solve(temperature, Fext_list, time_list, isLumped=False)
+modelPhy.solveTransientHeatProblem(temperature, Fext_list, time_list, isLumped=False)
 temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 
