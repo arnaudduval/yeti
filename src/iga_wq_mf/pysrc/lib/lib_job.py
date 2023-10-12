@@ -310,16 +310,15 @@ class heatproblem(problem):
 				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
-				V_n1 += deltaV
+				V_n1 += deltaV # deltaV[dof] = 0.0
 
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj > self._thresholdNR*resNR0: 
-					dj_n1 = d0_n1 + theta*dt*V_n1
-					AllresPCG.append(resPCGj)
-				else: break
+				if resNRj <= self._thresholdNR*resNR0: break
+				dj_n1[dof] = d0_n1[dof] + theta*dt*V_n1[dof]
+				AllresPCG.append(resPCGj)
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(V_n1)
@@ -408,9 +407,9 @@ class mechaproblem(problem):
 			# Get values of new step
 			V_n1  = np.zeros(np.shape(d_n0))
 			d0_n1 = np.copy(d_n0)
-			for j in range(self.part.dim):
-				dod = self.boundary.mchdod[j]
-				d0_n1[j, dod] = dispinout[j, dod, i]
+			for k in range(self.part.dim):
+				dod = self.boundary.mchdod[k]
+				d0_n1[k, dod] = dispinout[k, dod, i]
 			dj_n1 = np.copy(d0_n1)
 			Fext_n1 = np.copy(Fext_list[:, :, i])
 
@@ -438,16 +437,17 @@ class mechaproblem(problem):
 				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
-				V_n1 += deltaV
+				V_n1 += deltaV # deltaV[dof] = 0.0
 				
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(block_dot_product(dimen, V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj > self._thresholdNR*resNR0: 
-					dj_n1 = d_n0 + V_n1
-					AllresPCG.append(resPCGj)
-				else: break
+				if resNRj <= self._thresholdNR*resNR0: break
+				for k in range(self.part.dim):
+					dof = self.boundary.mchdof[k]
+					dj_n1[k, dof] = d_n0[k, dof] + V_n1[k, dof]
+				AllresPCG.append(resPCGj)
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	

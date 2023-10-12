@@ -299,25 +299,8 @@ def lobattoTable(order):
 	return pos, wgt
 
 # =========================
-# MF FUNCTIONS
+# OTHERS
 # =========================
-
-def scipySolver(A, b, nbIter=100, threshold=1e-10, PreCond='ilu', isCG=True):
-	""" Solves system using an iterative method : conjugate gradient or bi-conjugate gradient. 
-		It can use ILU preconditioner to accelerate convergence. 
-	"""
-
-	# Select preconditionner (by the moment only ILU)
-	if PreCond == 'ilu': 
-		B = sclin.spilu(A)
-		Mx = lambda x: B.solve(x)
-		M = sclin.LinearOperator(A.shape, Mx)
-
-	# Solve with iterative method
-	if isCG: x, info = sclin.cg(A, b, tol=threshold, maxiter=nbIter, M=M)
-	else: x, info = sclin.bicgstab(A, b, tol=threshold, maxiter=nbIter, M=M)
-
-	return x
 
 class solver():
 	
@@ -328,7 +311,7 @@ class solver():
 	
 	def CG(self, Afun, b):
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.max(np.abs(r))
+		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
 		if normb <= self._thresholdPCG: return
 		rsold = np.dot(r, r); p = r
@@ -339,7 +322,7 @@ class solver():
 			x += alpha*p
 			r -= alpha*Ap
 
-			resPCG.append(np.max(np.abs(r))/normb)
+			resPCG.append(np.linalg.norm(r)/normb)
 			if (resPCG[-1]<=self._thresholdPCG): break
 
 			rsnew = np.dot(r, r)
@@ -350,7 +333,7 @@ class solver():
 	
 	def PCG(self, Afun, Pfun, b):
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.max(np.abs(r))
+		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
 		if normb <= self._thresholdPCG: return
 		z = Pfun(r)
@@ -362,7 +345,7 @@ class solver():
 			x += alpha*p
 			r -= alpha*Ap
 
-			resPCG.append(np.max(np.abs(r))/normb)
+			resPCG.append(np.linalg.norm(r)/normb)
 			if (resPCG[-1]<=self._thresholdPCG): break
 
 			z = Pfun(r)
@@ -374,7 +357,7 @@ class solver():
 	
 	def BiCGSTAB(self, Afun, b):
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.max(np.abs(r))
+		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
 		if normb <= self._thresholdPCG: return
 		rhat = r; p = r
@@ -389,7 +372,7 @@ class solver():
 			x += alpha*p + omega*s
 			r = s - omega*As
 
-			resPCG.append(np.max(np.abs(r))/normb)
+			resPCG.append(np.linalg.norm(r)/normb)
 			if (resPCG[-1]<=self._thresholdPCG): break
 
 			rsnew = np.dot(r, rhat)
@@ -401,7 +384,7 @@ class solver():
 	
 	def PBiCGSTAB(self, Afun, Pfun, b):
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.max(np.abs(r))
+		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
 		if normb <= self._thresholdPCG: return
 		rhat = r; p = r
@@ -418,7 +401,7 @@ class solver():
 			x += alpha*ptilde + omega*stilde
 			r = s - omega*Astilde
 
-			resPCG.append(np.max(np.abs(r))/normb)
+			resPCG.append(np.linalg.norm(r)/normb)
 			if (resPCG[-1]<=self._thresholdPCG): break
 
 			rsnew = np.dot(r, rhat)

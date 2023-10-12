@@ -252,8 +252,8 @@ class heatproblem1D(part1D):
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj > self._thresholdNR*resNR0: dj_n1 = d0_n1 + theta*dt*V_n1
-				else: break
+				if resNRj <= self._thresholdNR*resNR0: break
+				dj_n1[dof] = d0_n1[dof] + theta*dt*V_n1[dof]
 
 			# Update values in output
 			Tinout[:, i] = np.copy(dj_n1)
@@ -414,8 +414,8 @@ class mechanics1D(part1D):
 				resNRj = abs(np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj > self._thresholdNR*resNR0: dj_n1 = d0_n1 + V_n1
-				else: break
+				if resNRj <= self._thresholdNR*resNR0: break
+				dj_n1[dof] = d0_n1[dof] + V_n1[dof]
 
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = strain
