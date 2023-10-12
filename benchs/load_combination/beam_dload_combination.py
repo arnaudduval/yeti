@@ -115,7 +115,7 @@ inertia = b * h**3. / 12.     # Inertia of section
 
 # max deflexion
 fy = - 11. * q0 * b * L**4. / (120. * E * inertia)
-print('disp y anaylitic : ', fy)
+print('disp y analytic : ', fy)
 
 error_z = (SOL[idx, 2] - fz) / fz
 print('Error on z displacement: ', error_z)
