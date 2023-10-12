@@ -31,8 +31,9 @@ def simulate(degree, nbel, args, step=-2):
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
+	displacement = np.zeros(np.shape(Fext_list))
 	blockPrint()
-	displacement, strain, stress, plastic, Cep = modelPhy.solve(Fext_list=Fext_list[:, :step+1])
+	strain, stress, plastic, Cep = modelPhy.solve(displacement, Fext_list[:, :step+1])
 	enablePrint()
 	return modelPhy, displacement, stress, plastic
 

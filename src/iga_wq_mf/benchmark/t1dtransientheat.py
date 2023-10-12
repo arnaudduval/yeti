@@ -43,14 +43,14 @@ modelPhy.add_DirichletCondition(table=[1, 1])
 nbsteps   = 100
 time_list = np.linspace(0, 1, nbsteps)
 print('Time step: %3e' %(time_list.max()/nbsteps))
-Fend = np.zeros((modelPhy.nbctrlpts, 1))
-Fext = np.kron(Fend, sigmoid(time_list))
+Fref = np.zeros((modelPhy.nbctrlpts, 1))
+Fext_list = np.kron(Fref, sigmoid(time_list))
 
-temperature = np.zeros(np.shape(Fext))
+temperature = np.zeros(np.shape(Fext_list))
 temperature[-1, 1:] = 1
 
 # Solve
-modelPhy.solve(Fext=Fext, time_list=time_list, Tinout=temperature, isLumped=True)
+modelPhy.solve(temperature, Fext_list, time_list, isLumped=False)
 temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 

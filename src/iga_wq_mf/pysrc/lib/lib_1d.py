@@ -194,7 +194,7 @@ class heattransfer1D(part1D):
 
 		return tangentM
 
-	def solve(self, Fext=None, time_list=None, Tinout=None, isLumped=False):
+	def solve(self, Tinout, Fext_list, time_list, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
 		theta = self._temporaltheta
@@ -221,15 +221,14 @@ class heattransfer1D(part1D):
 			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			d0_n1 = d_n0 + dt*(1 - theta)*V_n0
-			V_n1 = np.zeros(self.nbctrlpts); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
-			Fext_n1 = Fext[:, i]
+			V_n1  = np.zeros(self.nbctrlpts); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - d_n0[dod]) - (1 - theta)*V_n0[dod])
+			d0_n1 = d_n0 + (1 - theta)*dt*V_n0; d0_n1[dod] = Tinout[dod, i]; dj_n1 = np.copy(d0_n1)
+			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): 
 				
 				# Interpolate temperature
-				dj_n1 = d0_n1 + theta*dt*V_n1
 				temperature = self.interpolate_temperature(dj_n1)
 
 				# Compute internal force
@@ -251,8 +250,9 @@ class heattransfer1D(part1D):
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
-				print('Rhapson with error %.5e' %resNRj)
-				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
+				print('NR error %.5e' %resNRj)
+				if resNRj > self._thresholdNR*resNR0: dj_n1 = d0_n1 + theta*dt*V_n1
+				else: break
 
 			# Update values in output
 			Tinout[:, i] = np.copy(dj_n1)
@@ -361,7 +361,7 @@ class mechanics1D(part1D):
 		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
 		return tangentM
 
-	def solve(self, Fext_list=None):
+	def solve(self, dispinout, Fext_list):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
@@ -369,7 +369,6 @@ class mechanics1D(part1D):
 		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
 		stress, Cep = np.zeros(nbqp), np.zeros(nbqp)
-		Alldisplacement = np.zeros(np.shape(Fext_list))
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplastic = np.zeros((nbqp, np.shape(Fext_list)[1]))
@@ -379,17 +378,17 @@ class mechanics1D(part1D):
 		for i in range(1, np.shape(Fext_list)[1]):
 			
 			# Get values of last step
-			d_n0 = np.copy(Alldisplacement[:, i-1])
+			d_n0 = np.copy(dispinout[:, i-1])
 			
 			# Get values of new step
-			V_n1 = np.zeros(self.nbctrlpts) 
+			V_n1  = np.zeros(self.nbctrlpts) 
+			d0_n1 = np.copy(d_n0); d0_n1[dod] = np.copy(dispinout[dod, i]); dj_n1 = np.copy(d0_n1)
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Newton-Raphson 
 				
 				# Compute strain at each quadrature point
-				dj_n1 = d_n0 + V_n1
 				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
@@ -413,10 +412,11 @@ class mechanics1D(part1D):
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
-				print('Rhapson with error %.5e' %resNRj)
-				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
+				print('NR error %.5e' %resNRj)
+				if resNRj > self._thresholdNR*resNR0: dj_n1 = d0_n1 + V_n1
+				else: break
 
-			Alldisplacement[:, i] = dj_n1
+			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = strain
 			Allstress[:, i] = stress
 			Allplastic[:, i] = pls_n1
@@ -424,4 +424,4 @@ class mechanics1D(part1D):
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return Alldisplacement, Allstrain, Allstress, Allplastic, AllCep
+		return Allstrain, Allstress, Allplastic, AllCep

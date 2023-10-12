@@ -64,11 +64,12 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	if useElastoAlgo:
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-		tmp = problem.solvePlasticityProblemPy(Fext_list=Fext_list)[0]
+		tmp = np.zeros(np.shape(Fext_list))
+		problem.solvePlasticityProblem(tmp, Fext_list)
 		displacement = tmp[:, :, -1]
 	else:
 		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-		displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+		displacement = problem.solveElasticityProblem(Fext)[0]
 	return problem, displacement, meshparam
 
 if isReference:

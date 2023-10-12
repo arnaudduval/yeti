@@ -59,9 +59,9 @@ class simulate():
 		" Solve steady heat problems using iterative solver "
 		start = time.process_time()
 		if isinstance(problem, heatproblem):
-			sol, residue = problem.solveSteadyHeatProblemFT(Fext)
+			sol, residue = problem.solveSteadyHeatProblem(Fext)
 		elif isinstance(problem, mechaproblem):
-			sol, residue = problem.solveElasticityProblemFT(Fext)
+			sol, residue = problem.solveElasticityProblem(Fext)
 		stop = time.process_time()
 		time_t = stop - start 
 		return sol, residue, time_t

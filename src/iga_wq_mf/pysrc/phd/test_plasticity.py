@@ -68,7 +68,8 @@ if not dataExist:
 		Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 		for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref
-		displacement, resPCG, _ = problem.solvePlasticityProblemPy(Fext_list=Fext_list[:, :, :STEP + 1])
+		displacement = np.zeros(np.shape(Fext_list))
+		resPCG, _ = problem.solvePlasticityProblem(displacement, Fext_list[:, :, :STEP + 1])
 		np.savetxt(filename, resPCG)
 
 else:

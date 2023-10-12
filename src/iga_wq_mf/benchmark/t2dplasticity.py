@@ -64,9 +64,9 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 	Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 	for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref
-	displacement, _, internalVars = problem.solvePlasticityProblemPy(Fext_list=Fext_list[:, :, :step+1])
-	
-	return problem, displacement, meshparam, internalVars
+	displacement = np.zeros(np.shape(Fext_list))
+	_, internalVars = problem.solvePlasticityProblem(displacement, Fext_list[:, :, :step+1])
+	return problem, displacement[:, :, :step+1], meshparam, internalVars
 
 if isReference:
 	degree, cuts = 4, 7

@@ -239,7 +239,7 @@ class heatproblem(problem):
 		T_interp = np.ravel(T_interp)
 		return T_interp
 
-	def solveSteadyHeatProblemFT(self, Fext, args=None):
+	def solveSteadyHeatProblem(self, Fext, args=None):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
@@ -249,7 +249,7 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveLinearTransientHeatProblemFT(self, Fext, thetadt, args=None, isLumped=False):
+	def _solveLinearTransientHeatProblem(self, Fext, thetadt, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)
@@ -260,9 +260,9 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
 
-	def solveNLTransientHeatProblemPy(self, Tinout, time_list, Fext_list, theta=1.0, isLumped=False):
+	def solveNLTransientHeatProblem(self, Tinout, time_list, Fext_list, theta=1.0, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
-		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
+		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
 
 		# Compute inital velocity using interpolation
 		V_n0 = np.zeros(nbctrlpts_total)
@@ -286,15 +286,14 @@ class heatproblem(problem):
 			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			d0_n1 = d_n0 + dt*(1.0 - theta)*V_n0
-			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - Tinout[dod, i-1]) - (1 - theta)*V_n0[dod])
-			Fext_n1 = Fext_list[:, i]
+			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - d_n0[dod]) - (1 - theta)*V_n0[dod])
+			d0_n1 = d_n0 + dt*(1.0 - theta)*V_n0; d0_n1[dod] = Tinout[dod, i]; dj_n1 = np.copy(d0_n1)
+			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
 
 				# Compute temperature at each quadrature point
-				dj_n1 = d0_n1 + theta*dt*V_n1
 				temperature = self.interpolate_temperature(dj_n1)
 			
 				# Compute internal force
@@ -307,8 +306,8 @@ class heatproblem(problem):
 
 				# Iterative solver
 				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self.solveLinearTransientHeatProblemFT(r_dj, theta*dt, args=args, isLumped=isLumped)
-				resPCGj = np.append(resPCGj, resPCG); AllresPCG.append(resPCGj)
+				deltaV, resPCG = self._solveLinearTransientHeatProblem(r_dj, theta*dt, args=args, isLumped=isLumped)
+				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
 				V_n1 += deltaV
@@ -317,7 +316,10 @@ class heatproblem(problem):
 				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
+				if resNRj > self._thresholdNR*resNR0: 
+					dj_n1 = d0_n1 + theta*dt*V_n1
+					AllresPCG.append(resPCGj)
+				else: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(V_n1)
@@ -355,7 +357,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce
 
-	def solveElasticityProblemFT(self, Fext, mechArgs=None):
+	def solveElasticityProblem(self, Fext, mechArgs=None):
 		dod = deepcopy(self.boundary.mchdod)
 		for i, tmp in enumerate(dod):
 			tmp = tmp + 1; dod[i] = tmp
@@ -374,7 +376,7 @@ class mechaproblem(problem):
 		
 		return displacement, resPCG
 	
-	def solvePlasticityProblemPy(self, Fext_list): 
+	def solvePlasticityProblem(self, dispinout, Fext_list): 
 
 		if not self.mechamaterial._isPlasticityPossible: raise Warning('Plasticity not defined')
 		dimen  = self.part.dim
@@ -393,26 +395,29 @@ class mechaproblem(problem):
 		mechArgs = np.zeros((nvoigt+3, nbqp_total))
 		
 		# Output variables
-		Alldisplacement = np.zeros(np.shape(Fext_list))
-		Allstress 		= np.zeros((nvoigt, nbqp_total, nsteps))
-		Allstrain 		= np.zeros((nvoigt, nbqp_total, nsteps))
-		Allhardening    = np.zeros((1, nbqp_total, nsteps))
-		AllresPCG 		= []
+		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
+		Allstrain 	 = np.zeros((nvoigt, nbqp_total, nsteps))
+		Allhardening = np.zeros((1, nbqp_total, nsteps))
+		AllresPCG 	 = []
 
 		for i in range(1, nsteps):
 			
 			# Get values of last step
-			d_n0 = np.copy(Alldisplacement[:, :, i-1])
+			d_n0 = np.copy(dispinout[:, :, i-1])
 
 			# Get values of new step
-			V_n1    = np.zeros(np.shape(d_n0))
-			Fext_n1 = Fext_list[:, :, i]
+			V_n1  = np.zeros(np.shape(d_n0))
+			d0_n1 = np.copy(d_n0)
+			for j in range(self.part.dim):
+				dod = self.boundary.mchdod[j]
+				d0_n1[j, dod] = dispinout[j, dod, i]
+			dj_n1 = np.copy(d0_n1)
+			Fext_n1 = np.copy(Fext_list[:, :, i])
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
 
 				# Compute strain at each quadrature point
-				dj_n1  = d_n0 + V_n1
 				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
@@ -429,8 +434,8 @@ class mechaproblem(problem):
 				
 				# Iterative solver
 				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self.solveElasticityProblemFT(Fext=r_dj, mechArgs=mechArgs)
-				resPCGj = np.append(resPCGj, resPCG); AllresPCG.append(resPCGj)
+				deltaV, resPCG = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
+				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
 				V_n1 += deltaV
@@ -439,9 +444,12 @@ class mechaproblem(problem):
 				resNRj = abs(block_dot_product(dimen, V_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if j > 0 and resNRj <= self._thresholdNR*resNR0: break
+				if resNRj > self._thresholdNR*resNR0: 
+					dj_n1 = d_n0 + V_n1
+					AllresPCG.append(resPCGj)
+				else: break
 
-			Alldisplacement[:, :, i] = dj_n1
+			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
 			Allstrain[:, :, i] = strain
 			Allhardening[0, :, i] = a_n1
@@ -450,7 +458,7 @@ class mechaproblem(problem):
 			a_n0 = np.copy(a_n1)
 			b_n0 = np.copy(b_n1)
 
-		return Alldisplacement, AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
+		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
 class thermomechaproblem(heatproblem, mechaproblem):
 

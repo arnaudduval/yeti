@@ -16,7 +16,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 YOUNG, CST, LENGTH = 2e11, 3.5e8, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'none'}}
-isReference = False
+isReference = True
 
 def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
@@ -28,13 +28,14 @@ def simulate(degree, nbel, args):
 	modelPhy.activate_mechanical(MATARGS)
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
-	Fext = np.kron(Fref, [0, 1])
-	displacement = modelPhy.solve(Fext_list=Fext)[0]
+	Fext_list = np.kron(Fref, [0, 1])
+	displacement = np.zeros(np.shape(Fext_list))
+	modelPhy.solve(displacement, Fext_list)
 	return modelPhy, displacement
 
 if isReference:
 
-	degree, nbel = 2, 4096
+	degree, nbel = 2, 64
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement = simulate(degree, nbel, args)
 	np.save(folder + 'dispel', displacement)

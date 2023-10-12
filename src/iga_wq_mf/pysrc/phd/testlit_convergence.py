@@ -78,7 +78,7 @@ def simulate(degree, cuts, quadArgs):
 	problem = mechaproblem(material, modelPhy, boundary)
 	problem.addSolverConstraints(solverArgs=SOLVERARGS)
 	Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-	displacement = problem.solveElasticityProblemFT(Fext=Fext)[0]
+	displacement = problem.solveElasticityProblem(Fext=Fext)[0]
 	return problem, displacement
 
 quadArgs = {'quadrule': 'wq', 'type': 2}
