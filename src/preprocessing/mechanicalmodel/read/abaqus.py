@@ -307,7 +307,9 @@ class AbaqusParser(Parser):
                 distribtable = value.strip()
         print('\tReading distribution %s...' % name)
         table = Table(name=name, label=self._ndist,
-                      opts={'location':loc,'dtable':distribtable})
+                      opts={'location': loc,
+                            'dtable': distribtable,
+                            'dtype': 'unused'})
         while 1:
             pos = self._file.tell()
             line = self._file.readline()
@@ -417,7 +419,7 @@ class AbaqusParser(Parser):
                 print('\t\ta = ', fparams[2:7])
                 print('\t\tb = ', fparams[7:15])
                 print('\t\tc = ', fparams[15:])
-            
+
             elif line.upper().startswith('*DENSITY'):
                 rho = float(self._file.readline().split(',')[0])
                 try:
