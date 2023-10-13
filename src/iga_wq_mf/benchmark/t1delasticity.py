@@ -65,10 +65,10 @@ else:
 			nbel = 2**cuts
 			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 			modelPhy, displacement = simulate(degree, nbel, args)
-			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
-			# 														'exactFunctionDers': exactDisplacementdiff})
-			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
-																	'u_ref': disp_ref[:, -1]})		
+			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
+																	'exactFunctionDers': exactDisplacementDers})
+			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
+			# 														'u_ref': disp_ref[:, -1]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
 		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
@@ -78,4 +78,4 @@ else:
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigElasticityH1app' +'.png')
+		fig.savefig(folder + 'FigElasticityH1exact' +'.pdf')

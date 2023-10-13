@@ -249,7 +249,7 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
 		return temperature, residue
 	
-	def _solveLinearTransientHeatProblem(self, Fext, thetadt, args=None, isLumped=False):
+	def _solveLinearizedTransientProblem(self, Fext, thetadt, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)
@@ -260,16 +260,13 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
 
-	def solveNLTransientHeatProblem(self, Tinout, time_list, Fext_list, theta=1.0, isLumped=False):
+	def solveFourierTransientProblem(self, Tinout, time_list, Fext_list, alpha=1.0, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
 
 		# Compute inital velocity using interpolation
 		V_n0 = np.zeros(nbctrlpts_total)
-		if nsteps == 2:
-			dt = time_list[1] - time_list[0]
-			V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
-		elif nsteps > 2:
+		if nsteps > 2:
 			dt1 = time_list[1] - time_list[0]
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
@@ -286,8 +283,11 @@ class heatproblem(problem):
 			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			V_n1  = np.zeros(nbctrlpts_total); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - d_n0[dod]) - (1 - theta)*V_n0[dod])
-			d0_n1 = d_n0 + dt*(1.0 - theta)*V_n0; d0_n1[dod] = Tinout[dod, i]; dj_n1 = np.copy(d0_n1)
+			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
+			Vj_n1 = np.zeros(self.nbctrlpts)
+			
+			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
+			dj_n1[dod] = Tinout[dod, i]
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
@@ -298,7 +298,7 @@ class heatproblem(problem):
 			
 				# Compute internal force
 				args = np.row_stack((self.part.qpPhy, temperature))
-				Fint_dj = self.compute_mfCapacity(V_n1, args=args, isLumped=isLumped) + self.compute_mfConductivity(dj_n1, args=args)
+				Fint_dj = self.compute_mfCapacity(Vj_n1, args=args, isLumped=isLumped) + self.compute_mfConductivity(dj_n1, args=args)
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -306,22 +306,22 @@ class heatproblem(problem):
 
 				# Iterative solver
 				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self._solveLinearTransientHeatProblem(r_dj, theta*dt, args=args, isLumped=isLumped)
+				deltaV, resPCG = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
 				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
-				V_n1 += deltaV # deltaV[dof] = 0.0
+				Vj_n1 += deltaV # deltaV[dod] = 0.0
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
+				resNRj = abs(np.dot(Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = d0_n1[dof] + theta*dt*V_n1[dof]
+				dj_n1[dof] = dj_n1[dof] + alpha*dt*deltaV
 				AllresPCG.append(resPCGj)
 
 			Tinout[:, i] = np.copy(dj_n1)
-			V_n0 = np.copy(V_n1)
+			V_n0 = np.copy(Vj_n1)
 
 		return AllresPCG
 
@@ -405,12 +405,11 @@ class mechaproblem(problem):
 			d_n0 = np.copy(dispinout[:, :, i-1])
 
 			# Get values of new step
-			V_n1  = np.zeros(np.shape(d_n0))
-			d0_n1 = np.copy(d_n0)
+			dj_n1 = np.copy(d_n0)
 			for k in range(self.part.dim):
 				dod = self.boundary.mchdod[k]
-				d0_n1[k, dod] = dispinout[k, dod, i]
-			dj_n1 = np.copy(d0_n1)
+				dj_n1[k, dod] = dispinout[k, dod, i]
+			Vj_n1 = np.zeros(np.shape(d_n0))
 			Fext_n1 = np.copy(Fext_list[:, :, i])
 
 			print('Step: %d' %i)
@@ -437,16 +436,16 @@ class mechaproblem(problem):
 				resPCGj = np.append(resPCGj, resPCG)
 
 				# Update values
-				V_n1 += deltaV # deltaV[dof] = 0.0
+				Vj_n1 += deltaV # deltaV[dod] = 0.0
 				
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(block_dot_product(dimen, V_n1, r_dj))
+				resNRj = abs(block_dot_product(dimen, Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
 				for k in range(self.part.dim):
 					dof = self.boundary.mchdof[k]
-					dj_n1[k, dof] = d_n0[k, dof] + V_n1[k, dof]
+					dj_n1[k, dof] = dj_n1[k, dof] + deltaV[k, dof]
 				AllresPCG.append(resPCGj)
 
 			dispinout[:, :, i] = dj_n1

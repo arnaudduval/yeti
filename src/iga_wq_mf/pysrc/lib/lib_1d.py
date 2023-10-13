@@ -62,6 +62,7 @@ class part1D:
 		self.conductivity = matArgs.get('conductivity', None)
 		self.capacity     = matArgs.get('capacity', None)
 		self.density      = matArgs.get('density', None)
+		self.relaxation   = matArgs.get('relaxation', None)
 		return
 	
 	def activate_mechanical(self, matArgs:dict):
@@ -78,7 +79,7 @@ class part1D:
 		return volForce
 	
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
-		if isSample: basis, knots = self.quadRule.getSampleBasis(sampleSize=sampleSize)
+		if isSample: basis = self.quadRule.getSampleBasis(sampleSize=sampleSize)[0]
 		else: 		 basis 		  = self.quadRule.getDenseQuadRules()[0]
 		u_interp = basis[0].T @ u_ctrlpts
 		if isSample: x_interp = basis[0].T @ self.ctrlpts
@@ -157,7 +158,6 @@ class heatproblem1D(part1D):
 	
 	def activate_thermal(self, matArgs:dict):
 		super().activate_thermal(matArgs)
-		self._temporaltheta = matArgs.get('heattheta', 1.0)
 		return 
 	
 	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
@@ -178,7 +178,7 @@ class heatproblem1D(part1D):
 		T_interp = self.basis[0].T @ T_ctrlpts
 		return T_interp
 
-	def compute_tangentMatrix(self, Kprop, Cprop, dt, isLumped=False):
+	def compute_FourierMatrix(self, Kprop, Cprop, dt, alpha=1.0, isLumped=False):
 		""" Computes tangent matrix in transient heat
 			S = C + theta dt K
 			K = int_Omega dB/dx Kprop dB/dx dx = int_[0, 1] J^-1 dB/dxi Kprop J^-1 dB/dxi detJ dxi.
@@ -189,24 +189,33 @@ class heatproblem1D(part1D):
 		Kcoefs = Kprop*self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
 		Ccoefs = Cprop * self.detJ
-		C =self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
-		tangentM = C + self._temporaltheta*dt*K
+		tangentM = C + alpha*dt*K
 
 		return tangentM
 
-	def solveTransientHeatProblem(self, Tinout, Fext_list, time_list, isLumped=False):
+	def compute_CattaneoMatrix(self, Kprop, Cprop, Mprop, dt, beta=0.25, gamma=0.5, isLumped=False):
+		Kcoefs = Kprop*self.invJ
+		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
+		Ccoefs = Cprop * self.detJ
+		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		if isLumped: C = np.diag(C.sum(axis=1))
+		Mcoefs = Mprop * self.detJ
+		M = self.weights[0] @ np.diag(Mcoefs) @ self.basis[0].T
+		if isLumped: M = np.diag(M.sum(axis=1))
+		tangentM = M + gamma*dt*C + beta*dt**2*K
+
+		return tangentM
+
+	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
-		theta = self._temporaltheta
 		dod   = self.dod; dof = self.dof
 		V_n0  = np.zeros(self.nbctrlpts)
 
 		# Compute initial velocity using interpolation
-		if np.shape(Tinout)[1] == 2:
-			dt = time_list[1] - time_list[0]
-			V_n0[dod] = (Tinout[dod, 1] - Tinout[dod, 0])/dt
-		elif np.shape(Tinout)[1] >= 2:
+		if np.shape(Tinout)[1] >= 2:
 			dt1 = time_list[1] - time_list[0]
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
@@ -222,8 +231,11 @@ class heatproblem1D(part1D):
 			d_n0 = np.copy(Tinout[:, i-1])
 
 			# Get values of new step
-			V_n1  = np.zeros(self.nbctrlpts); V_n1[dod] = 1.0/theta*(1.0/dt*(Tinout[dod, i] - d_n0[dod]) - (1 - theta)*V_n0[dod])
-			d0_n1 = d_n0 + (1 - theta)*dt*V_n0; d0_n1[dod] = Tinout[dod, i]; dj_n1 = np.copy(d0_n1)
+			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
+			Vj_n1 = np.zeros(self.nbctrlpts)
+			
+			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
+			dj_n1[dod] = Tinout[dod, i]
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
@@ -235,31 +247,107 @@ class heatproblem1D(part1D):
 				# Compute internal force
 				Kprop = self.conductivity(temperature)
 				Cprop = self.capacity(temperature)
-				Fint_dj = self.compute_mfCapacity(Cprop, V_n1, isLumped=isLumped) + self.compute_mfConductivity(Kprop, dj_n1)
+				Fint_dj = self.compute_mfCapacity(Cprop, Vj_n1, isLumped=isLumped) + self.compute_mfConductivity(Kprop, dj_n1)
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 				
 				# Direct solver
-				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Kprop, Cprop, dt=dt, isLumped=isLumped)[np.ix_(dof, dof)])
+				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
 				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update values
-				V_n1[dof] += deltaV
+				Vj_n1[dof] += deltaV
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(theta*dt*np.dot(V_n1, r_dj))
+				resNRj = abs(np.dot(Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = d0_n1[dof] + theta*dt*V_n1[dof]
+				dj_n1[dof] = dj_n1[dof] + alpha*dt*deltaV
 
 			# Update values in output
 			Tinout[:, i] = np.copy(dj_n1)
-			V_n0 = np.copy(V_n1)
+			V_n0 = np.copy(Vj_n1)
 
 		return 
+
+	def solveCattaneoTransientProblem(self, Tinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
+		" Solves transient heat problem in 1D using Cattaneo approach. "
+
+		dod   = self.dod; dof = self.dof
+		V_n0  = np.zeros(self.nbctrlpts)
+		A_n0  = np.zeros(self.nbctrlpts)
+
+		# Compute initial velocity using interpolation
+		if np.shape(Tinout)[1] >= 2:
+			dt1 = time_list[1] - time_list[0]
+			dt2 = time_list[2] - time_list[0]
+			factor = dt2/dt1
+			V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+			A_n0[dod] = 2/(dt1*dt2)*((dt2*Tinout[dod, 1] - dt1*Tinout[dod, 2])/(dt2-dt1) - Tinout[dod, 0])
+		else: raise Warning('We need more than 2 steps')
+
+		for i in range(1, np.shape(Tinout)[1]):
+			
+			# Get delta time
+			dt = time_list[i] - time_list[i-1]
+
+			# Get values of last step
+			d_n0 = np.copy(Tinout[:, i-1])
+
+			# Get values of new step
+			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
+			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
+			Aj_n1 = np.zeros(self.nbctrlpts) 
+
+			Aj_n1[dod] = (Tinout[dod, i] - dj_n1[dod])/(beta*dt**2)
+			dj_n1[dod] = Tinout[dod, i]
+			Vj_n1[dod] = Vj_n1[dod] + gamma*dt*Aj_n1[dod]
+
+			Fext_n1 = np.copy(Fext_list[:, i])
+
+			print('Step: %d' %i)
+			for j in range(self._nbIterNR): 
+				
+				# Interpolate temperature
+				temperature = self.interpolate_temperature(dj_n1)
+
+				# Compute internal force
+				Kprop = self.conductivity(temperature)
+				Cprop = self.capacity(temperature)
+				Mprop = self.relaxation(temperature)*Cprop
+				Fint_dj = (self.compute_mfCapacity(Mprop, Aj_n1, isLumped=isLumped) 
+						+ self.compute_mfCapacity(Cprop, Vj_n1, isLumped=isLumped) 
+						+ self.compute_mfConductivity(Kprop, dj_n1)
+				)
+
+				# Compute residue
+				r_dj = Fext_n1 - Fint_dj
+				r_dj[dod] = 0.0
+				
+				# Direct solver
+				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
+										beta=beta, gamma=gamma, isLumped=isLumped)[np.ix_(dof, dof)])
+				deltaA = sp.linalg.spsolve(tangentM, r_dj[dof])
+
+				# Update values
+				Aj_n1[dof] += deltaA
+
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(np.dot(Aj_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error %.5e' %resNRj)
+				if resNRj <= self._thresholdNR*resNR0: break
+				dj_n1[dof] = dj_n1[dof] + beta*dt**2*deltaA
+				Vj_n1[dof] = Vj_n1[dof] + gamma*dt*deltaA
+
+			# Update values in output
+			Tinout[:, i] = np.copy(dj_n1)
+			V_n0 = np.copy(Vj_n1)
+			A_n0 = np.copy(Aj_n1)
+		return
 
 class mechanics1D(part1D):
 	def __init__(self, part, kwargs:dict):
@@ -382,8 +470,10 @@ class mechanics1D(part1D):
 			d_n0 = np.copy(dispinout[:, i-1])
 			
 			# Get values of new step
-			V_n1  = np.zeros(self.nbctrlpts) 
-			d0_n1 = np.copy(d_n0); d0_n1[dod] = np.copy(dispinout[dod, i]); dj_n1 = np.copy(d0_n1)
+			dj_n1 = np.copy(d_n0)
+			Vj_n1 = np.zeros(np.shape(dj_n1))
+
+			dj_n1[dod] = np.copy(dispinout[dod, i])
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
@@ -408,14 +498,14 @@ class mechanics1D(part1D):
 				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
 				
 				# Update values
-				V_n1[dof] += deltaV
+				Vj_n1[dof] += deltaV
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(V_n1, r_dj))
+				resNRj = abs(np.dot(Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = d0_n1[dof] + V_n1[dof]
+				dj_n1[dof] = dj_n1[dof] + deltaV
 
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = strain

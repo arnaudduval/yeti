@@ -65,6 +65,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		tmp = np.zeros(np.shape(Fext_list))
+		# problem._nbIterNR = 1
 		problem.solvePlasticityProblem(tmp, Fext_list)
 		displacement = tmp[:, :, -1]
 	else:
@@ -102,8 +103,8 @@ else:
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
-				error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref}, isRelative=False)
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
+				error_list[j] = problem.normOfError(displacement, normArgs={'type':'semiH1', 'part_ref':part_ref, 'u_ref':disp_ref}, isRelative=False)
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
@@ -116,5 +117,5 @@ else:
 			ax.set_ylim(top=1e-4, bottom=1e-18)
 			ax.set_xlim(left=1e-2, right=1)
 			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAllsemiH1' +  GEONAME + '.pdf')
+			fig.savefig(folder + 'FigConvergenceAll3semiH1' +  GEONAME + '.pdf')
 		

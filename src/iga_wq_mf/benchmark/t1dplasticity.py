@@ -41,12 +41,12 @@ def simulate(degree, nbel, args, step=-2):
 
 if isReference:
 
-	degree, nbel = 2, 2048
+	degree, nbel = 2, 64
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
-	np.save(folder + 'dispel', displacement)
-	with open(folder + 'refpartpl.pkl', 'wb') as outp:
-		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
+	# np.save(folder + 'dispel', displacement)
+	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
+	# 	pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
 
 	plasticeq_cp = modelPhy.L2projectionCtrlpts(plasticeq)
 	stress_cp  = modelPhy.L2projectionCtrlpts(stress)
@@ -72,7 +72,7 @@ if isReference:
 		cbar = fig.colorbar(im, cax=cax)
 
 	fig.tight_layout()
-	fig.savefig(folder + 'ElastoPlasticity1D' + '.png')
+	fig.savefig(folder + 'ElastoPlasticity1D2' + '.png')
 
 else: 
 
@@ -95,7 +95,7 @@ else:
 																			'u_ref': disp_ref[:, step]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
-		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
+		ax.set_ylabel(r'$H^1$'+ ' Relative error')
 		ax.set_xlabel('Number of elements')
 		ax.set_ylim(bottom=1e-5, top=1e0)
 		ax.set_xlim(left=1, right=10**3)

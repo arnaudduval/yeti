@@ -119,8 +119,8 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			problem.addSolverConstraints(solverArgs=solverArgs)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = problem.solveSteadyHeatProblem(Fext=Fext)[0]
-			error_list[j] = problem.normOfError(temperature, normArgs={'type':'H1','exactFunction':exactTemperature_quartCircle,
-												'exactFunctionDers':exactDiffTemperature_quartCircle})
+			error_list[j] = problem.normOfError(temperature, normArgs={'type':'L2','exactFunction':exactTemperature_quartCircle,
+												'exactFunctionDers':exactDiffTemperature_quartCircle}, isRelative=False)
 
 		nbctrlpts_list = (2**cuts_list+degree)**2
 		ax.loglog(nbctrlpts_list, error_list, marker=MARKERLIST[i], label='degree '+r'$p=\,$'+str(degree))
@@ -131,11 +131,11 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
 									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 			
-		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{H_1(\Omega)}}{||u||_{H_1(\Omega)}}$')
+		ax.set_ylabel(r'$||u - u^h||_{L_2(\Omega)}$')
 		ax.set_xlabel('Total number of DOF')
-		ax.set_ylim(top=1e0, bottom=1e-15)
+		ax.set_ylim(top=1e1, bottom=1e-15)
 		ax.set_xlim(left=10, right=1e5)
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceH1' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')
+		fig.savefig(folder + 'FigConvergenceL2' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')

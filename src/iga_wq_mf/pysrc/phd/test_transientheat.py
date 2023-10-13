@@ -83,8 +83,8 @@ if not dataExist:
 
 			# Solve
 			lastStep = 3
-			resPCG = problem.solveNLTransientHeatProblem(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
-														time_list=time_list[:lastStep], theta=1.0)
+			resPCG = problem.solveFourierTransientProblem(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
+														time_list=time_list[:lastStep], alpha=1.0)
 			np.savetxt(filename, resPCG)
 
 else:
