@@ -16,20 +16,17 @@ folder = os.path.dirname(full_path) + '/results/d1transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(T):
-	y = 55*10/(7800*460)*np.ones(len(T))
+	y = 55*100/(7800*460)*np.ones(len(T))
 	return y
 
 def capacityProperty(T):
-	y = (1+np.exp(T/10))*np.ones(len(T))
-	return y
-
-def relaxationProperty(T):
-	y = 1e-12*np.ones(len(T))
+	# y = (1+np.exp(T/10))*np.ones(len(T))
+	y = np.ones(len(T))
 	return y
 
 # Set global variables
 length = 1.0
-degree, nbel = 5, 200 
+degree, nbel = 6, 512 
 crv = createUniformCurve(degree, nbel, length)
 
 # Create geometry
@@ -37,7 +34,7 @@ args     = {'quadArgs': {'quadrule': 'iga'}}
 modelPhy = heatproblem1D(crv, args)
 
 # Add material 
-matArgs = {'conductivity': conductivityProperty, 'capacity': capacityProperty, 'relaxation':relaxationProperty}
+matArgs = {'conductivity': conductivityProperty, 'capacity': capacityProperty}
 modelPhy.activate_thermal(matArgs)
 
 # Add boundary condition
@@ -55,7 +52,6 @@ temperature[-1, :] = 1
 
 # Solve
 modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=True)
-# modelPhy.solveTransientHeatProblem_Cattaneo(temperature, Fext_list, time_list, isLumped=False)
 temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 

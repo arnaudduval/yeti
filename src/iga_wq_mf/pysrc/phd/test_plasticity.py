@@ -1,5 +1,4 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import sigmoid
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_material import mechamat
@@ -39,7 +38,7 @@ if not dataExist:
 	STEP = 50
 	
 	for PCGmethod in ITERMETHODS:
-		filename = folder + 'ResPCGpls_' + GEONAME + '_' + PCGmethod + '.dat'        
+		filename = folder + 'ResPCGpls2_' + GEONAME + '_' + PCGmethod + '.dat'        
 
 		geoArgs = {'name': 'QA', 'degree': DEGREE*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': CUTS*np.ones(3, dtype=int), 
@@ -77,7 +76,7 @@ else:
 	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 
 	for i, PCGmethod in enumerate(ITERMETHODS):
-		filename = folder + 'ResPCGpls_' + GEONAME + '_' + PCGmethod + '.dat'
+		filename = folder + 'ResPCGpls2_' + GEONAME + '_' + PCGmethod + '.dat'
 		resPCG   = np.loadtxt(filename)
 
 		if PCGmethod == "C": labelmethod = 'Classic FD\nmethod'
@@ -93,7 +92,7 @@ else:
 			axs[0].semilogy(np.arange(len(newresidue)), newresidue, alpha=opacity, 
 						color=COLORLIST[i], linewidth=0.5)
 			
-			newresidue = resPCG[np.max(ind)-1, 2:]; newresidue = newresidue[newresidue>0]
+			newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
 			axs[1].semilogy(np.arange(len(newresidue)), newresidue, alpha=opacity, 
 						color=COLORLIST[i], linewidth=0.5)
 			
@@ -101,7 +100,7 @@ else:
 		newresidue = resPCG[np.min(ind), 2:]; newresidue = newresidue[newresidue>0]
 		axs[0].semilogy(np.arange(len(newresidue)), newresidue, marker='s', color=COLORLIST[i], label=labelmethod, linewidth=0.5)
 		
-		newresidue = resPCG[np.max(ind)-1, 2:]; newresidue = newresidue[newresidue>0]
+		newresidue = resPCG[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
 		axs[1].semilogy(np.arange(len(newresidue)), newresidue, marker='s', color=COLORLIST[i], label=labelmethod, linewidth=0.5)
 
 
@@ -114,6 +113,6 @@ else:
 		ax.set_ybound(lower=1e-12, upper=10)
 
 	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	filename = folder + 'PlasticityNL_' + '.pdf'
+	filename = folder + 'PlasticityNL2_' + '.pdf'
 	fig.tight_layout()
 	fig.savefig(filename)
