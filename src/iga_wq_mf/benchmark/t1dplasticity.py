@@ -14,7 +14,7 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-YOUNG, CST, LENGTH  = 2e11, 4.e8, 1
+YOUNG, CST, LENGTH  = 2e11, 6.e8, 1
 NBSTEPS = 251
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS   = {'elastic_modulus':YOUNG, 'elastic_limit':1e8, 'plasticLaw': {'Isoname': 'linear', 'Eiso':YOUNG/10}}
