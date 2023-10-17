@@ -6,7 +6,7 @@
 import pickle
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
-from pysrc.lib.lib_1d import mechanics1D
+from pysrc.lib.lib_1d import mechaproblem1D
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -24,7 +24,7 @@ def forceVol(P:list):
 
 def simulate(degree, nbel, args):
 	crv = createUniformCurve(degree, nbel, LENGTH)
-	modelPhy = mechanics1D(crv, args)
+	modelPhy = mechaproblem1D(crv, args)
 	model2return = deepcopy(modelPhy)
 	modelPhy.activate_mechanical(MATARGS)
 	modelPhy.add_DirichletCondition(table=[1, 1])

@@ -158,10 +158,11 @@ class heatproblem1D(part1D):
 	
 	def activate_thermal(self, matArgs:dict):
 		super().activate_thermal(matArgs)
+		if self.density is None: self.density = lambda x: np.ones(len(x))
 		return 
 	
 	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
-		Ccoefs = Cprop * self.detJ
+		Ccoefs = Cprop*self.detJ
 		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
 		array_out = C @ array_in
@@ -188,7 +189,7 @@ class heatproblem1D(part1D):
 
 		Kcoefs = Kprop*self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
-		Ccoefs = Cprop * self.detJ
+		Ccoefs = Cprop*self.detJ
 		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
 		tangentM = C + alpha*dt*K
@@ -198,10 +199,9 @@ class heatproblem1D(part1D):
 	def compute_CattaneoMatrix(self, Kprop, Cprop, Mprop, dt, beta=0.25, gamma=0.5, isLumped=False):
 		Kcoefs = Kprop*self.invJ
 		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
-		Ccoefs = Cprop * self.detJ
+		Ccoefs = Cprop*self.detJ
 		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
-		if isLumped: C = np.diag(C.sum(axis=1))
-		Mcoefs = Mprop * self.detJ
+		Mcoefs = Mprop*self.detJ
 		M = self.weights[0] @ np.diag(Mcoefs) @ self.basis[0].T
 		if isLumped: M = np.diag(M.sum(axis=1))
 		tangentM = M + gamma*dt*C + beta*dt**2*K
@@ -211,8 +211,8 @@ class heatproblem1D(part1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
-		dod   = self.dod; dof = self.dof
-		V_n0  = np.zeros(self.nbctrlpts)
+		dod  = self.dod; dof = self.dof
+		V_n0 = np.zeros(self.nbctrlpts)
 
 		# Compute initial velocity using interpolation
 		if np.shape(Tinout)[1] >= 2:
@@ -246,7 +246,7 @@ class heatproblem1D(part1D):
 
 				# Compute internal force
 				Kprop = self.conductivity(temperature)
-				Cprop = self.capacity(temperature)
+				Cprop = self.capacity(temperature)*self.density(temperature)
 				Fint_dj = self.compute_mfCapacity(Cprop, Vj_n1, isLumped=isLumped) + self.compute_mfConductivity(Kprop, dj_n1)
 
 				# Compute residue
@@ -276,9 +276,9 @@ class heatproblem1D(part1D):
 	def solveCattaneoTransientProblem(self, Tinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		" Solves transient heat problem in 1D using Cattaneo approach. "
 
-		dod   = self.dod; dof = self.dof
-		V_n0  = np.zeros(self.nbctrlpts)
-		A_n0  = np.zeros(self.nbctrlpts)
+		dod  = self.dod; dof = self.dof
+		V_n0 = np.zeros(self.nbctrlpts)
+		A_n0 = np.zeros(self.nbctrlpts)
 
 		# Compute initial velocity using interpolation
 		if np.shape(Tinout)[1] >= 2:
@@ -316,10 +316,10 @@ class heatproblem1D(part1D):
 
 				# Compute internal force
 				Kprop = self.conductivity(temperature)
-				Cprop = self.capacity(temperature)
+				Cprop = self.capacity(temperature)*self.density(temperature)
 				Mprop = self.relaxation(temperature)*Cprop
 				Fint_dj = (self.compute_mfCapacity(Mprop, Aj_n1, isLumped=isLumped) 
-						+ self.compute_mfCapacity(Cprop, Vj_n1, isLumped=isLumped) 
+						+ self.compute_mfCapacity(Cprop, Vj_n1, isLumped=False) 
 						+ self.compute_mfConductivity(Kprop, dj_n1)
 				)
 
@@ -349,13 +349,14 @@ class heatproblem1D(part1D):
 			A_n0 = np.copy(Aj_n1)
 		return
 
-class mechanics1D(part1D):
+class mechaproblem1D(part1D):
 	def __init__(self, part, kwargs:dict):
 		super().__init__(part, kwargs)		
 		return
 	
 	def activate_mechanical(self, matArgs:dict):
 		super().activate_mechanical(matArgs)
+		if self.density is None: self.density = lambda x: np.ones(len(x))
 		self.plasticLaw = None
 		self._isPlasticityPossible = False
 		tmp = matArgs.get('plasticLaw', None)
@@ -516,3 +517,4 @@ class mechanics1D(part1D):
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
 		return Allstrain, Allstress, Allplseq, AllCep
+
