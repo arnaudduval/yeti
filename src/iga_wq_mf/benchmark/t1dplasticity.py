@@ -5,7 +5,7 @@
 
 import pickle
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformCurve, createAsymmetricalCurve
 from pysrc.lib.lib_1d import mechaproblem1D
 
 # Select folder
@@ -14,7 +14,7 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-YOUNG, CST, LENGTH  = 2e11, 6.e8, 1
+YOUNG, CST, LENGTH  = 2e11, 4.e8, 1
 NBSTEPS = 251
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS   = {'elastic_modulus':YOUNG, 'elastic_limit':1e8, 'plasticLaw': {'Isoname': 'linear', 'Eiso':YOUNG/10}}
@@ -26,6 +26,7 @@ def forceVol(P:list):
 
 def simulate(degree, nbel, args, step=-2):
 	crv = createUniformCurve(degree, nbel, LENGTH)
+	# crv = createAsymmetricalCurve(degree, nbel, LENGTH)
 	modelPhy = mechaproblem1D(crv, args)
 	model2return = deepcopy(modelPhy)
 	modelPhy.activate_mechanical(MATARGS)
@@ -33,20 +34,20 @@ def simulate(degree, nbel, args, step=-2):
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	displacement = np.zeros(np.shape(Fext_list))
-	# blockPrint()
+	blockPrint()
 	strain, stress, plasticeq, Cep = modelPhy.solvePlasticityProblem(displacement, Fext_list[:, :step+1])
-	# enablePrint()
+	enablePrint()
 	return model2return, displacement[:, :step+1], stress, plasticeq
 
 
 if isReference:
 
-	degree, nbel = 2, 64
+	degree, nbel = 2, 4096
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
-	# np.save(folder + 'dispel', displacement)
-	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
-	# 	pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
+	np.save(folder + 'dispel', displacement)
+	with open(folder + 'refpartpl.pkl', 'wb') as outp:
+		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
 
 	plasticeq_cp = modelPhy.L2projectionCtrlpts(plasticeq)
 	stress_cp  = modelPhy.L2projectionCtrlpts(stress)
@@ -72,7 +73,7 @@ if isReference:
 		cbar = fig.colorbar(im, cax=cax)
 
 	fig.tight_layout()
-	fig.savefig(folder + 'ElastoPlasticity1D2' + '.png')
+	fig.savefig(folder + 'ElastoPlasticity1D' + '.png')
 
 else: 
 

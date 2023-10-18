@@ -230,13 +230,16 @@ class heatproblem1D(part1D):
 			# Get values of last step
 			d_n0 = np.copy(Tinout[:, i-1])
 
-			# Get values of new step
+			# Predict values of new step
 			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
 			Vj_n1 = np.zeros(self.nbctrlpts)
 			
+			# Overwrite inactive control points
 			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
 			dj_n1[dod] = Tinout[dod, i]
+
 			Fext_n1 = np.copy(Fext_list[:, i])
+			V_n1ref = np.copy(Vj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): 
@@ -253,21 +256,23 @@ class heatproblem1D(part1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 				
-				# Direct solver
+				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaV = np.zeros(self.nbctrlpts); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update values
-				Vj_n1[dof] += deltaV
+				V_n1ref += deltaV
 
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(np.dot(Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = dj_n1[dof] + alpha*dt*deltaV
+				
+				# Update active control points
+				dj_n1 += alpha*dt*deltaV
+				Vj_n1 += deltaV
 
-			# Update values in output
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
 
@@ -286,7 +291,7 @@ class heatproblem1D(part1D):
 			dt2 = time_list[2] - time_list[0]
 			factor = dt2/dt1
 			V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-			A_n0[dod] = 2/(dt1*dt2)*((dt2*Tinout[dod, 1] - dt1*Tinout[dod, 2])/(dt2-dt1) - Tinout[dod, 0])
+			A_n0[dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
 
 		for i in range(1, np.shape(Tinout)[1]):
@@ -297,16 +302,18 @@ class heatproblem1D(part1D):
 			# Get values of last step
 			d_n0 = np.copy(Tinout[:, i-1])
 
-			# Get values of new step
+			# Predict values of new step
 			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
 			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
 			Aj_n1 = np.zeros(self.nbctrlpts) 
 
+			# Overwrite inactive control points
 			Aj_n1[dod] = (Tinout[dod, i] - dj_n1[dod])/(beta*dt**2)
-			dj_n1[dod] = Tinout[dod, i]
 			Vj_n1[dod] = Vj_n1[dod] + gamma*dt*Aj_n1[dod]
+			dj_n1[dod] = Tinout[dod, i]
 
 			Fext_n1 = np.copy(Fext_list[:, i])
+			A_n1ref = np.copy(Aj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): 
@@ -327,26 +334,27 @@ class heatproblem1D(part1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 				
-				# Direct solver
+				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
 										beta=beta, gamma=gamma, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaA = sp.linalg.spsolve(tangentM, r_dj[dof])
-
-				# Update values
-				Aj_n1[dof] += deltaA
+				deltaA = np.zeros(self.nbctrlpts); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				A_n1ref += deltaA
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(Aj_n1, r_dj))
+				resNRj = abs(np.dot(A_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = dj_n1[dof] + beta*dt**2*deltaA
-				Vj_n1[dof] = Vj_n1[dof] + gamma*dt*deltaA
 
-			# Update values in output
+				# Update active control points
+				dj_n1 += beta*dt**2*deltaA
+				Vj_n1 += gamma*dt*deltaA
+				Aj_n1 += deltaA
+
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
 			A_n0 = np.copy(Aj_n1)
+
 		return
 
 class mechaproblem1D(part1D):
@@ -470,12 +478,14 @@ class mechaproblem1D(part1D):
 			# Get values of last step
 			d_n0 = np.copy(dispinout[:, i-1])
 			
-			# Get values of new step
+			# Predict values of new step
 			dj_n1 = np.copy(d_n0)
-			Vj_n1 = np.zeros(np.shape(dj_n1))
 
+			# Overwrite inactive control points
 			dj_n1[dod] = np.copy(dispinout[dod, i])
+
 			Fext_n1 = np.copy(Fext_list[:, i])
+			d_n1ref = np.zeros(self.nbctrlpts)
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR): # Newton-Raphson 
@@ -494,19 +504,20 @@ class mechaproblem1D(part1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				# Direct solver
+				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
-				deltaV = sp.linalg.spsolve(tangentM, r_dj[dof])
-				
-				# Update values
-				Vj_n1[dof] += deltaV
+				deltaD = np.zeros(self.nbctrlpts); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				d_n1ref[dof] += deltaD
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(Vj_n1, r_dj))
+				resNRj = abs(np.dot(d_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = dj_n1[dof] + deltaV
+				if j > 0 and np.all(a_n1==0.0): break
+				
+				# Update active control points
+				dj_n1 += deltaD
 
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = strain

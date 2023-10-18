@@ -283,13 +283,16 @@ class heatproblem(problem):
 			# Get values of last step
 			d_n0 = np.copy(Tinout[:, i-1])
 
-			# Get values of new step
+			# Predict values of new step
 			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
 			Vj_n1 = np.zeros(self.part.nbctrlpts_total)
 			
+			# Overwrite inactive control points
 			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
 			dj_n1[dod] = Tinout[dod, i]
+
 			Fext_n1 = np.copy(Fext_list[:, i])
+			V_n1ref = np.copy(Vj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
@@ -305,20 +308,21 @@ class heatproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				# Iterative solver
+				# Solve for active control points
 				resPCGj = np.array([i, j+1])
 				deltaV, resPCG = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
 				resPCGj = np.append(resPCGj, resPCG)
-
-				# Update values
-				Vj_n1 += deltaV # deltaV[dod] = 0.0
+				V_n1ref += deltaV
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(Vj_n1, r_dj))
+				resNRj = abs(np.dot(V_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				dj_n1[dof] = dj_n1[dof] + alpha*dt*deltaV
+
+				# Update active control points
+				dj_n1 += alpha*dt*deltaV
+				Vj_n1 += deltaV
 				AllresPCG.append(resPCGj)
 
 			Tinout[:, i] = np.copy(dj_n1)
@@ -330,7 +334,7 @@ class mechaproblem(problem):
 	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
 		super().__init__(part, boundary, solverArgs)
 		self.mechamaterial = material
-		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=1.0, isIsotropic=True)
+		if self.mechamaterial.density is None: self.mechamaterial.density = 1.0
 		return
 	
 	def compute_mfStiffness(self, array_in, mechArgs=None):
@@ -406,13 +410,16 @@ class mechaproblem(problem):
 			# Get values of last step
 			d_n0 = np.copy(dispinout[:, :, i-1])
 
-			# Get values of new step
+			# Predict values of new step
 			dj_n1 = np.copy(d_n0)
+
+			# Overwrite inactive control points
 			for k in range(self.part.dim):
 				dod = self.boundary.mchdod[k]
 				dj_n1[k, dod] = dispinout[k, dod, i]
-			Vj_n1 = np.zeros(np.shape(d_n0))
+			
 			Fext_n1 = np.copy(Fext_list[:, :, i])
+			d_n1ref = np.zeros(np.shape(dj_n1))
 
 			print('Step: %d' %i)
 			for j in range(self._nbIterNR):
@@ -432,22 +439,21 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 				
-				# Iterative solver
+				# Solver for active control points
 				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
+				deltaD, resPCG = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
 				resPCGj = np.append(resPCGj, resPCG)
-
-				# Update values
-				Vj_n1 += deltaV # deltaV[dod] = 0.0
+				d_n1ref += deltaD
 				
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(block_dot_product(dimen, Vj_n1, r_dj))
+				resNRj = abs(block_dot_product(dimen, d_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				for k in range(self.part.dim):
-					dof = self.boundary.mchdof[k]
-					dj_n1[k, dof] = dj_n1[k, dof] + deltaV[k, dof]
+				if j > 0 and np.all(a_n1==0.0): break
+
+				# Update active control points
+				dj_n1 += deltaD
 				AllresPCG.append(resPCGj)
 
 			dispinout[:, :, i] = dj_n1
@@ -455,13 +461,12 @@ class mechaproblem(problem):
 			Allstrain[:, :, i] = strain
 			Allhardening[0, :, i] = a_n1
 
-			pls_n0 = np.copy(pls_n1)
-			a_n0 = np.copy(a_n1)
-			b_n0 = np.copy(b_n1)
+			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
 		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
-	def solveElastoDynamicProblem(self):
+	def solveLinearElastoDynamicProblem(self):
+		
 		return
 
 class thermomechaproblem(heatproblem, mechaproblem):

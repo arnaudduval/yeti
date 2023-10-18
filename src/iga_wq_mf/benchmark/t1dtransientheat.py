@@ -24,6 +24,10 @@ def capacityProperty(T):
 	y = np.ones(len(T))
 	return y
 
+def relaxationProperty(T):
+	y = np.ones(len(T))
+	return y
+
 # Set global variables
 length = 1.0
 degree, nbel = 6, 512 
@@ -34,7 +38,7 @@ args     = {'quadArgs': {'quadrule': 'iga'}}
 modelPhy = heatproblem1D(crv, args)
 
 # Add material 
-matArgs = {'conductivity': conductivityProperty, 'capacity': capacityProperty}
+matArgs = {'conductivity': conductivityProperty, 'capacity': capacityProperty, 'relaxation': relaxationProperty}
 modelPhy.activate_thermal(matArgs)
 
 # Add boundary condition
@@ -51,7 +55,8 @@ temperature = np.zeros(np.shape(Fext_list))
 temperature[-1, :] = 1
 
 # Solve
-modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=True)
+# modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=False)
+modelPhy.solveCattaneoTransientProblem(temperature, Fext_list, time_list, isLumped=False)
 temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 
@@ -72,4 +77,4 @@ ax.grid(False)
 ax.set_ylabel(r'$\displaystyle\frac{\tau}{T_{s}}$')
 ax.set_xlabel(r'$\displaystyle\frac{x}{L}$')
 fig.tight_layout()
-fig.savefig(folder + 'TransientHeat1DLump.png')
+fig.savefig(folder + 'TransientHeat1DCattaneo.png')

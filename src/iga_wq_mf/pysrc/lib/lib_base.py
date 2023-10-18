@@ -136,6 +136,28 @@ def createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=1):
 	
 	return knotvector
 
+def createAsymmetricalKnotvector_Rmultiplicity(p, nbel, xasym=0.25, multiplicity=1):
+	if nbel <= 1: raise Warning('Not possible. Try higher number of elements')
+	elif nbel == 2: createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=multiplicity)
+	else:
+		nbel1 = int(np.floor((nbel+1)/2))
+		kv_unique = np.array([])
+		kv_unique = np.append(kv_unique, np.linspace(0.0, xasym, nbel1 + 1)[1:]) 
+		kv_unique = np.append(kv_unique, np.linspace(xasym, 1.0, nbel - nbel1 + 1)[1:-1]) 
+		knotvector = []
+		for _ in range(p+1): 
+			knotvector.append(0.0)
+
+		for knot in kv_unique: 
+			for _ in range(multiplicity): 
+				knotvector.append(knot)
+
+		for _ in range(p+1): 
+			knotvector.append(1.0)
+
+		knotvector = np.array(knotvector)
+	return knotvector
+
 def createUniformCurve(p, nbel, length):
 	knotvector = createUniformKnotvector_Rmultiplicity(p, 1)
 	ctrlpts    = [[i*length/p, 0.0] for i in range(p+1)]
@@ -144,6 +166,18 @@ def createUniformCurve(p, nbel, length):
 	crv.ctrlpts = ctrlpts
 	crv.knotvector = knotvector
 	for knot in np.linspace(0, 1, nbel+1)[1:-1]:
+		operations.insert_knot(crv, [knot], [1])
+	return crv
+
+def createAsymmetricalCurve(p, nbel, length, xasym=0.25):
+	knotvector0 = createUniformKnotvector_Rmultiplicity(p, 1)
+	ctrlpts    = [[i*length/p, 0.0] for i in range(p+1)]
+	crv = BSpline.Curve()
+	crv.degree  = p
+	crv.ctrlpts = ctrlpts
+	crv.knotvector = knotvector0
+	knotvector1 = createAsymmetricalKnotvector_Rmultiplicity(p, nbel, xasym=xasym)
+	for knot in knotvector1[p+1:-p-1]:
 		operations.insert_knot(crv, [knot], [1])
 	return crv
 
