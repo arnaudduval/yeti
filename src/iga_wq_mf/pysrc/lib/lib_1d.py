@@ -507,7 +507,7 @@ class mechaproblem1D(part1D):
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
 				deltaD = np.zeros(self.nbctrlpts); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
-				d_n1ref[dof] += deltaD
+				d_n1ref += deltaD
 
 				# Compute residue of Newton Raphson using an energetic approach
 				resNRj = abs(np.dot(d_n1ref, r_dj))

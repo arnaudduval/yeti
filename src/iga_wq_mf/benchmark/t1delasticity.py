@@ -16,7 +16,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 YOUNG, CST, LENGTH = 2e11, 4.e8, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'none'}}
-isReference = False
+isReference = True
 
 def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
