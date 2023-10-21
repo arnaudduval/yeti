@@ -139,14 +139,17 @@ contains
         ! Local data
         ! ----------
         type(sepoperator) :: oper
-        logical :: update(mat%dimen)
         integer :: i, j, k, gp
-        double precision :: DD, CC, NN, TNN
-        dimension :: DD(mat%dimen, mat%dimen), CC(mat%dimen, mat%dimen, mat%ncols_sp), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
+        integer, allocatable, dimension(:) :: nc_list_t
+        logical, allocatable, dimension(:) :: update
+        double precision, allocatable, dimension(:, :, :) :: CC
+        double precision :: DD, NN, TNN
+        dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
 
         if (.not.associated(mat%Mprop)) then
-            update = .true.
-            call initialize_operator(oper, mat%dimen, nc_list, update)
+            allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+            update = .true.; nc_list_t = nc_list
+            call initialize_operator(oper, mat%dimen, nc_list_t, update)
 
             do i = 1, mat%dimen
                 do gp = 1, mat%ncols_sp
@@ -177,7 +180,42 @@ contains
                 univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
             end do
         else
-            stop 'Not coded until this version'
+            allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+            update = .true.; update(mat%dimen+1) = .false.
+            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+
+            do i = 1, mat%dimen
+                do gp = 1, mat%ncols_sp
+                    NN = mat%NN(:, gp)
+                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                    
+                    ! Elastic
+                    DD = 0.d0
+                    DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+                    do k = 1, mat%dimen
+                        DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
+                    end do
+
+                    ! Plastic
+                    do j = 1, mat%dimen
+                        do k = 1, mat%dimen
+                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                        end do
+                    end do
+                    CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp), &
+                                                    matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                    CC(mat%dimen+1, mat%dimen+1, gp) = mat%Mprop(gp)*mat%detJ(gp)
+                end do
+
+                if (mat%dimen.eq.2) then
+                    call separatevariables_3d(oper, CC)
+                else if (mat%dimen.eq.3) then
+                    call separatevariables_4d(oper, CC)
+                end if
+                univMcoefs(i, :, :) = oper%univmasscoefs(:mat%dimen, :); univKcoefs(i, :, :) = oper%univstiffcoefs(:mat%dimen, :)
+            end do
+            
         end if
     end subroutine compute_separationvariables
 

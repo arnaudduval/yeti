@@ -62,7 +62,7 @@ contains
 
     end subroutine setup_capacityprop
 
-    subroutine compute_separationvariables(mat, nc_list, Mcoefs, Kcoefs)
+    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
         
         use separatevariables
         implicit none 
@@ -72,7 +72,7 @@ contains
         integer, intent(in) :: nc_list
         dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: Mcoefs(mat%dimen, maxval(nc_list)), Kcoefs(mat%dimen, maxval(nc_list))
+        double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
@@ -84,39 +84,40 @@ contains
 
         if (.not.associated(mat%Cprop)) then
             allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+            update = .true.; nc_list_t = nc_list
+            call initialize_operator(oper, mat%dimen, nc_list_t, update)
+            
             do gp = 1, mat%ncols_sp
                 CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
                                     *mat%detJ(gp)
             end do
 
-            update = .true.; nc_list_t = nc_list
-            call initialize_operator(oper, mat%dimen, nc_list_t, update)
             if (mat%dimen.eq.2) then
                 call separatevariables_2d(oper, CC)
             else if (mat%dimen.eq.3) then
                 call separatevariables_3d(oper, CC)
             end if
 
-            Mcoefs = oper%univmasscoefs; Kcoefs = oper%univstiffcoefs
+            univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
 
         else
             allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+            update = .true.; update(mat%dimen+1) = .false.
+            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+
             do gp = 1, mat%ncols_sp
                 CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
                 matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                 CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
             end do
 
-            update = .true.; update(mat%dimen+1) = .false.
-            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
-            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
             if (mat%dimen.eq.2) then
                 call separatevariables_3d(oper, CC)
             else if (mat%dimen.eq.3) then
                 call separatevariables_4d(oper, CC)
             end if
-
-            Mcoefs = oper%univmasscoefs(:mat%dimen, :); Kcoefs = oper%univstiffcoefs(:mat%dimen, :)
+            univMcoefs = oper%univmasscoefs(:mat%dimen, :); univKcoefs = oper%univstiffcoefs(:mat%dimen, :)
         end if
         
     end subroutine compute_separationvariables
