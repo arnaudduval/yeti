@@ -376,6 +376,8 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
+
     mat%dimen = dimen
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -419,7 +421,7 @@ end subroutine solver_steady_heat_3d
 subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                 data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndod, dod, table, &
-                                invJ, detJ, Cprop, Kprop, thetadt, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -447,7 +449,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
-    double precision, intent(in) :: invJ, detJ, Cprop, Kprop, thetadt
+    double precision, intent(in) :: invJ, detJ, Cprop, Kprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Cprop(nc_total), Kprop(dimen, dimen, nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG    
@@ -476,12 +478,14 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
     mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, thetadt/); nc_list = (/nc_u, nc_v/)
+    mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 3
 
     if (methodPCG.eq.'WP') then 
@@ -506,7 +510,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Kmean(:dimen))
-        solv%temp_struct%Deigen = mat%Cmean + thetadt*solv%temp_struct%Deigen
+        solv%temp_struct%Deigen = mat%Cmean + tsfactor*solv%temp_struct%Deigen
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
@@ -520,7 +524,7 @@ end subroutine solver_lineartransient_heat_2d
 subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, ndod, dod, table, &
-                                invJ, detJ, Cprop, Kprop, thetadt, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -550,7 +554,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
-    double precision, intent(in) :: invJ, detJ, Cprop, Kprop, thetadt
+    double precision, intent(in) :: invJ, detJ, Cprop, Kprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Cprop(nc_total), Kprop(dimen, dimen, nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG    
@@ -581,11 +585,13 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
+    if (any(dod.le.0)) stop 'Indices must be greater than 0'
+
     mat%dimen = dimen; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, thetadt/); nc_list = (/nc_u, nc_v, nc_w/)
+    mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 3
 
     if (methodPCG.eq.'WP') then 
@@ -611,7 +617,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                                 data_W_u, data_W_v, data_W_w, table, mat%Kmean(:mat%dimen))
-        solv%temp_struct%Deigen = mat%Cmean + thetadt*solv%temp_struct%Deigen
+        solv%temp_struct%Deigen = mat%Cmean + tsfactor*solv%temp_struct%Deigen
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
