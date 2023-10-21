@@ -70,7 +70,8 @@ module solverplasticity2
     use datastructure
     
     type cgsolver
-        integer :: dimen = 2
+        logical :: withdiag = .true.
+        integer :: matrixfreetype = 2, dimen = 2
         type(structure) :: disp_struct(2)
         end type cgsolver
 
@@ -105,10 +106,31 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+        if (solv%matrixfreetype.eq.1) then
+
+            call mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
+
+
+        else if (solv%matrixfreetype.eq.2) then
+
+            call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                data_W_u, data_W_v, array_in, array_out)
+
+        else if (solv%matrixfreetype.eq.3) then
+
+            call mf_stiffmass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+            data_W_u, data_W_v, array_in, array_out)
+
+        else
+            stop 'Not coded'
+        end if
 
     end subroutine matrixfree_spMdV
 
@@ -179,7 +201,9 @@ contains
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
                     transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
 
-            tmp = tmp/solv%disp_struct(i)%Deigen
+            if (solv%withdiag) then
+                tmp = tmp/solv%disp_struct(i)%Deigen
+            end if
 
             ! Compute (Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v))
@@ -373,7 +397,8 @@ module solverplasticity3
     use datastructure
 
     type cgsolver
-        integer :: dimen = 3
+        logical :: withdiag = .true.
+        integer :: matrixfreetype = 2, dimen = 3
         type(structure) :: disp_struct(3)
     end type cgsolver
 
@@ -408,10 +433,30 @@ contains
         double precision, intent(out) :: array_out
         dimension :: array_out(solv%dimen, nr_total)
 
-        call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        if (solv%matrixfreetype.eq.1) then
+
+            call mf_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
+
+        else if (solv%matrixfreetype.eq.2) then
+
+            call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_W_u, data_W_v, data_W_w, array_in, array_out)
+        
+        else if (solv%matrixfreetype.eq.3) then
+
+            call mf_stiffmass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_W_u, data_W_v, data_W_w, array_in, array_out)
+                            
+        else
+            stop 'Not coded'
+        end if
 
     end subroutine matrixfree_spMdV
 
@@ -485,7 +530,9 @@ contains
             transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w)), &
             array_in(i, solv%disp_struct(i)%dof), tmp)
 
-            tmp = tmp/solv%disp_struct(i)%Deigen
+            if (solv%withdiag) then
+                tmp = tmp/solv%disp_struct(i)%Deigen
+            end if
 
             ! Compute (Uw x Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v*nr_w))
