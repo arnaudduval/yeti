@@ -5,12 +5,14 @@ module matrixfreeplasticity
     
         integer :: dimen, nvoigt
         logical :: isLumped = .false.
+        double precision :: scalars(2) = (/1.d0, 1.d0/)
         double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJ=>null(), Mprop=>null()
         double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
-        double precision, dimension(:, :), allocatable :: mean
+        double precision, dimension(:, :), allocatable :: Smean
+        double precision, dimension(:), allocatable :: Mmean
         double precision :: lambda, mu, bulk
         integer :: ncols_sp
     
@@ -38,8 +40,8 @@ contains
         mat%lambda = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
         mat%mu     = elasticmodulus/(2*(1+poissonratio))
         mat%bulk   = mat%lambda + 2.d0/3.d0*mat%mu
-        allocate(mat%mean(mat%dimen, mat%dimen))
-        mat%mean   = 1.d0
+        allocate(mat%Smean(mat%dimen, mat%dimen), mat%Mmean(mat%dimen))
+        mat%Smean = 1.d0; mat%Mmean = 1.d0
 
     end subroutine initialize_mecamat
 
@@ -121,7 +123,7 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
+    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
         
         use separatevariables
         implicit none 
@@ -139,43 +141,47 @@ contains
         type(sepoperator) :: oper
         logical :: update(mat%dimen)
         integer :: i, j, k, gp
-        double precision :: DD, coefs, NN, TNN
-        dimension :: DD(mat%dimen, mat%dimen), coefs(mat%dimen, mat%dimen, mat%ncols_sp), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
+        double precision :: DD, CC, NN, TNN
+        dimension :: DD(mat%dimen, mat%dimen), CC(mat%dimen, mat%dimen, mat%ncols_sp), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
 
-        update = .true.
-        call initialize_operator(oper, mat%dimen, nc_list, update)
+        if (.not.associated(mat%Mprop)) then
+            update = .true.
+            call initialize_operator(oper, mat%dimen, nc_list, update)
 
-        do i = 1, mat%dimen
-            do gp = 1, mat%ncols_sp
-                NN = mat%NN(:, gp)
-                call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                
-                ! Elastic
-                DD = 0.d0
-                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
-                do k = 1, mat%dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
-                end do
-
-                ! Plastic
-                do j = 1, mat%dimen
+            do i = 1, mat%dimen
+                do gp = 1, mat%ncols_sp
+                    NN = mat%NN(:, gp)
+                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                    
+                    ! Elastic
+                    DD = 0.d0
+                    DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
                     do k = 1, mat%dimen
-                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                        DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                     end do
+
+                    ! Plastic
+                    do j = 1, mat%dimen
+                        do k = 1, mat%dimen
+                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                        end do
+                    end do
+                    CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                 end do
-                coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+
+                if (mat%dimen.eq.2) then
+                    call separatevariables_2d(oper, CC)
+                else if (mat%dimen.eq.3) then
+                    call separatevariables_3d(oper, CC)
+                end if
+                univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
             end do
+        else
+            stop 'Not coded until this version'
+        end if
+    end subroutine compute_separationvariables
 
-            if (mat%dimen.eq.2) then
-                call separatevariables_2d(oper, coefs)
-            else if (mat%dimen.eq.3) then
-                call separatevariables_3d(oper, coefs)
-            end if
-            univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
-        end do
-    end subroutine compute_separationvariables_diagblocks
-
-    subroutine compute_mean_diagblocks(mat, nclist)
+    subroutine compute_mean(mat, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
@@ -190,9 +196,10 @@ contains
         integer :: i, j, k, c, gp, pos, ind(3)
         integer, dimension(:), allocatable :: sample
         integer, dimension(:, :), allocatable :: indlist
-        double precision :: DD, TNN, NN
+        double precision :: DD, TNN, NN, Mmean
         dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt)
-        double precision, allocatable, dimension(:, :, :) :: coefs
+        double precision, allocatable, dimension(:, :, :) :: Scoefs
+        double precision, allocatable, dimension(:) :: Mcoefs
 
         if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
         allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
@@ -225,7 +232,7 @@ contains
             stop 'Try 2 or 3 dimensions'
         end if
         
-        allocate(coefs(mat%dimen, mat%dimen, size(sample)))
+        allocate(Scoefs(mat%dimen, mat%dimen, size(sample)))
         do i = 1, mat%dimen
             do c = 1, size(sample)
                 gp = sample(c)
@@ -239,26 +246,40 @@ contains
                     DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
 
-                ! ! Plastic
-                ! do j = 1, mat%dimen
-                !     do k = 1, mat%dimen
-                !         DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
-                !     end do
-                ! end do
+                ! Plastic
+                do j = 1, mat%dimen
+                    do k = 1, mat%dimen
+                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    end do
+                end do
 
-                coefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                Scoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
     
             do j = 1, mat%dimen
                 if (mat%dimen.eq.2) then
-                    call trapezoidal_rule_2d(3, 3, coefs(j, j, :), mat%mean(i, j))
+                    call trapezoidal_rule_2d(3, 3, Scoefs(j, j, :), mat%Smean(i, j))
                 else if (mat%dimen.eq.3) then
-                    call trapezoidal_rule_3d(3, 3, 3, coefs(j, j, :), mat%mean(i, j))
+                    call trapezoidal_rule_3d(3, 3, 3, Scoefs(j, j, :), mat%Smean(i, j))
                 end if
             end do   
         end do
 
-    end subroutine compute_mean_diagblocks
+        if (associated(mat%Mprop)) then
+            allocate(Mcoefs(size(sample)))
+            do c = 1, size(sample)
+                gp = sample(c)
+                Mcoefs(c) = mat%Mprop(gp)*mat%detJ(gp)
+            end do
+            if (mat%dimen.eq.2) then
+                call trapezoidal_rule_2d(3, 3, Mcoefs, Mmean)
+            else if (mat%dimen.eq.3) then
+                call trapezoidal_rule_3d(3, 3, 3, Mcoefs, Mmean)
+            end if 
+            mat%Mmean = Mmean
+        end if
+
+    end subroutine compute_mean
 
     subroutine mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &

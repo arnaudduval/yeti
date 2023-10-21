@@ -401,12 +401,12 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then
-            call compute_mean_diagblocks(mat, nc_list)
+            call compute_mean(mat, nc_list)
         end if
 
         if (methodPCG.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
-            call compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
                 call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
                                 univMcoefs(i, :, :), univKcoefs(i, :, :))
@@ -414,7 +414,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%mean)
+                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Smean)
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -514,12 +514,12 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
         if (methodPCG.eq.'JMC') then
-            call compute_mean_diagblocks(mat, nc_list)
+            call compute_mean(mat, nc_list)
         end if
 
         if (methodPCG.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
-            call compute_separationvariables_diagblocks(mat, nc_list, univMcoefs, univKcoefs)
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
                 call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
                                             univMcoefs(i, :, :), univKcoefs(i, :, :))
@@ -528,7 +528,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                        data_W_u, data_W_v, data_W_w, table, mat%mean)
+                        data_W_u, data_W_v, data_W_w, table, mat%Smean)
         
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &

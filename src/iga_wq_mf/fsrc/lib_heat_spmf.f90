@@ -82,45 +82,41 @@ contains
         logical, allocatable, dimension(:) :: update
         double precision, allocatable, dimension(:, :, :) :: CC
 
-        if (associated(mat%Kprop)) then
-            if (.not.associated(mat%Cprop)) then
-                allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
-                do gp = 1, mat%ncols_sp
-                    CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-                                        *mat%detJ(gp)
-                end do
+        if (.not.associated(mat%Cprop)) then
+            allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+            do gp = 1, mat%ncols_sp
+                CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+                                    *mat%detJ(gp)
+            end do
 
-                update = .true.; nc_list_t = nc_list
-                call initialize_operator(oper, mat%dimen, nc_list_t, update)
-                if (mat%dimen.eq.2) then
-                    call separatevariables_2d(oper, CC)
-                else if (mat%dimen.eq.3) then
-                    call separatevariables_3d(oper, CC)
-                end if
-
-                Mcoefs = oper%univmasscoefs; Kcoefs = oper%univstiffcoefs
-
-            else
-                allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
-                do gp = 1, mat%ncols_sp
-                    CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
-                    matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-                    CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
-                end do
-
-                update = .true.; update(mat%dimen+1) = .false.
-                nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
-                call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
-                if (mat%dimen.eq.2) then
-                    call separatevariables_3d(oper, CC)
-                else if (mat%dimen.eq.3) then
-                    call separatevariables_4d(oper, CC)
-                end if
-
-                Mcoefs = oper%univmasscoefs(:mat%dimen, :); Kcoefs = oper%univstiffcoefs(:mat%dimen, :)
+            update = .true.; nc_list_t = nc_list
+            call initialize_operator(oper, mat%dimen, nc_list_t, update)
+            if (mat%dimen.eq.2) then
+                call separatevariables_2d(oper, CC)
+            else if (mat%dimen.eq.3) then
+                call separatevariables_3d(oper, CC)
             end if
+
+            Mcoefs = oper%univmasscoefs; Kcoefs = oper%univstiffcoefs
+
         else
-            stop 'Conductivity not defined'
+            allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+            do gp = 1, mat%ncols_sp
+                CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
+                matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
+            end do
+
+            update = .true.; update(mat%dimen+1) = .false.
+            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+            if (mat%dimen.eq.2) then
+                call separatevariables_3d(oper, CC)
+            else if (mat%dimen.eq.3) then
+                call separatevariables_4d(oper, CC)
+            end if
+
+            Mcoefs = oper%univmasscoefs(:mat%dimen, :); Kcoefs = oper%univstiffcoefs(:mat%dimen, :)
         end if
         
     end subroutine compute_separationvariables
@@ -174,21 +170,19 @@ contains
             stop 'Try 2 or 3 dimensions'
         end if
 
-        if (associated(mat%Kprop)) then
-            allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
-            do c = 1, size(sample)
-                gp = sample(c)
-                Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-                                *mat%detJ(gp)
-            end do
-            do i = 1, mat%dimen
-                if (mat%dimen.eq.2) then
-                    call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-                else if (mat%dimen.eq.3) then
-                    call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-                end if
-            end do
-        end if
+        allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
+        do c = 1, size(sample)
+            gp = sample(c)
+            Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+                            *mat%detJ(gp)
+        end do
+        do i = 1, mat%dimen
+            if (mat%dimen.eq.2) then
+                call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
+            else if (mat%dimen.eq.3) then
+                call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
+            end if
+        end do
 
         if (associated(mat%Cprop)) then
             allocate(Ccoefs(size(sample)))
