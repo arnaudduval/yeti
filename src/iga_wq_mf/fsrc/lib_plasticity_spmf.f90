@@ -157,12 +157,12 @@ contains
                     DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
 
-                ! ! Plastic
-                ! do j = 1, mat%dimen
-                !     do k = 1, mat%dimen
-                !         DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
-                !     end do
-                ! end do
+                ! Plastic
+                do j = 1, mat%dimen
+                    do k = 1, mat%dimen
+                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    end do
+                end do
                 coefs(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
 
