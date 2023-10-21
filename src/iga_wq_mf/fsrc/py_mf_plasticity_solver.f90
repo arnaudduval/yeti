@@ -648,3 +648,117 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     end if
 
 end subroutine solver_lineardynamics_2d
+
+subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, islumped, &
+                                ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, mechArgs, Mprop, &
+                                tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+
+    use matrixfreeplasticity
+    use solverplasticity3
+    use datastructure
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
+
+    logical, intent(in) :: islumped
+    integer, intent(in) :: ndu, ndv, ndw
+    integer, intent(in) :: dod_u, dod_v, dod_w
+    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2, dimen)  
+
+    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs, Mprop, tsfactor
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total), Mprop(nc_total)
+    character(len=10), intent(in) :: methodPCG
+    integer, intent(in) :: nbIterPCG
+    double precision, intent(in) :: threshold 
+
+    double precision, intent(in) :: Fext
+    dimension :: Fext(dimen, nr_total)
+    
+    double precision, intent(out) :: x, resPCG
+    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+
+    ! Local data
+    ! ----------
+    type(mecamat) :: mat
+    type(cgsolver) :: solv
+    integer :: i, nc_list(dimen)
+    double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
+
+    ! Csr format
+    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
+    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
+                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+    double precision :: data_BT_u, data_BT_v, data_BT_w
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+    
+    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+
+    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
+    if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
+
+    mat%dimen = dimen; mat%isLumped = isLumped
+    call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
+    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_jacobienjacobien(mat)
+    call setup_jacobiennormal(mat, mechArgs)
+    call setup_massprop(mat, nc_total, Mprop)
+    mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
+    solv%matrixfreetype = 3
+
+    if (methodPCG.eq.'WP') then 
+
+        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+
+    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'JMC') then 
+            call compute_mean(mat, nc_list)
+        end if
+
+        if (methodPCG.eq.'TDC') then
+            allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            do i = 1, dimen
+                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
+                                univMcoefs(i, :, :), univKcoefs(i, :, :))
+            end do
+        end if
+    
+        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w, table, mat%Smean)
+    
+        do i = 1, dimen
+            solv%disp_struct(i)%Deigen = mat%Mmean + tsfactor*solv%disp_struct(i)%Deigen
+        end do
+
+        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+    else 
+        stop 'Unknown method' 
+    end if
+
+end subroutine solver_lineardynamics_3d
