@@ -85,7 +85,7 @@ cases.append({'filename': 'beam-dloadF4-centrif-dloadF2',
               'description': 'distributed load on face 4, then centrifugal \
                force, then distributed load on face 2'})
 
-# Model refinement parameters (singla patch and 3D for all)
+# Model refinement parameters (single patch and 3D for all)
 nb_deg = np.zeros((3, 1), dtype=np.intp)
 nb_ref = np.zeros((3, 1), dtype=np.intp)
 
