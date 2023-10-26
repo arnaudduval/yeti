@@ -117,7 +117,7 @@ def matrix_assembly(model_iga):
 
 
 for case in cases:
-    model_iga = IGAparametrization(filename=case['filename'])
+    model_iga = IGAparametrization(filename='inputs_beam/'+case['filename'])
     model_iga.refine(nb_ref, nb_deg)
     _, f_vects[case['filename']], _ = matrix_assembly(model_iga)
 
