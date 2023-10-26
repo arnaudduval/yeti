@@ -2324,3 +2324,24 @@ class IGAparametrization:
         """
         return self._nb_patch
 
+    @property
+    def nb_dof_free(self):
+        """
+        Number of unblocked degrees of freedom
+        """
+        return self._nb_dof_free
+
+    @property
+    def ind_dof_free(self):
+        """
+        Indices of unblocked degrees of freedom
+        """
+        return self._ind_dof_free
+
+    @property
+    def nb_dof_tot(self):
+        """
+        Total number of degrees of freedom
+        """
+        return self._nb_dof_tot
+
