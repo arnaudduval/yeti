@@ -35,7 +35,7 @@ from preprocessing.igaparametrization import IGAparametrization
 from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 
 # Read data and create IGAparametrization object
-modeleIGA = IGAparametrization(filename='beam-dloadF2F4')
+modeleIGA = IGAparametrization(filename='inputs_beam/beam-dloadF2F4')
 
 # Refine modele
 nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
