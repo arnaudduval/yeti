@@ -20,6 +20,7 @@
 
 """
 A beam subjected to centrifugal force and distributed triangular pressure
+Test to verify if load sum is correct in force vector
 """
 
 import sys
