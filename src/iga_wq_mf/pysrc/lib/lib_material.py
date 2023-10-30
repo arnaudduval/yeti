@@ -136,7 +136,8 @@ class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
 	def __init__(self, matArgs:dict):
 		super().__init__()
-		self.density        = matArgs.get('density', None)
+		density = matArgs.get('density', None)
+		if density is not None: self.__addDensity(density)
 		self.elasticmodulus = matArgs.get('elastic_modulus', None)
 		self.poissonratio   = matArgs.get('poisson_ratio', None)
 		self.elasticlimit   = matArgs.get('elastic_limit', None)
@@ -150,6 +151,10 @@ class mechamat(material):
 			self._isPlasticityPossible = True
 			self.plasticLaw = plasticLaw(self.elasticlimit, tmp)
 		self.__setExtraMechanicalProperties()
+		return
+	
+	def __addDensity(self, density):
+		self.density = super().setScalarProperty(density, isIsotropic=True)
 		return
 	
 	def __setExtraMechanicalProperties(self):
@@ -195,6 +200,7 @@ class mechamat(material):
 		nvoigt, nnz = np.shape(strain)
 		if nvoigt   == 3: dim = 2
 		elif nvoigt == 6: dim = 3
+		isElasticLoad = True
 
 		output  = np.zeros((4*(nvoigt+1), nnz)); Cep = np.zeros((3, nnz))
 		Tstrain = array2symtensor4All(strain, dim)
@@ -223,6 +229,8 @@ class mechamat(material):
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
 		if np.size(plsInd) > 0:
+
+			isElasticLoad = False
 
 			# Compute plastic-strain increment
 			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.lame_mu, a[plsInd], eta_trial[:, :, plsInd])
@@ -258,7 +266,7 @@ class mechamat(material):
 
 		output[0:nvoigt, :] = stress; output[nvoigt:2*nvoigt, :] = pls_new; output[2*nvoigt, :] = a_new
 		output[2*nvoigt+1:3*nvoigt+1, :] = b_new; output[3*nvoigt+1:3*nvoigt+4, :] = Cep
-		return output
+		return output, isElasticLoad
 	
 def clean_dirichlet(A, dod):
 	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension

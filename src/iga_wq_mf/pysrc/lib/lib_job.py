@@ -250,20 +250,20 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
 		return temperature, residue
 	
-	def _solveLinearizedTransientProblem(self, Fext, thetadt, args=None, isLumped=False):
+	def _solveLinearizedTransientProblem(self, Fext, tsfactor, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*super()._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-				Cprop, Kprop, thetadt, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+				Cprop, Kprop, tsfactor, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
 
 	def solveFourierTransientProblem(self, Tinout, time_list, Fext_list, alpha=1.0, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
-		dod, _, dof = self.boundary.getThermalBoundaryConditionInfo()
+		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 
 		# Compute inital velocity using interpolation
 		V_n0 = np.zeros(nbctrlpts_total)
@@ -428,7 +428,7 @@ class mechaproblem(problem):
 				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
-				output = self.mechamaterial.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
+				output, isElasticLoad = self.mechamaterial.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
 				stress, pls_n1, a_n1 = output[:nvoigt, :], output[nvoigt:2*nvoigt, :], output[2*nvoigt, :]
 				b_n1, mechArgs = output[2*nvoigt+1:3*nvoigt+1, :], output[3*nvoigt+1:, :]
 
@@ -450,7 +450,7 @@ class mechaproblem(problem):
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				if j > 0 and np.all(a_n1==0.0): break
+				if j > 0 and isElasticLoad: break
 
 				# Update active control points
 				dj_n1 += deltaD
@@ -465,8 +465,100 @@ class mechaproblem(problem):
 
 		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
-	def solveLinearElastoDynamicProblem(self):
-		
+	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, otherargs=None, isLumped=False):
+		dod = deepcopy(self.boundary.mchdod)
+		for i, tmp in enumerate(dod):
+			tmp = tmp + 1; dod[i] = tmp
+		dimen  = self.part.dim
+		nvoigt = int(dimen*(dimen+1)/2)
+		prop = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
+		if mechArgs is None:
+			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs[0, :] = self.mechamaterial.lame_lambda
+			mechArgs[1, :] = self.mechamaterial.lame_mu
+		if otherargs is None: otherargs = self.part.qpPhy
+		Mprop = self.mechamaterial.density(otherargs)
+		inpts = [*super()._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
+				self.part.invJ, self.part.detJ, prop, mechArgs, Mprop, tsfactor,
+				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
+		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_elasticity_3d(*inpts)
+		return displacement, resPCG
+
+	def solveDynamicsProblem(self, dispinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
+		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
+		V_n0 = np.zeros((self.part.dim, self.nbctrlpts))
+		A_n0 = np.zeros((self.part.dim, self.nbctrlpts))
+
+		# Compute initial velocity using interpolation
+		if np.shape(dispinout)[2] >= 2:
+			dt1 = time_list[1] - time_list[0]
+			dt2 = time_list[2] - time_list[0]
+			factor = dt2/dt1
+			for k in range(self.part.dim):
+				dod = self.boundary.mchdod[k]
+				V_n0[k, dod] = 1.0/(dt1*(factor-factor**2))*(dispinout[k, dod, 2] - (factor**2)*dispinout[k, dod, 1] - (1 - factor**2)*dispinout[k, dod, 0])
+				A_n0[k, dod] = 2.0/(dt1*dt2)*((dispinout[k, dod, 2] - factor*dispinout[k, dod, 1])/(factor - 1) + dispinout[k, dod, 0])
+		else: raise Warning('We need more than 2 steps')
+
+		AllresPCG = []
+		for i in range(1, nsteps):
+			
+			# Get delta time
+			dt = time_list[i] - time_list[i-1]
+			
+			# Get values of last step
+			d_n0 = np.copy(dispinout[:, :, i-1])
+
+			# Predict values of new step
+			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
+			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
+			Aj_n1 = np.zeros(self.part.nbctrlpts_total)
+			
+			# Overwrite inactive control points
+			for k in range(self.part.dim):
+				dod = self.boundary.mchdod[k]
+				Aj_n1[k, dod] = (dispinout[k, dod, i] - dj_n1[dod])/(beta*dt**2)
+				Vj_n1[k, dod] = Vj_n1[dod] + gamma*dt*Aj_n1[dod]
+				dj_n1[k, dod] = dispinout[k, dod, i]
+
+			Fext_n1 = np.copy(Fext_list[:, :, i])
+			A_n1ref = np.copy(Aj_n1)
+
+			print('Step: %d' %i)
+			for j in range(self._nbIterNR):
+
+				# Compute strain and stress at each quadrature point
+				strain = self.interpolate_strain(dj_n1)
+
+				# Compute internal force 
+				Fint_dj = self.compute_intForce(stress)
+				
+				# Compute residue
+				r_dj = Fext_n1 - Fint_dj
+				clean_dirichlet(r_dj, self.boundary.mchdod) 
+
+				# Solve for active control points
+				resPCGj = np.array([i, j+1])
+				deltaA, resPCG = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
+				resPCGj = np.append(resPCGj, resPCG)
+				A_n1ref += deltaA
+
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(np.dot(A_n1ref, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error: %.5e' %resNRj)
+				if resNRj <= self._thresholdNR*resNR0: break
+
+				# Update active control points
+				dj_n1 += beta*dt**2*deltaA
+				Vj_n1 += gamma*dt*deltaA
+				Aj_n1 += deltaA
+				AllresPCG.append(resPCGj)
+
+			dispinout[:, i] = np.copy(dj_n1)
+			V_n0 = np.copy(Vj_n1)
+
 		return
 
 class thermomechaproblem(heatproblem, mechaproblem):

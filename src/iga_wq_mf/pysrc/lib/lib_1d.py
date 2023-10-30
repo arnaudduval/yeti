@@ -393,6 +393,7 @@ class mechaproblem1D(part1D):
 
 		nnz = np.size(strain)
 		output = np.zeros((5, nnz))
+		isElasticLoad = True
 
 		# Compute trial stress
 		s_trial = self.elasticmodulus*(strain - pls)
@@ -410,6 +411,8 @@ class mechaproblem1D(part1D):
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
 		if np.size(plsInd) > 0:
+
+			isElasticLoad = False
 
 			# Compute plastic-strain increment
 			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
@@ -435,7 +438,7 @@ class mechaproblem1D(part1D):
 
 		output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
 		output[3, :] = b_new; output[4, :] = Cep
-		return output
+		return output, isElasticLoad
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
@@ -494,7 +497,7 @@ class mechaproblem1D(part1D):
 				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
-				output = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
+				output, isElasticLoad = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
 				stress, pls_n1, a_n1, b_n1, Cep = output[0, :], output[1, :], output[2, :], output[3, :], output[4, :]
 
 				# Compute internal force 
@@ -514,7 +517,7 @@ class mechaproblem1D(part1D):
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
-				if j > 0 and np.all(a_n1==0.0): break
+				if j > 0 and isElasticLoad: break
 				
 				# Update active control points
 				dj_n1 += deltaD
