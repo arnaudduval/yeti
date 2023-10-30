@@ -12,7 +12,7 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TRACTION, RINT, REXT = 1.0, 1.0, 8
+TRACTION, RINT, REXT = 1.0, 1.0, 2
 YOUNG, POISSON = 1e3, 0.1
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISSON, 
@@ -20,8 +20,8 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISS
 
 DEGREE_LIST = np.arange(5, 6)
 CUTS_LIST   = np.arange(6, 7)
-ITERMETHODS = ['C', 'JMC', 'TDC']
-dataExist   = False
+ITERMETHODS = ['WP', 'C', 'JMC']
+dataExist   = True
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -92,7 +92,7 @@ for cuts in CUTS_LIST:
 			nbctrlpts = np.ones(3, dtype=int); nbctrlpts[:2] = simulation._nbctrlpts
 			boundary = boundaryCondition(nbctrlpts)
 			table = np.zeros((2, 2, 2), dtype=int)
-			table[1, 1, 0] = 1; table[1, 0, 1] = 1
+			table[1, 1, 0] = 1; table[1, 1, 1] = 1
 			boundary.add_DirichletDisplacement(table=table)
 			simulation.simulate(material=mat, boundary=boundary, overwrite=True)
 

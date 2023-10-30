@@ -8,8 +8,8 @@ from pysrc.phd.lib_simulation import decoder, simulate
 
 def conductivityProperty(P:list):
 	dimen = np.size(P, axis=0)
-	# Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-	Kref  = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 3]])
+	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	# Kref  = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 3]])
 	Kprop = np.zeros((dimen, dimen, np.size(P, axis=1)))
 	for i in range(dimen): 
 		for j in range(dimen):
@@ -173,11 +173,11 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = False
+dataExist   = True
 degree_list = np.arange(4, 5)
 cuts_list   = np.arange(5, 6)
-name_list   = ['qa']
-IterMethods = ['WP', 'C', 'JMC', 'TDC']
+name_list   = ['QA']
+IterMethods = ['WP', 'C', 'JMC']
 
 for cuts in cuts_list:
 	for degree in degree_list:
