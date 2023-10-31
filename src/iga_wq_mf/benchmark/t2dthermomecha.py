@@ -9,7 +9,7 @@ from pysrc.lib.lib_base import sigmoid
 # Set global variables
 DEGREE, CUTS = 3, 3
 TRACTION, RINT, REXT = 1.0, 1.0, 2.0
-YOUNG, POISSON = 1e3, 0.3
+YOUNG, POISSON = 1e5, 0.3
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'

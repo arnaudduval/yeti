@@ -548,7 +548,7 @@ class mechaproblem(problem):
 
 				# Compute strain and stress at each quadrature point
 				strain = self.interpolate_strain(dj_n1)
-				stress = self.mechamaterial.evalElasticStress(strain)
+				stress = self.mechamaterial.evalElasticStress(strain, self.part.dim)
 
 				# Compute internal force 
 				args = self.part.qpPhy
@@ -565,7 +565,7 @@ class mechaproblem(problem):
 				A_n1ref += deltaA
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(A_n1ref, r_dj))
+				resNRj = abs(block_dot_product(self.part.dim, A_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
@@ -576,7 +576,7 @@ class mechaproblem(problem):
 				Aj_n1 += deltaA
 				AllresPCG.append(resPCGj)
 
-			dispinout[:, i] = np.copy(dj_n1)
+			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
 
 		return AllresPCG
@@ -696,7 +696,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				A_n1ref += deltaA
 
 				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(A_n1ref, r_dj))
+				resNRj = abs(block_dot_product(self.part.dim+1, A_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= self._thresholdNR*resNR0: break
