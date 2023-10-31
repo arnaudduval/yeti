@@ -375,9 +375,9 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce
 
-	def compute_MechDynamicIntForce(self, stress, accel, massArgs=None, isLumped=False):
-		if massArgs is None: massArgs = self.part.qpPhy
-		intForce = self.compute_MechStaticIntForce(stress) + self.compute_mfMass(accel, args=massArgs, isLumped=isLumped)
+	def compute_MechDynamicIntForce(self, stress, accel, args=None, isLumped=False):
+		if args is None: args = self.part.qpPhy
+		intForce = self.compute_MechStaticIntForce(stress) + self.compute_mfMass(accel, args=args, isLumped=isLumped)
 		return intForce
 
 	def solveElasticityProblem(self, Fext, mechArgs=None):
@@ -483,7 +483,7 @@ class mechaproblem(problem):
 
 		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
-	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, massArgs=None, isLumped=False):
+	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, args=None, isLumped=False):
 		dod = deepcopy(self.boundary.mchdod)
 		for i, tmp in enumerate(dod):
 			tmp = tmp + 1; dod[i] = tmp
@@ -494,8 +494,8 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		if massArgs is None: massArgs = self.part.qpPhy
-		Mprop = self.mechamaterial.density(massArgs)
+		if args is None: args = self.part.qpPhy
+		Mprop = self.mechamaterial.density(args)
 		inpts = [*super()._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Mprop, tsfactor,
 				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
@@ -552,7 +552,7 @@ class mechaproblem(problem):
 
 				# Compute internal force 
 				args = self.part.qpPhy
-				Fint_dj = self.compute_MechDynamicIntForce(stress, Aj_n1, massArgs=args, isLumped=isLumped)
+				Fint_dj = self.compute_MechDynamicIntForce(stress, Aj_n1, args=args, isLumped=isLumped)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -590,17 +590,33 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
 		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=1.0, isIsotropic=True)
 		return
+
+	def compute_mfCoupled(self, array_in, isThermal=True):
+		if args is None: args = self.part.qpPhy
+		prop = 3*self.mechamaterial.thexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
+		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
+		if isThermal:
+			if self.part.dim == 2: array_out = heatsolver.mf_get_coupled_2d(*inpts, array_in)
+			if self.part.dim == 3: array_out = heatsolver.mf_get_coupled_3d(*inpts, array_in)
+		else:
+			if self.part.dim == 2: array_out = plasticitysolver.mf_get_coupled_2d(*inpts, array_in)
+			if self.part.dim == 3: array_out = plasticitysolver.mf_get_coupled_3d(*inpts, array_in)
+		return array_out
 	
-	def compute_ThermomechIntForce(self, temp, flux, stress, accel, args=None, isLumped=False):
+	def compute_ThermomechIntForce(self, temp, flux, stress, vel, accel, args=None, isLumped=False):
 		if args is None: args = self.part.qpPhy
 		intForce = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
-		intForce[:-1, :] = self.compute_MechDynamicIntForce(stress, accel, massArgs=args, isLumped=isLumped)
-		intForce[-1, :]  = self.compute_HeatIntForce(temp, flux, args=args, isLumped=isLumped)
+		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel, args=args, isLumped=isLumped) 
+							- self.compute_mfCoupled(temp, isThermal=True))
+		intForce[-1, :]  = (self.compute_HeatIntForce(temp, flux, args=args, isLumped=isLumped)
+							+ self.heatmaterial.refTemperature*self.compute_mfCoupled(vel, isThermal=False))
 		return intForce
 
-	def _solveLinearizedThermoElasticityProblem(self):
-
-		return
+	def _solveLinearizedThermoElasticityProblem(self, Fext, tsfactor1, tsfactor2, mechArgs=None, args=None, isLumped=False):
+		displacement = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
+		displacement[:-1, :] = self._solveLinearizedElastoDynamicProblem(Fext[:-1, :], tsfactor2, mechArgs=mechArgs, args=args, isLumped=isLumped)[0]
+		displacement[-1, :] = self._solveLinearizedTransientProblem(Fext[-1, :], tsfactor2/tsfactor1, args=args, isLumped=isLumped)[0]/tsfactor1
+		return displacement
 	
 	def solveThermoElasticityProblem(self, dispinout, Tinout, Fmech_list, Fheat_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -622,7 +638,6 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			A_n0[-1, dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
 
-		AllresPCG = []
 		for i in range(1, nsteps):
 			
 			# Get delta time
@@ -664,32 +679,30 @@ class thermomechaproblem(heatproblem, mechaproblem):
 
 				# Compute internal force 
 				args = np.row_stack((self.part.qpPhy, temperature))
-				Fint_dj = self.compute_ThermomechIntForce(temperature, Vj_n1[-1, :], stress, Aj_n1[:-1, :], args=args, isLumped=isLumped)
+				Fint_dj = self.compute_ThermomechIntForce(temperature, Vj_n1[-1, :], stress, Vj_n1[:-1, :], Aj_n1[:-1, :], 
+							args=args, isLumped=isLumped)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod.append(self.boundary.thdod)) 
 
-			# 	# Solve for active control points
-			# 	resPCGj = np.array([i, j+1])
-			# 	deltaA, resPCG = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
-			# 	resPCGj = np.append(resPCGj, resPCG)
-			# 	A_n1ref += deltaA
+				# Solve for active control points
+				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)
+				A_n1ref += deltaA
 
-			# 	# Compute residue of Newton Raphson using an energetic approach
-			# 	resNRj = abs(np.dot(A_n1ref, r_dj))
-			# 	if j == 0: resNR0 = resNRj
-			# 	print('NR error: %.5e' %resNRj)
-			# 	if resNRj <= self._thresholdNR*resNR0: break
+				# Compute residue of Newton Raphson using an energetic approach
+				resNRj = abs(np.dot(A_n1ref, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error: %.5e' %resNRj)
+				if resNRj <= self._thresholdNR*resNR0: break
 
-			# 	# Update active control points
-			# 	dj_n1 += beta*dt**2*deltaA
-			# 	Vj_n1 += gamma*dt*deltaA
-			# 	Aj_n1 += deltaA
-			# 	AllresPCG.append(resPCGj)
+				# Update active control points
+				dj_n1 += beta*dt**2*deltaA
+				Vj_n1 += gamma*dt*deltaA
+				Aj_n1 += deltaA
 
-			# dispinout[:, i] = np.copy(dj_n1[:-1, :])
-			# Tinout[:, i] = np.copy(dj_n1[-1, :])
-			# V_n0 = np.copy(Vj_n1)
+			dispinout[:, i] = np.copy(dj_n1[:-1, :])
+			Tinout[:, i] = np.copy(dj_n1[-1, :])
+			V_n0 = np.copy(Vj_n1)
 		
 		return 
