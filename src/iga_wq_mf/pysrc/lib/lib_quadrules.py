@@ -62,7 +62,7 @@ class QuadratureRules:
 	
 class GaussQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, quadArgs:dict):
-		super().__init__(degree, knotvector)
+		QuadratureRules.__init__(self, degree, knotvector)
 		self._gaussType = quadArgs.get('type', 'leg').lower()
 		extraArgs = quadArgs.get('extra', {'nbQPEL': 1})
 		if self._gaussType == 'leg': # Legendre 
@@ -127,7 +127,7 @@ class GaussQuadrature(QuadratureRules):
 
 class WeightedQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, quadArgs:dict):
-		super().__init__(degree, knotvector)
+		QuadratureRules.__init__(self, degree, knotvector)
 		self._wqType  = quadArgs.get('type', 1)
 		self._posRule = 'midpoint' # By default
 		if   self._wqType == 1: extraArgsDefault = {'s': 1, 'r': 2}

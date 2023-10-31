@@ -153,11 +153,11 @@ class part1D:
 
 class heatproblem1D(part1D):
 	def __init__(self, part, kwargs:dict):
-		super().__init__(part, kwargs)	
+		part1D.__init__(self, part, kwargs)	
 		return
 	
 	def activate_thermal(self, matArgs:dict):
-		super().activate_thermal(matArgs)
+		self.activate_thermal(matArgs)
 		if self.density is None: self.density = lambda x: np.ones(len(x))
 		return 
 	
@@ -359,11 +359,11 @@ class heatproblem1D(part1D):
 
 class mechaproblem1D(part1D):
 	def __init__(self, part, kwargs:dict):
-		super().__init__(part, kwargs)		
+		part1D.__init__(self, part, kwargs)		
 		return
 	
 	def activate_mechanical(self, matArgs:dict):
-		super().activate_mechanical(matArgs)
+		self.activate_mechanical(matArgs)
 		if self.density is None: self.density = lambda x: np.ones(len(x))
 		self.plasticLaw = None
 		self._isPlasticityPossible = False

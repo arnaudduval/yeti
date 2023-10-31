@@ -706,7 +706,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
 
-			dispinout[:, i] = np.copy(dj_n1[:-1, :])
+			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])
 			V_n0 = np.copy(Vj_n1)
 		

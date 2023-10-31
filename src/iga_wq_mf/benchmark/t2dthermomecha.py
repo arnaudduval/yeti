@@ -8,8 +8,8 @@ from pysrc.lib.lib_base import sigmoid
 
 # Set global variables
 DEGREE, CUTS = 3, 3
-TRACTION, RINT, REXT = 1.0, 1.0, 2.0
-YOUNG, POISSON = 1e5, 0.3
+TRACTION, RINT, REXT = 1.0, 0.1, 0.2
+YOUNG, POISSON, DENSITY = 2e11, 0.3, 7800
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'
@@ -17,13 +17,13 @@ GEOARGS = {'name': 'QA', 'degree': DEGREE*np.ones(3, dtype=int),
 			'nb_refinementByDirection': CUTS*np.ones(3, dtype=int), 
 			'extra':{'Rin':RINT, 'Rex':REXT}
 }
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
-			'plasticLaw': {'Isoname':'none'}}
-SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-9, 'PCGmethod': 'TDC', 'NRThreshold': 1e-6}
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e16, 'poisson_ratio': POISSON, 
+			'plasticLaw': {'Isoname':'none'}, 'thermal_expansion': 1e-5}
+SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-9, 'PCGmethod': 'TDC', 'NRThreshold': 1e-8}
 QUADARGS   = {'quadrule': 'iga', 'type': 'leg'}
 
 def conductivityProperty(P:list):
-	Kref  = np.array([[1, 0.5],[0.5, 2]])
+	Kref  = 55*np.array([[1, 0.0],[0.0, 1]])
 	Kprop = np.zeros((2, 2, np.size(P, axis=1)))
 	for i in range(2): 
 		for j in range(2):
@@ -31,9 +31,7 @@ def conductivityProperty(P:list):
 	return Kprop 
 
 def capacityProperty(P:list):
-	cst = 1.0
-	T   = P[-1, :]
-	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
+	Cprop = 460*np.ones(np.size(P, axis=1))
 	return Cprop
 
 def forceSurf_infPlate(P:list):
@@ -59,8 +57,8 @@ modelPhy = part(modelIGA, quadArgs=QUADARGS)
 
 # Set Dirichlet boundaries
 boundary = boundaryCondition(modelPhy.nbctrlpts)
-boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
-boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
+boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]), temperature=0)
+boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=10)
 table = np.zeros((2, 2, 2), dtype=int); table[1, 1, 0] = 1; table[1, 0, 1] = 1
 boundary.add_DirichletDisplacement(table=table)
 enablePrint()
@@ -68,7 +66,7 @@ enablePrint()
 # Solve elastic problem
 problem = thermomechaproblem(heatmaterial, mechamaterial, modelPhy, boundary)
 problem.addSolverConstraints(solverArgs=SOLVERARGS)
-problem.addDensity(1.0, isIsotropic=True)
+problem.addDensity(DENSITY, isIsotropic=True)
 
 # Set external forces
 Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
@@ -79,7 +77,7 @@ Fref = np.zeros((problem.part.nbctrlpts_total, 1))
 Fheat_list = np.kron(Fref, sigmoid(TIME_LIST))
 
 # Set initial conditions
-temperature = np.zeros(np.shape(Fheat_list))
+temperature = 0*np.ones(np.shape(Fheat_list))
 for i in range(1, len(TIME_LIST)): temperature[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
 
 displacement = np.zeros(np.shape(Fmech_list))

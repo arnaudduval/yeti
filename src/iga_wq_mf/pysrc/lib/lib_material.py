@@ -49,7 +49,7 @@ class material():
 
 class heatmat(material):
 	def __init__(self, matArgs=dict()):
-		super().__init__()
+		material.__init__(self)
 		self.capacity     = None
 		self.conductivity = None
 		self._isCapacityIsotropic     = False
@@ -59,12 +59,12 @@ class heatmat(material):
 	
 	def addCapacity(self, inpt, isIsotropic):
 		if isIsotropic: self._isCapacityIsotropic = True
-		self.capacity = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.capacity = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
 	def addConductivity(self, inpt, isIsotropic, shape=(3, 3)):
 		if isIsotropic: self._isConductivityIsotropic = True
-		self.conductivity = super().setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
+		self.conductivity = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
 
 class plasticLaw():
@@ -133,7 +133,7 @@ class plasticLaw():
 class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
 	def __init__(self, matArgs:dict):
-		super().__init__()
+		material.__init__(self)
 		self.elasticmodulus = matArgs.get('elastic_modulus', None)
 		self.poissonratio   = matArgs.get('poisson_ratio', None)
 		self.elasticlimit   = matArgs.get('elastic_limit', None)
