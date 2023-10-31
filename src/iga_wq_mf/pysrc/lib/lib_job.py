@@ -489,15 +489,15 @@ class mechaproblem(problem):
 			tmp = tmp + 1; dod[i] = tmp
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
-		prop = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
+		elasticProp = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
 		if mechArgs is None:
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		if args is None: args = self.part.qpPhy
-		Mprop = self.mechamaterial.density(args)
+		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, mechArgs, Mprop, tsfactor,
+				self.part.invJ, self.part.detJ, elasticProp, mechArgs, massProp, tsfactor,
 				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_lineardynamics_2d(*inpts)
 		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_lineardynamics_3d(*inpts)
@@ -595,7 +595,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		self.heatmaterial.density  = self.heatmaterial.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 
-	def compute_mfCoupled(self, array_in, isThermal=True):
+	def compute_mfCoupled(self, array_in, args=None, isThermal=True):
 		if args is None: args = self.part.qpPhy
 		prop = 3*self.mechamaterial.thexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
@@ -607,13 +607,13 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			if self.part.dim == 3: array_out = plasticitysolver.mf_get_coupled_3d(*inpts, array_in)
 		return array_out
 	
-	def compute_ThermomechIntForce(self, temp, flux, stress, vel, accel, args=None, isLumped=False):
+	def compute_ThermomechIntForce(self, disp, vel, accel, stress, args=None, isLumped=False):
 		if args is None: args = self.part.qpPhy
 		intForce = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
-		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel, args=args, isLumped=isLumped) 
-							- self.compute_mfCoupled(temp, isThermal=True))
-		intForce[-1, :]  = (self.compute_HeatIntForce(temp, flux, args=args, isLumped=isLumped)
-							+ self.heatmaterial.refTemperature*self.compute_mfCoupled(vel, isThermal=False))
+		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel[:-1, :], args=args, isLumped=isLumped) 
+							- self.compute_mfCoupled(disp[-1, :], args=args, isThermal=False))
+		intForce[-1, :]  = (self.compute_HeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
+							+ self.heatmaterial.refTemperature*self.compute_mfCoupled(vel[:-1, :], args=args, isThermal=True))
 		return intForce
 
 	def _solveLinearizedThermoElasticityProblem(self, Fext, tsfactor1, tsfactor2, mechArgs=None, args=None, isLumped=False):
@@ -637,7 +637,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dod = self.boundary.mchdod[k]
 				V_n0[k, dod] = 1.0/(dt1*(factor-factor**2))*(dispinout[k, dod, 2] - (factor**2)*dispinout[k, dod, 1] - (1 - factor**2)*dispinout[k, dod, 0])
 				A_n0[k, dod] = 2.0/(dt1*dt2)*((dispinout[k, dod, 2] - factor*dispinout[k, dod, 1])/(factor - 1) + dispinout[k, dod, 0])
-			dod = self.boundary.getThermalBoundaryConditionInfo()[0]
+			dod = self.boundary.thdod
 			V_n0[-1, dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 			A_n0[-1, dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
@@ -683,12 +683,13 @@ class thermomechaproblem(heatproblem, mechaproblem):
 
 				# Compute internal force 
 				args = np.row_stack((self.part.qpPhy, temperature))
-				Fint_dj = self.compute_ThermomechIntForce(temperature, Vj_n1[-1, :], stress, Vj_n1[:-1, :], Aj_n1[:-1, :], 
-							args=args, isLumped=isLumped)
+				Fint_dj = self.compute_ThermomechIntForce(dj_n1, Vj_n1, Aj_n1, stress, 
+														args=args, isLumped=isLumped)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
-				clean_dirichlet(r_dj, self.boundary.mchdod.append(self.boundary.thdod)) 
+				dod = [*self.boundary.mchdod, self.boundary.thdod]
+				clean_dirichlet(r_dj, dod) 
 
 				# Solve for active control points
 				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)

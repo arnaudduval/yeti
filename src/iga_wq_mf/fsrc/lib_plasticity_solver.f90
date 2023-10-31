@@ -200,7 +200,7 @@ contains
             allocate(tmp(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
                     transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
-
+            
             if (solv%withdiag) then
                 tmp = tmp/solv%disp_struct(i)%Deigen
             end if

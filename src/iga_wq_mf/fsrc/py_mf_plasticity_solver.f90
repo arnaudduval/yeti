@@ -757,8 +757,8 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
 end subroutine solver_elasticity_3d
 
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndu, ndv, dod_u, dod_v, table, &
-                                invJ, detJ, properties, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndu, ndv, dod_u, dod_v, table, &
+                            invJ, detJ, properties, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
     use solverplasticity2
@@ -815,7 +815,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen; mat%isLumped = isLumped
+    mat%isLumped = isLumped
     call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
@@ -849,7 +849,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Smean)
         do i = 1, dimen
-            solv%disp_struct(i)%Deigen = mat%Mmean + tsfactor*solv%disp_struct(i)%Deigen
+            solv%disp_struct(i)%Deigen = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%Deigen
         end do
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &

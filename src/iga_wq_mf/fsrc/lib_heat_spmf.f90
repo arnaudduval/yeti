@@ -357,7 +357,7 @@ contains
         ! Local data 
         ! -----------
         double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
-        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nc_total), Kcoefs(dimen, dimen, nc_total)
+        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nr_total), Kcoefs(dimen, dimen, nc_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
@@ -424,7 +424,7 @@ contains
         ! Local data 
         ! -----------
         double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
-        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nc_total), Kcoefs(dimen, dimen, nc_total)
+        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nr_total), Kcoefs(dimen, dimen, nc_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
@@ -614,7 +614,7 @@ contains
             do k = 1, dimen
                 alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
                 t2 = t1*mat%invJ(k, i, :)
-                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, & 
+                call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                             nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                             nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), t2, t3)
                 array_out = array_out + t3

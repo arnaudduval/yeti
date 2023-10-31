@@ -763,7 +763,6 @@ contains
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: t1, t2, t3
         dimension :: t1(nc_total), t2(nc_total), t3(nr_total)
-
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         array_out = 0.d0     
         do l = 1, dimen

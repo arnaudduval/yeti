@@ -32,7 +32,7 @@ def conductivityProperty(P:list):
 
 def capacityProperty(P:list):
 	cst = 1.0
-	T   = P[3, :]
+	T   = P[-1, :]
 	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
 	return Cprop
 

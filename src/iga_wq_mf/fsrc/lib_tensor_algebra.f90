@@ -26,6 +26,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
     double precision, allocatable, dimension(:, :) :: Xt, Rt
     integer :: ju, jv, jw, jt, i, nb_tasks
 
+    R = 0.d0
     if (mode.eq.1) then 
 
         allocate(Xt(nc_u, nc_v*nc_w*nc_t))
