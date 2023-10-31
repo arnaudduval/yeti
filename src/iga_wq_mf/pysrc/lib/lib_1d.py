@@ -445,12 +445,12 @@ class mechaproblem1D(part1D):
 		strain = self.basis[1].T @ disp * self.invJ
 		return strain
 
-	def compute_intForce(self, sigma):
+	def compute_MechStaticIntForce(self, stress):
 		""" Computes internal force Fint. 
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Fint = self.weights[-1] @ sigma.T
+		Fint = self.weights[-1] @ stress.T
 		return Fint
 
 	def compute_tangentMatrix(self, Cep):
@@ -501,7 +501,7 @@ class mechaproblem1D(part1D):
 				stress, pls_n1, a_n1, b_n1, Cep = output[0, :], output[1, :], output[2, :], output[3, :], output[4, :]
 
 				# Compute internal force 
-				Fint_dj = self.compute_intForce(stress)
+				Fint_dj = self.compute_MechStaticIntForce(stress)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj

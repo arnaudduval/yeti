@@ -3,6 +3,7 @@ from .__init__ import *
 class material():
 
 	def __init__(self):
+		self.density = None
 		return		
 	
 	def setScalarProperty(self, inpt, isIsotropic=False):
@@ -41,27 +42,24 @@ class material():
 		else:
 			raise Warning('Not implemented')
 		return prop
-
-class heatmat(material):
-	def __init__(self):
-		super().__init__()
-		self.density      = None
-		self.capacity     = None
-		self.conductivity = None
-
-		self._isDensityIsotropic      = False
-		self._isCapacityIsotropic     = False
-		self._isConductivityIsotropic = False
-		return
 	
 	def addDensity(self, inpt, isIsotropic):
-		if isIsotropic: self._isDensityIsotropic = True
-		self.density     = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.density = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
+		return
+
+class heatmat(material):
+	def __init__(self, matArgs=dict()):
+		super().__init__()
+		self.capacity     = None
+		self.conductivity = None
+		self._isCapacityIsotropic     = False
+		self._isConductivityIsotropic = False
+		self.refTemperature = matArgs.get('RefTemp', 300)
 		return
 	
 	def addCapacity(self, inpt, isIsotropic):
 		if isIsotropic: self._isCapacityIsotropic = True
-		self.capacity    = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.capacity = super().setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
 	def addConductivity(self, inpt, isIsotropic, shape=(3, 3)):
@@ -136,11 +134,10 @@ class mechamat(material):
 	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
 	def __init__(self, matArgs:dict):
 		super().__init__()
-		density = matArgs.get('density', None)
-		if density is not None: self.__addDensity(density)
 		self.elasticmodulus = matArgs.get('elastic_modulus', None)
 		self.poissonratio   = matArgs.get('poisson_ratio', None)
 		self.elasticlimit   = matArgs.get('elastic_limit', None)
+		self.thexpansion    = matArgs.get('thermal_expansion', 1.0)
 		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): 
 			raise Warning('Mechanics not well defined')
 
@@ -151,10 +148,6 @@ class mechamat(material):
 			self._isPlasticityPossible = True
 			self.plasticLaw = plasticLaw(self.elasticlimit, tmp)
 		self.__setExtraMechanicalProperties()
-		return
-	
-	def __addDensity(self, density):
-		self.density = super().setScalarProperty(density, isIsotropic=True)
 		return
 	
 	def __setExtraMechanicalProperties(self):
@@ -170,12 +163,12 @@ class mechamat(material):
 			self.lame_bulk = bulk
 		return
 		
-	def evalElasticStress(self, strain):
-		Tstrain = array2symtensor4All(strain, 2)
-		traceStrain = evalTrace4All(strain, 2)
+	def evalElasticStress(self, strain, dim):
+		Tstrain = array2symtensor4All(strain, dim)
+		traceStrain = evalTrace4All(strain, dim)
 		Tstress = 2*self.lame_mu*Tstrain
-		for i in range(2): Tstress[i, i, :] += self.lame_lambda*traceStrain
-		stress  = symtensor2array4All(Tstress, 2)
+		for i in range(dim): Tstress[i, i, :] += self.lame_lambda*traceStrain
+		stress  = symtensor2array4All(Tstress, dim)
 		return stress
 	
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
