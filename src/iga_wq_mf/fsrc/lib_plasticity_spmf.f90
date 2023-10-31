@@ -369,7 +369,7 @@ contains
         ! ----------
         integer :: i
         double precision :: tmp_in, array_tmp, array_tmp2
-        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nc_total)
+        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nr_total)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         do i = 1, dimen
@@ -429,7 +429,7 @@ contains
         ! ----------
         integer :: i
         double precision :: tmp_in, array_tmp, array_tmp2
-        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nc_total)
+        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nr_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
 
@@ -762,7 +762,7 @@ contains
         integer :: i, l, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: t1, t2, t3
-        dimension :: t1(nc_total), t2(nc_total), t3(nc_total)
+        dimension :: t1(nc_total), t2(nc_total), t3(nr_total)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         array_out = 0.d0     
@@ -821,7 +821,7 @@ contains
         integer :: i, l, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision :: t1, t2, t3
-        dimension :: t1(nc_total), t2(nc_total), t3(nc_total)
+        dimension :: t1(nc_total), t2(nc_total), t3(nr_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
         array_out = 0.d0     

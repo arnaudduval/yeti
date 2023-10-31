@@ -212,7 +212,7 @@ end subroutine get_intforce_3d
 subroutine mf_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, isLumped, &
-                        invJ, detJ, Mprop, array_in, array_out)
+                        invJ, detJ, prop, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -231,8 +231,8 @@ subroutine mf_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
     logical, intent(in) :: isLumped
-    double precision :: invJ, detJ, Mprop
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Mprop(nc_total)
+    double precision, target, intent(in) :: invJ, detJ, prop
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -252,19 +252,18 @@ subroutine mf_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen  = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
+    mat%dimen = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
-    call setup_massprop(mat, nc_total, Mprop)
+    call setup_massprop(mat, nc_total, prop)
     call mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
-
 end subroutine mf_get_mu_2d
 
 subroutine mf_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, &
-                        invJ, detJ, Mprop, array_in, array_out)
+                        invJ, detJ, prop, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -285,8 +284,8 @@ subroutine mf_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     logical, intent(in) :: isLumped
-    double precision :: invJ, detJ, Mprop
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Mprop(nc_total)
+    double precision, target, intent(in):: invJ, detJ, prop
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -307,9 +306,9 @@ subroutine mf_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen  = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
+    mat%dimen = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
     call setup_geometry(mat, nc_total, invJ, detJ)
-    call setup_massprop(mat, nc_total, Mprop)
+    call setup_massprop(mat, nc_total, prop)
     call mf_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)

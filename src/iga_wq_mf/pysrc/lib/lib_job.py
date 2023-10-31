@@ -210,16 +210,16 @@ class problem():
 		return eigenval, eigenvec
 	
 class heatproblem(problem):
-	def __init__(self, material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
-		super().__init__(part, boundary, solverArgs)
-		self.heatmaterial = material
+	def __init__(self, heat_material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
+		problem.__init__(self, part, boundary, solverArgs)
+		self.heatmaterial = heat_material
 		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
-		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
 		return array_out
@@ -227,7 +227,7 @@ class heatproblem(problem):
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
-		inpts = [*super()._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
+		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
 		return array_out
@@ -249,7 +249,7 @@ class heatproblem(problem):
 		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
-		inpts = [*super()._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+		inpts = [*self._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				prop, Fext,  self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_steady_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
@@ -260,7 +260,7 @@ class heatproblem(problem):
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
-		inpts = [*super()._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+		inpts = [*self._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, tsfactor, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
@@ -336,16 +336,16 @@ class heatproblem(problem):
 		return AllresPCG
 
 class mechaproblem(problem):
-	def __init__(self, material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
-		super().__init__(part, boundary, solverArgs)
-		self.mechamaterial = material
+	def __init__(self, mechanical_material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
+		problem.__init__(self, part, boundary, solverArgs)
+		self.mechamaterial = mechanical_material
 		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=1.0, isIsotropic=True)
 		return
 	
 	def compute_mfMass(self, array_in, args=None, isLumped=False):
 		if args is None: args = self.part.qpPhy
 		prop = self.mechamaterial.density(args)
-		inpts = [*super()._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
+		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = plasticitysolver.mf_get_mu_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = plasticitysolver.mf_get_mu_3d(*inpts, array_in)
 		return array_out
@@ -356,7 +356,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
 		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inpts, array_in)
 		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
 		return array_out
@@ -392,7 +392,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		inpts = [*super()._getInputs(), *dod, self.boundary.mchDirichletTable, 
+		inpts = [*self._getInputs(), *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
 		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_elasticity_3d(*inpts)
@@ -496,7 +496,7 @@ class mechaproblem(problem):
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		if args is None: args = self.part.qpPhy
 		Mprop = self.mechamaterial.density(args)
-		inpts = [*super()._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
+		inpts = [*self._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, prop, mechArgs, Mprop, tsfactor,
 				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_lineardynamics_2d(*inpts)
@@ -584,17 +584,21 @@ class mechaproblem(problem):
 class thermomechaproblem(heatproblem, mechaproblem):
 
 	def __init__(self, heatmaterial:heatmat, mechamaterial:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
-		super().__init__(part, boundary, solverArgs)
-		self.mechamaterial = mechamaterial
-		self.heatmaterial  = heatmaterial
-		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
-		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=1.0, isIsotropic=True)
+		heatproblem.__init__(self, heat_material=heatmaterial, part=part, 
+				boundary=boundary, solverArgs=solverArgs)
+		mechaproblem.__init__(self, mechanical_material=mechamaterial, part=part, 
+				boundary=boundary, solverArgs=solverArgs)
+		return
+	
+	def addDensity(self, inpt, isIsotropic):
+		self.mechamaterial.density = self.mechamaterial.setScalarProperty(inpt, isIsotropic=isIsotropic)
+		self.heatmaterial.density  = self.heatmaterial.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 
 	def compute_mfCoupled(self, array_in, isThermal=True):
 		if args is None: args = self.part.qpPhy
 		prop = 3*self.mechamaterial.thexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
-		inpts = [*super()._getInputs(), self.part.invJ, self.part.detJ, prop]
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if isThermal:
 			if self.part.dim == 2: array_out = heatsolver.mf_get_coupled_2d(*inpts, array_in)
 			if self.part.dim == 3: array_out = heatsolver.mf_get_coupled_3d(*inpts, array_in)
@@ -645,12 +649,12 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			
 			# Get values of last step
 			d_n0[:-1, :] = np.copy(dispinout[:, :, i-1])
-			d_n0[-1, :] = np.copy(Tinout[:, :, i-1])
+			d_n0[-1, :] = np.copy(Tinout[:, i-1])
 
 			# Predict values of new step
 			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
 			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
-			Aj_n1 = np.zeros(self.part.nbctrlpts_total)
+			Aj_n1 = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
 			
 			# Overwrite inactive control points
 			for k in range(self.part.dim):
@@ -674,7 +678,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				
 				# Compute strain and stress at each quadrature point
 				strain = self.interpolate_strain(dj_n1[:-1, :])
-				stress = self.mechamaterial.evalElasticStress(strain)
+				stress = self.mechamaterial.evalElasticStress(strain, self.part.dim)
 				temperature = self.interpolate_temperature(dj_n1[-1, :])
 
 				# Compute internal force 

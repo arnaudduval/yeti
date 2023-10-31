@@ -88,7 +88,7 @@ else:
 	onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 
 	degree_list = np.array([2, 3, 4, 5])
-	cuts_list   = np.arange(2, 9)
+	cuts_list   = np.arange(4, 9)
 
 	disp_ref = np.load(folder + 'dispel.npy')
 	with open(folder + 'refpartel.pkl', 'rb') as inp:
@@ -104,7 +104,7 @@ else:
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
 				error_list[j] = problem.normOfError(displacement, normArgs={'type':'semiH1', 'part_ref':part_ref, 'u_ref':disp_ref}, isRelative=False)
 
 			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
