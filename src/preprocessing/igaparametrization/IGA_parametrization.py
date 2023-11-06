@@ -107,6 +107,7 @@ class IGAparametrization:
         # self._nb_elem = mechanicalSettings[4][1]
 
         # Material
+        # TODO Handling of material properties could be improved
         self._MATERIAL_PROPERTIES = mechanicalSettings[5][0]
         self._N_MATERIAL_PROPERTIES = mechanicalSettings[5][1]
 
@@ -770,6 +771,58 @@ class IGAparametrization:
                    'nb_cp': self._nb_cp,
                    'mcrd': self._mcrd }
 
+        return inputs
+
+    def get_inputs4postproc_bezier(self, i_patch, filename, sol):
+        """
+        Get the necessary inputs for VTU postprocessing using Bezier cells
+        TODO Specify the name of function tu use for postprocessing
+
+        Parameters
+        ----------
+        i_patch : int
+            Index of patch to process (starts at 1)
+        filename : str
+            Name of output .vtu file
+        sol : numpy array
+            Displacement field to plot
+
+        Returns
+        -------
+        inputs : dict
+            Necessary inputs for VTU postprocessing using Bezier cells
+            TODO Specify the name of the function to use for postprocessing
+        """
+
+        # Create an array containing weights for each node
+
+        nb_cp_patch = self._indCPbyPatch[i_patch-1].shape[0]
+        weight_by_cp = np.zeros((nb_cp_patch))
+
+        for inode in range(nb_cp_patch):
+            ind_cp = self._indCPbyPatch[i_patch-1][inode]
+            if ind_cp in self._IEN[i_patch-1]:
+                weight_by_cp[inode] = self._weight_flat[np.argmax(self._IEN_flat == ind_cp)]
+
+        inputs = {'filename': filename,
+                  'i_patch': i_patch,
+                  'sol': sol,
+                  'coords3d': self._COORDS,
+                  'ien': self._IEN_flat,
+                  'nb_elem_patch': self._elementsByPatch,
+                  'nkv': self._Nkv,
+                  'ukv': self._Ukv_flat,
+                  'nijk': self._Nijk,
+                  'weight': self._weight_flat,
+                  'jpqr': self._Jpqr,
+                  'elt_type': self._ELT_TYPE_flat,
+                  'tensor': self._TENSOR_flat,
+                  'props': self._PROPS_flat,
+                  'jprops': self._JPROPS,
+                  'nnode':self._nnode,
+                  'weight_by_cp': weight_by_cp,
+                  'ind_cp_patch': self._indCPbyPatch[i_patch-1],
+                  'nb_cp_patch': nb_cp_patch}
 
         return inputs
 

@@ -74,10 +74,23 @@ x = sp.linalg.spsolve(K2solve, Fb[idof])
 
 # Solution reconstruction
 SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
+
+# Standard VTK output with projection on FE mesh
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'BentPipe',
     SOL.transpose(),
     nb_ref=np.array([4, 4, 4]),
     Flag=np.array([True, False, False])))
+
+# VTK output using Bezier elements
+pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
+    1,
+    'BentPipeBezier',
+    SOL.transpose(),
+    ))
+
+print(modeleIGA._elementsByPatch)
+
+
 
 
