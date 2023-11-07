@@ -1,0 +1,21 @@
+*Dimension
+2
+*Number of CP by element
+4
+*Number of patch
+1
+*Total number of element
+1
+*Number of element by patch
+1
+*Patch(1)
+4
+0.0, 0.0, 1.0, 1.0
+4
+0.0, 0.0, 1.0, 1.0
+*Jpqr
+1,1
+*Nijk
+1, 2, 2
+*Weight
+1, 1.0, 1.0, 1.0, 1.0
