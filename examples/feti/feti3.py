@@ -46,8 +46,10 @@ CASE.append('threeembdedDD') # ----------- 22
 CASE.append('fourembdedDD') # ------------ 23
 CASE.append('nineembdedDD') # ------------ 24
 CASE.append('stiffenedcurvedPanel_DD') # - 25
+CASE.append('1C_4platesDD') # ------------ 26
+CASE.append('1B_4platesDD') # ------------ 27
 
-EXEMPLE_NB = 11
+EXEMPLE_NB = 26
 
 FILENAME = DIRECTORY+CASE[EXEMPLE_NB]
 
@@ -448,7 +450,47 @@ if EXEMPLE_NB == 25:
     nb_deg[0,32] = p
     nb_deg[0,33] = p-1
     nb_ref[0,(32,33)] = r-2
-
+if EXEMPLE_NB == 26:
+    p = 2
+    r = 2
+    # domains
+    nb_deg[:2,:4] = p
+    nb_ref[:2, 0] = r+1
+    nb_ref[:2, 1] = r
+    nb_ref[0, 2] = r+1
+    nb_ref[1, 2] = r
+    nb_ref[:2, 3] = r
+    # curves
+    nb_ref[0,(4,5)] = r+2
+    nb_ref[0,(6,7)] = r+2
+    nb_ref[0,(8,9)] = r+2
+    nb_ref[0,(10,11)] = r+2
+    nb_ref[0,(12,13)] = r+2
+    # lgrge
+    nb_deg[0,(14)] = p
+    nb_ref[0,(14)] = r
+    nb_deg[0,(15)] = p
+    nb_ref[0,(15)] = r
+    nb_deg[0,(16)] = p
+    nb_ref[0,(16)] = r
+    nb_deg[0,(17)] = p
+    nb_ref[0,(17)] = r
+    nb_deg[0,(18)] = p
+    nb_ref[0,(18)] = r
+if EXEMPLE_NB == 27:
+    p = 2
+    r = 2
+    # domains
+    nb_deg[:2,:4] = p
+    nb_ref[:2, 0] = r
+    nb_ref[:2, 1] = r+1
+    nb_ref[:2, 2] = r
+    nb_ref[:2, 3] = r+1
+    # curves
+    nb_ref[0,(4,5,6,7,8,9)] = r+2
+    # lgrge
+    nb_deg[0,(10,11,12)] = p
+    nb_ref[0,(10,11,12)] = r
 
 completeIGA.refine(nb_ref,nb_deg,additional_knots)
 completeIGA._NBPINT[ np.where(completeIGA._ELT_TYPE == 'U00') ] = 6
@@ -535,7 +577,7 @@ print(' (duration : %.2f s).' % (time.time() - ti))
 ti = time.time()
 dofl = feti._dofl
 
-precond_type = 0
+precond_type = 1
 if   precond_type is 0:
     # classical Dirichlet - Mortar case
     def precond_localdirichlet(jumpDisp):
@@ -639,7 +681,7 @@ for domain in dd:
     utot   = np.zeros(domain._modeleIGA._nb_dof_tot)
     utot[domain._idof_internal] = domain.evaluate_displacement(lmbdas,alphas)
     idof   = domain._modeleIGA._ind_dof_free[:domain._modeleIGA._nb_dof_free]-1
-    SOL,u  = rsol.reconstruction(*domain._modeleIGA.get_inputs4solution(utot[idof]))
+    SOL,u  = rsol.reconstruction(**domain._modeleIGA.get_inputs4solution(utot[idof]))
     pp.generatevtu(*domain._modeleIGA.get_inputs4postprocVTU(
         'FETI%i'%i,SOL.transpose(),nb_ref=3*np.array([1,1,1]),
         Flag=np.array([True,True,False])))
