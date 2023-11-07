@@ -40,8 +40,8 @@ modeleIGA = IGAparametrization(filename='BentPipe')
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
-# nb_ref[:, 0] = np.array([3, 3, 3])
 nb_deg[:, 0] = np.array([0, 1, 0])
+# nb_deg[:, 0] = np.array([4, 5, 4])
 
 modeleIGA.refine(nb_ref, nb_deg)
 
@@ -89,7 +89,6 @@ pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
     SOL.transpose(),
     ))
 
-print(modeleIGA._elementsByPatch)
 
 
 
