@@ -122,10 +122,9 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
         write(90, *) '<DataArray  type="Int32"  Name="connectivity"  format="ascii">'
         do i_elem = 1, nb_elem_patch(i_patch)
-            !! WARNING il faudra repasser à une numérotation locale au patch !!!!
             call ComputeBezierVTUConnectivity(conn_vtk, IEN_patch(:, i_elem), Jpqr_patch(1), Jpqr_patch(2), Jpqr_patch(3))
-
-            write(90, *) (conn_vtk(i_cp) - 1, i_cp = 1, nnode_patch)
+            !! Local CP numbering : warning, findloc function may be costly !
+            write(90, *) (findloc(ind_cp_patch, conn_vtk(i_cp)) - 1, i_cp = 1, nnode_patch)
         enddo
 
         write(90, *) '</DataArray>'
