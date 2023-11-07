@@ -64,6 +64,7 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     dimension :: sol_elem(mcrd, maxval(nnode))
 
     integer :: i, i_elem, i_cp, offset
+    integer, allocatable :: conn_vtk(:)
 
     !! Printing
     write(*,*) 'Postprocessing VTU Bezier ...'
@@ -87,6 +88,8 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
         !! Only take into account solid element
         !! TODO only in 3D
 
+        allocate(conn_vtk(nnode_patch))
+
         !! Start piece
         !! TODO la valeur nnode_patch est fausse ( c'est le nombre de pts par element)
         write(90, *) '<Piece NumberOfPoints="  ', nb_cp_patch,         &
@@ -101,14 +104,6 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
         write(90, *) '</DataArray>'
         write(90, *) '</CellData>'
 
-        !! Write weights at control points
-        write(90, *) '<PointData RationalWeights="RationalWeights">'
-        write(90, *) '<DataArray  type="Float64" Name="RationalWeights" NumberOfComponents="1" format="ascii">'
-        do i_cp = 1, nb_cp_patch
-            write(90, *) weight_by_cp(i_cp)
-        enddo
-        write(90, *) '</DataArray>'
-        write(90, *) '</PointData>'
 
         !! Write control points
         write(90, *) '<Points>'
@@ -127,18 +122,12 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
         write(90, *) '<DataArray  type="Int32"  Name="connectivity"  format="ascii">'
         do i_elem = 1, nb_elem_patch(i_patch)
-            ! hard coding for degree 2 in all directions
-            !! Attention, il faut repasser à une numérotation locale au patch !!!!
-            write(90,*)  IEN_patch(27 ,i_elem)-1, IEN_patch(25 ,i_elem)-1, IEN_patch(19 ,i_elem)-1,       &
-                &       IEN_patch(21 ,i_elem)-1, IEN_patch(9 ,i_elem)-1, IEN_patch(7 ,i_elem)-1,       &
-                &       IEN_patch(1 ,i_elem)-1, IEN_patch(3 ,i_elem)-1, IEN_patch(26 ,i_elem)-1,       &
-                &       IEN_patch(22 ,i_elem)-1, IEN_patch(20 ,i_elem)-1, IEN_patch(24 ,i_elem)-1,       &
-                &       IEN_patch(8 ,i_elem)-1, IEN_patch(4 ,i_elem)-1, IEN_patch(2 ,i_elem)-1,       &
-                &       IEN_patch(6 ,i_elem)-1, IEN_patch(18 ,i_elem)-1, IEN_patch(16 ,i_elem)-1,       &
-                &       IEN_patch(10 ,i_elem)-1, IEN_patch(12 ,i_elem)-1, IEN_patch(15 ,i_elem)-1,       &
-                &       IEN_patch(13 ,i_elem)-1, IEN_patch(17 ,i_elem)-1, IEN_patch(11 ,i_elem)-1,       &
-                &       IEN_patch(23 ,i_elem)-1, IEN_patch(5 ,i_elem)-1, IEN_patch(14 ,i_elem)-1
+            !! WARNING il faudra repasser à une numérotation locale au patch !!!!
+            call ComputeBezierVTUConnectivity(conn_vtk, IEN_patch(:, i_elem), Jpqr_patch(1), Jpqr_patch(2), Jpqr_patch(3))
+
+            write(90, *) (conn_vtk(i_cp) - 1, i_cp = 1, nnode_patch)
         enddo
+
         write(90, *) '</DataArray>'
 
         write(90, *) '<DataArray  type="Int32"  Name="offsets"  format="ascii">'
@@ -155,22 +144,41 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
         enddo
         write(90, *) '</DataArray>'
 
-
-
         write(90, *) '</Cells>'
 
-        do i_elem = 1, nb_elem_patch(i_patch)
-            !! extract element solution
-            do i = 1, nnode_patch
-                coords_elem(:, i) = coords3d(:mcrd, ien_patch(i, i_elem))
-                sol_elem(:, i) = sol(:mcrd, ien_patch(i, i_elem))
-            enddo
-            call extractNurbsElementInfos(i_elem)
+        ! do i_elem = 1, nb_elem_patch(i_patch)
+        !     !! extract element solution
+        !     do i = 1, nnode_patch
+        !         coords_elem(:, i) = coords3d(:mcrd, ien_patch(i, i_elem))
+        !         sol_elem(:, i) = sol(:mcrd, ien_patch(i, i_elem))
+        !     enddo
+        !     call extractNurbsElementInfos(i_elem)
+        ! enddo
+
+        !! Write data at control points
+        write(90, *) '<PointData RationalWeights="RationalWeights">'
+
+        !! Write weights at control points
+        write(90, *) '<DataArray  type="Float64" Name="RationalWeights" NumberOfComponents="1" format="ascii">'
+        do i_cp = 1, nb_cp_patch
+            write(90, *) weight_by_cp(i_cp)
         enddo
+        write(90, *) '</DataArray>'
+
+        !! Write solution at control points
+        write(90,*) '<DataArray type="Float64" Name="disp" NumberOfComponents="3" format="ascii">'
+
+        do i_cp = 1, nb_cp_patch
+            write(90, *) sol(:, ind_cp_patch(i_cp))
+        enddo
+
+        write(90,*) '</DataArray>'
+        write(90,*) '</PointData>'
 
         !! Finalize piece
         write(90, *) '</Piece>'
 
+        deallocate(conn_vtk)
     endif
 
     !! Finalize file
@@ -179,3 +187,173 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
 
 end subroutine generate_vtu_bezier
+
+subroutine ComputeBezierVTUConnectivity(conn_vtk, conn_yeti, p, q, r)
+    !! Compute element connectivity for Bezier cell in VTK format from Yeti connectivity
+
+    implicit none
+
+    !! Inputs
+    integer, intent(in) :: conn_yeti, p, q, r
+    dimension conn_yeti((p+1)*(q+1)*(r+1))
+    !! Output
+    integer, intent(out) :: conn_vtk
+    dimension conn_vtk((p+1)*(q+1)*(r+1))
+
+    !! Local variables
+    integer :: i, j, k, counter, n_cp
+    integer :: ConnConvert
+
+    n_cp = (p+1)*(q+1)*(r+1)
+    !! TODO don't forget to reverse yeti nodes numbering
+
+    !! Vertices
+    !! --------
+    !! i = 0, j = 0, k = 0
+    conn_vtk(1) = conn_yeti(n_cp + 1 - ConnConvert(0, 0, 0, p, q, r))
+    !! i = p, j = 0, k = 0
+    conn_vtk(2) = conn_yeti(n_cp + 1 - ConnConvert(p, 0, 0, p, q, r))
+    !! i = p, j = q, k = 0
+    conn_vtk(3) = conn_yeti(n_cp + 1 - ConnConvert(p, q, 0, p, q, r))
+    !! i = 0, j = q, k = 0
+    conn_vtk(4) = conn_yeti(n_cp + 1 - ConnConvert(0, q, 0, p, q, r))
+    !! i = 0, j = 0, k = r
+    conn_vtk(5) = conn_yeti(n_cp + 1 - ConnConvert(0, 0, r, p, q, r))
+    !! i = p, j = 0, k = r
+    conn_vtk(6) = conn_yeti(n_cp + 1 - ConnConvert(p, 0, r, p, q, r))
+    !! i = p, j = q, k = r
+    conn_vtk(7) = conn_yeti(n_cp + 1 - ConnConvert(p, q, r, p, q, r))
+    !! i = 0, j = q, k = r
+    conn_vtk(8) = conn_yeti(n_cp + 1 - ConnConvert(0, q, r, p, q, r))
+
+    !! Edges
+    !! -----
+    counter = 9
+    !! Edge 1: j=0, k=0, i croissant
+    do i = 1, p-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, 0, 0, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 2: i=p, k=0, j croissant
+    do j = 1, q-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(p, j, 0, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 3: j=q, k=0, i croissant
+    do i = 1, p-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, q, 0, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 4: i=0, k=0, j croissant
+    do j = 1, q-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(0, j, 0, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 5: j=0, k=r, i croissant
+    do i = 1, p-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, 0, r, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 6: i=p, k=r, j croissant
+    do j = 1, q-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(p, j, r, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 7: j=q, k=r, i croissant
+    do i = 1, p-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, q, r, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 8: i=0, k=r, j croissant
+    do j = 1, q-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(0, j, r, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 9: i=0, j=0, k croissant
+    do k = 1, r-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(0, 0, k, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 10: i=p, j=0, k croissant
+    do k = 1, r-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(p, 0, k, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 11: i=p, j=q, k croissant
+    do k = 1, r-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(p, q, k, p, q, r))
+        counter = counter+1
+    enddo
+    !! Edge 12: i=0, j=q, k croissant
+    do k = 1, r-1
+        conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(0, q, k, p, q, r))
+        counter = counter+1
+    enddo
+
+
+    !! Faces
+    !! -----
+    !! Face 1: i=0, j croisssant, puis k croissant
+    do k = 1, r-1
+        do j = 1, q-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(0, j, k, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+    !! Face 2: i=p, j croissant, puis k croissant
+    do k = 1, r-1
+        do j = 1, q-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(p, j, k, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+    !! Face 3: j=0, i croissant, puis k croissant
+    do k = 1, r-1
+        do i = 1, p-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, 0, k, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+    !! Face 4: j=q, i croissant, puis k croissant
+    do k = 1, r-1
+        do i = 1, p-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, q, k, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+    !! Face 5: k=0, i croissant, puis j croissant
+    do j = 1, q-1
+        do i = 1, p-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, j, 0, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+    !! Face 6 k=r, i croissant, puis j croissant
+    do j = 1, q-1
+        do i = 1, p-1
+            conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, j, r, p, q, r))
+            counter = counter+1
+        enddo
+    enddo
+
+    !! Volume
+    !! ------
+    !! i croissant, puis j croissant, puis k croissant
+    do k = 1, r-1
+        do j = 1, q-1
+            do i = 1, p-1
+                conn_vtk(counter) = conn_yeti(n_cp + 1 - ConnConvert(i, j, k, p, q, r))
+                counter = counter+1
+            enddo
+        enddo
+    enddo
+
+end subroutine ComputeBezierVTUConnectivity
+
+function ConnConvert(i, j, k, p, q, r) result(idx)
+    !! Compute index of a control point in Yeti convention form i, j, k indices of CP
+    integer, intent(in) :: i, j, k, p, q, r
+    integer :: idx
+
+    idx = i + (p+1)*j + (p+1)*(q+1)*k +1
+end function
