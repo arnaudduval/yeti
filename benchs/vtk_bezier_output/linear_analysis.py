@@ -34,7 +34,7 @@ import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
-modeleIGA = IGAparametrization(filename='BentPipe')
+modeleIGA = IGAparametrization(filename='BentPipe_monopatch')
 
 # Model refinement
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
@@ -77,7 +77,7 @@ SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 
 # Standard VTK output with projection on FE mesh
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    'BentPipe',
+    'BentPipe_monopatch',
     SOL.transpose(),
     nb_ref=np.array([4, 4, 4]),
     Flag=np.array([True, False, False])))
@@ -85,7 +85,7 @@ pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
 # VTK output using Bezier elements
 pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
     1,
-    'BentPipeBezier',
+    'BentPipeBezier_monopatch',
     SOL.transpose(),
     ))
 
