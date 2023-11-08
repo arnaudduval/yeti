@@ -40,8 +40,12 @@ modeleIGA = IGAparametrization(filename='BentPipe_2patchs')
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
-nb_deg[:, 0] = np.array([0, 1, 0])
-nb_deg[:, 1] = np.array([0, 1, 0])
+
+nb_ref[:, 0] = np.array([3, 2, 4])
+nb_ref[:, 1] = np.array([3, 2, 4])
+
+nb_deg[:, 0] = np.array([2, 3, 2])
+nb_deg[:, 1] = np.array([2, 3, 2])
 # nb_deg[:, 0] = np.array([4, 5, 4])
 
 modeleIGA.refine(nb_ref, nb_deg)
