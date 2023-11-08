@@ -29,6 +29,7 @@ from postprocessing.postproc import generate_vtk, generate_vtk_wsol
 from ..geometricmodel import NBfile
 from ..mechanicalmodel import MechanicalModel as INPfile
 from .IGA_refinementFcts import iga_refinement
+from .IGA_manipulation import bezier_decomposition_patch
 
 
 
@@ -808,35 +809,72 @@ class IGAparametrization:
             TODO Specify the name of the function to use for postprocessing
         """
 
+        if self._ELT_TYPE[i_patch-1] != 'U1':
+            raise Exception('Element type ' +
+                            self._ELT_TYPE[i_patch-1] +
+                            'is not handled')
+
+
+        # Make Bezier extraction
+        CPs, Jpqr, ien, M = bezier_decomposition_patch(self, numpatch=i_patch-1,
+                                                 return_ien=True,
+                                                 return_mat=True)
+
+        # Create an array containing local coordinates and weights of Bezier decomposition
+        coords = np.zeros((4, M.shape[0]))
+        for i_elem in range(ien.shape[0]):
+            for i_cp in range(ien.shape[1]):
+                coords[:, ien[i_elem, i_cp]] = CPs[i_elem, i_cp, :]
+
+
         # Create an array containing weights for each node
 
-        nb_cp_patch = self._indCPbyPatch[i_patch-1].shape[0]
-        weight_by_cp = np.zeros((nb_cp_patch))
+        # nb_cp_patch = self._indCPbyPatch[i_patch-1].shape[0]
+        # weight_by_cp = np.zeros((nb_cp_patch))
 
-        for inode in range(nb_cp_patch):
-            ind_cp = self._indCPbyPatch[i_patch-1][inode]
-            if ind_cp in self._IEN[i_patch-1]:
-                weight_by_cp[inode] = self._weight_flat[np.argmax(self._IEN_flat == ind_cp)]
+        # for inode in range(nb_cp_patch):
+        #     ind_cp = self._indCPbyPatch[i_patch-1][inode]
+        #     if ind_cp in self._IEN[i_patch-1]:
+        #         weight_by_cp[inode] = self._weight_flat[np.argmax(self._IEN_flat == ind_cp)]
 
+        # print(sol.shape)
+
+        print(sol.shape)
+        print()
+
+        sol_patch_bezier = np.zeros((3, M.shape[0]))
+        for i in range(3):
+            sol_patch_bezier[i, :] = M @ sol[i, self._indCPbyPatch[i_patch-1]-1]
+
+        # inputs = {'filename': filename,
+        #           'i_patch': i_patch,
+        #           'sol': sol,
+        #           'coords3d': self._COORDS,
+        #           'ien': self._IEN_flat,
+        #           'nb_elem_patch': self._elementsByPatch,
+        #           'nkv': self._Nkv,
+        #           'ukv': self._Ukv_flat,
+        #           'nijk': self._Nijk,
+        #           'weight': self._weight_flat,
+        #           'jpqr': self._Jpqr,
+        #           'elt_type': self._ELT_TYPE_flat,
+        #           'tensor': self._TENSOR_flat,
+        #           'props': self._PROPS_flat,
+        #           'jprops': self._JPROPS,
+        #           'nnode':self._nnode,
+        #           'weight_by_cp': weight_by_cp,
+        #           'ind_cp_patch': self._indCPbyPatch[i_patch-1],
+        #           'nb_cp_patch': nb_cp_patch}
+
+        # New inputs with built-in Bezier extraction
         inputs = {'filename': filename,
                   'i_patch': i_patch,
-                  'sol': sol,
-                  'coords3d': self._COORDS,
-                  'ien': self._IEN_flat,
-                  'nb_elem_patch': self._elementsByPatch,
-                  'nkv': self._Nkv,
-                  'ukv': self._Ukv_flat,
-                  'nijk': self._Nijk,
-                  'weight': self._weight_flat,
-                  'jpqr': self._Jpqr,
-                  'elt_type': self._ELT_TYPE_flat,
-                  'tensor': self._TENSOR_flat,
-                  'props': self._PROPS_flat,
-                  'jprops': self._JPROPS,
-                  'nnode':self._nnode,
-                  'weight_by_cp': weight_by_cp,
-                  'ind_cp_patch': self._indCPbyPatch[i_patch-1],
-                  'nb_cp_patch': nb_cp_patch}
+                  'sol_patch_bezier': sol_patch_bezier,
+                  'coords_patch_bezier': coords[:3, :],
+                  'weights_patch_bezier': coords[3, :],
+                  'ien_patch_bezier': ien,
+                  'jpqr_patch_bezier': Jpqr
+                  }
 
         return inputs
 
