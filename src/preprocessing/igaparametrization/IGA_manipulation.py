@@ -244,7 +244,7 @@ def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0, n
         edges = get_edgeCPindice(Nkv, Jpqr, dim, num_patch=num_patch)
         e = np.mod(num_bound, 100)
         return edges[e - 1] if orientation[0]>0 else np.flip(edges[e - 1])
-    
+
     # Vertices
     if num_bound > 1000:
         vertex = get_vertexCPindice(Nkv, Jpqr, dim, num_patch=num_patch)
@@ -585,7 +585,7 @@ def add_displacementBC(igaPara, listCP, direction, value):
     return None
 
 def find_orientation(test_cps:np.ndarray, Nkv:np.ndarray, Jpqr:np.ndarray, dim:np.ndarray, indCPbyPatch:list, num_bound:int, num_patch=0, offset=0):
-    """Find the orientation that orders the control points located at the bound ``num_bound`` 
+    """Find the orientation that orders the control points located at the bound ``num_bound``
     of patch ``num_patch`` has given by ``test_cps``.
 
     Parameters
@@ -646,7 +646,7 @@ def get_interface(num_patch:int, Nkv:np.ndarray,Jpqr:np.ndarray, dim:np.ndarray,
     ------
     tab : array of int
         A table with 5 colums and as many rows as found interfaces with other patches.
-        Columns are of type: 
+        Columns are of type:
         [index master patch, master bound, index slave patch, slave bound, orientation].
     '''
     tab_thispatch = []
@@ -665,7 +665,7 @@ def get_interface(num_patch:int, Nkv:np.ndarray,Jpqr:np.ndarray, dim:np.ndarray,
                     cps = indCPbyPatch[i][icps_bound]
                     bounds = find_allBounds(cps, Nkv, Jpqr, dim, indCPbyPatch,
                                             num_patch)
-                    
+
                     orientation = find_orientation(
                         cps, Nkv, Jpqr, dim, indCPbyPatch, bounds[0], num_patch)
 
@@ -1219,7 +1219,7 @@ def bezier_decomposition_patch(igapara,numpatch=0,return_ien=False,
 def bezier_decomposition_patch_discontinuous(igapara,numpatch=0,return_ien=False,
                                              return_mat=False,return_invmat=False):
     '''
-    Beizer decomposition of a NURBS patch.
+    Bezier decomposition of a NURBS patch.
     Inputs:
     * igapara --- an iga parametrization
     * numpatch -- patch number (optional, default=0)
@@ -1232,8 +1232,8 @@ def bezier_decomposition_patch_discontinuous(igapara,numpatch=0,return_ien=False
     dimPatch = igapara._dim[numpatch]
     ukv = igapara._Ukv[numpatch]
     jpqr= igapara._Jpqr[:,numpatch]
-    ncpF= np.ones(3,dtype=np.int)
-    nelF= np.ones(3,dtype=np.int)
+    ncpF= np.ones(3, dtype=int)
+    nelF= np.ones(3, dtype=int)
     for d in range(dimPatch):
         p = igapara._Jpqr[d,numpatch]
         u = ukv[d]
