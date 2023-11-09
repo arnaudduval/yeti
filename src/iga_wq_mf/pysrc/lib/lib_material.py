@@ -164,18 +164,16 @@ class mechamat(material):
 		return
 		
 	def evalElasticStress(self, strain, dim):
-		Tstrain = array2symtensor4All(strain, dim)
 		traceStrain = evalTrace4All(strain, dim)
-		Tstress = 2*self.lame_mu*Tstrain
-		for i in range(dim): Tstress[i, i, :] += self.lame_lambda*traceStrain
-		stress  = symtensor2array4All(Tstress, dim)
+		stress = 2*self.lame_mu*strain
+		for i in range(dim): stress[i, :] += self.lame_lambda*traceStrain
 		return stress
 	
 	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 			It uses combined isotropic/kinematic hardening theory.  
 		"""
-
+		raise Warning('Not done')
 		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=50, threshold=1e-9):
 			dgamma = np.zeros(np.size(a_n0))
 			a_n1 = a_n0
@@ -194,26 +192,22 @@ class mechamat(material):
 		if nvoigt   == 3: dim = 2
 		elif nvoigt == 6: dim = 3
 		isElasticLoad = True
-
 		output  = np.zeros((4*(nvoigt+1), nnz)); Cep = np.zeros((3, nnz))
-		Tstrain = array2symtensor4All(strain, dim)
-		Tpls    = array2symtensor4All(pls, dim)
-		Tb      = array2symtensor4All(b, dim)
 
 		# Compute strain deviator
 		traceStrain = evalTrace4All(strain, dim)
-		devStrain   = np.copy(Tstrain)
-		for i in range(dim): devStrain[i, i, :] -= 1.0/3.0*traceStrain
+		devStrain   = np.copy(strain)
+		for i in range(dim): devStrain[i, :] -= 1.0/3.0*traceStrain
 
 		# Compute trial stress deviator
-		s_trial = 2*self.lame_mu*(devStrain - Tpls)
+		s_trial = 2*self.lame_mu*(devStrain - pls)
 
 		# Compute shifted stress
-		eta_trial = s_trial - Tb
+		eta_trial = s_trial - b
 
 		# Check yield status
-		norm_trial = np.linalg.norm(eta_trial, axis=(0, 1))
-		f_trial = norm_trial - np.sqrt(2.0/3.0)*self.plasticLaw._IsotropicHard(a)
+		norm_trial = computeVMStress4All(eta_trial, dim)
+		f_trial = norm_trial - self.plasticLaw._IsotropicHard(a)
 		sigma   = np.copy(s_trial)
 		for i in range(dim): sigma[i, i, :] += self.lame_bulk*traceStrain
 		Cep[0, :] = self.lame_lambda; Cep[1, :] = self.lame_mu
@@ -277,33 +271,6 @@ def block_dot_product(d, A, B):
 	result = 0.0
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result
-
-def symtensor2array4All(tensors, dim):
-	nvoigt = int(dim*(dim+1)/2); nnz = np.size(tensors, axis=2)
-	array  = np.zeros((nvoigt, nnz))
-	k = 0
-	for i in range(dim):
-		array[k, :] = tensors[i, i, :]
-		k += 1
-	for i in range(dim-1):
-		for j in range(i+1, dim):
-			array[k, :] = tensors[i, j, :]
-			k += 1
-	return array
-
-def array2symtensor4All(arrays, dim):
-	nnz = np.size(arrays, axis=1)
-	tensor = np.zeros((dim, dim, nnz))
-	k = 0
-	for i in range(dim):
-		tensor[i, i, :] = arrays[k, :]
-		k += 1
-	for i in range(dim-1):
-		for j in range(i+1, dim):
-			tensor[i, j, :] = arrays[k, :] 
-			tensor[j, i, :] = arrays[k, :] 
-			k += 1
-	return tensor
 
 def evalTrace4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)

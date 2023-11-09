@@ -578,6 +578,7 @@ class mechaproblem(problem):
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
+			A_n0 = np.copy(Aj_n1)
 
 		return AllresPCG
 
@@ -709,5 +710,6 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])
 			V_n0 = np.copy(Vj_n1)
+			A_n0 = np.copy(Aj_n1)
 		
 		return 
