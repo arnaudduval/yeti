@@ -20,10 +20,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Desciption TODO
+Generate VTU output using Bezier for a strong (common control points)
+assembly of 2 patchs.
+No test is made on the content of output files.
 """
-
-import sys
 
 import numpy as np
 import scipy.sparse as sp
@@ -34,29 +34,20 @@ import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
-modeleIGA = IGAparametrization(filename='BentPipe_2patchs')
+modeleIGA = IGAparametrization(filename='inputs/BentPipe_2patchs')
 
 # Model refinement
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
 
-nb_ref[:, 0] = np.array([3, 2, 4])
-nb_ref[:, 1] = np.array([3, 2, 4])
+nb_ref[:, 0] = np.array([1, 1, 2])
+nb_ref[:, 1] = np.array([1, 1, 2])
 
-nb_deg[:, 0] = np.array([2, 3, 2])
-nb_deg[:, 1] = np.array([2, 3, 2])
-# nb_deg[:, 0] = np.array([4, 5, 4])
+nb_deg[:, 0] = np.array([1, 2, 1])
+nb_deg[:, 1] = np.array([1, 2, 1])
 
 modeleIGA.refine(nb_ref, nb_deg)
-
-# Plot geometry with zero solution
-# SOL = np.zeros_like(modeleIGA.coords.transpose())
-# pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-#     'BentPipe',
-#     SOL.transpose(),
-#     nb_ref=np.array([4, 4, 4]),
-#     Flag=np.array([True, False, False])))
 
 # Matrix assembly
 ndof = modeleIGA._nb_dof_free
@@ -80,26 +71,12 @@ x = sp.linalg.spsolve(K2solve, Fb[idof])
 # Solution reconstruction
 SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 
-# Standard VTK output with projection on FE mesh
-pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    'BentPipe_2patchs',
-    SOL.transpose(),
-    nb_ref=np.array([4, 4, 4]),
-    Flag=np.array([True, False, False])))
 
 # VTK output using Bezier elements
-pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
-    1,
-    'BentPipeBezier_2patchs_P1',
-    SOL.transpose(),
-    ))
-pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
-    2,
-    'BentPipeBezier_2patchs_P2',
-    SOL.transpose(),
-    ))
-
-
-
-
+for i_patch in range(modeleIGA._nb_patch):
+    pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
+        i_patch+1,
+        f'BentPipeBezier_2patchs_P{i_patch+1}',
+        SOL.transpose(),
+        ))
 

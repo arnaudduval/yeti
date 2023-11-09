@@ -180,7 +180,11 @@ add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_centrif
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 
-
+# VTU Bezier output
+add_test(NAME vtu_output_2patchs
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/linear_analysis_2patchs.py
+         WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
+)
 
 # Benchs for sensibilities computation on embedded solid element
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
@@ -237,6 +241,7 @@ set_tests_properties(
                      gradcomp_embdsol_cube_nonli_embd_centrif
                      gradcomp_embdsol_cube_nonli_hull_embd_pressure
                      gradcomp_embdsol_cube_nonli_hull_embd_centrif
+                     vtu_output_2patchs
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 # Properties for long tests
