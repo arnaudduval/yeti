@@ -13,21 +13,16 @@
 !! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. if not, see <https://www.gnu.org/licenses/>
 
-!! Generate VTU file using Bezier cells
 
-! subroutine generate_VTU_bezier__old(filename, i_patch,       &
-!         &   sol_patch_bezier, coords_patch_bezier, weights_patch_bezier,    &
-!         &   ien, nb_elem_patch,                     &
-!         &   Nkv, Ukv, Nijk, weight, weight_by_cp, Jpqr,               &
-!         &   elt_type, tensor, props, jprops,                           &
-!         &   ind_cp_patch, nb_cp_patch,                    &
-!         &   nnode, nb_patch, nb_elem, nb_cp, mcrd)
+!! Generate VTU file using Bezier cells
+!! The inputs for the solution and geometry are given for a given patch that
+!! has already undergone Bezier extraction
 
 subroutine generate_VTU_bezier(filename, i_patch,       &
-        &   sol_patch_bezier, coords_patch_bezier, weights_patch_bezier,    &
-        &   ien_patch_bezier, Jpqr_patch_bezier,                            &
-        &   nb_cp_patch_bezier, mcrd, nnode_patch_bezier, nb_elem_patch_bezier, &
-        &   dim_patch_bezier)
+        &   sol, coords, weights,    &
+        &   ien, Jpqr,                            &
+        &   nb_cp, mcrd, nnode, nb_elem, &
+        &   dim)
 
 
     use parameters
@@ -39,26 +34,23 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     !! ---------------
 
     !! Output infos
-    character(len=*), intent(in) :: filename
-    integer, intent(in) :: i_patch
+    character(len=*), intent(in) :: filename    !! name of file to write (without extension)
+    integer, intent(in) :: i_patch              !! index of patch (starts at 1)
 
-    !! NURBS geometry
-    integer, intent(in) :: nb_cp_patch_bezier, mcrd, nnode_patch_bezier,        &
-        &                  nb_elem_patch_bezier, dim_patch_bezier
-    double precision, intent(in) :: coords_patch_bezier,        &
-        &                           weights_patch_bezier
-    dimension coords_patch_bezier(3, nb_cp_patch_bezier),        &
-        &     weights_patch_bezier(nb_cp_patch_bezier)
-    integer, intent(in) :: ien_patch_bezier, Jpqr_patch_bezier
-    dimension ien_patch_bezier(nb_elem_patch_bezier, nnode_patch_bezier)
-    dimension Jpqr_patch_bezier(nb_elem_patch_bezier, dim_patch_bezier)
+    !! NURBS geometry (for given patch, after Bezier extraction)
+    integer, intent(in) :: nb_cp, mcrd, nnode,        &
+        &                  nb_elem, dim
+    double precision, intent(in) :: coords,        &
+        &                           weights
+    dimension coords(3, nb_cp),        &
+        &     weights(nb_cp)
+    integer, intent(in) :: ien, Jpqr
+    dimension ien(nb_elem, nnode)
+    dimension Jpqr(nb_elem, dim)
 
-
-    !! Bezier extracted analysis solution
-    double precision, intent(in) :: sol_patch_bezier
-    dimension sol_patch_bezier(mcrd, nb_cp_patch_bezier)
-
-
+    !! Bezier extracted analysis solution for given patch
+    double precision, intent(in) :: sol
+    dimension sol(mcrd, nb_cp)
 
     !! Local variables
     !! ---------------
@@ -68,7 +60,6 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
     !! Printing
     write(*,*) 'Postprocessing VTU Bezier ...'
-    write(*,*) 'bla bla ...'
 
     !! File
     open(90, file='results/'//filename//'.vtu', form='formatted')
@@ -78,17 +69,17 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     write(90, *) '<UnstructuredGrid>'
 
 
-    allocate(conn_vtk(nnode_patch_bezier))
+    allocate(conn_vtk(nnode))
 
     !! Start piece
-    write(90, *) '<Piece NumberOfPoints="  ', nb_cp_patch_bezier,         &
-        &   '"  NumberOfCells=" ', nb_elem_patch_bezier, '">'
+    write(90, *) '<Piece NumberOfPoints="  ', nb_cp,         &
+        &   '"  NumberOfCells=" ', nb_elem, '">'
 
     !! Write degrees
     write(90, *) '<CellData HigherOrderDegrees="HigherOrderDegrees">'
     write(90, *) '<DataArray  type="Int32" Name="HigherOrderDegrees" NumberOfComponents="3" format="ascii">'
-    do i_elem = 1, nb_elem_patch_bezier
-        write(90, *) (Jpqr_patch_bezier(i_elem, i), i=1, 3)
+    do i_elem = 1, nb_elem
+        write(90, *) (Jpqr(i_elem, i), i=1, 3)
     enddo
     write(90, *) '</DataArray>'
     write(90, *) '</CellData>'
@@ -97,8 +88,8 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     write(90, *) '<Points>'
     write(90, *) '<DataArray  type="Float64" NumberOfComponents="3"  format="ascii" >'
 
-    do i_cp = 1, nb_cp_patch_bezier
-        write(90, *) coords_patch_bezier(:, i_cp)
+    do i_cp = 1, nb_cp
+        write(90, *) coords(:, i_cp)
     enddo
 
     write(90,*) '</DataArray>'
@@ -108,32 +99,27 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     write(90, *) '<Cells>'
 
     write(90, *) '<DataArray  type="Int32"  Name="connectivity"  format="ascii">'
-    do i_elem = 1, nb_elem_patch_bezier
-        ! call ComputeBezierVTUConnectivity(conn_vtk, IEN_patch(:, i_elem), Jpqr_patch(1), Jpqr_patch(2), Jpqr_patch(3))
-        !! Local CP numbering : warning, findloc function may be costly !
-        ! write(90, *) (findloc(ind_cp_patch, conn_vtk(i_cp)) - 1, i_cp = 1, nnode_patch)
+    do i_elem = 1, nb_elem
+        call ComputeBezierVTUConnectivity(conn_vtk, ien(i_elem, :),        &
+            &                             Jpqr(i_elem, 1),                 &
+            &                             Jpqr(i_elem, 2),                 &
+            &                             Jpqr(i_elem, 3))
 
-        !! TODO : convertir la connectivité
-        call ComputeBezierVTUConnectivity(conn_vtk, ien_patch_bezier(i_elem, :),        &
-            &                             Jpqr_patch_bezier(i_elem, 1),                 &
-            &                             Jpqr_patch_bezier(i_elem, 2),                 &
-            &                             Jpqr_patch_bezier(i_elem, 3))
-
-        write(90, *) (conn_vtk(i), i=1, nnode_patch_bezier)
+        write(90, *) (conn_vtk(i), i=1, nnode)
     enddo
 
     write(90, *) '</DataArray>'
 
     write(90, *) '<DataArray  type="Int32"  Name="offsets"  format="ascii">'
     offset = 0
-    do i_elem = 1, nb_elem_patch_bezier
-        offset = offset + nnode_patch_bezier
+    do i_elem = 1, nb_elem
+        offset = offset + nnode
         write(90, *) offset
     enddo
     write(90, *) '</DataArray>'
 
     write(90, *) '<DataArray  type="UInt8"  Name="types"  format="ascii">'
-    do i_elem = 1, nb_elem_patch_bezier
+    do i_elem = 1, nb_elem
         write(90, *) '79'     !! 79 == type for Bezier hexahedron
     enddo
     write(90, *) '</DataArray>'
@@ -145,15 +131,15 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
     !! Write weights at control points
     write(90, *) '<DataArray  type="Float64" Name="RationalWeights" NumberOfComponents="1" format="ascii">'
-    do i_cp = 1, nb_cp_patch_bezier
-        write(90, *) weights_patch_bezier(i_cp)
+    do i_cp = 1, nb_cp
+        write(90, *) weights(i_cp)
     enddo
     write(90, *) '</DataArray>'
 
     !! Write solution at control points
     write(90,*) '<DataArray type="Float64" Name="disp" NumberOfComponents="3" format="ascii">'
-    do i_cp = 1, nb_cp_patch_bezier
-        write(90, *) sol_patch_bezier(:, i_cp)
+    do i_cp = 1, nb_cp
+        write(90, *) sol(:, i_cp)
     enddo
 
     write(90,*) '</DataArray>'
@@ -168,157 +154,10 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     write(90, *) '</VTKFile>'
 
     close(90)
+    write(*,*) 'Results written in '//filename//'.vtu'
     deallocate(conn_vtk)
 
 end subroutine generate_VTU_bezier
-
-!     double precision, intent(in) :: Ukv, weight, weight_by_cp
-!     integer, intent(in) :: Nkv, Jpqr, Nijk, nb_cp_patch
-!     dimension Nkv(3, nb_patch), Jpqr(3, nb_patch), Nijk(3, nb_elem),    &
-!         &       Ukv(:), weight(:), weight_by_cp(nb_cp_patch)
-
-!     !! Patches and elements
-!     character(len=*), intent(in) :: tensor, elt_type
-!     double precision, intent(in) :: props
-!     integer, intent(in) :: mcrd, nnode, nb_patch, nb_elem, ien, nb_elem_patch,       &
-!         &   jprops, ind_cp_patch
-!     dimension ien(:), nb_elem_patch(nb_patch), props(:), jprops(nb_patch),      &
-!         &   nnode(nb_patch), ind_cp_patch(nb_cp_patch)
-
-!     !! Analysis solution
-!     double precision, intent(in) :: sol
-!     dimension sol(mcrd, nb_cp)
-
-!     !! Local variables
-!     !! ---------------
-!     double precision :: coords_elem, sol_elem
-!     dimension :: coords_elem(mcrd, maxval(nnode))
-!     dimension :: sol_elem(mcrd, maxval(nnode))
-
-!     integer :: i, i_elem, i_cp, offset
-!     integer, allocatable :: conn_vtk(:)
-
-!     !! Printing
-!     write(*,*) 'Postprocessing VTU Bezier ...'
-!     write(*,*) 'bla bla ...'
-
-!     !! File
-!     open(90, file='results/'//filename//'.vtu', form='formatted')
-
-!     !! Write header
-!     write(90, *) '<VTKFile type="UnstructuredGrid" version="2.2"  >'
-!     write(90, *) '<UnstructuredGrid>'
-
-
-!     !! Extract patch data
-!     !! TODO : Toujours nécessaire ?
-!     call extractNurbsPatchGeoInfos(i_patch, Nkv, Jpqr, Nijk, Ukv,       &
-!         &       weight, nb_elem_patch)
-!     call extractNurbsPatchMechInfos(i_patch, ien, props, jprops,        &
-!         &       nnode, nb_elem_patch, elt_type, tensor)
-
-!     if (elt_type_patch == "U1") then
-!         !! Only take into account solid element
-!         !! TODO only in 3D
-
-!         allocate(conn_vtk(nnode_patch))
-
-!         !! Start piece
-!         !! TODO la valeur nnode_patch est fausse ( c'est le nombre de pts par element)
-!         write(90, *) '<Piece NumberOfPoints="  ', nb_cp_patch,         &
-!             &   '"  NumberOfCells=" ', nb_elem_patch, '">'
-
-!         !! Write degrees
-!         write(90, *) '<CellData HigherOrderDegrees="HigherOrderDegrees">'
-!         write(90, *) '<DataArray  type="Int32" Name="HigherOrderDegrees" NumberOfComponents="3" format="ascii">'
-!         do i_elem = 1, nb_elem_patch(i_patch)
-!             write(90, *) (Jpqr_patch(i), i=1, 3)
-!         enddo
-!         write(90, *) '</DataArray>'
-!         write(90, *) '</CellData>'
-
-
-!         !! Write control points
-!         write(90, *) '<Points>'
-!         write(90, *) '<DataArray  type="Float64" NumberOfComponents="3"  format="ascii" >'
-
-!         do i_cp = 1, nb_cp_patch
-!             write(90, *) coords3d(:, ind_cp_patch(i_cp))
-!         enddo
-
-!         write(90,*) '</DataArray>'
-!         write(90,*) '</Points>'
-
-
-!         !! Write cells
-!         write(90, *) '<Cells>'
-
-!         write(90, *) '<DataArray  type="Int32"  Name="connectivity"  format="ascii">'
-!         do i_elem = 1, nb_elem_patch(i_patch)
-!             call ComputeBezierVTUConnectivity(conn_vtk, IEN_patch(:, i_elem), Jpqr_patch(1), Jpqr_patch(2), Jpqr_patch(3))
-!             !! Local CP numbering : warning, findloc function may be costly !
-!             write(90, *) (findloc(ind_cp_patch, conn_vtk(i_cp)) - 1, i_cp = 1, nnode_patch)
-!         enddo
-
-!         write(90, *) '</DataArray>'
-
-!         write(90, *) '<DataArray  type="Int32"  Name="offsets"  format="ascii">'
-!         offset = 0
-!         do i_elem = 1, nb_elem_patch(i_patch)
-!             offset = offset + nnode_patch
-!             write(90, *) offset
-!         enddo
-!         write(90, *) '</DataArray>'
-
-!         write(90, *) '<DataArray  type="UInt8"  Name="types"  format="ascii">'
-!         do i_elem = 1, nb_elem_patch(i_patch)
-!             write(90, *) '79'     !! 79 == type for Bezier hexahedron
-!         enddo
-!         write(90, *) '</DataArray>'
-
-!         write(90, *) '</Cells>'
-
-!         ! do i_elem = 1, nb_elem_patch(i_patch)
-!         !     !! extract element solution
-!         !     do i = 1, nnode_patch
-!         !         coords_elem(:, i) = coords3d(:mcrd, ien_patch(i, i_elem))
-!         !         sol_elem(:, i) = sol(:mcrd, ien_patch(i, i_elem))
-!         !     enddo
-!         !     call extractNurbsElementInfos(i_elem)
-!         ! enddo
-
-!         !! Write data at control points
-!         write(90, *) '<PointData RationalWeights="RationalWeights">'
-
-!         !! Write weights at control points
-!         write(90, *) '<DataArray  type="Float64" Name="RationalWeights" NumberOfComponents="1" format="ascii">'
-!         do i_cp = 1, nb_cp_patch
-!             write(90, *) weight_by_cp(i_cp)
-!         enddo
-!         write(90, *) '</DataArray>'
-
-!         !! Write solution at control points
-!         write(90,*) '<DataArray type="Float64" Name="disp" NumberOfComponents="3" format="ascii">'
-
-!         do i_cp = 1, nb_cp_patch
-!             write(90, *) sol(:, ind_cp_patch(i_cp))
-!         enddo
-
-!         write(90,*) '</DataArray>'
-!         write(90,*) '</PointData>'
-
-!         !! Finalize piece
-!         write(90, *) '</Piece>'
-
-!         deallocate(conn_vtk)
-!     endif
-
-!     !! Finalize file
-!     write(90, *) '</UnstructuredGrid>'
-!     write(90, *) '</VTKFile>'
-
-
-! end subroutine generate_vtu_bezier
 
 subroutine ComputeBezierVTUConnectivity(conn_vtk, conn_yeti, p, q, r)
     !! Compute element connectivity for Bezier cell in VTK format from Yeti connectivity
