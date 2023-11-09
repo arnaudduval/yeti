@@ -14,9 +14,9 @@
 ** with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 *Dimension
-3
+3, 3
 *Number of CP by element
-18
+18, 18
 *Number of patch
 2
 *Total number of element
