@@ -791,7 +791,8 @@ class IGAparametrization:
     def get_inputs4postproc_bezier(self, i_patch, filename, sol):
         """
         Get the necessary inputs for VTU postprocessing using Bezier cells
-        TODO Specify the name of function tu use for postprocessing
+        with function postprocessing.postproc.generate_vtu_bezier
+        Ouptut is made for a given patch of type U1
 
         Parameters
         ----------
@@ -805,8 +806,8 @@ class IGAparametrization:
         Returns
         -------
         inputs : dict
-            Necessary inputs for VTU postprocessing using Bezier cells
-            TODO Specify the name of the function to use for postprocessing
+            Necessary inputs for VTU postprocessing using Bezier cells with
+            function postprocessing.postproc.generate_vtu_bezier
         """
 
         if self._ELT_TYPE[i_patch-1] != 'U1':
@@ -826,54 +827,19 @@ class IGAparametrization:
             for i_cp in range(ien.shape[1]):
                 coords[:, ien[i_elem, i_cp]] = CPs[i_elem, i_cp, :]
 
-
-        # Create an array containing weights for each node
-
-        # nb_cp_patch = self._indCPbyPatch[i_patch-1].shape[0]
-        # weight_by_cp = np.zeros((nb_cp_patch))
-
-        # for inode in range(nb_cp_patch):
-        #     ind_cp = self._indCPbyPatch[i_patch-1][inode]
-        #     if ind_cp in self._IEN[i_patch-1]:
-        #         weight_by_cp[inode] = self._weight_flat[np.argmax(self._IEN_flat == ind_cp)]
-
-        # print(sol.shape)
-
-        print(sol.shape)
-        print()
-
+        # Convert solution for Bezier extraction of patch
         sol_patch_bezier = np.zeros((3, M.shape[0]))
         for i in range(3):
             sol_patch_bezier[i, :] = M @ sol[i, self._indCPbyPatch[i_patch-1]-1]
 
-        # inputs = {'filename': filename,
-        #           'i_patch': i_patch,
-        #           'sol': sol,
-        #           'coords3d': self._COORDS,
-        #           'ien': self._IEN_flat,
-        #           'nb_elem_patch': self._elementsByPatch,
-        #           'nkv': self._Nkv,
-        #           'ukv': self._Ukv_flat,
-        #           'nijk': self._Nijk,
-        #           'weight': self._weight_flat,
-        #           'jpqr': self._Jpqr,
-        #           'elt_type': self._ELT_TYPE_flat,
-        #           'tensor': self._TENSOR_flat,
-        #           'props': self._PROPS_flat,
-        #           'jprops': self._JPROPS,
-        #           'nnode':self._nnode,
-        #           'weight_by_cp': weight_by_cp,
-        #           'ind_cp_patch': self._indCPbyPatch[i_patch-1],
-        #           'nb_cp_patch': nb_cp_patch}
-
         # New inputs with built-in Bezier extraction
         inputs = {'filename': filename,
                   'i_patch': i_patch,
-                  'sol_patch_bezier': sol_patch_bezier,
-                  'coords_patch_bezier': coords[:3, :],
-                  'weights_patch_bezier': coords[3, :],
-                  'ien_patch_bezier': ien,
-                  'jpqr_patch_bezier': Jpqr
+                  'sol': sol_patch_bezier,
+                  'coords': coords[:3, :],
+                  'weights': coords[3, :],
+                  'ien': ien,
+                  'jpqr': Jpqr
                   }
 
         return inputs
