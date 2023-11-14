@@ -387,13 +387,12 @@ class mechaproblem(problem):
 
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
-		prop = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
 		if mechArgs is None:
-			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*self._getInputs(), *dod, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, prop, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+				self.part.invJ, self.part.detJ, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
 		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_elasticity_3d(*inpts)
 		
@@ -489,7 +488,6 @@ class mechaproblem(problem):
 			tmp = tmp + 1; dod[i] = tmp
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
-		elasticProp = [self.mechamaterial.elasticmodulus, self.mechamaterial.poissonratio, self.mechamaterial.elasticlimit]
 		if mechArgs is None:
 			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
@@ -497,7 +495,7 @@ class mechaproblem(problem):
 		if args is None: args = self.part.qpPhy
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, elasticProp, mechArgs, massProp, tsfactor,
+				self.part.invJ, self.part.detJ, mechArgs, massProp, tsfactor,
 				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_lineardynamics_2d(*inpts)
 		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_lineardynamics_3d(*inpts)

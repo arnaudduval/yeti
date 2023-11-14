@@ -318,7 +318,7 @@ end subroutine mf_get_mu_3d
 subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
-                            invJ, detJ, MechArgs, array_in, array_out)
+                            invJ, detJ, nbmechArgs, mechArgs, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -328,7 +328,7 @@ subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -336,8 +336,8 @@ subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    double precision :: invJ, detJ, MechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), MechArgs(nvoigt+3, nc_total)
+    double precision :: invJ, detJ, mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -361,7 +361,7 @@ subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, MechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
@@ -370,9 +370,9 @@ subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 end subroutine mf_get_su_2d
 
 subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            invJ, detJ, MechArgs, array_in, array_out)
+                        nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
+                        invJ, detJ, nbmechArgs, mechArgs, array_in, array_out)
     !! Computes S.u in 3D where S is stiffness matrix. 
     !! This function is adapted to python and ONLY for elastric materials
     !! IN CSR FORMAT
@@ -382,7 +382,7 @@ subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -392,8 +392,8 @@ subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision :: invJ, detJ, MechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), MechArgs(nvoigt+3, nc_total)
+    double precision :: invJ, detJ, mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total)
 
     double precision, intent(in) :: array_in
     dimension :: array_in(dimen, nr_total)
@@ -418,7 +418,7 @@ subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     mat%nvoigt = nvoigt
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, MechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -537,7 +537,7 @@ end subroutine mf_get_coupled_3d
 subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
-                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, properties, mechArgs, &
+                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, nbmechArgs, mechArgs, &
                             Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -552,8 +552,8 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, parameter :: dimen = 2
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -567,8 +567,8 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
-    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -600,10 +600,10 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
 
-    call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
+    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, mechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 2
 
@@ -646,8 +646,8 @@ end subroutine solver_elasticity_2d
 subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, mechArgs, &
-                            Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, &
+                            nbmechArgs, mechArgs, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -661,8 +661,8 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -678,8 +678,8 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
-    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total) 
+    double precision, intent(in) :: invJ, detJ, mechArgs
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -713,10 +713,10 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
-    call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
+    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, mechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 2
 
@@ -758,7 +758,8 @@ end subroutine solver_elasticity_3d
 
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndu, ndv, dod_u, dod_v, table, &
-                            invJ, detJ, properties, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, &
+                            threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
     use solverplasticity2
@@ -766,8 +767,8 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    integer, parameter :: dimen = 2
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
@@ -782,8 +783,8 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
-    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs, Mprop, tsfactor
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total), Mprop(nc_total)
+    double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -816,10 +817,10 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
 
     mat%isLumped = isLumped
-    call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
+    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, mechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 3
@@ -866,8 +867,8 @@ end subroutine solver_lineardynamics_2d
 subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, islumped, &
-                                ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, properties, mechArgs, Mprop, &
-                                tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                                ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, nbmechArgs, &
+                                mechArgs, Mprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
     use solverplasticity3
@@ -875,8 +876,8 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    integer, parameter :: dimen = 3
+    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -893,8 +894,8 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen)  
 
-    double precision, intent(in) :: invJ, detJ, properties(3), mechArgs, Mprop, tsfactor
-    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nvoigt+3, nc_total), Mprop(nc_total)
+    double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG
     double precision, intent(in) :: threshold 
@@ -928,11 +929,11 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen; mat%isLumped = isLumped
-    call initialize_mecamat(mat, dimen, properties(1), properties(2), properties(3))
+    mat%isLumped = isLumped
+    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
-    call setup_jacobiennormal(mat, mechArgs)
+    call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 3

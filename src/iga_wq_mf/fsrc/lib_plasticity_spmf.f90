@@ -4,42 +4,33 @@ module matrixfreeplasticity
     type :: mecamat
     
         integer :: dimen, nvoigt
-        logical :: isLumped = .false.
+        logical :: isLumped = .false., isElastic = .true.
         double precision :: scalars(2) = (/1.d0, 1.d0/)
-        double precision :: elasticmodulus, poissonratio, elasticlimit
         double precision, dimension(:), pointer :: detJ=>null(), Mprop=>null(), Hprop=>null()
-        double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null()
+        double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null(), BB=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
-        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn
+        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, JJbb
         double precision, dimension(:, :), allocatable :: Smean
         double precision, dimension(:), allocatable :: Mmean
-        double precision :: lambda, mu, bulk
         integer :: ncols_sp
     
     end type mecamat
 
 contains
 
-    subroutine initialize_mecamat(mat, dimen, elasticmodulus, poissonratio, elasticlimit)
+    subroutine initialize_mecamat(mat, dimen)
         !! Creates a material using combined isotropic/kinematic hardening theory 
 
         implicit none
         ! Input / output data
         ! -------------------
         integer, intent(in) :: dimen
-        double precision, intent(in) :: elasticmodulus, poissonratio, elasticlimit
         type(mecamat) :: mat
 
         mat%dimen  = dimen
         mat%nvoigt = dimen*(dimen+1)/2
 
         ! Compute mechanical properties
-        mat%elasticmodulus = elasticmodulus
-        mat%poissonratio   = poissonratio
-        mat%elasticlimit   = elasticlimit
-        mat%lambda = poissonratio*elasticmodulus/((1+poissonratio)*(1-2*poissonratio))
-        mat%mu     = elasticmodulus/(2*(1+poissonratio))
-        mat%bulk   = mat%lambda + 2.d0/3.d0*mat%mu
         allocate(mat%Smean(mat%dimen, mat%dimen), mat%Mmean(mat%dimen))
         mat%Smean = 1.d0; mat%Mmean = 1.d0
 
@@ -89,7 +80,7 @@ contains
 
     end subroutine setup_geometry
 
-    subroutine setup_jacobiennormal(mat, mechArgs)
+    subroutine setup_mechanicalArguments(mat, nbrows, mechArgs)
         !! Points to data of the mechanical behavior 
 
         implicit none
@@ -97,24 +88,36 @@ contains
         ! -------------------
         double precision, parameter :: threshold = 1.d-12
         type(mecamat) :: mat
+        integer, intent(in) :: nbrows
         double precision, target, intent(in) :: mechArgs
-        dimension :: mechArgs(mat%nvoigt+3, mat%ncols_sp)
+        dimension :: mechArgs(nbrows, mat%ncols_sp)
 
         ! Local data
         ! ----------
-        double precision :: TNN(mat%dimen, mat%dimen)
+        double precision :: tensor(mat%dimen, mat%dimen)
         integer :: i
 
-        mat%CepArgs => mechArgs(:3, :)
-        mat%NN      => mechArgs(4:, :)
-        if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
-        mat%JJnn = 0.d0
-        if (all(abs(mat%NN).lt.threshold)) return
-        do i = 1,  mat%ncols_sp
-            call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), TNN)
-            mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), TNN)
-        end do
-    end subroutine setup_jacobiennormal
+        if (nbrows.gt.2) mat%isElastic = .false.
+        if (mat%isElastic) then
+            mat%CepArgs => mechArgs(:2, :)
+        else
+            mat%CepArgs => mechArgs(:4, :)    
+            mat%NN      => mechArgs(5:5+mat%nvoigt, :)
+            mat%BB      => mechArgs(5+mat%nvoigt:5+2*mat%nvoigt, :)
+
+            if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
+            if (.not.allocated(mat%JJbb)) allocate(mat%JJbb(mat%dimen, mat%dimen, mat%ncols_sp))
+            mat%JJnn = 0.d0; mat%JJbb = 0.d0
+            if (all(abs(mat%NN).lt.threshold)) return
+            do i = 1, mat%ncols_sp
+                call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), tensor)
+                mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+                call array2symtensor(mat%dimen, mat%nvoigt, mat%BB(:, i), tensor)
+                mat%JJbb(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+            end do
+        end if
+
+    end subroutine setup_mechanicalArguments
 
     subroutine setup_jacobienjacobien(mat)
         
@@ -155,8 +158,9 @@ contains
         integer, allocatable, dimension(:) :: nc_list_t
         logical, allocatable, dimension(:) :: update
         double precision, allocatable, dimension(:, :, :) :: CC
-        double precision :: DD, NN, TNN
-        dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen)
+        double precision :: DD, NN, TNN, BB, TBB
+        dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen), &
+                    BB(mat%nvoigt), TBB(mat%dimen, mat%dimen)
 
         if (.not.associated(mat%Mprop)) then
             allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
@@ -165,8 +169,9 @@ contains
 
             do i = 1, mat%dimen
                 do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp)
+                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
                     call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
                     ! Elastic
                     DD = 0.d0
@@ -176,11 +181,14 @@ contains
                     end do
 
                     ! Plastic
-                    do j = 1, mat%dimen
-                        do k = 1, mat%dimen
-                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    if (mat%isElastic.eqv..false.) then
+                        do j = 1, mat%dimen
+                            do k = 1, mat%dimen
+                                DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+                                            + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+                            end do
                         end do
-                    end do
+                    end if
                     CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                 end do
 
@@ -199,8 +207,9 @@ contains
 
             do i = 1, mat%dimen
                 do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp)
+                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
                     call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
                     ! Elastic
                     DD = 0.d0
@@ -208,13 +217,16 @@ contains
                     do k = 1, mat%dimen
                         DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                     end do
-
+                    
                     ! Plastic
-                    do j = 1, mat%dimen
-                        do k = 1, mat%dimen
-                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                    if (mat%isElastic.eqv..false.) then
+                        do j = 1, mat%dimen
+                            do k = 1, mat%dimen
+                                DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+                                            + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+                            end do
                         end do
-                    end do
+                    end if
                     CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp), &
                                                     matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                     CC(mat%dimen+1, mat%dimen+1, gp) = mat%Mprop(gp)*mat%detJ(gp)
@@ -246,8 +258,9 @@ contains
         integer :: i, j, k, c, gp, pos, ind(3)
         integer, dimension(:), allocatable :: sample
         integer, dimension(:, :), allocatable :: indlist
-        double precision :: DD, TNN, NN, Mmean
-        dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt)
+        double precision :: DD, TNN, NN, TBB, BB, Mmean
+        dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt), &
+                    TBB(mat%dimen, mat%dimen), BB(mat%nvoigt)
         double precision, allocatable, dimension(:, :, :) :: Scoefs
         double precision, allocatable, dimension(:) :: Mcoefs
 
@@ -286,22 +299,26 @@ contains
         do i = 1, mat%dimen
             do c = 1, size(sample)
                 gp = sample(c)
-                NN = mat%NN(:, gp)
+                NN = mat%NN(:, gp); BB = mat%NN(:, gp)
                 call array2symtensor(mat%dimen, size(NN), NN, TNN)
-    
+                call array2symtensor(mat%dimen, size(BB), BB, TBB)
+
                 ! Elastic
                 DD = 0.d0
                 DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
                 do k = 1, mat%dimen
                     DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
                 end do
-
+                
                 ! Plastic
-                do j = 1, mat%dimen
-                    do k = 1, mat%dimen
-                        DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k)
+                if (mat%isElastic.eqv..false.) then
+                    do j = 1, mat%dimen
+                        do k = 1, mat%dimen
+                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+                                        + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+                        end do
                     end do
-                end do
+                end if
 
                 Scoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             end do
@@ -490,14 +507,24 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta
+        integer :: i, j, k, l, alpha, beta, zeta, nbCepArgs = 4
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
-        dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
-                        t4(nc_total), t5(nc_total), t6(nr_total), t7(nr_total)
+        double precision, allocatable, dimension(:) :: t4, t5, t6
+        double precision, allocatable, dimension(:, :) :: kt1
+        double precision :: t1, t2, t3, t7, t8, t9
+        dimension :: t1(nc_total), t2(nc_total), t3(nc_total), &
+                        t7(nc_total), t8(nr_total), t9(nr_total)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-        array_out = 0.d0       
+        array_out = 0.d0
+
+        if (mat%isElastic) then 
+            nbCepArgs = 2
+        else
+            allocate(t4(nc_total), t5(nc_total), t6(nc_total))
+        end if
+        allocate(kt1(nbCepArgs, nc_total))
+
         do j = 1, dimen
             do l = 1, dimen
                 beta = 1; beta(l) = 2
@@ -506,30 +533,38 @@ contains
                         nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, 3
+                do i = 1, nbCepArgs
                     kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
-                t4 = kt1(3, :)*mat%JJnn(l, j, :)
+                if (mat%isElastic) then
+                    t4 = kt1(3, :)*mat%JJnn(l, j, :)
+                    t5 = kt1(4, :)*mat%JJbb(l, j, :)
+                    t6 = kt1(4, :)*mat%JJnn(l, j, :)
+                end if
 
                 do i = 1, dimen
                     t3 = kt1(2, :)*mat%invJ(l, i, :)
-                    t7 = 0.d0
+                    t9 = 0.d0
 
                     do k = 1, dimen
                         alpha = 1; alpha(k) = 2
                         zeta  = beta + (alpha - 1)*2
-                        t5    = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :) + t4*mat%JJnn(k, i, :)
-                        if (i.eq.j) t5 = t5 + kt1(2, :)*mat%JJjj(k, l, :)
+                        
+                        t7 = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :)
+                        if (mat%isElastic.eqv..false.) then
+                            t7 = t7 + t4*mat%JJnn(k, i, :) - t5*mat%JJnn(k, i, :) + t6*mat%JJbb(k, i, :)
+                        end if
+                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(k, l, :)
                         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                t5, t6)
-                        t7 = t7 + t6
+                                t7, t8)
+                        t9 = t9 + t8
                     end do
 
-                    array_out(i, :) = array_out(i, :) + t7
+                    array_out(i, :) = array_out(i, :) + t9
                 end do
             end do
         end do
@@ -572,14 +607,24 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta
+        integer :: i, j, k, l, alpha, beta, zeta, nbCepArgs = 4
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision :: kt1, t1, t2, t3, t4, t5, t6, t7
-        dimension ::    kt1(3, nc_total), t1(nc_total), t2(nc_total), t3(nc_total), &
-                        t4(nc_total), t5(nc_total), t6(nr_total), t7(nr_total)
+        double precision, allocatable, dimension(:) :: t4, t5, t6
+        double precision, allocatable, dimension(:, :) :: kt1
+        double precision :: t1, t2, t3, t7, t8, t9
+        dimension :: t1(nc_total), t2(nc_total), t3(nc_total), &
+                        t7(nc_total), t8(nc_total), t9(nr_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-        array_out = 0.d0       
+        array_out = 0.d0
+        
+        if (mat%isElastic) then 
+            nbCepArgs = 2
+        else
+            allocate(t4(nc_total), t5(nc_total), t6(nc_total))
+        end if
+        allocate(kt1(nbCepArgs, nc_total))
+
         do j = 1, dimen
             do l = 1, dimen
                 beta = 1; beta(l) = 2
@@ -589,30 +634,38 @@ contains
                         nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, 3
+                do i = 1, nbCepArgs
                     kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
-                t4 = kt1(3, :)*mat%JJnn(l, j, :)
+                if (mat%isElastic) then
+                    t4 = kt1(3, :)*mat%JJnn(l, j, :)
+                    t5 = kt1(4, :)*mat%JJbb(l, j, :)
+                    t6 = kt1(4, :)*mat%JJnn(l, j, :)
+                end if
 
                 do i = 1, dimen
                     t3 = kt1(2, :)*mat%invJ(l, i, :)
-                    t7 = 0.d0
+                    t9 = 0.d0
 
                     do k = 1, dimen
                         alpha = 1; alpha(k) = 2
                         zeta  = beta + (alpha - 1)*2
-                        t5    = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :) + t4*mat%JJnn(k, i, :)
-                        if (i.eq.j) t5 = t5 + kt1(2, :)*mat%JJjj(k, l, :)
+                        
+                        t7 = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :)
+                        if (mat%isElastic.eqv..false.) then
+                            t7 = t7 + t4*mat%JJnn(k, i, :) - t5*mat%JJnn(k, i, :) + t6*mat%JJbb(k, i, :)
+                        end if
+                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(k, l, :)
                         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t5, t6)
-                        t7 = t7 + t6
+                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t8, t9)
+                        t9 = t9 + t8
                     end do
 
-                    array_out(i, :) = array_out(i, :) + t7
+                    array_out(i, :) = array_out(i, :) + t9
                 end do
             end do
         end do
