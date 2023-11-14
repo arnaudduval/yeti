@@ -598,7 +598,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 
 	def compute_mfCoupled(self, array_in, args=None, isThermal=True):
 		if args is None: args = self.part.qpPhy
-		prop = 3*self.mechamaterial.thexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
+		prop = 3*self.mechamaterial.thermalexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if isThermal:
 			if self.part.dim == 2: array_out = heatsolver.mf_get_coupled_2d(*inpts, array_in)

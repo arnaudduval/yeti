@@ -373,72 +373,72 @@ class mechaproblem1D(part1D):
 			self.plasticLaw            = plasticLaw(self.elasticlimit, tmp)
 		return 
 
-	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
-		""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
-			It uses combined isotropic/kinematic hardening theory.  
-		"""
+	# def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
+	# 	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
+	# 		It uses combined isotropic/kinematic hardening theory.  
+	# 	"""
 
-		def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-10):
-			dgamma = np.zeros(np.size(a_n0))
-			a_n1   = a_n0 
-			for i in range(nbIter):
-				G  = np.abs(eta_trial) - (E + law._KinematicHard(a_n1))*dgamma -law._IsotropicHard(a_n1)
-				if np.all(np.abs(G)<=threshold): break
-				dG = - (E + law._KinematicHard(a_n1) + dgamma*law._KinematicHardDer(a_n1)
-						+ law._IsotropicHardDer(a_n1))
-				dgamma -= G/dG
-				a_n1 = a_n0 + dgamma
-			if i == nbIter: raise Warning('Convergence problem')
-			return dgamma
+	# 	def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-10):
+	# 		dgamma = np.zeros(np.size(a_n0))
+	# 		a_n1   = a_n0 
+	# 		for i in range(nbIter):
+	# 			G  = np.abs(eta_trial) - (E + law._KinematicHard(a_n1))*dgamma -law._IsotropicHard(a_n1)
+	# 			if np.all(np.abs(G)<=threshold): break
+	# 			dG = - (E + law._KinematicHard(a_n1) + dgamma*law._KinematicHardDer(a_n1)
+	# 					+ law._IsotropicHardDer(a_n1))
+	# 			dgamma -= G/dG
+	# 			a_n1 = a_n0 + dgamma
+	# 		if i == nbIter: raise Warning('Convergence problem')
+	# 		return dgamma
 
-		nnz = np.size(strain)
-		output = np.zeros((5, nnz))
-		isElasticLoad = True
+	# 	nnz = np.size(strain)
+	# 	output = np.zeros((5, nnz))
+	# 	isElasticLoad = True
 
-		# Compute trial stress
-		s_trial = self.elasticmodulus*(strain - pls)
+	# 	# Compute trial stress
+	# 	s_trial = self.elasticmodulus*(strain - pls)
 		
-		# Computed shifted stress 
-		eta_trial = s_trial - b
+	# 	# Computed shifted stress 
+	# 	eta_trial = s_trial - b
 
-		# Check yield status
-		f_trial = np.abs(eta_trial) - self.plasticLaw._IsotropicHard(a)
-		Cep     = self.elasticmodulus*np.ones(nnz)
-		pls_new = np.copy(pls)
-		a_new  = np.copy(a)
-		b_new  = np.copy(b)
-		stress = np.copy(s_trial)
+	# 	# Check yield status
+	# 	f_trial = np.abs(eta_trial) - self.plasticLaw._IsotropicHard(a)
+	# 	Cep     = self.elasticmodulus*np.ones(nnz)
+	# 	pls_new = np.copy(pls)
+	# 	a_new  = np.copy(a)
+	# 	b_new  = np.copy(b)
+	# 	stress = np.copy(s_trial)
 
-		plsInd = np.nonzero(f_trial>threshold)[0]
-		if np.size(plsInd) > 0:
+	# 	plsInd = np.nonzero(f_trial>threshold)[0]
+	# 	if np.size(plsInd) > 0:
 
-			isElasticLoad = False
+	# 		isElasticLoad = False
 
-			# Compute plastic-strain increment
-			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
+	# 		# Compute plastic-strain increment
+	# 		dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
 			
-			# Update internal hardening variable
-			a_new[plsInd] += dgamma_plsInd
+	# 		# Update internal hardening variable
+	# 		a_new[plsInd] += dgamma_plsInd
 			
-			# Compute df/dsigma
-			Normal_plsInd = np.sign(eta_trial[plsInd])
+	# 		# Compute df/dsigma
+	# 		Normal_plsInd = np.sign(eta_trial[plsInd])
 
-			# Update stress
-			stress[plsInd] -= self.elasticmodulus*dgamma_plsInd*Normal_plsInd
+	# 		# Update stress
+	# 		stress[plsInd] -= self.elasticmodulus*dgamma_plsInd*Normal_plsInd
 			
-			# Update plastic strain
-			pls_new[plsInd] += dgamma_plsInd*Normal_plsInd
+	# 		# Update plastic strain
+	# 		pls_new[plsInd] += dgamma_plsInd*Normal_plsInd
 
-			# Update backstress
-			b_new[plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
+	# 		# Update backstress
+	# 		b_new[plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
 			
-			# Update tangent coefficients
-			somme = self.plasticLaw._IsotropicHardDer(a_new[plsInd]) + self.plasticLaw._KinematicHard(a_new[plsInd])
-			Cep[plsInd] = self.elasticmodulus*somme/(self.elasticmodulus + somme)
+	# 		# Update tangent coefficients
+	# 		somme = self.plasticLaw._IsotropicHardDer(a_new[plsInd]) + self.plasticLaw._KinematicHard(a_new[plsInd])
+	# 		Cep[plsInd] = self.elasticmodulus*somme/(self.elasticmodulus + somme)
 
-		output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
-		output[3, :] = b_new; output[4, :] = Cep
-		return output, isElasticLoad
+	# 	output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
+	# 	output[3, :] = b_new; output[4, :] = Cep
+	# 	return output, isElasticLoad
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "

@@ -1,5 +1,22 @@
 from .__init__ import *
 
+def clean_dirichlet(A, dod):
+	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
+		A is actually a vector arranged following each dimension [Au, Av, Aw]
+	"""
+	dim = np.size(A, axis=0)
+	for i in range(dim): A[i, dod[i]] = 0.0
+	return
+
+def block_dot_product(d, A, B):
+	""" Computes dot product of A and B. 
+		Both are actually vectors arranged following each dimension
+		A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
+	"""
+	result = 0.0
+	for i in range(d): result += A[i, :] @ B[i, :]
+	return result
+
 class material():
 
 	def __init__(self):
@@ -48,6 +65,9 @@ class material():
 		return
 
 class heatmat(material):
+	"""" In our work we consider nonlinar materials, 
+	meaning that its thermal properties could change depending on the position, temperature, etc.
+	"""
 	def __init__(self, matArgs=dict()):
 		material.__init__(self)
 		self.capacity     = None
@@ -67,89 +87,32 @@ class heatmat(material):
 		self.conductivity = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
 
-class plasticLaw():
-	def __init__(self, elasticlimit, plasticArgs:dict):
-		self.__elasticlimit = elasticlimit
-		self._IsotropicHard = None; self._IsotropicHardDer = None
-		self._KinematicHard = None; self._KinematicHardDer = None
-		self._plasticArgs = plasticArgs
-
-		# Define Isotropic hardening
-		isoname = plasticArgs.get('Isoname', '').lower()
-		if   isoname == 'linear': self.__setIsoLinearModel(plasticArgs)
-		elif isoname == 'swift' : self.__setIsoSwiftModel(plasticArgs)
-		elif isoname == 'voce'  : self.__setIsoVoceModel(plasticArgs)
-		elif isoname == 'none' : self.__setIsoNoneModel()
-		else: raise Warning('Unknown method')
-
-		# Define kinematic hardening
-		kinename = plasticArgs.get('Kinename', '').lower()
-		if   kinename == 'linear': self.__setKineLinearModel(plasticArgs)
-		elif kinename == 'none' or kinename == '': 
-			print('By default, we do not consider kinematic hardening')
-			self.__setKineNoneModel()
-
-		funlist = [self._KinematicHard, self._KinematicHardDer, self._IsotropicHard, self._IsotropicHardDer]
-		if any(fun is None for fun in funlist): raise Warning('Something went wrong')
-		return	
-	
-	def __setIsoNoneModel(self):
-		self._IsotropicHard = lambda a: 1e6*self.__elasticlimit*np.ones(np.size(a))
-		self._IsotropicHardDer = lambda a: np.zeros(np.size(a))
-		return
-	
-	def __setIsoLinearModel(self, plasticArgs:dict):
-		Eiso = plasticArgs.get('Eiso', None)
-		self._IsotropicHard = lambda a: self.__elasticlimit + Eiso*a 
-		self._IsotropicHardDer = lambda a: Eiso*np.ones(np.size(a))
-		return
-	
-	def __setIsoSwiftModel(self, plasticArgs:dict):
-		e0 = plasticArgs.get('e0', None)
-		n = plasticArgs.get('n', None)
-		self._IsotropicHard = lambda a: self.__elasticlimit*(1 + a/e0)**n
-		self._IsotropicHardDer = lambda a: self.__elasticlimit*n/e0*(1 + a/e0)**(n - 1)
-		return
-	
-	def __setIsoVoceModel(self, plasticArgs:dict):
-		ssat = plasticArgs.get('ssat', None)
-		beta = plasticArgs.get('beta', None)
-		self._IsotropicHard = lambda a: self.__elasticlimit +  ssat*(1.0 - np.exp(-beta*a))
-		self._IsotropicHardDer = lambda a: ssat*beta*np.exp(-beta*a) 
-		return
-	
-	def __setKineNoneModel(self):
-		self._KinematicHard = lambda a: np.zeros(np.size(a))
-		self._KinematicHardDer = lambda a: np.zeros(np.size(a))
-		return
-	
-	def __setKineLinearModel(self, plasticArgs:dict):
-		Ek = plasticArgs.get('Ekine', None)
-		print('If working in 2 or 3 dimensions, please be sure of scaling the coefficients by 2/3')
-		self._KinematicHard = lambda a: Ek*np.ones(np.size(a))
-		self._KinematicHardDer = lambda a: np.zeros(np.size(a))
-		return
-	
 class mechamat(material):
-	# Eventually this class should be similar to thermomat, but for the moment let's say it works !
+	""" In our work we only consider isotropic material (with Lamé parameters). 
+		For plasticity, we consider the J2 model with nonlinear isotropic hardening and 
+		a Chaboche kinematic hardening. In that way, linear and Armstrong-Frederick hardening are subcases. 
+	"""
+
 	def __init__(self, matArgs:dict):
 		material.__init__(self)
+		self.thermalexpansion = matArgs.get('thermal_expansion', 1.0)
 		self.elasticmodulus = matArgs.get('elastic_modulus', None)
 		self.poissonratio   = matArgs.get('poisson_ratio', None)
-		self.elasticlimit   = matArgs.get('elastic_limit', None)
-		self.thexpansion    = matArgs.get('thermal_expansion', 1.0)
-		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): 
-			raise Warning('Mechanics not well defined')
-
-		self.plasticLaw            = None
-		self._isPlasticityPossible = False
-		tmp = matArgs.get('plasticLaw', None)
-		if isinstance(tmp, dict): 
-			self._isPlasticityPossible = True
-			self.plasticLaw = plasticLaw(self.elasticlimit, tmp)
+		self.elasticlimit   = matArgs.get('elastic_limit', 1e15)
+		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): raise Warning('Mechanics not well defined')
 		self.__setExtraMechanicalProperties()
+
+		isoLaw = matArgs.get('isoHardLaw', {})
+		self._isoHardening = self.isotropicHardening(self.elasticlimit, isohardArgs=isoLaw)
+		kineLaw = matArgs.get('kineHardLaw', {})
+		chabocheTable = kineLaw.get('kineparameters', np.array([[0, 0]]))
+		# By default if only one parameter we consider a linear kinematic hardening
+		# Armstrong Frederick hardening is only considering a single row [[b, c]]
+		if np.isscalar(chabocheTable): chabocheTable = np.array([[chabocheTable, 0]]) 
+		self._chabocheTable = np.atleast_2d(chabocheTable)
+		self._chabocheNBparameters = np.size(self._chabocheTable, axis=0)
 		return
-	
+		
 	def __setExtraMechanicalProperties(self):
 		E  = self.elasticmodulus
 		nu = self.poissonratio
@@ -162,57 +125,123 @@ class mechamat(material):
 			self.lame_mu = mu
 			self.lame_bulk = bulk
 		return
-		
+	
 	def evalElasticStress(self, strain, dim):
-		traceStrain = evalTrace4All(strain, dim)
+		traceStrain = computeTrace4All(strain, dim)
 		stress = 2*self.lame_mu*strain
 		for i in range(dim): stress[i, :] += self.lame_lambda*traceStrain
 		return stress
 	
-	def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
-		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
-			It uses combined isotropic/kinematic hardening theory.  
-		"""
-		raise Warning('Not done')
-		def computeDeltaGamma(law:plasticLaw, lame_mu, a_n0, eta_trial, nbIter=50, threshold=1e-9):
-			dgamma = np.zeros(np.size(a_n0))
-			a_n1 = a_n0
-			for i in range(nbIter):
-				G  = (np.linalg.norm(eta_trial, axis=(0, 1)) - (2.0*lame_mu + law._KinematicHard(a_n1))*dgamma
-				- np.sqrt(2.0/3.0)*law._IsotropicHard(a_n1))
-				if np.all(np.abs(G)<=threshold): break
-				dG = -(2.0*lame_mu + law._KinematicHard(a_n1) 
-					+ np.sqrt(2.0/3.0)*dgamma*law._KinematicHardDer(a_n1) 
-					+ 2.0/3.0*law._IsotropicHardDer(a_n1))
-				dgamma -= G/dG
-				a_n1 = a_n0 + np.sqrt(2.0/3.0)*dgamma
-			return dgamma
+	class isotropicHardening():
+		def __init__(self, elasticlimit, isohardArgs:dict):
+			self.__elasticlimit = elasticlimit
+			isoname = isohardArgs.get('Isoname', 'none').lower()
+			if   isoname == 'linear': self.__setIsoLinearModel(isohardArgs)
+			elif isoname == 'swift' : self.__setIsoSwiftModel(isohardArgs)
+			elif isoname == 'voce'  : self.__setIsoVoceModel(isohardArgs)
+			elif isoname == 'none'  : self.__setIsoNoneModel()
+			else: raise Warning('Unknown method')
+			return	
+		
+		def __setIsoNoneModel(self):
+			self._isohardfun = lambda a: 1e6*self.__elasticlimit*np.ones(np.size(a))
+			self._isohardfunders = lambda a: np.zeros(np.size(a))
+			return
+		
+		def __setIsoLinearModel(self, args:dict):
+			Eiso = args.get('Eiso', None)
+			self._isohardfun = lambda a: self.__elasticlimit + Eiso*a 
+			self._isohardfunders = lambda a: Eiso*np.ones(np.size(a))
+			return
+		
+		def __setIsoSwiftModel(self, args:dict):
+			e0 = args.get('e0', None)
+			n = args.get('n', None)
+			self._isohardfun = lambda a: self.__elasticlimit*(1 + a/e0)**n
+			self._isohardfunders = lambda a: self.__elasticlimit*n/e0*(1 + a/e0)**(n - 1)
+			return
+		
+		def __setIsoVoceModel(self, args:dict):
+			ssat = args.get('ssat', None)
+			beta = args.get('beta', None)
+			self._isohardfun = lambda a: self.__elasticlimit +  ssat*(1.0 - np.exp(-beta*a))
+			self._isohardfunders = lambda a: ssat*beta*np.exp(-beta*a) 
+			return
+	
+	# 3D (or 2D even if within their name one could find '3D')
 
-		nvoigt, nnz = np.shape(strain)
+	def __parametersPreCalc3D(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
+		
+		def sumOverChabocheTable(chabocheTable, dgamma, beta):
+			avrbeta = np.zeros(np.shape(beta[0, :, :])); hatbeta = np.zeros(np.shape(beta[0, :, :]))
+			const1, const2 = np.zeros(len(dgamma)), np.zeros(len(dgamma))
+			for i in range(self._chabocheNBparameters):
+				[bi, ci] = chabocheTable[i, :]
+				avrbeta += beta[i, :, :]/(1 + bi*dgamma)
+				hatbeta += bi*beta[i, :, :]/(1 + bi*dgamma)**2
+				const1 += ci/(1 + bi*dgamma)
+				const2 += ci/(1 + bi*dgamma)**2
+			return avrbeta, hatbeta, const1, const2
+		
+		dgamma = np.zeros(len(alpha_n0)); alpha_n1 = np.copy(alpha_n0); dgamma_ref = np.copy(dgamma)
+		for k in range(nbIter):
+			avrbeta, hatbeta, const1, const2 = sumOverChabocheTable(self._chabocheTable, dgamma, beta_n0)
+			hateta = computeDeviatoric4All(stress_trial - avrbeta)
+			normhateta = computeSymTensorNorm4All(hateta)
+			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
+			normal = hateta/normhateta
+			normhatbetaders = computeSymDoubleContraction4All(normal, hatbeta)
+			df = np.sqrt(3.0/2.0)*normhatbetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)
+			dgamma_ref -= f/df
+			resNRj = np.sqrt(np.abs(np.dot(dgamma_ref, f)))
+			if k == 1: resNR0 = resNRj
+			if resNRj <= threshold*resNR0: break 
+			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
+
+		phi_alg = -np.sqrt(2.0/3.0)*df
+		theta = 2*self.lame_mu*dgamma/(normhateta)*np.sqrt(3.0/2.0)
+		thetatilde = 2*self.lame_mu*np.sqrt(3.0/2.0)/phi_alg
+
+		return dgamma, hatbeta, normal, theta, thetatilde
+	
+	def __consistentTangentAlgorithm3D(self, nnz, isElasticLoad, plsVars={}):
+		if isElasticLoad:
+			mechArgs = np.zeros((2, nnz))
+			mechArgs[0, :] = self.lame_lambda; mechArgs[1, :] = self.lame_mu
+		else:
+			plsInd = plsVars["plsInd"]; normal = plsVars["normal"]; hatbeta = plsVars["hatbeta"]
+			theta = plsVars["theta"]; thetatilde = plsVars["thetatilde"]
+			nvoigt = np.size(hatbeta, axis=0)
+			mechArgs = np.zeros((4+2*nvoigt, nnz))
+			mechArgs[0, :] = self.lame_lambda; mechArgs[0, plsInd] += 2.0/3.0*self.lame_mu*theta 
+			mechArgs[1, :] = self.lame_mu; mechArgs[1, plsInd] = self.lame_mu*(1 - theta)
+			mechArgs[2, plsInd] = -2*self.lame_mu*(thetatilde - theta)
+			mechArgs[3, plsInd] = -np.sqrt(2.0/3.0)*theta*thetatilde
+			mechArgs[4:nvoigt+4, plsInd] = normal
+			mechArgs[nvoigt+4:, plsInd]  = hatbeta
+		return mechArgs
+	
+	def J2returnMappingAlgorithm3D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-9):
+		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
+		"""		
+		nvoigt, nnz = np.shape(strain_n1)
 		if nvoigt   == 3: dim = 2
 		elif nvoigt == 6: dim = 3
-		isElasticLoad = True
-		output  = np.zeros((4*(nvoigt+1), nnz)); Cep = np.zeros((3, nnz))
+		isElasticLoad = True; output = {}
 
-		# Compute strain deviator
-		traceStrain = evalTrace4All(strain, dim)
-		devStrain   = np.copy(strain)
-		for i in range(dim): devStrain[i, :] -= 1.0/3.0*traceStrain
-
-		# Compute trial stress deviator
-		s_trial = 2*self.lame_mu*(devStrain - pls)
+		# Compute trial stress
+		strain_trial = strain_n1 - pls_n0
+		stress_trial = self.evalElasticStress(strain_trial, dim=dim)
 
 		# Compute shifted stress
-		eta_trial = s_trial - b
+		beta = np.sum(beta_n0, axis=0)
+		eta_trial = computeDeviatoric4All(stress_trial - beta)
 
 		# Check yield status
-		norm_trial = computeVMStress4All(eta_trial, dim)
-		f_trial = norm_trial - self.plasticLaw._IsotropicHard(a)
-		sigma   = np.copy(s_trial)
-		for i in range(dim): sigma[i, i, :] += self.lame_bulk*traceStrain
-		Cep[0, :] = self.lame_lambda; Cep[1, :] = self.lame_mu
-		pls_new = np.copy(pls); a_new = np.copy(a); b_new = np.copy(b)
-		stress  = symtensor2array4All(sigma, dim)
+		norm_eta_trial = computeSymTensorNorm4All(eta_trial, dim)
+		f_trial = np.sqrt(3.0/2.0)*norm_eta_trial - self._isoHardening._isohardfun(alpha_n0)
+		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
+		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
 
 		plsInd = np.nonzero(f_trial>threshold)[0]
 		if np.size(plsInd) > 0:
@@ -220,76 +249,58 @@ class mechamat(material):
 			isElasticLoad = False
 
 			# Compute plastic-strain increment
-			dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.lame_mu, a[plsInd], eta_trial[:, :, plsInd])
+			dgamma, hatbeta, normal, theta, thetatilde = self.__parametersPreCalc3D(stress_trial[:, plsInd], 
+															beta_n0[:, :, plsInd], alpha_n0[plsInd])
 
 			# Update internal hardening variable
-			a_new[plsInd] = a[plsInd] + np.sqrt(2.0/3.0)*dgamma_plsInd
-
-			# Compute d f_trial/d eta_trial
-			Normal_plsInd = eta_trial[:, :, plsInd]/norm_trial[plsInd]
-			output[3*nvoigt+4:, plsInd] = symtensor2array4All(Normal_plsInd, dim)
+			alpha_n1[plsInd] = alpha_n1[plsInd] + dgamma
 
 			# Update stress
-			sigma[:, :, plsInd] -= 2*self.lame_mu*dgamma_plsInd*Normal_plsInd
-			stress[:, plsInd] = symtensor2array4All(sigma[:, :, plsInd], dim)
-
+			stress_n1[plsInd] = stress_trial[plsInd] - 2*self.lame_mu*np.sqrt(3.0/2.0)*dgamma*normal
+			
 			# Update plastic strain
-			Tpls[:, :, plsInd] += dgamma_plsInd*Normal_plsInd
-			pls_new[:, plsInd] = symtensor2array4All(Tpls[:, :, plsInd], dim)
+			pls_n1[:, plsInd] = pls_n0[:, plsInd] + np.sqrt(3.0/2.0)*dgamma*normal
 
 			# Update backstress
-			Tb[:, :, plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
-			b_new[:, plsInd] = symtensor2array4All(Tb[:, :, plsInd], dim)
+			for i in range(self._chabocheNBparameters):
+				[bi, ci] = self._chabocheTable[i, :]
+				beta_n1[i, :, plsInd] = (beta_n1[i, :, plsInd] + np.sqrt(3.0/2.0)*ci*dgamma*normal)/(1 + bi*dgamma)
 
-			# Update tangent coefficients
-			sumofterms = (3.0*self.plasticLaw._KinematicHard(a_new[plsInd]) 
-						+ 2.0*self.plasticLaw._IsotropicHardDer(a_new[plsInd]) 
-						+ np.sqrt(6.0)*dgamma_plsInd*self.plasticLaw._KinematicHardDer(a_new[plsInd]))
-			c1 = 1.0 - 2.0*self.lame_mu*dgamma_plsInd/norm_trial[plsInd]
-			c2 = 1.0/(1.0 + sumofterms/(6.0*self.lame_mu)) + c1 - 1.0
-			Cep[0, plsInd] = self.lame_lambda + 2.0/3.0*self.lame_mu*(1.0 - c1)
-			Cep[1, plsInd] = self.lame_mu*c1
-			Cep[2, plsInd] = -2.0*self.lame_mu*c2
+			plsVars = {"plsInd": plsInd, "normal": normal, "hatbeta": hatbeta, "theta": theta, "thetatilde": thetatilde}
 
-		output[0:nvoigt, :] = stress; output[nvoigt:2*nvoigt, :] = pls_new; output[2*nvoigt, :] = a_new
-		output[2*nvoigt+1:3*nvoigt+1, :] = b_new; output[3*nvoigt+1:3*nvoigt+4, :] = Cep
+		mechArgs = self.__consistentTangentAlgorithm3D(nnz, isElasticLoad, plsVars)
+		output = {"stress": stress_n1, "pls": pls_n1, "alpha": alpha_n1, "beta": beta_n1, "mechArgs": mechArgs}
+
 		return output, isElasticLoad
 	
-def clean_dirichlet(A, dod):
-	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
-		A is actually a vector arranged following each dimension [Au, Av, Aw]
-	"""
-	dim = np.size(A, axis=0)
-	for i in range(dim): A[i, dod[i]] = 0.0
-	return
+	# 1D
 
-def block_dot_product(d, A, B):
-	""" Computes dot product of A and B. 
-		Both are actually vectors arranged following each dimension
-		A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
-	"""
-	result = 0.0
-	for i in range(d): result += A[i, :] @ B[i, :]
-	return result
 
-def evalTrace4All(arrays, dim):
+
+def computeTrace4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)
 	trace = np.zeros(nnz)
 	for i in range(dim):
 		trace += arrays[i, :]
 	return trace
 
-def computeVMStress4All(arrays, dim):
+def computeDeviatoric4All(arrays, dim):
 	nnz = np.size(arrays, axis=1)
+	trace = computeTrace4All(arrays, dim)/3.0
+	for i in range(dim): arrays[i, :] -= trace
+	return trace
+
+def computeSymDoubleContraction4All(arrays1, arrays2, dim):
+	nnz = np.size(arrays1, axis=1) # or arrays2
 	nvgt  = int(dim*(dim+1)/2)
-	trace = evalTrace4All(arrays, dim)
-	dev   = np.copy(arrays)
-	for i in range(dim):
-		dev[i, :] -= 1.0/3.0*trace
 	s = np.zeros(nnz)
 	for i in range(dim):
-		s += arrays[i, :]*arrays[i, :]
+		s += arrays1[i, :]*arrays2[i, :]
 	for i in range(dim, nvgt):
-		s += 2*arrays[i, :]*arrays[i, :]
-	vm = np.sqrt(3.0/2.0*s)
-	return vm
+		s += 2*arrays1[i, :]*arrays2[i, :]
+	return
+
+def computeSymTensorNorm4All(arrays, dim):
+	s = computeSymDoubleContraction4All(arrays, arrays, dim)
+	return np.sqrt(s)
+
