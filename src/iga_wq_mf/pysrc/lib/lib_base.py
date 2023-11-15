@@ -445,29 +445,3 @@ class solver():
 
 		return x, resPCG
 	
-	def FGMRES(self, Afun, Pfun, b, nbR=4):
-		x = np.zeros(np.shape(b))
-		e = np.zeros(self._nbIter+1); e[0] = 1
-		V = np.zeros((np.shape(b), self._nbIter+1))
-		for k in range(nbR):
-			H = np.zeros((self._nbIter+1, self._nbIter))
-			Z = np.zeros((np.shape(b), self._nbIter))
-			r = b - Afun(x)
-			beta = np.linalg.norm(r)
-			if beta<=self._thresholdPCG: break
-			V[:, 0] = r/beta
-			for j in range(self._nbIter):
-				Z[:, j] = Pfun(V[:, j])
-				w = Afun(Z[:, j])
-				for i in range(j):
-					H[i, j] = np.dot(V[:, i], w)
-					w = w - H[i, j]*V[:, i]
-				H[j+1, j] = np.linalg.norm(w)
-				V[:, j+1] = w/H[j+1, j]
-				y = np.linalg.solve(H[:j+1, :j], beta*e[:j+1])
-				xtilde = x + Z[:, :j]@y
-				r = b - Afun(xtilde)
-				if np.linalg.norm(r)<=self._thresholdPCG: break
-			x = xtilde
-				
-		return x

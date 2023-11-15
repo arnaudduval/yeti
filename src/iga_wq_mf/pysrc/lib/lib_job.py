@@ -353,7 +353,7 @@ class mechaproblem(problem):
 	def compute_mfStiffness(self, array_in, mechArgs=None):
 		if mechArgs is None: 
 			dimen = self.part.dim; nvoigt = int(dimen*(dimen+1)/2)
-			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
@@ -414,7 +414,7 @@ class mechaproblem(problem):
 		a_n1   = np.zeros(nbqp_total)
 		b_n1   = np.zeros((nvoigt, nbqp_total))
 		stress = np.zeros((nvoigt, nbqp_total))
-		mechArgs = np.zeros((nvoigt+3, nbqp_total))
+		mechArgs = np.zeros((2*nvoigt+4, nbqp_total))
 		
 		# Output variables
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
@@ -489,7 +489,7 @@ class mechaproblem(problem):
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		if mechArgs is None:
-			mechArgs = np.zeros((nvoigt+3, self.part.nbqp_total))
+			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		if args is None: args = self.part.qpPhy
