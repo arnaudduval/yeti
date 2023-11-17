@@ -31,37 +31,82 @@ def GMRES(A, b, x0=None, n_iter=15, n_restarts=1):
 
     return xk
 
+def PBiCGSTAB(Afun, Pfun, b, threshold=1e-5, nbIter=50):
+    x = np.zeros(np.shape(b))
+    r = b; normb = np.linalg.norm(r)
+    resPCG = [1.0]
+    if normb <=threshold: return
+    rhat = r; p = r
+    rsold = np.dot(r, rhat)
+
+    for i in range(nbIter):
+        ptilde = Pfun(p)
+        Aptilde = Afun(ptilde)
+        alpha = rsold/np.dot(Aptilde, rhat)
+        s = r - alpha*Aptilde
+        stilde = Pfun(s)
+        Astilde = Afun(stilde)
+        omega = np.dot(Astilde, s)/np.dot(Astilde, Astilde)
+        x += alpha*ptilde + omega*stilde
+        r = s - omega*Astilde
+
+        resPCG.append(np.linalg.norm(r)/normb)
+        if (resPCG[-1]<=threshold): break
+
+        rsnew = np.dot(r, rhat)
+        beta = (alpha/omega)*(rsnew/rsold)
+        p = r + beta*(p - omega*Aptilde)
+        rsold = rsnew
+
+    return x, resPCG
+    
 # Time discretization
-degree, nbel = 4, 128
+degree, nbel = 4, 512
 knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 dscrt = GaussQuadrature(degree, knotvector, {})
 dscrt.getQuadratureRulesInfo()
 DenseBasis, DenseWeights = dscrt.getDenseQuadRules()
 
 # Construct time matrices
-Adv  = DenseWeights[0] @ np.diag(np.ones(dscrt.nbqp)) @ DenseBasis[1].T; Adv  = Adv[1:, 1:]
-Mass = DenseWeights[0] @ np.diag(np.ones(dscrt.nbqp)) @ DenseBasis[0].T; Mass = Mass[1:, 1:]
-Adv_sym = 0.5*(Adv + Adv.T); Adv_asym = Adv - Adv_sym
+Adv   = DenseWeights[1] @ np.diag(np.ones(dscrt.nbqp)) @ DenseBasis[-1].T; Adv  = Adv[1:, 1:]
+Mass  = DenseWeights[0] @ np.diag(np.ones(dscrt.nbqp)) @ DenseBasis[0].T; Mass = Mass[1:, 1:]
+Stiff = DenseWeights[-1] @ np.diag(np.ones(dscrt.nbqp)) @ DenseBasis[-1].T; Stiff = Stiff[1:, 1:]
 
-# Eigen decomposition
-Meigval, Meigvec = np.linalg.eig(Mass)
-# print(Meigvec.T@Adv_sym@Meigvec)
-# print(Meigvec.T@Adv_asym@Meigvec)
-# Just to show that U^T Adv U is not a quase skew matrix 
+import scipy.linalg as sclin
+eigval, eigvec = sclin.eig(a=Stiff, b=Mass)
+eigval = np.abs(eigval)
+ones = np.ones(len(eigval))
+D = np.kron(eigval, np.kron(ones, ones)) + np.kron(ones, np.kron(eigval, ones)) + np.kron(ones, np.kron(ones, eigval))
+print(D.max(), D.min())
 
-import random
-Z = Meigvec.T@Adv@Meigvec
-D = random.randint(1, 100)*np.diag(Meigval)
-M = D + Z
+# PBiCGStab
+nr = np.size(Adv, axis=0)
+# invP = np.linalg.inv(Adv)
+invP = np.linalg.inv(Mass)
 
-b = np.random.random(len(Meigval))
-for m in range(1, 8):
-    x = GMRES(M, b, n_restarts=m, n_iter=15)
-    print('error:%.3e'%(np.linalg.norm(b - M @ x)/np.linalg.norm(b)))
+for i in range(1):
+    # coef = D[np.random.randint(0, len(D))]
+    coef = 1000
+    M = Adv + coef*Mass
+    b = np.random.random(nr)
 
-print('%===========%') 
+    Afun = lambda x: M @ x
+    Pfun = lambda x: invP @ x
+    Pfun = lambda x: 1/coef*invP @ x
 
-for m in range(1, 8):
-    x = GMRES(M, b, n_iter=m*15, n_restarts=1)
-    print('error:%.3e'%(np.linalg.norm(b - M @ x)/np.linalg.norm(b)))
+    x, resPCG = PBiCGSTAB(Afun, Pfun, b)
+    plt.semilogy(resPCG)
+    plt.savefig("IterSolvers")
+
+
+# # GMRES
+# for m in range(1, 8):
+#     x = GMRES(M, b, n_restarts=m, n_iter=15)
+#     print('error:%.3e'%(np.linalg.norm(b - M @ x)/np.linalg.norm(b)))
+
+# print('%===========%') 
+
+# for m in range(1, 8):
+#     x = GMRES(M, b, n_iter=m*15, n_restarts=1)
+#     print('error:%.3e'%(np.linalg.norm(b - M @ x)/np.linalg.norm(b)))
 

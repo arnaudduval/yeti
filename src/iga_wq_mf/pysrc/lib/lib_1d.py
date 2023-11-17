@@ -6,7 +6,7 @@
 
 from . import *
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature
-from .lib_material import plasticLaw
+from .lib_material import mechamat
 from .lib_base import evalDersBasisFortran, array2csr_matrix
 
 class part1D:
@@ -63,13 +63,6 @@ class part1D:
 		self.capacity     = matArgs.get('capacity', None)
 		self.density      = matArgs.get('density', None)
 		self.relaxation   = matArgs.get('relaxation', None)
-		return
-	
-	def activate_mechanical(self, matArgs:dict):
-		self.elasticmodulus = matArgs.get('elastic_modulus', None)
-		self.poissonratio   = matArgs.get('poisson_ratio', None)
-		self.elasticlimit   = matArgs.get('elastic_limit', None)
-		self.density        = matArgs.get('density', None)
 		return
 	
 	def compute_volForce(self, volfun):
@@ -362,83 +355,9 @@ class mechaproblem1D(part1D):
 		part1D.__init__(self, part, kwargs)		
 		return
 	
-	def activate_mechanical(self, matArgs:dict):
-		self.activate_mechanical(matArgs)
-		if self.density is None: self.density = lambda x: np.ones(len(x))
-		self.plasticLaw = None
-		self._isPlasticityPossible = False
-		tmp = matArgs.get('plasticLaw', None)
-		if isinstance(tmp, dict):  
-			self._isPlasticityPossible = True
-			self.plasticLaw            = plasticLaw(self.elasticlimit, tmp)
+	def activate_mechanical(self, mechamaterial:mechamat):
+		self.mechamat = mechamaterial
 		return 
-
-	# def returnMappingAlgorithm(self, strain, pls, a, b, threshold=1e-9):
-	# 	""" Return mapping algorithm for one-dimensional rate-independent plasticity. 
-	# 		It uses combined isotropic/kinematic hardening theory.  
-	# 	"""
-
-	# 	def computeDeltaGamma(law:plasticLaw, E, a_n0, eta_trial, nbIter=100, threshold=1e-10):
-	# 		dgamma = np.zeros(np.size(a_n0))
-	# 		a_n1   = a_n0 
-	# 		for i in range(nbIter):
-	# 			G  = np.abs(eta_trial) - (E + law._KinematicHard(a_n1))*dgamma -law._IsotropicHard(a_n1)
-	# 			if np.all(np.abs(G)<=threshold): break
-	# 			dG = - (E + law._KinematicHard(a_n1) + dgamma*law._KinematicHardDer(a_n1)
-	# 					+ law._IsotropicHardDer(a_n1))
-	# 			dgamma -= G/dG
-	# 			a_n1 = a_n0 + dgamma
-	# 		if i == nbIter: raise Warning('Convergence problem')
-	# 		return dgamma
-
-	# 	nnz = np.size(strain)
-	# 	output = np.zeros((5, nnz))
-	# 	isElasticLoad = True
-
-	# 	# Compute trial stress
-	# 	s_trial = self.elasticmodulus*(strain - pls)
-		
-	# 	# Computed shifted stress 
-	# 	eta_trial = s_trial - b
-
-	# 	# Check yield status
-	# 	f_trial = np.abs(eta_trial) - self.plasticLaw._IsotropicHard(a)
-	# 	Cep     = self.elasticmodulus*np.ones(nnz)
-	# 	pls_new = np.copy(pls)
-	# 	a_new  = np.copy(a)
-	# 	b_new  = np.copy(b)
-	# 	stress = np.copy(s_trial)
-
-	# 	plsInd = np.nonzero(f_trial>threshold)[0]
-	# 	if np.size(plsInd) > 0:
-
-	# 		isElasticLoad = False
-
-	# 		# Compute plastic-strain increment
-	# 		dgamma_plsInd = computeDeltaGamma(self.plasticLaw, self.elasticmodulus, a[plsInd], eta_trial[plsInd])
-			
-	# 		# Update internal hardening variable
-	# 		a_new[plsInd] += dgamma_plsInd
-			
-	# 		# Compute df/dsigma
-	# 		Normal_plsInd = np.sign(eta_trial[plsInd])
-
-	# 		# Update stress
-	# 		stress[plsInd] -= self.elasticmodulus*dgamma_plsInd*Normal_plsInd
-			
-	# 		# Update plastic strain
-	# 		pls_new[plsInd] += dgamma_plsInd*Normal_plsInd
-
-	# 		# Update backstress
-	# 		b_new[plsInd] += self.plasticLaw._KinematicHard(a_new[plsInd])*dgamma_plsInd*Normal_plsInd
-			
-	# 		# Update tangent coefficients
-	# 		somme = self.plasticLaw._IsotropicHardDer(a_new[plsInd]) + self.plasticLaw._KinematicHard(a_new[plsInd])
-	# 		Cep[plsInd] = self.elasticmodulus*somme/(self.elasticmodulus + somme)
-
-	# 	output[0, :] = stress; output[1, :] = pls_new; output[2, :] = a_new
-	# 	output[3, :] = b_new; output[4, :] = Cep
-	# 	return output, isElasticLoad
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
@@ -465,11 +384,11 @@ class mechaproblem1D(part1D):
 	def solvePlasticityProblem(self, dispinout, Fext_list):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
-		if not self._isPlasticityPossible: raise Warning('Insert a plastic law')
+		nbChaboche = self.mechamat._chabocheNBparameters
 		nbqp = self.nbqp; dof = self.dof; dod = self.dod
-		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
-		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros(nbqp)
-		stress, Cep = np.zeros(nbqp), np.zeros(nbqp)
+		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
+		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
+		stress, Cep = np.zeros((1, nbqp)), np.zeros(nbqp)
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))

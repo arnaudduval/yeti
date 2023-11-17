@@ -3,8 +3,25 @@
 ! For mechanical properties, we suggest to go to plasticity module
 ! ==============================================
 
-subroutine eigen_decomposition_py(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
-                                data_B, data_W, robcond, eigval, eigvec)
+subroutine eigen_decomposition_dense(nr, A, B, eigval, eigvec)
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr
+    double precision, intent(in) :: A, B 
+    dimension :: A(nr, nr), B(nr, nr)
+            
+    double precision, intent(out) :: eigval, eigvec
+    dimension :: eigval(nr), eigvec(nr, nr)
+
+    ! Local data
+    ! ----------
+    call compute_eigdecomp_pdr(nr, A, B, eigval, eigvec)
+
+end subroutine eigen_decomposition_dense
+
+subroutine eigen_decomposition_sp(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
+                                data_B, data_W, eigval, eigvec)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
     !! M: mass matrix, M = int B0 B0 dx = W00 * B0
@@ -22,8 +39,6 @@ subroutine eigen_decomposition_py(nr, nc, univMcoefs, univKcoefs, nnz, indi, ind
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: data_B, data_W
     dimension :: data_B(nnz, 2), data_W(nnz, 4)
-    integer, intent(in) :: robcond
-    dimension :: robcond(2)
             
     double precision, intent(out) :: eigval, eigvec
     dimension :: eigval(nr), eigvec(nr, nr)
@@ -34,9 +49,9 @@ subroutine eigen_decomposition_py(nr, nc, univMcoefs, univKcoefs, nnz, indi, ind
     dimension :: Kdiag(nr), Mdiag(nr)
 
     call eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
-                            data_B, data_W, robcond, eigval, eigvec, Kdiag, Mdiag)
+                            data_B, data_W, eigval, eigvec, Kdiag, Mdiag)
 
-end subroutine eigen_decomposition_py
+end subroutine eigen_decomposition_sp
 
 subroutine eval_normal(nr, nc_total, JJ, normal)
     implicit none 

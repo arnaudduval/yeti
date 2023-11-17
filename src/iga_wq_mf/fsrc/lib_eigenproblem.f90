@@ -6,10 +6,11 @@
 !! Author: Joaquin Cornejo
 ! ==============================================
 
-subroutine compute_geneigs(nr, A, B, rho, x)
+subroutine compute_eigdecomp_pdr(nr, A, B, rho, x)
     !! Computes all the eigenvalues of the generalized eigenproblem A x = rho B x
     !! using dsygvd from LAPACK libraries. 
-    !! Matrix A is must be positive definite and B could be semi-positive definite
+    !! Matrix A is must be positive definite and B could be semi-positive definite real matrices
+    !! Thus A = U^T U and B = U^T D U, where U and D are the eigenvector and eigenvalues respectively
 
     implicit none 
     ! Input / output data
@@ -38,7 +39,7 @@ subroutine compute_geneigs(nr, A, B, rho, x)
     call dsygvd(1, 'V', 'L', nr, x, nr, B, nr, rho, work, lwork, iwork, liwork, info)
     deallocate(work, iwork)
 
-end subroutine compute_geneigs
+end subroutine compute_eigdecomp_pdr
 
 subroutine power_iteration(nr, A, x, rho, nbIter)
     !! Computes the maximum eigenvalue of A and its eigenvector. 
@@ -155,7 +156,7 @@ subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
         call rayleigh_submatrix(d, nr, RM1, RM2, AA1)
         call rayleigh_submatrix(d, nr, RM1, RM3, BB1)
 
-        call compute_geneigs(d, AA1, BB1, ll, qq)
+        call compute_eigdecomp_pdr(d, AA1, BB1, ll, qq)
         rho = maxval(ll); ii = maxloc(ll, dim=1)
         delta = qq(:, ii)
 
@@ -174,7 +175,8 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, ishigher, nbIter, thre
     !! computing the greatest eigenvalue of A x = rho B x
     !! C is a preconditioner
     !! Matrix A must be positive definite (PD) and B could be semi-positive definite
-    !! Some papers shows that even if A is not symetric (and then not necessarily PD) the algorithm converges
+    !! Some papers shows that even if A is not symetric (and then not necessarily PD) 
+    !! the algorithm still could converges
 
     implicit none
     ! Input / output data
@@ -228,10 +230,10 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, ishigher, nbIter, thre
 
         if (k.eq.1) then
             allocate(ll(d-1), qq(d-1, d-1))
-            call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+            call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
         else
             allocate(ll(d), qq(d, d))
-            call compute_geneigs(size(ll), AA1, BB1, ll, qq)
+            call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
         end if
 
         if (ishigher) then

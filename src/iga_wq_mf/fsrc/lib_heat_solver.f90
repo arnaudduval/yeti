@@ -428,10 +428,10 @@ contains
 
             if (k.eq.1) then
                 allocate(ll(d-1), qq(d-1, d-1))
-                call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
             else
                 allocate(ll(d), qq(d, d))
-                call compute_geneigs(size(ll), AA1, BB1, ll, qq)
+                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
             end if
             
             if (ishigher) then 
@@ -893,10 +893,10 @@ contains
 
             if (k.eq.1) then
                 allocate(ll(d-1), qq(d-1, d-1))
-                call compute_geneigs(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
             else
                 allocate(ll(d), qq(d, d))
-                call compute_geneigs(size(ll), AA1, BB1, ll, qq)
+                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
             end if
             
             if (ishigher) then 

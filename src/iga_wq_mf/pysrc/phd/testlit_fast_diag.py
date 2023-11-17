@@ -47,7 +47,7 @@ if not dataExist:
 			start = time.process_time()
 
 			mcoefs = np.ones(len(qp)); kcoefs = np.ones(len(qp))
-			eig_t, U_t = geophy.eigen_decomposition_py(mcoefs, kcoefs, indi, indj, B_t, W_t, [0, 0])
+			eig_t, U_t = geophy.eigen_decomposition_sp(mcoefs, kcoefs, indi, indj, B_t, W_t)
 			eig_diag = np.random.random(nb_ctrlpts**3)
 			array_out = fastDiagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
 			print(array_out[:10])

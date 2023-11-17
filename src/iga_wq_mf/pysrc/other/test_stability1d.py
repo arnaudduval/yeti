@@ -45,7 +45,7 @@ def scheme_analysis(prop, degree, cuts=None, nbel=None):
 
 	# Time scheme stability
 	mcoefs = np.ones(len(qp)); kcoefs = prop*np.ones(len(qp))
-	eigenvalues, eigenvectors = geophy.eigen_decomposition_py(mcoefs, kcoefs, indi, indj, basis, weights, [0, 0])
+	eigenvalues, eigenvectors = geophy.eigen_decomposition_sp(mcoefs, kcoefs, indi, indj, basis, weights)
 	lambda_max  = max(eigenvalues)
 	t_stab      = 2/lambda_max
 

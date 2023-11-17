@@ -397,10 +397,10 @@ contains
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
             if (datstruct%isseparate) then 
                 call eigen_decomposition(nr, nc, datstruct%univmasscoefs(i, 1:nc), datstruct%univstiffcoefs(i, 1:nc), &
-                                        nnz, indi, indj, bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+                                        nnz, indi, indj, bw(:, 1:2), bw(:, 3:6), eigvalues, eigvectors, Kdiag, Mdiag)
             else
                 call eigen_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
-                                        bw(:, 1:2), bw(:, 3:6), (/0, 0/), eigvalues, eigvectors, Kdiag, Mdiag)
+                                        bw(:, 1:2), bw(:, 3:6), eigvalues, eigvectors, Kdiag, Mdiag)
             end if
             datstruct%eigval(i, 1:nr) = eigvalues
             datstruct%eigvec(i, 1:nr, 1:nr) = eigvectors

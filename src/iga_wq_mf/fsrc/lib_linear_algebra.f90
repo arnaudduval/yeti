@@ -409,7 +409,7 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
 
     ! Local data
     ! ----------
-    integer :: i , j
+    integer :: i , j, k
     double precision :: sum
 
     array_out = 0.d0
@@ -417,7 +417,8 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
     do i = 1, nr
         sum = 0.d0
         do j = indi(i), indi(i+1)-1
-            sum = sum + A(j)*array_in(indj(j))
+            k = indj(j)
+            sum = sum + A(j)*array_in(k)
         end do
         array_out(i) = sum
     end do
