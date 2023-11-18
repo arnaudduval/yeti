@@ -409,21 +409,49 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
 
     ! Local data
     ! ----------
-    integer :: i , j, k
-    double precision :: sum
+    integer :: i , k
 
     array_out = 0.d0
 
     do i = 1, nr
-        sum = 0.d0
-        do j = indi(i), indi(i+1)-1
-            k = indj(j)
-            sum = sum + A(j)*array_in(k)
+        do k = indi(i), indi(i+1)-1
+            array_out(i) = array_out(i) + A(k)*array_in(indj(k))
         end do
-        array_out(i) = sum
     end do
 
 end subroutine spmat_dot_dvec
+
+subroutine spmat_dot_dmat(nr, ncA, nc, nnz, indi, indj, A, matrix_in, matrix_out)
+    !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
+    !! Sparse matrix in CSR format
+
+    implicit none
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nr, ncA, nc, nnz 
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: A, matrix_in
+    dimension :: A(nnz), matrix_in(ncA, nc)
+
+    double precision, intent(out) :: matrix_out
+    dimension :: matrix_out(nr, nc)
+
+    ! Local data
+    ! ----------
+    integer :: i, j, k
+
+    matrix_out = 0.d0
+    
+    do j = 1, nc
+        do i = 1, nr
+            do k = indi(i), indi(i+1)-1
+                matrix_out(i, j) = matrix_out(i, j) + A(k)*matrix_in(indj(k), j)
+            end do
+        end do
+    end do
+
+end subroutine spmat_dot_dmat
 
 subroutine trapezoidal_rule_2d(nru, nrv, tensor, result)
     !! Computes an integral inside a unitary square using trapezoidal rule.
@@ -441,44 +469,20 @@ subroutine trapezoidal_rule_2d(nru, nrv, tensor, result)
     ! Local data
     ! ----------
     integer :: iu, iv
-    integer :: indu, indv
-    dimension :: indu(2), indv(2)
+    double precision :: w_u(nru), w_v(nrv)
     double precision :: ttensor
-    dimension :: ttensor(nru, nrv)
+    dimension :: ttensor(nru, nrv, 1, 1)
+
+    ttensor = reshape(tensor, (/nru, nrv, 1, 1/))
+    w_u = 1.d0; w_u(1) = 0.5d0; w_u(nru) = 0.5d0 
+    w_v = 1.d0; w_v(1) = 0.5d0; w_v(nrv) = 0.5d0 
 
     result = 0.d0
-    indu = (/1, nru/); indv = (/1, nrv/)
-
-    ttensor = reshape(tensor, (/nru, nrv/))
-
-    ! Get internal points
-    do iv = 2, nrv-1
-        do iu = 2, nru-1
-            result = result + ttensor(iu, iv)
+    do iv = 1, nrv
+        do iu = 1, nru
+            result = result + ttensor(iu, iv, 1, 1)*w_u(iu)*w_v(iv) 
         end do
     end do
-
-    ! Get boundary edges
-    do iv = 1, 2
-        do iu = 2, nru-1
-            result = result + ttensor(iu, indv(iv))/2.d0
-        end do
-    end do
-
-    do iv = 2, nrv-1
-        do iu = 1, 2
-            result = result + ttensor(indu(iu), iv)/2.d0
-        end do
-    end do
-
-    ! Get corner points
-    do iv = 1, 2
-        do iu = 1, 2
-            result = result + ttensor(indu(iu), indv(iv))/4.d0
-        end do
-    end do
-
-    ! Update integral
     result = result/((nru - 1)*(nrv - 1))
 
 end subroutine trapezoidal_rule_2d
@@ -499,87 +503,66 @@ subroutine trapezoidal_rule_3d(nru, nrv, nrw, tensor, result)
     ! Local data
     ! ----------
     integer :: iu, iv, iw
-    integer :: indu, indv, indw
-    dimension :: indu(2), indv(2), indw(2)
+    double precision :: w_u(nru), w_v(nrv), w_w(nrw)
     double precision :: ttensor
-    dimension :: ttensor(nru, nrv, nrw)
+    dimension :: ttensor(nru, nrv, nrw, 1)
+
+    ttensor = reshape(tensor, (/nru, nrv, nrw, 1/))
+    w_u = 1.d0; w_u(1) = 0.5d0; w_u(nru) = 0.5d0 
+    w_v = 1.d0; w_v(1) = 0.5d0; w_v(nrv) = 0.5d0 
+    w_w = 1.d0; w_w(1) = 0.5d0; w_w(nrw) = 0.5d0 
 
     result = 0.d0
-    indu = (/1, nru/); indv = (/1, nrv/); indw = (/1, nrw/)
-    ttensor = reshape(tensor, (/nru, nrv, nrw/))
-
-    ! Get internal points
-    do iw = 2, nrw-1
-        do iv = 2, nrv-1
-            do iu = 2, nru-1
-                result = result + ttensor(iu, iv, iw)
+    do iw = 1, nrw
+        do iv = 1, nrv
+            do iu = 1, nru
+                result = result + ttensor(iu, iv, iw, 1)*w_u(iu)*w_v(iv)*w_w(iw)
             end do
         end do
     end do
-
-    ! Get bounding surface internal points
-    do iw = 2, nrw-1
-        do iv = 2, nrv-1
-            do iu = 1, 2
-                result = result + ttensor(indu(iu), iv, iw)/2.d0
-            end do
-        end do
-    end do
-
-    do iw = 2, nrw-1
-        do iv = 1, 2
-            do iu = 2, nru-1
-                result = result + ttensor(iu, indv(iv), iw)/2.d0
-            end do
-        end do
-    end do
-
-    do iw = 1, 2
-        do iv = 2, nrv-1
-            do iu = 2, nru-1
-                result = result + ttensor(iu, iv, indw(iw))/2.d0
-            end do
-        end do
-    end do
-
-    ! Get boundary edges
-    do iw = 1, 2
-        do iv = 1, 2
-            do iu = 2, nru-1
-                result = result + ttensor(iu, indv(iv), indw(iw))/4.d0
-            end do
-        end do
-    end do
-
-    do iw = 1, 2
-        do iv = 2, nrv-1
-            do iu = 1, 2
-                result = result + ttensor(indu(iu), iv, indw(iw))/4.d0
-            end do
-        end do
-    end do
-
-    do iw = 2, nrw-1
-        do iv = 1, 2
-            do iu = 1, 2
-                result = result + ttensor(indu(iu), indv(iv), iw)/4.d0
-            end do
-        end do
-    end do
-
-    ! Get corner points
-    do iw = 1, 2
-        do iv = 1, 2
-            do iu = 1, 2
-                result = result + ttensor(indu(iu), indv(iv), indw(iw))/8.d0
-            end do
-        end do
-    end do
-
-    ! Update integral
     result = result/((nru - 1)*(nrv - 1)*(nrw - 1))
 
 end subroutine trapezoidal_rule_3d
+
+subroutine trapezoidal_rule_4d(nru, nrv, nrw, nrt, tensor, result)
+    !! Computes an integral inside a unitary cube using trapezoidal rule.
+    !! It supposes that points are equidistant
+
+    implicit none
+    ! Input / output data
+    ! --------------------
+    integer :: nru, nrv, nrw, nrt
+    double precision, intent(in) :: tensor
+    dimension :: tensor(nru*nrv*nrw*nrt)
+
+    double precision, intent(out) :: result
+    
+    ! Local data
+    ! ----------
+    integer :: iu, iv, iw, it
+    double precision :: w_u(nru), w_v(nrv), w_w(nrw), w_t(nrt)
+    double precision :: ttensor
+    dimension :: ttensor(nru, nrv, nrw, 1)
+
+    ttensor = reshape(tensor, (/nru, nrv, nrw, nrt/))
+    w_u = 1.d0; w_u(1) = 0.5d0; w_u(nru) = 0.5d0 
+    w_v = 1.d0; w_v(1) = 0.5d0; w_v(nrv) = 0.5d0 
+    w_w = 1.d0; w_w(1) = 0.5d0; w_w(nrw) = 0.5d0 
+    w_t = 1.d0; w_t(1) = 0.5d0; w_t(nrt) = 0.5d0 
+
+    result = 0.d0
+    do it = 1, nrt
+        do iw = 1, nrw
+            do iv = 1, nrv
+                do iu = 1, nru
+                    result = result + ttensor(iu, iv, iw, it)*w_u(iu)*w_v(iv)*w_w(iw)*w_t(it)
+                end do
+            end do
+        end do
+    end do
+    result = result/((nru - 1)*(nrv - 1)*(nrw - 1)*(nrt - 1))
+
+end subroutine trapezoidal_rule_4d
 
 subroutine symtensor2array(dimen, nvoigt, matrix, array)
     !! Returns the upper triangular part of a matrix
@@ -940,158 +923,3 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
     end if
 
 end subroutine dense2csr
-
-subroutine get_indices_kron2_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
-                                    nr_B, nc_B, nnz_B, indi_B, indj_B, &  
-                                    nnz_C, indi_C, indj_C)
-    !! Gets indices of the kronecker product A x B = C 
-    !! Where A and B are sparse matrices in CSR format
-
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) ::  nr_A, nc_A, nnz_A, &
-                            nr_B, nc_B, nnz_B, nnz_C
-    integer, intent(in) :: indi_A, indj_A, indi_B, indj_B
-    dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
-                    indi_B(nr_B+1), indj_B(nnz_B)
-
-    integer, intent(out) :: indi_C, indj_C
-    dimension :: indi_C(nr_A*nr_B+1), indj_C(nnz_C)
-
-    ! Loca data
-    ! ---------
-    integer :: iA, iB, genPos, jA, jB, c, nb_tasks
-    integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C
-    integer, allocatable, dimension(:) :: indj_tmp
-
-    dummy = nc_A
-
-    ! Set indices i in csr format
-    indi_C(1) = 1
-    do iA = 1, nr_A
-        do iB = 1, nr_B          
-            ! Set number of nonzero elements 
-            nnz_row_A = indi_A(iA+1) - indi_A(iA) 
-            nnz_row_B = indi_B(iB+1) - indi_B(iB)
-            nnz_row_C = nnz_row_A * nnz_row_B
-
-            ! Update value 
-            genPos = iB + (iA - 1)*nr_B
-            indi_C(genPos+1) = indi_C(genPos) + nnz_row_C 
-        end do
-    end do
-
-    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,indj_tmp) 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nr_A*nr_B/nb_tasks)
-    ! Set indices j in csr format
-    do iA = 1, nr_A
-        do iB = 1, nr_B
-            ! Select row
-            genPos = (iA - 1)*nr_B + iB
-            nnz_row_C = indi_C(genPos+1) - indi_C(genPos)
-            allocate(indj_tmp(nnz_row_C))
-            
-            ! Get values of C's row
-            c = 0
-            do jA = indi_A(iA), indi_A(iA+1) - 1        
-                do jB = indi_B(iB), indi_B(iB+1) - 1
-                    c = c + 1
-                    indj_tmp(c) = (indj_A(jA) - 1)*nc_B + indj_B(jB)
-                end do
-            end do
-
-            ! Update values
-            indj_C(indi_C(genPos):indi_C(genPos+1)-1) = indj_tmp
-            deallocate(indj_tmp)
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-    
-end subroutine get_indices_kron2_product
-
-subroutine get_indices_kron3_product(nr_A, nc_A, nnz_A, indi_A, indj_A, &
-                                    nr_B, nc_B, nnz_B, indi_B, indj_B, &  
-                                    nr_C, nc_C, nnz_C, indi_C, indj_C, &
-                                    nnz_D, indi_D, indj_D)
-    !! Returns indices of the kronecker product A x B x C = D
-    !! Where A, B and C are sparse matrices in CSR format
-
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) ::  nr_A, nc_A, nnz_A, &
-                            nr_B, nc_B, nnz_B, &
-                            nr_C, nc_C, nnz_C, nnz_D
-    integer, intent(in) :: indi_A, indj_A, indi_B, indj_B, indi_C, indj_C
-    dimension ::    indi_A(nr_A+1), indj_A(nnz_A), &
-                    indi_B(nr_B+1), indj_B(nnz_B), &
-                    indi_C(nr_C+1), indj_C(nnz_C)
-
-    integer, intent(out) :: indi_D, indj_D
-    dimension :: indi_D(nr_A*nr_B*nr_C+1), indj_D(nnz_D)
-
-    ! Loca data
-    ! ---------
-    integer :: iA, iB, iC, genPos, jA, jB, jC, c, nb_tasks
-    integer :: dummy, nnz_row_A, nnz_row_B, nnz_row_C, nnz_row_D
-    integer, allocatable, dimension(:) :: indj_tmp
-    
-    dummy = nc_A
-
-    ! Set indices i in CSR format
-    indi_D(1) = 1
-    do iA = 1, nr_A
-        do iB = 1, nr_B
-            do iC = 1, nr_C
-                ! Set number of nonzero elements   
-                nnz_row_A = indi_A(iA+1) - indi_A(iA) 
-                nnz_row_B = indi_B(iB+1) - indi_B(iB)
-                nnz_row_C = indi_C(iC+1) - indi_C(iC)
-                nnz_row_D = nnz_row_A * nnz_row_B * nnz_row_C
-
-                ! Update value 
-                genPos = iC + (iB-1)*nr_C + (iA - 1)*nr_C*nr_B
-                indi_D(genPos+1) = indi_D(genPos) + nnz_row_D
-            end do
-        end do
-    end do
-
-    !$OMP PARALLEL PRIVATE(c,genPos,jA,jB,jC,indj_tmp) 
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nr_A*nr_B*nr_C/nb_tasks)
-    ! Set indices j in csr format
-    do iA = 1, nr_A
-        do iB = 1, nr_B
-            do iC = 1, nr_C
-                ! Select row
-                genPos = iC + (iB-1)*nr_C + (iA - 1)*nr_C*nr_B
-                nnz_row_D = indi_D(genPos+1) - indi_D(genPos)
-                allocate(indj_tmp(nnz_row_D))
-                
-                ! Get values of D's row
-                c = 0
-                do jA = indi_A(iA), indi_A(iA+1) - 1        
-                    do jB = indi_B(iB), indi_B(iB+1) - 1
-                        do jC = indi_C(iC), indi_C(iC+1) - 1
-                            c = c + 1
-                            indj_tmp(c) = (indj_A(jA)-1)*nc_B*nc_C &
-                                            + (indj_B(jB)-1)*nc_C + indj_C(jC)
-                        end do
-                    end do
-                end do
-
-                ! Update values
-                indj_D(indi_D(genPos):indi_D(genPos+1)-1) = indj_tmp
-                deallocate(indj_tmp)
-            end do
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-    
-end subroutine get_indices_kron3_product

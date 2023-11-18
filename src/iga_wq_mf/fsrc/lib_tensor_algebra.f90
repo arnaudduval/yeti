@@ -31,10 +31,9 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
     if (mode.eq.1) then 
 
         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
-        
-        !$OMP PARALLEL 
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v
@@ -52,89 +51,61 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-
-        deallocate(Xt)
-        deallocate(Rt)
+        deallocate(Xt, Rt)
 
     else if (mode.eq.2) then 
 
-        allocate(Xt(nc_v, nc_u*nc_w*nc_t))
-        !$OMP PARALLEL 
+        allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     do jv = 1, nc_v
-                        Xt(jv, ju+(jw-1)*nc_u+(jt-1)*nc_u*nc_w) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-            end do
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-        allocate(Rt(nr, nc_u*nc_w*nc_t))
-        Rt = matmul(U, Xt)
-        deallocate(Xt)
-
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
-        do jt = 1, nc_t
-            do jw = 1, nc_w
+                Rt = matmul(U, Xt)
                 do ju = 1, nc_u
                     do i = 1, nr
-                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i, ju+(jw-1)*nc_u+(jt-1)*nc_u*nc_w)
+                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-        deallocate(Rt)
+        deallocate(Xt, Rt)
         
     else if (mode.eq.3) then 
 
-        allocate(Xt(nc_w, nc_u*nc_v*nc_t))
-        !$OMP PARALLEL 
+        allocate(Xt(nc_w, nc_u), Rt(nr, nc_u*nc_v*nc_t))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jt = 1, nc_t
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do jw = 1, nc_w
-                        Xt(jw, ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-            end do
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-        allocate(Rt(nr, nc_u*nc_v*nc_t))
-        Rt = matmul(U, Xt)
-        deallocate(Xt)
-
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
-        do jt = 1, nc_t
-            do jv = 1, nc_v
+                Rt = matmul(U, Xt)
                 do ju = 1, nc_u
                     do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i, ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v)
+                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-        deallocate(Rt)
+        deallocate(Xt, Rt)
 
     else if (mode.eq.4) then 
         
-        allocate(Xt(nc_t, nc_u*nc_v*nc_w))
+        allocate(Xt(nc_t, nc_u), Rt(nr, nc_u*nc_v*nc_w))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
@@ -142,39 +113,26 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do jt = 1, nc_t
-                        Xt(jt, ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-            end do
-        end do
-        !$OMP END DO NOWAIT
-        !$OMP END PARALLEL
-
-        allocate(Rt(nr, nc_u*nc_v*nc_w))
-        Rt = matmul(U, Xt)
-        deallocate(Xt)
-
-        !$OMP PARALLEL 
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
-        do jw = 1, nc_w
-            do jv = 1, nc_v
+                Rt = matmul(U, Xt)
                 do ju = 1, nc_u
                     do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i, ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v)
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-        deallocate(Rt)
-        
+        deallocate(Xt, Rt)
+
     end if
 
 end subroutine tensor_n_mode_product_dM
 
-subroutine tensor_n_mode_product_spM(s_in, X, nr, nc, nnz, U, indi, indj, mode, s_out, R)
+subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, indi, indj, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
     !! Tensor X = X(nc_u, nc_v, nc_w)
@@ -186,34 +144,37 @@ subroutine tensor_n_mode_product_spM(s_in, X, nr, nc, nnz, U, indi, indj, mode, 
     implicit none
     ! Input / output data 
     ! -------------------
-    integer, parameter :: dimen = 4
-    integer, intent(in) :: nr, nc, nnz, mode, s_in(dimen), s_out(dimen)
-    double precision, intent(in) :: X, U
-    dimension :: X(s_in(1), s_in(2), s_in(3), s_in(4)), U(nnz)
+    integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nnz, mode, nrR
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: X, dat
+    dimension :: X(nc_u*nc_v*nc_w*nc_t), dat(nnz)
 
     double precision, intent(out) :: R
-    dimension :: R(s_out(1), s_out(2), s_out(3), s_out(4))
+    dimension :: R(nrR)
 
     ! Local data
     ! ----------
-    integer :: ju, jv, jw, jt, nb_tasks, nb_oper
-    double precision :: tmp_out(nr), tmp_in(s_in(mode))
-
-    nb_oper = product(s_in)/s_in(mode)
+    integer :: i, ju, jv, jw, jt, nb_tasks
+    double precision :: Rt(nr)
+    double precision, allocatable, dimension(:) :: Xt
 
     if (mode.eq.1) then 
-
-        !$OMP PARALLEL PRIVATE(tmp_in, tmp_out)
+        
+        allocate(Xt(nc_u))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jw = 1, s_in(3)
-                do jv = 1, s_in(2)
-                    tmp_in = X(:, jv, jw, jt)
-                    call spmat_dot_dvec(nr, nc, nnz, indi, indj, U, tmp_in, tmp_out)
-                    R(:, jv, jw, jt) = tmp_out
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_v/nb_tasks) 
+        do jt = 1, nc_t
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do ju = 1, nc_u
+                        Xt(ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
+                    call spmat_dot_dvec(nr, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                    do i = 1, nr
+                        R(i+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(i)
+                    end do
                 end do
             end do
         end do
@@ -222,14 +183,20 @@ subroutine tensor_n_mode_product_spM(s_in, X, nr, nc, nnz, U, indi, indj, mode, 
 
     else if (mode.eq.2) then 
 
-        !$OMP PARALLEL PRIVATE(tmp_in, tmp_out)
+        allocate(Xt(nc_v))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jw = 1, s_in(3)
-                do ju = 1, s_in(1)
-                    call spmat_dot_dvec(nr, nc, nnz, indi, indj, U, X(ju, :, jw, jt), tmp_out)
-                    R(ju, :, jw, jt) = tmp_out
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_u/nb_tasks) 
+        do jt = 1, nc_t
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do jv = 1, nc_v
+                        Xt(jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
+                    call spmat_dot_dvec(nr, nc_v, nnz, indi, indj, dat, Xt, Rt)
+                    do i = 1, nr
+                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i)
+                    end do
                 end do
             end do
         end do
@@ -238,15 +205,20 @@ subroutine tensor_n_mode_product_spM(s_in, X, nr, nc, nnz, U, indi, indj, mode, 
 
     else if (mode.eq.3) then 
 
-        !$OMP PARALLEL PRIVATE(tmp_in, tmp_out)
+        allocate(Xt(nc_w))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jv = 1, s_in(2)
-                do ju = 1, s_in(1)
-                    tmp_in = X(ju, jv, :, jt)
-                    call spmat_dot_dvec(nr, nc, nnz, indi, indj, U, tmp_in, tmp_out)
-                    R(ju, jv, :, jt) = tmp_out
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_v*nc_u/nb_tasks) 
+        do jt = 1, nc_t
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jw = 1, nc_w
+                        Xt(jw) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
+                    call spmat_dot_dvec(nr, nc_w, nnz, indi, indj, dat, Xt, Rt)
+                    do i = 1, nr
+                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i)
+                    end do
                 end do
             end do
         end do
@@ -255,15 +227,20 @@ subroutine tensor_n_mode_product_spM(s_in, X, nr, nc, nnz, U, indi, indj, mode, 
 
     else if (mode.eq.4) then 
 
-        !$OMP PARALLEL PRIVATE(tmp_in, tmp_out)
+        allocate(Xt(nc_t))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jw = 1, s_in(3)
-            do jv = 1, s_in(2)
-                do ju = 1, s_in(1)
-                    tmp_in = X(ju, jv, jw, :)
-                    call spmat_dot_dvec(nr, nc, nnz, indi, indj, U, tmp_in, tmp_out)
-                    R(ju, jv, jw, :) = tmp_out
+        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_w*nc_v*nc_u/nb_tasks) 
+        do jw = 1, nc_w
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jt = 1, nc_t
+                        Xt(jt) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
+                    call spmat_dot_dvec(nr, nc_t, nnz, indi, indj, dat, Xt, Rt)
+                    do i = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i)
+                    end do
                 end do
             end do
         end do
@@ -289,23 +266,19 @@ subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     double precision, intent(in) :: Mu, Mv
     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v)
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, 1, 1)
+    dimension :: array_in(nc_u*nc_v)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, 1, 1)
+    dimension :: array_out(nr_u*nr_v)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1
 
-    allocate(R1(nr_u, nc_v, 1, 1))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_dM(s_in, array_in, nr_u, nc_u, Mu, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v))
+    call tensor_n_mode_product_dM(nc_u, nc_v, 1, 1, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
-    s_in = shape(R1); s_out = shape(array_out)
-    call tensor_n_mode_product_dM(s_in, R1, nr_v, nc_v, Mv, 2, s_out, array_out)
+    call tensor_n_mode_product_dM(nr_u, nc_v, 1, 1, R1, nr_v, nc_v, Mv, 2, size(array_out), array_out)
     deallocate(R1)
 
 end subroutine sumfacto2d_dM
@@ -326,28 +299,23 @@ subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_i
     double precision, intent(in) :: Mu, Mv, Mw
     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w)
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, nc_w, 1)
+    dimension :: array_in(nc_u*nc_v*nc_w)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, nr_w, 1)
+    dimension :: array_out(nr_u*nr_v*nr_w)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1, R2
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1, R2
 
-    allocate(R1(nr_u, nc_v, nc_w, 1))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_dM(s_in, array_in, nr_u, nc_u, Mu, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v*nc_w))
+    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
-    allocate(R2(nr_u, nr_v, nc_w, 1))
-    s_in = shape(R1); s_out = shape(R2)
-    call tensor_n_mode_product_dM(s_in, R1, nr_v, nc_v, Mv, 2, s_out, R2)
+    allocate(R2(nr_u*nr_v*nc_w))
+    call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, 1, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
     deallocate(R1)
 
-    s_in = shape(R2); s_out = shape(array_out)
-    call tensor_n_mode_product_dM(s_in, R2, nr_w, nc_w, Mw, 3, s_out, array_out)
+    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, 1, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
     deallocate(R2)   
 
 end subroutine sumfacto3d_dM
@@ -368,33 +336,27 @@ subroutine sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv,
     double precision, intent(in) :: Mu, Mv, Mw, Mt
     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w), Mt(nr_t, nc_t)
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, nc_w, nc_t)
+    dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, nr_w, nr_t)
+    dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1, R2, R3
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1, R2, R3
 
-    allocate(R1(nr_u, nc_v, nc_w, nc_t))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_dM(s_in, array_in, nr_u, nc_u, Mu, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v*nc_w*nc_t))
+    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
 
-    allocate(R2(nr_u, nr_v, nc_w, nc_t))
-    s_in = shape(R1); s_out = shape(R2)
-    call tensor_n_mode_product_dM(s_in, R1, nr_v, nc_v, Mv, 2, s_out, R2)
+    allocate(R2(nr_u*nr_v*nc_w*nc_t))
+    call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, nc_t, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
     deallocate(R1)
 
-    allocate(R3(nr_u, nr_v, nr_w, nc_t))
-    s_in = shape(R2); s_out = shape(R3)
-    call tensor_n_mode_product_dM(s_in, R2, nr_w, nc_w, Mw, 3, s_out, R3)
-    deallocate(R2)
-    
-    s_in = shape(R3); s_out = shape(array_out)
-    call tensor_n_mode_product_dM(s_in, R3, nr_t, nc_t, Mt, 4, s_out, array_out)
+    allocate(R3(nr_u*nr_v*nr_w*nc_t))
+    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, nc_t, R2, nr_w, nc_w, Mw, 3, size(R3), R3)
+    deallocate(R2)   
+
+    call tensor_n_mode_product_dM(nr_u, nr_v, nr_w, nc_t, R3, nr_t, nc_t, Mt, 4, size(array_out), array_out)
     deallocate(R3)
 
 end subroutine sumfacto4d_dM
@@ -413,7 +375,7 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
     ! -------------------
     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, 1, 1)
+    dimension :: array_in(nc_u*nc_v)
     double precision, intent(in) :: data_u, data_v
     dimension :: data_u(nnz_u), data_v(nnz_v)
     integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
@@ -421,20 +383,16 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
                     indj_u(nnz_u), indj_v(nnz_v)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, 1, 1)
+    dimension :: array_out(nr_u*nr_v)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1
 
-    allocate(R1(nr_u, nc_v, 1, 1))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_spM(s_in, array_in, nr_u, nc_u, nnz_u, data_u, indi_u, indj_u, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v))
+    call tensor_n_mode_product_spM(nc_u, nc_v, 1, 1, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    s_in = shape(R1); s_out = shape(array_out)
-    call tensor_n_mode_product_spM(s_in, R1, nr_v, nc_v, nnz_v, data_v, indi_v, indj_v, 2, s_out, array_out)
+    call tensor_n_mode_product_spM(nr_u, nc_v, 1, 1, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(array_out), array_out)
     deallocate(R1)
 
 end subroutine sumfacto2d_spM
@@ -454,7 +412,7 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
     ! -------------------
     integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nnz_u, nnz_v, nnz_w
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, nc_w, 1)
+    dimension :: array_in(nc_u*nc_v*nc_w)
     double precision, intent(in) :: data_u, data_v, data_w
     dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w)
     integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
@@ -462,25 +420,20 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
                     indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, nr_w, 1)
+    dimension :: array_out(nr_u*nr_v*nr_w)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1, R2
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1, R2
 
-    allocate(R1(nr_u, nc_v, nc_w, 1))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_spM(s_in, array_in, nr_u, nc_u, nnz_u, data_u, indi_u, indj_u, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v*nc_w))
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    allocate(R2(nr_u, nr_v, nc_w, 1))
-    s_in = shape(R1); s_out = shape(R2)
-    call tensor_n_mode_product_spM(s_in, R1, nr_v, nc_v, nnz_v, data_v, indi_v, indj_v, 2, s_out, R2)
+    allocate(R2(nr_u*nr_v*nc_w))
+    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, 1, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(R2), R2)
     deallocate(R1)
 
-    s_in = shape(R2); s_out = shape(array_out)
-    call tensor_n_mode_product_spM(s_in, R2, nr_w, nc_w, nnz_w, data_w, indi_w, indj_w, 3, s_out, array_out)
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, 1, R2, nr_w, nnz_w, data_w, indi_w, indj_w, 3, size(array_out), array_out)
     deallocate(R2)
 
 end subroutine sumfacto3d_spM
@@ -501,7 +454,7 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
     ! -------------------
     integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
     double precision, intent(in) :: array_in
-    dimension :: array_in(nc_u, nc_v, nc_w, nc_t)
+    dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
     double precision, intent(in) :: data_u, data_v, data_w, data_t
     dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w), data_t(nnz_t)
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
@@ -509,30 +462,24 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
                     indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
 
     double precision, intent(out) :: array_out
-    dimension :: array_out(nr_u, nr_v, nr_w, nr_t)
+    dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
 
     ! Local data 
     ! ----------
-    integer, parameter :: dim = 4
-    double precision, allocatable, dimension(:, :, :, :) :: R1, R2, R3
-    integer :: s_in(dim), s_out(dim)
+    double precision, allocatable, dimension(:) :: R1, R2, R3
 
-    allocate(R1(nr_u, nc_v, nc_w, nc_t))
-    s_in = shape(array_in); s_out = shape(R1)
-    call tensor_n_mode_product_spM(s_in, array_in, nr_u, nc_u, nnz_u, data_u, indi_u, indj_u, 1, s_out, R1)
+    allocate(R1(nr_u*nc_v*nc_w*nc_t))
+    call tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, array_in, nr_u, nnz_u, data_u, indi_u, indj_u, 1, size(R1), R1)
 
-    allocate(R2(nr_u, nr_v, nc_w, nc_t))
-    s_in = shape(R1); s_out = shape(R2)
-    call tensor_n_mode_product_spM(s_in, R1, nr_v, nc_v, nnz_v, data_v, indi_v, indj_v, 2, s_out, R2)
+    allocate(R2(nr_u*nr_v*nc_w*nc_t))
+    call tensor_n_mode_product_spM(nr_u, nc_v, nc_w, nc_t, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(R2), R2)
     deallocate(R1)
 
-    allocate(R3(nr_u, nr_v, nr_w, nc_t))
-    s_in = shape(R2); s_out = shape(R3)
-    call tensor_n_mode_product_spM(s_in, R2, nr_w, nc_w, nnz_w, data_w, indi_w, indj_w, 3, s_out, R3)
+    allocate(R3(nr_u*nr_v*nr_w*nc_t))
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R2, nr_w, nnz_w, data_w, indi_w, indj_w, 3, size(R3), R3)
     deallocate(R2)
 
-    s_in = shape(R3); s_out = shape(array_out)
-    call tensor_n_mode_product_spM(s_in, R3, nr_t, nc_t, nnz_t, data_t, indi_t, indj_t, 4, s_out, array_out)
+    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R3, nr_t, nnz_t, data_t, indi_t, indj_t, 4, size(array_out), array_out)
     deallocate(R3)
 
 end subroutine sumfacto4d_spM
