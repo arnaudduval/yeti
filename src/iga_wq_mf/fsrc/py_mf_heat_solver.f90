@@ -212,7 +212,7 @@ subroutine mf_conductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     
 end subroutine mf_conductivity_3d
 
-subroutine mf_advection_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, &
                         invJ, detJ, prop, array_in, array_out)
@@ -255,13 +255,13 @@ subroutine mf_advection_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_u_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_gradu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
     
-end subroutine mf_advection_2d
+end subroutine mf_thmchcoupled_2d
 
-subroutine mf_advection_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                         invJ, detJ, prop, array_in, array_out)
@@ -311,7 +311,7 @@ subroutine mf_advection_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
-end subroutine mf_advection_3d
+end subroutine mf_thmchcoupled_3d
 
 subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &

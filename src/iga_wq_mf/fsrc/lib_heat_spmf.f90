@@ -557,7 +557,7 @@ contains
         
     end subroutine mf_uv_gradugradv_3d
 
-    subroutine mf_u_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_gradu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
         implicit none 
@@ -613,7 +613,7 @@ contains
             end do
         end do
             
-    end subroutine mf_u_gradv_2d
+    end subroutine mf_gradu_tv_2d
 
     subroutine mf_u_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
