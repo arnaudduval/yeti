@@ -25,7 +25,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
     ! ----------
     double precision, allocatable, dimension(:, :) :: Rt
     double precision, allocatable, dimension(:, :) :: Xt
-    integer :: ju, jv, jw, jt, i, nb_tasks
+    integer :: ju, jv, jw, jt, nb_tasks
 
     R = 0.d0
     if (mode.eq.1) then 
@@ -43,8 +43,8 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
                 end do
                 Rt = matmul(U, Xt)
                 do jv = 1, nc_v
-                    do i = 1, nr
-                        R(i+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(i, jv)
+                    do ju = 1, nr
+                        R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
                     end do
                 end do
             end do
@@ -68,8 +68,8 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
                 end do
                 Rt = matmul(U, Xt)
                 do ju = 1, nc_u
-                    do i = 1, nr
-                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i, ju)
+                    do jv = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
                     end do
                 end do
             end do
@@ -80,7 +80,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         
     else if (mode.eq.3) then 
 
-        allocate(Xt(nc_w, nc_u), Rt(nr, nc_u*nc_v*nc_t))
+        allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
@@ -93,8 +93,8 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
                 end do
                 Rt = matmul(U, Xt)
                 do ju = 1, nc_u
-                    do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i, ju)
+                    do jw = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
                     end do
                 end do
             end do
@@ -105,10 +105,10 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
 
     else if (mode.eq.4) then 
         
-        allocate(Xt(nc_t, nc_u), Rt(nr, nc_u*nc_v*nc_w))
-        !$OMP PARALLEL 
+        allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
+        !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -118,8 +118,8 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
                 end do
                 Rt = matmul(U, Xt)
                 do ju = 1, nc_u
-                    do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i, ju)
+                    do jt = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
                     end do
                 end do
             end do
@@ -164,7 +164,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
         allocate(Xt(nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_v/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_v/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v
@@ -186,7 +186,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
         allocate(Xt(nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_u/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do ju = 1, nc_u
@@ -208,7 +208,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
         allocate(Xt(nc_w))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_t*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_v*nc_u/nb_tasks) 
         do jt = 1, nc_t
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -230,7 +230,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
         allocate(Xt(nc_t))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(DYNAMIC, nc_w*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_w*nc_v*nc_u/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u

@@ -5,7 +5,7 @@
 ! It is implemented conjugated gradient algorithms to solve interpolation problems
 ! ====================================================
 
-subroutine mf_get_cu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_capacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
@@ -48,16 +48,16 @@ subroutine mf_get_cu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
-    call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
 
-end subroutine mf_get_cu_2d
+end subroutine mf_capacity_2d
 
-subroutine mf_get_cu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_capacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
@@ -102,16 +102,16 @@ subroutine mf_get_cu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen = dimen; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
-    call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_get_cu_3d
+end subroutine mf_capacity_3d
 
-subroutine mf_get_ku_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, &
                         invJ, detJ, prop, array_in, array_out)
@@ -152,16 +152,15 @@ subroutine mf_get_ku_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
     
-end subroutine mf_get_ku_2d
+end subroutine mf_conductivity_2d
 
-subroutine mf_get_ku_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_conductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                         invJ, detJ, prop, array_in, array_out)
@@ -205,16 +204,15 @@ subroutine mf_get_ku_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
-end subroutine mf_get_ku_3d
+end subroutine mf_conductivity_3d
 
-subroutine mf_get_coupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_advection_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, &
                         invJ, detJ, prop, array_in, array_out)
@@ -255,16 +253,15 @@ subroutine mf_get_coupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_thcoupled_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_u_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
     
-end subroutine mf_get_coupled_2d
+end subroutine mf_advection_2d
 
-subroutine mf_get_coupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_advection_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                         invJ, detJ, prop, array_in, array_out)
@@ -308,16 +305,15 @@ subroutine mf_get_coupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_thcoupled_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_u_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
     
-end subroutine mf_get_coupled_3d
+end subroutine mf_advection_3d
 
-subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, ndod, dod, table, &
                             invJ, detJ, prop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -379,8 +375,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
     nc_list = (/nc_u, nc_v/)
@@ -404,7 +399,7 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         end if
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Kmean(:dimen))
+                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Kmean)
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
@@ -414,9 +409,9 @@ subroutine solver_steady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         stop 'Unknown method' 
     end if
 
-end subroutine solver_steady_heat_2d
+end subroutine solver_linearsteady_heat_2d
 
-subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             ndod, dod, table, invJ, detJ, prop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -481,8 +476,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
     nc_list = (/nc_u, nc_v, nc_w/)
@@ -509,7 +503,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%Kmean(:dimen))
+                                data_W_u, data_W_v, data_W_w, table, mat%Kmean)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -519,7 +513,7 @@ subroutine solver_steady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_
         stop 'Unknown method' 
     end if
 
-end subroutine solver_steady_heat_3d
+end subroutine solver_linearsteady_heat_3d
 
 subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
@@ -584,8 +578,8 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
@@ -612,7 +606,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
-                                data_W_u, data_W_v, table, mat%Kmean(:dimen))
+                                data_W_u, data_W_v, table, mat%Kmean)
         solv%temp_struct%Deigen = mat%Cmean + tsfactor*solv%temp_struct%Deigen
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -690,8 +684,8 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
-    mat%dimen = dimen; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
@@ -719,7 +713,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%Kmean(:mat%dimen))
+                                data_W_u, data_W_v, data_W_w, table, mat%Kmean)
         solv%temp_struct%Deigen = mat%Cmean + tsfactor*solv%temp_struct%Deigen
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &

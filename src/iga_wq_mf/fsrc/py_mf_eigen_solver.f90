@@ -60,8 +60,7 @@ subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
         Kprop(i, i, :) = 1.d0
     end do
 
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
     nc_list = (/nc_u, nc_v/)
@@ -141,8 +140,7 @@ subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
         Kprop(i, i, :) = 1.d0
     end do
 
-    mat%dimen = dimen
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
     nc_list = (/nc_u, nc_v, nc_w/)

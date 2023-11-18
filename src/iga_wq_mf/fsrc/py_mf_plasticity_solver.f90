@@ -161,9 +161,7 @@ subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
     type(mecamat) :: mat
     integer :: nr_total
 
-    mat%dimen = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v
     call intforce_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, stress, array_out)
@@ -200,16 +198,14 @@ subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     type(mecamat) :: mat
     integer :: nr_total
 
-    mat%dimen = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v*nr_w
     call intforce_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, stress, array_out)
 
 end subroutine get_intforce_3d
 
-subroutine mf_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_mass_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
@@ -252,15 +248,15 @@ subroutine mf_get_mu_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
-    call mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
                     indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
-end subroutine mf_get_mu_2d
+end subroutine mf_mass_2d
 
-subroutine mf_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, &
                         invJ, detJ, prop, array_in, array_out)
@@ -306,16 +302,16 @@ subroutine mf_get_mu_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen = dimen; mat%nvoigt = nvoigt; mat%isLumped = isLumped
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    mat%isLumped = isLumped
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
-    call mf_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                     indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_get_mu_3d
+end subroutine mf_mass_3d
 
-subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             invJ, detJ, nbmechArgs, mechArgs, array_in, array_out)
@@ -357,19 +353,17 @@ subroutine mf_get_su_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
-    call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_out)
 
-end subroutine mf_get_su_2d
+end subroutine mf_stiffness_2d
 
-subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                         invJ, detJ, nbmechArgs, mechArgs, array_in, array_out)
@@ -414,19 +408,17 @@ subroutine mf_get_su_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
-    call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_get_su_3d
+end subroutine mf_stiffness_3d
 
-subroutine mf_get_coupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine mf_advection_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             invJ, detJ, prop, array_in, array_out)
@@ -467,18 +459,16 @@ subroutine mf_get_coupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_mchcoupled_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_gradu_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_out)
 
-end subroutine mf_get_coupled_2d
+end subroutine mf_advection_2d
 
-subroutine mf_get_coupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine mf_advection_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             invJ, detJ, prop, array_in, array_out)
@@ -523,18 +513,16 @@ subroutine mf_get_coupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    mat%dimen  = dimen
-    mat%nvoigt = nvoigt
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_mchcoupled_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_gradu_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_out)
 
-end subroutine mf_get_coupled_3d
+end subroutine mf_advection_3d
 
-subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             ndu, ndv, dod_u, dod_v, table, invJ, detJ, nbmechArgs, mechArgs, &
@@ -601,7 +589,7 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
 
     call initialize_mecamat(mat, dimen)
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     nc_list = (/nc_u, nc_v/)
@@ -641,9 +629,9 @@ subroutine solver_elasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
         stop 'Unknown method'                    
     end if
 
-end subroutine solver_elasticity_2d
+end subroutine solver_linearelasticity_2d
 
-subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, &
@@ -714,7 +702,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
 
     call initialize_mecamat(mat, dimen)
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     nc_list = (/nc_u, nc_v, nc_w/)
@@ -754,7 +742,7 @@ subroutine solver_elasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
         stop 'Unknown method'                   
     end if
 
-end subroutine solver_elasticity_3d
+end subroutine solver_linearelasticity_3d
 
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndu, ndv, dod_u, dod_v, table, &
@@ -818,7 +806,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     mat%isLumped = isLumped
     call initialize_mecamat(mat, dimen)
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
@@ -931,7 +919,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     mat%isLumped = isLumped
     call initialize_mecamat(mat, dimen)
-    call setup_geometry(mat, nc_total, invJ, detJ)
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)

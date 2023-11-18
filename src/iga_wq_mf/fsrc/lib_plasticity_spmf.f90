@@ -18,23 +18,28 @@ module matrixfreeplasticity
 
 contains
 
-    subroutine initialize_mecamat(mat, dimen)
-        !! Creates a material using combined isotropic/kinematic hardening theory 
+    subroutine setup_geometry(mat, dimen, nnz, invJ, detJ)
+        !! Points to the data of the inverse and determinant of the Jacobian. 
+        !! It also computes and saves inv(JJ) inv(JJ).transpose
 
         implicit none
         ! Input / output data
         ! -------------------
-        integer, intent(in) :: dimen
         type(mecamat) :: mat
+        integer, intent(in) :: dimen, nnz
+        double precision, target, intent(in) :: invJ, detJ
+        dimension :: invJ(dimen, dimen, nnz), detJ(nnz)
 
-        mat%dimen  = dimen
+        mat%dimen = dimen
         mat%nvoigt = dimen*(dimen+1)/2
+        mat%invJ => invJ
+        mat%detJ => detJ
+        mat%ncols_sp = nnz
 
-        ! Compute mechanical properties
         allocate(mat%Smean(mat%dimen, mat%dimen), mat%Mmean(mat%dimen))
         mat%Smean = 1.d0; mat%Mmean = 1.d0
 
-    end subroutine initialize_mecamat
+    end subroutine setup_geometry
 
     subroutine setup_massprop(mat, nnz, prop)
 
@@ -47,6 +52,7 @@ contains
         dimension :: prop(nnz)
 
         mat%Mprop => prop
+        mat%ncols_sp = nnz
 
     end subroutine setup_massprop
 
@@ -60,25 +66,9 @@ contains
         dimension :: prop(nnz)
 
         mat%Hprop => prop
-    end subroutine setup_thmchcoupledprop
-
-    subroutine setup_geometry(mat, nnz, invJ, detJ)
-        !! Points to the data of the inverse and determinant of the Jacobian. 
-        !! It also computes and saves inv(JJ) inv(JJ).transpose
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(mecamat) :: mat
-        integer, intent(in) :: nnz
-        double precision, target, intent(in) :: invJ, detJ
-        dimension :: invJ(mat%dimen, mat%dimen, nnz), detJ(nnz)
-
-        mat%invJ => invJ
-        mat%detJ => detJ
         mat%ncols_sp = nnz
 
-    end subroutine setup_geometry
+    end subroutine setup_thmchcoupledprop
 
     subroutine setup_mechanicalArguments(mat, nbrows, mechArgs)
         !! Points to data of the mechanical behavior 
@@ -138,222 +128,220 @@ contains
 
     end subroutine setup_jacobienjacobien
 
-    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+    ! subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
         
-        use separatevariables
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(mecamat) :: mat
-        integer, intent(in) :: nc_list
-        dimension :: nc_list(mat%dimen)
+    !     use separatevariables
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     type(mecamat) :: mat
+    !     integer, intent(in) :: nc_list
+    !     dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: univMcoefs(mat%dimen, mat%dimen, maxval(nc_list)), &
-                                        univKcoefs(mat%dimen, mat%dimen, maxval(nc_list))
+    !     double precision, intent(out) :: univMcoefs(mat%dimen, mat%dimen, maxval(nc_list)), &
+    !                                     univKcoefs(mat%dimen, mat%dimen, maxval(nc_list))
 
-        ! Local data
-        ! ----------
-        type(sepoperator) :: oper
-        integer :: i, j, k, gp
-        integer, allocatable, dimension(:) :: nc_list_t
-        logical, allocatable, dimension(:) :: update
-        double precision, allocatable, dimension(:, :, :) :: CC
-        double precision :: DD, NN, TNN, BB, TBB
-        dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen), &
-                    BB(mat%nvoigt), TBB(mat%dimen, mat%dimen)
+    !     ! Local data
+    !     ! ----------
+    !     type(sepoperator) :: oper
+    !     integer :: i, j, k, gp
+    !     integer, allocatable, dimension(:) :: nc_list_t
+    !     logical, allocatable, dimension(:) :: update
+    !     double precision, allocatable, dimension(:, :, :) :: CC
+    !     double precision :: DD, NN, TNN, BB, TBB
+    !     dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen), &
+    !                 BB(mat%nvoigt), TBB(mat%dimen, mat%dimen)
 
-        if (.not.associated(mat%Mprop)) then
-            allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
-            update = .true.; nc_list_t = nc_list
-            call initialize_operator(oper, mat%dimen, nc_list_t, update)
+    !     if (.not.associated(mat%Mprop)) then
+    !         allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+    !         update = .true.; nc_list_t = nc_list
+    !         call initialize_operator(oper, mat%dimen, nc_list_t, update)
 
-            do i = 1, mat%dimen
-                do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
-                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
+    !         do i = 1, mat%dimen
+    !             do gp = 1, mat%ncols_sp
+    !                 NN = mat%NN(:, gp); BB = mat%BB(:, gp)
+    !                 call array2symtensor(mat%dimen, size(NN), NN, TNN)
+    !                 call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
-                    ! Elastic
-                    DD = 0.d0
-                    DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
-                    do k = 1, mat%dimen
-                        DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
-                    end do
+    !                 ! Elastic
+    !                 DD = 0.d0
+    !                 DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+    !                 do k = 1, mat%dimen
+    !                     DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
+    !                 end do
 
-                    ! Plastic
-                    if (mat%isElastic.eqv..false.) then
-                        do j = 1, mat%dimen
-                            do k = 1, mat%dimen
-                                DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
-                                            + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
-                            end do
-                        end do
-                    end if
-                    CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-                end do
+    !                 ! Plastic
+    !                 if (mat%isElastic.eqv..false.) then
+    !                     do j = 1, mat%dimen
+    !                         do k = 1, mat%dimen
+    !                             DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+    !                                         + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+    !                         end do
+    !                     end do
+    !                 end if
+    !                 CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+    !             end do
 
-                if (mat%dimen.eq.2) then
-                    call separatevariables_2d(oper, CC)
-                else if (mat%dimen.eq.3) then
-                    call separatevariables_3d(oper, CC)
-                end if
-                univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
-            end do
-        else
-            allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
-            update = .true.; update(mat%dimen+1) = .false.
-            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
-            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+    !             if (mat%dimen.eq.2) then
+    !                 call separatevariables_2d(oper, CC)
+    !             else if (mat%dimen.eq.3) then
+    !                 call separatevariables_3d(oper, CC)
+    !             end if
+    !             univMcoefs(i, :, :) = oper%univmasscoefs; univKcoefs(i, :, :) = oper%univstiffcoefs
+    !         end do
+    !     else
+    !         allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+    !         update = .true.; update(mat%dimen+1) = .false.
+    !         nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+    !         call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
 
-            do i = 1, mat%dimen
-                do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
-                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
+    !         do i = 1, mat%dimen
+    !             do gp = 1, mat%ncols_sp
+    !                 NN = mat%NN(:, gp); BB = mat%BB(:, gp)
+    !                 call array2symtensor(mat%dimen, size(NN), NN, TNN)
+    !                 call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
-                    ! Elastic
-                    DD = 0.d0
-                    DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
-                    do k = 1, mat%dimen
-                        DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
-                    end do
+    !                 ! Elastic
+    !                 DD = 0.d0
+    !                 DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+    !                 do k = 1, mat%dimen
+    !                     DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
+    !                 end do
                     
-                    ! Plastic
-                    if (mat%isElastic.eqv..false.) then
-                        do j = 1, mat%dimen
-                            do k = 1, mat%dimen
-                                DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
-                                            + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
-                            end do
-                        end do
-                    end if
-                    CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp), &
-                                                    matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-                    CC(mat%dimen+1, mat%dimen+1, gp) = mat%Mprop(gp)*mat%detJ(gp)
-                end do
+    !                 ! Plastic
+    !                 if (mat%isElastic.eqv..false.) then
+    !                     do j = 1, mat%dimen
+    !                         do k = 1, mat%dimen
+    !                             DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+    !                                         + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+    !                         end do
+    !                     end do
+    !                 end if
+    !                 CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp), &
+    !                                                 matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+    !                 CC(mat%dimen+1, mat%dimen+1, gp) = mat%Mprop(gp)*mat%detJ(gp)
+    !             end do
 
-                if (mat%dimen.eq.2) then
-                    call separatevariables_3d(oper, CC)
-                else if (mat%dimen.eq.3) then
-                    call separatevariables_4d(oper, CC)
-                end if
-                univMcoefs(i, :, :) = oper%univmasscoefs(:mat%dimen, :); univKcoefs(i, :, :) = oper%univstiffcoefs(:mat%dimen, :)
-            end do
+    !             if (mat%dimen.eq.2) then
+    !                 call separatevariables_3d(oper, CC)
+    !             else if (mat%dimen.eq.3) then
+    !                 call separatevariables_4d(oper, CC)
+    !             end if
+    !             univMcoefs(i, :, :) = oper%univmasscoefs(:mat%dimen, :); univKcoefs(i, :, :) = oper%univstiffcoefs(:mat%dimen, :)
+    !         end do
             
-        end if
-    end subroutine compute_separationvariables
+    !     end if
+    ! end subroutine compute_separationvariables
 
-    subroutine compute_mean(mat, nclist)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+    ! subroutine compute_mean(mat, nclist)
+    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(mecamat) :: mat
-        integer, intent(in) :: nclist
-        dimension :: nclist(mat%dimen)
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     type(mecamat) :: mat
+    !     integer, intent(in) :: nclist
+    !     dimension :: nclist(mat%dimen)
 
-        ! Local data
-        ! ----------
-        integer :: i, j, k, c, gp, pos, ind(3)
-        integer, dimension(:), allocatable :: sample
-        integer, dimension(:, :), allocatable :: indlist
-        double precision :: DD, TNN, NN, TBB, BB, Mmean
-        dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt), &
-                    TBB(mat%dimen, mat%dimen), BB(mat%nvoigt)
-        double precision, allocatable, dimension(:, :, :) :: Scoefs
-        double precision, allocatable, dimension(:) :: Mcoefs
+    !     ! Local data
+    !     ! ----------
+    !     integer :: i, j, k, c, gp, pos, ind(3)
+    !     integer, dimension(:), allocatable :: sample
+    !     integer, dimension(:, :), allocatable :: indlist
+    !     double precision :: DD, TNN, NN, TBB, BB, Mmean
+    !     dimension :: DD(mat%dimen, mat%dimen), TNN(mat%dimen, mat%dimen), NN(mat%nvoigt), &
+    !                 TBB(mat%dimen, mat%dimen), BB(mat%nvoigt)
+    !     double precision, allocatable, dimension(:, :, :) :: Scoefs
+    !     double precision, allocatable, dimension(:) :: Mcoefs
 
-        if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
-        allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
-        do i = 1, mat%dimen 
-            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
-            indlist(i, :) = ind
-        end do
+    !     if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
+    !     allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
+    !     do i = 1, mat%dimen 
+    !         pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
+    !         indlist(i, :) = ind
+    !     end do
     
-        ! Select a set of coefficients
-        c = 1
-        if (mat%dimen.eq.2) then
-            do j = 1, 3
-                do i = 1, 3
-                    gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
-                    sample(c) = gp
-                    c = c + 1
-                end do
-            end do
-        else if (mat%dimen.eq.3) then
-            do k = 1, 3
-                do j = 1, 3
-                    do i = 1, 3
-                        gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
-                        sample(c) = gp
-                        c = c + 1
-                    end do
-                end do
-            end do
-        else
-            stop 'Try 2 or 3 dimensions'
-        end if
+    !     ! Select a set of coefficients
+    !     c = 1
+    !     if (mat%dimen.eq.2) then
+    !         do j = 1, 3
+    !             do i = 1, 3
+    !                 gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+    !                 sample(c) = gp
+    !                 c = c + 1
+    !             end do
+    !         end do
+    !     else if (mat%dimen.eq.3) then
+    !         do k = 1, 3
+    !             do j = 1, 3
+    !                 do i = 1, 3
+    !                     gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+    !                     sample(c) = gp
+    !                     c = c + 1
+    !                 end do
+    !             end do
+    !         end do
+    !     else
+    !         stop 'Try 2 or 3 dimensions'
+    !     end if
         
-        allocate(Scoefs(mat%dimen, mat%dimen, size(sample)))
-        do i = 1, mat%dimen
-            do c = 1, size(sample)
-                gp = sample(c)
-                NN = mat%NN(:, gp); BB = mat%NN(:, gp)
-                call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                call array2symtensor(mat%dimen, size(BB), BB, TBB)
+    !     allocate(Scoefs(mat%dimen, mat%dimen, size(sample)))
+    !     do i = 1, mat%dimen
+    !         do c = 1, size(sample)
+    !             gp = sample(c)
+    !             NN = mat%NN(:, gp); BB = mat%NN(:, gp)
+    !             call array2symtensor(mat%dimen, size(NN), NN, TNN)
+    !             call array2symtensor(mat%dimen, size(BB), BB, TBB)
 
-                ! Elastic
-                DD = 0.d0
-                DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
-                do k = 1, mat%dimen
-                    DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
-                end do
+    !             ! Elastic
+    !             DD = 0.d0
+    !             DD(i, i) = DD(i, i) + mat%CepArgs(1, gp) + mat%CepArgs(2, gp)
+    !             do k = 1, mat%dimen
+    !                 DD(k, k) = DD(k, k) + mat%CepArgs(2, gp)
+    !             end do
                 
-                ! Plastic
-                if (mat%isElastic.eqv..false.) then
-                    do j = 1, mat%dimen
-                        do k = 1, mat%dimen
-                            DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
-                                        + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
-                        end do
-                    end do
-                end if
+    !             ! Plastic
+    !             if (mat%isElastic.eqv..false.) then
+    !                 do j = 1, mat%dimen
+    !                     do k = 1, mat%dimen
+    !                         DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
+    !                                     + mat%CepArgs(4, gp)*(TBB(i, j)*TNN(i, k) - TNN(i, j)*TBB(i, k))
+    !                     end do
+    !                 end do
+    !             end if
 
-                Scoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-            end do
+    !             Scoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+    !         end do
     
-            do j = 1, mat%dimen
-                if (mat%dimen.eq.2) then
-                    call trapezoidal_rule_2d(3, 3, Scoefs(j, j, :), mat%Smean(i, j))
-                else if (mat%dimen.eq.3) then
-                    call trapezoidal_rule_3d(3, 3, 3, Scoefs(j, j, :), mat%Smean(i, j))
-                end if
-            end do   
-        end do
+    !         do j = 1, mat%dimen
+    !             if (mat%dimen.eq.2) then
+    !                 call trapezoidal_rule_2d(3, 3, Scoefs(j, j, :), mat%Smean(i, j))
+    !             else if (mat%dimen.eq.3) then
+    !                 call trapezoidal_rule_3d(3, 3, 3, Scoefs(j, j, :), mat%Smean(i, j))
+    !             end if
+    !         end do   
+    !     end do
 
-        if (associated(mat%Mprop)) then
-            allocate(Mcoefs(size(sample)))
-            do c = 1, size(sample)
-                gp = sample(c)
-                Mcoefs(c) = mat%Mprop(gp)*mat%detJ(gp)
-            end do
-            if (mat%dimen.eq.2) then
-                call trapezoidal_rule_2d(3, 3, Mcoefs, Mmean)
-            else if (mat%dimen.eq.3) then
-                call trapezoidal_rule_3d(3, 3, 3, Mcoefs, Mmean)
-            end if 
-            mat%Mmean = Mmean
-        end if
+    !     if (associated(mat%Mprop)) then
+    !         allocate(Mcoefs(size(sample)))
+    !         do c = 1, size(sample)
+    !             gp = sample(c)
+    !             Mcoefs(c) = mat%Mprop(gp)*mat%detJ(gp)
+    !         end do
+    !         if (mat%dimen.eq.2) then
+    !             call trapezoidal_rule_2d(3, 3, Mcoefs, Mmean)
+    !         else if (mat%dimen.eq.3) then
+    !             call trapezoidal_rule_3d(3, 3, 3, Mcoefs, Mmean)
+    !         end if 
+    !         mat%Mmean = Mmean
+    !     end if
 
-    end subroutine compute_mean
+    ! end subroutine compute_mean
 
-    subroutine mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
-        !! Computes M.u in 2D where M is mass matrix
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data 
@@ -408,9 +396,9 @@ contains
 
         end do
 
-    end subroutine mf_mass_2d
+    end subroutine mf_tu_tv_2d
 
-    subroutine mf_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -469,9 +457,9 @@ contains
             array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
         end do
             
-    end subroutine mf_mass_3d
+    end subroutine mf_tu_tv_3d
 
-    subroutine mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
@@ -569,14 +557,12 @@ contains
             end do
         end do
             
-    end subroutine mf_stiffness_2d
+    end subroutine mf_gradtu_gradtv_2d
 
-    subroutine mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes S.u in 3D where S is stiffness matrix
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data 
@@ -670,11 +656,10 @@ contains
             end do
         end do
             
-    end subroutine mf_stiffness_3d
+    end subroutine mf_gradtu_gradtv_3d
 
-    subroutine mf_stiffmass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+    subroutine mf_tutv_gradtugradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
         !! Computes S.u in 2D where S is stiffness matrix
         !! IN CSR FORMAT
@@ -711,23 +696,23 @@ contains
         double precision :: array_tmp
         dimension :: array_tmp(dimen, nr_total)
 
-        call mf_mass_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_out)
 
         array_out = mat%scalars(1)*array_out
 
-        call mf_stiffness_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_tmp)
 
         array_out = array_out + mat%scalars(2)*array_tmp
 
-    end subroutine mf_stiffmass_2d
+    end subroutine mf_tutv_gradtugradtv_2d
 
-    subroutine mf_stiffmass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_tutv_gradtugradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -764,23 +749,23 @@ contains
         double precision :: array_tmp
         dimension :: array_tmp(dimen, nr_total)
 
-        call mf_mass_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         array_out = mat%scalars(1)*array_out
 
-        call mf_stiffness_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_W_u, data_W_v, data_W_w, array_in, array_tmp)
         
         array_out = array_out + mat%scalars(2)*array_tmp
 
-    end subroutine mf_stiffmass_3d
+    end subroutine mf_tutv_gradtugradtv_3d
 
-    subroutine mf_mchcoupled_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_gradu_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
         implicit none 
@@ -835,9 +820,9 @@ contains
             end do
         end do
             
-    end subroutine mf_mchcoupled_2d
+    end subroutine mf_gradu_v_2d
 
-    subroutine mf_mchcoupled_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_gradu_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -896,7 +881,7 @@ contains
             end do
         end do
             
-    end subroutine mf_mchcoupled_3d
+    end subroutine mf_gradu_v_3d
 
     subroutine intforce_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, stress, array_out)

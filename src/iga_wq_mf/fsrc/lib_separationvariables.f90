@@ -3,7 +3,7 @@ module separatevariables
     implicit none
 
     type sepoperator
-        integer :: dimen, ncols, maxit = 4
+        integer :: dimen, ncols, maxit = 3
         integer, dimension(:), allocatable :: nclist
         logical, dimension(:), allocatable :: update
         double precision, dimension(:, :), allocatable :: univmasscoefs, univstiffcoefs
@@ -44,7 +44,7 @@ contains
         integer, parameter :: dimen = 2
         type(sepoperator) :: obj
         double precision, intent(in) :: CC
-        dimension :: CC(dimen, dimen, obj%ncols)
+        dimension :: CC(dimen, obj%ncols)
 
         ! Local data
         ! ----------
@@ -65,7 +65,7 @@ contains
                     do ju = 1, nc_u
                         genPos = ju + (jv-1)*nc_u
                         UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)] 
-                        Vk(ju, jv) = CC(k, k, genPos)*UU(k)/product(UU)
+                        Vk(ju, jv) = CC(k, genPos)*UU(k)/product(UU)
                     end do
                 end do
 
@@ -100,7 +100,7 @@ contains
                                 genPos = ju + (jv-1)*nc_u
                                 UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)]
                                 WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv)]
-                                Wlk(c, ju, jv) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                Wlk(c, ju, jv) = CC(l, genPos)*UU(k)*UU(l)&
                                                             /(product(UU)*WW(l))
                             end do
                         end do
@@ -149,7 +149,7 @@ contains
         integer, parameter :: dimen = 3
         type(sepoperator) :: obj
         double precision, intent(in) :: CC
-        dimension :: CC(dimen, dimen, obj%ncols)
+        dimension :: CC(dimen, obj%ncols)
 
         ! Local data
         ! ----------
@@ -171,7 +171,7 @@ contains
                         do ju = 1, nc_u
                             genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
                             UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)] 
-                            Vk(ju, jv, jw) = CC(k, k, genPos)*UU(k)/product(UU)
+                            Vk(ju, jv, jw) = CC(k, genPos)*UU(k)/product(UU)
                         end do
                     end do
                 end do
@@ -216,7 +216,7 @@ contains
                                     genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
                                     UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)]
                                     WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), obj%univstiffcoefs(3, jw)]
-                                    Wlk(c, ju, jv, jw) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                    Wlk(c, ju, jv, jw) = CC(l, genPos)*UU(k)*UU(l)&
                                                                 /(product(UU)*WW(l))
                                 end do
                             end do
@@ -276,7 +276,7 @@ contains
         integer, parameter :: dimen = 4
         type(sepoperator) :: obj
         double precision, intent(in) :: CC
-        dimension :: CC(dimen, dimen, obj%ncols)
+        dimension :: CC(dimen, obj%ncols)
 
         ! Local data
         ! ----------
@@ -300,7 +300,7 @@ contains
                                 genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
                                 UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), &
                                         obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)] 
-                                Vk(ju, jv, jw, jt) = CC(k, k, genPos)*UU(k)/product(UU)
+                                Vk(ju, jv, jw, jt) = CC(k, genPos)*UU(k)/product(UU)
                             end do
                         end do
                     end do
@@ -357,7 +357,7 @@ contains
                                                 obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)]
                                         WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), &
                                                 obj%univstiffcoefs(3, jw), obj%univstiffcoefs(4, jt)]
-                                        Wlk(c, ju, jv, jw, jt) = CC(l, l, genPos)*UU(k)*UU(l)&
+                                        Wlk(c, ju, jv, jw, jt) = CC(l, genPos)*UU(k)*UU(l)&
                                                                     /(product(UU)*WW(l))
                                     end do
                                 end do

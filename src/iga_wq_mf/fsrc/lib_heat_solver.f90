@@ -59,20 +59,20 @@ contains
 
         if (solv%matrixfreetype.eq.1) then
 
-            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.2) then
 
-            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+            call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
 
         else 
-            call mf_condcap_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+            call mf_uv_gradugradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
@@ -82,30 +82,29 @@ contains
 
     subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, &
                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                data_B_u, data_B_v, data_W_u, data_W_v, table, Kmean)
+                data_B_u, data_B_v, data_W_u, data_W_v, table_dirichlet, mean)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver) :: solv
         integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
         integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
         dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
                         indj_u(nnz_u), indj_v(nnz_v)
         double precision, intent(in) :: data_B_u, data_B_v, data_W_u, data_W_v
         dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), &
                     data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-        logical, intent(in) :: table
-        dimension :: table(solv%dimen, 2)
-        double precision, intent(in) :: Kmean
-        dimension :: Kmean(solv%dimen)
+        logical, intent(in) :: table_dirichlet
+        dimension :: table_dirichlet(solv%dimen, 2)
+        double precision, intent(in) :: mean
+        dimension :: mean(solv%dimen)
 
         call init_2datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
-        call update_datastructure(solv%temp_struct, solv%dimen, table)
-        call eigendecomposition(solv%temp_struct, Kmean)
+        call update_datastructure(solv%temp_struct, solv%dimen, table_dirichlet)
+        call eigendecomposition(solv%temp_struct, mean)
     
     end subroutine initializefastdiag
 
@@ -367,7 +366,7 @@ contains
         norm = norm2(eigenvec)
         eigenvec = eigenvec/norm
 
-        call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+        call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, u)
@@ -375,7 +374,7 @@ contains
 
         q = sqrt(dot_product(eigenvec, u))
         eigenvec = eigenvec/q; u = u/q
-        call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+        call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, v)
@@ -395,28 +394,28 @@ contains
 
             RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
             RM2(1, :) = v; RM3(1, :) = u;
-            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v,  -g, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM2(2, :) = tmp
             
-            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, p, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM2(3, :) = tmp
                         
-            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, -g, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM3(2, :) = tmp
 
-            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, p, tmp)
@@ -449,7 +448,7 @@ contains
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p
-            call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,&
+            call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v,&
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, eigenvec, u)
@@ -457,7 +456,7 @@ contains
             
             q = sqrt(dot_product(eigenvec, u))
             eigenvec = eigenvec/q; u = u/q
-            call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+            call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, v)
@@ -514,21 +513,21 @@ contains
 
         if (solv%matrixfreetype.eq.1) then
 
-            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.2) then
 
-            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         else if (solv%matrixfreetype.eq.3) then
 
-            call mf_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+            call mf_uv_gradugradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -831,7 +830,7 @@ contains
         norm = norm2(eigenvec)
         eigenvec = eigenvec/norm
 
-        call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, u)
@@ -839,7 +838,7 @@ contains
         
         q = sqrt(dot_product(eigenvec, u))
         eigenvec = eigenvec/q; u = u/q
-        call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, v)
@@ -860,28 +859,28 @@ contains
 
             RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
             RM2(1, :) = v; RM3(1, :) = u;
-            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, -g, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM2(2, :) = tmp
 
-            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM2(3, :) = tmp
 
-            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, -g, tmp)
             call reset_dirichletbound1(nr_total, tmp, ndod, dod)
             RM3(2, :) = tmp
             
-            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, tmp)
@@ -914,7 +913,7 @@ contains
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p
-            call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, eigenvec, u)
@@ -922,7 +921,7 @@ contains
             
             q = sqrt(dot_product(eigenvec, u))
             eigenvec = eigenvec/q; u = u/q
-            call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, v)

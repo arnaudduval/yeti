@@ -391,6 +391,33 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
 
 end subroutine kronvec3d
 
+subroutine kronvec4d(nnz_A, A, nnz_B, B, nnz_C, C, nnz_D, D, R, alpha)
+    !! Computes the kron product of 3 vectors and returns R = R + alpha*(Au x Av x Aw) (x : tensor product)
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nnz_A, nnz_B, nnz_C, nnz_D
+    double precision, intent(in) :: A, B, C, D, alpha
+    dimension :: A(nnz_A), B(nnz_B), C(nnz_C), D(nnz_D)
+
+    double precision, intent(inout) :: R
+    dimension :: R(nnz_A, nnz_B, nnz_C, nnz_D)
+
+    ! Local data
+    ! ----------
+    integer :: iB, iC, iD
+
+    do iD = 1, nnz_D
+        do iC = 1, nnz_C
+            do iB = 1, nnz_B
+                R(:, iB, iC, iD) = R(:, iB, iC, iD) + alpha*A(:)*B(iB)*C(iC)*D(iD)
+            end do
+        end do 
+    end do
+
+end subroutine kronvec4d
+
 subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
     !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
     !! Sparse matrix in CSR format

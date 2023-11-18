@@ -2,33 +2,34 @@ module matrixfreeheat
 
     implicit none
     type thermomat
-        integer :: dimen = 3
+        integer :: dimen
         logical :: isLumped = .false.
-        double precision :: scalars(2) = (/1.d0, 1.d0/)
+        double precision :: Cmean, scalars(2) = (/1.d0, 1.d0/)
+        double precision, dimension(:), allocatable :: Kmean
         double precision, dimension(:), pointer :: Hprop=>null(), Cprop=>null(), detJ=>null()
         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
-        double precision, dimension(3) :: Kmean = 1.d0
-        double precision :: Cmean = 1.d0
         integer :: ncols_sp
     end type thermomat
 
 contains
 
-    subroutine setup_geometry(mat, nnz, invJ, detJ)
+    subroutine setup_geometry(mat, dimen, nnz, invJ, detJ)
         !! Points to the data of the inverse and determinant of the Jacobian. 
-        !! It also computes and saves inv(JJ) inv(JJ).transpose
 
         implicit none
         ! Input / output data
         ! -------------------
         type(thermomat) :: mat
-        integer, intent(in) :: nnz
+        integer, intent(in) :: dimen, nnz
         double precision, target, intent(in) :: invJ, detJ
-        dimension :: invJ(mat%dimen, mat%dimen, nnz), detJ(nnz)
+        dimension :: invJ(dimen, dimen, nnz), detJ(nnz)
 
+        mat%dimen = dimen
         mat%invJ => invJ
         mat%detJ => detJ
         mat%ncols_sp = nnz
+        allocate(mat%Kmean(mat%dimen))
+        mat%Kmean = 1.d0; mat%Cmean = 1.d0
 
     end subroutine setup_geometry
 
@@ -72,152 +73,152 @@ contains
         dimension :: prop(nnz)
 
         mat%Hprop => prop
+        mat%ncols_sp = nnz
+
     end subroutine setup_thmchcoupledprop
 
-    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+    ! subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
         
-        use separatevariables
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(thermomat) :: mat
-        integer, intent(in) :: nc_list
-        dimension :: nc_list(mat%dimen)
+    !     use separatevariables
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     type(thermomat) :: mat
+    !     integer, intent(in) :: nc_list
+    !     dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
+    !     double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
 
-        ! Local data
-        ! ----------
-        type(sepoperator) :: oper
-        integer :: gp
-        integer, allocatable, dimension(:) :: nc_list_t
-        logical, allocatable, dimension(:) :: update
-        double precision, allocatable, dimension(:, :, :) :: CC
+    !     ! Local data
+    !     ! ----------
+    !     type(sepoperator) :: oper
+    !     integer :: gp
+    !     integer, allocatable, dimension(:) :: nc_list_t
+    !     logical, allocatable, dimension(:) :: update
+    !     double precision, allocatable, dimension(:, :, :) :: CC
 
-        if (.not.associated(mat%Cprop)) then
-            allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
-            update = .true.; nc_list_t = nc_list
-            call initialize_operator(oper, mat%dimen, nc_list_t, update)
+    !     if (.not.associated(mat%Cprop)) then
+    !         allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+    !         update = .true.; nc_list_t = nc_list
+    !         call initialize_operator(oper, mat%dimen, nc_list_t, update)
             
-            do gp = 1, mat%ncols_sp
-                CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-                                    *mat%detJ(gp)
-            end do
+    !         do gp = 1, mat%ncols_sp
+    !             CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+    !                                 *mat%detJ(gp)
+    !         end do
 
-            if (mat%dimen.eq.2) then
-                call separatevariables_2d(oper, CC)
-            else if (mat%dimen.eq.3) then
-                call separatevariables_3d(oper, CC)
-            end if
+    !         if (mat%dimen.eq.2) then
+    !             call separatevariables_2d(oper, CC)
+    !         else if (mat%dimen.eq.3) then
+    !             call separatevariables_3d(oper, CC)
+    !         end if
 
-            univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
+    !         univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
 
-        else
-            allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
-            update = .true.; update(mat%dimen+1) = .false.
-            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
-            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+    !     else
+    !         allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+    !         update = .true.; update(mat%dimen+1) = .false.
+    !         nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+    !         call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
 
-            do gp = 1, mat%ncols_sp
-                CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
-                matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-                CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
-            end do
+    !         do gp = 1, mat%ncols_sp
+    !             CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
+    !             matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+    !             CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
+    !         end do
 
-            if (mat%dimen.eq.2) then
-                call separatevariables_3d(oper, CC)
-            else if (mat%dimen.eq.3) then
-                call separatevariables_4d(oper, CC)
-            end if
-            univMcoefs = oper%univmasscoefs(:mat%dimen, :); univKcoefs = oper%univstiffcoefs(:mat%dimen, :)
-        end if
+    !         if (mat%dimen.eq.2) then
+    !             call separatevariables_3d(oper, CC)
+    !         else if (mat%dimen.eq.3) then
+    !             call separatevariables_4d(oper, CC)
+    !         end if
+    !         univMcoefs = oper%univmasscoefs(:mat%dimen, :); univKcoefs = oper%univstiffcoefs(:mat%dimen, :)
+    !     end if
         
-    end subroutine compute_separationvariables
+    ! end subroutine compute_separationvariables
 
-    subroutine compute_mean(mat, nclist)
-        !! Computes the average of the material properties (for the moment it only considers elastic materials)
+    ! subroutine compute_mean(mat, nclist)
+    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        type(thermomat) :: mat
-        integer, intent(in) :: nclist
-        dimension :: nclist(mat%dimen)
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     type(thermomat) :: mat
+    !     integer, intent(in) :: nclist
+    !     dimension :: nclist(mat%dimen)
 
-        ! Local data
-        ! ----------
-        integer :: i, j, k, c, gp, pos, ind(3)
-        integer, dimension(:), allocatable :: sample
-        integer, dimension(:, :), allocatable :: indlist
-        double precision, dimension(:, :, :), allocatable :: Kcoefs
-        double precision, dimension(:), allocatable :: Ccoefs
+    !     ! Local data
+    !     ! ----------
+    !     integer :: i, j, k, c, gp, pos, ind(3)
+    !     integer, dimension(:), allocatable :: sample
+    !     integer, dimension(:, :), allocatable :: indlist
+    !     double precision, dimension(:, :, :), allocatable :: Kcoefs
+    !     double precision, dimension(:), allocatable :: Ccoefs
         
-        if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
-        allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
-        do i = 1, mat%dimen 
-            pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
-            indlist(i, :) = ind
-        end do
+    !     if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
+    !     allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
+    !     do i = 1, mat%dimen 
+    !         pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
+    !         indlist(i, :) = ind
+    !     end do
     
-        ! Select a set of coefficients
-        c = 1
-        if (mat%dimen.eq.2) then
-            do j = 1, 3
-                do i = 1, 3
-                    gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
-                    sample(c) = gp
-                    c = c + 1
-                end do
-            end do
-        else if (mat%dimen.eq.3) then
-            do k = 1, 3
-                do j = 1, 3
-                    do i = 1, 3
-                        gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
-                        sample(c) = gp
-                        c = c + 1
-                    end do
-                end do
-            end do
-        else
-            stop 'Try 2 or 3 dimensions'
-        end if
+    !     ! Select a set of coefficients
+    !     c = 1
+    !     if (mat%dimen.eq.2) then
+    !         do j = 1, 3
+    !             do i = 1, 3
+    !                 gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
+    !                 sample(c) = gp
+    !                 c = c + 1
+    !             end do
+    !         end do
+    !     else if (mat%dimen.eq.3) then
+    !         do k = 1, 3
+    !             do j = 1, 3
+    !                 do i = 1, 3
+    !                     gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
+    !                     sample(c) = gp
+    !                     c = c + 1
+    !                 end do
+    !             end do
+    !         end do
+    !     else
+    !         stop 'Try 2 or 3 dimensions'
+    !     end if
 
-        allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
-        do c = 1, size(sample)
-            gp = sample(c)
-            Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-                            *mat%detJ(gp)
-        end do
-        do i = 1, mat%dimen
-            if (mat%dimen.eq.2) then
-                call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-            else if (mat%dimen.eq.3) then
-                call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-            end if
-        end do
+    !     allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
+    !     do c = 1, size(sample)
+    !         gp = sample(c)
+    !         Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
+    !                         *mat%detJ(gp)
+    !     end do
+    !     do i = 1, mat%dimen
+    !         if (mat%dimen.eq.2) then
+    !             call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
+    !         else if (mat%dimen.eq.3) then
+    !             call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
+    !         end if
+    !     end do
 
-        if (associated(mat%Cprop)) then
-            allocate(Ccoefs(size(sample)))
-            do c = 1, size(sample)
-                gp = sample(c)
-                Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
-            end do
-            if (mat%dimen.eq.2) then
-                call trapezoidal_rule_2d(3, 3, Ccoefs, mat%Cmean)
-            else if (mat%dimen.eq.3) then
-                call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%Cmean)
-            end if
-        end if   
+    !     if (associated(mat%Cprop)) then
+    !         allocate(Ccoefs(size(sample)))
+    !         do c = 1, size(sample)
+    !             gp = sample(c)
+    !             Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
+    !         end do
+    !         if (mat%dimen.eq.2) then
+    !             call trapezoidal_rule_2d(3, 3, Ccoefs, mat%Cmean)
+    !         else if (mat%dimen.eq.3) then
+    !             call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%Cmean)
+    !         end if
+    !     end if   
 
-    end subroutine compute_mean
+    ! end subroutine compute_mean
 
-    subroutine mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
-        !! Computes C.u where C is the capacity matrix in 3D 
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data
@@ -263,14 +264,12 @@ contains
                             array_tmp, array_out)
         if (mat%isLumped) array_out = array_out*array_in
         
-    end subroutine mf_capacity_2d
+    end subroutine mf_u_v_2d
 
-    subroutine mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes C.u where C is the capacity matrix in 3D 
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data
@@ -297,8 +296,8 @@ contains
 
         ! Local data 
         ! ----------
-        double precision :: tmp_in, array_tmp
-        dimension :: tmp_in(nr_total), array_tmp(nc_total)
+        double precision :: tmp_in, tmp
+        dimension :: tmp_in(nr_total), tmp(nc_total)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
         tmp_in = array_in; if (mat%isLumped) tmp_in = 1.d0
@@ -307,25 +306,23 @@ contains
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                            tmp_in, array_tmp)
+                            tmp_in, tmp)
 
-        array_tmp = array_tmp*mat%Cprop*mat%detJ
+        tmp = tmp*mat%Cprop*mat%detJ
 
         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                            array_tmp, array_out)
+                            tmp, array_out)
         if (mat%isLumped) array_out = array_out*array_in
         
-    end subroutine mf_capacity_3d
+    end subroutine mf_u_v_3d
 
-    subroutine mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
-        !! Computes K.u where K is conductivity matrix in 3D 
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data
@@ -356,14 +353,15 @@ contains
 
         ! Local data 
         ! -----------
-        double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
-        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nr_total), Kcoefs(dimen, dimen, nc_total)
+        double precision :: tmp_0, tmp_1, tmp_2, coefs
+        dimension :: tmp_0(nc_total), tmp_1(nc_total), tmp_2(nr_total), coefs(dimen, dimen, nc_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
         if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
         do i = 1, nc_total
-            Kcoefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+            coefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), &
+                            transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
 
         array_out = 0.d0
@@ -372,27 +370,25 @@ contains
             call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                                 nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                                 nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                                array_in, array_tmp_0)
+                                array_in, tmp_0)
             do i = 1, dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                array_tmp_1 = array_tmp_0*Kcoefs(i, j, :)
+                tmp_1 = tmp_0*coefs(i, j, :)
                 call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                    array_tmp_1, array_tmp_2)
-                array_out = array_out + array_tmp_2
+                                    tmp_1, tmp_2)
+                array_out = array_out + tmp_2
             end do
         end do
         
-    end subroutine mf_conductivity_2d
+    end subroutine mf_gradu_gradv_2d
 
-    subroutine mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes K.u where K is conductivity matrix in 3D 
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data
@@ -423,15 +419,16 @@ contains
 
         ! Local data 
         ! -----------
-        double precision :: array_tmp_0, array_tmp_1, array_tmp_2, Kcoefs
-        dimension :: array_tmp_0(nc_total), array_tmp_1(nc_total), array_tmp_2(nr_total), Kcoefs(dimen, dimen, nc_total)
+        double precision :: tmp_0, tmp_1, tmp_2, coefs
+        dimension :: tmp_0(nc_total), tmp_1(nc_total), tmp_2(nr_total), coefs(dimen, dimen, nc_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
 
         if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
 
         do i = 1, nc_total
-            Kcoefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+            coefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), &
+                                transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
 
         array_out = 0.d0
@@ -441,29 +438,26 @@ contains
                                 nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                                 nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                                 nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
-                                array_in, array_tmp_0)
+                                array_in, tmp_0)
             do i = 1, dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                array_tmp_1 = array_tmp_0*Kcoefs(i, j, :)
+                tmp_1 = tmp_0*coefs(i, j, :)
                 call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                     nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), & 
-                                    array_tmp_1, array_tmp_2)
-                array_out = array_out + array_tmp_2
+                                    tmp_1, tmp_2)
+                array_out = array_out + tmp_2
             end do
         end do
         
-    end subroutine mf_conductivity_3d
+    end subroutine mf_gradu_gradv_3d
 
-    subroutine mf_condcap_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_uv_gradugradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
-        !! Computes (alpha*C + beta*K).u where C and K are capacity and conductivity matrices respectively in 3D case
-        !! IN CSR FORMAT
-
         implicit none 
         ! Input / output data
         ! -------------------
@@ -495,28 +489,26 @@ contains
         double precision :: array_tmp
         dimension :: array_tmp(nr_total)
 
-        call mf_capacity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_out)
 
         array_out = mat%scalars(1)*array_out
 
-        call mf_conductivity_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+        call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_tmp)
 
         array_out = array_out + mat%scalars(2)*array_tmp
         
-    end subroutine mf_condcap_2d
+    end subroutine mf_uv_gradugradv_2d
 
-    subroutine mf_condcap_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_uv_gradugradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
-        !! Computes (alpha*C + beta*K).u where C and K are capacity and conductivity matrices respectively in 3D case
-        !! IN CSR FORMAT
 
         implicit none 
         ! Input / output data
@@ -549,23 +541,23 @@ contains
         double precision :: array_tmp
         dimension :: array_tmp(nr_total)
 
-        call mf_capacity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_out)
 
         array_out = mat%scalars(1)*array_out
 
-        call mf_conductivity_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+        call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_tmp)
 
         array_out = array_out + mat%scalars(2)*array_tmp
         
-    end subroutine mf_condcap_3d
+    end subroutine mf_uv_gradugradv_3d
 
-    subroutine mf_thcoupled_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    subroutine mf_u_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, array_in, array_out)
         implicit none 
@@ -621,9 +613,9 @@ contains
             end do
         end do
             
-    end subroutine mf_thcoupled_2d
+    end subroutine mf_u_gradv_2d
 
-    subroutine mf_thcoupled_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_u_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -682,11 +674,6 @@ contains
             end do
         end do
                     
-    end subroutine mf_thcoupled_3d
+    end subroutine mf_u_gradv_3d
 
 end module matrixfreeheat
-
-! module matrixfreeSTheat
-    
-! contains
-! end module matrixfreeSTheat
