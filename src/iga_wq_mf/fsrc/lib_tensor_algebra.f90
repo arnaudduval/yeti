@@ -2,7 +2,7 @@
 ! Tensor algebra 
 ! ---------------
 
-subroutine tensor_n_mode_product_dM(s_in, X, nr, nc, U, mode, s_out, R)
+subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
     !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
@@ -14,81 +14,161 @@ subroutine tensor_n_mode_product_dM(s_in, X, nr, nc, U, mode, s_out, R)
     implicit none
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 4
-    integer, intent(in) :: nr, nc, mode, s_in(dimen), s_out(dimen)
+    integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nc, mode, nrR
     double precision, intent(in) :: X, U
-    dimension :: X(s_in(1), s_in(2), s_in(3), s_in(4)), U(nr, nc)
+    dimension :: X(nc_u*nc_v*nc_w*nc_t), U(nr, nc)
 
     double precision, intent(out) :: R
-    dimension :: R(s_out(1), s_out(2), s_out(3), s_out(4))
+    dimension :: R(nrR)
 
     ! Local data
     ! ----------
-    integer :: ju, jv, jw, jt, nb_tasks, nb_oper
+    double precision, allocatable, dimension(:, :) :: Rt
+    double precision, allocatable, dimension(:, :) :: Xt
+    integer :: ju, jv, jw, jt, i, nb_tasks
 
-    nb_oper = product(s_in)/s_in(mode)
-
+    R = 0.d0
     if (mode.eq.1) then 
 
+        allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
+        
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jw = 1, s_in(3)
-                do jv = 1, s_in(2)
-                    R(:, jv, jw, jt) = matmul(U, X(:, jv, jw, jt))
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        do jt = 1, nc_t
+            do jw = 1, nc_w
+                do jv = 1, nc_v
+                    do ju = 1, nc_u
+                        Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
+                end do
+                Rt = matmul(U, Xt)
+                do jv = 1, nc_v
+                    do i = 1, nr
+                        R(i+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(i, jv)
+                    end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
+
+        deallocate(Xt)
+        deallocate(Rt)
 
     else if (mode.eq.2) then 
 
+        allocate(Xt(nc_v, nc_u*nc_w*nc_t))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jw = 1, s_in(3)
-                do ju = 1, s_in(1)
-                    R(ju, :, jw, jt) = matmul(U, X(ju, :, jw, jt))
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        do jt = 1, nc_t
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do jv = 1, nc_v
+                        Xt(jv, ju+(jw-1)*nc_u+(jt-1)*nc_u*nc_w) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
 
+        allocate(Rt(nr, nc_u*nc_w*nc_t))
+        Rt = matmul(U, Xt)
+        deallocate(Xt)
+
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
+        do jt = 1, nc_t
+            do jw = 1, nc_w
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i, ju+(jw-1)*nc_u+(jt-1)*nc_u*nc_w)
+                    end do
+                end do
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+        deallocate(Rt)
         
     else if (mode.eq.3) then 
 
+        allocate(Xt(nc_w, nc_u*nc_v*nc_t))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jt = 1, s_in(4)
-            do jv = 1, s_in(2)
-                do ju = 1, s_in(1)
-                    R(ju, jv, :, jt) = matmul(U, X(ju, jv, :, jt))
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        do jt = 1, nc_t
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jw = 1, nc_w
+                        Xt(jw, ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
 
+        allocate(Rt(nr, nc_u*nc_v*nc_t))
+        Rt = matmul(U, Xt)
+        deallocate(Xt)
+
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
+        do jt = 1, nc_t
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i, ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+        deallocate(Rt)
 
     else if (mode.eq.4) then 
         
+        allocate(Xt(nc_t, nc_u*nc_v*nc_w))
         !$OMP PARALLEL 
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nb_oper/nb_tasks) 
-        do jw = 1, s_in(3)
-            do jv = 1, s_in(2)
-                do ju = 1, s_in(1)
-                    R(ju, jv, jw, :) = matmul(U, X(ju, jv, jw, :))
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        do jw = 1, nc_w
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do jt = 1, nc_t
+                        Xt(jt, ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                    end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
+
+        allocate(Rt(nr, nc_u*nc_v*nc_w))
+        Rt = matmul(U, Xt)
+        deallocate(Xt)
+
+        !$OMP PARALLEL 
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(4) SCHEDULE(STATIC, size(R)/nb_tasks) 
+        do jw = 1, nc_w
+            do jv = 1, nc_v
+                do ju = 1, nc_u
+                    do i = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i, ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v)
+                    end do
+                end do
+            end do
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
+        deallocate(Rt)
         
     end if
 
