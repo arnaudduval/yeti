@@ -5,11 +5,11 @@ module datastructure
 
         logical :: isseparate = .false.
         integer :: dimen, nr_total, nc_total
-        integer, allocatable, dimension(:) :: nrows, ncols, nnzs, dof
+        integer, allocatable, dimension(:) :: nrows, ncols, nnzs, dof, dod
         integer, allocatable, dimension(:, :) :: indi, indj, indi_T, indj_T
-        double precision, allocatable, dimension(:) :: Deigen
-        double precision, allocatable, dimension(:, :) :: eigval
-        double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvec
+        double precision, allocatable, dimension(:) :: diageigvalues
+        double precision, allocatable, dimension(:, :) :: eigvalues_dir
+        double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvectors
         double precision, allocatable, dimension(:, :) :: univmasscoefs, univstiffcoefs
 
     end type structure
@@ -174,7 +174,8 @@ contains
 
         ! Local data
         ! ----------
-        integer :: ndof, c, i, j, k
+        logical :: mask(datstruct%nc_total)
+        integer :: ndof, ndod, c, i, j, k
         integer, dimension(dimen) :: inf, sup, tmp
 
         if (dimen.ne.datstruct%dimen) stop 'Not the same dimension'
@@ -220,6 +221,12 @@ contains
         else
             stop 'Try 2 or 3 dimensions'
         end if
+
+        mask = .true.
+        mask(datstruct%dof) = .false.
+        ndod = count(mask)
+        allocate(datstruct%dod(ndod))
+        datstruct%dod = pack([(i, i = 1, size(mask))], mask)
 
     end subroutine get_innernodes__
 
@@ -374,9 +381,9 @@ contains
         allocate(univMcoefs(ncols), univKcoefs(ncols))
         univMcoefs = 1.d0; univKcoefs = 1.d0
 
-        allocate(datstruct%eigval(datstruct%dimen, maxval(datstruct%nrows)), &
-        datstruct%eigvec(datstruct%dimen, maxval(datstruct%nrows), maxval(datstruct%nrows)))
-        datstruct%eigval = 0.d0; datstruct%eigvec = 0.d0
+        allocate(datstruct%eigvalues_dir(datstruct%dimen, maxval(datstruct%nrows)), &
+        datstruct%eigvectors(datstruct%dimen, maxval(datstruct%nrows), maxval(datstruct%nrows)))
+        datstruct%eigvalues_dir = 0.d0; datstruct%eigvectors = 0.d0
 
         if (datstruct%isseparate) then
             if (size(datstruct%univmasscoefs, 1).lt.datstruct%dimen) stop 'Size problem univmass'
@@ -402,26 +409,38 @@ contains
                 call eigen_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
                                         bw(:, 1:2), bw(:, 3:6), eigvalues, eigvectors, Kdiag, Mdiag)
             end if
-            datstruct%eigval(i, 1:nr) = eigvalues
-            datstruct%eigvec(i, 1:nr, 1:nr) = eigvectors
+            datstruct%eigvalues_dir(i, 1:nr) = eigvalues
+            datstruct%eigvectors(i, 1:nr, 1:nr) = eigvectors
             deallocate(indi, indj, bw, eigvalues, eigvectors, Mdiag, Kdiag)
         end do
 
         if ((datstruct%dimen.le.1).or.(datstruct%dimen.ge.4)) return
-        allocate(ones(maxval(datstruct%nrows)), datstruct%Deigen(product(datstruct%nrows)))
-        ones = 1.d0; datstruct%Deigen = 0.d0
+        allocate(ones(maxval(datstruct%nrows)), datstruct%diageigvalues(product(datstruct%nrows)))
+        ones = 1.d0; datstruct%diageigvalues = 0.d0
 
         if (datstruct%dimen.eq.2) then 
             call find_parametric_diag_2d(datstruct%nrows(1), datstruct%nrows(2), ones(1:datstruct%nrows(1)), &
-                                    ones(1:datstruct%nrows(2)), datstruct%eigval(1, 1:datstruct%nrows(1)), &
-                                    datstruct%eigval(2, 1:datstruct%nrows(2)), mean, datstruct%Deigen)
+                                    ones(1:datstruct%nrows(2)), datstruct%eigvalues_dir(1, 1:datstruct%nrows(1)), &
+                                    datstruct%eigvalues_dir(2, 1:datstruct%nrows(2)), mean, datstruct%diageigvalues)
         else if (datstruct%dimen.eq.3) then
             call find_parametric_diag_3d(datstruct%nrows(1), datstruct%nrows(2), datstruct%nrows(3), ones(1:datstruct%nrows(1)), &
                                     ones(1:datstruct%nrows(2)), ones(1:datstruct%nrows(3)), &
-                                    datstruct%eigval(1, 1:datstruct%nrows(1)), datstruct%eigval(2, 1:datstruct%nrows(2)), &
-                                    datstruct%eigval(3, 1:datstruct%nrows(3)), mean, datstruct%Deigen)
+                                    datstruct%eigvalues_dir(1, 1:datstruct%nrows(1)), datstruct%eigvalues_dir(2, 1:datstruct%nrows(2)), &
+                                    datstruct%eigvalues_dir(3, 1:datstruct%nrows(3)), mean, datstruct%diageigvalues)
         end if
 
     end subroutine eigendecomposition
+
+    subroutine clear_dirichlet(datstruct, nc_total, array_inout)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        integer, intent(in) :: nc_total
+        type(structure) :: datstruct
+        double precision, intent(inout) :: array_inout(nc_total)
+
+        array_inout(datstruct%dod) = 0.d0
+
+    end subroutine clear_dirichlet
 
 end module datastructure

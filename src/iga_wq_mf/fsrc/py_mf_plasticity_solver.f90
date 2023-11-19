@@ -461,7 +461,7 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_u_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+    call mf_u_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, array_in, array_out)
@@ -515,7 +515,7 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_u_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    call mf_u_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -838,7 +838,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Smean)
         do i = 1, dimen
-            solv%disp_struct(i)%Deigen = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%Deigen
+            solv%disp_struct(i)%diageigvalues = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%diageigvalues
         end do
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -953,7 +953,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                         data_W_u, data_W_v, data_W_w, table, mat%Smean)
     
         do i = 1, dimen
-            solv%disp_struct(i)%Deigen = mat%Mmean + tsfactor*solv%disp_struct(i)%Deigen
+            solv%disp_struct(i)%diageigvalues = mat%Mmean + tsfactor*solv%disp_struct(i)%diageigvalues
         end do
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

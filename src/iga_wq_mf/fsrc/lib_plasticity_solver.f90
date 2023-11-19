@@ -198,17 +198,17 @@ contains
             nr_u = solv%disp_struct(i)%nrows(1)
             nr_v = solv%disp_struct(i)%nrows(2)
             allocate(tmp(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
-                    transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u)), &
+                    transpose(solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
             
             if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%Deigen
+                tmp = tmp/solv%disp_struct(i)%diageigvalues
             end if
 
             ! Compute (Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
-                    solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), tmp, tmp2)
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u), &
+                    solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v), tmp, tmp2)
             array_out(i, solv%disp_struct(i)%dof) = tmp2            
             deallocate(tmp, tmp2)
         end do
@@ -526,18 +526,18 @@ contains
             nr_w = solv%disp_struct(i)%nrows(3)
             allocate(tmp(nr_u*nr_v*nr_w))
 
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u)), &
-            transpose(solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v)), transpose(solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w)), &
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u)), &
+            transpose(solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v)), transpose(solv%disp_struct(i)%eigvectors(3, 1:nr_w, 1:nr_w)), &
             array_in(i, solv%disp_struct(i)%dof), tmp)
 
             if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%Deigen
+                tmp = tmp/solv%disp_struct(i)%diageigvalues
             end if
 
             ! Compute (Uw x Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v*nr_w))
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%disp_struct(i)%eigvec(1, 1:nr_u, 1:nr_u), &
-            solv%disp_struct(i)%eigvec(2, 1:nr_v, 1:nr_v), solv%disp_struct(i)%eigvec(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u), &
+            solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v), solv%disp_struct(i)%eigvectors(3, 1:nr_w, 1:nr_w), tmp, tmp2)
             array_out(i, solv%disp_struct(i)%dof) = tmp2
             deallocate(tmp, tmp2)
         end do

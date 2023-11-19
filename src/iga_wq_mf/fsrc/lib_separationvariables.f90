@@ -51,7 +51,7 @@ contains
         integer :: nc_u, nc_v
         double precision, dimension(:, :), allocatable :: Vk, Wlkmax, Wlkmin
         double precision, dimension(:, :, :), allocatable :: Wlk
-        integer :: ju, jv, k, l, genPos, c, iter
+        integer :: ju, jv, k, l, gp, c, iter
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen)   
         
@@ -63,9 +63,9 @@ contains
             do k = 1, dimen
                 do jv = 1, nc_v
                     do ju = 1, nc_u
-                        genPos = ju + (jv-1)*nc_u
+                        gp = ju + (jv-1)*nc_u
                         UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)] 
-                        Vk(ju, jv) = CC(k, genPos)*UU(k)/product(UU)
+                        Vk(ju, jv) = CC(k, gp)*UU(k)/product(UU)
                     end do
                 end do
 
@@ -97,10 +97,10 @@ contains
                         c = c + 1
                         do jv = 1, nc_v
                             do ju = 1, nc_u
-                                genPos = ju + (jv-1)*nc_u
+                                gp = ju + (jv-1)*nc_u
                                 UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv)]
                                 WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv)]
-                                Wlk(c, ju, jv) = CC(l, genPos)*UU(k)*UU(l)&
+                                Wlk(c, ju, jv) = CC(l, gp)*UU(k)*UU(l)&
                                                             /(product(UU)*WW(l))
                             end do
                         end do
@@ -156,7 +156,7 @@ contains
         integer :: nc_u, nc_v, nc_w
         double precision, dimension(:, :, :), allocatable :: Vk, Wlkmax, Wlkmin
         double precision, dimension(:, :, :, :), allocatable :: Wlk
-        integer :: ju, jv, jw, k, l, genPos, c, iter
+        integer :: ju, jv, jw, k, l, gp, c, iter
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen) 
         
@@ -169,9 +169,9 @@ contains
                 do jw = 1, nc_w
                     do jv = 1, nc_v
                         do ju = 1, nc_u
-                            genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                            gp = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
                             UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)] 
-                            Vk(ju, jv, jw) = CC(k, genPos)*UU(k)/product(UU)
+                            Vk(ju, jv, jw) = CC(k, gp)*UU(k)/product(UU)
                         end do
                     end do
                 end do
@@ -213,10 +213,10 @@ contains
                         do jw = 1, nc_w
                             do jv = 1, nc_v
                                 do ju = 1, nc_u
-                                    genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
+                                    gp = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v
                                     UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), obj%univmasscoefs(3, jw)]
                                     WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), obj%univstiffcoefs(3, jw)]
-                                    Wlk(c, ju, jv, jw) = CC(l, genPos)*UU(k)*UU(l)&
+                                    Wlk(c, ju, jv, jw) = CC(l, gp)*UU(k)*UU(l)&
                                                                 /(product(UU)*WW(l))
                                 end do
                             end do
@@ -283,7 +283,7 @@ contains
         integer :: nc_u, nc_v, nc_w, nc_t
         double precision, dimension(:, :, :, :), allocatable :: Vk, Wlkmax, Wlkmin
         double precision, dimension(:, :, :, :, :), allocatable :: Wlk
-        integer :: ju, jv, jw, jt, k, l, genPos, c, iter
+        integer :: ju, jv, jw, jt, k, l, gp, c, iter
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen)   
         
@@ -297,10 +297,10 @@ contains
                     do jw = 1, nc_w
                         do jv = 1, nc_v
                             do ju = 1, nc_u
-                                genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
+                                gp = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
                                 UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), &
                                         obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)] 
-                                Vk(ju, jv, jw, jt) = CC(k, genPos)*UU(k)/product(UU)
+                                Vk(ju, jv, jw, jt) = CC(k, gp)*UU(k)/product(UU)
                             end do
                         end do
                     end do
@@ -352,12 +352,12 @@ contains
                             do jw = 1, nc_w
                                 do jv = 1, nc_v
                                     do ju = 1, nc_u
-                                        genPos = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
+                                        gp = ju + (jv-1)*nc_u + (jw-1)*nc_u*nc_v + (jt-1)*nc_u*nc_v*nc_w
                                         UU = [obj%univmasscoefs(1, ju), obj%univmasscoefs(2, jv), &
                                                 obj%univmasscoefs(3, jw), obj%univmasscoefs(4, jt)]
                                         WW = [obj%univstiffcoefs(1, ju), obj%univstiffcoefs(2, jv), &
                                                 obj%univstiffcoefs(3, jw), obj%univstiffcoefs(4, jt)]
-                                        Wlk(c, ju, jv, jw, jt) = CC(l, genPos)*UU(k)*UU(l)&
+                                        Wlk(c, ju, jv, jw, jt) = CC(l, gp)*UU(k)*UU(l)&
                                                                     /(product(UU)*WW(l))
                                     end do
                                 end do

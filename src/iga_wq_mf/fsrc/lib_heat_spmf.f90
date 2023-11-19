@@ -77,143 +77,129 @@ contains
 
     end subroutine setup_thmchcoupledprop
 
-    ! subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
         
-    !     use separatevariables
-    !     implicit none 
-    !     ! Input / output data
-    !     ! -------------------
-    !     type(thermomat) :: mat
-    !     integer, intent(in) :: nc_list
-    !     dimension :: nc_list(mat%dimen)
+        use separatevariables
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: nc_list
+        dimension :: nc_list(mat%dimen)
 
-    !     double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
+        double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
 
-    !     ! Local data
-    !     ! ----------
-    !     type(sepoperator) :: oper
-    !     integer :: gp
-    !     integer, allocatable, dimension(:) :: nc_list_t
-    !     logical, allocatable, dimension(:) :: update
-    !     double precision, allocatable, dimension(:, :, :) :: CC
+        ! Local data
+        ! ----------
+        type(sepoperator) :: oper
+        integer :: i, gp
+        integer, allocatable, dimension(:) :: nc_list_t
+        logical, allocatable, dimension(:) :: update
+        double precision, allocatable, dimension(:, :) :: CC
+        double precision :: tensor(mat%dimen, mat%dimen)
 
-    !     if (.not.associated(mat%Cprop)) then
-    !         allocate(CC(mat%dimen, mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
-    !         update = .true.; nc_list_t = nc_list
-    !         call initialize_operator(oper, mat%dimen, nc_list_t, update)
+        if (.not.associated(mat%Cprop)) then
+            allocate(CC(mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
+            update = .true.; nc_list_t = nc_list
+            call initialize_operator(oper, mat%dimen, nc_list_t, update)
             
-    !         do gp = 1, mat%ncols_sp
-    !             CC(:, :, gp) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-    !                                 *mat%detJ(gp)
-    !         end do
+            do gp = 1, mat%ncols_sp
+                tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
+                        transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                do i = 1, mat%dimen
+                    CC(i, gp) = tensor(i, i)
+                end do
+            end do
 
-    !         if (mat%dimen.eq.2) then
-    !             call separatevariables_2d(oper, CC)
-    !         else if (mat%dimen.eq.3) then
-    !             call separatevariables_3d(oper, CC)
-    !         end if
+            if (mat%dimen.eq.2) then
+                call separatevariables_2d(oper, CC)
+            else if (mat%dimen.eq.3) then
+                call separatevariables_3d(oper, CC)
+            end if
 
-    !         univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
+            univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
 
-    !     else
-    !         allocate(CC(mat%dimen+1, mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
-    !         update = .true.; update(mat%dimen+1) = .false.
-    !         nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
-    !         call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
+        else
+            allocate(CC(mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
+            update = .true.; update(mat%dimen+1) = .false.
+            nc_list_t(:mat%dimen) = nc_list; nc_list_t(mat%dimen+1) = 1
+            call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
 
-    !         do gp = 1, mat%ncols_sp
-    !             CC(:mat%dimen, :mat%dimen, gp) = matmul(mat%invJ(:, :, gp),&
-    !             matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
-    !             CC(mat%dimen+1, mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
-    !         end do
+            do gp = 1, mat%ncols_sp
+                tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
+                        transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                do i = 1, mat%dimen
+                    CC(i, gp) = tensor(i, i)
+                end do
+                CC(mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
+            end do
 
-    !         if (mat%dimen.eq.2) then
-    !             call separatevariables_3d(oper, CC)
-    !         else if (mat%dimen.eq.3) then
-    !             call separatevariables_4d(oper, CC)
-    !         end if
-    !         univMcoefs = oper%univmasscoefs(:mat%dimen, :); univKcoefs = oper%univstiffcoefs(:mat%dimen, :)
-    !     end if
+            if (mat%dimen.eq.2) then
+                call separatevariables_3d(oper, CC)
+            else if (mat%dimen.eq.3) then
+                call separatevariables_4d(oper, CC)
+            end if
+            univMcoefs = oper%univmasscoefs(:mat%dimen, :); univKcoefs = oper%univstiffcoefs(:mat%dimen, :)
+        end if
         
-    ! end subroutine compute_separationvariables
+    end subroutine compute_separationvariables
 
-    ! subroutine compute_mean(mat, nclist)
-    !     !! Computes the average of the material properties (for the moment it only considers elastic materials)
+    subroutine compute_mean(mat, nclist)
+        !! Computes the average of the material properties
 
-    !     implicit none 
-    !     ! Input / output data
-    !     ! -------------------
-    !     type(thermomat) :: mat
-    !     integer, intent(in) :: nclist
-    !     dimension :: nclist(mat%dimen)
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(thermomat) :: mat
+        integer, intent(in) :: nclist
+        dimension :: nclist(mat%dimen)
 
-    !     ! Local data
-    !     ! ----------
-    !     integer :: i, j, k, c, gp, pos, ind(3)
-    !     integer, dimension(:), allocatable :: sample
-    !     integer, dimension(:, :), allocatable :: indlist
-    !     double precision, dimension(:, :, :), allocatable :: Kcoefs
-    !     double precision, dimension(:), allocatable :: Ccoefs
+        ! Local data
+        ! ----------
+        integer, parameter :: NP = 3
+        integer :: i, c, gp, sample(NP**mat%dimen), indlist(mat%dimen, NP)
+        double precision, dimension(:, :), allocatable :: CC_K
+        double precision, dimension(:), allocatable :: CC_M
+        double precision :: tensor(mat%dimen, mat%dimen)
         
-    !     if (product(nclist).ne.mat%ncols_sp) stop 'Size problem'
-    !     allocate(indlist(mat%dimen, 3), sample(3**mat%dimen))
-    !     do i = 1, mat%dimen 
-    !         pos = int((nclist(i) + 1)/2); ind = (/1, pos, nclist(i)/)
-    !         indlist(i, :) = ind
-    !     end do
-    
-    !     ! Select a set of coefficients
-    !     c = 1
-    !     if (mat%dimen.eq.2) then
-    !         do j = 1, 3
-    !             do i = 1, 3
-    !                 gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1)
-    !                 sample(c) = gp
-    !                 c = c + 1
-    !             end do
-    !         end do
-    !     else if (mat%dimen.eq.3) then
-    !         do k = 1, 3
-    !             do j = 1, 3
-    !                 do i = 1, 3
-    !                     gp = indlist(1, i) + (indlist(2, j) - 1)*nclist(1) + (indlist(3, k) - 1)*nclist(1)*nclist(2)
-    !                     sample(c) = gp
-    !                     c = c + 1
-    !                 end do
-    !             end do
-    !         end do
-    !     else
-    !         stop 'Try 2 or 3 dimensions'
-    !     end if
+        ! Select sample
+        do i = 1, mat%dimen 
+            indlist(i, :) =  (/1, int((nclist(i) + 1)/2), nclist(i)/)
+        end do
 
-    !     allocate(Kcoefs(mat%dimen, mat%dimen, size(sample)))
-    !     do c = 1, size(sample)
-    !         gp = sample(c)
-    !         Kcoefs(:, :, c) = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), transpose(mat%invJ(:, :, gp))))&
-    !                         *mat%detJ(gp)
-    !     end do
-    !     do i = 1, mat%dimen
-    !         if (mat%dimen.eq.2) then
-    !             call trapezoidal_rule_2d(3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-    !         else if (mat%dimen.eq.3) then
-    !             call trapezoidal_rule_3d(3, 3, 3, Kcoefs(i, i, :), mat%Kmean(i))
-    !         end if
-    !     end do
+        call indices2list(mat%dimen, NP, indlist, nclist, sample)
+        
+        allocate(CC_K(mat%dimen, size(sample)))
+        do c = 1, size(sample)
+            gp = sample(c)
+            tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
+                            transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+            do i = 1, mat%dimen
+                CC_K(i, c) = tensor(i, i)
+            end do
+        end do
+        do i = 1, mat%dimen
+            if (mat%dimen.eq.2) then
+                call trapezoidal_rule_2d(NP, NP, CC_K(i, :), mat%Kmean(i))
+            else if (mat%dimen.eq.3) then
+                call trapezoidal_rule_3d(NP, NP, NP, CC_K(i, :), mat%Kmean(i))
+            end if
+        end do
 
-    !     if (associated(mat%Cprop)) then
-    !         allocate(Ccoefs(size(sample)))
-    !         do c = 1, size(sample)
-    !             gp = sample(c)
-    !             Ccoefs(c) = mat%Cprop(gp)*mat%detJ(gp)
-    !         end do
-    !         if (mat%dimen.eq.2) then
-    !             call trapezoidal_rule_2d(3, 3, Ccoefs, mat%Cmean)
-    !         else if (mat%dimen.eq.3) then
-    !             call trapezoidal_rule_3d(3, 3, 3, Ccoefs, mat%Cmean)
-    !         end if
-    !     end if   
+        if (associated(mat%Cprop)) then
+            allocate(CC_M(size(sample)))
+            do c = 1, size(sample)
+                gp = sample(c)
+                CC_M(c) = mat%Cprop(gp)*mat%detJ(gp)
+            end do
+            if (mat%dimen.eq.2) then
+                call trapezoidal_rule_2d(NP, NP, CC_M, mat%Cmean)
+            else if (mat%dimen.eq.3) then
+                call trapezoidal_rule_3d(NP, NP, NP, CC_M, mat%Cmean)
+            end if
+        end if   
 
-    ! end subroutine compute_mean
+    end subroutine compute_mean
 
     subroutine mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -615,7 +601,7 @@ contains
             
     end subroutine mf_gradu_tv_2d
 
-    subroutine mf_u_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+    subroutine mf_gradu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, array_in, array_out)
@@ -674,6 +660,6 @@ contains
             end do
         end do
                     
-    end subroutine mf_u_gradv_3d
+    end subroutine mf_gradu_tv_3d
 
 end module matrixfreeheat

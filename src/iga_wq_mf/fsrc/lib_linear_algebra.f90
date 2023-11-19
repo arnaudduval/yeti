@@ -97,6 +97,38 @@ subroutine find_unique_array(nnz_in, array_in, array_out)
 
 end subroutine find_unique_array
 
+subroutine indices2list(dimen, nbPts, ptsPos, nclist, sample)
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: dimen, nbPts
+    integer, intent(in) :: ptsPos(dimen, nbPts), nclist(dimen)
+    integer, intent(out) :: sample(nbPts**dimen)
+
+    ! Local data
+    ! ----------
+    integer :: i, j, k, c, gp
+    
+    c = 1
+    if (dimen.eq.2) then
+        do j = 1, nbPts
+            do i = 1, nbPts
+                gp = ptsPos(1, i) + (ptsPos(2, j) - 1)*nclist(1)
+                sample(c) = gp; c = c + 1
+            end do
+        end do
+    else if (dimen.eq.3) then
+        do k = 1, nbPts
+            do j = 1, nbPts
+                do i = 1, nbPts
+                    gp = ptsPos(1, i) + (ptsPos(2, j) - 1)*nclist(1) + (ptsPos(3, k) - 1)*nclist(1)*nclist(2)
+                    sample(c) = gp; c = c + 1
+                end do
+            end do
+        end do
+    end if
+end subroutine
+
 subroutine linspace(x0, xf, nnz, array) 
     !! Evaluates n equidistant points given the first and last points 
 
@@ -341,15 +373,15 @@ subroutine kronvec2d(nnz_A, A, nnz_B, B, R, alpha)
 
     ! Local data
     ! ----------
-    integer :: iA, iB, genPos, nb_tasks
+    integer :: iA, iB, gp, nb_tasks
 
-    !$OMP PARALLEL PRIVATE(genPos)
+    !$OMP PARALLEL PRIVATE(gp)
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(R)/nb_tasks)
     do iA = 1, nnz_A
         do iB = 1, nnz_B
-            genPos = iB + (iA-1)*nnz_B
-            R(genPos) = R(genPos) + alpha*A(iA)*B(iB)
+            gp = iB + (iA-1)*nnz_B
+            R(gp) = R(gp) + alpha*A(iA)*B(iB)
         end do 
     end do
     !$OMP END DO NOWAIT
@@ -373,16 +405,16 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
 
     ! Local data
     ! ----------
-    integer :: iA, iB, iC, genPos, nb_tasks
+    integer :: iA, iB, iC, gp, nb_tasks
 
-    !$OMP PARALLEL PRIVATE(genPos)
+    !$OMP PARALLEL PRIVATE(gp)
     nb_tasks = omp_get_num_threads()
     !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
     do iA = 1, nnz_A
         do iB = 1, nnz_B
             do iC = 1, nnz_C
-                genPos = iC + (iB-1)*nnz_C + (iA-1)*nnz_C*nnz_B
-                R(genPos) = R(genPos) + alpha*A(iA)*B(iB)*C(iC)
+                gp = iC + (iB-1)*nnz_C + (iA-1)*nnz_C*nnz_B
+                R(gp) = R(gp) + alpha*A(iA)*B(iB)*C(iC)
             end do
         end do 
     end do
