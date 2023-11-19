@@ -267,7 +267,6 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     double precision :: data_BT_u, data_BT_v, data_BT_w
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
     logical :: table(dimen, 2)   
-    integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
     double precision :: ones(nc_total)
 
@@ -287,12 +286,11 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                             data_W_u, data_W_v, data_W_w, table, mean)
 
-    allocate(dod(0))
     do i = 1, nm
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, size(dod), dod, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
+                    data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
     end do
                 
 end subroutine l2projection_ctrlpts_3d
@@ -438,7 +436,6 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
     logical :: table(dimen, 2)   
-    integer, dimension(:), allocatable :: dod 
     double precision :: mean(dimen) = 1.d0
     double precision :: ones(nc_total)
 
@@ -456,11 +453,10 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                             indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                             data_W_u, data_W_v, table, mean)
 
-    allocate(dod(0))
     do i = 1, nm
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, size(dod), dod, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
+                    data_W_u, data_W_v, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
     end do
 
 end subroutine l2projection_ctrlpts_2d

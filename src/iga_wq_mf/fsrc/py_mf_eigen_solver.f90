@@ -1,6 +1,6 @@
 subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, ndod, dod, table, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, &
                             invJ, detJ, ishigher, nbIterPCG, threshold, eigenval, eigenvec)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
@@ -22,9 +22,6 @@ subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    integer, intent(in) :: ndod 
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2)
 
@@ -53,7 +50,6 @@ subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
     Cprop = 1.d0; Kprop = 0.d0
     do i = 1, dimen
@@ -71,14 +67,14 @@ subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     call LOBPCGSTAB(solv, mat, nr_u*nr_v, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                    data_W_u, data_W_v, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
 
 end subroutine solver_helmholtz_lobpcg_2d
 
 subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            ndod, dod, table, invJ, detJ, ishigher, nbIterPCG, threshold, eigenval, eigenvec)
+                            table, invJ, detJ, ishigher, nbIterPCG, threshold, eigenval, eigenvec)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python).
@@ -101,9 +97,6 @@ subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: ndod
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
@@ -133,7 +126,6 @@ subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
 
     Cprop = 1.d0; Kprop = 0.d0
     do i = 1, dimen
@@ -153,6 +145,6 @@ subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     call LOBPCGSTAB(solv, mat, nr_u*nr_v*nr_w, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                ishigher, nbIterPCG, threshold, eigenvec, eigenval)
 
 end subroutine solver_helmholtz_lobpcg_3d

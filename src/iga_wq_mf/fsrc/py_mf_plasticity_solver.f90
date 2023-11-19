@@ -525,7 +525,7 @@ end subroutine mf_thmchcoupled_3d
 subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
-                            ndu, ndv, dod_u, dod_v, table, invJ, detJ, nbmechArgs, mechArgs, &
+                            table, invJ, detJ, nbmechArgs, mechArgs, &
                             Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
@@ -549,9 +549,6 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    integer, intent(in) :: ndu, ndv
-    integer, intent(in) :: dod_u, dod_v
-    dimension :: dod_u(ndu), dod_v(ndv)
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
@@ -585,10 +582,6 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
-
-    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -599,7 +592,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -622,8 +615,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
         
     else 
         stop 'Unknown method'                    
@@ -634,8 +626,7 @@ end subroutine solver_linearelasticity_2d
 subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, &
-                            nbmechArgs, mechArgs, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            table, invJ, detJ, nbmechArgs, mechArgs, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -660,9 +651,6 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: ndu, ndv, ndw
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
@@ -697,11 +685,6 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
-
-    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -713,7 +696,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -737,7 +720,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method'                   
     end if
@@ -745,7 +728,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 end subroutine solver_linearelasticity_3d
 
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndu, ndv, dod_u, dod_v, table, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, isLumped, table, &
                             invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, &
                             threshold, methodPCG, x, resPCG)
 
@@ -765,9 +748,6 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
     logical, intent(in) :: islumped
-    integer, intent(in) :: ndu, ndv
-    integer, intent(in) :: dod_u, dod_v
-    dimension :: dod_u(ndu), dod_v(ndv)
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen) 
 
@@ -800,12 +780,8 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
-    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
 
     mat%isLumped = isLumped
-    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -817,7 +793,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -844,8 +820,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndu, ndv, dod_u, dod_v, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method' 
     end if
@@ -855,8 +830,8 @@ end subroutine solver_lineardynamics_2d
 subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, islumped, &
-                                ndu, ndv, ndw, dod_u, dod_v, dod_w, table, invJ, detJ, nbmechArgs, &
-                                mechArgs, Mprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                                table, invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, &
+                                Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
     use solverplasticity3
@@ -876,9 +851,6 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     logical, intent(in) :: islumped
-    integer, intent(in) :: ndu, ndv, ndw
-    integer, intent(in) :: dod_u, dod_v, dod_w
-    dimension :: dod_u(ndu), dod_v(ndv), dod_w(ndw)
     logical, intent(in) :: table
     dimension :: table(dimen, 2, dimen)  
 
@@ -913,12 +885,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    if (any(dod_u.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_v.le.0)) stop 'Indices must be greater than 0'
-    if (any(dod_w.le.0)) stop 'Indices must be greater than 0'
-
     mat%isLumped = isLumped
-    call initialize_mecamat(mat, dimen)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -931,7 +898,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -959,7 +926,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        ndu, ndv, ndw, dod_u, dod_v, dod_w, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method' 
     end if

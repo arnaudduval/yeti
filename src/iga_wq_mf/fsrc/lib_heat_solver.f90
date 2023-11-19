@@ -1,21 +1,3 @@
-subroutine reset_dirichletbound1(nr, A, ndod, dod)
-    !! Set to 0 (Dirichlet condition) the values of an array using the dod indices in each dimension
-    !! A is actually a vector arranged following each dimension [Au, Av, Aw]
-
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr, ndod
-    double precision, intent(inout) :: A
-    dimension :: A(nr)
-
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
-
-    A(dod) = 0.d0 
-
-end subroutine reset_dirichletbound1
-
 module solverheat2
 
     use matrixfreeheat
@@ -149,10 +131,22 @@ contains
 
     end subroutine applyfastdiag
 
+    subroutine clear_dirichlet(solv, nnz, array)
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        type(cgsolver) :: solv
+        integer, intent(in) :: nnz
+        double precision, intent(inout) :: array(nnz)
+
+        call set2zero(solv%temp_struct, nnz, array)
+
+    end subroutine clear_dirichlet
+
     subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -174,10 +168,6 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
@@ -194,7 +184,7 @@ contains
         integer :: iter
 
         x = 0.d0; r = b
-        call reset_dirichletbound1(nr_total, r, ndod, dod) 
+        call clear_dirichlet(solv, nr_total, r) 
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
@@ -205,7 +195,7 @@ contains
                     nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                     data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                     data_W_u, data_W_v, p, Ap)
-            call reset_dirichletbound1(nr_total, Ap, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Ap)
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
@@ -213,7 +203,7 @@ contains
                     nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                     data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                     data_W_u, data_W_v, s, As)
-            call reset_dirichletbound1(nr_total, As, ndod, dod)
+            call clear_dirichlet(solv, nr_total, As)
             omega = dot_product(As, s)/dot_product(As, As)
             x = x + alpha*p + omega*s
             r = s - omega*As
@@ -232,7 +222,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -254,10 +244,6 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
@@ -274,7 +260,7 @@ contains
         integer :: iter
 
         x = 0.d0; r = b
-        call reset_dirichletbound1(nr_total, r, ndod, dod)
+        call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
@@ -282,22 +268,22 @@ contains
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
-            call reset_dirichletbound1(nr_total, ptilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, ptilde, Aptilde)
-            call reset_dirichletbound1(nr_total, Aptilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Aptilde)
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
             call applyfastdiag(solv, nr_total, s, stilde)
-            call reset_dirichletbound1(nr_total, stilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, stilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, stilde, Astilde)
-            call reset_dirichletbound1(nr_total, Astilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Astilde)
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
@@ -315,7 +301,7 @@ contains
 
     subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                        data_W_u, data_W_v, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
         !! Using LOBPCG algorithm to compute the stability of the transient heat problem
         
         implicit none
@@ -339,10 +325,6 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
         logical, intent(in) :: ishigher
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold
@@ -362,7 +344,7 @@ contains
         double precision, allocatable, dimension(:, :) :: qq
     
         call random_number(eigenvec)
-        call reset_dirichletbound1(nr_total, eigenvec, ndod, dod)
+        call clear_dirichlet(solv, nr_total, eigenvec)
         norm = norm2(eigenvec)
         eigenvec = eigenvec/norm
 
@@ -370,7 +352,7 @@ contains
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, u)
-        call reset_dirichletbound1(nr_total, u, ndod, dod)
+        call clear_dirichlet(solv, nr_total, u)
 
         q = sqrt(dot_product(eigenvec, u))
         eigenvec = eigenvec/q; u = u/q
@@ -378,7 +360,7 @@ contains
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, v)
-        call reset_dirichletbound1(nr_total, v, ndod, dod)
+        call clear_dirichlet(solv, nr_total, v)
         eigenval = dot_product(eigenvec, v)
         p = 0.d0
         norm = 1.d0
@@ -389,7 +371,7 @@ contains
             g = v - eigenval*u
             norm = norm2(g)
             call applyfastdiag(solv, nr_total, g, gtil)
-            call reset_dirichletbound1(nr_total, gtil, ndod, dod)
+            call clear_dirichlet(solv, nr_total, gtil)
             g = gtil
 
             RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
@@ -398,28 +380,28 @@ contains
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v,  -g, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM2(2, :) = tmp
             
             call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, p, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM2(3, :) = tmp
                         
             call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, -g, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM3(2, :) = tmp
 
             call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, p, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM3(3, :) = tmp
             
             call rayleigh_submatrix(d, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
@@ -452,7 +434,7 @@ contains
                             nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, eigenvec, u)
-            call reset_dirichletbound1(nr_total, u, ndod, dod)
+            call clear_dirichlet(solv, nr_total, u)
             
             q = sqrt(dot_product(eigenvec, u))
             eigenvec = eigenvec/q; u = u/q
@@ -460,7 +442,7 @@ contains
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, v)
-            call reset_dirichletbound1(nr_total, v, ndod, dod)
+            call clear_dirichlet(solv, nr_total, v)
             
             norm = norm2(g)
             deallocate(ll, qq)
@@ -612,10 +594,22 @@ contains
 
     end subroutine applyfastdiag
 
+    subroutine clear_dirichlet(solv, nnz, array)
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        type(cgsolver) :: solv
+        integer, intent(in) :: nnz
+        double precision, intent(inout) :: array(nnz)
+
+        call set2zero(solv%temp_struct, nnz, array)
+
+    end subroutine clear_dirichlet
+
     subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -637,10 +631,6 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
@@ -657,7 +647,7 @@ contains
         integer :: iter
 
         x = 0.d0; r = b
-        call reset_dirichletbound1(nr_total, r, ndod, dod) 
+        call clear_dirichlet(solv, nr_total, r) 
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
@@ -668,7 +658,7 @@ contains
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, p, Ap)
-            call reset_dirichletbound1(nr_total, Ap, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Ap)
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
@@ -676,7 +666,7 @@ contains
                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                     data_W_u, data_W_v, data_W_w, s, As)
-            call reset_dirichletbound1(nr_total, As, ndod, dod)
+            call clear_dirichlet(solv, nr_total, As)
             omega = dot_product(As, s)/dot_product(As, As)
             x = x + alpha*p + omega*s
             r = s - omega*As
@@ -695,7 +685,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
@@ -717,10 +707,6 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
@@ -737,7 +723,7 @@ contains
         integer :: iter
 
         x = 0.d0; r = b
-        call reset_dirichletbound1(nr_total, r, ndod, dod)
+        call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
@@ -745,22 +731,22 @@ contains
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
-            call reset_dirichletbound1(nr_total, ptilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-            call reset_dirichletbound1(nr_total, Aptilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Aptilde)
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
             call applyfastdiag(solv, nr_total, s, stilde)
-            call reset_dirichletbound1(nr_total, stilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, stilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, stilde, Astilde)
-            call reset_dirichletbound1(nr_total, Astilde, ndod, dod)
+            call clear_dirichlet(solv, nr_total, Astilde)
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
@@ -779,7 +765,7 @@ contains
     subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ndod, dod, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                        data_W_u, data_W_v, data_W_w, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
         !! Using LOBPCG algorithm to compute the stability of the transient heat problem
         
         implicit none
@@ -802,11 +788,7 @@ contains
         dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        integer, intent(in) :: ndod
-        integer, intent(in) :: dod
-        dimension :: dod(ndod)
-
+        
         logical, intent(in) :: ishigher
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold
@@ -826,7 +808,7 @@ contains
         double precision, allocatable, dimension(:, :) ::  qq
 
         call random_number(eigenvec)
-        call reset_dirichletbound1(nr_total, eigenvec, ndod, dod)
+        call clear_dirichlet(solv, nr_total, eigenvec)
         norm = norm2(eigenvec)
         eigenvec = eigenvec/norm
 
@@ -834,7 +816,7 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, u)
-        call reset_dirichletbound1(nr_total, u, ndod, dod)
+        call clear_dirichlet(solv, nr_total, u)
         
         q = sqrt(dot_product(eigenvec, u))
         eigenvec = eigenvec/q; u = u/q
@@ -842,7 +824,7 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, v)
-        call reset_dirichletbound1(nr_total, v, ndod, dod)
+        call clear_dirichlet(solv, nr_total, v)
         
         eigenval = dot_product(eigenvec, v)
         p = 0.d0
@@ -854,7 +836,7 @@ contains
             g = v - eigenval*u
             norm = norm2(g)
             call applyfastdiag(solv, nr_total, g, gtil)
-            call reset_dirichletbound1(nr_total, gtil, ndod, dod)
+            call clear_dirichlet(solv, nr_total, gtil)
             g = gtil
 
             RM1(1, :) = eigenvec; RM1(2, :) = -g; RM1(3, :) = p
@@ -863,28 +845,28 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, -g, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM2(2, :) = tmp
 
             call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM2(3, :) = tmp
 
             call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, -g, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM3(2, :) = tmp
             
             call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, p, tmp)
-            call reset_dirichletbound1(nr_total, tmp, ndod, dod)
+            call clear_dirichlet(solv, nr_total, tmp)
             RM3(3, :) = tmp
             
             call rayleigh_submatrix(d, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
@@ -917,7 +899,7 @@ contains
                             nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                             data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_W_u, data_W_v, data_W_w, eigenvec, u)
-            call reset_dirichletbound1(nr_total, u, ndod, dod)
+            call clear_dirichlet(solv, nr_total, u)
             
             q = sqrt(dot_product(eigenvec, u))
             eigenvec = eigenvec/q; u = u/q
@@ -925,7 +907,7 @@ contains
                         nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_W_u, data_W_v, data_W_w, eigenvec, v)
-            call reset_dirichletbound1(nr_total, v, ndod, dod)
+            call clear_dirichlet(solv, nr_total, v)
             
             norm = norm2(g)
             deallocate(ll, qq)

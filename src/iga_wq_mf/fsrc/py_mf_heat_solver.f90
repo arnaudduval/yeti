@@ -315,7 +315,7 @@ end subroutine mf_thmchcoupled_3d
 
 subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, ndod, dod, table, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, &
                             invJ, detJ, prop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
@@ -337,9 +337,6 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    integer, intent(in) :: ndod 
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2)
 
@@ -373,8 +370,6 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
-
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
@@ -384,7 +379,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         ! Set solver
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, &
-                indj_u, indi_v, indj_v, data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                indj_u, indi_v, indj_v, data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
         
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
         if (methodPCG.eq.'JMC') then 
@@ -403,7 +398,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
                 
     else 
         stop 'Unknown method' 
@@ -414,7 +409,7 @@ end subroutine solver_linearsteady_heat_2d
 subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            ndod, dod, table, invJ, detJ, prop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            table, invJ, detJ, prop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python).
@@ -437,9 +432,6 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    integer, intent(in) :: ndod
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
@@ -474,8 +466,6 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
-
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
@@ -486,7 +476,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
 
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -507,7 +497,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
 
     else 
         stop 'Unknown method' 
@@ -517,7 +507,7 @@ end subroutine solver_linearsteady_heat_3d
 
 subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_B_u, data_B_v, data_W_u, data_W_v, isLumped, ndod, dod, table, &
+                                data_B_u, data_B_v, data_W_u, data_W_v, isLumped, table, &
                                 invJ, detJ, Cprop, Kprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
@@ -540,9 +530,6 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
     logical, intent(in) :: isLumped
-    integer, intent(in) :: ndod
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
@@ -576,8 +563,6 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
-
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
@@ -589,7 +574,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         ! Set solver
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
         
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -611,7 +596,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method' 
     end if
@@ -620,7 +605,7 @@ end subroutine solver_lineartransient_heat_2d
 
 subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, ndod, dod, table, &
+                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, table, &
                                 invJ, detJ, Cprop, Kprop, tsfactor, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
@@ -645,9 +630,6 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
     logical, intent(in) :: isLumped
-    integer, intent(in) :: ndod
-    integer, intent(in) :: dod
-    dimension :: dod(ndod)
     logical, intent(in) :: table
     dimension :: table(dimen, 2) 
 
@@ -682,8 +664,6 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    if (any(dod.le.0)) stop 'Indices must be greater than 0'
-
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
@@ -696,7 +676,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                 indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
         
     else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
@@ -718,7 +698,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ndod, dod, nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method' 
     end if

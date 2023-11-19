@@ -174,7 +174,7 @@ contains
 
         ! Local data
         ! ----------
-        logical :: mask(datstruct%nc_total)
+        logical :: mask(datstruct%nr_total)
         integer :: ndof, ndod, c, i, j, k
         integer, dimension(dimen) :: inf, sup, tmp
 
@@ -226,7 +226,7 @@ contains
         mask(datstruct%dof) = .false.
         ndod = count(mask)
         allocate(datstruct%dod(ndod))
-        datstruct%dod = pack([(i, i = 1, size(mask))], mask)
+        if (ndod.ge.1) datstruct%dod = pack([(i, i = 1, size(mask))], mask)
 
     end subroutine get_innernodes__
 
@@ -425,13 +425,14 @@ contains
         else if (datstruct%dimen.eq.3) then
             call find_parametric_diag_3d(datstruct%nrows(1), datstruct%nrows(2), datstruct%nrows(3), ones(1:datstruct%nrows(1)), &
                                     ones(1:datstruct%nrows(2)), ones(1:datstruct%nrows(3)), &
-                                    datstruct%eigvalues_dir(1, 1:datstruct%nrows(1)), datstruct%eigvalues_dir(2, 1:datstruct%nrows(2)), &
+                                    datstruct%eigvalues_dir(1, 1:datstruct%nrows(1)), &
+                                    datstruct%eigvalues_dir(2, 1:datstruct%nrows(2)), &
                                     datstruct%eigvalues_dir(3, 1:datstruct%nrows(3)), mean, datstruct%diageigvalues)
         end if
 
     end subroutine eigendecomposition
 
-    subroutine clear_dirichlet(datstruct, nc_total, array_inout)
+    subroutine set2zero(datstruct, nc_total, array_inout)
         implicit none 
         ! Input / output data
         ! --------------------
@@ -441,6 +442,6 @@ contains
 
         array_inout(datstruct%dod) = 0.d0
 
-    end subroutine clear_dirichlet
+    end subroutine set2zero
 
 end module datastructure
