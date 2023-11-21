@@ -58,7 +58,7 @@ def plot2DGeo(model:part, sampleSize=101):
 	Y = np.asarray(evalpts[1, :].reshape((sampleSize, sampleSize)).tolist())
 	Z = np.zeros(X.shape)
 
-	fig, ax = plt.subplots(figsize=(4.5, 4.5))
+	fig, ax = plt.subplots(figsize=(5, 5))
 	ax.grid(None)
 	plot_mesh(ctrlpts, model.nbctrlpts, ax)
 	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
@@ -83,8 +83,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 5
-extension = '.pdf'
+CASE      = 3
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -107,14 +107,15 @@ if CASE == 0: # B-spline curve
 		ctrlpts = np.asarray(crv.ctrlpts)
 		x = evalpts[:, 0]; y = evalpts[:, 1]
 		
-		fig, ax = plt.subplots(nrows=1, ncols=1)
+		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
 		ax.plot(x, y, label='B-Spline curve')
 		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control Points')
-
+		
 		ax.legend()
 		ax.set_xlabel(r'$x_1$')
 		ax.set_ylabel(r'$x_2$')
-		ax.axis('equal')
+		
+		# ax.axis('equal')
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 		return
@@ -128,23 +129,34 @@ elif CASE == 1: # Univariate functions
 		filename = folder + 'UnivariateFunctions' + extension
 
 		# B-spline properties 
-		degree, nbel = 3, 4
+		degree, nbel = 2, 4
 		multiplicity = 1
 		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray(); B1 = basis[0].toarray()
 
-		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
+		# fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
+		# for i in range(np.shape(B0)[0]): 
+		# 	ax1.plot(knots, B0[i, :], linewidth=2)
+		# 	ax2.plot(knots, B1[i, :], linewidth=2)
+
+		# for ax in [ax1, ax2]:
+		# 	ax.set_xlabel(r'$\xi$')
+		# 	ax.set_xticks(np.linspace(0, 1, nbel+1))
+		# ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
+		# ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
+
+		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
 		for i in range(np.shape(B0)[0]): 
 			ax1.plot(knots, B0[i, :], linewidth=2)
-			ax2.plot(knots, B1[i, :], linewidth=2)
 
-		for ax in [ax1, ax2]:
-			ax.set_xlabel(r'$\xi$')
-			ax.set_xticks(np.linspace(0, 1, nbel+1))
+		ax1.set_xlabel(r'$\xi$')
+		ax1.set_xticks(np.linspace(0, 1, nbel+1))
+		ax1.set_yticks([0, 0.5, 1])
+
 		ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
-		ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
+
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 		return
@@ -158,12 +170,12 @@ elif CASE == 2: # Bivariate functions
 		filename = folder + 'BivariateFunctions' + extension
 
 		# B-Spline properties
-		degree, nbel = 3, 4
+		degree, nbel = 2, 4
 		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
 		B0 = basis[0].toarray()
-		B02plot = B0[1, :]
+		B02plot = B0[2, :]
 
 		# B-Spline 2D
 		X, Y = np.meshgrid(knots, knots)
@@ -172,7 +184,7 @@ elif CASE == 2: # Bivariate functions
 		if is2D:
 			fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
 									gridspec_kw=dict(height_ratios=[1,3],
-													width_ratios=[3,1]))
+													width_ratios=[3,1]), figsize=(5, 5))
 			axs[0,1].set_visible(False)
 			axs[0,0].set_box_aspect(1/3)
 			axs[1,0].set_box_aspect(1)
@@ -180,6 +192,7 @@ elif CASE == 2: # Bivariate functions
 			axs[1,0].grid(None)
 			axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
 			axs[1,0].set_yticks([0, 0.5, 1])
+			axs[1,0].set_xticks([0, 0.5, 1])
 
 			for i in range(degree+nbel): 
 				axs[0, 0].plot(knots, B0[i, :], color="0.8")
@@ -192,6 +205,7 @@ elif CASE == 2: # Bivariate functions
 			axs[1,1].set_ylabel(r'$\xi_2$')
 			axs[1,1].set_xlabel(r'$\hat{b}_{A_2,\,p_2}$')
 			axs[1,1].set_xticks([0, 1])
+			axs[0,0].set_yticks([0, 1])
 			fig.tight_layout()
 			fig.savefig(filename, dpi=300) 
 
@@ -282,8 +296,8 @@ elif CASE == 5: # B-spline surface
 	filename = folder + 'BsplineSurface' + extension
 
 	# Surface properties
-	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': np.ones(3, dtype=int), 
-				'nb_refinementByDirection': np.ones(3, dtype=int)})
+	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': 2*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': 2*np.ones(3, dtype=int)})
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
 	fig = plot2DGeo(modelPhy)

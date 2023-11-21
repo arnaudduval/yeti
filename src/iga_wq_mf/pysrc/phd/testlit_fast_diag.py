@@ -7,10 +7,10 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, eraseRowsCSR, 
-							# fastDiagonalization
-)
-from pysrc.lib.lib_quadrules import WeightedQuadrature
+from pysrc.lib.lib_geomdl import Geomdl
+from pysrc.lib.lib_part import part
+from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_job import problem
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -18,10 +18,12 @@ folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist     = True
+solverArgs  = {'nbIterationsPCG':150, 'PCGThreshold':1e-8}
+quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
+dataExist     = False
 withReference = True
-degree_list   = range(2, 4)
-cuts_list     = range(8, 10)
+degree_list   = range(2, 5)
+cuts_list     = range(5, 10)
 
 if not dataExist:
 
@@ -30,34 +32,32 @@ if not dataExist:
 
 	for i, cuts in enumerate(cuts_list):
 		for j, degree in enumerate(degree_list):
-		
 			nbel = 2**cuts
-			knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
-			weightedQuad = WeightedQuadrature(degree, knotvector)
-			info = weightedQuad.getQuadratureRulesInfo()
-			qp, [indi, indj], dersbasis, dersweights = info
+			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+			}
 
-			# Erase data
-			rows2erase = [0, -1]
-			indi_t, indj_t, [B_t, W_t] = eraseRowsCSR(rows2erase, indi, indj, [dersbasis, dersweights])
+			blockPrint()			
+			modelGeo = Geomdl(geoArgs)
+			modelIGA = modelGeo.getIGAParametrization()
+			modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-			# Compute fast diagonalization
-			nb_ctrlpts = weightedQuad.nbctrlpts - len(rows2erase)
-			V = np.random.random(nb_ctrlpts**3)
+			# Set Dirichlet boundaries
+			boundary = boundaryCondition(modelPhy.nbctrlpts)
+			boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=int))
+			enablePrint()
+
+			# Solve elastic problem
+			prob = problem(modelPhy, boundary, solverArgs)
+			array_in = np.random.random(modelPhy.nbctrlpts_total)
 			start = time.process_time()
-
-			mcoefs = np.ones(len(qp)); kcoefs = np.ones(len(qp))
-			eig_t, U_t = geophy.eigen_decomposition_sp(mcoefs, kcoefs, indi, indj, B_t, W_t)
-			eig_diag = np.random.random(nb_ctrlpts**3)
-			array_out = fastDiagonalization(U_t, U_t, U_t, eig_diag, V, fdtype='steady')
-			print(array_out[:10])
-
-			stop = time.process_time()
+			prob.fastDiagonalization(array_in)
+			stop  = time.process_time()
 			time_t = stop - start
 
 			print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_t))
 			time_matrix[i, j+1] = time_t
-			np.savetxt(folder2find + 'FD_time.dat', time_matrix)
+			np.savetxt(folder2find + 'FD_time2.dat', time_matrix)
 
 else:
 
@@ -96,9 +96,10 @@ else:
 		ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 		ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 		ax.set_xticks([128, 256, 512, 1024])
+		ax.set_xticklabels([r'$128^3$', r'$256^3$', r'$512^3$', r'$1024^3$'])
 
 		ax.legend(loc='best')
-		ax.set_xlabel('Discretization level ' + r'$h^{-1}$')
+		ax.set_xlabel('Total number of elements')
 		ax.set_ylabel('CPU time (s)')
 		fig.tight_layout()
 		fig.savefig(folder2save + 'FastDiag_lit' + '.pdf')

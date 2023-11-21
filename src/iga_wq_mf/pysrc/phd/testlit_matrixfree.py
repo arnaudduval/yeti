@@ -20,7 +20,7 @@ folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
 dataExist     = True
-withReference = True
+# withReference = True
 degree_list   = range(2, 3)
 cuts          = 6
 
@@ -99,12 +99,11 @@ else:
 	file_P = pd.read_table(folder2find + 'matvec_Python'   + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
 	file_M = pd.read_table(folder2find + 'matvec_MF_Mass'  + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
 	file_K = pd.read_table(folder2find + 'matvec_MF_Stiff' + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-	file_A = pd.read_table(folder2find + 'matvec_MF_SM'    + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+	# file_A = pd.read_table(folder2find + 'matvec_MF_SM'    + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
 	degree = file_M.degree
-	values = [file_M.P1, file_K.P1, file_A.P1]
-	labels = [  r'$\mathsf{M}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
-				r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
-				r'$\mathsf{A}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts)]
+	values = [file_M.P1, file_K.P1]
+	labels = [  r'$\mathsf{C}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
+				r'$\mathsf{K}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts)]
 
 	ax.semilogy(file_P.degree, file_P.P1, '--', label='Python'+', '+r'$h^{-1}=$ ' + str(2**cuts), marker=MARKERLIST[0])
 	for i, [value, label] in enumerate(zip(values, labels)): ax.semilogy(degree, value, '--', label=label, marker=MARKERLIST[i+1])

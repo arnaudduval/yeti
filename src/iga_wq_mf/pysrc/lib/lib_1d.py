@@ -150,7 +150,7 @@ class heatproblem1D(part1D):
 		return
 	
 	def activate_thermal(self, matArgs:dict):
-		self.activate_thermal(matArgs)
+		part1D.activate_thermal(self, matArgs)
 		if self.density is None: self.density = lambda x: np.ones(len(x))
 		return 
 	

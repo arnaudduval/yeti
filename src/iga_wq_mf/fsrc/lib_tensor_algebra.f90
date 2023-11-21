@@ -699,3 +699,135 @@ subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coe
     call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, coefs(3))
     
 end subroutine find_parametric_diag_3d
+
+! OLD ALGORITHMS
+
+! subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
+!     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+!     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+!     !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
+!     !! Matrix U = U(nr, nc)
+!     !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+!     !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
+
+!     use omp_lib
+!     implicit none
+!     ! Input / output data
+!     ! -------------------
+!     integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nc, mode, nrR
+!     double precision, intent(in) :: X, U
+!     dimension :: X(nc_u*nc_v*nc_w*nc_t), U(nr, nc)
+
+!     double precision, intent(out) :: R
+!     dimension :: R(nrR)
+
+!     ! Local data
+!     ! ----------
+!     double precision, allocatable, dimension(:, :) :: Rt
+!     double precision, allocatable, dimension(:, :) :: Xt
+!     integer :: ju, jv, jw, jt, nb_tasks
+
+!     R = 0.d0
+!     if (mode.eq.1) then 
+
+!         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
+!         !$OMP PARALLEL PRIVATE(Xt, Rt)
+!         nb_tasks = omp_get_num_threads()
+!         !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, size(X)/nb_tasks) 
+!         do jt = 1, nc_t
+!             do jw = 1, nc_w
+!                 do jv = 1, nc_v
+!                     do ju = 1, nc_u
+!                         Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+!                     end do
+!                 end do
+!                 Rt = matmul(U, Xt)
+!                 do jv = 1, nc_v
+!                     do ju = 1, nr
+!                         R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
+!                     end do
+!                 end do
+!             end do
+!         end do
+!         !$OMP END DO NOWAIT
+!         !$OMP END PARALLEL
+!         deallocate(Xt, Rt)
+
+!     else if (mode.eq.2) then 
+
+!         allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
+!         !$OMP PARALLEL PRIVATE(Xt, Rt)
+!         nb_tasks = omp_get_num_threads()
+!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+!         do jt = 1, nc_t
+!             do jw = 1, nc_w
+!                 do ju = 1, nc_u
+!                     do jv = 1, nc_v
+!                         Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+!                     end do
+!                 end do
+!                 Rt = matmul(U, Xt)
+!                 do ju = 1, nc_u
+!                     do jv = 1, nr
+!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
+!                     end do
+!                 end do
+!             end do
+!         end do
+!         !$OMP END DO NOWAIT
+!         !$OMP END PARALLEL
+!         deallocate(Xt, Rt)
+        
+!     else if (mode.eq.3) then 
+
+!         allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
+!         !$OMP PARALLEL PRIVATE(Xt, Rt)
+!         nb_tasks = omp_get_num_threads()
+!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+!         do jt = 1, nc_t
+!             do jv = 1, nc_v
+!                 do ju = 1, nc_u
+!                     do jw = 1, nc_w
+!                         Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+!                     end do
+!                 end do
+!                 Rt = matmul(U, Xt)
+!                 do ju = 1, nc_u
+!                     do jw = 1, nr
+!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
+!                     end do
+!                 end do
+!             end do
+!         end do
+!         !$OMP END DO NOWAIT
+!         !$OMP END PARALLEL
+!         deallocate(Xt, Rt)
+
+!     else if (mode.eq.4) then 
+        
+!         allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
+!         !$OMP PARALLEL PRIVATE(Xt, Rt)
+!         nb_tasks = omp_get_num_threads()
+!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+!         do jw = 1, nc_w
+!             do jv = 1, nc_v
+!                 do ju = 1, nc_u
+!                     do jt = 1, nc_t
+!                         Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+!                     end do
+!                 end do
+!                 Rt = matmul(U, Xt)
+!                 do ju = 1, nc_u
+!                     do jt = 1, nr
+!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
+!                     end do
+!                 end do
+!             end do
+!         end do
+!         !$OMP END DO NOWAIT
+!         !$OMP END PARALLEL
+!         deallocate(Xt, Rt)
+
+!     end if
+
+! end subroutine tensor_n_mode_product_dM

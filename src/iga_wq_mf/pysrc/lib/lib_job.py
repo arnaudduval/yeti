@@ -202,13 +202,20 @@ class problem():
 		return u_interp
 	
 	def compute_eigs_LOBPCG(self, ishigher=False):
-		dod = deepcopy(self.boundary.thdod) + 1
-		inpts = [*self._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				ishigher, self._nbIterPCG, self._thresholdPCG]
 		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_2d(*inpts)
 		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_3d(*inpts)
 		return eigenval, eigenvec
-	
+
+	def fastDiagonalization(self, array_in, fdtype='heat'):
+		if fdtype == 'heat':
+			inpts = [*self._getInputs(), array_in]
+			if self.part.dim == 2: array_out = eigensolver.fastdiagonalization_2d(*inpts)
+			if self.part.dim == 3: array_out = eigensolver.fastdiagonalization_3d(*inpts)
+		else: raise Warning('Not coded')
+		return array_out
+		
 class heatproblem(problem):
 	def __init__(self, heat_material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
 		problem.__init__(self, part, boundary, solverArgs)
@@ -220,16 +227,16 @@ class heatproblem(problem):
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
-		if self.part.dim == 2: array_out = heatsolver.mf_get_ku_2d(*inpts, array_in)
-		if self.part.dim == 3: array_out = heatsolver.mf_get_ku_3d(*inpts, array_in)
+		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
 		return array_out
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
-		if self.part.dim == 2: array_out = heatsolver.mf_get_cu_2d(*inpts, array_in)
-		if self.part.dim == 3: array_out = heatsolver.mf_get_cu_3d(*inpts, array_in)
+		if self.part.dim == 2: array_out = heatsolver.mf_capacity_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_capacity_3d(*inpts, array_in)
 		return array_out
 
 	def interpolate_temperature(self, T_ctrlpts):
@@ -246,21 +253,19 @@ class heatproblem(problem):
 		return intForce
 
 	def solveSteadyHeatProblem(self, Fext, args=None):
-		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
-		inpts = [*self._getInputs(), dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				prop, Fext,  self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: temperature, residue = heatsolver.solver_steady_heat_2d(*inpts)
-		if self.part.dim == 3: temperature, residue = heatsolver.solver_steady_heat_3d(*inpts)
+		if self.part.dim == 2: temperature, residue = heatsolver.solver_linearsteady_heat_2d(*inpts)
+		if self.part.dim == 3: temperature, residue = heatsolver.solver_linearsteady_heat_3d(*inpts)
 		return temperature, residue
 	
 	def _solveLinearizedTransientProblem(self, Fext, tsfactor, args=None, isLumped=False):
-		dod = deepcopy(self.boundary.thdod) + 1
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
-		inpts = [*self._getInputs(), isLumped, dod, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+		inpts = [*self._getInputs(), isLumped, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 				Cprop, Kprop, tsfactor, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
@@ -346,8 +351,8 @@ class mechaproblem(problem):
 		if args is None: args = self.part.qpPhy
 		prop = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
-		if self.part.dim == 2: array_out = plasticitysolver.mf_get_mu_2d(*inpts, array_in)
-		if self.part.dim == 3: array_out = plasticitysolver.mf_get_mu_3d(*inpts, array_in)
+		if self.part.dim == 2: array_out = plasticitysolver.mf_mass_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = plasticitysolver.mf_mass_3d(*inpts, array_in)
 		return array_out
 	
 	def compute_mfStiffness(self, array_in, mechArgs=None):
@@ -357,8 +362,8 @@ class mechaproblem(problem):
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, mechArgs]
-		if   self.part.dim == 2: array_out = plasticitysolver.mf_get_su_2d(*inpts, array_in)
-		elif self.part.dim == 3: array_out = plasticitysolver.mf_get_su_3d(*inpts, array_in)
+		if   self.part.dim == 2: array_out = plasticitysolver.mf_stiffness_2d(*inpts, array_in)
+		elif self.part.dim == 3: array_out = plasticitysolver.mf_stiffness_3d(*inpts, array_in)
 		return array_out
 	
 	def interpolate_strain(self, displacement):
@@ -381,20 +386,16 @@ class mechaproblem(problem):
 		return intForce
 
 	def solveElasticityProblem(self, Fext, mechArgs=None):
-		dod = deepcopy(self.boundary.mchdod)
-		for i, tmp in enumerate(dod):
-			tmp = tmp + 1; dod[i] = tmp
-
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		inpts = [*self._getInputs(), *dod, self.boundary.mchDirichletTable, 
-				self.part.invJ, self.part.detJ, mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_elasticity_2d(*inpts)
-		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_elasticity_3d(*inpts)
+		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
+				mechArgs, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_linearelasticity_2d(*inpts)
+		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_linearelasticity_3d(*inpts)
 		
 		return displacement, resPCG
 	
@@ -483,18 +484,14 @@ class mechaproblem(problem):
 		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
 	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, args=None, isLumped=False):
-		dod = deepcopy(self.boundary.mchdod)
-		for i, tmp in enumerate(dod):
-			tmp = tmp + 1; dod[i] = tmp
 		dimen  = self.part.dim
-		nvoigt = int(dimen*(dimen+1)/2)
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		if args is None: args = self.part.qpPhy
 		massProp = self.mechamaterial.density(args)
-		inpts = [*self._getInputs(), isLumped, *dod, self.boundary.mchDirichletTable, 
+		inpts = [*self._getInputs(), isLumped, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, mechArgs, massProp, tsfactor,
 				Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_lineardynamics_2d(*inpts)
@@ -599,11 +596,11 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		prop = 3*self.mechamaterial.thermalexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if isThermal:
-			if self.part.dim == 2: array_out = heatsolver.mf_get_coupled_2d(*inpts, array_in)
-			if self.part.dim == 3: array_out = heatsolver.mf_get_coupled_3d(*inpts, array_in)
+			if self.part.dim == 2: array_out = heatsolver.mf_thmchcoupled_2d(*inpts, array_in)
+			if self.part.dim == 3: array_out = heatsolver.mf_thmchcoupled_3d(*inpts, array_in)
 		else:
-			if self.part.dim == 2: array_out = plasticitysolver.mf_get_coupled_2d(*inpts, array_in)
-			if self.part.dim == 3: array_out = plasticitysolver.mf_get_coupled_3d(*inpts, array_in)
+			if self.part.dim == 2: array_out = plasticitysolver.mf_thmchcoupled_2d(*inpts, array_in)
+			if self.part.dim == 3: array_out = plasticitysolver.mf_thmchcoupled_3d(*inpts, array_in)
 		return array_out
 	
 	def compute_ThermomechIntForce(self, disp, vel, accel, stress, args=None, isLumped=False):
