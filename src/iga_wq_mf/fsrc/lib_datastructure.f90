@@ -2,7 +2,6 @@ module datastructure
 
     implicit none
     type :: structure
-
         logical :: isseparate = .false.
         integer :: dimen, nr_total, nc_total
         integer, allocatable, dimension(:) :: nrows, ncols, nnzs, dof, dod
@@ -11,7 +10,7 @@ module datastructure
         double precision, allocatable, dimension(:, :) :: eigvalues_dir
         double precision, allocatable, dimension(:, :, :) :: bw, bw_T, eigvectors
         double precision, allocatable, dimension(:, :) :: univmasscoefs, univstiffcoefs
-
+        double complex, allocatable, dimension(:, :) :: Lrot, Rrot, Suptr, Tuptr
     end type structure
 
 contains
@@ -147,6 +146,61 @@ contains
         datstruct%nc_total = product(datstruct%ncols)
 
     end subroutine init_3datastructure
+
+    subroutine init_4datastructure(datstruct, nr_u, nc_u, nr_v, nr_t, nc_v, nr_w, nc_w, nc_t, &
+            nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+            indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
+
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        integer, parameter :: dimen = 4
+        type(structure) :: datstruct
+        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+        double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
+        dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                        data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                        data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
+                        data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
+
+        datstruct%dimen = dimen
+        allocate(datstruct%nrows(dimen), datstruct%ncols(dimen), datstruct%nnzs(dimen))
+        datstruct%nrows = (/nr_u, nr_v, nr_w, nr_t/)
+        datstruct%ncols = (/nc_u, nc_v, nc_w, nc_t/)
+        datstruct%nnzs  = (/nnz_u, nnz_v, nnz_w, nnz_t/)
+
+        allocate(datstruct%indi(dimen, maxval(datstruct%nrows)+1), & 
+                datstruct%indj(dimen, maxval(datstruct%nnzs)), &
+                datstruct%bw(dimen, maxval(datstruct%nnzs), 6))
+
+        datstruct%indi = 0
+        datstruct%indi(1, 1:nr_u+1) = indi_u
+        datstruct%indi(2, 1:nr_v+1) = indi_v
+        datstruct%indi(3, 1:nr_w+1) = indi_w
+        datstruct%indi(4, 1:nr_t+1) = indi_t
+
+        datstruct%indj = 0
+        datstruct%indj(1, 1:nnz_u) = indj_u
+        datstruct%indj(2, 1:nnz_v) = indj_v
+        datstruct%indj(3, 1:nnz_w) = indj_w
+        datstruct%indj(4, 1:nnz_t) = indj_t
+
+        datstruct%bw = 0.d0
+        datstruct%bw(1, 1:nnz_u, 1:2) = data_B_u
+        datstruct%bw(2, 1:nnz_v, 1:2) = data_B_v
+        datstruct%bw(3, 1:nnz_w, 1:2) = data_B_w
+        datstruct%bw(4, 1:nnz_t, 1:2) = data_B_t
+        datstruct%bw(1, 1:nnz_u, 3:6) = data_W_u
+        datstruct%bw(2, 1:nnz_v, 3:6) = data_W_v
+        datstruct%bw(3, 1:nnz_w, 3:6) = data_W_w
+        datstruct%bw(4, 1:nnz_t, 3:6) = data_W_t
+        datstruct%nr_total = product(datstruct%nrows)
+        datstruct%nc_total = product(datstruct%ncols)
+
+    end subroutine init_4datastructure
 
     subroutine setup_univariatecoefs(datstruct, nr, nc, univmasscoefs, univstiffcoefs)
         implicit none 
@@ -403,10 +457,10 @@ contains
             bw   = datstruct%bw(i, 1:nnz, :)
             allocate(eigvalues(nr), eigvectors(nr, nr), Kdiag(nr), Mdiag(nr))
             if (datstruct%isseparate) then 
-                call eigen_decomposition(nr, nc, datstruct%univmasscoefs(i, 1:nc), datstruct%univstiffcoefs(i, 1:nc), &
+                call stiffmass_eigen_decomposition(nr, nc, datstruct%univmasscoefs(i, 1:nc), datstruct%univstiffcoefs(i, 1:nc), &
                                         nnz, indi, indj, bw(:, 1:2), bw(:, 3:6), eigvalues, eigvectors, Kdiag, Mdiag)
             else
-                call eigen_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
+                call stiffmass_eigen_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
                                         bw(:, 1:2), bw(:, 3:6), eigvalues, eigvectors, Kdiag, Mdiag)
             end if
             datstruct%eigvalues_dir(i, 1:nr) = eigvalues
@@ -431,6 +485,46 @@ contains
         end if
 
     end subroutine eigendecomposition
+
+    subroutine complexschurdecomposition(datstruct)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(structure) :: datstruct
+
+        ! Local data
+        ! ----------
+        integer :: nr, nc, nnz, ncols
+        integer, dimension(:), allocatable :: indi, indj
+        double precision, dimension(:), allocatable :: Mdiag, Adiag
+        double precision, dimension(:, :), allocatable :: bw
+        double precision, dimension(:), allocatable :: univMcoefs, univKcoefs
+        
+        ncols = maxval(datstruct%ncols)
+        allocate(univMcoefs(ncols), univKcoefs(ncols))
+        univMcoefs = 1.d0; univKcoefs = 1.d0
+
+        if (datstruct%dimen.lt.4) stop 'Only for space-time formulation'
+        nr = datstruct%nrows(4); nc = datstruct%ncols(4); nnz = datstruct%nnzs(4)
+        allocate(indi(nr+1), indj(nnz), bw(nnz, 6))
+        indi = datstruct%indi(4, 1:nr+1)
+        indj = datstruct%indj(4, 1:nnz)
+        bw   = datstruct%bw(4, 1:nnz, :)
+        allocate(datstruct%Lrot(nr, nr), datstruct%Rrot(nr, nr), &
+                datstruct%Suptr(nr, nr), datstruct%Tuptr(nr, nr), &
+                Adiag(nr), Mdiag(nr))
+
+        if (datstruct%isseparate) then 
+            call advmass_schur_decomposition(nr, nc, datstruct%univmasscoefs(4, 1:nc), datstruct%univstiffcoefs(4, 1:nc), &
+                                    nnz, indi, indj, bw(:, 1:2), bw(:, 3:6), datstruct%Lrot, datstruct%Rrot,&
+                                    datstruct%Suptr, datstruct%Tuptr, Adiag, Mdiag)
+        else
+            call advmass_schur_decomposition(nr, nc, univMcoefs(1:nc), univKcoefs(1:nc), nnz, indi, indj, &
+                                    bw(:, 1:2), bw(:, 3:6), datstruct%Lrot, datstruct%Rrot,&
+                                    datstruct%Suptr, datstruct%Tuptr, Adiag, Mdiag)
+        end if
+
+    end subroutine complexschurdecomposition
 
     subroutine set2zero(datstruct, nc_total, array_inout)
         implicit none 

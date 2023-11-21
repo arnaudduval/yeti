@@ -41,6 +41,37 @@ subroutine compute_eigdecomp_pdr(nr, A, B, rho, x)
 
 end subroutine compute_eigdecomp_pdr
 
+subroutine compute_schurdecomp_gc(nr, A, B, U, V, S, T)
+    !! Computes the Schur decomposition of the pencil (A, B) such that
+    !! A = U S V^H and B = U T V^H. H means the hermitian transpose (with conjugates)
+    !! S and T are triangular matrices
+    !! using dsygvd from LAPACK libraries. 
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr
+    double precision, intent(in) :: A, B
+    dimension :: A(nr, nr), B(nr, nr)
+
+    double complex, intent(out) :: U, V, S, T
+    dimension :: U(nr, nr), V(nr, nr), S(nr, nr), T(nr, nr)
+
+    ! Local data
+    ! ----------
+    double complex :: alpha(nr), beta(nr)
+    double precision :: rwork(8*nr)
+    logical :: bwork(nr)
+    double complex, allocatable, dimension(:) :: work
+    integer :: info, lwork
+
+    lwork = 2*nr
+    allocate(work(lwork))
+    S = dcmplx(A); T = dcmplx(B)
+    call cgges('V', 'V', 'N', .false., nr, S, nr, T, nr, 0, alpha, beta, U, nr, V, nr, work, lwork, rwork, bwork, info)
+
+end subroutine compute_schurdecomp_gc
+
 subroutine power_iteration(nr, A, x, rho, nbIter)
     !! Computes the maximum eigenvalue of A and its eigenvector. 
     !! The matrix A could be any matrix

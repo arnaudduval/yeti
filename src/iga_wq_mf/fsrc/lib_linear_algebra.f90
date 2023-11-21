@@ -312,6 +312,26 @@ subroutine solve_linear_system(nr, nc, A, b, x)
 
 end subroutine solve_linear_system
 
+subroutine solve_complex_uppertriangular_system(nr, A, b, x)
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr
+    double complex, intent(in) :: A, b
+    dimension :: A(nr, nr), b(nr)
+
+    double complex, intent(out) :: x
+    dimension :: x(nr)
+
+    ! Local data
+    ! ----------
+    integer :: info
+
+    x = b
+    call ctrtrs('U', 'N', 'N', nr, 1, A, nr, b, x, info)
+
+end subroutine solve_complex_uppertriangular_system
+
 subroutine inverse_matrix(nr, A)
     !! Computes the inverse of a square matrix using LU decomposition
     
@@ -930,6 +950,7 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_csr, nr, nc, AA)
     end do
     
 end subroutine csr2dense
+
 
 subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
     !! Gets CSR format from matrix 

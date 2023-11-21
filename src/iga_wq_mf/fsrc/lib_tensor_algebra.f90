@@ -570,7 +570,7 @@ end subroutine csr_get_diag_3d
 ! Fast Diagonalization method
 ! ----------------------------
 
-subroutine eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
+subroutine stiffmass_eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                                 data_B, data_W, eigval, eigvec, Kdiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -582,7 +582,6 @@ subroutine eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, 
     implicit none 
     ! Input / output data
     ! -------------------
-    double precision, parameter :: penalty = 100.0d0
     integer, intent(in) :: nr, nc, nnz
     double precision, intent(in) :: univMcoefs, univKcoefs
     dimension :: univMcoefs(nc), univKcoefs(nc)
@@ -631,7 +630,6 @@ subroutine eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, 
     allocate(WW1(nr, nc))
     call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
     allocate(KK(nr, nr))
-
     KK = matmul(WW1, transpose(BB1))
     deallocate(BB1, WW1)
 
@@ -647,7 +645,83 @@ subroutine eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, 
     call compute_eigdecomp_pdr(nr, KK, MM, eigval, eigvec)
     deallocate(KK, MM)
 
-end subroutine eigen_decomposition
+end subroutine stiffmass_eigen_decomposition
+
+subroutine advmass_schur_decomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi, indj, &
+                                data_B, data_W, UU, VV, SS, TT, Adiag, Mdiag)
+    !! Generalized eigen decomposition KU = MUD
+    !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
+    !! M: mass matrix, M = int B0 B0 dx = W00 * B0
+    !! U: eigenvectors matrix
+    !! D: diagonal of eigenvalues
+    !! IN CSR FORMAT
+    
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, nc, nnz
+    double precision, intent(in) :: univMcoefs, univAcoefs
+    dimension :: univMcoefs(nc), univAcoefs(nc)
+    integer, intent(in) :: indi, indj
+    dimension :: indi(nr+1), indj(nnz)
+    double precision, intent(in) :: data_B, data_W
+    dimension :: data_B(nnz, 2), data_W(nnz, 4)
+
+    double complex, intent(out) :: UU, VV, SS, TT
+    dimension :: UU(nr, nr), VV(nr, nr), SS(nr, nr), TT(nr, nr)
+    double precision, intent(out) :: Adiag, Mdiag
+    dimension :: Adiag(nr), Mdiag(nr)
+
+    ! Local data
+    ! ----------
+    integer :: i, j
+    double precision :: data_Bt(nnz)
+    double precision, allocatable, dimension(:, :) :: BB0, WW0, MM, WW1, AA
+    
+    ! Masse matrix
+    data_Bt = data_B(:, 1)
+    do i = 1, nr
+        do j = indi(i), indi(i+1)-1
+            data_Bt(j) = data_Bt(j)*univMcoefs(indj(j))
+        end do
+    end do
+
+    allocate(BB0(nr, nc))
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
+    allocate(WW0(nr, nc))
+    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, WW0)
+    allocate(MM(nr, nr))
+    MM = matmul(WW0, transpose(BB0))
+    deallocate(WW0)
+
+    ! Advention matrix
+    data_Bt = data_B(:, 1)
+    do i = 1, nr
+        do j = indi(i), indi(i+1)-1
+            data_Bt(j) = data_Bt(j)*univAcoefs(indj(j))
+        end do
+    end do
+
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
+    allocate(WW1(nr, nc))
+    call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
+    allocate(AA(nr, nr))
+    AA = matmul(WW1, transpose(BB0))
+    deallocate(BB0, WW1)
+
+    ! Save diagonal of M and K
+    do i = 1, nr
+        Adiag(i) = AA(i, i)
+        Mdiag(i) = MM(i, i)
+    end do
+
+    ! -----------------------------------
+    ! Schur decomposition
+    ! -----------------------------------
+    call compute_schurdecomp_gc(nr, AA, MM, UU, VV, SS, TT)
+    deallocate(AA, MM)
+
+end subroutine advmass_schur_decomposition
 
 subroutine find_parametric_diag_2d(nr_u, nr_v, Mu, Mv, Ku, Kv, coefs, diag)
     !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)
