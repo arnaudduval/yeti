@@ -1,4 +1,4 @@
-module solverstheat3
+module stsolverheat3
 
     use matrixfreestheat
     use datastructure
@@ -77,18 +77,39 @@ contains
         
         ! Local data
         ! ----------
-        double precision :: dummymean
-        dimension :: dummymean(solv%dimen)
+        double precision :: dummymean(solv%dimen)
 
-        dummymean = 1.d0
+        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
         call init_4datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
-        call eigendecomposition(solv%temp_struct, dummymean)
+        call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
         !! diageigvalues has not been created
     
     end subroutine initializefastdiag
+
+    subroutine solve_schurtriangular__(solv, nr, coefs, b, x)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(stcgsolver) :: solv
+        integer, intent(in) :: nr
+        double precision, intent(in) :: coefs(2)
+        double precision, intent(in) :: b(nr)
+        double precision, intent(out) :: x(nr)
+        
+        ! Local data
+        ! ----------
+        double complex :: uptrg(nr, nr), Vb(nr), sol(nr), Usol(nr)
+
+        Vb = matmul(solv%temp_struct%Rschur_tm, dcmplx(b))
+        uptrg = dcmplx(coefs(1))*solv%temp_struct%Luptr_tm + dcmplx(coefs(2))*solv%temp_struct%Ruptr_tm
+        call solve_complex_uppertriangular_system(nr, uptrg, Vb, sol)
+        Usol = matmul(conjg(transpose(solv%temp_struct%Lschur_tm)), sol)
+        x = realpart(Usol)
+
+    end subroutine solve_schurtriangular__
 
     subroutine applyfastdiag(solv, nr_total, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -109,36 +130,58 @@ contains
     
         ! Local data
         ! ----------
-        integer :: nr_u, nr_v, nr_w, nr_t
+        integer :: nr_u, nr_v, nr_w, nr_t, i, j, k, l
         double precision, allocatable, dimension(:, :) :: identity
-        double precision, allocatable, dimension(:) :: tmp, tmp2
+        double precision, allocatable, dimension(:) :: tmp, tmp1, tmp2, tmp3, btmp, sol
+        integer, allocatable, dimension(:, :, :, :) :: dof
+        integer, allocatable, dimension(:) :: indices 
+        double precision :: eigval
+        integer :: nrows(solv%dimen)
 
         array_out = 0.d0
 
+        nrows = solv%temp_struct%nrows
+        nr_u = nrows(1); nr_v = nrows(2); nr_w = nrows(3); nr_t = nrows(4)
+        dof  = reshape(solv%temp_struct%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
+
         ! Compute (Ut x Uw x Uv x Uu)'.array_in
-        nr_u = solv%temp_struct%nrows(1)
-        nr_v = solv%temp_struct%nrows(2)
-        nr_w = solv%temp_struct%nrows(3)
-        nr_t = solv%temp_struct%nrows(4)
         allocate(tmp(nr_u*nr_v*nr_w*nr_t), identity(nr_t, nr_t))
 
         call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
-                        transpose(solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u)), &
-                        transpose(solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v)), &
-                        transpose(solv%temp_struct%eigvectors(3, 1:nr_w, 1:nr_w)), &
+                        transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                        transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                        transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
                         identity, array_in(solv%temp_struct%dof), tmp)
 
-        tmp = tmp/solv%temp_struct%diageigvalues
+        allocate(tmp1(nr_total))
+        tmp1 = 0.d0; tmp1(solv%temp_struct%dof) = tmp
+        deallocate(tmp)
+
+        allocate(btmp(nr_t), sol(nr_t), indices(nr_t), tmp2(nr_total))
+        tmp2 = 0.d0
+        do k = 1, nr_w
+            do j = 1, nr_v
+                do i = 1, nr_u
+                    l = i + (j - 1)*nr_u + (k - 1)*nr_u*nr_v
+                    eigval = solv%temp_struct%diageigval_sp(l)
+                    indices = dof(i, j, k, :)
+                    btmp = tmp1(indices)
+                    call solve_schurtriangular__(solv, nr_t, (/1.d0, eigval/), btmp, sol)
+                    tmp2(indices) = sol
+                end do
+            end do
+        end do  
+        deallocate(tmp1)
 
         ! Compute (Ut x Uw x Uv x Uu).array_tmp
-        allocate(tmp2(nr_u*nr_v*nr_w*nr_t))
+        allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
         call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
-                        solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u), &
-                        solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v), &
-                        solv%temp_struct%eigvectors(3, 1:nr_w, 1:nr_w), &
-                        identity, tmp, tmp2)
-        array_out(solv%temp_struct%dof) = tmp2
-        deallocate(tmp, tmp2)
+                        solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                        solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                        solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
+                        identity, tmp2(solv%temp_struct%dof), tmp3)
+        array_out(solv%temp_struct%dof) = tmp3
+        deallocate(tmp2, tmp3)
 
     end subroutine applyfastdiag
 
@@ -154,160 +197,163 @@ contains
 
     end subroutine clear_dirichlet
 
-    ! subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-    !                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                     data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
+    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
+                        nbIterPCG, threshold, b, x, resPCG)
 
-    !     implicit none
-    !     ! Input / output data
-    !     ! -------------------
-    !     type(stcgsolver) :: solv
-    !     type(stthermomat) :: mat
-    !     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    !     integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-    !     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-    !     integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-    !     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    !     double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-    !     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(stcgsolver) :: solv
+        type(stthermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
 
-    !     integer, intent(in) :: indi_u, indi_v, indi_w
-    !     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-    !     integer, intent(in) :: indj_u, indj_v, indj_w
-    !     dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    !     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-    !     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
 
-    !     integer, intent(in) :: nbIterPCG
-    !     double precision, intent(in) :: threshold, b
-    !     dimension :: b(nr_total)
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(nr_total)
         
-    !     double precision, intent(out) :: x, resPCG
-    !     dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
-    !     ! Local data
-    !     ! -----------
-    !     double precision :: rsold, rsnew, alpha, omega, beta, normb
-    !     double precision :: r, rhat, p, s, Ap, As
-    !     dimension ::    r(nr_total), rhat(nr_total), p(nr_total), &
-    !                     s(nr_total), Ap(nr_total), As(nr_total)
-    !     integer :: iter
+        ! Local data
+        ! -----------
+        double precision :: rsold, rsnew, alpha, omega, beta, normb
+        double precision :: r, rhat, p, s, Ap, As
+        dimension ::    r(nr_total), rhat(nr_total), p(nr_total), &
+                        s(nr_total), Ap(nr_total), As(nr_total)
+        integer :: iter
 
-    !     x = 0.d0; r = b
-    !     call clear_dirichlet(solv, nr_total, r) 
-    !     rhat = r; p = r
-    !     rsold = dot_product(r, rhat); normb = norm2(r)
-    !     resPCG = 0.d0; resPCG(1) = 1.d0
-    !     if (normb.lt.threshold) return
+        x = 0.d0; r = b
+        call clear_dirichlet(solv, nr_total, r) 
+        rhat = r; p = r
+        rsold = dot_product(r, rhat); normb = norm2(r)
+        resPCG = 0.d0; resPCG(1) = 1.d0
+        if (normb.lt.threshold) return
 
-    !     do iter = 1, nbIterPCG
-    !         call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-    !                 nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                 data_W_u, data_W_v, data_W_w, p, Ap)
-    !         call clear_dirichlet(solv, nr_total, Ap)
-    !         alpha = rsold/dot_product(Ap, rhat)
-    !         s = r - alpha*Ap
+        do iter = 1, nbIterPCG
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, p, Ap)
 
-    !         call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-    !                 nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                 data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                 data_W_u, data_W_v, data_W_w, s, As)
-    !         call clear_dirichlet(solv, nr_total, As)
-    !         omega = dot_product(As, s)/dot_product(As, As)
-    !         x = x + alpha*p + omega*s
-    !         r = s - omega*As
+            call clear_dirichlet(solv, nr_total, Ap)
+            alpha = rsold/dot_product(Ap, rhat)
+            s = r - alpha*Ap
 
-    !         resPCG(iter+1) = norm2(r)/normb
-    !         if (resPCG(iter+1).le.threshold) exit
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, s, As)
+            call clear_dirichlet(solv, nr_total, As)
+            omega = dot_product(As, s)/dot_product(As, As)
+            x = x + alpha*p + omega*s
+            r = s - omega*As
 
-    !         rsnew = dot_product(r, rhat)
-    !         beta = (alpha/omega)*(rsnew/rsold)
-    !         p = r + beta*(p - omega*Ap)
-    !         rsold = rsnew
-    !     end do
+            resPCG(iter+1) = norm2(r)/normb
+            if (resPCG(iter+1).le.threshold) exit
 
-    ! end subroutine BiCGSTAB
+            rsnew = dot_product(r, rhat)
+            beta = (alpha/omega)*(rsnew/rsold)
+            p = r + beta*(p - omega*Ap)
+            rsold = rsnew
+        end do
 
-    ! subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-    !                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                     data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
+    end subroutine BiCGSTAB
 
-    !     implicit none
-    !     ! Input / output data
-    !     ! -------------------
-    !     type(stcgsolver) :: solv
-    !     type(stthermomat) :: mat
-    !     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-    !     integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-    !     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-    !     integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-    !     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    !     double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-    !     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
+                        nbIterPCG, threshold, b, x, resPCG)
 
-    !     integer, intent(in) :: indi_u, indi_v, indi_w
-    !     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-    !     integer, intent(in) :: indj_u, indj_v, indj_w
-    !     dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-    !     double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-    !     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(stcgsolver) :: solv
+        type(stthermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
 
-    !     integer, intent(in) :: nbIterPCG
-    !     double precision, intent(in) :: threshold, b
-    !     dimension :: b(nr_total)
+        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+
+        integer, intent(in) :: nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(nr_total)
         
-    !     double precision, intent(out) :: x, resPCG
-    !     dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbIterPCG+1)
 
-    !     ! Local data
-    !     ! -----------
-    !     double precision :: rsold, rsnew, alpha, omega, beta, normb
-    !     double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
-    !     dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
-    !                     ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-    !     integer :: iter
+        ! Local data
+        ! -----------
+        double precision :: rsold, rsnew, alpha, omega, beta, normb
+        double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
+        dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
+                        ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
+        integer :: iter
 
-    !     x = 0.d0; r = b
-    !     call clear_dirichlet(solv, nr_total, r)
-    !     rhat = r; p = r
-    !     rsold = dot_product(r, rhat); normb = norm2(r)
-    !     resPCG = 0.d0; resPCG(1) = 1.d0
-    !     if (normb.lt.threshold) return
+        x = 0.d0; r = b
+        call clear_dirichlet(solv, nr_total, r)
+        rhat = r; p = r
+        rsold = dot_product(r, rhat); normb = norm2(r)
+        resPCG = 0.d0; resPCG(1) = 1.d0
+        if (normb.lt.threshold) return
 
-    !     do iter = 1, nbIterPCG
-    !         call applyfastdiag(solv, nr_total, p, ptilde)
-    !         call clear_dirichlet(solv, nr_total, ptilde)
-    !         call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-    !                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                     data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
-    !         call clear_dirichlet(solv, nr_total, Aptilde)
-    !         alpha = rsold/dot_product(Aptilde, rhat)
-    !         s = r - alpha*Aptilde
+        do iter = 1, nbIterPCG
+            call applyfastdiag(solv, nr_total, p, ptilde)
+            call clear_dirichlet(solv, nr_total, ptilde)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, ptilde, Aptilde)
+            call clear_dirichlet(solv, nr_total, Aptilde)
+            alpha = rsold/dot_product(Aptilde, rhat)
+            s = r - alpha*Aptilde
             
-    !         call applyfastdiag(solv, nr_total, s, stilde)
-    !         call clear_dirichlet(solv, nr_total, stilde)
-    !         call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-    !                     nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-    !                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-    !                     data_W_u, data_W_v, data_W_w, stilde, Astilde)
-    !         call clear_dirichlet(solv, nr_total, Astilde)
-    !         omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-    !         x = x + alpha*ptilde + omega*stilde
-    !         r = s - omega*Astilde    
+            call applyfastdiag(solv, nr_total, s, stilde)
+            call clear_dirichlet(solv, nr_total, stilde)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, stilde, Astilde)
+            call clear_dirichlet(solv, nr_total, Astilde)
+            omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
+            x = x + alpha*ptilde + omega*stilde
+            r = s - omega*Astilde    
             
-    !         resPCG(iter+1) = norm2(r)/normb
-    !         if (resPCG(iter+1).le.threshold) exit
+            resPCG(iter+1) = norm2(r)/normb
+            if (resPCG(iter+1).le.threshold) exit
     
-    !         rsnew = dot_product(r, rhat)
-    !         beta = (alpha/omega)*(rsnew/rsold)
-    !         p = r + beta*(p - omega*Aptilde)
-    !         rsold = rsnew
-    !     end do
+            rsnew = dot_product(r, rhat)
+            beta = (alpha/omega)*(rsnew/rsold)
+            p = r + beta*(p - omega*Aptilde)
+            rsold = rsnew
+        end do
 
-    ! end subroutine PBiCGSTAB
+    end subroutine PBiCGSTAB
 
-end module solverstheat3
+end module stsolverheat3

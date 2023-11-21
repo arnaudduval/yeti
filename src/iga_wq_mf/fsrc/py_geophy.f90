@@ -3,7 +3,7 @@
 ! For mechanical properties, we suggest to go to plasticity module
 ! ==============================================
 
-subroutine stiffmass_eigen_decomposition_dense(nr, A, B, eigval, eigvec)
+subroutine stiffmass_eigendecomposition_dense(nr, A, B, eigval, eigvec)
     implicit none 
     ! Input / output data
     ! -------------------
@@ -18,9 +18,9 @@ subroutine stiffmass_eigen_decomposition_dense(nr, A, B, eigval, eigvec)
     ! ----------
     call compute_eigdecomp_pdr(nr, A, B, eigval, eigvec)
 
-end subroutine stiffmass_eigen_decomposition_dense
+end subroutine stiffmass_eigendecomposition_dense
 
-subroutine stiffmass_eigen_decomposition_sp(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
+subroutine stiffmass_eigendecomposition_sp(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                                 data_B, data_W, eigval, eigvec)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -48,10 +48,10 @@ subroutine stiffmass_eigen_decomposition_sp(nr, nc, univMcoefs, univKcoefs, nnz,
     double precision :: Kdiag, Mdiag
     dimension :: Kdiag(nr), Mdiag(nr)
 
-    call stiffmass_eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
+    call stiffmass_eigendecomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                             data_B, data_W, eigval, eigvec, Kdiag, Mdiag)
 
-end subroutine stiffmass_eigen_decomposition_sp
+end subroutine stiffmass_eigendecomposition_sp
 
 subroutine eval_normal(nr, nc_total, JJ, normal)
     implicit none 

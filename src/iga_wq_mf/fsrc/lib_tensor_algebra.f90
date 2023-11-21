@@ -570,7 +570,7 @@ end subroutine csr_get_diag_3d
 ! Fast Diagonalization method
 ! ----------------------------
 
-subroutine stiffmass_eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
+subroutine stiffmass_eigendecomposition(nr, nc, univMcoefs, univKcoefs, nnz, indi, indj, &
                                 data_B, data_W, eigval, eigvec, Kdiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -645,9 +645,9 @@ subroutine stiffmass_eigen_decomposition(nr, nc, univMcoefs, univKcoefs, nnz, in
     call compute_eigdecomp_pdr(nr, KK, MM, eigval, eigvec)
     deallocate(KK, MM)
 
-end subroutine stiffmass_eigen_decomposition
+end subroutine stiffmass_eigendecomposition
 
-subroutine advmass_schur_decomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi, indj, &
+subroutine advmass_schurdecomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi, indj, &
                                 data_B, data_W, UU, VV, SS, TT, Adiag, Mdiag)
     !! Generalized eigen decomposition KU = MUD
     !! K: stiffness matrix, K = int B1 B1 dx = W11 * B1
@@ -721,7 +721,7 @@ subroutine advmass_schur_decomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi
     call compute_schurdecomp_gc(nr, AA, MM, UU, VV, SS, TT)
     deallocate(AA, MM)
 
-end subroutine advmass_schur_decomposition
+end subroutine advmass_schurdecomposition
 
 subroutine find_parametric_diag_2d(nr_u, nr_v, Mu, Mv, Ku, Kv, coefs, diag)
     !! Computes the diagonal given by cu (Mw x Mv x Ku) + cv (Mw x Kv x Mu) + cw (Kw x Mv x Mu)

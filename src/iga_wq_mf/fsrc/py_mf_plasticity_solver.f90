@@ -814,7 +814,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Smean)
         do i = 1, dimen
-            solv%disp_struct(i)%diageigvalues = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%diageigvalues
+            solv%disp_struct(i)%diageigval_sp = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%diageigval_sp
         end do
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -920,7 +920,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                         data_W_u, data_W_v, data_W_w, table, mat%Smean)
     
         do i = 1, dimen
-            solv%disp_struct(i)%diageigvalues = mat%Mmean + tsfactor*solv%disp_struct(i)%diageigvalues
+            solv%disp_struct(i)%diageigval_sp = mat%Mmean + tsfactor*solv%disp_struct(i)%diageigval_sp
         end do
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &

@@ -86,7 +86,7 @@ contains
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
         call update_datastructure(solv%temp_struct, solv%dimen, table_dirichlet)
-        call eigendecomposition(solv%temp_struct, mean)
+        call space_eigendecomposition(solv%temp_struct, solv%dimen, mean)
     
     end subroutine initializefastdiag
 
@@ -115,17 +115,17 @@ contains
         nr_u = solv%temp_struct%nrows(1)
         nr_v = solv%temp_struct%nrows(2)
         allocate(tmp(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u)), &
-                transpose(solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v)), array_in(solv%temp_struct%dof), tmp)
+        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), array_in(solv%temp_struct%dof), tmp)
         
         if (solv%withdiag) then
-            tmp = tmp/solv%temp_struct%diageigvalues
+            tmp = tmp/solv%temp_struct%diageigval_sp
         end if
     
         ! Compute (Uv x Uu).array_tmp
         allocate(tmp2(nr_u*nr_v))
-        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u), &
-                solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v), tmp, tmp2)
+        call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
         array_out(solv%temp_struct%dof) = tmp2            
         deallocate(tmp, tmp2)
 
@@ -545,7 +545,7 @@ contains
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
-        call eigendecomposition(solv%temp_struct, Kmean)
+        call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
     
     end subroutine initializefastdiag
 
@@ -579,16 +579,16 @@ contains
         nr_w = solv%temp_struct%nrows(3)
         allocate(tmp(nr_u*nr_v*nr_w))
 
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u)), &
-        transpose(solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v)), transpose(solv%temp_struct%eigvectors(3, 1:nr_w, 1:nr_w)), &
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+        transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
         array_in(solv%temp_struct%dof), tmp)
 
-        tmp = tmp/solv%temp_struct%diageigvalues
+        tmp = tmp/solv%temp_struct%diageigval_sp
 
         ! Compute (Uw x Uv x Uu).array_tmp
         allocate(tmp2(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%temp_struct%eigvectors(1, 1:nr_u, 1:nr_u), &
-        solv%temp_struct%eigvectors(2, 1:nr_v, 1:nr_v), solv%temp_struct%eigvectors(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+        solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
         array_out(solv%temp_struct%dof) = tmp2
         deallocate(tmp, tmp2)
 

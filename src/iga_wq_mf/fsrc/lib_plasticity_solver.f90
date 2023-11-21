@@ -125,7 +125,7 @@ contains
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                     data_B_u, data_B_v, data_W_u, data_W_v)
             call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
-            call eigendecomposition(solv%disp_struct(i), mean(i, :))
+            call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do
         
     end subroutine initializefastdiag
@@ -159,17 +159,17 @@ contains
             nr_u = solv%disp_struct(i)%nrows(1)
             nr_v = solv%disp_struct(i)%nrows(2)
             allocate(tmp(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u)), &
-                    transpose(solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                    transpose(solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
             
             if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%diageigvalues
+                tmp = tmp/solv%disp_struct(i)%diageigval_sp
             end if
 
             ! Compute (Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u), &
-                    solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v), tmp, tmp2)
+            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                    solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
             array_out(i, solv%disp_struct(i)%dof) = tmp2            
             deallocate(tmp, tmp2)
         end do
@@ -460,7 +460,7 @@ contains
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
             call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
-            call eigendecomposition(solv%disp_struct(i), mean(i, :))
+            call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do
         
     end subroutine initializefastdiag
@@ -497,21 +497,21 @@ contains
             allocate(tmp(nr_u*nr_v*nr_w))
 
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            transpose(solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u)), &
-                            transpose(solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v)), &
-                            transpose(solv%disp_struct(i)%eigvectors(3, 1:nr_w, 1:nr_w)), &
+                            transpose(solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                            transpose(solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                            transpose(solv%disp_struct(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
                             array_in(i, solv%disp_struct(i)%dof), tmp)
 
             if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%diageigvalues
+                tmp = tmp/solv%disp_struct(i)%diageigval_sp
             end if
 
             ! Compute (Uw x Uv x Uu).array_tmp
             allocate(tmp2(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            solv%disp_struct(i)%eigvectors(1, 1:nr_u, 1:nr_u), &
-                            solv%disp_struct(i)%eigvectors(2, 1:nr_v, 1:nr_v), &
-                            solv%disp_struct(i)%eigvectors(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+                            solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                            solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                            solv%disp_struct(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
             array_out(i, solv%disp_struct(i)%dof) = tmp2
             deallocate(tmp, tmp2)
         end do
