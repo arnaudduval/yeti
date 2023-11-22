@@ -61,7 +61,7 @@ contains
 
     end subroutine setup_capacityprop
 
-    subroutine mf_partialt_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+    subroutine mf_u_partialt_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
                             indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
@@ -102,7 +102,7 @@ contains
         call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), & 
+                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 2), & 
                             array_in, tmp)
 
         do j = 1, mat%ncols_tm
@@ -115,12 +115,12 @@ contains
         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                            nnz_t, indi_t, indj_t, data_W_t(:, 3), &
+                            nnz_t, indi_t, indj_t, data_W_t(:, 2), &
                             tmp, array_out)
         
-    end subroutine mf_partialt_u_v_3d
+    end subroutine mf_u_partialt_v_3d
 
-    subroutine mf_partialt_u_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+    subroutine mf_u_partialt_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                             indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
@@ -162,7 +162,7 @@ contains
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
                             nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), & 
+                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 2), & 
                             array_in, tmp)
 
         do j = 1, mat%ncols_tm
@@ -176,10 +176,10 @@ contains
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                            nnz_t, indi_t, indj_t, data_W_t(:, 3), &
+                            nnz_t, indi_t, indj_t, data_W_t(:, 2), &
                             tmp, array_out)
         
-    end subroutine mf_partialt_u_v_4d
+    end subroutine mf_u_partialt_v_4d
 
     subroutine mf_gradx_u_gradx_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -370,7 +370,7 @@ contains
         ! ----------
         double precision :: tmp(nr_total)
 
-        call mf_partialt_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+        call mf_u_partialt_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                                 indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
                                 indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
@@ -682,7 +682,6 @@ contains
 
 end module stheatsolver2
 
-
 module stheatsolver3
 
     use matrixfreestheat
@@ -726,7 +725,7 @@ contains
         ! ----------
         double precision :: tmp(nr_total)
 
-        call mf_partialt_u_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+        call mf_u_partialt_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                                 indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &

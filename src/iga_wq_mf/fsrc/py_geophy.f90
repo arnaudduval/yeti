@@ -738,3 +738,240 @@ subroutine get_forcesurf_3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, 
     end do
     
 end subroutine get_forcesurf_3d
+
+!! SPACE TIME APPROACH
+
+subroutine interpolate_meshgrid_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
+                            data_B_u, data_B_v, data_B_w, data_B_t, u_ctrlpts, u_interp)
+    !! Computes interpolation in 4D case (from parametric space to physical space)
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! ------------------- 
+    integer, intent(in) :: nm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w*nr_t)
+
+    double precision, intent(out) :: u_interp
+    dimension :: u_interp(nm, nc_u*nc_v*nc_w*nc_t)
+
+    ! Local data
+    !-----------
+    integer :: i
+    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+    integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
+
+    do i = 1, nm
+        call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
+                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), &
+                            u_ctrlpts(i, :), u_interp(i, :))
+    end do
+
+end subroutine interpolate_meshgrid_4d
+
+subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
+                            data_W_u, data_W_v, data_W_t, detJ, detG, prop, array_out)
+    !! Computes volumetric force vector in 4D 
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
+    double precision, intent(in) :: detJ, detG, prop
+    dimension :: detJ(nc_u*nc_v), detG(nc_t), prop(nm, nc_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nm, nr_u*nr_v*nr_t)
+
+    ! Local data
+    ! ----------
+    integer :: l, i, j, k
+    double precision :: tmp(nc_total)
+
+    do l = 1, nm
+
+        do j = 1, nc_t
+            do i = 1, nc_u*nc_v
+                k = i + (j-1)*nc_u*nc_v
+                tmp(k) = prop(l, k)*detJ(i)*detG(j)
+            end do
+        end do
+
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nc_t, &
+                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                            nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                            tmp, array_out(l, :))
+    end do
+
+end subroutine get_forcevol_st2d
+
+subroutine get_forcevol_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
+                            data_W_u, data_W_v, data_W_w, data_W_t, detJ, detG, prop, array_out)
+    !! Computes volumetric force vector in 4D 
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+    double precision, intent(in) :: detJ, detG, prop
+    dimension :: detJ(nc_u*nc_v*nc_w), detG(nc_t), prop(nm, nc_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nm, nr_u*nr_v*nr_w*nr_t)
+
+    ! Local data
+    ! ----------
+    integer :: l, i, j, k
+    double precision :: tmp(nc_total)
+
+    do l = 1, nm
+
+        do j = 1, nc_t
+            do i = 1, nc_u*nc_v*nc_w
+                k = i + (j-1)*nc_u*nc_v*nc_w
+                tmp(k) = prop(l, k)*detJ(i)*detG(j)
+            end do
+        end do
+
+        call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                            nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                            nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                            nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                            tmp, array_out(l, :))
+    end do
+
+end subroutine get_forcevol_st3d
+
+subroutine get_forcesurf_st2d(nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t, &
+                            indi_u, indj_u, indi_t, indj_t, data_W_u, data_W_t, &
+                            JJ, detG, prop, array_out)
+    !! Computes boundary force vector in 3D 
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 2
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_W_u, data_W_t
+    dimension :: data_W_u(nnz_u, 4), data_W_t(nnz_t, 4)
+    double precision, intent(in) :: JJ, detG, prop
+    dimension :: JJ(dimen_sp, dimen_sp-1, nc_u), detG(nc_t), prop(nm, nc_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nm, nr_u*nr_t)
+
+    ! Local data
+    ! ----------
+    double precision :: coefs, dsurf, v1
+    dimension :: coefs(nm, nc_total), v1(dimen_sp)
+    integer :: i, j, k
+
+    ! Compute coefficients
+    do i = 1, nc_u
+        v1 = JJ(:, 1, i)
+        dsurf = sqrt(dot_product(v1, v1))
+        do j = 1, nc_t
+            k = i + (j-1)*nc_u
+            coefs(:, k) = prop(:, k)*dsurf*detG(j)
+        end do
+    end do
+
+    do i = 1, nm
+        call sumfacto2d_spM(nr_u, nc_u, nr_t, nc_t, nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_t, indi_t, indj_t, data_W_t(:, 1), coefs(i, :), array_out(i, :))
+    end do
+    
+end subroutine get_forcesurf_st2d
+
+subroutine get_forcesurf_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
+                            JJ, detG, prop, array_out)
+    !! Computes boundary force vector in 3D 
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 3
+    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
+    double precision, intent(in) :: JJ, detG, prop
+    dimension :: JJ(dimen_sp, dimen_sp-1, nc_u*nc_v), detG(nc_t), prop(nm, nc_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nm, nr_u*nr_v*nr_t)
+
+    ! Local data
+    ! ----------
+    double precision :: coefs, dsurf, v1, v2, v3
+    dimension :: coefs(nm, nc_total), v1(dimen_sp), v2(dimen_sp), v3(dimen_sp)
+    integer :: i, j, k
+
+    ! Compute coefficients
+    do i = 1, nc_u*nc_v
+        v1 = JJ(:, 1, i)
+        v2 = JJ(:, 2, i)
+        call crossproduct(v1, v2, v3)
+        dsurf = sqrt(dot_product(v3, v3))
+        do j = 1, nc_t
+            k = i + (j-1)*nc_u*nc_v
+            coefs(:, k) = prop(:, k)*dsurf*detG(j)
+        end do
+    end do
+
+    do i = 1, nm
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                            nnz_v, indi_v, indj_v, data_W_v(:, 1), nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                            coefs(i, :), array_out(i, :))
+    end do
+    
+end subroutine get_forcesurf_st3d
