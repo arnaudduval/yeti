@@ -7,9 +7,8 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
-from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, eraseRowsCSR)
+from pysrc.lib.lib_quadrules import WeightedQuadrature
 from pysrc.lib.lib_job import problem
 
 # Select folder
@@ -22,8 +21,8 @@ solverArgs  = {'nbIterationsPCG':150, 'PCGThreshold':1e-8}
 quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
 dataExist     = False
 withReference = True
-degree_list   = range(2, 5)
-cuts_list     = range(5, 10)
+degree_list   = range(2, 6)
+cuts_list     = range(6, 10)
 
 if not dataExist:
 
@@ -33,31 +32,24 @@ if not dataExist:
 	for i, cuts in enumerate(cuts_list):
 		for j, degree in enumerate(degree_list):
 			nbel = 2**cuts
-			geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			}
+			knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
+			weightedQuad = WeightedQuadrature(degree, knotvector, quadArgs={})
+			info = weightedQuad.getQuadratureRulesInfo()
+			qp, indices, dersbasis, dersweights = info; nbqp = len(qp)
+			nb_ctrlpts = weightedQuad.nbctrlpts
+			V = np.random.random(nb_ctrlpts**3)
 
-			blockPrint()			
-			modelGeo = Geomdl(geoArgs)
-			modelIGA = modelGeo.getIGAParametrization()
-			modelPhy = part(modelIGA, quadArgs=quadArgs)
-
-			# Set Dirichlet boundaries
-			boundary = boundaryCondition(modelPhy.nbctrlpts)
-			boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=int))
-			enablePrint()
-
-			# Solve elastic problem
-			prob = problem(modelPhy, boundary, solverArgs)
-			array_in = np.random.random(modelPhy.nbctrlpts_total)
+			inpts = [nbqp, nbqp, nbqp, *indices, *indices, *indices, 
+					dersbasis, dersbasis, dersbasis, dersweights, dersweights, dersweights]
+			
 			start = time.process_time()
-			prob.fastDiagonalization(array_in)
+			eigensolver.fastdiagonalization_3d(*inpts, V)
 			stop  = time.process_time()
 			time_t = stop - start
 
 			print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_t))
 			time_matrix[i, j+1] = time_t
-			np.savetxt(folder2find + 'FD_time2.dat', time_matrix)
+			np.savetxt(folder2find + 'FD_time.dat', time_matrix)
 
 else:
 
