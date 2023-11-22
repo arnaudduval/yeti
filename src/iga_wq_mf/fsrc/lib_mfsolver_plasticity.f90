@@ -183,12 +183,8 @@ contains
             allocate(CC(mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
             update = .true.; nc_list_t = nc_list
             call initialize_operator(oper, mat%dimen, nc_list_t, update)
-
             do i = 1, mat%dimen
                 do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
-                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
                     ! Elastic
                     DD = 0.d0
@@ -199,6 +195,9 @@ contains
 
                     ! Plastic
                     if (mat%isElastic.eqv..false.) then
+                        NN = mat%NN(:, gp); BB = mat%BB(:, gp)
+                        call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                        call array2symtensor(mat%dimen, size(BB), BB, TBB)
                         do j = 1, mat%dimen
                             do k = 1, mat%dimen
                                 DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
@@ -227,9 +226,6 @@ contains
 
             do i = 1, mat%dimen
                 do gp = 1, mat%ncols_sp
-                    NN = mat%NN(:, gp); BB = mat%BB(:, gp)
-                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     
                     ! Elastic
                     DD = 0.d0
@@ -240,6 +236,9 @@ contains
                     
                     ! Plastic
                     if (mat%isElastic.eqv..false.) then
+                        NN = mat%NN(:, gp); BB = mat%BB(:, gp)
+                        call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                        call array2symtensor(mat%dimen, size(BB), BB, TBB)
                         do j = 1, mat%dimen
                             do k = 1, mat%dimen
                                 DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
@@ -296,9 +295,6 @@ contains
         do i = 1, mat%dimen
             do c = 1, size(sample)
                 gp = sample(c)
-                NN = mat%NN(:, gp); BB = mat%NN(:, gp)
-                call array2symtensor(mat%dimen, size(NN), NN, TNN)
-                call array2symtensor(mat%dimen, size(BB), BB, TBB)
 
                 ! Elastic
                 DD = 0.d0
@@ -309,6 +305,9 @@ contains
                 
                 ! Plastic
                 if (mat%isElastic.eqv..false.) then
+                    NN = mat%NN(:, gp); BB = mat%NN(:, gp)
+                    call array2symtensor(mat%dimen, size(NN), NN, TNN)
+                    call array2symtensor(mat%dimen, size(BB), BB, TBB)
                     do j = 1, mat%dimen
                         do k = 1, mat%dimen
                             DD(j, k) = DD(j, k) + mat%CepArgs(3, gp)*TNN(i, j)*TNN(i, k) &
@@ -536,11 +535,12 @@ contains
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
-                if (mat%isElastic) then
+                if (mat%isElastic.eqv..false.) then
                     t4 = kt1(3, :)*mat%JJnn(l, j, :)
                     t5 = kt1(4, :)*mat%JJbb(l, j, :)
                     t6 = kt1(4, :)*mat%JJnn(l, j, :)
                 end if
+
 
                 do i = 1, dimen
                     t3 = kt1(2, :)*mat%invJ(l, i, :)
@@ -561,7 +561,7 @@ contains
                                 t7, t8)
                         t9 = t9 + t8
                     end do
-
+            
                     array_out(i, :) = array_out(i, :) + t9
                 end do
             end do
@@ -635,7 +635,7 @@ contains
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(l, j, :)
-                if (mat%isElastic) then
+                if (mat%isElastic.eqv..false.) then
                     t4 = kt1(3, :)*mat%JJnn(l, j, :)
                     t5 = kt1(4, :)*mat%JJbb(l, j, :)
                     t6 = kt1(4, :)*mat%JJnn(l, j, :)

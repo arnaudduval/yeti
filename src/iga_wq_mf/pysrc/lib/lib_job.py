@@ -386,8 +386,6 @@ class mechaproblem(problem):
 		return intForce
 
 	def solveElasticityProblem(self, Fext, mechArgs=None):
-		dimen  = self.part.dim
-		nvoigt = int(dimen*(dimen+1)/2)
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda

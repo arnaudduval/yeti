@@ -784,7 +784,7 @@ contains
         allocate(tmp(nr_u*nr_v))
         call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                 transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), array_in(solv%temp_struct%dof), tmp)
-        
+
         if (solv%withdiag) then
             tmp = tmp/solv%temp_struct%diageigval_sp
         end if
@@ -934,13 +934,15 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call applyfastdiag(solv, nr_total, p, ptilde)
+            call applyfastdiag(solv, nr_total, p, ptilde)            
             call clear_dirichlet(solv, nr_total, ptilde)
+
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, ptilde, Aptilde)
             call clear_dirichlet(solv, nr_total, Aptilde)
+
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
@@ -1246,16 +1248,20 @@ contains
         nr_w = solv%temp_struct%nrows(3)
         allocate(tmp(nr_u*nr_v*nr_w))
 
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
-        transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+                        transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                        transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                        transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
         array_in(solv%temp_struct%dof), tmp)
 
         tmp = tmp/solv%temp_struct%diageigval_sp
 
         ! Compute (Uw x Uv x Uu).array_tmp
         allocate(tmp2(nr_u*nr_v*nr_w))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
-        solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+                        solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                        solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                        solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
         array_out(solv%temp_struct%dof) = tmp2
         deallocate(tmp, tmp2)
 

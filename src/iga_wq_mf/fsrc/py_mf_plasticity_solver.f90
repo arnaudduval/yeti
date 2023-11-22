@@ -611,12 +611,10 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Smean)
-
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
-        
+                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)    
     else 
         stop 'Unknown method'                    
     end if
@@ -716,7 +714,6 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w, table, mat%Smean)
-        
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &

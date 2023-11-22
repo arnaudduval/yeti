@@ -26,7 +26,7 @@ GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'plasticLaw': {'Isoname':'none'}}
 SOLVERARGS  = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
-isReference = False
+isReference = True
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)

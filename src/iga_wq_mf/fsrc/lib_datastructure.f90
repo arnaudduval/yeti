@@ -211,7 +211,6 @@ contains
         double precision, intent(in) :: univrightcoefs, univleftcoefs
         dimension :: univrightcoefs(nr, nc), univleftcoefs(nr, nc)
 
-        if (nc.ne.maxval(datstruct%ncols)) stop 'Size problem'
         allocate(datstruct%univrightcoefs(nr, nc), datstruct%univleftcoefs(nr, nc))
         datstruct%univrightcoefs = univrightcoefs
         datstruct%univleftcoefs  = univleftcoefs
@@ -455,7 +454,7 @@ contains
         allocate(datstruct%eigval_sp_dir(dimen_sp, nrows), &
                 datstruct%eigvec_sp_dir(dimen_sp, nrows, nrows), &
                 ones(ncols))
-        datstruct%eigval_sp_dir = 0.d0; datstruct%eigvec_sp_dir = 0.d0
+        datstruct%eigval_sp_dir = 0.d0; datstruct%eigvec_sp_dir = 0.d0; ones = 1.d0
 
         ! Eigen decomposition
         do i = 1, dimen_sp
@@ -478,6 +477,7 @@ contains
             datstruct%eigvec_sp_dir(i, 1:nr, 1:nr) = eigvectors
             deallocate(indi, indj, bw, eigvalues, eigvectors, massdiag, stiffdiag)
         end do
+        deallocate(ones)
 
         allocate(ones(maxval(datstruct%nrows(:dimen_sp))), &
                 datstruct%diageigval_sp(product(datstruct%nrows(:dimen_sp))))
