@@ -296,11 +296,11 @@ class mechamat(material):
 		return dgamma, hatbeta, normal, theta
 	
 	def __consistentTangentAlgorithm1D(self, nnz, isElasticLoad, plsVars={}):
-		mechArgs = np.zeros(nnz)
-		mechArgs[:] = self.elasticmodulus
-		if  not isElasticLoad:
+		mechArgs = np.zeros((1, nnz))
+		mechArgs[0, :] = self.elasticmodulus
+		if not isElasticLoad:
 			plsInd = plsVars["plsInd"]; theta = plsVars["theta"]
-			mechArgs[plsInd] = self.elasticmodulus*(1 - theta)
+			mechArgs[0, plsInd] = self.elasticmodulus*(1 - theta)
 		return mechArgs
 	
 	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-9):
@@ -314,7 +314,7 @@ class mechamat(material):
 		stress_trial = self.elasticmodulus*strain_trial
 
 		# Compute shifted stress
-		eta_trial = computeDeviatoric4All(stress_trial - np.sum(beta_n0, axis=0))
+		eta_trial = stress_trial - np.sum(beta_n0, axis=0)
 
 		# Check yield status
 		norm_eta_trial = np.abs(eta_trial)

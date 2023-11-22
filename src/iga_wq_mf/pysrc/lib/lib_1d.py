@@ -362,6 +362,7 @@ class mechaproblem1D(part1D):
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
 		strain = self.basis[1].T @ disp * self.invJ
+		strain = np.reshape(strain, (1, len(strain)))
 		return strain
 
 	def compute_MechStaticIntForce(self, stress):
@@ -369,7 +370,7 @@ class mechaproblem1D(part1D):
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Fint = self.weights[-1] @ stress.T
+		Fint = self.weights[-1] @ np.ravel(stress).T
 		return Fint
 
 	def compute_tangentMatrix(self, Cep):
@@ -377,7 +378,7 @@ class mechaproblem1D(part1D):
 			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		coefs = Cep*self.invJ
+		coefs = np.ravel(Cep)*self.invJ
 		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
 		return tangentM
 
@@ -386,9 +387,9 @@ class mechaproblem1D(part1D):
 
 		nbChaboche = self.mechamat._chabocheNBparameters
 		nbqp = self.nbqp; dof = self.dof; dod = self.dod
-		pls_n0, a_n0, b_n0 = np.zeros(nbqp), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
-		pls_n1, a_n1, b_n1 = np.zeros(nbqp), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
-		stress, Cep = np.zeros((1, nbqp)), np.zeros(nbqp)
+		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
+		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
+		stress, Cep = np.zeros((1, nbqp)), np.zeros((1, nbqp))
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))
@@ -416,8 +417,9 @@ class mechaproblem1D(part1D):
 				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
-				output, isElasticLoad = self.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
-				stress, pls_n1, a_n1, b_n1, Cep = output[0, :], output[1, :], output[2, :], output[3, :], output[4, :]
+				output, isElasticLoad = self.mechamat.J2returnMappingAlgorithm1D(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
+				stress = output['stress']; pls_n1 = output['pls']; a_n1 = output['alpha']
+				b_n1 = output['beta']; Cep = output['mechArgs']
 
 				# Compute internal force 
 				Fint_dj = self.compute_MechStaticIntForce(stress)
@@ -442,10 +444,10 @@ class mechaproblem1D(part1D):
 				dj_n1 += deltaD
 
 			dispinout[:, i] = dj_n1
-			Allstrain[:, i] = strain
-			Allstress[:, i] = stress
+			Allstrain[:, i] = np.ravel(strain)
+			Allstress[:, i] = np.ravel(stress)
 			Allplseq[:, i]  = a_n1
-			AllCep[:, i] = Cep
+			AllCep[:, i] = np.ravel(Cep)
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 

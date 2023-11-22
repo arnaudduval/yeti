@@ -7,6 +7,7 @@ import pickle
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
 from pysrc.lib.lib_1d import mechaproblem1D
+from pysrc.lib.lib_material import mechamat
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -15,8 +16,11 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
 YOUNG, CST, LENGTH = 2e11, 4.e8, 1
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e16, 'plasticLaw': {'Isoname': 'none'}}
-isReference = True
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':0.3,
+		'plasticLaw': {'Isoname':'none'}}
+MECHAMATERIAL = mechamat(MATARGS)
+
+isReference = False
 
 def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
@@ -26,7 +30,7 @@ def simulate(degree, nbel, args):
 	crv = createUniformCurve(degree, nbel, LENGTH)
 	modelPhy = mechaproblem1D(crv, args)
 	model2return = deepcopy(modelPhy)
-	modelPhy.activate_mechanical(MATARGS)
+	modelPhy.activate_mechanical(MECHAMATERIAL)
 	modelPhy.add_DirichletCondition(table=[1, 1])
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, [0, 1])
@@ -65,10 +69,10 @@ else:
 			nbel = 2**cuts
 			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 			modelPhy, displacement = simulate(degree, nbel, args)
-			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
-																	'exactFunctionDers': exactDisplacementDers})
-			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
-			# 														'u_ref': disp_ref[:, -1]})		
+			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
+			# 														'exactFunctionDers': exactDisplacementDers})
+			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
+																	'u_ref': disp_ref[:, -1]})		
 
 		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
 		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
@@ -78,4 +82,4 @@ else:
 
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigElasticityH1exact' +'.pdf')
+		fig.savefig(folder + 'FigElasticityH1app' +'.pdf')
