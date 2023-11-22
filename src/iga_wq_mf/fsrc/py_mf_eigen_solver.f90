@@ -8,7 +8,7 @@ subroutine solver_helmholtz_lobpcg_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat2
+    use heatsolver2
     use datastructure
     implicit none 
     ! Input / output data
@@ -81,7 +81,7 @@ subroutine solver_helmholtz_lobpcg_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat3
+    use heatsolver3
     use datastructure
     implicit none 
     ! Input / output data
@@ -158,7 +158,7 @@ subroutine fastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, &
     !! bn is compute beforehand (In python).
     !! IN CSR FORMAT
 
-    use solverheat2
+    use heatsolver2
     use datastructure
     implicit none 
     ! Input / output data
@@ -202,7 +202,7 @@ subroutine fastdiagonalization_3d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     !! bn is compute beforehand (In python).
     !! IN CSR FORMAT
 
-    use solverheat3
+    use heatsolver3
     use datastructure
     implicit none 
     ! Input / output data

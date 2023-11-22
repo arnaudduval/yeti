@@ -323,7 +323,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat2
+    use heatsolver2
     use datastructure
     implicit none 
     ! Input / output data
@@ -416,7 +416,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat3
+    use heatsolver3
     use datastructure
     implicit none 
     ! Input / output data
@@ -515,7 +515,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat2
+    use heatsolver2
 
     implicit none 
     ! Input / output data
@@ -613,7 +613,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use solverheat3
+    use heatsolver3
 
     implicit none 
     ! Input / output data

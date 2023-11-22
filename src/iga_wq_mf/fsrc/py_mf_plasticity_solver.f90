@@ -535,7 +535,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     !! IN CSR FORMAT 
 
     use matrixfreeplasticity
-    use solverplasticity2
+    use plasticitysolver2
     use datastructure
     implicit none 
     ! Input / output data
@@ -635,7 +635,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     !! IN CSR FORMAT 
 
     use matrixfreeplasticity
-    use solverplasticity3
+    use plasticitysolver3
     use datastructure
     implicit none 
     ! Input / output data
@@ -733,7 +733,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                             threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
-    use solverplasticity2
+    use plasticitysolver2
     use datastructure
     implicit none 
     ! Input / output data
@@ -834,7 +834,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
 
     use matrixfreeplasticity
-    use solverplasticity3
+    use plasticitysolver3
     use datastructure
     implicit none 
     ! Input / output data

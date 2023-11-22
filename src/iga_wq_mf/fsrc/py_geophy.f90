@@ -229,7 +229,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
     
     use matrixfreeheat
-    use solverheat3
+    use heatsolver3
     use datastructure
 
     implicit none 
@@ -400,7 +400,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
     
     use matrixfreeheat
-    use solverheat2
+    use heatsolver2
     use datastructure
 
     implicit none 
