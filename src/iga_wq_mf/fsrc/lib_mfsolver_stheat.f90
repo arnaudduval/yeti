@@ -332,33 +332,33 @@ module stheatsolver2
     use matrixfreestheat
     use datastructure
     type stcgsolver
-        integer :: dimen = 4
+        integer :: dimen = 3
         type(structure) :: temp_struct
     end type stcgsolver
 
 contains
 
-    subroutine matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, array_in, array_out)
+    subroutine matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, array_in, array_out)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(stthermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t, indj_T_u, indj_T_v, indj_T_w, indj_T_t
-        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1), &
-                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_t, indj_T_u, indj_T_v, indj_T_t
+        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_t(nc_t+1), &
+                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
 
-        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+        integer, intent(in) :: indi_u, indi_v, indi_t, indj_u, indj_v, indj_t
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
 
         double precision, intent(in) :: array_in
         dimension :: array_in(nr_total)
@@ -370,37 +370,37 @@ contains
         ! ----------
         double precision :: tmp(nr_total)
 
-        call mf_partialt_u_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                                nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
-                                data_W_w, data_W_t, array_in, array_out)
+        call mf_partialt_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
+                                indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
+                                data_W_t, array_in, array_out)
 
-        call mf_gradx_u_gradx_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                                nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
-                                data_W_w, data_W_t, array_in, tmp)
+        call mf_gradx_u_gradx_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
+                                indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
+                                data_W_t, array_in, tmp)
 
         array_out = array_out + tmp
 
     end subroutine matrixfree_spMdV
 
-    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table)
+    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
+                data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(stcgsolver) :: solv
-        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t
-        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2), &
-                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t)
+        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+        integer, intent(in) :: indi_u, indi_v, indi_t, indj_u, indj_v, indj_t
+        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1), &
+                        indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+        double precision, intent(in) :: data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t
+        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_t(nnz_t, 2), &
+                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t)
         logical, intent(in) :: table
         dimension :: table(solv%dimen, 2)
         
@@ -409,12 +409,12 @@ contains
         double precision :: dummymean(solv%dimen)
 
         solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
-        call init_4datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                            nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
+        call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+                            indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
         call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
-        !! diageigvalues has not been created
+        call time_schurdecomposition(solv%temp_struct)
     
     end subroutine initializefastdiag
 
@@ -459,10 +459,10 @@ contains
     
         ! Local data
         ! ----------
-        integer :: nr_u, nr_v, nr_w, nr_t, i, j, k, l
+        integer :: nr_u, nr_v, nr_t, i, j, l
         double precision, allocatable, dimension(:, :) :: identity
         double precision, allocatable, dimension(:) :: tmp, tmp1, tmp2, tmp3, btmp, sol
-        integer, allocatable, dimension(:, :, :, :) :: dof
+        integer, pointer, dimension(:, :, :) :: dof
         integer, allocatable, dimension(:) :: indices 
         double precision :: eigval
         integer :: nrows(solv%dimen)
@@ -470,16 +470,16 @@ contains
         array_out = 0.d0
 
         nrows = solv%temp_struct%nrows
-        nr_u = nrows(1); nr_v = nrows(2); nr_w = nrows(3); nr_t = nrows(4)
-        dof  = reshape(solv%temp_struct%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
+        nr_u = nrows(1); nr_v = nrows(2); nr_t = nrows(3)
+        allocate(dof(nr_u, nr_v, nr_t))
+        dof  = reshape(solv%temp_struct%dof, shape=(/nr_u, nr_v, nr_t/))
 
-        ! Compute (Ut x Uw x Uv x Uu)'.array_in
-        allocate(tmp(nr_u*nr_v*nr_w*nr_t), identity(nr_t, nr_t))
+        ! Compute (Ut x Uv x Uu)'.array_in
+        allocate(tmp(nr_u*nr_v*nr_t), identity(nr_t, nr_t))
 
-        call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
-                        transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
                         identity, array_in(solv%temp_struct%dof), tmp)
 
         allocate(tmp1(nr_total))
@@ -488,26 +488,23 @@ contains
 
         allocate(btmp(nr_t), sol(nr_t), indices(nr_t), tmp2(nr_total))
         tmp2 = 0.d0
-        do k = 1, nr_w
-            do j = 1, nr_v
-                do i = 1, nr_u
-                    l = i + (j - 1)*nr_u + (k - 1)*nr_u*nr_v
-                    eigval = solv%temp_struct%diageigval_sp(l)
-                    indices = dof(i, j, k, :)
-                    btmp = tmp1(indices)
-                    call solve_schurtriangular__(solv, nr_t, (/1.d0, eigval/), btmp, sol)
-                    tmp2(indices) = sol
-                end do
+        do j = 1, nr_v
+            do i = 1, nr_u
+                l = i + (j - 1)*nr_u
+                eigval = solv%temp_struct%diageigval_sp(l)
+                indices = dof(i, j, :)
+                btmp = tmp1(indices)
+                call solve_schurtriangular__(solv, nr_t, (/1.d0, eigval/), btmp, sol)
+                tmp2(indices) = sol
             end do
-        end do  
+        end do
         deallocate(tmp1)
 
-        ! Compute (Ut x Uw x Uv x Uu).array_tmp
-        allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+        ! Compute (Ut x Uv x Uu).array_tmp
+        allocate(tmp3(nr_u*nr_v*nr_t))
+        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-                        solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
                         identity, tmp2(solv%temp_struct%dof), tmp3)
         array_out(solv%temp_struct%dof) = tmp3
         deallocate(tmp2, tmp3)
@@ -526,31 +523,30 @@ contains
 
     end subroutine clear_dirichlet
 
-    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbIterPCG, threshold, b, x, resPCG)
+    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(stcgsolver) :: solv
         type(stthermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
 
-        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w, indj_t
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+        integer, intent(in) :: indi_u, indi_v, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
 
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
@@ -575,19 +571,19 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, p, Ap)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, p, Ap)
 
             call clear_dirichlet(solv, nr_total, Ap)
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, s, As)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, s, As)
             call clear_dirichlet(solv, nr_total, As)
             omega = dot_product(As, s)/dot_product(As, As)
             x = x + alpha*p + omega*s
@@ -604,31 +600,30 @@ contains
 
     end subroutine BiCGSTAB
 
-    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbIterPCG, threshold, b, x, resPCG)
+    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, nbIterPCG, threshold, b, x, resPCG)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(stcgsolver) :: solv
         type(stthermomat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
 
-        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w, indj_t
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+        integer, intent(in) :: indi_u, indi_v, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
 
         integer, intent(in) :: nbIterPCG
         double precision, intent(in) :: threshold, b
@@ -655,20 +650,20 @@ contains
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, ptilde, Aptilde)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, ptilde, Aptilde)
             call clear_dirichlet(solv, nr_total, Aptilde)
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, stilde, Astilde)
+            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, stilde, Astilde)
             call clear_dirichlet(solv, nr_total, Astilde)
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
             x = x + alpha*ptilde + omega*stilde
@@ -775,7 +770,7 @@ contains
                             indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
         call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
-        !! diageigvalues has not been created
+        call time_schurdecomposition(solv%temp_struct)
     
     end subroutine initializefastdiag
 
@@ -832,6 +827,7 @@ contains
 
         nrows = solv%temp_struct%nrows
         nr_u = nrows(1); nr_v = nrows(2); nr_w = nrows(3); nr_t = nrows(4)
+        allocate(dof(nr_u, nr_v, nr_w, nr_t))
         dof  = reshape(solv%temp_struct%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
 
         ! Compute (Ut x Uw x Uv x Uu)'.array_in
