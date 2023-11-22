@@ -389,7 +389,6 @@ class mechaproblem1D(part1D):
 		nbqp = self.nbqp; dof = self.dof; dod = self.dod
 		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
 		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
-		stress, Cep = np.zeros((1, nbqp)), np.zeros((1, nbqp))
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))
@@ -447,7 +446,7 @@ class mechaproblem1D(part1D):
 			Allstrain[:, i] = np.ravel(strain)
 			Allstress[:, i] = np.ravel(stress)
 			Allplseq[:, i]  = a_n1
-			AllCep[:, i] = np.ravel(Cep)
+			AllCep[:, i]    = np.ravel(Cep)
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 

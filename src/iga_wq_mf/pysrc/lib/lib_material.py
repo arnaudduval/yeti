@@ -234,7 +234,7 @@ class mechamat(material):
 		stress_trial = self.evalElasticStress(strain_trial, dim=dim)
 
 		# Compute shifted stress
-		eta_trial = computeDeviatoric4All(stress_trial - np.sum(beta_n0, axis=0))
+		eta_trial = computeDeviatoric4All(stress_trial - np.sum(beta_n0, axis=0), dim=dim)
 
 		# Check yield status
 		norm_eta_trial = computeSymTensorNorm4All(eta_trial, dim)
@@ -360,10 +360,10 @@ def computeTrace4All(arrays, dim):
 	return trace
 
 def computeDeviatoric4All(arrays, dim):
-	nnz = np.size(arrays, axis=1)
+	devarray = np.copy(arrays)
 	trace = computeTrace4All(arrays, dim)/3.0
-	for i in range(dim): arrays[i, :] -= trace
-	return trace
+	for i in range(dim): devarray[i, :] -= trace
+	return devarray
 
 def computeSymDoubleContraction4All(arrays1, arrays2, dim):
 	nnz = np.size(arrays1, axis=1) # or arrays2
@@ -373,7 +373,7 @@ def computeSymDoubleContraction4All(arrays1, arrays2, dim):
 		s += arrays1[i, :]*arrays2[i, :]
 	for i in range(dim, nvgt):
 		s += 2*arrays1[i, :]*arrays2[i, :]
-	return
+	return s
 
 def computeSymTensorNorm4All(arrays, dim):
 	s = computeSymDoubleContraction4All(arrays, arrays, dim)

@@ -399,21 +399,19 @@ class mechaproblem(problem):
 	
 	def solvePlasticityProblem(self, dispinout, Fext_list): 
 
-		if not self.mechamaterial._isPlasticityPossible: raise Warning('Plasticity not defined')
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
+		nbChaboche = self.mechamaterial._chabocheNBparameters
 		nbqp_total = self.part.nbqp_total
 		nsteps = np.shape(Fext_list)[2]
 
 		# Internal variables
 		pls_n0 = np.zeros((nvoigt, nbqp_total))
 		a_n0   = np.zeros(nbqp_total)
-		b_n0   = np.zeros((nvoigt, nbqp_total))
+		b_n0   = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		pls_n1 = np.zeros((nvoigt, nbqp_total))
 		a_n1   = np.zeros(nbqp_total)
-		b_n1   = np.zeros((nvoigt, nbqp_total))
-		stress = np.zeros((nvoigt, nbqp_total))
-		mechArgs = np.zeros((2*nvoigt+4, nbqp_total))
+		b_n1   = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		
 		# Output variables
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
@@ -444,9 +442,9 @@ class mechaproblem(problem):
 				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
-				output, isElasticLoad = self.mechamaterial.returnMappingAlgorithm(strain, pls_n0, a_n0, b_n0)
-				stress, pls_n1, a_n1 = output[:nvoigt, :], output[nvoigt:2*nvoigt, :], output[2*nvoigt, :]
-				b_n1, mechArgs = output[2*nvoigt+1:3*nvoigt+1, :], output[3*nvoigt+1:, :]
+				output, isElasticLoad = self.mechamaterial.J2returnMappingAlgorithm3D(strain, pls_n0, a_n0, b_n0)
+				stress = output['stress']; pls_n1 = output['pls']; a_n1 = output['alpha']
+				b_n1 = output['beta']; mechArgs = output['mechArgs']
 
 				# Compute internal force 
 				Fint_dj = self.compute_MechStaticIntForce(stress)
