@@ -325,10 +325,12 @@ subroutine solve_complex_uppertriangular_system(nr, A, b, x)
 
     ! Local data
     ! ----------
-    integer :: info
+    integer :: nhrs, info
+    double complex :: tmp(nr, 1)
 
-    x = b
-    call ctrtrs('U', 'N', 'N', nr, 1, A, nr, b, x, info)
+    tmp(:, 1) = b; nhrs = 1
+    call ztrtrs('U', 'N', 'N', nr, nhrs, A, nr, tmp, nr, info)
+    x = tmp(:, 1)
 
 end subroutine solve_complex_uppertriangular_system
 

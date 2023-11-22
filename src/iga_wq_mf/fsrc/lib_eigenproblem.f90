@@ -60,16 +60,17 @@ subroutine compute_schurdecomp_gc(nr, A, B, U, V, S, T)
     ! Local data
     ! ----------
     double complex :: alpha(nr), beta(nr)
-    double precision :: rwork(8*nr)
-    logical :: bwork(nr)
+    logical :: bwork(nr), selctg
+    double precision, allocatable, dimension(:) :: rwork
     double complex, allocatable, dimension(:) :: work
-    integer :: info, lwork
+    integer :: lwork, sdim, info
 
-    lwork = 2*nr
-    allocate(work(lwork))
     S = dcmplx(A); T = dcmplx(B)
-    call cgges('V', 'V', 'N', .false., nr, S, nr, T, nr, 0, alpha, beta, U, nr, V, nr, work, lwork, rwork, bwork, info)
-
+    allocate(work(2*nr), rwork(8*nr))
+    lwork = size(work)
+    call zgges('V', 'V', 'N', selctg, nr, S, nr, T, nr, sdim, alpha, beta, &
+                U, nr, V, nr, work, lwork, rwork, bwork, info)
+    
 end subroutine compute_schurdecomp_gc
 
 subroutine power_iteration(nr, A, x, rho, nbIter)

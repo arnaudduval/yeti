@@ -103,10 +103,10 @@ contains
         ! ----------
         double complex :: uptrg(nr, nr), Vb(nr), sol(nr), Usol(nr)
 
-        Vb = matmul(solv%temp_struct%Rschur_tm, dcmplx(b))
+        Vb = matmul(transpose(conjg(solv%temp_struct%Lschur_tm)), dcmplx(b))
         uptrg = dcmplx(coefs(1))*solv%temp_struct%Luptr_tm + dcmplx(coefs(2))*solv%temp_struct%Ruptr_tm
         call solve_complex_uppertriangular_system(nr, uptrg, Vb, sol)
-        Usol = matmul(conjg(transpose(solv%temp_struct%Lschur_tm)), sol)
+        Usol = matmul(solv%temp_struct%Rschur_tm, sol)
         x = realpart(Usol)
 
     end subroutine solve_schurtriangular__
