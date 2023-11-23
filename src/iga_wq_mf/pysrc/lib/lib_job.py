@@ -406,10 +406,10 @@ class mechaproblem(problem):
 
 		# Internal variables
 		pls_n0 = np.zeros((nvoigt, nbqp_total))
-		a_n0   = np.zeros(nbqp_total)
+		a_n0   = np.zeros((1, nbqp_total))
 		b_n0   = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		pls_n1 = np.zeros((nvoigt, nbqp_total))
-		a_n1   = np.zeros(nbqp_total)
+		a_n1   = np.zeros((1, nbqp_total))
 		b_n1   = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		
 		# Output variables
@@ -472,7 +472,7 @@ class mechaproblem(problem):
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
 			Allstrain[:, :, i] = strain
-			Allhardening[0, :, i] = a_n1
+			Allhardening[0, :, i] = a_n1[0, :]
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 

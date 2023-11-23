@@ -171,7 +171,7 @@ class mechamat(material):
 
 	def __sumOverChabocheTable(self, dgamma, beta):
 		avrbeta = np.zeros(np.shape(beta[0, :, :])); hatbeta = np.zeros(np.shape(beta[0, :, :]))
-		const1, const2 = np.zeros(len(dgamma)), np.zeros(len(dgamma))
+		const1, const2 = np.zeros(shape=np.shape(dgamma)), np.zeros(shape=np.shape(dgamma))
 		for i in range(self._chabocheNBparameters):
 			[bi, ci] = self._chabocheTable[i, :]
 			avrbeta += beta[i, :, :]/(1 + bi*dgamma)
@@ -193,7 +193,7 @@ class mechamat(material):
 			df = np.sqrt(3.0/2.0)*normhatetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)
 			dgamma_ref -= f/df
 			resNRj = np.sqrt(np.abs(np.dot(dgamma_ref, f)))
-			if k == 1: resNR0 = resNRj
+			if k == 0: resNR0 = resNRj
 			if resNRj <= threshold*resNR0: break 
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
 
@@ -241,7 +241,7 @@ class mechamat(material):
 		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
 		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
 
-		plsInd = np.nonzero(f_trial>threshold)[0]
+		plsInd = np.nonzero(np.ravel(f_trial)>threshold)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
@@ -274,7 +274,7 @@ class mechamat(material):
 	# 1D
 	def __parametersPreCalc1D(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
 		
-		dgamma = np.zeros(len(alpha_n0)); alpha_n1 = np.copy(alpha_n0); dgamma_ref = np.copy(dgamma)
+		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0); dgamma_ref = np.copy(dgamma)
 		for k in range(nbIter):
 			avrbeta, hatbeta, const1, const2 = self.__sumOverChabocheTable(dgamma, beta_n0)
 			hateta = stress_trial - avrbeta
@@ -284,8 +284,8 @@ class mechamat(material):
 			normhatetaders = normal*hatbeta
 			df = normhatetaders - (self.elasticmodulus + const2) - self._isoHardening._isohardfunders(alpha_n1)
 			dgamma_ref -= f/df
-			resNRj = np.sqrt(np.abs(np.dot(dgamma_ref, f)))
-			if k == 1: resNR0 = resNRj
+			resNRj = np.sqrt(np.abs(np.dot(np.ravel(dgamma_ref), np.ravel(f))))
+			if k == 0: resNR0 = resNRj
 			if resNRj <= threshold*resNR0: break 
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
 
@@ -305,7 +305,6 @@ class mechamat(material):
 	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-9):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
-		nnz = len(alpha_n0)
 		isElasticLoad = True; output = {}
 
 		# Compute trial stress
@@ -321,32 +320,33 @@ class mechamat(material):
 		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
 		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
 
-		plsInd = np.nonzero(f_trial>threshold)[0]
+		plsInd = np.nonzero(np.ravel(f_trial)>threshold)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
 
 			# Compute plastic-strain increment
 			dgamma, hatbeta, normal, theta = self.__parametersPreCalc1D(stress_trial[:, plsInd], 
-															beta_n0[:, :, plsInd], alpha_n0[plsInd])
+															beta_n0[:, :, plsInd], alpha_n0[:, plsInd])
 
 			# Update internal hardening variable
-			alpha_n1[plsInd] = alpha_n1[plsInd] + dgamma
+			alpha_n1[:, plsInd] += dgamma
 
 			# Update stress
-			stress_n1[plsInd] = stress_trial[plsInd] - self.elasticmodulus*dgamma*normal
+			stress_n1[:, plsInd] -= self.elasticmodulus*dgamma*normal
 			
 			# Update plastic strain
-			pls_n1[:, plsInd] = pls_n0[:, plsInd] + dgamma*normal
+			pls_n1[:, plsInd] += dgamma*normal
 
 			# Update backstress
 			for i in range(self._chabocheNBparameters):
 				[bi, ci] = self._chabocheTable[i, :]
-				beta_n1[i, :, plsInd] = (beta_n1[i, :, plsInd] + ci*dgamma*normal)/(1 + bi*dgamma)
+				for j, ind in enumerate(plsInd):
+					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
 
 			plsVars = {"plsInd": plsInd, "normal": normal, "hatbeta": hatbeta, "theta": theta}
 
-		mechArgs = self.__consistentTangentAlgorithm1D(nnz, isElasticLoad, plsVars)
+		mechArgs = self.__consistentTangentAlgorithm1D(np.size(alpha_n0, axis=1), isElasticLoad, plsVars)
 		output = {"stress": stress_n1, "pls": pls_n1, "alpha": alpha_n1, "beta": beta_n1, "mechArgs": mechArgs}
 
 		return output, isElasticLoad

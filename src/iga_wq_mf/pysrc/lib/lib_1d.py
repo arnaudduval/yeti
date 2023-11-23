@@ -363,8 +363,8 @@ class mechaproblem1D(problem1D):
 
 		nbChaboche = self.mechamat._chabocheNBparameters
 		nbqp = self.nbqp; dof = self.dof; dod = self.dod
-		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
-		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros(nbqp), np.zeros((nbChaboche, 1, nbqp))
+		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
+		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))

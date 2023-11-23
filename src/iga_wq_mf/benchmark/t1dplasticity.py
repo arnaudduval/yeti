@@ -37,9 +37,9 @@ def simulate(degree, nbel, args, step=-2):
 	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	displacement = np.zeros(np.shape(Fext_list))
-	blockPrint()
+	# blockPrint()
 	strain, stress, plasticeq, Cep = modelPhy.solvePlasticityProblem(displacement, Fext_list[:, :step+1])
-	enablePrint()
+	# enablePrint()
 	return model2return, displacement[:, :step+1], stress, plasticeq
 
 
