@@ -412,7 +412,7 @@ class mechaproblem1D(problem1D):
 				resNRj = abs(np.dot(d_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj <= self._thresholdNR*resNR0: break
+				if resNRj <= max([self._thresholdNR*resNR0, 1e-14]): break
 				if j > 0 and isElasticLoad: break
 				
 				# Update active control points

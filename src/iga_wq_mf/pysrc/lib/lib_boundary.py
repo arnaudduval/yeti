@@ -30,7 +30,7 @@ class boundaryCondition():
 
 		# Get number of degree of freedom (DOF) per node
 		nbDOF = np.shape(tablecopy)[2]
-		assert np.shape(tablecopy)[0] > dimen and np.shape(tablecopy)[1] == 2, 'Table is not well defined'
+		assert np.shape(tablecopy)[0] >= dimen and np.shape(tablecopy)[1] == 2, 'Table is not well defined'
 
 		# Find nodes
 		INC = get_INCTable(nbctrlpts)

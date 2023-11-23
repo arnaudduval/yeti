@@ -181,18 +181,20 @@ class mechamat(material):
 		return avrbeta, hatbeta, const1, const2
 
 	def __parametersPreCalc3D(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
-		
-		dgamma = np.zeros(len(alpha_n0)); alpha_n1 = np.copy(alpha_n0); dgamma_ref = np.copy(dgamma)
+		nvoigt, nnz = np.shape(stress_trial)
+		if nvoigt   == 3: dim = 2
+		elif nvoigt == 6: dim = 3
+		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0); dgamma_ref = np.copy(dgamma)
 		for k in range(nbIter):
 			avrbeta, hatbeta, const1, const2 = self.__sumOverChabocheTable(dgamma, beta_n0)
-			hateta = computeDeviatoric4All(stress_trial - avrbeta)
-			normhateta = computeSymTensorNorm4All(hateta)
+			hateta = computeDeviatoric4All(stress_trial - avrbeta, dim=dim)
+			normhateta = computeSymTensorNorm4All(hateta, dim=dim)
 			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
 			normal = hateta/normhateta
-			normhatetaders = computeSymDoubleContraction4All(normal, hatbeta)
+			normhatetaders = computeSymDoubleContraction4All(normal, hatbeta, dim=dim)
 			df = np.sqrt(3.0/2.0)*normhatetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)
 			dgamma_ref -= f/df
-			resNRj = np.sqrt(np.abs(np.dot(dgamma_ref, f)))
+			resNRj = np.sqrt(np.abs(np.dot(np.ravel(dgamma_ref), np.ravel(f))))
 			if k == 0: resNR0 = resNRj
 			if resNRj <= threshold*resNR0: break 
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
@@ -209,7 +211,7 @@ class mechamat(material):
 			mechArgs[0, :] = self.lame_lambda; mechArgs[1, :] = self.lame_mu
 		else:
 			plsInd = plsVars["plsInd"]; normal = plsVars["normal"]; hatbeta = plsVars["hatbeta"]
-			theta = plsVars["theta"]; thetatilde = plsVars["thetatilde"]
+			theta  = np.ravel(plsVars["theta"]); thetatilde = np.ravel(plsVars["thetatilde"])
 			nvoigt = np.size(hatbeta, axis=0)
 			mechArgs = np.zeros((4+2*nvoigt, nnz))
 			mechArgs[0, :] = self.lame_lambda; mechArgs[0, plsInd] += 2.0/3.0*self.lame_mu*theta 
@@ -248,22 +250,23 @@ class mechamat(material):
 
 			# Compute plastic-strain increment
 			dgamma, hatbeta, normal, theta, thetatilde = self.__parametersPreCalc3D(stress_trial[:, plsInd], 
-															beta_n0[:, :, plsInd], alpha_n0[plsInd])
+															beta_n0[:, :, plsInd], alpha_n0[:, plsInd])
 
 			# Update internal hardening variable
-			alpha_n1[plsInd] = alpha_n1[plsInd] + dgamma
+			alpha_n1[:, plsInd] += dgamma
 
 			# Update stress
-			stress_n1[plsInd] = stress_trial[plsInd] - 2*self.lame_mu*np.sqrt(3.0/2.0)*dgamma*normal
+			stress_n1[:, plsInd] -= 2*self.lame_mu*np.sqrt(3.0/2.0)*dgamma*normal
 			
 			# Update plastic strain
-			pls_n1[:, plsInd] = pls_n0[:, plsInd] + np.sqrt(3.0/2.0)*dgamma*normal
+			pls_n1[:, plsInd] += np.sqrt(3.0/2.0)*dgamma*normal
 
 			# Update backstress
 			for i in range(self._chabocheNBparameters):
 				[bi, ci] = self._chabocheTable[i, :]
-				beta_n1[i, :, plsInd] = (beta_n1[i, :, plsInd] + np.sqrt(3.0/2.0)*ci*dgamma*normal)/(1 + bi*dgamma)
-
+				for j, ind in enumerate(plsInd):
+					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + np.sqrt(3.0/2.0)*ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
+					
 			plsVars = {"plsInd": plsInd, "normal": normal, "hatbeta": hatbeta, "theta": theta, "thetatilde": thetatilde}
 
 		mechArgs = self.__consistentTangentAlgorithm3D(nnz, isElasticLoad, plsVars)
