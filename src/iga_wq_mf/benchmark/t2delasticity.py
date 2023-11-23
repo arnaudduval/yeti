@@ -24,7 +24,7 @@ TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
-		'plasticLaw': {'Isoname':'none'}}
+		'isoHardLaw': {'Isoname':'none'}}
 SOLVERARGS  = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
 isReference = False
 

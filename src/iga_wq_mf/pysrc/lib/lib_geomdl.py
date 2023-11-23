@@ -23,7 +23,7 @@ class Geomdl():
 
 		info  = {}
 		dimen = self._dim
-		if obj is None: raise Warning('Geometry unknown')
+		assert obj is not None, 'Geometry unknown'
 
 		# Set degree
 		degree = np.ones(3, dtype= int)

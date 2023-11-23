@@ -26,10 +26,9 @@ class material():
 	def setScalarProperty(self, inpt, isIsotropic=False):
 		if isIsotropic:
 			# Isotropic material 
-			if np.isscalar(inpt): 		
-				prop = lambda x: inpt*np.ones(np.max(np.shape(x)))
-			else: 
-				raise Warning('Not possible')
+			assert np.isscalar(inpt), 'Not possible'
+			prop = lambda x: inpt*np.ones(np.max(np.shape(x)))
+
 		elif callable(inpt):
 			# Anisotropic material using a continuous function
 			prop = lambda x: inpt(x)

@@ -224,8 +224,8 @@ class WeightedQuadrature(QuadratureRules):
 		
 		return [B0shape, B1shape]
 	
-	def evalDersBasisWeights(self):	
-		if self._wqType not in [1, 2]: raise Warning('Method unknown')
+	def evalDersBasisWeights(self):
+		assert self._wqType in [1, 2], 'Method unknown'
 		size_data = (self.degree + 1)*self.nbqp
 		basis   = np.zeros((size_data, 2))
 		weights = np.zeros((size_data, 4))

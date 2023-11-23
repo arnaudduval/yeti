@@ -67,17 +67,17 @@ def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
 	"""
 	nnz = np.size(data, axis=0); ncols = np.size(data, axis=1)
 	lenOfNewRow = np.size(data_in, axis=0) 
-	if lenOfNewRow != len(indj_in): raise Warning('Size problem')
-	if (row2in > len(indi)) or (row2in < 1): raise Warning('Not possible')
+	assert lenOfNewRow == len(indj_in), 'Size problem'
+	assert (row2in < len(indi)) and (row2in > 1), 'This is not a possible configuration'
 
 	data_out = np.zeros((nnz+lenOfNewRow, ncols))
 	indj_out = np.zeros(nnz+lenOfNewRow, dtype=int)
 	indi_out = np.ones(len(indi)+1, dtype=int)
 
 	left  = indi[row2in-1] - 1
-	indj_out[0:left] = indj[0:left];               data_out[0:left, :] = data[0:left, :]
-	indj_out[left:left+lenOfNewRow] = indj_in;     data_out[left:left+lenOfNewRow, :] = data_in
-	indj_out[left+lenOfNewRow:]   = indj[left:]; data_out[left+lenOfNewRow:, :]   = data[left:, :]
+	indj_out[0:left] = indj[0:left];           data_out[0:left, :] = data[0:left, :]
+	indj_out[left:left+lenOfNewRow] = indj_in; data_out[left:left+lenOfNewRow, :] = data_in
+	indj_out[left+lenOfNewRow:] = indj[left:]; data_out[left+lenOfNewRow:, :]   = data[left:, :]
 
 	left  = row2in
 	indi_out[0:left] = indi[0:left]
@@ -148,8 +148,8 @@ def createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=1):
 	return knotvector
 
 def createAsymmetricalKnotvector_Rmultiplicity(p, nbel, xasym=0.25, multiplicity=1):
-	if nbel <= 1: raise Warning('Not possible. Try higher number of elements')
-	elif nbel == 2: createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=multiplicity)
+	assert nbel > 1, 'Not possible. Try higher number of elements'
+	if nbel == 2: createUniformKnotvector_Rmultiplicity(p, nbel, multiplicity=multiplicity)
 	else:
 		nbel1 = int(np.floor((nbel+1)/2))
 		kv_unique = np.array([])
@@ -255,8 +255,8 @@ def evalDersBasisFortran(degree, knotvector, knots):
 
 def legendreTable(order):
 	" Computes Gauss-Legendre weights and positions in isoparametric space for a given degree "
-	if order <= 10: pos, wgt = basisweights.gauss_quadrature_table(order)
-	else: raise Warning('Not degree found')
+	assert order <= 10, 'Only degrees below 10'
+	pos, wgt = basisweights.gauss_quadrature_table(order)
 	return pos, wgt
 
 def lobattoTable(order):

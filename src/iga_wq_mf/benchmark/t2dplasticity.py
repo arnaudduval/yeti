@@ -24,7 +24,7 @@ NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
-			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
+			'isoHardLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
 SOLVERARGS = {'nbIterationsPCG':150, 'PCGThreshold':1e-10, 'PCGmethod': 'TDC', 'NRThreshold': 1e-9}
 isReference = False
 

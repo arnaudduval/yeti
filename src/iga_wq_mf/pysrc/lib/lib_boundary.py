@@ -6,7 +6,7 @@ class boundaryCondition():
 	def __init__(self, nbctrlpts=np.array([1, 1, 1])):
 		self._nbctrlpts = nbctrlpts
 		self._dim = np.count_nonzero(nbctrlpts>1)
-		if self._dim == 1: raise Warning('Not possible')	
+		assert self._dim != 1, 'Not possible'
 		self.clear_Dirichlet()
 		return
 	
@@ -30,8 +30,7 @@ class boundaryCondition():
 
 		# Get number of degree of freedom (DOF) per node
 		nbDOF = np.shape(tablecopy)[2]
-		if np.shape(tablecopy)[0] < dimen or np.shape(tablecopy)[1] != 2:
-			raise Warning('Table is not well defined')
+		assert np.shape(tablecopy)[0] > dimen and np.shape(tablecopy)[1] == 2, 'Table is not well defined'
 
 		# Find nodes
 		INC = get_INCTable(nbctrlpts)
@@ -79,20 +78,20 @@ class boundaryCondition():
 	def add_DirichletConstTemperature(self, table=None, temperature=0.0):
 		"This function is first tentative of adding constant boundary conditions "
 		table = np.copy(np.array(table, dtype=bool))[:self._dim, :]
-		if not np.any(table == True): raise Warning('At least one blocked face is needed')
+		assert np.any(table == True), 'At least one blocked face is needed'
 		self.__activate_DirichletThermal()
 		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)[0]
 		self.thDirichletTable += table
 		
-		if np.isscalar(temperature): self.thDirichletBound[dod_total] = temperature
-		else: raise Warning('Not possible')
+		assert np.isscalar(temperature), 'Temperature must be scalar'
+		self.thDirichletBound[dod_total] = temperature
 		tmp = np.append(self.thdod, dod_total)
 		self.thdod = np.array(tmp, dtype=int)
 		self.__update_thDirichletBound()
 		return 
 
-	def getThermalBoundaryConditionInfo(self): 
-		if self.thDirichletTable is None: raise Warning('Please define first total Dirichlet boundaries')
+	def getThermalBoundaryConditionInfo(self):
+		assert self.thDirichletTable is not None, 'Please define first total Dirichlet boundaries'
 		self.__update_thDirichletBound()
 		return  self.thdod, self.thDirichletBound[self.thdod], self.thdof
 	
@@ -111,7 +110,7 @@ class boundaryCondition():
 	def add_DirichletDisplacement(self, table=None, displacement=0.0):
 		"This function is first tentative of adding constant boundary conditions "
 		table = np.copy(np.array(table, dtype=bool))[:self._dim, :, :]
-		if not np.any(table == True): raise Warning('At least one blocked face is needed')
+		assert np.any(table == True), 'At least one blocked face is needed'
 		self.__activate_DirichletMechanical()
 		dod_total = self.__get_boundaryNodes(table, self._nbctrlpts, dimen=self._dim)
 		self.mchDirichletTable += table
@@ -120,8 +119,7 @@ class boundaryCondition():
 			for i, dod in enumerate(dod_total):
 				self.mchDirichletBound[dod, i] = displacement*np.ones(len(dod))
 		else: 
-			if np.size(displacement, axis=0) != len(dod_total) and np.size(displacement, axis=1) != len(dod_total[0]): 
-				raise Warning('Not possible')
+			assert np.size(displacement, axis=0) == len(dod_total) or np.size(displacement, axis=1) == len(dod_total[0]), 'Not possible'
 			for i, dod in enumerate(dod_total):
 				self.mchDirichletBound[dod, i] = displacement	
 

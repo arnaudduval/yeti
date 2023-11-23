@@ -27,7 +27,7 @@ class problem():
 	def __getInfo4surfForce(self, nbFacePosition):
 		INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
 		direction, side = get_faceInfo(nbFacePosition)
-		if direction>=2*self.part.dim: raise Warning('Not possible')
+		assert direction < 2*self.part.dim, 'Not possible'
 		valrange = [i for i in range(self.part.dim)]
 		valrange.pop(direction)
 		if side == 0:   CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
@@ -276,14 +276,13 @@ class heatproblem(problem):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 
 		# Compute inital velocity using interpolation
+		assert nsteps > 2, 'At least 2 steps'
 		V_n0 = np.zeros(nbctrlpts_total)
-		if nsteps > 2:
-			dt1 = time_list[1] - time_list[0]
-			dt2 = time_list[2] - time_list[0]
-			factor = dt2/dt1
-			V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		else: raise Warning('At least 2 steps')
-		
+		dt1 = time_list[1] - time_list[0]
+		dt2 = time_list[2] - time_list[0]
+		factor = dt2/dt1
+		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+	
 		AllresPCG = []
 		for i in range(1, nsteps):
 			

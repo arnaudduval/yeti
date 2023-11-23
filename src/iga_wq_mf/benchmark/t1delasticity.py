@@ -17,7 +17,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 YOUNG, CST, LENGTH = 2e11, 4.e8, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':0.3,
-		'plasticLaw': {'Isoname':'none'}}
+		'isoHardLaw': {'Isoname':'none'}}
 MECHAMATERIAL = mechamat(MATARGS)
 
 isReference = False

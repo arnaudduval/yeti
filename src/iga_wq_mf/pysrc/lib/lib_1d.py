@@ -331,6 +331,7 @@ class mechaproblem1D(problem1D):
 		return
 	
 	def activate_mechanical(self, mechamaterial:mechamat):
+		assert isinstance(mechamaterial, mechamat)
 		self.mechamat = mechamaterial
 		return 
 
