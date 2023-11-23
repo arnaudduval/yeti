@@ -5,46 +5,21 @@
 """
 
 from . import *
+from .lib_part import part1D
 from .lib_quadrules import GaussQuadrature, WeightedQuadrature
 from .lib_material import mechamat
 from .lib_base import evalDersBasisFortran, array2csr_matrix
 
-class part1D:
+class problem1D(part1D):
 	def __init__(self, part:BSpline.Curve, kwargs:dict):
 		
-		self.degree     = part.degree
-		self.knotvector = np.array(part.knotvector)
-		self.ctrlpts    = np.array(part.ctrlpts)[:, 0]
-		self.nbctrlpts  = len(self.ctrlpts)
-
-		self.__setQuadratureRules(kwargs.get('quadArgs', {}))
-		self.__setJacobienPhysicalPoints()
+		part1D.__init__(self, part, kwargs)
 		self.addSolverConstraints(kwargs.get('solverArgs', {}))
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
 		self._thresholdNR = solverArgs.get('NRThreshold', 1e-10)
 		self._nbIterNR    = solverArgs.get('nbIterationsNR', 50)
-		return
-	
-	def __setQuadratureRules(self, quadArgs:dict):
-		quadRuleName = quadArgs.get('quadrule', '').lower()
-		if quadRuleName == 'iga':
-			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
-		elif quadRuleName == 'wq':
-			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
-		else: raise Warning('Not found')
-		quadRule.getQuadratureRulesInfo()
-		self.quadRule = quadRule
-		self.basis, self.weights = quadRule.getDenseQuadRules()	
-		self.nbqp = quadRule.nbqp
-		return
-	
-	def __setJacobienPhysicalPoints(self):
-		self.Jqp  = self.basis[1].T @ self.ctrlpts
-		self.detJ = np.abs(self.Jqp)
-		self.invJ = 1.0/self.Jqp
-		self.qpPhy = self.basis[0].T @ self.ctrlpts
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -68,7 +43,7 @@ class part1D:
 	def compute_volForce(self, volfun):
 		" Computes 'volumetric' source vector in 1D "
 		prop = volfun(self.qpPhy)*self.detJ
-		volForce = self.weights[0] @ prop 
+		volForce = self._denseweights[0] @ prop 
 		return volForce
 	
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
@@ -81,8 +56,8 @@ class part1D:
 	
 	def L2projectionCtrlpts(self, u_atqp):
 		" Interpolate control point field (from parametric to physical space) "
-		masse = self.weights[0] @ np.diag(self.detJ) @ self.basis[0].T
-		force = self.weights[0] @ np.diag(self.detJ) @ u_atqp
+		masse = self._denseweights[0] @ np.diag(self.detJ) @ self._densebasis[0].T
+		force = self._denseweights[0] @ np.diag(self.detJ) @ u_atqp
 		massesp   = sp.csr_matrix(masse)
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
@@ -114,7 +89,7 @@ class part1D:
 		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
 		
 		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
-		if isinstance(part_ref, part1D) and isinstance(u_ref, np.ndarray):
+		if isinstance(part_ref, problem1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
 			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
@@ -144,32 +119,32 @@ class part1D:
 		else:          error = np.sqrt(tmp1)
 		return error
 
-class heatproblem1D(part1D):
+class heatproblem1D(problem1D):
 	def __init__(self, part, kwargs:dict):
-		part1D.__init__(self, part, kwargs)	
+		problem1D.__init__(self, part, kwargs)	
 		return
 	
 	def activate_thermal(self, matArgs:dict):
-		part1D.activate_thermal(self, matArgs)
+		problem1D.activate_thermal(self, matArgs)
 		if self.density is None: self.density = lambda x: np.ones(len(x))
 		return 
 	
 	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
 		Ccoefs = Cprop*self.detJ
-		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
 		array_out = C @ array_in
 		return array_out
 	
 	def compute_mfConductivity(self, Kprop, array_in):
 		Kcoefs = Kprop*self.invJ
-		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
+		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
 		array_out = K @ array_in
 		return array_out
 
 	def interpolate_temperature(self, T_ctrlpts):
 		" Interpolate temperature in 1D "
-		T_interp = self.basis[0].T @ T_ctrlpts
+		T_interp = self._densebasis[0].T @ T_ctrlpts
 		return T_interp
 
 	def compute_FourierMatrix(self, Kprop, Cprop, dt, alpha=1.0, isLumped=False):
@@ -181,9 +156,9 @@ class heatproblem1D(part1D):
 		"""
 
 		Kcoefs = Kprop*self.invJ
-		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
+		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
 		Ccoefs = Cprop*self.detJ
-		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
 		tangentM = C + alpha*dt*K
 
@@ -191,11 +166,11 @@ class heatproblem1D(part1D):
 
 	def compute_CattaneoMatrix(self, Kprop, Cprop, Mprop, dt, beta=0.25, gamma=0.5, isLumped=False):
 		Kcoefs = Kprop*self.invJ
-		K = self.weights[-1] @ np.diag(Kcoefs) @ self.basis[1].T 
+		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
 		Ccoefs = Cprop*self.detJ
-		C = self.weights[0] @ np.diag(Ccoefs) @ self.basis[0].T
+		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
 		Mcoefs = Mprop*self.detJ
-		M = self.weights[0] @ np.diag(Mcoefs) @ self.basis[0].T
+		M = self._denseweights[0] @ np.diag(Mcoefs) @ self._densebasis[0].T
 		if isLumped: M = np.diag(M.sum(axis=1))
 		tangentM = M + gamma*dt*C + beta*dt**2*K
 
@@ -350,9 +325,9 @@ class heatproblem1D(part1D):
 
 		return
 
-class mechaproblem1D(part1D):
+class mechaproblem1D(problem1D):
 	def __init__(self, part, kwargs:dict):
-		part1D.__init__(self, part, kwargs)		
+		problem1D.__init__(self, part, kwargs)		
 		return
 	
 	def activate_mechanical(self, mechamaterial:mechamat):
@@ -361,7 +336,7 @@ class mechaproblem1D(part1D):
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
-		strain = self.basis[1].T @ disp * self.invJ
+		strain = self._densebasis[1].T @ disp * self.invJ
 		strain = np.reshape(strain, (1, len(strain)))
 		return strain
 
@@ -370,7 +345,7 @@ class mechaproblem1D(part1D):
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Fint = self.weights[-1] @ np.ravel(stress).T
+		Fint = self._denseweights[-1] @ np.ravel(stress).T
 		return Fint
 
 	def compute_tangentMatrix(self, Cep):
@@ -379,7 +354,7 @@ class mechaproblem1D(part1D):
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
 		coefs = np.ravel(Cep)*self.invJ
-		tangentM = self.weights[-1] @ np.diag(coefs) @ self.basis[1].T 
+		tangentM = self._denseweights[-1] @ np.diag(coefs) @ self._densebasis[1].T 
 		return tangentM
 
 	def solvePlasticityProblem(self, dispinout, Fext_list):

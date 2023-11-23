@@ -9,6 +9,39 @@ from .__init__ import *
 from .lib_base import evalDersBasisFortran
 from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
+class part1D():
+
+	def __init__(self, part:BSpline.Curve, kwargs:dict):
+		
+		self.degree     = part.degree
+		self.knotvector = np.array(part.knotvector)
+		self.ctrlpts    = np.array(part.ctrlpts)[:, 0]
+		self.nbctrlpts  = len(self.ctrlpts)
+
+		self.__setQuadratureRules(kwargs.get('quadArgs', {}))
+		self.__setJacobienPhysicalPoints()
+		return
+	
+	def __setQuadratureRules(self, quadArgs:dict):
+		quadRuleName = quadArgs.get('quadrule', '').lower()
+		if quadRuleName == 'iga':
+			quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
+		elif quadRuleName == 'wq':
+			quadRule = WeightedQuadrature(self.degree, self.knotvector, quadArgs=quadArgs)
+		else: raise Warning('Not found')
+		quadRule.getQuadratureRulesInfo()
+		self.quadRule = quadRule
+		self._densebasis, self._denseweights = quadRule.getDenseQuadRules()	
+		self.nbqp = quadRule.nbqp
+		return
+	
+	def __setJacobienPhysicalPoints(self):
+		self.Jqp  = self._densebasis[1].T @ self.ctrlpts
+		self.detJ = np.abs(self.Jqp)
+		self.invJ = 1.0/self.Jqp
+		self.qpPhy = self._densebasis[0].T @ self.ctrlpts
+		return
+
 class part(): 
 
 	def __init__(self, modelIGA, quadArgs:dict):
@@ -45,13 +78,13 @@ class part():
 	def __read_degree(self, modelIGA:IGAparametrization): 
 		" Reads degree from model "
 		degree = modelIGA._Jpqr.flatten()
-		if any(p == 1 for p in degree[:self.dim]): print('ATTENTION: Model must have at least degree 2')
+		if any(p == 1 for p in degree[:self.dim]): print('ATTENTION: Model must have at least degree 2 when working with weighted quadrature')
 		return degree
 
 	def __read_dimension(self, modelIGA:IGAparametrization):
 		" Reads dimensions from model "
 		dim = modelIGA._dim[0]
-		if dim != 3: print("WARNING: Some functions may have not been well-implemented for 2D geometries")
+		if dim != 3: print("WARNING: Maybe there are functions not well-implemented for 2D geometries")
 		return dim
 
 	def __read_knotvector(self, modelIGA:IGAparametrization):

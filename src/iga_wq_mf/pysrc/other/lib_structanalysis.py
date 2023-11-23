@@ -1,7 +1,7 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_1d import part1D
+from pysrc.lib.lib_1d import problem1D
 
-class Timoshenko(part1D):
+class Timoshenko(problem1D):
 	def __init__(self, part, kwargs:dict):
 		super().__init__(part, kwargs)
 		
@@ -82,17 +82,17 @@ class Timoshenko(part1D):
 		EAdw2 = EAdw * dw
 
 		# Compute sub-matrices
-		K11 = compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._EA)
-		K12 = 0.5*compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw)
+		K11 = compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._EA)
+		K12 = 0.5*compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw)
 		# % K13 = 0
-		K21 = compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw)
-		K22 = (compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._GAKs) 
-				+ 0.5*compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw2))
-		K23 = compute_sub_advention_matrix(self.basis, self.weights, self._GAKs)
+		K21 = compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw)
+		K22 = (compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._GAKs) 
+				+ 0.5*compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw2))
+		K23 = compute_sub_advention_matrix(self._densebasis, self._denseweights, self._GAKs)
 		# % K31 = 0
 		K32 = K23.T
-		K33 = (compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._EI) 
-				+ compute_sub_mass_matrix(self.detJ, self.basis, self.weights, self._GAKs))
+		K33 = (compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._EI) 
+				+ compute_sub_mass_matrix(self.detJ, self._densebasis, self._denseweights, self._GAKs))
 
 		# Assemble matrix 
 		nr   = self.nbctrlpts
@@ -118,19 +118,19 @@ class Timoshenko(part1D):
 		EAdudw2 = EAdw2 + self._EA*du
 
 		# Compute sub-matrices
-		S11 = compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._EA)
-		S12 = compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw)
+		S11 = compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._EA)
+		S12 = compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw)
 		# % K13 = 0
-		S21 = compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw)
-		S22 = (compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._GAKs) 
-				+ 0.5*compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdw2)
-				+ compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, EAdudw2)
+		S21 = compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw)
+		S22 = (compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._GAKs) 
+				+ 0.5*compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdw2)
+				+ compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, EAdudw2)
 		)
-		S23 = compute_sub_advention_matrix(self.basis, self.weights, self._GAKs)
+		S23 = compute_sub_advention_matrix(self._densebasis, self._denseweights, self._GAKs)
 		# % K31 = 0
 		S32 = S23.T
-		S33 = (compute_sub_stiffness_matrix(self.detJ, self.basis, self.weights, self._EI) 
-				+ compute_sub_mass_matrix(self.detJ, self.basis, self.weights, self._GAKs))
+		S33 = (compute_sub_stiffness_matrix(self.detJ, self._densebasis, self._denseweights, self._EI) 
+				+ compute_sub_mass_matrix(self.detJ, self._densebasis, self._denseweights, self._GAKs))
 
 		# Assemble matrix 
 		nr   = self.nbctrlpts
@@ -154,8 +154,8 @@ class Timoshenko(part1D):
 		if np.isscalar(p): p = p*np.ones(nbqp)
 		if np.isscalar(q): q = q*np.ones(nbqp)
 		if len(p) != nbqp or len(q) != nbqp: raise Warning('Not possible')
-		F1 = compute_sub_force_vector(self.detJ, self.weights, p)
-		F2 = compute_sub_force_vector(self.detJ, self.weights, q)
+		F1 = compute_sub_force_vector(self.detJ, self._denseweights, p)
+		F2 = compute_sub_force_vector(self.detJ, self._denseweights, q)
 
 		nr = self.nbctrlpts
 		F  = np.zeros(3*nr)
@@ -187,7 +187,7 @@ class Timoshenko(part1D):
 		
 		for i in range(nbIterNL):
 			# Compute derivative of w
-			dwdx = compute_derivative(self.detJ, self.basis, sol[range(nr, 2*nr)])
+			dwdx = compute_derivative(self.detJ, self._densebasis, sol[range(nr, 2*nr)])
 
 			# Compute stiffness matrix
 			K = self.compute_stiffness(dwdx)
@@ -200,7 +200,7 @@ class Timoshenko(part1D):
 			if errorNL <= threshold: break
 
 			# Compute derivative of u
-			dudx = compute_derivative(self.detJ, self.basis, sol[range(nr)])
+			dudx = compute_derivative(self.detJ, self._densebasis, sol[range(nr)])
 
 			# Compute stiffness
 			S = self.compute_tangentMatrix(dudx, dwdx)[np.ix_(dof, dof)]

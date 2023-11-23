@@ -104,12 +104,23 @@ def get_INCTable(nnzByDimension):
 	" Sets topology table, also known as INC: NURBS coordinates. "
 	# Create INC: NURBS coordinates
 	nnz_total = np.prod(nnzByDimension)
-	table = np.zeros((nnz_total, 3), dtype= int)
-	for i3 in range(nnzByDimension[2]): 
-		for i2 in range(nnzByDimension[1]): 
-			for i1 in range(nnzByDimension[0]):
-				genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1]
-				table[genPos, :] = [i1, i2, i3]
+	table = np.zeros((nnz_total, max([3, len(nnzByDimension)])), dtype= int)
+	if len(nnzByDimension) == 3:
+		for i3 in range(nnzByDimension[2]): 
+			for i2 in range(nnzByDimension[1]): 
+				for i1 in range(nnzByDimension[0]):
+					genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1]
+					table[genPos, :] = [i1, i2, i3]
+	elif len(nnzByDimension) == 4:
+		for i4 in range(nnzByDimension[3]): 
+			for i3 in range(nnzByDimension[2]): 
+				for i2 in range(nnzByDimension[1]): 
+					for i1 in range(nnzByDimension[0]):
+						genPos = i1 + i2*nnzByDimension[0] + i3*nnzByDimension[0]*nnzByDimension[1] + i4*nnzByDimension[0]*nnzByDimension[1]*nnzByDimension[2]
+						table[genPos, :] = [i1, i2, i3, i4]
+
+	else: raise Warning('Try other array')
+
 	return table
 
 # ==========================
