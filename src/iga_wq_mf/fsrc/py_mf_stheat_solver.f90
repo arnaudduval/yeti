@@ -168,7 +168,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
 
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-    call setup_conductivityprop(mat, size(Cprop), Cprop)
+    call setup_capacityprop(mat, size(Cprop), Cprop)
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_t/)
 
@@ -185,12 +185,10 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table)
-                        
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_t, indj_T_t, &
+                        data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
+                        data_W_u, data_W_v, data_W_t, nbIterPCG, threshold, Fext, x, resPCG)
     else 
         stop 'Unknown method' 
     end if
@@ -370,7 +368,7 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
 
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-    call setup_conductivityprop(mat, size(Cprop), Cprop)
+    call setup_capacityprop(mat, size(Cprop), Cprop)
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
 

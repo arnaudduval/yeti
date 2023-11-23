@@ -23,7 +23,7 @@ class stproblem():
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 50)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-10)
+		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-6)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 	

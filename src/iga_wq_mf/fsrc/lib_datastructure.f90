@@ -509,31 +509,33 @@ contains
 
         ! Local data
         ! ----------
-        integer :: nr, nc, nnz, ncols, dimen_tm
+        integer :: nr, nc, nnz, pos_tm
         integer, dimension(:), allocatable :: indi, indj
         double precision, dimension(:), allocatable :: Mdiag, Adiag
         double precision, dimension(:, :), allocatable :: bw
         double precision, dimension(:), allocatable :: univrightcoefs, univleftcoefs
         
-        ncols = maxval(datstruct%ncols)
-        allocate(univrightcoefs(ncols), univleftcoefs(ncols))
-        univrightcoefs = 1.d0; univleftcoefs = 1.d0
-
         if (.not.(datstruct%isspacetime)) stop 'Only for space-time formulation'
-        dimen_tm = datstruct%dimen
-        nr = datstruct%nrows(dimen_tm); nc = datstruct%ncols(dimen_tm); nnz = datstruct%nnzs(dimen_tm)
-        allocate(indi(nr+1), indj(nnz), bw(nnz, 6))
-        indi = datstruct%indi(dimen_tm, 1:nr+1)
-        indj = datstruct%indj(dimen_tm, 1:nnz)
-        bw   = datstruct%bw(dimen_tm, 1:nnz, :)
+        pos_tm = datstruct%dimen
+        nr = datstruct%nrows(pos_tm); nc = datstruct%ncols(pos_tm); nnz = datstruct%nnzs(pos_tm)
+        
+        allocate(univrightcoefs(nc), univleftcoefs(nc), &
+                indi(nr+1), indj(nnz), bw(nnz, 6))
+        univrightcoefs = 1.d0; univleftcoefs = 1.d0
+        indi = datstruct%indi(pos_tm, 1:nr+1)
+        indj = datstruct%indj(pos_tm, 1:nnz)
+        bw   = datstruct%bw(pos_tm, 1:nnz, :)
 
         allocate(datstruct%Lschur_tm(nr, nr), datstruct%Rschur_tm(nr, nr), &
                 datstruct%Luptr_tm(nr, nr), datstruct%Ruptr_tm(nr, nr), &
                 Adiag(nr), Mdiag(nr))
 
         if (allocated(datstruct%univrightcoefs).and.allocated(datstruct%univleftcoefs)) then 
-            call advmass_schurdecomposition(nr, nc, datstruct%univrightcoefs(dimen_tm, 1:nc), &
-                                    datstruct%univleftcoefs(dimen_tm, 1:nc), nnz, indi, indj, &
+            if ((size(datstruct%univrightcoefs, dim=1).lt.pos_tm).or.(size(datstruct%univleftcoefs, dim=1).lt.pos_tm)) then 
+                stop 'Size problem'
+            end if 
+            call advmass_schurdecomposition(nr, nc, datstruct%univrightcoefs(pos_tm, 1:nc), &
+                                    datstruct%univleftcoefs(pos_tm, 1:nc), nnz, indi, indj, &
                                     bw(:, 1:2), bw(:, 3:6), datstruct%Lschur_tm, datstruct%Rschur_tm,&
                                     datstruct%Luptr_tm, datstruct%Ruptr_tm, Adiag, Mdiag)
         else

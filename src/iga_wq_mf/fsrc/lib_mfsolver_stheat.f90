@@ -408,11 +408,11 @@ contains
         ! ----------
         double precision :: dummymean(solv%dimen)
 
-        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
         call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
+        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
         call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
         call time_schurdecomposition(solv%temp_struct)
     
