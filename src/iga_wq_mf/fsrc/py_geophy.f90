@@ -790,7 +790,7 @@ subroutine interpolate_meshgrid_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t,
 
 end subroutine interpolate_meshgrid_4d
 
-subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
+subroutine get_forcevol_st2d(nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
                             indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
                             data_W_u, data_W_v, data_W_t, detJ, detG, prop, array_out)
     !! Computes volumetric force vector in 4D 
@@ -799,7 +799,7 @@ subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, n
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+    integer, intent(in) :: nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_t, indj_t
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -807,7 +807,7 @@ subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, n
     double precision, intent(in) :: data_W_u, data_W_v, data_W_t
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
     double precision, intent(in) :: detJ, detG, prop
-    dimension :: detJ(nc_u*nc_v), detG(nc_t), prop(nm, nc_total)
+    dimension :: detJ(nc_sp), detG(nc_tm), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nm, nr_u*nr_v*nr_t)
@@ -817,6 +817,7 @@ subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, n
     integer :: l, i, j, k
     double precision :: tmp(nc_total)
 
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_t)) stop 'Size problem'
     do l = 1, nm
 
         do j = 1, nc_t
@@ -825,8 +826,7 @@ subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, n
                 tmp(k) = prop(l, k)*detJ(i)*detG(j)
             end do
         end do
-
-        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nc_t, &
+        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                             nnz_v, indi_v, indj_v, data_W_v(:, 1), &
                             nnz_t, indi_t, indj_t, data_W_t(:, 1), &
@@ -835,16 +835,17 @@ subroutine get_forcevol_st2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, n
 
 end subroutine get_forcevol_st2d
 
-subroutine get_forcevol_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                            data_W_u, data_W_v, data_W_w, data_W_t, detJ, detG, prop, array_out)
+subroutine get_forcevol_st3d(nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
+                            nc_t, nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, &
+                            indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, detJ, detG, prop, array_out)
     !! Computes volumetric force vector in 4D 
     !! IN CSR FORMAT
 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    integer, intent(in) :: nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -853,7 +854,7 @@ subroutine get_forcevol_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
     double precision, intent(in) :: detJ, detG, prop
-    dimension :: detJ(nc_u*nc_v*nc_w), detG(nc_t), prop(nm, nc_total)
+    dimension :: detJ(nc_sp), detG(nc_tm), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nm, nr_u*nr_v*nr_w*nr_t)
@@ -862,6 +863,7 @@ subroutine get_forcevol_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     ! ----------
     integer :: l, i, j, k
     double precision :: tmp(nc_total)
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
 
     do l = 1, nm
 
@@ -882,7 +884,7 @@ subroutine get_forcevol_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
 
 end subroutine get_forcevol_st3d
 
-subroutine get_forcesurf_st2d(nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t, &
+subroutine get_forcesurf_st2d(nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t, &
                             indi_u, indj_u, indi_t, indj_t, data_W_u, data_W_t, &
                             JJ, detG, prop, array_out)
     !! Computes boundary force vector in 3D 
@@ -892,14 +894,14 @@ subroutine get_forcesurf_st2d(nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 2
-    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
+    integer, intent(in) :: nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
     integer, intent(in) :: indi_u, indj_u, indi_t, indj_t
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_t(nr_t+1), indj_t(nnz_t)
     double precision, intent(in) :: data_W_u, data_W_t
     dimension :: data_W_u(nnz_u, 4), data_W_t(nnz_t, 4)
     double precision, intent(in) :: JJ, detG, prop
-    dimension :: JJ(dimen_sp, dimen_sp-1, nc_u), detG(nc_t), prop(nm, nc_total)
+    dimension :: JJ(dimen_sp, dimen_sp-1, nc_sp), detG(nc_tm), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nm, nr_u*nr_t)
@@ -909,6 +911,7 @@ subroutine get_forcesurf_st2d(nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
     double precision :: coefs, dsurf, v1
     dimension :: coefs(nm, nc_total), v1(dimen_sp)
     integer :: i, j, k
+    if (nc_total.ne.nc_sp*nc_tm) stop 'Size problem'
 
     ! Compute coefficients
     do i = 1, nc_u
@@ -927,7 +930,7 @@ subroutine get_forcesurf_st2d(nm, nc_total, nr_u, nc_u, nr_t, nc_t, nnz_u, nnz_t
     
 end subroutine get_forcesurf_st2d
 
-subroutine get_forcesurf_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
+subroutine get_forcesurf_st3d(nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
                             indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
                             JJ, detG, prop, array_out)
     !! Computes boundary force vector in 3D 
@@ -937,7 +940,7 @@ subroutine get_forcesurf_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 3
-    integer, intent(in) :: nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+    integer, intent(in) :: nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_t, indj_t
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
@@ -945,7 +948,7 @@ subroutine get_forcesurf_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, 
     double precision, intent(in) :: data_W_u, data_W_v, data_W_t
     dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
     double precision, intent(in) :: JJ, detG, prop
-    dimension :: JJ(dimen_sp, dimen_sp-1, nc_u*nc_v), detG(nc_t), prop(nm, nc_total)
+    dimension :: JJ(dimen_sp, dimen_sp-1, nc_sp), detG(nc_tm), prop(nm, nc_total)
 
     double precision, intent(out) :: array_out
     dimension :: array_out(nm, nr_u*nr_v*nr_t)
@@ -955,6 +958,8 @@ subroutine get_forcesurf_st3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, 
     double precision :: coefs, dsurf, v1, v2, v3
     dimension :: coefs(nm, nc_total), v1(dimen_sp), v2(dimen_sp), v3(dimen_sp)
     integer :: i, j, k
+
+    if (nc_total.ne.nc_sp*nc_tm) stop 'Size problem'
 
     ! Compute coefficients
     do i = 1, nc_u*nc_v

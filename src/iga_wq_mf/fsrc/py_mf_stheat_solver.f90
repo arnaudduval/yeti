@@ -5,7 +5,7 @@
 ! It is implemented conjugated gradient algorithms to solve interpolation problems
 ! ====================================================
 
-subroutine mf_stcapacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+subroutine mf_stcapacity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
                         data_W_t, invJ, detJ, detG, prop, array_in, array_out)
@@ -15,8 +15,8 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen_sp = 3
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
+    integer, parameter :: dimen_sp = 2
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_t
@@ -26,7 +26,7 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     double precision, intent(in) :: invJ, detJ, detG, prop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v), detJ(nc_u*nc_v), detG(nc_t), prop(nc_total)
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), prop(nc_total)
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total)
 
@@ -41,7 +41,7 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc
                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_t(nnz_t)
     double precision :: data_BT_u, data_BT_v, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
-
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
@@ -55,7 +55,7 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc
 
 end subroutine mf_stcapacity_2d
 
-subroutine mf_stconductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+subroutine mf_stconductivity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
                         data_W_t, invJ, detJ, detG, prop, array_in, array_out)
@@ -66,7 +66,7 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_t
@@ -76,8 +76,8 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     double precision, intent(in) :: invJ, detJ, detG, prop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v), detJ(nc_u*nc_v), &
-                detG(nc_t), prop(dimen_sp, dimen_sp, nc_total)
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), &
+                detG(nc_tm), prop(dimen_sp, dimen_sp, nc_total)
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total)
 
@@ -93,12 +93,13 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t
     double precision :: data_BT_u, data_BT_v, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
 
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
     
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-    call setup_conductivityprop(mat, size(prop, dim=3), prop)
+    call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradx_u_gradx_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
@@ -107,7 +108,7 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t
 
 end subroutine mf_stconductivity_2d
 
-subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
                                 data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -123,7 +124,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 2
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_t
@@ -136,7 +137,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     dimension :: table(dimen_sp+1, 2) 
 
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v), detJ(nc_u*nc_v), detG(nc_t), &
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG    
@@ -161,7 +162,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     double precision :: data_BT_u, data_BT_v, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
     
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
@@ -196,7 +197,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
 end subroutine solver_linearspacetime_heat_2d
 
-subroutine mf_stcapacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+subroutine mf_stcapacity_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, &
                         data_W_w, data_W_t, invJ, detJ, detG, prop, array_in, array_out)
@@ -207,7 +208,8 @@ subroutine mf_stcapacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 3
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, &
+                            nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
@@ -218,7 +220,7 @@ subroutine mf_stcapacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     double precision, intent(in) :: invJ, detJ, detG, prop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v*nc_w), detJ(nc_u*nc_v*nc_w), detG(nc_t), prop(nc_total)
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), prop(nc_total)
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total)
 
@@ -234,6 +236,7 @@ subroutine mf_stcapacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
     double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
 
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
@@ -248,7 +251,7 @@ subroutine mf_stcapacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc
 
 end subroutine mf_stcapacity_3d
 
-subroutine mf_stconductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+subroutine mf_stconductivity_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, &
                         data_W_w, data_W_t, invJ, detJ, detG, prop, array_in, array_out)
@@ -259,7 +262,8 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 3
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_w, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
@@ -270,8 +274,8 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     double precision, intent(in) :: invJ, detJ, detG, prop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v*nc_w), detJ(nc_u*nc_v*nc_w), &
-                detG(nc_t), prop(dimen_sp, dimen_sp, nc_total)
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), &
+                detG(nc_tm), prop(dimen_sp, dimen_sp, nc_total)
     double precision, intent(in) :: array_in
     dimension :: array_in(nr_total)
 
@@ -287,13 +291,14 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
     double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
 
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
     
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-    call setup_conductivityprop(mat, size(prop, dim=3), prop)
+    call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradx_u_gradx_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
@@ -302,7 +307,7 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w
 
 end subroutine mf_stconductivity_3d
 
-subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
                                 data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
@@ -318,7 +323,8 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! Input / output data
     ! -------------------
     integer, parameter :: dimen_sp = 3
-    integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
+                            nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
     integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
@@ -332,7 +338,7 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     dimension :: table(dimen_sp+1, 2) 
 
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
-    dimension :: invJ(dimen_sp, dimen_sp, nc_u*nc_v*nc_w), detJ(nc_u*nc_v*nc_w), detG(nc_t), &
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
     character(len=10), intent(in) :: methodPCG
     integer, intent(in) :: nbIterPCG    
@@ -357,7 +363,7 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
     
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+    if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)

@@ -15,7 +15,7 @@ class stproblem():
 		return
 	
 	def _getInputs(self):
-		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, self.time.quadRule.dersIndices, 
+		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, *self.time.quadRule.dersIndices, 
 		   		*self.part.basis, self.time.quadRule.dersBasis, *self.part.weights, self.time.quadRule.dersWeights]
 		return inpts
 
@@ -87,127 +87,99 @@ class stproblem():
 	# 	# if nr == 1: surfForce = np.ravel(surfForce)
 	# 	return # surfForce, CPList
 	
-	# def compute_volForce(self, volfun): 
-	# 	" Computes the volume force over a geometry "
-	# 	# prop = volfun(self.part.qpPhy)
-	# 	# prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
-	# 	# inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
-	# 	# if self.part.dim == 2: volForce = geophy.get_forcevol_2d(*inpts)
-	# 	# if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
-	# 	# if nr == 1: volForce = np.ravel(volForce)
-	# 	return # volForce	
-	
-	# def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
-	# 	""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
-	# 		and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
-	# 		whether the default quadrature is weighted quadrature. 
-	# 	"""	
-	# 	typeNorm = normArgs.get('type', 'l2').lower()
-	# 	if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
+	def compute_volForce(self, volfun, args=None): 
+		" Computes the volume force over a geometry "
+		assert args is not None, 'Please enter a valid argument'
+		prop = volfun(args)
+		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
+		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, *self.time.quadRule.dersIndices, 
+				*self.part.weights, self.time.quadRule.dersWeights, self.part.detJ, self.time.detJ, prop]
+		if self.part.dim == 2: volForce = geophy.get_forcevol_st2d(*inpts)
+		if self.part.dim == 3: volForce = geophy.get_forcevol_st3d(*inpts)
+		if nr == 1: volForce = np.ravel(volForce)
+		return volForce	
 
-	# 	# Compute u interpolation
-	# 	nbqp, quadPts, indices, basis, parametricWeights = [], [], [], [], []
-	# 	for i in range(self.part.dim):
-	# 		quadRule = GaussQuadrature(self.part.degree[i], self.part.knotvector[i], quadArgs={'type':'leg'})
-	# 		quadPtsByDir, indicesByDir, basisByDir, _ = quadRule.getQuadratureRulesInfo()
-	# 		indi, indj = indicesByDir; parweightsByDir = quadRule._parametricWeights
-			
-	# 		nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
-	# 		basis.append(basisByDir); parametricWeights.append(parweightsByDir)
-
-	# 	inpts = [*nbqp, *indices, *basis]
-	# 	if self.part.dim == 2:
-	# 		Jqp = geophy.eval_jacobien_2d(*inpts, self.part.ctrlpts)
-	# 		detJ, invJ = geophy.eval_inverse_det(Jqp)
-	# 		qpPhy = geophy.interpolate_meshgrid_2d(*inpts, self.part.ctrlpts)
-	# 		u_interp = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ctrlpts))
-	# 		derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ctrlpts))
-
-	# 	elif self.part.dim == 3:
-	# 		Jqp = geophy.eval_jacobien_3d(*inpts, self.part.ctrlpts)
-	# 		detJ, invJ = geophy.eval_inverse_det(Jqp)
-	# 		qpPhy = geophy.interpolate_meshgrid_3d(*inpts, self.part.ctrlpts)
-	# 		u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
-	# 		derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
-	
-	# 	u_interp = np.atleast_2d(u_interp); uders_interp = None
-	# 	uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
-
-	# 	# Compute u exact
-	# 	u_exact, uders_exact = None, None
-	# 	exactfun = normArgs.get('exactFunction', None)
-	# 	exactfunders = normArgs.get('exactFunctionDers', None)
-	# 	if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
-	# 	if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(qpPhy))
-
-	# 	part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
-	# 	if isinstance(part_ref, part) and isinstance(u_ref, np.ndarray):
-	# 		nbqpExact, basisExact, indicesExact = [], [], []
-	# 		for i in range(self.part.dim):
-	# 			basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
-	# 			nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-	# 		inpts = [*nbqpExact, *indicesExact, *basisExact]
-	# 		if self.part.dim == 2:   
-	# 			u_exact = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ref))    
-	# 			JqpExact = geophy.eval_jacobien_2d(*inpts, part_ref.ctrlpts)
-	# 			_, invJExact = geophy.eval_inverse_det(JqpExact) 
-	# 			derstemp = geophy.eval_jacobien_2d(*inpts, np.atleast_2d(u_ref))
-	# 		elif self.part.dim == 3: 
-	# 			u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))
-	# 			JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
-	# 			_, invJExact = geophy.eval_inverse_det(JqpExact)
-	# 			derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
-
-	# 		u_exact = np.atleast_2d(u_exact)
-	# 		uders_exact = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJExact))
-
-	# 	# Compute error
-	# 	uedfuf2_l2, uedfuf2_sh1 = 0., 0.
-	# 	ue2_l2, ue2_sh1 = 0., 0.
-
-	# 	if typeNorm == 'l2' or typeNorm == 'h1':
-	# 		uedfuf2_l2 += np.einsum('il->l', (u_exact - u_interp)**2)
-	# 		ue2_l2     += np.einsum('il->l', u_exact**2)
-
-	# 	if typeNorm == 'h1' or typeNorm == 'semih1':
-	# 		uedfuf2_sh1 += np.einsum('ijl->l', (uders_exact - uders_interp)**2)
-	# 		ue2_sh1     += np.einsum('ijl->l', uders_exact**2)
-
-	# 	norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ
-	# 	norm2 = (ue2_l2 + ue2_sh1)*detJ
-
-	# 	norm1 = np.reshape(norm1, tuple(nbqp), order='F')
-	# 	norm2 = np.reshape(norm2, tuple(nbqp), order='F')
-	# 	if self.part.dim == 2: 
-	# 		tmp1 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], norm1)
-	# 		tmp2 = np.einsum('i,j,ij->', parametricWeights[0], parametricWeights[1], norm2)
-	# 	if self.part.dim == 3: 
-	# 		tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm1)
-	# 		tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm2)
-			
-	# 	if isRelative: error = np.sqrt(tmp1/tmp2)
-	# 	else:          error = np.sqrt(tmp1)
-
-	# 	return error
 
 class stheatproblem(stproblem):
-	def __init__(self, heat_material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
-		stproblem.__init__(self, part, boundary, solverArgs)
+	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
+		stproblem.__init__(self, part, tspan, boundary, solverArgs)
 		self.heatmaterial = heat_material
 		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
 		return
 	
-	def compute_mfstConductivity(self, array_in, args=None):
-		return
+	def compute_mfSTConductivity(self, array_in, args=None):
+		assert args is not None, 'Please enter a valid argument'
+		prop = self.heatmaterial.conductivity(args)*self.heatmaterial.density(args)
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
+		if self.part.dim == 2: array_out = stheatsolver.mf_stconductivity_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = stheatsolver.mf_stconductivity_3d(*inpts, array_in)
+		return array_out
 	
-	def compute_mfstCapacity(self, array_in, args=None): 
-		return
+	def compute_mfSTCapacity(self, array_in, args=None):
+		assert args is not None, 'Please enter a valid argument'
+		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
+		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacity_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = stheatsolver.mf_stcapacity_3d(*inpts, array_in)
+		return array_out
 
-	def interpolate_sttemperature(self, T_ctrlpts):
-		return
+	def interpolate_STtemperature(self, T_ctrlpts):
+		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, 
+			*self.time.quadRule.dersIndices, *self.part.basis, self.time.quadRule.dersBasis, 
+			np.atleast_2d(T_ctrlpts)]
+		if self.part.dim == 2:   T_interp = geophy.interpolate_meshgrid_3d(*inpts)
+		elif self.part.dim == 3: T_interp = geophy.interpolate_meshgrid_4d(*inpts)
+		T_interp = np.ravel(T_interp)
+		return T_interp
 
-	def compute_stHeatIntForce(self, temp, flux, args=None):
-		return
+	def compute_STHeatIntForce(self, array_in, args=None):
+		assert args is not None, 'Please enter a valid argument'
+		intForce = self.compute_mfSTCapacity(array_in, args) + self.compute_mfSTConductivity(array_in, args)
+		return intForce
 	
-	def _solveLinearizedstHeatProblem(self, Fext, tsfactor, args=None):
-		return
+	def _solveLinearizedSTHeatProblem(self, Fext, args=None):
+		assert args is not None, 'Please enter a valid argument'
+		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+		Kprop = self.heatmaterial.conductivity(args)
+		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+				self.time.detJ, Cprop, Kprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+		if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
+		if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
+		return temperature, residue
+	
+	def solveFourierSTHeatProblem(self, Tinout, Fext):
+		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
+		dj_n1 = np.copy(Tinout); d_n1ref = np.copy(Tinout)
+		
+		AllresPCG = []
+		for j in range(self._nbIterNR):
+
+			# Compute temperature at each quadrature point
+			temperature = self.interpolate_STtemperature(Tinout)
+		
+			# Compute internal force
+			Fint_dj = self.compute_STHeatIntForce(dj_n1, args=temperature)
+
+			# Compute residue
+			r_dj = Fext - Fint_dj
+			r_dj[dod] = 0.0
+
+			# Solve for active control points
+			resPCGj = np.array([j+1])
+			deltaD, resPCG = self._solveLinearizedSTHeatProblem(r_dj, args=temperature)
+			resPCGj = np.append(resPCGj, resPCG)
+			d_n1ref += deltaD
+
+			# Compute residue of Newton Raphson using an energetic approach
+			resNRj = abs(np.dot(d_n1ref, r_dj))
+			if j == 0: resNR0 = resNRj
+			print('NR error: %.5e' %resNRj)
+			if resNRj <= self._thresholdNR*resNR0: break
+
+			# Update active control points
+			dj_n1 += deltaD
+			AllresPCG.append(resPCGj)
+
+		Tinout = np.copy(dj_n1)
+
+		return AllresPCG

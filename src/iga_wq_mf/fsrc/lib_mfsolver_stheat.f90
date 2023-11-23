@@ -241,7 +241,7 @@ contains
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
                 tmp_1 = tmp_0*coefs(i, j, :)
-                call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
+                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                     nnz_t, indi_t, indj_t, data_W_t(:, 1), & 
