@@ -476,6 +476,10 @@ contains
 
         ! Compute (Ut x Uv x Uu)'.array_in
         allocate(tmp(nr_u*nr_v*nr_t), identity(nr_t, nr_t))
+        identity = 0.d0
+        do i = 1, nr_t
+            identity(i, i) = 1.d0
+        end do
 
         call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
@@ -831,6 +835,10 @@ contains
 
         ! Compute (Ut x Uw x Uv x Uu)'.array_in
         allocate(tmp(nr_u*nr_v*nr_w*nr_t), identity(nr_t, nr_t))
+        identity = 0.d0
+        do i = 1, nr_t
+            identity(i, i) = 1.d0
+        end do
 
         call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
                         transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
