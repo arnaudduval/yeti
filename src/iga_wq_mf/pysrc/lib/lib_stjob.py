@@ -2,7 +2,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat, clean_dirichlet, block_dot_product)
+from .lib_material import (heatmat)
 from .lib_part import part, part1D
 from .lib_boundary import boundaryCondition
 
@@ -26,66 +26,6 @@ class stproblem():
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-4)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
-	
-	# def __getInfo4surfForce(self, nbFacePosition):
-	# 	# INC_ctrlpts = get_INCTable(self.part.nbctrlpts)
-	# 	# direction, side = get_faceInfo(nbFacePosition)
-	# 	# if direction>=2*self.part.dim: raise Warning('Not possible')
-	# 	# valrange = [i for i in range(self.part.dim)]
-	# 	# valrange.pop(direction)
-	# 	# if side == 0:   CPList = np.where(INC_ctrlpts[:, direction] == 0)[0]
-	# 	# elif side == 1: CPList = np.where(INC_ctrlpts[:, direction] == self.part.nbctrlpts[direction]-1)[0]
-	# 	# CPList = list(np.sort(CPList))
-
-	# 	# nnz, indices, basis, weights = [], [], [], []
-	# 	# for _ in valrange:
-	# 	# 	nnz.append(self.part.nbqp[_]); basis.append(self.part.basis[_]); weights.append(self.part.weights[_])
-	# 	# 	indices.append(self.part.indices[2*_]); indices.append(self.part.indices[2*_+1]) 
-	# 	# inpts = [*nnz, *indices, *basis, self.part.ctrlpts[:, CPList]]
-	# 	# if self.part.dim == 2: 
-	# 	# 	Jqp = geophy.eval_jacobien_1d(*inpts)
-	# 	# 	qpPhy = geophy.interpolate_meshgrid_1d(*inpts)
-	# 	# elif self.part.dim == 3:
-	# 	# 	Jqp = geophy.eval_jacobien_2d(*inpts)
-	# 	# 	qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
-	# 	return # nnz, indices, basis, weights, Jqp, qpPhy, CPList
-
-	# def compute_surfForce(self, surffun, nbFacePosition):
-	# 	""" Computes the surface foce over the boundary of a geometry. 
-	# 		The surffun is a Neumann like function, ie, in transfer heat q = -(k grad(T)).normal
-	# 		and in elasticity t = sigma.normal
-	# 	"""
-	# 	# nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfo4surfForce(nbFacePosition)
-	# 	# prop = surffun(qpPhy); prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
-	# 	# inpts = [*nnz, *indices, *weights, Jqp, prop]
-	# 	# if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
-	# 	# elif self.part.dim == 3: tmp = geophy.get_forcesurf_3d(*inpts)
-	# 	# surfForce = np.zeros((nr, self.part.nbctrlpts_total))
-	# 	# surfForce[:, CPList] = tmp
-	# 	# if nr == 1: surfForce = np.ravel(surfForce)
-	# 	return # surfForce, CPList
-	
-	# def compute_surfForce_woNormal(self, gradfun, nbFacePosition):
-	# 	# nnz, indices, _, weights, Jqp, qpPhy, CPList = self.__getInfo4surfForce(nbFacePosition)
-
-	# 	# normal_qpPhy = geophy.eval_normal(Jqp)
-	# 	# if np.any(np.array([0, 3, 4], dtype=int) == nbFacePosition): normal_qpPhy = -normal_qpPhy 
-	# 	# # By the moment I do not why in this surfaces the normal has the wrong sign (the same for 2 and 3 dimensions)
-	# 	# grad_qpPhy = gradfun(qpPhy)
-	# 	# if np.array(grad_qpPhy).ndim == 3:
-	# 	# 	prop = np.einsum('ijl,jl->il', grad_qpPhy, normal_qpPhy)
-	# 	# elif np.array(grad_qpPhy).ndim == 2:
-	# 	# 	prop = np.einsum('jl,jl->l', grad_qpPhy, normal_qpPhy)
-	# 	# else: raise Warning('Size problem')
-
-	# 	# prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
-	# 	# inpts = [*nnz, *indices, *weights, Jqp, prop]
-	# 	# if   self.part.dim == 2: tmp = geophy.get_forcesurf_2d(*inpts)
-	# 	# elif self.part.dim == 3: tmp = geophy.get_forcesurf_3d(*inpts)
-	# 	# surfForce = np.zeros((nr, self.part.nbctrlpts_total))
-	# 	# surfForce[:, CPList] = tmp
-	# 	# if nr == 1: surfForce = np.ravel(surfForce)
-	# 	return # surfForce, CPList
 	
 	def compute_volForce(self, volfun, args=None): 
 		" Computes the volume force over a geometry "
@@ -124,11 +64,11 @@ class stproblem():
 		nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
 		basis.append(basisByDir); parametricWeights.append(parweightsByDir)
 
-		sptimectrlpts = np.zeros((4,self.part.nbctrlpts_total*self.time.nbctrlpts))
+		sptimectrlpts = np.zeros((4, self.part.nbctrlpts_total*self.time.nbctrlpts))
 		iold = 0
 		for i in range(self.time.nbctrlpts):
 			inew = (i + 1)*self.part.nbctrlpts_total
-			sptimectrlpts[:, iold:inew] = np.stack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
+			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
 			iold = np.copy(inew)
 
 		inpts = [*nbqp, *indices, *basis]
@@ -164,16 +104,23 @@ class stproblem():
 				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, time_ref.quadRule.quadPtsPos)
 			nbqpExact.append(len(quadPts[-1])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-			
+
+			sptimectrlpts = np.zeros((4, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
+			iold = 0
+			for i in range(time_ref.nbctrlpts):
+				inew = (i + 1)*part_ref.nbctrlpts_total
+				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
+				iold = np.copy(inew)
+
 			inpts = [*nbqpExact, *indicesExact, *basisExact]
 			if self.part.dim == 2:   
 				u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))    
-				JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
+				JqpExact = geophy.eval_jacobien_3d(*inpts, sptimectrlpts)
 				_, invJExact = geophy.eval_inverse_det(JqpExact) 
 				derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
 			elif self.part.dim == 3: 
 				u_exact = geophy.interpolate_meshgrid_4d(*inpts, np.atleast_2d(u_ref))
-				JqpExact = geophy.eval_jacobien_4d(*inpts, part_ref.ctrlpts)
+				JqpExact = geophy.eval_jacobien_4d(*inpts, sptimectrlpts)
 				_, invJExact = geophy.eval_inverse_det(JqpExact)
 				derstemp = geophy.eval_jacobien_4d(*inpts, np.atleast_2d(u_ref))
 
