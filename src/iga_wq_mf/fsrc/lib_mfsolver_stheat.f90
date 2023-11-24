@@ -861,7 +861,7 @@ contains
 
         ! Compute (Ut x Uw x Uv x Uu).array_tmp
         allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
-        call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+        call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
                         solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
                         solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
@@ -1008,7 +1008,6 @@ contains
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.lt.threshold) return
-
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)

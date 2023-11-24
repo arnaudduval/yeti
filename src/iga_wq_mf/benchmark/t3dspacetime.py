@@ -12,13 +12,13 @@ def conductivityProperty(temperature):
 	Kprop = np.zeros((3, 3, len(temperature)))
 	for i in range(3): 
 		for j in range(3):
-			Kprop[i, j, :] = Kref[i, j]#*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
+			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
 	return Kprop 
 
 def capacityProperty(temperature):
 	cst = 1.0
-	# Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
-	Cprop = np.ones(shape=np.shape(temperature))
+	Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
+	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
 def exactTemperature(args:dict):
@@ -38,7 +38,7 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 2, 2
+degree, cuts = 2, 4
 
 # Create model 
 geoArgs = {'name': 'cb', 'degree': degree*np.ones(3, dtype=int), 
