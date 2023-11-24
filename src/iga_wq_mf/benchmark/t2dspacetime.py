@@ -8,7 +8,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(temperature):
 	cst = 10.0
-	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0., 0., 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
@@ -20,15 +20,15 @@ def capacityProperty(temperature):
 	Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
 	return Cprop
 
-def exactTemperature_quartCircle(args:dict):
-	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
+def exactTemperature(args:dict):
+	"""
 		f = -div(lambda * grad(u))
 	"""
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); u = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		u[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 -1)*(x**2 + y**2 - 4))*timespan[i]
+		u[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*timespan[i]
 	return np.ravel(u, order='F')
 
 # Select folder
@@ -70,7 +70,19 @@ boundary.add_DirichletConstTemperature(table=dirichlet_table)
 problem = stheatproblem(material, modelPhy, timespan, boundary)
 
 # External heat force
-Fext = problem.compute_volForce(exactTemperature_quartCircle, 
+Fext = problem.compute_volForce(exactTemperature, 
 								{'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
-temperature = np.zeros(np.prod(stnbctrlpts))
-problem.solveFourierSTHeatProblem(temperature, Fext)
+u_guess = np.zeros(np.prod(stnbctrlpts))
+u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext)
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+for i in range(len(resPCG)):
+	ax.semilogy(resPCG[i], marker=MARKERLIST[i])
+ax.set_xlim(right=100, left=0)
+ax.set_ylim(top=10.0, bottom=1e-12)
+ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+fig.tight_layout()
+fig.savefig(folder+'PCGresidue.pdf')
+
+u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
+modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)

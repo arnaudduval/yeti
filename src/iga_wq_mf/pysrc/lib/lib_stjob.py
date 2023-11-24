@@ -20,10 +20,10 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
+		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 50)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
-		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-6)
+		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-4)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
 		return
 	
@@ -147,15 +147,15 @@ class stheatproblem(stproblem):
 		if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveFourierSTHeatProblem(self, Tinout, Fext):
+	def solveFourierSTHeatProblem(self, Tguess, Fext):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
-		dj_n1 = np.copy(Tinout); d_n1ref = np.copy(Tinout)
+		dj_n1 = np.copy(Tguess); d_n1ref = np.copy(Tguess)
 		
 		AllresPCG = []
 		for j in range(self._nbIterNR):
 
 			# Compute temperature at each quadrature point
-			temperature = self.interpolate_STtemperature(Tinout)
+			temperature = self.interpolate_STtemperature(Tguess)
 		
 			# Compute internal force
 			Fint_dj = self.compute_STHeatIntForce(dj_n1, args=temperature)
@@ -165,9 +165,7 @@ class stheatproblem(stproblem):
 			r_dj[dod] = 0.0
 
 			# Solve for active control points
-			resPCGj = np.array([j+1])
-			deltaD, resPCG = self._solveLinearizedSTHeatProblem(r_dj, args=temperature)
-			resPCGj = np.append(resPCGj, resPCG)
+			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, args=temperature)
 			d_n1ref += deltaD
 
 			# Compute residue of Newton Raphson using an energetic approach
@@ -180,6 +178,4 @@ class stheatproblem(stproblem):
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
 
-		Tinout = np.copy(dj_n1)
-
-		return AllresPCG
+		return dj_n1, AllresPCG

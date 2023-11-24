@@ -599,7 +599,7 @@ subroutine stiffmass_eigendecomposition(nr, nc, univMcoefs, univKcoefs, nnz, ind
     ! ----------
     integer :: i, j
     double precision :: data_Bt(nnz)
-    double precision, allocatable, dimension(:, :) :: BB0, WW0, MM, BB1, WW1, KK
+    double precision, allocatable, dimension(:, :) :: basis, weights, mass, stiff
     
     ! Masse matrix
     data_Bt = data_B(:, 1)
@@ -609,13 +609,11 @@ subroutine stiffmass_eigendecomposition(nr, nc, univMcoefs, univKcoefs, nnz, ind
         end do
     end do
 
-    allocate(BB0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
-    allocate(WW0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, WW0)
-    allocate(MM(nr, nr))
-    MM = matmul(WW0, transpose(BB0))
-    deallocate(BB0, WW0)
+    allocate(basis(nr, nc), weights(nr, nc))
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, basis)
+    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, weights)
+    allocate(mass(nr, nr))
+    mass = matmul(weights, transpose(basis))
 
     ! Stiffness matrix
     data_Bt = data_B(:, 2)
@@ -625,25 +623,23 @@ subroutine stiffmass_eigendecomposition(nr, nc, univMcoefs, univKcoefs, nnz, ind
         end do
     end do
 
-    allocate(BB1(nr, nc))
-    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB1)
-    allocate(WW1(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
-    allocate(KK(nr, nr))
-    KK = matmul(WW1, transpose(BB1))
-    deallocate(BB1, WW1)
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, basis)
+    call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, weights)
+    allocate(stiff(nr, nr))
+    stiff = matmul(weights, transpose(basis))
+    deallocate(basis, weights)
 
     ! Save diagonal of M and K
     do i = 1, nr
-        Kdiag(i) = KK(i, i)
-        Mdiag(i) = MM(i, i)
+        Kdiag(i) = stiff(i, i)
+        Mdiag(i) = mass(i, i)
     end do
 
     ! -----------------------------------
     ! Eigen decomposition KK U = MM U DD
     ! -----------------------------------
-    call compute_eigdecomp_pdr(nr, KK, MM, eigval, eigvec)
-    deallocate(KK, MM)
+    call compute_eigdecomp_pdr(nr, stiff, mass, eigval, eigvec)
+    deallocate(stiff, mass)
 
 end subroutine stiffmass_eigendecomposition
 
@@ -676,7 +672,7 @@ subroutine advmass_schurdecomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi,
     ! ----------
     integer :: i, j
     double precision :: data_Bt(nnz)
-    double precision, allocatable, dimension(:, :) :: BB0, WW0, MM, WW1, AA
+    double precision, allocatable, dimension(:, :) :: densebasis, denseweights, mass, adv
     
     ! Masse matrix
     data_Bt = data_B(:, 1)
@@ -686,40 +682,37 @@ subroutine advmass_schurdecomposition(nr, nc, univMcoefs, univAcoefs, nnz, indi,
         end do
     end do
 
-    allocate(BB0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
-    allocate(WW0(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, WW0)
-    allocate(MM(nr, nr))
-    MM = matmul(WW0, transpose(BB0))
-    deallocate(WW0)
+    allocate(densebasis(nr, nc), denseweights(nr, nc))
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, densebasis)
+    call csr2dense(nnz, indi, indj, data_W(:, 1), nr, nc, denseweights)
+    allocate(mass(nr, nr))
+    mass = matmul(denseweights, transpose(densebasis))
 
     ! Advention matrix
-    data_Bt = data_B(:, 1)
+    data_Bt = data_B(:, 2)
     do i = 1, nr
         do j = indi(i), indi(i+1)-1
             data_Bt(j) = data_Bt(j)*univAcoefs(indj(j))
         end do
     end do
 
-    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, BB0)
-    allocate(WW1(nr, nc))
-    call csr2dense(nnz, indi, indj, data_W(:, 4), nr, nc, WW1)
-    allocate(AA(nr, nr))
-    AA = matmul(WW1, transpose(BB0))
-    deallocate(BB0, WW1)
+    call csr2dense(nnz, indi, indj, data_Bt, nr, nc, densebasis)
+    call csr2dense(nnz, indi, indj, data_W(:, 2), nr, nc, denseweights)
+    allocate(adv(nr, nr))
+    adv = matmul(denseweights, transpose(densebasis))
+    deallocate(densebasis, denseweights)
 
     ! Save diagonal of M and K
     do i = 1, nr
-        Adiag(i) = AA(i, i)
-        Mdiag(i) = MM(i, i)
+        Adiag(i) = adv(i, i)
+        Mdiag(i) = mass(i, i)
     end do
 
     ! -----------------------------------
     ! Schur decomposition
     ! -----------------------------------
-    call compute_schurdecomp_gc(nr, AA, MM, UU, VV, SS, TT)
-    deallocate(AA, MM)
+    call compute_schurdecomp_gc(nr, adv, mass, UU, VV, SS, TT)
+    deallocate(adv, mass)
 
 end subroutine advmass_schurdecomposition
 
