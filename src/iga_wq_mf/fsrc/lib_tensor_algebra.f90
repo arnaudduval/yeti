@@ -479,7 +479,7 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
     call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R2, nr_w, nnz_w, data_w, indi_w, indj_w, 3, size(R3), R3)
     deallocate(R2)
 
-    call tensor_n_mode_product_spM(nr_u, nr_v, nc_w, nc_t, R3, nr_t, nnz_t, data_t, indi_t, indj_t, 4, size(array_out), array_out)
+    call tensor_n_mode_product_spM(nr_u, nr_v, nr_w, nc_t, R3, nr_t, nnz_t, data_t, indi_t, indj_t, 4, size(array_out), array_out)
     deallocate(R3)
 
 end subroutine sumfacto4d_spM

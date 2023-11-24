@@ -147,7 +147,7 @@ contains
 
     end subroutine init_3datastructure
 
-    subroutine init_4datastructure(datstruct, nr_u, nc_u, nr_v, nr_t, nc_v, nr_w, nc_w, nc_t, &
+    subroutine init_4datastructure(datstruct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
             nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
             indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
 
@@ -317,7 +317,6 @@ contains
 
         if (dimen.ne.datstruct%dimen) stop 'Not the same dimension'
         call get_innernodes__(datstruct, dimen, table)
-
         nr_new_list  = datstruct%nrows 
         nnz_new_list = 0
         do i = 1, dimen
@@ -375,7 +374,7 @@ contains
                 datstruct%bw(i, 1:nnz, :) = bw(i, 1:nnz, :)
                 cycle
             end if
-            
+
             nr2er = size(rows2er)
             allocate(indi_out(nr_new_list(i)+1), indj_out(nnz_new_list(i)), bw_out(nnz_new_list(i), 6))
             call erase_rows_csr(nr2er, rows2er, 6, nr, nnz, indi(i, 1:nr+1), indj(i, 1:nnz), &
@@ -452,8 +451,7 @@ contains
         if (size_in.lt.dimen_sp) stop 'Size problem'  
         nrows = maxval(datstruct%nrows); ncols = maxval(datstruct%ncols)
         allocate(datstruct%eigval_sp_dir(dimen_sp, nrows), &
-                datstruct%eigvec_sp_dir(dimen_sp, nrows, nrows), &
-                ones(ncols))
+                datstruct%eigvec_sp_dir(dimen_sp, nrows, nrows), ones(ncols))
         datstruct%eigval_sp_dir = 0.d0; datstruct%eigvec_sp_dir = 0.d0; ones = 1.d0
 
         ! Eigen decomposition

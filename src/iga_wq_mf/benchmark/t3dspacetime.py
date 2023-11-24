@@ -9,16 +9,16 @@ from pysrc.lib.lib_stjob import stheatproblem
 def conductivityProperty(temperature):
 	cst = 10.0
 	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0., 0., 1.0]])
-	Kprop = np.zeros((2, 2, len(temperature)))
-	for i in range(2): 
-		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
+	Kprop = np.zeros((3, 3, len(temperature)))
+	for i in range(3): 
+		for j in range(3):
+			Kprop[i, j, :] = Kref[i, j]#*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
 	return Kprop 
 
 def capacityProperty(temperature):
 	cst = 1.0
-	Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
-	# Cprop = np.ones(shape=np.shape(temperature))
+	# Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
+	Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
 def exactTemperature(args:dict):
@@ -26,10 +26,10 @@ def exactTemperature(args:dict):
 		f = -div(lambda * grad(u))
 	"""
 	position = args['Position']; timespan = args['Time']
-	x = position[0, :]; y = position[1, :]
+	x = position[0, :]; y = position[1, :]; z = position[2, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); u = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		u[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*timespan[i]
+		u[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*z))*timespan[i]
 	return np.ravel(u, order='F')
 
 # Select folder
@@ -38,10 +38,10 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 3, 4
+degree, cuts = 2, 2
 
 # Create model 
-geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'cb', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
 
@@ -50,7 +50,7 @@ modelIGA = modelGeo.getIGAParametrization()
 modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 # Create time span
-nbel = 8
+nbel = 4
 crv = createUniformCurve(degree, nbel, 1.0)
 timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
 
@@ -60,7 +60,7 @@ material.addConductivity(conductivityProperty, isIsotropic=False)
 material.addCapacity(capacityProperty, isIsotropic=False) 
 
 # Block boundaries
-dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+dirichlet_table = np.ones((4, 2)); dirichlet_table[-1, 1] = 0
 stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
 boundary = boundaryCondition(stnbctrlpts)
 boundary.add_DirichletConstTemperature(table=dirichlet_table)

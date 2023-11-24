@@ -476,10 +476,7 @@ contains
 
         ! Compute (Ut x Uv x Uu)'.array_in
         allocate(tmp(nr_u*nr_v*nr_t), identity(nr_t, nr_t))
-        identity = 0.d0
-        do i = 1, nr_t
-            identity(i, i) = 1.d0
-        end do
+        call create_identity(nr_t, identity)
 
         call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
@@ -766,15 +763,14 @@ contains
         ! Local data
         ! ----------
         double precision :: dummymean(solv%dimen)
-
-        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
         call init_4datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
+        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
         call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
         call time_schurdecomposition(solv%temp_struct)
-    
+
     end subroutine initializefastdiag
 
     subroutine solve_schurtriangular__(solv, nr, coefs, b, x)
@@ -835,10 +831,7 @@ contains
 
         ! Compute (Ut x Uw x Uv x Uu)'.array_in
         allocate(tmp(nr_u*nr_v*nr_w*nr_t), identity(nr_t, nr_t))
-        identity = 0.d0
-        do i = 1, nr_t
-            identity(i, i) = 1.d0
-        end do
+        call create_identity(nr_t, identity)
 
         call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
                         transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
