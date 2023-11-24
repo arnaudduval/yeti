@@ -41,7 +41,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 degree, cuts = 3, 4
 
 # Create model 
-geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
 

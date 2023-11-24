@@ -98,6 +98,116 @@ class stproblem():
 		if self.part.dim == 3: volForce = geophy.get_forcevol_st3d(*inpts)
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
+	
+	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
+		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
+			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
+			whether or not the default quadrature is weighted quadrature. 
+		"""	
+		typeNorm = normArgs.get('type', 'l2').lower()
+		if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
+
+		# Compute u interpolation in space
+		nbqp, quadPts, indices, basis, parametricWeights = [], [], [], [], []
+		for i in range(self.part.dim):
+			quadRule = GaussQuadrature(self.part.degree[i], self.part.knotvector[i], quadArgs={'type':'leg'})
+			quadPtsByDir, indicesByDir, basisByDir, _ = quadRule.getQuadratureRulesInfo()
+			indi, indj = indicesByDir; parweightsByDir = quadRule._parametricWeights
+			
+			nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
+			basis.append(basisByDir); parametricWeights.append(parweightsByDir)
+
+		# Compute u interpolation in time
+		quadRule = GaussQuadrature(self.time.degree, self.time.knotvector, quadArgs={'type':'leg'})
+		quadPtsByDir, indicesByDir, basisByDir, _ = quadRule.getQuadratureRulesInfo()
+		indi, indj = indicesByDir; parweightsByDir = quadRule._parametricWeights
+		nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
+		basis.append(basisByDir); parametricWeights.append(parweightsByDir)
+
+		sptimectrlpts = np.zeros((4,self.part.nbctrlpts_total*self.time.nbctrlpts))
+		iold = 0
+		for i in range(self.time.nbctrlpts):
+			inew = (i + 1)*self.part.nbctrlpts_total
+			sptimectrlpts[:, iold:inew] = np.stack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
+			iold = np.copy(inew)
+
+		inpts = [*nbqp, *indices, *basis]
+		if self.part.dim == 2:
+			Jqp = geophy.eval_jacobien_3d(*inpts, sptimectrlpts)
+			detJ, invJ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_3d(*inpts, sptimectrlpts)
+			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
+	
+		elif self.part.dim == 3:
+			Jqp = geophy.eval_jacobien_4d(*inpts, sptimectrlpts)
+			detJ, invJ = geophy.eval_inverse_det(Jqp)
+			qpPhy = geophy.interpolate_meshgrid_4d(*inpts, sptimectrlpts)
+			u_interp = geophy.interpolate_meshgrid_4d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_4d(*inpts, np.atleast_2d(u_ctrlpts))
+
+		u_interp = np.atleast_2d(u_interp); uders_interp = None
+		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
+
+		# Compute u exact
+		u_exact, uders_exact = None, None
+		exactfun = normArgs.get('exactFunction', None)
+		exactfunders = normArgs.get('exactFunctionDers', None)
+		if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
+		if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(qpPhy))
+
+		part_ref = normArgs.get('part_ref', None); time_ref = normArgs.get('time_ref', None); u_ref = normArgs.get('u_ref', None)
+		if isinstance(part_ref, part) and isinstance(time_ref, part1D) and isinstance(u_ref, np.ndarray):
+			nbqpExact, basisExact, indicesExact = [], [], []
+			for i in range(self.part.dim):
+				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
+				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, time_ref.quadRule.quadPtsPos)
+			nbqpExact.append(len(quadPts[-1])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+			
+			inpts = [*nbqpExact, *indicesExact, *basisExact]
+			if self.part.dim == 2:   
+				u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))    
+				JqpExact = geophy.eval_jacobien_3d(*inpts, part_ref.ctrlpts)
+				_, invJExact = geophy.eval_inverse_det(JqpExact) 
+				derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ref))
+			elif self.part.dim == 3: 
+				u_exact = geophy.interpolate_meshgrid_4d(*inpts, np.atleast_2d(u_ref))
+				JqpExact = geophy.eval_jacobien_4d(*inpts, part_ref.ctrlpts)
+				_, invJExact = geophy.eval_inverse_det(JqpExact)
+				derstemp = geophy.eval_jacobien_4d(*inpts, np.atleast_2d(u_ref))
+
+			u_exact = np.atleast_2d(u_exact)
+			uders_exact = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJExact))
+
+		# Compute error
+		uedfuf2_l2, uedfuf2_sh1 = 0., 0.
+		ue2_l2, ue2_sh1 = 0., 0.
+
+		if typeNorm == 'l2' or typeNorm == 'h1':
+			uedfuf2_l2 += np.einsum('il->l', (u_exact - u_interp)**2)
+			ue2_l2     += np.einsum('il->l', u_exact**2)
+
+		if typeNorm == 'h1' or typeNorm == 'semih1':
+			uedfuf2_sh1 += np.einsum('ijl->l', (uders_exact - uders_interp)**2)
+			ue2_sh1     += np.einsum('ijl->l', uders_exact**2)
+
+		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ
+		norm2 = (ue2_l2 + ue2_sh1)*detJ
+
+		norm1 = np.reshape(norm1, tuple(nbqp), order='F')
+		norm2 = np.reshape(norm2, tuple(nbqp), order='F')
+		if self.part.dim == 2: 
+			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm1)
+			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm2)
+		if self.part.dim == 3: 
+			tmp1 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm1)
+			tmp2 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm2)
+			
+		if isRelative: error = np.sqrt(tmp1/tmp2)
+		else:          error = np.sqrt(tmp1)
+
+		return
 
 
 class stheatproblem(stproblem):
