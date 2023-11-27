@@ -118,6 +118,66 @@ subroutine eval_inverse_det(nr, nnz, M, detM, invM)
 
 end subroutine eval_inverse_det
 
+subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
+                            data_B_u, data_B_v, data_B_w, data_B_t, u_ctrlpts, JJ)
+    !! Computes jacobien matrix, its determinant and its inverse in 3D
+    !! IN CSR FORMAT
+    
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------  
+    integer, parameter :: dimen = 4
+    integer, intent(in) :: nm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w*nr_t)
+
+    double precision, intent(out) :: JJ
+    dimension :: JJ(nm, dimen, nc_u*nc_v*nc_w*nc_t)
+
+    ! Local data
+    !-----------
+    integer :: i, j, nb_tasks, beta(dimen)
+    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+    integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
+
+    ! Compute jacobien matrix
+    !$OMP PARALLEL PRIVATE(beta)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
+    do j = 1, dimen
+        do i = 1, nm
+            beta = 1; beta(j) = 2
+            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
+                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, beta(4)), &
+                            u_ctrlpts(i, :), JJ(i, j, :))
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+
+end subroutine eval_jacobien_4d
+
 subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, u_ctrlpts, JJ)
@@ -175,6 +235,147 @@ subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v
 
 end subroutine eval_jacobien_3d
 
+subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, u_ctrlpts, JJ)
+    !! Computes jacobien matrix, its determinant and its inverse in 2D
+    !! IN CSR FORMAT
+    
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 2
+    integer, intent(in) :: nm, nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_B_v
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u*nr_v)
+
+    double precision, intent(out) :: JJ
+    dimension :: JJ(nm, dimen, nc_u*nc_v)
+
+    ! Local data
+    !-----------
+    integer :: i, j, nb_tasks, beta(2)
+    integer :: indi_T_u, indi_T_v
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+    integer ::  indj_T_u, indj_T_v
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    
+    ! Compute jacobien matrix
+    !$OMP PARALLEL PRIVATE(beta)
+    nb_tasks = omp_get_num_threads()
+    !$OMP DO SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
+    do j = 1, dimen
+        do i = 1, nm
+            beta = 1; beta(j) = 2
+            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
+                            u_ctrlpts(i, :), JJ(i, j, :))
+        end do
+    end do
+    !$OMP END DO NOWAIT
+    !$OMP END PARALLEL 
+
+end subroutine eval_jacobien_2d
+
+subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
+                            data_B_u, u_ctrlpts, JJ)
+    !! Computes jacobien matrix, its determinant and its inverse in 2D
+    !! IN CSR FORMAT
+    
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen = 1
+    integer, intent(in) :: nm, nr_u, nc_u, nnz_u
+    integer, intent(in) :: indi_u, indj_u
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    double precision, intent(in) :: data_B_u
+    dimension :: data_B_u(nnz_u, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u)
+
+    double precision, intent(out) :: JJ
+    dimension :: JJ(nm, dimen, nc_u)
+
+    ! Local data
+    !-----------
+    integer :: i
+    integer :: indi_T_u, indj_T_u
+    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
+    double precision :: data_BT_u
+    dimension :: data_BT_u(nnz_u, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    
+    do i = 1, nm
+        call spmat_dot_dvec(nc_u, nr_u, nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 2), &
+                        u_ctrlpts(i, :), JJ(i, 1, :))
+    end do
+
+end subroutine eval_jacobien_1d
+
+subroutine interpolate_meshgrid_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
+                            data_B_u, data_B_v, data_B_w, data_B_t, u_ctrlpts, u_interp)
+    !! Computes interpolation in 4D case (from parametric space to physical space)
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! ------------------- 
+    integer, intent(in) :: nm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w*nr_t)
+
+    double precision, intent(out) :: u_interp
+    dimension :: u_interp(nm, nc_u*nc_v*nc_w*nc_t)
+
+    ! Local data
+    !-----------
+    integer :: i
+    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+    integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
+
+    do i = 1, nm
+        call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
+                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), &
+                            u_ctrlpts(i, :), u_interp(i, :))
+    end do
+
+end subroutine interpolate_meshgrid_4d
+
 subroutine interpolate_meshgrid_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, u_ctrlpts, u_interp)
@@ -220,6 +421,85 @@ subroutine interpolate_meshgrid_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u
     end do
 
 end subroutine interpolate_meshgrid_3d
+
+subroutine interpolate_meshgrid_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                            indi_u, indj_u, indi_v, indj_v, &
+                            data_B_u, data_B_v, u_ctrlpts, u_interp)
+    !! Computes interpolation in 2D case (from parametric space to physical space)
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------   
+    integer, intent(in) :: nm, nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v)
+    double precision, intent(in) :: data_B_u, data_B_v
+    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u*nr_v)
+
+    double precision, intent(out) :: u_interp
+    dimension :: u_interp(nm, nc_u*nc_v)
+
+    ! Local data
+    !-----------
+    integer :: i
+    integer :: indi_T_u, indi_T_v
+    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+    integer :: indj_T_u, indj_T_v
+    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+    double precision :: data_BT_u, data_BT_v
+    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+
+    do i = 1, nm
+        call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
+                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
+                            u_ctrlpts(i, :), u_interp(i, :))
+    end do
+
+end subroutine interpolate_meshgrid_2d
+
+subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
+                            data_B_u, u_ctrlpts, u_interp)
+    !! Computes interpolation in 2D case (from parametric space to physical space)
+    !! IN CSR FORMAT
+
+    implicit none 
+    ! Input / output data
+    ! -------------------   
+    integer, intent(in) :: nm, nr_u, nc_u, nnz_u
+    integer, intent(in) :: indi_u, indj_u
+    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
+    double precision, intent(in) :: data_B_u
+    dimension :: data_B_u(nnz_u, 2)
+    double precision, intent(in) :: u_ctrlpts
+    dimension :: u_ctrlpts(nm, nr_u)
+
+    double precision, intent(out) :: u_interp
+    dimension :: u_interp(nm, nc_u)
+
+    ! Local data
+    !-----------
+    integer :: i
+    integer :: indi_T_u, indj_T_u
+    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
+    double precision :: data_BT_u
+    dimension :: data_BT_u(nnz_u, 2)
+
+    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+
+    do i = 1, nm
+        call spmat_dot_dvec(nc_u, nr_u, nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
+                            u_ctrlpts(i, :), u_interp(i, :))
+    end do
+
+end subroutine interpolate_meshgrid_1d
 
 subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
@@ -295,103 +575,6 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                 
 end subroutine l2projection_ctrlpts_3d
 
-subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, u_ctrlpts, JJ)
-    !! Computes jacobien matrix, its determinant and its inverse in 2D
-    !! IN CSR FORMAT
-    
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 2
-    integer, intent(in) :: nm, nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u*nr_v)
-
-    double precision, intent(out) :: JJ
-    dimension :: JJ(nm, dimen, nc_u*nc_v)
-
-    ! Local data
-    !-----------
-    integer :: i, j, nb_tasks, beta(2)
-    integer :: indi_T_u, indi_T_v
-    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-    integer ::  indj_T_u, indj_T_v
-    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
-    ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
-    do j = 1, dimen
-        do i = 1, nm
-            beta = 1; beta(j) = 2
-            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-                            u_ctrlpts(i, :), JJ(i, j, :))
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
-end subroutine eval_jacobien_2d
-
-subroutine interpolate_meshgrid_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, u_ctrlpts, u_interp)
-    !! Computes interpolation in 2D case (from parametric space to physical space)
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! -------------------   
-    integer, intent(in) :: nm, nr_u, nr_v, nc_u, nc_v, nnz_u, nnz_v
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_B_u, data_B_v
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u*nr_v)
-
-    double precision, intent(out) :: u_interp
-    dimension :: u_interp(nm, nc_u*nc_v)
-
-    ! Local data
-    !-----------
-    integer :: i
-    integer :: indi_T_u, indi_T_v
-    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-    integer :: indj_T_u, indj_T_v
-    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
-    do i = 1, nm
-        call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            u_ctrlpts(i, :), u_interp(i, :))
-    end do
-
-end subroutine interpolate_meshgrid_2d
-
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, detJ, &
@@ -461,80 +644,6 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
 end subroutine l2projection_ctrlpts_2d
 
-subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
-                            data_B_u, u_ctrlpts, JJ)
-    !! Computes jacobien matrix, its determinant and its inverse in 2D
-    !! IN CSR FORMAT
-    
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, parameter :: dimen = 1
-    integer, intent(in) :: nm, nr_u, nc_u, nnz_u
-    integer, intent(in) :: indi_u, indj_u
-    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
-    double precision, intent(in) :: data_B_u
-    dimension :: data_B_u(nnz_u, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u)
-
-    double precision, intent(out) :: JJ
-    dimension :: JJ(nm, dimen, nc_u)
-
-    ! Local data
-    !-----------
-    integer :: i
-    integer :: indi_T_u, indj_T_u
-    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
-    double precision :: data_BT_u
-    dimension :: data_BT_u(nnz_u, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    
-    do i = 1, nm
-        call spmat_dot_dvec(nc_u, nr_u, nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 2), &
-                        u_ctrlpts(i, :), JJ(i, 1, :))
-    end do
-
-end subroutine eval_jacobien_1d
-
-subroutine interpolate_meshgrid_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
-                            data_B_u, u_ctrlpts, u_interp)
-    !! Computes interpolation in 2D case (from parametric space to physical space)
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! -------------------   
-    integer, intent(in) :: nm, nr_u, nc_u, nnz_u
-    integer, intent(in) :: indi_u, indj_u
-    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
-    double precision, intent(in) :: data_B_u
-    dimension :: data_B_u(nnz_u, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u)
-
-    double precision, intent(out) :: u_interp
-    dimension :: u_interp(nm, nc_u)
-
-    ! Local data
-    !-----------
-    integer :: i
-    integer :: indi_T_u, indj_T_u
-    dimension :: indi_T_u(nc_u+1), indj_T_u(nnz_u)
-    double precision :: data_BT_u
-    dimension :: data_BT_u(nnz_u, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-
-    do i = 1, nm
-        call spmat_dot_dvec(nc_u, nr_u, nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            u_ctrlpts(i, :), u_interp(i, :))
-    end do
-
-end subroutine interpolate_meshgrid_1d
-
 subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
                             nnz_u, indi_u, indj_u, data_B_u, data_W_u, detJ, &
                             b, nbIterPCG, threshold, x, resPCG)
@@ -580,6 +689,8 @@ subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
     end do
 
 end subroutine l2projection_ctrlpts_1d
+
+!! CLASSICAL APPROACH
 
 subroutine get_forcevol_2d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_W_u, data_W_v, detJ, prop, array_out)
@@ -740,115 +851,6 @@ subroutine get_forcesurf_3d(nm, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, 
 end subroutine get_forcesurf_3d
 
 !! SPACE TIME APPROACH
-
-subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                            data_B_u, data_B_v, data_B_w, data_B_t, u_ctrlpts, JJ)
-    !! Computes jacobien matrix, its determinant and its inverse in 3D
-    !! IN CSR FORMAT
-    
-    use omp_lib
-    implicit none 
-    ! Input / output data
-    ! -------------------  
-    integer, parameter :: dimen = 4
-    integer, intent(in) :: nm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w), &
-                    indi_t(nr_t+1), indj_t(nnz_t)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w*nr_t)
-
-    double precision, intent(out) :: JJ
-    dimension :: JJ(nm, dimen, nc_u*nc_v*nc_w*nc_t)
-
-    ! Local data
-    !-----------
-    integer :: i, j, nb_tasks, beta(dimen)
-    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
-    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
-    integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
-    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
-
-    ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
-    do j = 1, dimen
-        do i = 1, nm
-            beta = 1; beta(j) = 2
-            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), &
-                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, beta(4)), &
-                            u_ctrlpts(i, :), JJ(i, j, :))
-        end do
-    end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
-
-end subroutine eval_jacobien_4d
-
-subroutine interpolate_meshgrid_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                            data_B_u, data_B_v, data_B_w, data_B_t, u_ctrlpts, u_interp)
-    !! Computes interpolation in 4D case (from parametric space to physical space)
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! ------------------- 
-    integer, intent(in) :: nm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
-    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
-    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v), &
-                    indi_w(nr_w+1), indj_w(nnz_w), &
-                    indi_t(nr_t+1), indj_t(nnz_t)
-    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t
-    dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), data_B_t(nnz_t, 2)
-    double precision, intent(in) :: u_ctrlpts
-    dimension :: u_ctrlpts(nm, nr_u*nr_v*nr_w*nr_t)
-
-    double precision, intent(out) :: u_interp
-    dimension :: u_interp(nm, nc_u*nc_v*nc_w*nc_t)
-
-    ! Local data
-    !-----------
-    integer :: i
-    integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
-    dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
-    integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
-    dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-    double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
-
-    do i = 1, nm
-        call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                            nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
-                            nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), &
-                            nnz_t, indi_T_t, indj_T_t, data_BT_t(:, 1), &
-                            u_ctrlpts(i, :), u_interp(i, :))
-    end do
-
-end subroutine interpolate_meshgrid_4d
 
 subroutine get_forcevol_st2d(nm, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
                             indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &

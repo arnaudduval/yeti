@@ -7,30 +7,30 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(temperature):
-	cst = 10.0
 	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0., 0., 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
+			Kprop[i, j, :] = Kref[i, j]#*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
 	return Kprop 
 
 def capacityProperty(temperature):
-	cst = 1.0
-	Cprop = cst*(1 + np.exp(-2.0*abs(temperature)))
-	# Cprop = np.ones(shape=np.shape(temperature))
+	# Cprop = (1 + np.exp(-2.0*abs(temperature)))
+	Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
-def exactTemperature(args:dict):
-	"""
-		f = -div(lambda * grad(u))
-	"""
+def exactTemperature(qpPhy):
+	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
+	u = (np.sin(np.pi*x)*np.sin(np.pi*y))*t
+	return u
+
+def powerDensity(args:dict):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
-	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); u = np.zeros((nc_sp, nc_tm))
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		u[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*timespan[i]
-	return np.ravel(u, order='F')
+		f[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*timespan[i])
+	return np.ravel(f, order='F')
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -38,12 +38,12 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 3, 4
+degree, cuts = 3, 3
 
 # Create model 
-geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
+quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
@@ -71,10 +71,12 @@ boundary.add_DirichletConstTemperature(table=dirichlet_table)
 problem = stheatproblem(material, modelPhy, timespan, boundary)
 
 # External heat force
-Fext = problem.compute_volForce(exactTemperature, 
+Fext = problem.compute_volForce(powerDensity, 
 								{'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
 u_guess = np.zeros(np.prod(stnbctrlpts))
 u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext)
+problem.normOfError(u_sol, normArgs={'type':'L2', 'exactFunction':exactTemperature}, isRelative=True)
+
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 for i in range(len(resPCG)):
 	ax.semilogy(resPCG[i], marker=MARKERLIST[i])

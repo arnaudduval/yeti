@@ -64,10 +64,9 @@ class stproblem():
 		nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
 		basis.append(basisByDir); parametricWeights.append(parweightsByDir)
 
-		sptimectrlpts = np.zeros((4, self.part.nbctrlpts_total*self.time.nbctrlpts))
-		iold = 0
+		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts))
 		for i in range(self.time.nbctrlpts):
-			inew = (i + 1)*self.part.nbctrlpts_total
+			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
 			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
 			iold = np.copy(inew)
 
@@ -105,10 +104,9 @@ class stproblem():
 			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, time_ref.quadRule.quadPtsPos)
 			nbqpExact.append(len(quadPts[-1])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 
-			sptimectrlpts = np.zeros((4, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
-			iold = 0
+			sptimectrlpts = np.zeros((part_ref.dim+1, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
 			for i in range(time_ref.nbctrlpts):
-				inew = (i + 1)*part_ref.nbctrlpts_total
+				inew = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
 				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
 				iold = np.copy(inew)
 
@@ -154,7 +152,7 @@ class stproblem():
 		if isRelative: error = np.sqrt(tmp1/tmp2)
 		else:          error = np.sqrt(tmp1)
 
-		return
+		return error
 
 
 class stheatproblem(stproblem):
