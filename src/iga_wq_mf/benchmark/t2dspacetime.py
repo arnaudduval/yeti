@@ -23,6 +23,14 @@ def exactTemperature(qpPhy):
 	u = (np.sin(np.pi*x)*np.sin(np.pi*y))*t
 	return u
 
+def exactTemperatureDers(qpPhy):
+	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
+	q = np.zeros((1, 3, np.size(x)))
+	q[0, 0, :] = (np.pi*np.cos(np.pi*x)*np.sin(np.pi*y))*t
+	q[0, 1, :] = (np.pi*np.sin(np.pi*x)*np.cos(np.pi*y))*t
+	q[0, 2, :] = (np.sin(np.pi*x)*np.sin(np.pi*y))
+	return q
+
 def powerDensity(args:dict):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
@@ -33,7 +41,7 @@ def powerDensity(args:dict):
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/'
+folder = os.path.dirname(full_path) + '/results/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def simulate(degree, cuts, quadArgs):
@@ -85,7 +93,10 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 		color = COLORLIST[i]
 		for j, cuts in enumerate(cuts_list):
 			problem, displacement = simulate(degree, cuts, quadArgs)
-			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'exactFunction':exactTemperature}, isRelative=False)
+			error_list[j] = problem.normOfError(displacement, normArgs={'type':'H1', 
+															'exactFunction':exactTemperature, 
+															'exactFunctionDers':exactTemperatureDers}, 
+															isRelative=False)
 
 		if quadrule == 'iga': 
 			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -94,8 +105,10 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
+		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
 		ax.set_xlabel('Total number of elements')
+		ax.set_ylim(top=1e-1, bottom=1e-12)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceAllL2' + '.pdf')
+		fig.savefig(folder + 'FigConvergenceAllH1' + '.pdf')
