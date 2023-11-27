@@ -7,15 +7,14 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(temperature):
-	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0., 0., 1.0]])
+	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]#*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
+			Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(temperature):
-	# Cprop = (1 + np.exp(-2.0*abs(temperature)))
 	Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
@@ -37,55 +36,66 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# Set global variables
-degree, cuts = 3, 3
+def simulate(degree, cuts, quadArgs):
+	# Create model 
+	geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-# Create model 
-geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
-			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	# Create time span
+	crv = createUniformCurve(degree, 2**cuts, 1.0)
+	timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
 
-modelGeo = Geomdl(geoArgs)
-modelIGA = modelGeo.getIGAParametrization()
-modelPhy = part(modelIGA, quadArgs=quadArgs)
+	# Add material 
+	material = heatmat()
+	material.addConductivity(conductivityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False) 
 
-# Create time span
-nbel = 8
-crv = createUniformCurve(degree, nbel, 1.0)
-timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
+	# Block boundaries
+	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
+	boundary = boundaryCondition(stnbctrlpts)
+	boundary.add_DirichletConstTemperature(table=dirichlet_table)
 
-# Add material 
-material = heatmat()
-material.addConductivity(conductivityProperty, isIsotropic=False) 
-material.addCapacity(capacityProperty, isIsotropic=False) 
-
-# Block boundaries
-dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
-boundary = boundaryCondition(stnbctrlpts)
-boundary.add_DirichletConstTemperature(table=dirichlet_table)
+	problem = stheatproblem(material, modelPhy, timespan, boundary)
+	# External heat force
+	Fext = problem.compute_volForce(powerDensity, {'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
+	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
+	u_sol, _ = problem.solveFourierSTHeatProblem(u_guess, Fext)
+	return problem, u_sol
 
 # ---------------------
 # Transient model
 # ---------------------
-problem = stheatproblem(material, modelPhy, timespan, boundary)
+normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
+onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 
-# External heat force
-Fext = problem.compute_volForce(powerDensity, 
-								{'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
-u_guess = np.zeros(np.prod(stnbctrlpts))
-u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext)
-problem.normOfError(u_sol, normArgs={'type':'L2', 'exactFunction':exactTemperature}, isRelative=True)
+degree_list = np.array([2, 3, 4, 5])
+cuts_list   = np.arange(2, 6)
 
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-for i in range(len(resPCG)):
-	ax.semilogy(resPCG[i], marker=MARKERLIST[i])
-ax.set_xlim(right=100, left=0)
-ax.set_ylim(top=10.0, bottom=1e-12)
-ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
-fig.tight_layout()
-fig.savefig(folder+'PCGresidue.pdf')
+fig, ax = plt.subplots(figsize=(10, 7))
+for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	error_list = np.ones(len(cuts_list))
 
-u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+	for i, degree in enumerate(degree_list):
+		color = COLORLIST[i]
+		for j, cuts in enumerate(cuts_list):
+			problem, displacement = simulate(degree, cuts, quadArgs)
+			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 'exactFunction':exactTemperature}, isRelative=False)
+
+		if quadrule == 'iga': 
+			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+		else: 
+			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+		
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
+		ax.set_xlabel('Total number of elements')
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigConvergenceAllL2' + '.pdf')
