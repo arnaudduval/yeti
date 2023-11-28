@@ -34,6 +34,7 @@ CreateF2PYModule(NAME postproc
                        ${CMAKE_CURRENT_SOURCE_DIR}/generate_coupling_vtu.f90
                        #${CMAKE_CURRENT_SOURCE_DIR}/postproc_cplg.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/postproc_faces.f90
+                       ${CMAKE_CURRENT_SOURCE_DIR}/postproc_curve_2D.f90
                        ${CMAKE_CURRENT_SOURCE_DIR}/postproc_vtu_bezier.f90
                  LINK_LIBRARIES base coupling
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/postprocessing)
