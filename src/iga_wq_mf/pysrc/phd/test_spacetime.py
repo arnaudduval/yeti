@@ -68,6 +68,7 @@ problem = stheatproblem(material, modelPhy, timespan, boundary)
 Fext = problem.compute_volForce(powerDensity, 
 								{'Position':problem.part.qpPhy, 
 								'Time':problem.time.qpPhy})
+
 u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 for pcgmethod in ['C', 'JMC', 'TDC']:

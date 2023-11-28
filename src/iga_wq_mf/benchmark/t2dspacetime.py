@@ -84,7 +84,7 @@ onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 degree_list = np.array([2, 3, 4, 5])
 cuts_list   = np.arange(2, 6)
 
-fig, ax = plt.subplots(figsize=(10, 7))
+fig, ax = plt.subplots(figsize=(9, 7))
 for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
@@ -92,23 +92,31 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 	for i, degree in enumerate(degree_list):
 		color = COLORLIST[i]
 		for j, cuts in enumerate(cuts_list):
+			nbels = 2**cuts_list
 			problem, displacement = simulate(degree, cuts, quadArgs)
 			error_list[j] = problem.normOfError(displacement, normArgs={'type':'H1', 
 															'exactFunction':exactTemperature, 
 															'exactFunctionDers':exactTemperatureDers}, 
 															isRelative=False)
-
+			
+		
 		if quadrule == 'iga': 
-			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+			ax.loglog(nbels, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+			
+			slope = np.polyfit(np.log10(nbels),np.log10(error_list), 1)[0]
+			slope = round(slope, 1)
+			annotation.slope_marker((nbels[1], error_list[1]), slope, 
+							poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 		else: 
-			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		
-		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
+		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Pi)}$')
 		ax.set_xlabel('Total number of elements')
-		ax.set_ylim(top=1e-1, bottom=1e-12)
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.set_ylim(top=1e-1, bottom=1e-10)
+		# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.legend()
 		fig.tight_layout()
 		fig.savefig(folder + 'FigConvergenceAllH1' + '.pdf')
