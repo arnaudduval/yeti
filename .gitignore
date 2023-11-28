@@ -19,4 +19,5 @@ examples/OPT_tube_pressure/results/*.png
 *.pyc
 examples/OPT_multi_stiffeners_position/results/*.vtu
 examples/OPT_multi_stiffeners_position/results/*.vtk
-examples/OPT_multi_stiffeners_position/results/*.pngexamples/bench_solver/time.txt
+examples/OPT_multi_stiffeners_position/results/*.vtu
+examples/bench_solver/time.txt
