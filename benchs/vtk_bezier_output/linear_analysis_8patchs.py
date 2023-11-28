@@ -34,7 +34,7 @@ import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
-modeleIGA = IGAparametrization(filename='inputs/BentPipe_2patchs')
+modeleIGA = IGAparametrization(filename='inputs/BentPipe_8patchs')
 
 # Model refinement
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
@@ -43,9 +43,21 @@ nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
 nb_ref[:, 0] = np.array([3, 2, 3])
 nb_ref[:, 1] = np.array([3, 2, 3])
+nb_ref[:, 2] = np.array([3, 2, 3])
+nb_ref[:, 3] = np.array([3, 2, 3])
+nb_ref[:, 4] = np.array([3, 2, 3])
+nb_ref[:, 5] = np.array([3, 2, 3])
+nb_ref[:, 6] = np.array([3, 2, 3])
+nb_ref[:, 7] = np.array([3, 2, 3])
 
 nb_deg[:, 0] = np.array([0, 1, 0])
 nb_deg[:, 1] = np.array([0, 1, 0])
+nb_deg[:, 2] = np.array([0, 1, 0])
+nb_deg[:, 3] = np.array([0, 1, 0])
+nb_deg[:, 4] = np.array([0, 1, 0])
+nb_deg[:, 5] = np.array([0, 1, 0])
+nb_deg[:, 6] = np.array([0, 1, 0])
+nb_deg[:, 7] = np.array([0, 1, 0])
 
 modeleIGA.refine(nb_ref, nb_deg)
 
@@ -76,7 +88,7 @@ SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 for i_patch in range(modeleIGA._nb_patch):
     pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
         i_patch+1,
-        f'BentPipeBezier_2patchs_P{i_patch+1}',
+        f'BentPipeBezier_8patchs_P{i_patch+1}',
         SOL.transpose(),
         ))
 
