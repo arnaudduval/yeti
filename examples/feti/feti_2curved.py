@@ -165,10 +165,35 @@ if True:
     utot[idof_internal] = LU.solve(f2solve - C2solve.T*lmbda) + R*alpha
 
     SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(utot[idof]))
-    pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-        'coupling_pcpg_curve',SOL.transpose(),nb_ref=np.array([4,7,1]),
-        Flag=np.array([True,True,True])))
-    
+    # pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
+    #     'coupling_pcpg_curve',SOL.transpose(),nb_ref=np.array([4,7,1]),
+    #     Flag=np.array([True,True,True])))
+
+    x_sample_P1, u_sample_P1, dudx_sample_P1, norm_sample_P1 = \
+        pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(1, 2, 100, 'patch_1', SOL.transpose()))
+    x_sample_P2, u_sample_P2, dudx_sample_P2, norm_sample_P2 = \
+        pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(2, 1, 100, 'patch_2', SOL.transpose()))
+
+    # print(x_sample_P1)
+
+    delta = np.zeros((2, 100))
+    for i_sample in range(100):
+        for i in range(2):
+            delta[i, i_sample] = (dudx_sample_P1[i, :, i_sample] @ norm_sample_P1[:, i_sample]) - \
+                                 (dudx_sample_P2[i, :, i_sample] @ norm_sample_P2[:, i_sample])
+
+    import matplotlib.pyplot as plt
+
+    # print(delta[0, :])
+
+    plt.plot(range(100), delta[0, :], label='comp 1')
+    plt.plot(range(100), delta[1, :], label='comp 2')
+    plt.autoscale()
+    plt.legend()
+    plt.show()
+
+    exit()
+
 
     cpi1 = manip.get_boundCPindice_wEdges(modeleIGA._Nkv,modeleIGA._Jpqr,modeleIGA._dim, 2, num_patch=0, offset=0,num_orientation=0)
     print(cpi1)
@@ -177,7 +202,7 @@ if True:
 
     cpi2 = manip.get_boundCPindice(modeleIGA._Nkv,modeleIGA._Jpqr, 1, num_patch=1, offset=0) + np.max(cpi1) + 1
     print(cpi2)
-    
+
     SOLi1 = SOL[cpi1]
 
     SOLi2 = SOL[cpi2]
@@ -190,7 +215,9 @@ if True:
     # pp.generatecplginterfacetxt(*modeleIGA.get_inputs4postprocCPLG(
     #     'coupling_txt',SOL.transpose(), nb_ref=5,
     #     Flag=np.array([True, False, False])))
-    
+
+    exit()
+
     print(np.shape(SOL))
     np.save('/home/agagnaire/yeti/temp/u', u)
     np.save('/home/agagnaire/yeti/temp/SOL', SOL)

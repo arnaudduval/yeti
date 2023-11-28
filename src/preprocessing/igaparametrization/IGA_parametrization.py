@@ -732,6 +732,62 @@ class IGAparametrization:
 
         return inputs
 
+    def get_inputs4post_curve_2D(self, i_patch, i_face, n_sample, filename, sol):
+        """
+        Get the necessary inputs for function postproc.XXXXXXXXXXXXX in order to compute
+        mechanical quantities (displacement and displacement gradient) along
+        a curve for a 2D problem
+
+        Parameters
+        ----------
+        i_patch : int
+            Index of patch to process (starts at 1)
+        i_face : int
+            Index of side curve to process (1, 2, 3 or 4)
+        n_sample : int
+            Number of sample points to generate
+        filename : str
+            Name of output file
+        sol : numpy array
+            Problem solution
+
+        Returns
+        -------
+        inputs : dict
+            Necessary inputs for function postproc.XXXXXXXXXXXXX
+        """
+
+        assert(i_face > 0)
+        assert(i_face < 5)
+        assert(i_patch > 0)
+
+        if self._ELT_TYPE[i_patch-1] != 'U1':
+            raise Exception('Element type ' +
+                            self._ELT_TYPE[i_patch-1] +
+                            'is not handled')
+
+        inputs = {'filename': filename,
+                  'sol': sol,
+                  'n_sample': n_sample,
+                  'i_patch': i_patch,
+                  'i_face': i_face,
+                  'ien': self._IEN_flat,
+                  'props': self._PROPS_flat,
+                  'jprops': self._JPROPS,
+                  'nnode': self._nnode,
+                  'nb_elem_patch': self._elementsByPatch,
+                  'elt_type': self._ELT_TYPE_flat,
+                  'tensor': self._TENSOR_flat,
+                  'nkv': self._Nkv,
+                  'jpqr': self._Jpqr,
+                  'nijk': self._Nijk,
+                  'ukv': self._Ukv_flat,
+                  'weight': self._weight_flat,
+                  'coords': self._COORDS
+                  }
+
+        return inputs
+
     def get_inputs4postproc_faces_vtu(self, filename, nb_ref=np.ones(3)):
         """
         Get the necessary inputs for function postproc.generate_faces_vtu
