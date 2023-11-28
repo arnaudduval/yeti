@@ -20,3 +20,6 @@ examples/OPT_multi_stiffeners_position/results/*.vtu
 examples/OPT_multi_stiffeners_position/results/*.vtk
 examples/OPT_multi_stiffeners_position/results/*.vtu
 examples/bench_solver/time.txt
+verif_proj_patch*.txt
+warnings_proj_patch*.txt
+
