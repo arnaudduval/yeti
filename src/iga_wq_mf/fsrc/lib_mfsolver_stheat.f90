@@ -189,7 +189,7 @@ contains
             end if
         end do
 
-        allocate(CC_M(size(sample_sp)))
+        allocate(CC_M(size(sample_sp)*size(sample_tm)))
         do c_tm = 1, size(sample_tm)
             do c_sp = 1, size(sample_sp)
                 gtm = sample_tm(c_tm)

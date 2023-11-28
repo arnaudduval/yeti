@@ -70,16 +70,21 @@ Fext = problem.compute_volForce(powerDensity,
 								'Time':problem.time.qpPhy})
 u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-for pcgmethod in ['JMC', 'C', 'TDC']:
+for pcgmethod in ['C', 'JMC', 'TDC']:
 	problem._methodPCG = pcgmethod
 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext)
-
+	if pcgmethod   == 'WP' : pcgname = 'w.o. preconditioner'
+	elif pcgmethod == 'C'  : pcgname = 'Classic FD method'
+	elif pcgmethod == 'TDC': pcgname = 'Literature'
+	elif pcgmethod == 'JMC': pcgname = 'This work'
+		
 	for i in range(len(resPCG)):
-		ax.semilogy(resPCG[i], marker=MARKERLIST[i])
+		ax.semilogy(resPCG[i], marker=MARKERLIST[i], label=pcgname)
 	ax.set_xlim(right=100, left=0)
 	ax.set_ylim(top=10.0, bottom=1e-12)
 	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+	ax.legend()
 	fig.tight_layout()
 	fig.savefig(folder+'PCGresidue2'+'.pdf')
 
