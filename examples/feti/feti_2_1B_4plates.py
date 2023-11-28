@@ -14,7 +14,10 @@ import postprocessing.postproc as pp
 from preprocessing.igaparametrization import IGAmanip    as manip
 
 modeleIGA = IGAparametrization(filename='1B_4platesDD')
+print(modeleIGA._COORDS.shape)
+print(modeleIGA._COORDS)
 
+print(modeleIGA._Ukv)
 ti = time.time()
 
 nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
@@ -38,6 +41,8 @@ nb_ref[0,(10,11,12)] = r
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
 modeleIGA._NBPINT[ np.where(modeleIGA._ELT_TYPE == 'U00') ] = 6
 
+print(modeleIGA._COORDS.shape)
+print(modeleIGA._COORDS)
 # --
 # STATIC STUDY
 
