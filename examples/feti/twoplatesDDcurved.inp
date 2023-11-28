@@ -1,0 +1,135 @@
+*HEADING
+**Job name:PlateWithHolem.txt
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=4, TYPE=U1,  COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2
+*USER ELEMENT, NODES=2, TYPE=U00, COORDINATES=2, INTEGRATION=4, TENSOR=NONE
+1,2
+*USER ELEMENT, NODES=1, TYPE=U4,  COORDINATES=1, INTEGRATION=4, TENSOR=NONE
+1,2
+*Node,nset=AllNode
+    1, -10.0,  0.00
+    2, -6.66666,  0.00
+    3, -3.33333,  0.00
+    4,  0.00, 0.00
+    5, -10.0,  1.66666
+    6, -6.66666,  1.66666
+    7, -3.33333,  1.66666
+    8, 3.0, 1.66666
+    9, -10.0, 3.33333
+    10, -6.66666, 3.33333
+    11, -3.33333, 3.33333
+    12, -3.00,  3.33333
+    13, -10.0, 5.00
+    14, -6.66666, 5.00
+    15, -3.33333, 5.00
+    16, 0.00, 5.00
+    17, 0.00, 0.00
+    18, 3.33333, 0.00
+    19, 6.66666, 0.00
+    20, 10.0, 0.00
+    21, 3.00, 1.66666
+    22, 3.33333, 1.66666
+    23, 6.66666, 1.66666
+    24, 10.0, 1.66666
+    25, -3.00, 3.33333
+    26, 3.33333, 3.33333
+    27, 6.66666, 3.33333
+    28, 10.0, 3.33333
+    29, 0.00, 5.00
+    30, 3.33333, 5.00
+    31, 6.66666, 5.00
+    32, 10.0, 5.00
+    33, 1.00,  0.00
+    34, 1.00,  1.00
+    35, 0.00,  0.00
+    36, 0.00,  1.00
+    37, 0.00,  0.00
+*Element,type=U1, elset=AllEls
+1,    11, 10, 9, 7, 6, 5, 3, 2, 1
+2,    12, 11, 10, 8, 7, 6, 4, 3, 2
+3,    15, 14, 13, 11, 10, 9, 7, 6, 5
+4,    16, 15, 14, 12, 11, 10, 8, 7, 6
+5,    27, 26, 25, 23, 22, 21, 19, 18, 17
+6,    28, 27, 26, 24, 23, 22, 20, 19, 18
+7,    31, 30, 29, 27, 26, 25, 23, 22, 21
+8,    32, 31, 30, 28, 27, 26, 24, 23, 22
+*Element,type=U00,elset=EmbedInterface
+9,    34,33
+10,   36,35
+*Element,type=U4, elset=Lagrange
+11,   37
+*ELSET,ELSET=EltPAtch1,generate
+1,4, 1
+*ELSET,ELSET=EltPAtch2,generate
+5,8, 1
+*ELSET,ELSET=EltPAtch3,generate
+9,9, 1
+*ELSET,ELSET=EltPAtch4,generate
+10,10, 1
+*ELSET,ELSET=EltPAtch5,generate
+11,11, 1
+*NSET,NSET=CPatX0patch1
+1,5,9,13
+*NSET,NSET=CPatY0patch1
+1,2,3,4
+*NSET,NSET=CPatXMpatch2
+20,24,28,32
+*NSET,NSET=CPatY0patch2
+17,18,19,20
+*NSET,NSET=CPinterface1
+33,34
+*NSET,NSET=CPinterface2
+35,36
+*NSET,NSET=CPlgrge
+23,37
+**
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
+1
+*UEL PROPERTY, ELSET=EltPAtch2, MATERIAL=MAT
+2
+*UEL PROPERTY, ELSET=EltPAtch3, MATERIAL=MATvoid
+3, 1, 5, 1
+*UEL PROPERTY, ELSET=EltPAtch4, MATERIAL=MATvoid
+4, 2, 5, 0
+*UEL PROPERTY, ELSET=EltPAtch5, MATERIAL=MATvoid
+5, 0
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly 
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+60.e9, 0.30
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.00, 0.00
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPatX0patch1,  1, 2, 0.
+I1.CPinterface1,  1, 2, 0.
+I1.CPinterface2,  1, 2, 0.
+**I1.CPatXMpatch2,  1, 1, 0.
+**I1.CPatY0patch2,  1, 2, 0.
+**I1.CPlgrge,       1, 2, 0.
+**
+** DLOAD
+*Dload
+I1.EltPAtch2, U22,  1000.00
+**I1.EltPAtch1, U11, -1.00
+** CLOAD
+** *Cload
+** 8, 2, -1.0
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

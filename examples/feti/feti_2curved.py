@@ -13,7 +13,7 @@ from coupling.cplgmatrix import cplg_matrix
 import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
-modeleIGA = IGAparametrization(filename='twoplatesDD')
+modeleIGA = IGAparametrization(filename='twoplatesDDd2')
 
 ti = time.time()
 
@@ -21,10 +21,10 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-p = 2
-r = 2
+p = 3
+r = 3
 # domains
-nb_deg[:2,:2] = p
+nb_deg[:2,:2] = p-1
 nb_ref[:2, 0] = r+1 #r+1
 nb_ref[:2, 1] = r
 # curves
@@ -166,8 +166,39 @@ if True:
 
     SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(utot[idof]))
     pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-        'coupling_pcpg',SOL.transpose(),nb_ref=np.array([4,4,1]),
-        Flag=np.array([True,True,False])))
+        'coupling_pcpg_curve',SOL.transpose(),nb_ref=np.array([4,7,1]),
+        Flag=np.array([True,True,True])))
+    
+
+    cpi1 = manip.get_boundCPindice_wEdges(modeleIGA._Nkv,modeleIGA._Jpqr,modeleIGA._dim, 2, num_patch=0, offset=0,num_orientation=0)
+    print(cpi1)
+
+    print(np.max(cpi1))
+
+    cpi2 = manip.get_boundCPindice(modeleIGA._Nkv,modeleIGA._Jpqr, 1, num_patch=1, offset=0) + np.max(cpi1) + 1
+    print(cpi2)
+    
+    SOLi1 = SOL[cpi1]
+
+    SOLi2 = SOL[cpi2]
+
+    print(SOL[cpi1])
+    print(SOL[cpi2])
+    print(modeleIGA._dim)
+
+
+    # pp.generatecplginterfacetxt(*modeleIGA.get_inputs4postprocCPLG(
+    #     'coupling_txt',SOL.transpose(), nb_ref=5,
+    #     Flag=np.array([True, False, False])))
+    
+    print(np.shape(SOL))
+    np.save('/home/agagnaire/yeti/temp/u', u)
+    np.save('/home/agagnaire/yeti/temp/SOL', SOL)
+    np.save('/home/agagnaire/yeti/temp/SOLi1', SOLi1)
+    np.save('/home/agagnaire/yeti/temp/SOLi2', SOLi2)
+
+    exit()
+
 
 
 
@@ -199,7 +230,7 @@ dof2 = np.intersect1d(dof2,idof)
 
 K2   = Ktot[dof2,:][:,dof2]
 
-sp.save_npz('/home/aduval1/temp/K2', K2)
+sp.save_npz('/home/agagnaire/yeti/temp/K2', K2)
 
 exit()
 
