@@ -115,32 +115,47 @@ subroutine create_identity(nr, A)
     
 end subroutine create_identity
 
-subroutine indices2list(dimen, nbPts, ptsPos, nclist, sample)
+subroutine indices2list(size_nclist, nbPts, ptsPos, nclist, sample)
     implicit none
     ! Input / output data
     ! -------------------
-    integer, intent(in) :: dimen, nbPts
-    integer, intent(in) :: ptsPos(dimen, nbPts), nclist(dimen)
-    integer, intent(out) :: sample(nbPts**dimen)
+    integer, intent(in) :: size_nclist, nbPts
+    integer, intent(in) :: ptsPos(size_nclist, nbPts), nclist(size_nclist)
+    integer, intent(out) :: sample(nbPts**size_nclist)
 
     ! Local data
     ! ----------
-    integer :: i, j, k, c, gp
+    integer :: i, j, k, l, c, gp
     
     c = 1
-    if (dimen.eq.2) then
+    if (size_nclist.eq.2) then
         do j = 1, nbPts
             do i = 1, nbPts
                 gp = ptsPos(1, i) + (ptsPos(2, j) - 1)*nclist(1)
                 sample(c) = gp; c = c + 1
             end do
         end do
-    else if (dimen.eq.3) then
+        
+    else if (size_nclist.eq.3) then
         do k = 1, nbPts
             do j = 1, nbPts
                 do i = 1, nbPts
                     gp = ptsPos(1, i) + (ptsPos(2, j) - 1)*nclist(1) + (ptsPos(3, k) - 1)*nclist(1)*nclist(2)
                     sample(c) = gp; c = c + 1
+                end do
+            end do
+        end do
+
+    else if (size_nclist.eq.4) then
+        do l = 1, nbPts
+            do k = 1, nbPts
+                do j = 1, nbPts
+                    do i = 1, nbPts
+                        gp = ptsPos(1, i) + (ptsPos(2, j) - 1)*nclist(1) &
+                            + (ptsPos(3, k) - 1)*nclist(1)*nclist(2) &
+                            + (ptsPos(4, l) - 1)*nclist(1)*nclist(2)*nclist(3)
+                        sample(c) = gp; c = c + 1
+                    end do
                 end do
             end do
         end do

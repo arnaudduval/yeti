@@ -3,7 +3,7 @@ module separatevariables
     implicit none
 
     type sepoperator
-        integer :: dimen, ncols, maxit = 3
+        integer :: size_nclist, ncols, maxit = 3
         integer, dimension(:), allocatable :: nclist
         logical, dimension(:), allocatable :: update
         double precision, dimension(:, :), allocatable :: univmasscoefs, univstiffcoefs
@@ -12,24 +12,24 @@ module separatevariables
 
 contains
 
-    subroutine initialize_operator(obj, dimen, nclist, update)
+    subroutine initialize_operator(obj, size_nclist, nclist, update)
         
         implicit none
         ! Input /  output data
         ! --------------------
         type(sepoperator) :: obj
-        integer :: dimen, nclist
+        integer :: size_nclist, nclist
         logical :: update
-        dimension :: nclist(dimen), update(dimen)
+        dimension :: nclist(size_nclist), update(size_nclist)
 
-        obj%dimen  = dimen
-        allocate(obj%nclist(dimen), obj%update(dimen))
+        obj%size_nclist = size_nclist
+        allocate(obj%nclist(size_nclist), obj%update(size_nclist))
         obj%nclist = nclist
         obj%update = update
         obj%ncols  = product(obj%nclist)
 
-        allocate(obj%univmasscoefs(obj%dimen, maxval(obj%nclist)))
-        allocate(obj%univstiffcoefs(obj%dimen, maxval(obj%nclist)))
+        allocate(obj%univmasscoefs(obj%size_nclist, maxval(obj%nclist)))
+        allocate(obj%univstiffcoefs(obj%size_nclist, maxval(obj%nclist)))
         obj%univmasscoefs = 1.d0; obj%univstiffcoefs = 1.d0
 
     end subroutine initialize_operator
@@ -55,7 +55,7 @@ contains
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen)   
         
-        if (obj%dimen.ne.dimen) stop 'Dimension problem'
+        if (obj%size_nclist.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2)
 
         do iter = 1, obj%maxit
@@ -160,7 +160,7 @@ contains
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen) 
         
-        if (obj%dimen.ne.dimen) stop 'Dimension problem'
+        if (obj%size_nclist.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2); nc_w = obj%nclist(3)
 
         do iter = 1, obj%maxit
@@ -287,7 +287,7 @@ contains
         double precision :: vmin, vmax
         double precision :: UU(dimen), WW(dimen)   
         
-        if (obj%dimen.ne.dimen) stop 'Dimension problem'
+        if (obj%size_nclist.ne.dimen) stop 'Dimension problem'
         nc_u = obj%nclist(1); nc_v = obj%nclist(2); nc_w = obj%nclist(3); nc_t = obj%nclist(4)
 
         do iter = 1, obj%maxit

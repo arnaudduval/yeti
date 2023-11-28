@@ -3,6 +3,8 @@ module matrixfreestheat
     implicit none
     type stthermomat
         integer :: dimen_sp
+        double precision :: Cmean
+        double precision, dimension(:), allocatable :: Kmean
         double precision, dimension(:), pointer :: Cprop=>null(), Cdersprop=>null(), detJ=>null(), detG=>null()
         double precision, dimension(:, :), pointer :: Kdersprop=>null()
         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
@@ -29,6 +31,9 @@ contains
         mat%ncols_sp = nnz_sp
         mat%ncols_tm = nnz_tm
         mat%ncols_total = nnz_sp*nnz_tm
+
+        allocate(mat%Kmean(mat%dimen_sp))
+        mat%Kmean = 1.d0; mat%Cmean = 1.d0
 
     end subroutine setup_geometry
 
@@ -91,6 +96,117 @@ contains
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
 
     end subroutine setup_capacityDersprop
+
+    subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+        
+        use separatevariables
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(stthermomat) :: mat
+        integer, intent(in) :: nc_list
+        dimension :: nc_list(mat%dimen_sp+1)
+
+        double precision, intent(out) :: univMcoefs(mat%dimen_sp+1, maxval(nc_list)), &
+                                        univKcoefs(mat%dimen_sp+1, maxval(nc_list))
+
+        ! Local data
+        ! ----------
+        type(sepoperator) :: oper
+        integer :: i, j, k, l
+        logical, allocatable, dimension(:) :: update
+        double precision, allocatable, dimension(:, :) :: CC
+        double precision :: tensor(mat%dimen_sp, mat%dimen_sp)
+
+        allocate(CC(mat%dimen_sp+1, mat%ncols_total), update(mat%dimen_sp+1)); update = .true.
+        call initialize_operator(oper, size(nc_list), nc_list, update)
+
+        do j = 1, mat%ncols_tm
+            do i = 1, mat%ncols_sp
+                k = i + (j-1)*mat%ncols_sp
+                tensor = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, k), &
+                                    transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
+                do l = 1, mat%dimen_sp
+                    CC(l, k) = tensor(l, l)
+                end do
+                CC(mat%dimen_sp+1, k) = mat%Cprop(k)*mat%detJ(i)
+            end do
+        end do
+
+        if (mat%dimen_sp.eq.2) then
+            call separatevariables_3d(oper, CC)
+        else if (mat%dimen_sp.eq.3) then
+            call separatevariables_4d(oper, CC)
+        end if
+        univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
+    
+    end subroutine compute_separationvariables
+
+    subroutine compute_mean(mat, nclist)
+        !! Computes the average of the material properties
+
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(stthermomat) :: mat
+        integer, intent(in) :: nclist
+        dimension :: nclist(mat%dimen_sp+1)
+
+        ! Local data
+        ! ----------
+        integer, parameter :: NP = 3
+        integer :: i, c_sp, c_tm, cp, gsp, gtm, gp, indlist_sp(mat%dimen_sp, NP), sample_sp(NP**mat%dimen_sp), sample_tm(NP)
+        double precision, dimension(:, :), allocatable :: CC_K
+        double precision, dimension(:), allocatable :: CC_M
+        double precision :: tensor(mat%dimen_sp, mat%dimen_sp)
+        
+        do i = 1, mat%dimen_sp
+            indlist_sp(i, :) = (/1, int((nclist(i) + 1)/2), nclist(i)/)
+        end do
+        call indices2list(mat%dimen_sp, NP, indlist_sp, nclist(:mat%dimen_sp), sample_sp)
+        sample_tm = (/1, int((nclist(mat%dimen_sp+1) + 1)/2), nclist(mat%dimen_sp+1)/)
+        
+        allocate(CC_K(mat%dimen_sp, size(sample_sp)*size(sample_tm)))
+        do c_tm = 1, size(sample_tm)
+            do c_sp = 1, size(sample_sp)
+                gtm = sample_tm(c_tm)
+                gsp = sample_sp(c_sp)
+                gp  = gsp + (gtm - 1)*mat%ncols_sp
+                cp  = c_sp + (c_tm - 1)*size(sample_sp)
+                tensor = matmul(mat%invJ(:, :, gsp), matmul(mat%Kprop(:, :, gp), &
+                                transpose(mat%invJ(:, :, gsp))))*mat%detJ(gsp)*mat%detG(gtm)
+                do i = 1, mat%dimen_sp
+                    CC_K(i, cp) = tensor(i, i)
+                end do
+            end do
+        end do
+
+        do i = 1, mat%dimen_sp
+            if (mat%dimen_sp.eq.2) then
+                call trapezoidal_rule_3d(NP, NP, NP, CC_K(i, :), mat%Kmean(i))
+            else if (mat%dimen_sp.eq.3) then
+                call trapezoidal_rule_4d(NP, NP, NP, NP, CC_K(i, :), mat%Kmean(i))
+            end if
+        end do
+
+        allocate(CC_M(size(sample_sp)))
+        do c_tm = 1, size(sample_tm)
+            do c_sp = 1, size(sample_sp)
+                gtm = sample_tm(c_tm)
+                gsp = sample_sp(c_sp)
+                gp  = gsp + (gtm - 1)*mat%ncols_sp
+                cp  = c_sp + (c_tm - 1)*size(sample_sp)
+                CC_M(cp) = mat%Cprop(gp)*mat%detJ(gsp)
+            end do
+        end do
+
+        if (mat%dimen_sp.eq.2) then
+            call trapezoidal_rule_3d(NP, NP, NP, CC_M, mat%Cmean)
+        else if (mat%dimen_sp.eq.3) then
+            call trapezoidal_rule_4d(NP, NP, NP, NP, CC_M, mat%Cmean)
+        end if
+
+    end subroutine compute_mean
 
     subroutine mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -620,6 +736,7 @@ module stheatsolver2
     use datastructure
     type stcgsolver
         integer :: dimen = 3
+        double precision :: Cmean = 1.d0
         type(structure) :: temp_struct
     end type stcgsolver
 
@@ -675,7 +792,7 @@ contains
 
     subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                 nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
-                data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table)
+                data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table, Kmean)
 
         implicit none
         ! Input / output data
@@ -690,17 +807,15 @@ contains
                     data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t)
         logical, intent(in) :: table
         dimension :: table(solv%dimen, 2)
-        
-        ! Local data
-        ! ----------
-        double precision :: dummymean(solv%dimen)
+        double precision, intent(in) :: Kmean
+        dimension :: Kmean(solv%dimen)
 
         call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t)
         call update_datastructure(solv%temp_struct, solv%dimen, table)
-        solv%temp_struct%isspacetime = .true.; dummymean = 1.d0
-        call space_eigendecomposition(solv%temp_struct, solv%dimen, dummymean)
+        solv%temp_struct%isspacetime = .true.
+        call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
         call time_schurdecomposition(solv%temp_struct)
     
     end subroutine initializefastdiag
@@ -782,7 +897,7 @@ contains
                 eigval = solv%temp_struct%diageigval_sp(l)
                 indices = dof(i, j, :)
                 btmp = tmp1(indices)
-                call solve_schurtriangular__(solv, nr_t, (/1.d0, eigval/), btmp, sol)
+                call solve_schurtriangular__(solv, nr_t, (/solv%Cmean, eigval/), btmp, sol)
                 tmp2(indices) = sol
             end do
         end do
@@ -976,6 +1091,7 @@ module stheatsolver3
     use datastructure
     type stcgsolver
         integer :: dimen = 4
+        double precision :: Cmean = 1.d0
         type(structure) :: temp_struct
     end type stcgsolver
 
@@ -1139,7 +1255,7 @@ contains
                     eigval = solv%temp_struct%diageigval_sp(l)
                     indices = dof(i, j, k, :)
                     btmp = tmp1(indices)
-                    call solve_schurtriangular__(solv, nr_t, (/1.d0, eigval/), btmp, sol)
+                    call solve_schurtriangular__(solv, nr_t, (/solv%Cmean, eigval/), btmp, sol)
                     tmp2(indices) = sol
                 end do
             end do

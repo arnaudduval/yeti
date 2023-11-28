@@ -731,7 +731,7 @@ contains
 
     subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, &
                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                data_B_u, data_B_v, data_W_u, data_W_v, table_dirichlet, mean)
+                data_B_u, data_B_v, data_W_u, data_W_v, table_dirichlet, Kmean)
 
         implicit none
         ! Input / output data
@@ -746,14 +746,14 @@ contains
                     data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
         logical, intent(in) :: table_dirichlet
         dimension :: table_dirichlet(solv%dimen, 2)
-        double precision, intent(in) :: mean
-        dimension :: mean(solv%dimen)
+        double precision, intent(in) :: Kmean
+        dimension :: Kmean(solv%dimen)
 
         call init_2datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
         call update_datastructure(solv%temp_struct, solv%dimen, table_dirichlet)
-        call space_eigendecomposition(solv%temp_struct, solv%dimen, mean)
+        call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
     
     end subroutine initializefastdiag
 
