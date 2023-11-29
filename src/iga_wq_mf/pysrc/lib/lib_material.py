@@ -85,6 +85,14 @@ class heatmat(material):
 		if isIsotropic: self._isConductivityIsotropic = True
 		self.conductivity = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
+	
+	def addCapacityDers(self, inpt, isIsotropic):
+		self.capacityDers = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
+		return
+	
+	def addConductivityDers(self, inpt, isIsotropic, shape=(3, 3)):
+		self.conductivityDers = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
+		return
 
 class mechamat(material):
 	""" In our work we only consider isotropic material (with Lamé parameters). 

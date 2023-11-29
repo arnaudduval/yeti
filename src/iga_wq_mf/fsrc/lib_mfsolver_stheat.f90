@@ -735,14 +735,14 @@ module stheatsolver2
     use matrixfreestheat
     use datastructure
     type stcgsolver
-        integer :: dimen = 3
+        integer :: matrixfreetype = 1, dimen = 3
         double precision :: Cmean = 1.d0
         type(structure) :: temp_struct
     end type stcgsolver
 
 contains
 
-    subroutine matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+    subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, array_in, array_out)
@@ -750,6 +750,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
+        type(stcgsolver) :: solv
         type(stthermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_t, indj_T_u, indj_T_v, indj_T_t
@@ -775,10 +776,10 @@ contains
         double precision :: tmp(nr_total)
 
         call mf_u_partialt_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                                nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
-                                indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
-                                data_W_t, array_in, array_out)
+                                    nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
+                                    data_W_t, array_in, array_out)
 
         call mf_gradx_u_gradx_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -787,6 +788,25 @@ contains
                                 data_W_t, array_in, tmp)
 
         array_out = array_out + tmp
+
+        if (solv%matrixfreetype.eq.1) then
+            return
+        else if (solv%matrixfreetype.eq.2) then
+            call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
+                            data_W_t, array_in, tmp)
+            array_out = array_out + tmp
+            call mf_gradx_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                            indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_W_u, data_W_v, &
+                            data_W_t, array_in, tmp)
+            array_out = array_out + tmp
+        else
+            stop 'Not coded'
+        end if
 
     end subroutine matrixfree_spMdV
 
@@ -974,7 +994,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, p, Ap)
@@ -983,7 +1003,7 @@ contains
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, s, As)
@@ -1053,7 +1073,7 @@ contains
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, ptilde, Aptilde)
@@ -1063,7 +1083,7 @@ contains
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, stilde, Astilde)
@@ -1090,14 +1110,14 @@ module stheatsolver3
     use matrixfreestheat
     use datastructure
     type stcgsolver
-        integer :: dimen = 4
+        integer :: matrixfreetype=1, dimen = 4
         double precision :: Cmean = 1.d0
         type(structure) :: temp_struct
     end type stcgsolver
 
 contains
 
-    subroutine matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+    subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, array_in, array_out)
@@ -1105,6 +1125,7 @@ contains
         implicit none
         ! Input / output data
         ! -------------------
+        type(stcgsolver) :: solv
         type(stthermomat) :: mat
         integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
         integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t, indj_T_u, indj_T_v, indj_T_w, indj_T_t
@@ -1130,10 +1151,10 @@ contains
         double precision :: tmp(nr_total)
 
         call mf_u_partialt_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                                nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
-                                data_W_w, data_W_t, array_in, array_out)
+                                    nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
+                                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
+                                    data_W_w, data_W_t, array_in, array_out)
 
         call mf_gradx_u_gradx_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -1142,6 +1163,27 @@ contains
                                 data_W_w, data_W_t, array_in, tmp)
 
         array_out = array_out + tmp
+
+        if (solv%matrixfreetype.eq.1) then
+            return
+        else if (solv%matrixfreetype.eq.2) then
+            call mf_u_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
+                                data_W_w, data_W_t, array_in, tmp)
+
+            array_out = array_out + tmp
+            call mf_gradx_u_v_4d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                indi_T_w, indj_T_w, indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, &
+                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, &
+                                data_W_w, data_W_t, array_in, tmp)
+
+            array_out = array_out + tmp
+        else
+            stop 'Not coded'
+        end if
 
     end subroutine matrixfree_spMdV
 
@@ -1335,7 +1377,7 @@ contains
         if (normb.lt.threshold) return
 
         do iter = 1, nbIterPCG
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, p, Ap)
@@ -1344,7 +1386,7 @@ contains
             alpha = rsold/dot_product(Ap, rhat)
             s = r - alpha*Ap
 
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, s, As)
@@ -1414,7 +1456,7 @@ contains
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, ptilde, Aptilde)
@@ -1424,7 +1466,7 @@ contains
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, stilde, Astilde)

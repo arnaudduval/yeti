@@ -21,7 +21,7 @@ class stproblem():
 
 	def addSolverConstraints(self, solverArgs:dict):
 		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
-		self._nbIterNR     = solverArgs.get('nbIterationsNR', 50)
+		self._nbIterNR     = solverArgs.get('nbIterationsNR', 8)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
@@ -38,7 +38,7 @@ class stproblem():
 		if self.part.dim == 3: volForce = geophy.get_forcevol_st3d(*inpts)
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
-	
+
 	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
@@ -68,7 +68,6 @@ class stproblem():
 		for i in range(self.time.nbctrlpts):
 			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
 			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
-			iold = np.copy(inew)
 
 		inpts = [*nbqp, *indices, *basis]
 		if self.part.dim == 2:
@@ -108,7 +107,6 @@ class stproblem():
 			for i in range(time_ref.nbctrlpts):
 				inew = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
 				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
-				iold = np.copy(inew)
 
 			inpts = [*nbqpExact, *indicesExact, *basisExact]
 			if self.part.dim == 2:   
@@ -164,7 +162,7 @@ class stheatproblem(stproblem):
 	
 	def compute_mfSTConductivity(self, array_in, args=None):
 		assert args is not None, 'Please enter a valid argument'
-		prop = self.heatmaterial.conductivity(args)*self.heatmaterial.density(args)
+		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stconductivity_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = stheatsolver.mf_stconductivity_3d(*inpts, array_in)
@@ -172,37 +170,62 @@ class stheatproblem(stproblem):
 	
 	def compute_mfSTCapacity(self, array_in, args=None):
 		assert args is not None, 'Please enter a valid argument'
-		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+		prop = self.heatmaterial.capacity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacity_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = stheatsolver.mf_stcapacity_3d(*inpts, array_in)
 		return array_out
 
-	def interpolate_STtemperature(self, T_ctrlpts):
+	def interpolate_STtemperature_gradients(self, u_ctrlpts):
 		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, 
-			*self.time.quadRule.dersIndices, *self.part.basis, self.time.quadRule.dersBasis, 
-			np.atleast_2d(T_ctrlpts)]
-		if self.part.dim == 2:   T_interp = geophy.interpolate_meshgrid_3d(*inpts)
-		elif self.part.dim == 3: T_interp = geophy.interpolate_meshgrid_4d(*inpts)
-		T_interp = np.ravel(T_interp)
-		return T_interp
+				*self.time.quadRule.dersIndices, *self.part.basis, self.time.quadRule.dersBasis]
+		
+		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts))
+		for i in range(self.time.nbctrlpts):
+			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
+			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
+		
+		if self.part.dim == 2:
+			Jqp = geophy.eval_jacobien_3d(*inpts, sptimectrlpts)
+			_, invJ = geophy.eval_inverse_det(Jqp)
+			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
+	
+		elif self.part.dim == 3:
+			Jqp = geophy.eval_jacobien_4d(*inpts, sptimectrlpts)
+			_, invJ = geophy.eval_inverse_det(Jqp)
+			u_interp = geophy.interpolate_meshgrid_4d(*inpts, np.atleast_2d(u_ctrlpts))
+			derstemp = geophy.eval_jacobien_4d(*inpts, np.atleast_2d(u_ctrlpts))
+
+		u_interp = np.atleast_2d(u_interp); u_interp = np.ravel(u_interp)
+		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ)); uders_interp = uders_interp[0, :, :]
+		return u_interp, uders_interp
 
 	def compute_STHeatIntForce(self, array_in, args=None):
 		assert args is not None, 'Please enter a valid argument'
 		intForce = self.compute_mfSTCapacity(array_in, args) + self.compute_mfSTConductivity(array_in, args)
 		return intForce
 	
-	def _solveLinearizedSTHeatProblem(self, Fext, args=None):
+	def _solveLinearizedSTHeatProblem(self, Fext, args=None, isfull=False):
 		assert args is not None, 'Please enter a valid argument'
-		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+		Cprop = self.heatmaterial.capacity(args)
 		Kprop = self.heatmaterial.conductivity(args)
-		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-				self.time.detJ, Cprop, Kprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
-		if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
-		if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
+		if isfull:
+			gradTemperature = args['gradients']
+			Cdersprop = self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]
+			Kdersprop = np.einsum('ijk,jk->ik', self.heatmaterial.conductivityDers(args), gradTemperature[:self.part.dim, :])
+			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_2d(*inpts)
+			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_3d(*inpts)
+		else:
+			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
+					self.time.detJ, Cprop, Kprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
+			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveFourierSTHeatProblem(self, Tguess, Fext):
+	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess); d_n1ref = np.copy(Tguess)
 		
@@ -210,17 +233,20 @@ class stheatproblem(stproblem):
 		for j in range(self._nbIterNR):
 
 			# Compute temperature at each quadrature point
-			temperature = self.interpolate_STtemperature(Tguess)
+			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
 		
 			# Compute internal force
-			Fint_dj = self.compute_STHeatIntForce(dj_n1, args=temperature)
+			Fint_dj = self.compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
 
 			# Compute residue
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
 			# Solve for active control points
-			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, args=temperature)
+			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
+										args={'temperature':temperature, 
+											'gradients':gradtemperature}, 
+										isfull=isfull)
 			d_n1ref += deltaD
 
 			# Compute residue of Newton Raphson using an energetic approach

@@ -6,7 +6,8 @@ from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_stjob import stheatproblem
 
-def conductivityProperty(temperature):
+def conductivityProperty(args):
+	temperature = args['temperature']
 	Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
@@ -14,7 +15,8 @@ def conductivityProperty(temperature):
 			Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
-def capacityProperty(temperature):
+def capacityProperty(args):
+	temperature = args['temperature']
 	Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
