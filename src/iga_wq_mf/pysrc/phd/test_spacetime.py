@@ -8,7 +8,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(args):
 	temperature = args['temperature']
-	Kref  = np.array([[1., 0.0],[0.0, 1.0]])
+	Kref  = np.array([[1., 0.0],[0.0, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
@@ -39,7 +39,7 @@ def powerDensity(args:dict):
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		f[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*timespan[i])
+		f[:, i] = 2*(np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*timespan[i])
 	return np.ravel(f, order='F')
 
 # Select folder
@@ -48,10 +48,10 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 2, 3
+degree, cuts = 3, 3
 
 # Create model 
-geoArgs = {'name': 'sq', 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 
@@ -61,7 +61,7 @@ modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 # Create time span
 nbel = int(2**cuts)
-crv = createUniformCurve(degree, nbel, 1.0)
+crv = createUniformCurve(degree, nbel, 0.5)
 timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
 
 # Add material 
@@ -91,20 +91,20 @@ u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
 	problem._methodPCG = pcgmethod
-	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False)
+	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True)
 	if pcgmethod == 'C'  : pcgname = 'Classic FD method'
 	elif pcgmethod == 'TDC': pcgname = 'Literature'
 	elif pcgmethod == 'JMC': pcgname = 'This work'
 		
-	# for i in range(len(resPCG)):
-	# 	# ax.semilogy(resPCG[i], marker=MARKERLIST[i], label=pcgname)
-	# 	ax.semilogy(resPCG[i], marker=MARKERLIST[j], color=COLORLIST[j])
-	# ax.set_xlim(right=100, left=0)
-	# ax.set_ylim(top=10.0, bottom=1e-12)
-	# ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-	# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
-	# fig.tight_layout()
-	# fig.savefig(folder+'PCGresiduePartial'+'.pdf')
+	for i in range(len(resPCG)):
+		opacity = 1 - 1./len(resPCG)*i
+		ax.semilogy(resPCG[i], marker=MARKERLIST[j], color=COLORLIST[j], alpha=opacity)
+	ax.set_xlim(right=100, left=0)
+	ax.set_ylim(top=10.0, bottom=1e-12)
+	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+	fig.tight_layout()
+	fig.savefig(folder+'PCGresidueFull'+'.pdf')
 
-u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+# u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
+# modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
