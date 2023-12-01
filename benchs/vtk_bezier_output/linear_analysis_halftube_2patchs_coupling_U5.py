@@ -23,7 +23,6 @@
 Generate VTU output using Bezier en assembly of 2 patchs with Mortar
 coupling
 No test is made on the content of output files.
-WARNING : THIS CASE CREATES A SINGULAR MATRIX
 """
 
 import numpy as np
@@ -37,25 +36,25 @@ import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
-modeleIGA = IGAparametrization(filename='inputs/BentPipe_2patchs_coupling_U5')
+modeleIGA = IGAparametrization(filename='inputs/HalfTube_2patchs_coupling_U5')
 
 # Model refinement
 nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
 
 
-nb_ref[:, 0] = np.array([0, 0, 0])
-nb_ref[:, 1] = np.array([0, 0, 0])
+nb_ref[:, 0] = np.array([2, 2, 2])
+nb_ref[:, 1] = np.array([2, 3, 3])
 
-nb_deg[:, 0] = np.array([0, 1, 0])
-nb_deg[:, 1] = np.array([0, 1, 0])
+nb_deg[:, 0] = np.array([0, 1, 1])
+nb_deg[:, 1] = np.array([0, 1, 1])
 
 # Coupling patches
-nb_ref[:, 2] = np.array([0, 0, 0])
-nb_ref[:, 3] = np.array([0, 0, 0])
+nb_ref[:, 2] = np.array([2, 2, 0])
+# nb_ref[:, 3] = np.array([0, 0, 0])
 
 nb_deg[:, 2] = np.array([1, 1, 0])
-nb_deg[:, 3] = np.array([1, 1, 0])
+# nb_deg[:, 3] = np.array([1, 1, 0])
 
 print(modeleIGA.nb_patch)
 modeleIGA.refine(nb_ref, nb_deg)
@@ -99,13 +98,12 @@ pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'couplingU5',SOL.transpose(),nb_ref=np.array([3,3,3]),
     Flag=np.array([True,True,False])))
 
-exit()
-
 # VTK output using Bezier elements
 for i_patch in range(modeleIGA._nb_patch):
-    pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
-        i_patch+1,
-        f'BentPipeBezier_2patchs_P{i_patch+1}',
-        SOL.transpose(),
-        ))
+    if modeleIGA._ELT_TYPE[i_patch] != 'U5':
+        pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
+            i_patch+1,
+            f'HalfTube_2patchs_P{i_patch+1}',
+            SOL.transpose(),
+            ))
 
