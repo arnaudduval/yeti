@@ -1223,7 +1223,6 @@ contains
         !! Applied to steady heat problems
         !! by G. Sanaglli and M. Tani
         
-        use omp_lib
         implicit none
         ! Input / output  data 
         !---------------------

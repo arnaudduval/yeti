@@ -40,7 +40,7 @@ tmDscrt.getQuadratureRulesInfo()
 tmDenseBasis, tmDenseWeights = tmDscrt.getDenseQuadRules()
 
 # Construct time matrices
-Adv_time  = tmDenseWeights[0] @ np.diag(np.ones(tmDscrt.nbqp)) @ tmDenseBasis[1].T
+Adv_time  = tmDenseWeights[1] @ np.diag(np.ones(tmDscrt.nbqp)) @ tmDenseBasis[1].T
 Mass_time = tmDenseWeights[0] @ np.diag(Tspan*np.ones(tmDscrt.nbqp)) @ tmDenseBasis[0].T
 
 # Get free nodes

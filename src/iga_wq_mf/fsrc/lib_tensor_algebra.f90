@@ -496,7 +496,6 @@ subroutine csr_get_diag_2d(coefs, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
     !! Indices must be in CSR format
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -534,7 +533,6 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
     !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
     !! Indices must be in CSR format
 
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -565,6 +563,48 @@ subroutine csr_get_diag_3d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz
                     nnz_v, indi_v, indj_v, data_BW_v, nnz_w, indi_w, indj_w, data_BW_w, coefs, diag)
 
 end subroutine csr_get_diag_3d
+
+subroutine csr_get_diag_4d(coefs, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
+                            data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, diag)
+    !! Find diagonal without constructing all the matrix (WQ-IGA Analysis)
+    !! Algorithm based on sum factorization adapted to diagonal case 
+    !! See more in "Efficient matrix computation for tensor-product isogeometric analysis" by G. Sanaglli et al.
+    !! Indices must be in CSR format
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    double precision, intent(in) :: coefs
+    dimension :: coefs(nc_u*nc_v*nc_w*nc_t)
+    integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t
+    dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
+                    indi_v(nr_v+1), indj_v(nnz_v), &
+                    indi_w(nr_w+1), indj_w(nnz_w), &
+                    indi_t(nr_t+1), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t
+    dimension ::    data_B_u(nnz_u), data_B_v(nnz_v), data_B_w(nnz_w), data_B_t(nnz_t), &
+                    data_W_u(nnz_u), data_W_v(nnz_v), data_W_w(nnz_w), data_W_t(nnz_t)
+
+    double precision, intent(out) :: diag
+    dimension :: diag(nr_u*nr_v*nr_w*nr_t)
+
+    ! Local data
+    ! ----------
+    double precision :: data_BW_u, data_BW_v, data_BW_w, data_BW_t
+    dimension :: data_BW_u(nnz_u), data_BW_v(nnz_v), data_BW_w(nnz_w), data_BW_t(nnz_t)
+    
+    data_BW_u = data_B_u*data_W_u
+    data_BW_v = data_B_v*data_W_v
+    data_BW_w = data_B_w*data_W_w
+    data_BW_t = data_B_t*data_W_t
+
+    call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, indi_u, indj_u, data_BW_u, &
+                        nnz_v, indi_v, indj_v, data_BW_v, nnz_w, indi_w, indj_w, data_BW_w, &
+                        nnz_t, indi_t, indj_t, data_BW_t, coefs, diag)
+
+end subroutine csr_get_diag_4d
 
 ! ----------------------------
 ! Fast Diagonalization method
@@ -766,135 +806,3 @@ subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coe
     call kronvec3d(nr_w, Kw, nr_v, Mv, nr_u, Mu, diag, coefs(3))
     
 end subroutine find_parametric_diag_3d
-
-! OLD ALGORITHMS
-
-! subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
-!     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
-!     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-!     !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
-!     !! Matrix U = U(nr, nc)
-!     !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
-!     !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
-
-!     use omp_lib
-!     implicit none
-!     ! Input / output data
-!     ! -------------------
-!     integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nc, mode, nrR
-!     double precision, intent(in) :: X, U
-!     dimension :: X(nc_u*nc_v*nc_w*nc_t), U(nr, nc)
-
-!     double precision, intent(out) :: R
-!     dimension :: R(nrR)
-
-!     ! Local data
-!     ! ----------
-!     double precision, allocatable, dimension(:, :) :: Rt
-!     double precision, allocatable, dimension(:, :) :: Xt
-!     integer :: ju, jv, jw, jt, nb_tasks
-
-!     R = 0.d0
-!     if (mode.eq.1) then 
-
-!         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
-!         !$OMP PARALLEL PRIVATE(Xt, Rt)
-!         nb_tasks = omp_get_num_threads()
-!         !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, size(X)/nb_tasks) 
-!         do jt = 1, nc_t
-!             do jw = 1, nc_w
-!                 do jv = 1, nc_v
-!                     do ju = 1, nc_u
-!                         Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
-!                     end do
-!                 end do
-!                 Rt = matmul(U, Xt)
-!                 do jv = 1, nc_v
-!                     do ju = 1, nr
-!                         R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
-!                     end do
-!                 end do
-!             end do
-!         end do
-!         !$OMP END DO NOWAIT
-!         !$OMP END PARALLEL
-!         deallocate(Xt, Rt)
-
-!     else if (mode.eq.2) then 
-
-!         allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
-!         !$OMP PARALLEL PRIVATE(Xt, Rt)
-!         nb_tasks = omp_get_num_threads()
-!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
-!         do jt = 1, nc_t
-!             do jw = 1, nc_w
-!                 do ju = 1, nc_u
-!                     do jv = 1, nc_v
-!                         Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
-!                     end do
-!                 end do
-!                 Rt = matmul(U, Xt)
-!                 do ju = 1, nc_u
-!                     do jv = 1, nr
-!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
-!                     end do
-!                 end do
-!             end do
-!         end do
-!         !$OMP END DO NOWAIT
-!         !$OMP END PARALLEL
-!         deallocate(Xt, Rt)
-        
-!     else if (mode.eq.3) then 
-
-!         allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
-!         !$OMP PARALLEL PRIVATE(Xt, Rt)
-!         nb_tasks = omp_get_num_threads()
-!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
-!         do jt = 1, nc_t
-!             do jv = 1, nc_v
-!                 do ju = 1, nc_u
-!                     do jw = 1, nc_w
-!                         Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
-!                     end do
-!                 end do
-!                 Rt = matmul(U, Xt)
-!                 do ju = 1, nc_u
-!                     do jw = 1, nr
-!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
-!                     end do
-!                 end do
-!             end do
-!         end do
-!         !$OMP END DO NOWAIT
-!         !$OMP END PARALLEL
-!         deallocate(Xt, Rt)
-
-!     else if (mode.eq.4) then 
-        
-!         allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
-!         !$OMP PARALLEL PRIVATE(Xt, Rt)
-!         nb_tasks = omp_get_num_threads()
-!         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
-!         do jw = 1, nc_w
-!             do jv = 1, nc_v
-!                 do ju = 1, nc_u
-!                     do jt = 1, nc_t
-!                         Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
-!                     end do
-!                 end do
-!                 Rt = matmul(U, Xt)
-!                 do ju = 1, nc_u
-!                     do jt = 1, nr
-!                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
-!                     end do
-!                 end do
-!             end do
-!         end do
-!         !$OMP END DO NOWAIT
-!         !$OMP END PARALLEL
-!         deallocate(Xt, Rt)
-
-!     end if
-
-! end subroutine tensor_n_mode_product_dM

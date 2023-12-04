@@ -415,7 +415,6 @@ end subroutine crossproduct
 subroutine kronvec2d(nnz_A, A, nnz_B, B, R, alpha)
     !! Computes kron product of 2 vectors and returns R = R + alpha*(A x B) (x : tensor product)
 
-    use omp_lib
     implicit none
     ! Input / output data 
     ! -------------------
@@ -428,26 +427,20 @@ subroutine kronvec2d(nnz_A, A, nnz_B, B, R, alpha)
 
     ! Local data
     ! ----------
-    integer :: iA, iB, gp, nb_tasks
+    integer :: iA, iB, gp
 
-    !$OMP PARALLEL PRIVATE(gp)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(R)/nb_tasks)
     do iA = 1, nnz_A
         do iB = 1, nnz_B
             gp = iB + (iA-1)*nnz_B
             R(gp) = R(gp) + alpha*A(iA)*B(iB)
         end do 
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine kronvec2d 
 
 subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
     !! Computes the kron product of 3 vectors and returns R = R + alpha*(Au x Av x Aw) (x : tensor product)
 
-    use omp_lib
     implicit none
     ! Input / output data
     ! -------------------
@@ -460,11 +453,8 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
 
     ! Local data
     ! ----------
-    integer :: iA, iB, iC, gp, nb_tasks
+    integer :: iA, iB, iC, gp
 
-    !$OMP PARALLEL PRIVATE(gp)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, size(R)/nb_tasks)
     do iA = 1, nnz_A
         do iB = 1, nnz_B
             do iC = 1, nnz_C
@@ -473,8 +463,6 @@ subroutine kronvec3d(nnz_A, A, nnz_B, B, nnz_C, C, R, alpha)
             end do
         end do 
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine kronvec3d
 

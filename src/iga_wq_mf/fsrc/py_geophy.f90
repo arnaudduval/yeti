@@ -294,7 +294,6 @@ subroutine eval_jacobien_1d(nm, nr_u, nc_u, nnz_u, indi_u, indj_u, &
     !! Computes jacobien matrix, its determinant and its inverse in 2D
     !! IN CSR FORMAT
     
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
