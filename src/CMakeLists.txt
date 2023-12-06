@@ -118,7 +118,9 @@ CreateF2PYModule(NAME reconstructionSOL
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 
 CreateF2PYModule(NAME stiffmtrx_elemstorage
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage.f90
+                 FILES
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP.f90
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 CreateF2PYModule(NAME utils
