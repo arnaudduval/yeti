@@ -31,7 +31,9 @@ from copy import deepcopy
 
 from preprocessing.igaparametrization import IGAparametrization
 from preprocessing.igaparametrization import IGAmanip as manip
-from stiffmtrx_elemstorage import sys_linmat_lindef_static_omp as build_stiffmatrix_omp
+print('R1')
+from stiffmtrx_elemstorage_omp import sys_linmat_lindef_static_omp as build_stiffmatrix_omp
+print('R2')
 from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 import reconstructionSOL as rsol
 import postprocessing.postproc as pp
@@ -75,6 +77,7 @@ KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
 
 t4 = time.time()
 
+print(np.linalg.norm(dataMP))
 print(t1-t0, t3-t2, t2-t1, t4-t3)
 
 print(sp.linalg.norm(Kside - KsideMP))

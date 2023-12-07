@@ -183,8 +183,9 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         !$omp shared(ien_patch, coords3D, nodal_dist, elt_type_patch, mat_patch, inddload, load_additionalinfos)      &
         !$omp shared(nb_load_additionalinfos, ndofel, nnodeSum, nb_n_dist, adlmag, jdltype, load_target_nbelem)         &
         !$omp shared(nb_load, rho, tensor_patch, nbint, n_mat_props, jprops_patch, props_patch, nb_cp, nnode_map) &
-        !$omp shared(count)         &
-        !$omp private(current_elem, coords_elem, n_dist_elem, rhs, amatrx, sctr, loccount, nb_data_elem)
+        !$omp shared(count, Kdata, Krow, Kcol, F)         &
+        !$omp private(coords_elem, n_dist_elem, rhs, amatrx, sctr, loccount, nb_data_elem, idx, dofj, dofi)   &
+        !$omp private(ddli,current_elem)
         !$OMP do
         do num_elem = 1,nb_elem_patch(NumPatch)
             ! write(*,*) num_elem

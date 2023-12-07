@@ -29,7 +29,7 @@ find_package(OpenMP REQUIRED)
 macro(CreateF2PYModule)
     set(options)
     set(oneValueArgs NAME DESTINATION)
-    set(multiValueArgs FILES LINK_LIBRARIES)
+    set(multiValueArgs FILES LINK_LIBRARIES SKIP)
 
     CMAKE_PARSE_ARGUMENTS(MODULE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -45,6 +45,12 @@ macro(CreateF2PYModule)
         set(link_string ${link_string} -l${dep})
     endforeach()
 
+    # manage skipped functions
+    set(skip_string)
+    foreach(fun ${MODULE_SKIP})
+        set(skip_string ${skip_string}${fun})
+    endforeach()
+
     add_custom_command(
         OUTPUT ${generated_module_file}
         COMMAND ${F2PY_EXECUTABLE}
@@ -57,6 +63,7 @@ macro(CreateF2PYModule)
         ${FCOMPILER}
         --f90flags='-fopenmp' -lgomp
         ${MODULE_FILES}
+        skip: ${skip_string}
         DEPENDS ${MODULE_FILES}
         DEPENDS ${MODULE_LINK_LIBRARIES}
         COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"
@@ -102,6 +109,8 @@ add_library(base        parameters.f90
                         main/embedded/UELMAT_embeddedvol.f90
                         )
 
+add_library(types   ${CMAKE_CURRENT_SOURCE_DIR}/main/m_nurbspatch.f90)
+
 # Create Python modules massmtrx, DOF, reconstructionSOL, stiffmtrx_elemstorage
 
 CreateF2PYModule(NAME massmtrx
@@ -120,9 +129,17 @@ CreateF2PYModule(NAME reconstructionSOL
 CreateF2PYModule(NAME stiffmtrx_elemstorage
                  FILES
                  ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage.f90
-                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP.f90
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
+CreateF2PYModule(NAME stiffmtrx_elemstorage_omp
+                 FILES
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP2.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/uelmat_solid_omp.f90
+                 LINK_LIBRARIES types
+                 SKIP uelmat_bycp_omp
+                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
 CreateF2PYModule(NAME utils
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90
                  LINK_LIBRARIES base
