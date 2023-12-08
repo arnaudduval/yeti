@@ -139,12 +139,11 @@ C     ------------------------------------------------------------------
                
             Endif
             xi_bar(:) = zero
-            call grevilleAbscissae(Ukv_dir(:n),p,ng,xi_bar(:ng))
+            call grevilleAbscissae(Ukv_dir(:n),p,ng,n,xi_bar(:ng))
             
             Do k = 1,ngtot
                COORDSgrev(direction,count+k) = xi_bar(IND(k))
             Enddo
-            
          Enddo ! loop on parametric direction
          
          
