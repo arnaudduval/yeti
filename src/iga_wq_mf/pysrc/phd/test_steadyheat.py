@@ -176,7 +176,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 dataExist   = True
 degree_list = np.arange(4, 5)
 cuts_list   = np.arange(5, 6)
-name_list   = ['QA']
+name_list   = ['qa']
 IterMethods = ['WP', 'C', 'JMC']
 
 for cuts in cuts_list:

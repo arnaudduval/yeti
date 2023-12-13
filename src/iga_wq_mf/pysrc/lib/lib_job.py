@@ -228,7 +228,7 @@ class heatproblem(problem):
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
-		if self.part.dim == 3: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = heatsolver.mf_conductivity_3d(*inpts, array_in)
 		return array_out
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
