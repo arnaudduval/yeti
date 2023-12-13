@@ -173,15 +173,11 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_t/)
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                    nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                    indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                    nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
@@ -193,10 +189,12 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
+
         solv%Cmean = mat%Cmean
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table, mat%Kmean)
+                        
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_t, indj_T_t, &
                         data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
@@ -277,15 +275,11 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
     nc_list = (/nc_u, nc_v, nc_t/)
     solv%matrixfreetype = 2
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                    nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                    indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                    nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
@@ -489,16 +483,12 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                    nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                    indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                    nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-        
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
+
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
@@ -512,7 +502,7 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
         solv%Cmean = mat%Cmean
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                        data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table)
+                        data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
@@ -597,16 +587,12 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
     solv%matrixfreetype = 2
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                    nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                    indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                    nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-        
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
+
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
@@ -617,10 +603,12 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
+
         solv%Cmean = mat%Cmean
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-                        data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table)
+                        data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
+
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &

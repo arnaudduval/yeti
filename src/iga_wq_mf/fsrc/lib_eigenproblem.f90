@@ -292,3 +292,49 @@ subroutine locally_optimal_block_pcg(nr, A, B, C, x, rho, ishigher, nbIter, thre
     end do
 
 end subroutine locally_optimal_block_pcg
+
+subroutine GMRES(nr, A, b, P, x, nbIter, nbRestarts, threshold)
+    implicit none
+    ! Input / output data
+    ! ------------------- 
+    double precision :: threshold
+    integer, intent(in) :: nr, nbIter, nbRestarts
+    double precision, intent(in) :: A, b, P
+    dimension :: A(nr, nr), b(nr), P(nr, nr)
+    double precision, intent(out) :: x
+    dimension :: x(nr)
+
+    ! Local data
+    ! ----------
+    double precision :: H, V, Z, beta, e1, y, rho
+    dimension :: H(nbIter+1, nbIter), V(nbIter+1, nr), Z(nbIter+1, nr), beta(nbRestarts), e1(nbIter+1), y(nbIter)
+    double precision :: r(nr), w(nr)
+    integer :: m, k, j
+
+    e1 = 0.d0; y = 0.d0; H = 0.d0; V = 0.d0; Z = 0.d0; beta = 0.d0; x = 0.d0
+    do m = 1, nbRestarts
+        r = b - matmul(A, x)
+        beta(m) = norm2(r)
+        if (beta(m).lt.threshold*beta(1)) exit
+        V(1, :) = r/beta(1)
+        e1(1) = beta(m)
+
+        do k = 1, nbIter
+            Z(k, :) = matmul(P, V(k, :))
+            w = matmul(A, Z(k, :))
+            do j = 1, k
+                H(j, k) = dot_product(w, V(j, :))
+                w = w - H(j, k)*V(j, :)
+            end do
+            H(k+1, k) = norm2(w)
+            if (abs(H(k+1, k)).gt.1e-10) then
+                V(k+1, :) = w/H(k+1, k)
+            end if
+            call solve_linear_system(k+1, k, H(:k+1, :k), e1(:k+1), y(:k))
+            rho = norm2(matmul(H(:k+1, :k), y(:k)) - e1(:k+1))
+            if (rho.lt.threshold*beta(1)) exit
+        end do
+        x = x + matmul(y(:k), Z(:k, :))
+    end do
+
+end subroutine GMRES

@@ -375,13 +375,12 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     solv%matrixfreetype = 2
     nc_list = (/nc_u, nc_v/)
 
-    if (methodPCG.eq.'WP') then ! CG algorithm
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, &
-                indj_u, indi_v, indj_v, data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
         
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
@@ -471,15 +470,12 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     solv%matrixfreetype = 2
     nc_list = (/nc_u, nc_v, nc_w/)
 
-    if (methodPCG.eq.'WP') then ! CG algorithm
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
 
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
-
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
+        
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
@@ -570,13 +566,11 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 3
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
@@ -592,7 +586,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Kmean)
-        solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
+        if (solv%applyfd) solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
@@ -671,14 +665,11 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 3
 
-    if (methodPCG.eq.'WP') then 
-        ! Set solver
-        call BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, Fext, x, resPCG)
-        
-    else if ((methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+
+        if (methodPCG.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
         if (methodPCG.eq.'JMC') then 
             call compute_mean(mat, nc_list)
@@ -694,7 +685,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                                 indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                                 data_W_u, data_W_v, data_W_w, table, mat%Kmean)
-        solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
+        if (solv%applyfd) solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &

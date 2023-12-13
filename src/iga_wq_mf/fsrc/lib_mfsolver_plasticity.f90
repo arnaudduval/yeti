@@ -1005,7 +1005,7 @@ module plasticitysolver2
     use datastructure
     
     type cgsolver
-        logical :: withdiag = .true.
+        logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 2, dimen = 2
         type(structure) :: disp_struct(2)
         end type cgsolver
@@ -1099,6 +1099,7 @@ contains
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                     data_B_u, data_B_v, data_W_u, data_W_v)
             call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            if (.not.solv%applyfd) cycle
             call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do
         
@@ -1125,8 +1126,12 @@ contains
         integer :: nr_u, nr_v, i
         double precision, allocatable, dimension(:) :: tmp, tmp2
 
+        if (.not.solv%applyfd) then
+            array_out = array_in
+            return
+        end if
+
         array_out  = 0.d0
-        
         do i = 1, solv%dimen
             ! Compute (Uv x Uu)'.array_in
             nr_u = solv%disp_struct(i)%nrows(1)
@@ -1166,85 +1171,6 @@ contains
         end do
 
     end subroutine clear_dirichlet
-
-    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, nbIterPCG, threshold, b, x, resPCG)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-        integer, intent(in) :: nbIterPCG
-        double precision, intent(in) :: threshold, b
-        dimension :: b(solv%dimen, nr_total)
-        
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
-
-        ! Local data
-        ! -----------
-        double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
-        double precision :: r, rhat, p, s, Ap, As
-        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), &
-                        s(solv%dimen, nr_total), Ap(solv%dimen, nr_total), As(solv%dimen, nr_total)
-        integer :: iter
-
-        x = 0.d0; r = b
-        call clear_dirichlet(solv, nr_total, r)
-        rhat = r; p = r
-        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
-        normb  = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
-
-        do iter = 1, nbIterPCG
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, p, Ap)
-            call clear_dirichlet(solv, nr_total, Ap)
-            call block_dot_product(solv%dimen, nr_total, Ap, rhat, prod)
-            alpha = rsold/prod
-            s = r - alpha*Ap
-
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, s, As)
-            call clear_dirichlet(solv, nr_total, As)
-            call block_dot_product(solv%dimen, nr_total, As, s, prod)
-            call block_dot_product(solv%dimen, nr_total, As, As, prod2)
-            omega = prod/prod2
-            x = x + alpha*p + omega*s
-            r = s - omega*As
-
-            resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Ap)
-            rsold = rsnew
-        end do
-
-    end subroutine BiCGSTAB
 
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -1340,7 +1266,7 @@ module plasticitysolver3
     use datastructure
 
     type cgsolver
-        logical :: withdiag = .true.
+        logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 2, dimen = 3
         type(structure) :: disp_struct(3)
     end type cgsolver
@@ -1433,6 +1359,7 @@ contains
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
             call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            if (.not.solv%applyfd) cycle
             call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do
         
@@ -1459,8 +1386,12 @@ contains
         integer :: nr_u, nr_v, nr_w, i
         double precision, allocatable, dimension(:) :: tmp, tmp2
 
-        array_out = 0.d0
+        if (.not.solv%applyfd) then
+            array_out = array_in
+            return
+        end if
 
+        array_out = 0.d0
         do i = 1, solv%dimen
             ! Compute (Uw x Uv x Uu)'.array_in
             nr_u = solv%disp_struct(i)%nrows(1)
@@ -1507,85 +1438,6 @@ contains
         end do
 
     end subroutine clear_dirichlet
-
-    subroutine BiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        integer, intent(in) :: nbIterPCG
-        double precision, intent(in) :: threshold, b
-        dimension :: b(solv%dimen, nr_total)
-        
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
-
-        ! Local data
-        ! -----------
-        double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
-        double precision :: r, rhat, p, s, Ap, As
-        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), &
-                        s(solv%dimen, nr_total), Ap(solv%dimen, nr_total), As(solv%dimen, nr_total)
-        integer :: iter
-
-        x = 0.d0; r = b
-        call clear_dirichlet(solv, nr_total, r)
-        rhat = r; p = r
-        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
-        normb = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
-
-        do iter = 1, nbIterPCG
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, p, Ap)
-            call clear_dirichlet(solv, nr_total, Ap)
-            call block_dot_product(solv%dimen, nr_total, Ap, rhat, prod)
-            alpha = rsold/prod
-            s = r - alpha*Ap
-
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                    nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, s, As)
-            call clear_dirichlet(solv, nr_total, As)
-            call block_dot_product(solv%dimen, nr_total, As, s, prod)
-            call block_dot_product(solv%dimen, nr_total, As, As, prod2)
-            omega = prod/prod2
-            x = x + alpha*p + omega*s
-            r = s - omega*As
-
-            resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
-            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Ap)
-            rsold = rsnew
-        end do
-
-    end subroutine BiCGSTAB
 
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
