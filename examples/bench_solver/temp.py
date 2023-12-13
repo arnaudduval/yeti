@@ -46,7 +46,7 @@ modeleIGA = deepcopy(iga_model_ini)
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_deg[:, 0] = np.array([0, 0, 0])
-nb_ref[:, 0] = np.array([1, 1, 1])
+nb_ref[:, 0] = np.array([1, 1, 0])
 modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
@@ -63,24 +63,23 @@ Kside = sp.coo_matrix((data, (row, col)),
                 dtype='float64').tocsc()
 
 t2 = time.time()
-
 # Multithreaded
 modeleIGA2 = deepcopy(modeleIGA)
+t3 = time.time()
 dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
                     *modeleIGA2.get_inputs4system_elemStorage())
-
-t3 = time.time()
-
-KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
-                shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
-                dtype='float64').tocsc()
-
 t4 = time.time()
 
-print(np.linalg.norm(dataMP))
-print(t1-t0, t3-t2, t2-t1, t4-t3)
+KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
+                shape=(modeleIGA2._nb_dof_tot, modeleIGA2._nb_dof_tot),
+                dtype='float64').tocsc()
 
-print(sp.linalg.norm(Kside - KsideMP))
+t5 = time.time()
+
+print(np.linalg.norm(dataMP))
+
+print("Erreur calcul K : ", sp.linalg.norm(Kside - KsideMP))
+print("Acceleration factor : ", (t1-t0)/(t4-t3))
 
 # print(data, dataMP)
 

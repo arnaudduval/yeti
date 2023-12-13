@@ -48,7 +48,7 @@ macro(CreateF2PYModule)
     # manage skipped functions
     set(skip_string)
     foreach(fun ${MODULE_SKIP})
-        set(skip_string ${skip_string}${fun})
+        set(skip_string ${skip_string} ${fun})
     endforeach()
 
     add_custom_command(
@@ -111,6 +111,16 @@ add_library(base        parameters.f90
 
 add_library(types   ${CMAKE_CURRENT_SOURCE_DIR}/main/m_nurbspatch.f90)
 
+add_library(nurbs_utils ${CMAKE_CURRENT_SOURCE_DIR}/main/shap_omp.f90
+                        ${CMAKE_CURRENT_SOURCE_DIR}/main/shapPress_omp.f90
+                        ${CMAKE_CURRENT_SOURCE_DIR}/main/dersbasisfuns.f90
+                        ${CMAKE_CURRENT_SOURCE_DIR}/main/operateurs.f
+                        ${CMAKE_CURRENT_SOURCE_DIR}/main/GaussLegendre.f90
+                        ${CMAKE_CURRENT_SOURCE_DIR}/main/stiffmatrix.f
+                        )
+
+add_library(materials   ${CMAKE_CURRENT_SOURCE_DIR}/main/material_lib.f90)
+
 # Create Python modules massmtrx, DOF, reconstructionSOL, stiffmtrx_elemstorage
 
 CreateF2PYModule(NAME massmtrx
@@ -136,7 +146,7 @@ CreateF2PYModule(NAME stiffmtrx_elemstorage_omp
                  FILES
                  ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP2.f90
                  ${CMAKE_CURRENT_SOURCE_DIR}/main/uelmat_solid_omp.f90
-                 LINK_LIBRARIES types
+                 LINK_LIBRARIES types nurbs_utils materials
                  SKIP uelmat_bycp_omp
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 

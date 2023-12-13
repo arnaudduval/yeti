@@ -18,9 +18,6 @@
 
 module m_nurbspatch
     implicit none
-    private
-
-    public :: nurbspatch
 
     type :: nurbspatch
         !! Geometry
@@ -46,15 +43,17 @@ module m_nurbspatch
     contains
         procedure :: extractNurbsPatchGeoInfos
         procedure :: extractNurbsPatchMechInfos
+        procedure :: finalizeNurbsPatch
     end type
 
-    type, public :: nurbselement
+    type :: nurbselement
         integer :: current_elem
         double precision, allocatable, dimension(:) :: weight_elem
         double precision, dimension(2,3) :: ukv_elem
 
     contains
         procedure :: extractNurbsElementInfos
+        procedure :: print
     end type
 
 contains
@@ -222,6 +221,33 @@ contains
 
     end subroutine extractNurbsPatchMechInfos
 
+
+    subroutine finalizeNurbsPatch(self)
+
+        implicit none
+
+        class(nurbspatch), intent(inout) :: self
+
+        if (allocated(self%Ukv1_patch))   deallocate(self%Ukv1_patch)
+        if (allocated(self%Ukv2_patch))   deallocate(self%Ukv2_patch)
+        if (allocated(self%Ukv3_patch))   deallocate(self%Ukv3_patch)
+        if (allocated(self%Nijk_patch))   deallocate(self%Nijk_patch)
+        if (allocated(self%weight_patch)) deallocate(self%weight_patch)
+        if (allocated(self%props_patch))  deallocate(self%props_patch)
+        if (allocated(self%ien_patch))    deallocate(self%ien_patch)
+
+    end subroutine finalizeNurbsPatch
+
+    subroutine finalizeNurbsElement(self)
+
+        implicit none
+
+        class(nurbselement), intent(inout) :: self
+
+        if (allocated(self%weight_elem))  deallocate(self%weight_elem)
+
+    end subroutine finalizeNurbsElement
+
     subroutine extractNurbsElementInfos(self, num_elem, patch)
         class(nurbselement), intent(inout) :: self
         integer, intent(in) :: num_elem
@@ -243,4 +269,14 @@ contains
         if (patch%dim_patch>2) self%ukv_elem(:, 3) = patch%Ukv1_patch(Ni(3):Ni(3)+1)
 
     end subroutine extractNurbsElementInfos
+
+    subroutine print(self)
+        class(nurbselement), intent(inout) :: self
+
+        write(*,*) '--------'
+        write(*,'(I7)') self%current_elem
+        write(*,'(27F4.1)') self%weight_elem
+        write(*,'(6F4.1)') self%ukv_elem
+        write(*,*) '--------'
+    end subroutine print
 end module m_nurbspatch

@@ -117,17 +117,19 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     !! Local variables
     !! ---------------
 
-    integer :: kk, iload, icp, idof, i, ipatch, ielem
+    integer :: kk, ll, iload, icp, jcp, idof, jdof, i, ipatch, ielem
     type(nurbspatch) :: patch
     type(nurbselement) :: element
 
     double precision, dimension(maxval(n_mat_props)) :: mat_patch           !! material properties of a given patch
-    double precision, dimension(mcrd,mcrd, maxval(nnode)) :: amatrx         !! elementary stiffness matrix
+    double precision, dimension(mcrd,mcrd, maxval(nnode)*(maxval(nnode)+1)/2) :: amatrx         !! elementary stiffness matrix
     double precision, dimension(mcrd*maxval(nnode)) :: rhs                  !! elementary RHS vector
     double precision, dimension(mcrd, maxval(nnode)) :: coords_elem         !! CP coordinates of a given element
     double precision, dimension(nb_n_dist, maxval(nnode)) :: n_dist_elem    !! nodal distribution for a given element
 
-    integer :: ndofel, nnodeSum, nb_data_elem, count, jelem
+    integer, dimension(maxval(nnode)) :: sctr
+
+    integer :: ndofel, nnodeSum, nb_data_elem, count, jelem, loccount, idx
 
 
     Kdata(:) = 0.0
@@ -147,7 +149,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         kk = kk + load_target_nbelem(iload)
     enddo
 
-    count = 0
+    count = 1
     jelem = 0
 
     do ipatch = 1, nb_patch
@@ -156,7 +158,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
 
         if ((patch%elt_type_patch .eq. 'U30') .or. (patch%elt_type_patch .eq. 'U10')) then
             i = int(patch%props_patch(2))
-            write(*,*) 'WARNING : THIS CASE IS NOT IMPLEMENTED YET'
+            write(*,*) 'ERROR : THIS CASE IS NOT IMPLEMENTED YET'
             call exit(1)
             !! TODO : implement exreact mapping function for nurbspatch type
             ! call extractMappingInfos(i,nb_elem_patch,Nkv,Jpqr,Nijk,Ukv, &
@@ -167,9 +169,11 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         mat_patch(:n_mat_props(ipatch)) = material_properties(:n_mat_props(ipatch), ipatch)
 
         ndofel = patch%nnode_patch*mcrd
-        nnodeSum = patch%nnode_patch*(patch%nnode_patch)/2
-        nb_data_elem = mcrd*mcrd*(patch%nnode_patch*(patch%nnode_patch))/2      &
-            &           + patch%nnode_patch * (mcrd * (mcrd*1))/2
+        nnodeSum = patch%nnode_patch*(patch%nnode_patch + 1)/2
+        nb_data_elem = mcrd*mcrd*(patch%nnode_patch*(patch%nnode_patch-1))/2      &
+            &           + patch%nnode_patch * (mcrd * (mcrd+1))/2
+
+        write(*,*) 'nb_data_elem : ', nb_data_elem
 
 
         !! Loop on elements
@@ -180,7 +184,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
             if(activeElement(jelem+ielem)==1) then
                 call element%extractNurbsElementInfos(ielem, patch)
 
-                write(*,'(I5,I5,I4,6F4.1)') ielem, element%current_elem, omp_get_thread_num()!!, Ukv_elem
+                write(*,'(I5,I5,I4,6F4.1)') ielem, element%current_elem, omp_get_thread_num()
 
                 do i = 1, patch%nnode_patch
                     coords_elem(:,i) = COORDS3D(:mcrd, patch%ien_patch(i, ielem))
@@ -206,9 +210,73 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                     write(*,*) 'Element '//patch%elt_type_patch//' not available'
                     call exit(-1)
                 endif
+
+                !! Assemble amatrx to globall stiffness matrix K
+                sctr(:patch%nnode_patch) = patch%ien_patch(:,ielem)
+                loccount = 0
+                i = 0
+                !! start index for current element
+                idx = count + (ielem-1) * nb_data_elem
+                ! write(*,*) nnode_patch
+                do jcp = 1, patch%nnode_patch
+                    jdof= (sctr(jcp)-1)*MCRD
+                    !! case cpi < cpj
+                    do icp = 1,jcp-1
+                        ! write(*,*) cpj, cpi
+                        idof= (sctr(icp)-1)*MCRD
+                        i   = i + 1
+                        do ll = 1,MCRD
+                            do kk = 1,MCRD
+                                Kdata(idx + loccount) = AMATRX(kk,ll,i)
+                                Krow(idx + loccount) = idof + kk - 1
+                                Kcol(idx + loccount) = jdof + ll - 1
+                                loccount = loccount + 1
+                            enddo
+                        enddo
+                    enddo
+
+                    !! case cpi == cpj
+                    i = i + 1
+                    do ll = 1,MCRD
+                        AMATRX(ll,ll,i) = AMATRX(ll,ll,i)*0.5d0
+                        do kk = 1,ll
+                            Kdata(idx + loccount) = AMATRX(kk,ll,i)
+                            Krow(idx + loccount) = jdof + kk - 1
+                            Kcol(idx + loccount) = jdof + ll - 1
+                            loccount = loccount + 1
+                        enddo
+                    enddo
+
+                enddo
+
+                !! Update Load Vector
+                !! ********* ATTENTION, FB non traité *********
+                idof = 0
+                do i = 1, patch%nnode_patch
+                    jdof  = (sctr(i)-1)*MCRD
+                    do kk = 1,MCRD
+                        F(jdof+kk) = F(jdof+kk) + RHS(idof+kk)
+                    enddo
+                    idof = idof + MCRD
+                enddo
+                !! ********* ATTENTION, FB non traité *********
+
+
             endif
         enddo
         !$omp end parallel
+
+        jelem = jelem + nb_elem_patch(ipatch)
+        count = count + nb_elem_patch(ipatch) * nb_data_elem
+
+        !! TODO : reimplement these function for better memory management
+        ! call deallocateMappingData()
+        call patch%finalizeNurbsPatch()
+
+        write(*,*) 'Fin patch'
+
     enddo
+
+    write(*,*) 'Fin globale'
 
 end subroutine sys_linmat_lindef_static_omp
