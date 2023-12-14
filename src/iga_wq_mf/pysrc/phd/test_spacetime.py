@@ -8,30 +8,34 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(args):
 	temperature = args['temperature']
-	Kref  = np.array([[1., 0.0],[0.0, 2.0]])
+	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-temperature))
+			Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
+			# Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	Cprop = (1 + np.exp(-temperature))
+	Cprop = (1 + np.exp(-np.abs(temperature)))
+	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
 def conductivityDersProperty(args):
 	temperature = args['temperature']
-	Kref  = np.array([[1., 0.0],[0.0, 1.0]])
+	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
 			Kprop[i, j, :] = -2*Kref[i, j]*np.exp(-temperature)
+			# Kprop[i, j, :] = 0
 	return Kprop 
 
 def capacityDersProperty(args):
 	temperature = args['temperature']
 	Cprop = -np.exp(-temperature)
+	# Cprop = np.zeros(shape=np.shape(temperature))
 	return Cprop
 
 def powerDensity(args:dict):
@@ -39,7 +43,14 @@ def powerDensity(args:dict):
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		f[:, i] = 2*(np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*timespan[i])
+		z = timespan[i]
+		f[:, i] = (4*x*np.sin(np.pi*z)*(5*x + 6*y - 45) 
+					- 94*x*np.sin(np.pi*z)*(x - 6) 
+					- 16*x*np.sin(np.pi*z)*(6*y - 5*x + 45) 
+					- 2*np.sin(np.pi*z)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+					- 16*np.sin(np.pi*z)*(x - 6)*(6*y - 5*x + 45) 
+					+ 4*np.sin(np.pi*z)*(x - 6)*(5*x + 6*y - 45) 
+					+ x*np.pi*np.cos(np.pi*z)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45))
 	return np.ravel(f, order='F')
 
 # Select folder
@@ -48,10 +59,10 @@ folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-degree, cuts = 3, 3
+degree, cuts = 3, 4
 
 # Create model 
-geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
+geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 
@@ -61,7 +72,7 @@ modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 # Create time span
 nbel = int(2**cuts)
-crv = createUniformCurve(degree, nbel, 0.5)
+crv = createUniformCurve(degree, nbel, 1.)
 timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
 
 # Add material 
@@ -88,23 +99,42 @@ Fext = problem.compute_volForce(powerDensity,
 								'Time':problem.time.qpPhy})
 
 u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
-	problem._methodPCG = pcgmethod
-	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True)
-	if pcgmethod == 'C'  : pcgname = 'Classic FD method'
-	elif pcgmethod == 'TDC': pcgname = 'Literature'
-	elif pcgmethod == 'JMC': pcgname = 'This work'
+
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
+# 	problem._methodPCG = pcgmethod
+# 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True)
+# 	if pcgmethod == 'C'  : pcgname = 'Classic FD method'
+# 	elif pcgmethod == 'TDC': pcgname = 'Literature'
+# 	elif pcgmethod == 'JMC': pcgname = 'This work'
 		
-	for i in range(len(resPCG)):
-		opacity = 1 - 1./len(resPCG)*i
-		ax.semilogy(resPCG[i], marker=MARKERLIST[j], color=COLORLIST[j], alpha=opacity)
-	ax.set_xlim(right=100, left=0)
-	ax.set_ylim(top=10.0, bottom=1e-12)
-	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
-	fig.tight_layout()
-	fig.savefig(folder+'PCGresidueFull'+'.pdf')
+# 	for i in range(len(resPCG)):
+# 		opacity = 1 - 1./len(resPCG)*i
+# 		ax.semilogy(resPCG[i], marker=MARKERLIST[j], color=COLORLIST[j], alpha=opacity, label=pcgname)
+# 	ax.set_xlim(right=100, left=0)
+# 	ax.set_ylim(top=10.0, bottom=1e-12)
+# 	ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+# 	ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+# fig.legend()
+# fig.tight_layout()
+# fig.savefig(folder+'PCGresidueFull'+'.pdf')
 
 # u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
 # modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+problem._methodPCG = 'JMC'
+u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False)
+
+# Create continous resPCG
+resPCGclean = np.array([])
+for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+
+ax.semilogy(resPCGclean)
+ax.set_xlim(right=250, left=0)
+ax.set_ylim(top=10.0, bottom=1e-12)
+ax.set_xlabel('Number of iterations of BiCGSTAB solver')
+ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+fig.tight_layout()
+fig.savefig(folder+'PCGNonlinear'+'.pdf')

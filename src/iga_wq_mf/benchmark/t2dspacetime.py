@@ -86,7 +86,7 @@ onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 degree_list = np.array([2, 3, 4, 5])
 cuts_list   = np.arange(2, 6)
 
-fig, ax = plt.subplots(figsize=(9, 7))
+fig, ax = plt.subplots(figsize=(8, 6))
 for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
@@ -101,7 +101,6 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 															'exactFunctionDers':exactTemperatureDers}, 
 															isRelative=False)
 			
-		
 		if quadrule == 'iga': 
 			ax.loglog(nbels, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
@@ -116,7 +115,7 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 		
 		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Pi)}$')
-		ax.set_xlabel('Total number of elements')
+		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
 		ax.set_ylim(top=1e-1, bottom=1e-10)
 		# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		ax.legend()

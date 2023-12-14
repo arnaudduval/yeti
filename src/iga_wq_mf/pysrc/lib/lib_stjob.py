@@ -20,11 +20,12 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 50)
+		self._nbIterPCG    = solverArgs.get('nbIterationsPCG', 100)
 		self._nbIterNR     = solverArgs.get('nbIterationsNR', 8)
 		self._thresholdPCG = solverArgs.get('PCGThreshold', 1e-12)
 		self._thresholdNR  = solverArgs.get('NRThreshold', 1e-8)
 		self._methodPCG    = solverArgs.get('PCGmethod', 'JMC')
+		self._methodKrylov = solverArgs.get('PCGmethod', 'BICG')
 		return
 	
 	def compute_volForce(self, volfun, args=None): 
@@ -215,19 +216,20 @@ class stheatproblem(stproblem):
 			Cdersprop = self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]
 			Kdersprop = np.einsum('ijk,jk->ik', self.heatmaterial.conductivityDers(args), gradTemperature[:self.part.dim, :])
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._nbIterPCG, 
+					self._thresholdPCG, self._methodPCG, self._methodKrylov]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_3d(*inpts)
 		else:
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-					self.time.detJ, Cprop, Kprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG]
+					self.time.detJ, Cprop, Kprop, Fext, self._nbIterPCG, self._thresholdPCG, self._methodPCG, self._methodKrylov]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
-		dj_n1 = np.copy(Tguess); d_n1ref = np.copy(Tguess)
+		dj_n1 = np.copy(Tguess)
 		
 		AllresPCG = []
 		for j in range(self._nbIterNR):
@@ -242,18 +244,17 @@ class stheatproblem(stproblem):
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
+			# Verify convergence of Newton Krylov
+			resNRj = np.sqrt(np.dot(r_dj, r_dj))
+			if j == 0: resNR0 = resNRj
+			print('NR error: %.5e' %resNRj)
+			if resNRj <= self._thresholdNR*resNR0: break
+
 			# Solve for active control points
 			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
 										args={'temperature':temperature, 
 											'gradients':gradtemperature}, 
-										isfull=isfull)
-			d_n1ref += deltaD
-
-			# Compute residue of Newton Raphson using an energetic approach
-			resNRj = abs(np.dot(d_n1ref, r_dj))
-			if j == 0: resNR0 = resNRj
-			print('NR error: %.5e' %resNRj)
-			if resNRj <= self._thresholdNR*resNR0: break
+										isfull=isfull)			
 
 			# Update active control points
 			dj_n1 += deltaD

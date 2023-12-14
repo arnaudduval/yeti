@@ -1031,6 +1031,89 @@ contains
 
     end subroutine PBiCGSTAB
 
+    subroutine PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
+                        nbRestarts, nbIterPCG, threshold, b, x, resPCG)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(stcgsolver) :: solv
+        type(stthermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_t(nnz_t, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
+
+        integer, intent(in) :: nbRestarts, nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(nr_total)
+        
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbRestarts*(nbIterPCG+1))
+
+        ! Local data
+        ! -----------
+        double precision :: H, V, Z, beta, e1, y
+        dimension :: H(nbIterPCG+1, nbIterPCG), V(nbIterPCG+1, nr_total), &
+                    Z(nbIterPCG+1, nr_total), beta(nbRestarts+1), e1(nbIterPCG+1), y(nbIterPCG)
+        double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
+        integer :: restart, iter, subiter, c
+
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; c = 1
+        do restart = 1, nbRestarts
+            H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, x, Ax)
+            r = b - Ax
+            call clear_dirichlet(solv, nr_total, r)
+            beta(restart) = norm2(r)
+            resPCG(c) = beta(restart)/beta(1); c = c + 1
+            if (beta(restart).lt.threshold*beta(1)) exit
+            V(1, :) = r/beta(1)
+            e1(1) = beta(restart)
+
+            do iter = 1, nbIterPCG
+                call applyfastdiag(solv, nr_total, V(iter, :), Pv)
+                call clear_dirichlet(solv, nr_total, Pv)
+                Z(iter, :) = Pv
+                call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, Pv, w)
+                call clear_dirichlet(solv, nr_total, w)
+                do subiter = 1, iter
+                    H(subiter, iter) = dot_product(w, V(subiter, :))
+                    w = w - H(subiter, iter)*V(subiter, :)
+                end do
+                H(iter+1, iter) = norm2(w)
+                if (abs(H(iter+1, iter)).gt.1e-10) then
+                    V(iter+1, :) = w/H(iter+1, iter)
+                end if
+                call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
+                beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
+                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
+                if (beta(restart+1).lt.threshold*beta(1)) exit
+            end do
+            x = x + matmul(y(:iter), Z(:iter, :))
+        end do
+
+    end subroutine PGMRES
+
 end module stheatsolver2
 
 module stheatsolver3
@@ -1339,5 +1422,88 @@ contains
         end do
 
     end subroutine PBiCGSTAB
+
+    subroutine PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
+                        nbRestarts, nbIterPCG, threshold, b, x, resPCG)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(stcgsolver) :: solv
+        type(stthermomat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w, indj_t
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
+
+        integer, intent(in) :: nbRestarts, nbIterPCG
+        double precision, intent(in) :: threshold, b
+        dimension :: b(nr_total)
+        
+        double precision, intent(out) :: x, resPCG
+        dimension :: x(nr_total), resPCG(nbRestarts*(nbIterPCG+1))
+
+        ! Local data
+        ! -----------
+        double precision :: H, V, Z, beta, e1, y
+        dimension :: H(nbIterPCG+1, nbIterPCG), V(nbIterPCG+1, nr_total), &
+                    Z(nbIterPCG+1, nr_total), beta(nbRestarts+1), e1(nbIterPCG+1), y(nbIterPCG)
+        double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
+        integer :: restart, iter, subiter, c
+
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; c = 1
+        do restart = 1, nbRestarts
+            H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
+            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, x, Ax)
+            r = b - Ax
+            call clear_dirichlet(solv, nr_total, r)
+            beta(restart) = norm2(r)
+            resPCG(c) = beta(restart)/beta(1); c = c + 1
+            if (beta(restart).lt.threshold*beta(1)) exit
+            V(1, :) = r/beta(1)
+            e1(1) = beta(restart)
+
+            do iter = 1, nbIterPCG
+                call applyfastdiag(solv, nr_total, V(iter, :), Pv)
+                call clear_dirichlet(solv, nr_total, Pv)
+                Z(iter, :) = Pv
+                call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, Pv, w)
+                call clear_dirichlet(solv, nr_total, w)
+                do subiter = 1, iter
+                    H(subiter, iter) = dot_product(w, V(subiter, :))
+                    w = w - H(subiter, iter)*V(subiter, :)
+                end do
+                H(iter+1, iter) = norm2(w)
+                if (abs(H(iter+1, iter)).gt.1e-10) then
+                    V(iter+1, :) = w/H(iter+1, iter)
+                end if
+                call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
+                beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
+                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
+                if (beta(restart+1).lt.threshold*beta(1)) exit
+            end do
+            x = x + matmul(y(:iter), Z(:iter, :))
+        end do
+
+    end subroutine PGMRES
 
 end module stheatsolver3

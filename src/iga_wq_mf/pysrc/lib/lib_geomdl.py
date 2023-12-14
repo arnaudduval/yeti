@@ -185,9 +185,16 @@ class Geomdl():
 			func    = self._create_quarterAnnulus
 			if self._degree is None: self._degree = np.array([2, 3, 1])
 
-		elif name == 'quadrilateral' or name == 'sq':
+		elif name == 'square' or name == 'sq':
 			dimen = 2
 			XY = self._extraArgs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
+			geoArgs = [XY]
+			func    = self._create_quadrilateral
+			if self._degree is None: self._degree = np.array([2, 2, 1])
+
+		elif name == 'trapezium' or name == 'tp':
+			dimen = 2
+			XY = self._extraArgs.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
 			geoArgs = [XY]
 			func    = self._create_quadrilateral
 			if self._degree is None: self._degree = np.array([2, 2, 1])
