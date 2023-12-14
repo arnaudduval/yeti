@@ -1,7 +1,7 @@
 build
 venv
 .vscode/settings.json
-src/*.mod
+*.mod
 *.save
 *.pyc
 .vscode/cmake-kits.json
@@ -24,3 +24,4 @@ examples/bench_solver/time.txt
 verif_proj_patch*.txt
 warnings_proj_patch*.txt
 
+src/main/m_nurbspatch.mod
