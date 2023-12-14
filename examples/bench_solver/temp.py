@@ -45,8 +45,8 @@ modeleIGA = deepcopy(iga_model_ini)
 # Refine modele
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
-nb_deg[:, 0] = np.array([0, 0, 0])
-nb_ref[:, 0] = np.array([1, 1, 0])
+nb_deg[:, 0] = np.array([1, 1, 1])
+nb_ref[:, 0] = np.array([3, 3, 3])
 modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
@@ -77,8 +77,10 @@ KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
 t5 = time.time()
 
 print(np.linalg.norm(dataMP))
+print(np.linalg.norm(FbMP))
 
 print("Erreur calcul K : ", sp.linalg.norm(Kside - KsideMP))
+print("Erreur calcul F : ", np.linalg.norm(Fb - FbMP))
 print("Acceleration factor : ", (t1-t0)/(t4-t3))
 
 # print(data, dataMP)

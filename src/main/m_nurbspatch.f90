@@ -265,8 +265,8 @@ contains
         Ni(:) = patch%Nijk_patch(:, num_elem)
         self%ukv_elem(:,:) = 0.0
         self%ukv_elem(:, 1) = patch%Ukv1_patch(Ni(1):Ni(1)+1)
-        if (patch%dim_patch>1) self%ukv_elem(:, 2) = patch%Ukv1_patch(Ni(2):Ni(2)+1)
-        if (patch%dim_patch>2) self%ukv_elem(:, 3) = patch%Ukv1_patch(Ni(3):Ni(3)+1)
+        if (patch%dim_patch>1) self%ukv_elem(:, 2) = patch%Ukv2_patch(Ni(2):Ni(2)+1)
+        if (patch%dim_patch>2) self%ukv_elem(:, 3) = patch%Ukv3_patch(Ni(3):Ni(3)+1)
 
     end subroutine extractNurbsElementInfos
 

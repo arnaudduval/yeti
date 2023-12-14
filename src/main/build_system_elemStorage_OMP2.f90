@@ -173,18 +173,15 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         nb_data_elem = mcrd*mcrd*(patch%nnode_patch*(patch%nnode_patch-1))/2      &
             &           + patch%nnode_patch * (mcrd * (mcrd+1))/2
 
-        write(*,*) 'nb_data_elem : ', nb_data_elem
-
-
         !! Loop on elements
-        !$omp parallel default(shared) private(element, coords_elem, n_dist_elem, rhs, amatrx)
-        !$omp do
+        !$omp parallel
+        !$omp do private(element, coords_elem, n_dist_elem, rhs, amatrx), &
+        !$omp& private(sctr, loccount, i, idx, icp, jcp, idof, jdof, ll, kk), &
+        !$omp& reduction(+ : F)
         do ielem = 1, nb_elem_patch(ipatch)
 
             if(activeElement(jelem+ielem)==1) then
                 call element%extractNurbsElementInfos(ielem, patch)
-
-                write(*,'(I5,I5,I4,6F4.1)') ielem, element%current_elem, omp_get_thread_num()
 
                 do i = 1, patch%nnode_patch
                     coords_elem(:,i) = COORDS3D(:mcrd, patch%ien_patch(i, ielem))
@@ -217,12 +214,10 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                 i = 0
                 !! start index for current element
                 idx = count + (ielem-1) * nb_data_elem
-                ! write(*,*) nnode_patch
                 do jcp = 1, patch%nnode_patch
                     jdof= (sctr(jcp)-1)*MCRD
                     !! case cpi < cpj
                     do icp = 1,jcp-1
-                        ! write(*,*) cpj, cpi
                         idof= (sctr(icp)-1)*MCRD
                         i   = i + 1
                         do ll = 1,MCRD
@@ -264,6 +259,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
 
             endif
         enddo
+        !$omp end do
         !$omp end parallel
 
         jelem = jelem + nb_elem_patch(ipatch)
@@ -273,10 +269,6 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         ! call deallocateMappingData()
         call patch%finalizeNurbsPatch()
 
-        write(*,*) 'Fin patch'
-
     enddo
-
-    write(*,*) 'Fin globale'
 
 end subroutine sys_linmat_lindef_static_omp

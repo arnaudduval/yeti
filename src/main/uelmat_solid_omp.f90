@@ -162,8 +162,8 @@ subroutine uelmat_byCP_omp(patch, element, ndofel, mcrd, jelem, nbint, coords,  
             FbL(:) = 0.0
             do igauss = 1, nb_pt_int**(MCRD-1)
 
-                ! call shapPress_omp(patch, element, R,norm_vect,det_jac,COORDS,        &
-                !     &   gauss_pds_coords(2:,igauss),MCRD,k_numface,k_typedload)
+                call shapPress_omp(patch, element, R,norm_vect,det_jac,COORDS,        &
+                    &   gauss_pds_coords(2:,igauss),MCRD,k_numface,k_typedload)
 
                 dvol = gauss_pds_coords(1, igauss)*det_jac
 
