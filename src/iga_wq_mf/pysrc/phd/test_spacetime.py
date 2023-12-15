@@ -96,46 +96,44 @@ problem = stheatproblem(material, modelPhy, timespan, boundary)
 Fext = problem.compute_volForce(powerDensity, 
 								{'Position':problem.part.qpPhy, 
 								'Time':problem.time.qpPhy})
-
 u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-for j, pcgmethod in enumerate(['JMC', 'TDC']):
-	problem._KrylovPreconditioner = pcgmethod
-	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=False)
-	if pcgmethod == 'C'    : pcgname = 'Classic FD method'
-	elif pcgmethod == 'TDC': pcgname = 'Literature'
-	elif pcgmethod == 'JMC': pcgname = 'This work'
-		
-	for i in range(len(resPCG)):
-		opacity = 1 - 1./len(resPCG)*i
-		ax.semilogy(resPCG[i], marker=MARKERLIST[j], color=COLORLIST[j], alpha=opacity, label=pcgname)
+##################################################################
+# problem._Krylov = 'GMRES'
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
+# 	problem._KrylovPreconditioner = pcgmethod
+# 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=False)
+# 	if pcgmethod == 'C'    : pcgname = 'Classic FD method'
+# 	elif pcgmethod == 'TDC': pcgname = 'Literature'
+# 	elif pcgmethod == 'JMC': pcgname = 'This work'
+# 	ax.semilogy(resPCG[0], marker=MARKERLIST[j], label=pcgname)
 
 # ax.set_xlim(right=100, left=0)
 # ax.set_ylim(top=10.0, bottom=1e-12)
-# ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# ax.set_ylabel('Relative residue')
 # ax.legend()
-# # fig.tight_layout()
-# fig.savefig(folder+'PCGresidueFull'+'.pdf')
+# fig.tight_layout()
+# fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
 
+##################################################################
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-problem._KrylovPreconditioner = 'JMC'
 problem._Krylov = 'GMRES'
+problem._KrylovPreconditioner = 'JMC'
 u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=False)
 
-# # Create continous resPCG
-# resPCGclean = np.array([])
-# for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+# Create continous resPCG
+resPCGclean = np.array([])
+for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
 
-# ax.semilogy(resPCGclean)
-# ax.set_xlim(right=250, left=0)
-# ax.set_ylim(top=10.0, bottom=1e-12)
-# # ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-# ax.set_xlabel('Number of iterations of GMRES solver')
-# ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
-# fig.tight_layout()
-# fig.savefig(folder+'GMRESNL_FS'+'.pdf')
+ax.semilogy(resPCGclean)
+ax.set_xlim(right=250, left=0)
+ax.set_ylim(top=10.0, bottom=1e-12)
+ax.set_xlabel('Number of iterations of  solver')
+ax.set_ylabel('Relative residue')
+fig.tight_layout()
+fig.savefig(folder+problem._Krylov+'NL_FS'+'.pdf')
 
-# u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-# modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
+modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
