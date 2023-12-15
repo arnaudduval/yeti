@@ -12,14 +12,15 @@ def conductivityProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
+			Kprop[i, j, :] = Kref[i, j]*(1+2*np.exp(-0.25*np.abs(temperature))*(np.cos(temperature))**2)
 			# Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
-			Kprop[i, j, :] = Kref[i, j]
+			# Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	# Cprop = (1.0 + np.exp(-np.abs(temperature)))
-	Cprop = np.ones(shape=np.shape(temperature))
+	Cprop = (1.0 + np.exp(-np.abs(temperature)))
+	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
 def conductivityDersProperty(args):
@@ -28,7 +29,8 @@ def conductivityDersProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = -Kref[i, j]*2*np.sign(temperature)*np.exp(-np.abs(temperature))
+			# Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
+			Kprop[i, j, :] = Kref[i, j]*np.cos(temperature)*np.exp(-0.25*np.abs(temperature))*(-4*np.sin(temperature)-0.5*np.sign(temperature)*np.cos(temperature))
 	return Kprop 
 
 def capacityDersProperty(args):
@@ -118,22 +120,48 @@ u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 # fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
 
 ##################################################################
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# problem._KrylovPreconditioner = 'JMC'
+# u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
+# 												isfull=False, 
+# 												isadaptive=False)
+
+# # Create continous resPCG
+# resPCGclean = np.array([])
+# for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+
+# ax.semilogy(resPCGclean)
+# ax.set_xlim(right=250, left=0)
+# ax.set_ylim(top=10.0, bottom=1e-12)
+# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# ax.set_ylabel('Relative residue')
+# fig.tight_layout()
+# fig.savefig(folder+problem._Krylov+'NL_PS'+'.pdf')
+
+# # u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
+# # modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+
+##################################################################
+u_guess = np.random.uniform(-5, 10, np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-problem._Krylov = 'GMRES'
-problem._KrylovPreconditioner = 'JMC'
-u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=False)
+# problem._Krylov = 'GMRES'
+problem._KrylovPreconditioner = 'TDC'
 
-# Create continous resPCG
-resPCGclean = np.array([])
-for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+for isfull in [True, False]:
+	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
+													isfull=isfull, 
+													isadaptive=False, nbIter=1)
+	# Create continous resPCG
+	if isfull: name='Inconsistent\npreconditioner'
+	else: name='Consistent\npreconditioner'
+	resPCGclean = np.array([])
+	for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+	ax.semilogy(resPCGclean, label=name)
 
-ax.semilogy(resPCGclean)
-ax.set_xlim(right=250, left=0)
+ax.set_xlim(right=50, left=0)
 ax.set_ylim(top=10.0, bottom=1e-12)
-ax.set_xlabel('Number of iterations of  solver')
+ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
 ax.set_ylabel('Relative residue')
+ax.legend()
 fig.tight_layout()
-fig.savefig(folder+problem._Krylov+'NL_FS'+'.pdf')
-
-u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+fig.savefig(folder+problem._Krylov+'residueNL'+'.pdf')
