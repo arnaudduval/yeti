@@ -12,14 +12,15 @@ def conductivityProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*(1+2*np.exp(-0.25*np.abs(temperature))*(np.cos(temperature))**2)
+			Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
 			# Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 			# Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	Cprop = (1.0 + np.exp(-np.abs(temperature)))
+	Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
+	# Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
@@ -29,13 +30,15 @@ def conductivityDersProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
+			Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
+													-0.125*np.sign(temperature)*np.sin(temperature))
 			# Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
-			Kprop[i, j, :] = Kref[i, j]*np.cos(temperature)*np.exp(-0.25*np.abs(temperature))*(-4*np.sin(temperature)-0.5*np.sign(temperature)*np.cos(temperature))
 	return Kprop 
 
 def capacityDersProperty(args):
 	temperature = args['temperature']
-	Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
+	Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
+	# Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Cprop
 
 def powerDensity(args:dict):
@@ -123,34 +126,36 @@ u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 # problem._KrylovPreconditioner = 'JMC'
 # u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
-# 												isfull=False, 
+# 												isfull=True, 
 # 												isadaptive=False)
+# print(u_sol.max(), u_sol.min())
 
 # # Create continous resPCG
 # resPCGclean = np.array([])
 # for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
 
 # ax.semilogy(resPCGclean)
-# ax.set_xlim(right=250, left=0)
+# ax.set_xlim(right=400, left=0)
 # ax.set_ylim(top=10.0, bottom=1e-12)
 # ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
 # ax.set_ylabel('Relative residue')
 # fig.tight_layout()
-# fig.savefig(folder+problem._Krylov+'NL_PS'+'.pdf')
+# fig.savefig(folder+problem._Krylov+'NL_FS2'+'.pdf')
 
-# # u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-# # modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
+# u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
+# modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
 
 ##################################################################
-u_guess = np.random.uniform(-5, 10, np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
+u_guess = np.random.uniform(-1., 1., np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# problem._Krylov = 'GMRES'
+problem._Krylov = 'GMRES'
 problem._KrylovPreconditioner = 'TDC'
+problem._nIterNewton = 7
 
 for isfull in [True, False]:
 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
 													isfull=isfull, 
-													isadaptive=False, nbIter=1)
+													isadaptive=False)
 	# Create continous resPCG
 	if isfull: name='Inconsistent\npreconditioner'
 	else: name='Consistent\npreconditioner'
@@ -158,7 +163,7 @@ for isfull in [True, False]:
 	for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
 	ax.semilogy(resPCGclean, label=name)
 
-ax.set_xlim(right=50, left=0)
+# ax.set_xlim(right=50, left=0)
 ax.set_ylim(top=10.0, bottom=1e-12)
 ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
 ax.set_ylabel('Relative residue')
