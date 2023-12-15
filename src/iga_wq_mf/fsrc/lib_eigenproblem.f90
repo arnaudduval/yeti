@@ -315,7 +315,7 @@ subroutine GMRES(nr, A, b, P, x, nbIter, nbRestarts, threshold)
     do m = 1, nbRestarts
         r = b - matmul(A, x)
         beta(m) = norm2(r)
-        if (beta(m).lt.threshold*beta(1)) exit
+        if (beta(m).le.threshold*beta(1)) exit
         V(1, :) = r/beta(1)
         e1(1) = beta(m)
 
@@ -332,7 +332,7 @@ subroutine GMRES(nr, A, b, P, x, nbIter, nbRestarts, threshold)
             end if
             call solve_linear_system(k+1, k, H(:k+1, :k), e1(:k+1), y(:k))
             rho = norm2(matmul(H(:k+1, :k), y(:k)) - e1(:k+1))
-            if (rho.lt.threshold*beta(1)) exit
+            if (rho.le.threshold*beta(1)) exit
         end do
         x = x + matmul(y(:k), Z(:k, :))
     end do

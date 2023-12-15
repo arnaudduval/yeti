@@ -125,7 +125,7 @@ contains
             if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
             if (.not.allocated(mat%JJbb)) allocate(mat%JJbb(mat%dimen, mat%dimen, mat%ncols_sp))
             mat%JJnn = 0.d0; mat%JJbb = 0.d0
-            if (all(abs(mat%NN).lt.threshold)) return
+            if (all(abs(mat%NN).le.threshold)) return
             do i = 1, mat%ncols_sp
                 call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), tensor)
                 mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
@@ -1220,7 +1220,7 @@ contains
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
         normb  = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.le.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1249,7 +1249,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
             call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
@@ -1486,7 +1486,7 @@ contains
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
         normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.le.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde) 
@@ -1516,7 +1516,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
             call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)

@@ -996,7 +996,7 @@ contains
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.1.d-14) return
+        if (normb.le.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1102,7 +1102,7 @@ contains
                     w = w - H(subiter, iter)*V(subiter, :)
                 end do
                 H(iter+1, iter) = norm2(w)
-                if (abs(H(iter+1, iter)).gt.1e-10) then
+                if (abs(H(iter+1, iter)).gt.1e-12) then
                     V(iter+1, :) = w/H(iter+1, iter)
                 end if
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
@@ -1496,7 +1496,7 @@ contains
                     w = w - H(subiter, iter)*V(subiter, :)
                 end do
                 H(iter+1, iter) = norm2(w)
-                if (abs(H(iter+1, iter)).gt.1e-10) then
+                if (abs(H(iter+1, iter)).gt.1e-12) then
                     V(iter+1, :) = w/H(iter+1, iter)
                 end if
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))

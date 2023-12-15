@@ -862,7 +862,7 @@ contains
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.le.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)            
@@ -889,7 +889,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1259,7 +1259,7 @@ contains
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.le.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1284,7 +1284,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
