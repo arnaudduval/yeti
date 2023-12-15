@@ -60,14 +60,14 @@ class mechasimulate(simulate):
 		# Run iterative methods
 		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})
 		for im in self._iterMethods:
-			problem._methodPCG = im
+			problem._KrylovPreconditioner = im
 			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 		enablePrint()
 		timeIter, resPCG = [], []; problem.addSolverConstraints({'nbIterationsPCG':100, 'PCGThreshold':1e-12})
 		print(self._degree, self._nbcuts)
 		for im in self._iterMethods:
-			problem._methodPCG = im
+			problem._KrylovPreconditioner = im
 			un, residue_t, time_temp = self.run_iterativeSolver(problem, Fext=Fext)
 			timeIter.append(time_temp)
 			resPCG.append(residue_t)
@@ -75,7 +75,7 @@ class mechasimulate(simulate):
 		print('--')
 				
 		# Write file
-		output = {'nbIterPCG': problem._nbIterPCG, 'iterMethods': self._iterMethods, 'timeNoIter':timeNoIter, 'timeIter': timeIter, 'resPCG': resPCG}
+		output = {'nbIterPCG': problem._nIterKrylov, 'iterMethods': self._iterMethods, 'timeNoIter':timeNoIter, 'timeIter': timeIter, 'resPCG': resPCG}
 		if overwrite: self.write_resultsFile(output)
 
 		return un

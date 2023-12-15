@@ -996,7 +996,7 @@ contains
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.lt.1.d-14) return
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1021,7 +1021,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1082,8 +1082,9 @@ contains
             r = b - Ax
             call clear_dirichlet(solv, nr_total, r)
             beta(restart) = norm2(r)
+            if ((restart.eq.1).and.(beta(1).le.1.d-14)) return
             resPCG(c) = beta(restart)/beta(1); c = c + 1
-            if (beta(restart).lt.threshold*beta(1)) exit
+            if (beta(restart).le.max(threshold*beta(1), 1.d-14)) exit
             V(1, :) = r/beta(1)
             e1(1) = beta(restart)
 
@@ -1107,7 +1108,7 @@ contains
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
                 beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
                 resPCG(c) = beta(restart+1)/beta(1); c = c + 1
-                if (beta(restart+1).lt.threshold*beta(1)) exit
+                if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
             end do
             x = x + matmul(y(:iter), Z(:iter, :))
         end do
@@ -1389,7 +1390,8 @@ contains
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         resPCG = 0.d0; resPCG(1) = 1.d0
-        if (normb.lt.threshold) return
+        if (normb.le.1.d-14) return
+
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
@@ -1413,7 +1415,7 @@ contains
             r = s - omega*Astilde    
             
             resPCG(iter+1) = norm2(r)/normb
-            if (resPCG(iter+1).le.threshold) exit
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1474,8 +1476,9 @@ contains
             r = b - Ax
             call clear_dirichlet(solv, nr_total, r)
             beta(restart) = norm2(r)
+            if ((restart.eq.1).and.(beta(1).le.1.d-14)) return
             resPCG(c) = beta(restart)/beta(1); c = c + 1
-            if (beta(restart).lt.threshold*beta(1)) exit
+            if (beta(restart).le.max(threshold*beta(1), 1.d-14)) exit
             V(1, :) = r/beta(1)
             e1(1) = beta(restart)
 
@@ -1499,7 +1502,7 @@ contains
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
                 beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
                 resPCG(c) = beta(restart+1)/beta(1); c = c + 1
-                if (beta(restart+1).lt.threshold*beta(1)) exit
+                if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
             end do
             x = x + matmul(y(:iter), Z(:iter, :))
         end do
