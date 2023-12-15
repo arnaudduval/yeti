@@ -328,7 +328,7 @@ class heatproblem(problem):
 				resNRj = abs(np.dot(V_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= self._thresholdNewton*resNR0: break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
@@ -558,7 +558,7 @@ class mechaproblem(problem):
 				resNRj = abs(block_dot_product(self.part.dim, A_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= self._thresholdNewton*resNR0: break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
@@ -690,7 +690,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				resNRj = abs(block_dot_product(self.part.dim+1, A_n1ref, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= self._thresholdNewton*resNR0: break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA

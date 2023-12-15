@@ -204,7 +204,7 @@ class mechamat(material):
 			dgamma_ref -= f/df
 			resNRj = np.sqrt(np.abs(np.dot(np.ravel(dgamma_ref), np.ravel(f))))
 			if k == 0: resNR0 = resNRj
-			if resNRj <= threshold*resNR0: break 
+			if resNRj <= max([threshold*resNR0, 1e-14]): break
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
 
 		phi_alg = -np.sqrt(2.0/3.0)*df
@@ -230,7 +230,7 @@ class mechamat(material):
 			mechArgs[nvoigt+4:, plsInd]  = hatbeta
 		return mechArgs
 	
-	def J2returnMappingAlgorithm3D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-9):
+	def J2returnMappingAlgorithm3D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-8):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
 		nvoigt, nnz = np.shape(strain_n1)
@@ -297,7 +297,7 @@ class mechamat(material):
 			dgamma_ref -= f/df
 			resNRj = np.sqrt(np.abs(np.dot(np.ravel(dgamma_ref), np.ravel(f))))
 			if k == 0: resNR0 = resNRj
-			if resNRj <= threshold*resNR0: break 
+			if resNRj <= max([threshold*resNR0, 1e-14]): break
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
 
 		phi_alg = -df
@@ -313,7 +313,7 @@ class mechamat(material):
 			mechArgs[0, plsInd] = self.elasticmodulus*(1 - theta)
 		return mechArgs
 	
-	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-9):
+	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, threshold=1e-8):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
 		isElasticLoad = True; output = {}

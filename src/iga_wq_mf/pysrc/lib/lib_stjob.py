@@ -228,8 +228,7 @@ class stheatproblem(stproblem):
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, nbIter=None, solvArgs={}):
-		if nbIter is None: nbIter = self._nIterNewton
+	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
 		eps_kr0  = solvArgs.get('kr0', 1e-3)
 		eps_Kref = solvArgs.get('kryref', 1e-2)
 
@@ -238,7 +237,7 @@ class stheatproblem(stproblem):
 		dj_n1 = np.copy(Tguess)
 
 		AllresPCG = []
-		for j in range(nbIter):
+		for j in range(self._nIterNewton):
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
