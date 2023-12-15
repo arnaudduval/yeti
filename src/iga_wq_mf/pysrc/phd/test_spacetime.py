@@ -103,7 +103,7 @@ fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 for j, pcgmethod in enumerate(['JMC', 'TDC']):
 	problem._KrylovPreconditioner = pcgmethod
 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=False)
-	if pcgmethod == 'C'  : pcgname = 'Classic FD method'
+	if pcgmethod == 'C'    : pcgname = 'Classic FD method'
 	elif pcgmethod == 'TDC': pcgname = 'Literature'
 	elif pcgmethod == 'JMC': pcgname = 'This work'
 		

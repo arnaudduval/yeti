@@ -17,12 +17,12 @@ class problem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nIterKrylov = solverArgs.get('nbIterationsPCG', 100)
-		self._thresholdKrylov = solverArgs.get('PCGThreshold', 1e-12)
-		self._KrylovPreconditioner = solverArgs.get('PCGmethod', 'JMC')
+		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
+		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-12)
+		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
 		
-		self._nIterNewton = solverArgs.get('nbIterationsNR', 50)
-		self._thresholdNewton = solverArgs.get('NRThreshold', 1e-10)
+		self._nIterNewton = solverArgs.get('nIterNewton', 50)
+		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-10)
 		return
 	
 	def __getInfo4surfForce(self, nbFacePosition):

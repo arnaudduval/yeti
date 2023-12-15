@@ -68,10 +68,10 @@ if not dataExist:
 
 			# ---------------------
 			# Transient model
-			# ---------------------
-			solverArgs = {'PCGmethod': PCGmethod}
+			# ---------------------			
+			SOLVERARGS = {'KrylovPreconditioner': PCGmethod}
 			problem = heatproblem(material, modelPhy, boundary)
-			problem.addSolverConstraints(solverArgs=solverArgs)
+			problem.addSolverConstraints(solverArgs=SOLVERARGS)
 
 			# Create a Dirichlet condition
 			Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))

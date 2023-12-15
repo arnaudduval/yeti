@@ -25,7 +25,7 @@ YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'Isoname':'none'}}
-SOLVERARGS  = {'nbIterationsPCG':150, 'PCGThreshold':1e-15, 'PCGmethod': 'TDC'}
+SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-15, 'KrylovPreconditioner': 'TDC'}
 isReference = False
 
 def forceSurf_infPlate(P:list):

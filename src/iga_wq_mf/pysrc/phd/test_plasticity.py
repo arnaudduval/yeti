@@ -60,9 +60,9 @@ if not dataExist:
 		enablePrint()
 
 		# Solve elastic problem
-		solverArgs = {'nbIterationsPCG':100, 'PCGThreshold':1e-12, 'NRThreshold': 1e-9}
+		SOLVERARGS = {'nIterKrylov':150, 'thresholdKrylov':1e-12, 'thresholdNewton':1e-9}
 		problem = mechaproblem(material, modelPhy, boundary)
-		problem.addSolverConstraints(solverArgs=solverArgs)
+		problem.addSolverConstraints(solverArgs=SOLVERARGS)
 		problem._KrylovPreconditioner = PCGmethod
 		Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))

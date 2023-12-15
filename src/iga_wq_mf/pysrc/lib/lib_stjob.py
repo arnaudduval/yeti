@@ -20,13 +20,13 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._Krylov = solverArgs.get('PCGmethod', 'BICG')
-		self._nIterKrylov = solverArgs.get('nbIterationsPCG', 100)
-		self._thresholdKrylov = solverArgs.get('PCGThreshold', 1e-10)
-		self._KrylovPreconditioner = solverArgs.get('PCGmethod', 'JMC')
+		self._Krylov = solverArgs.get('Krylov', 'BICG')
+		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
+		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-10)
+		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
 
-		self._nIterNewton = solverArgs.get('nbIterationsNR', 20)
-		self._thresholdNewton = solverArgs.get('NRThreshold', 1e-8)
+		self._nIterNewton = solverArgs.get('nIterNewton', 20)
+		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-8)
 		return
 	
 	def compute_volForce(self, volfun, args=None): 
@@ -238,7 +238,8 @@ class stheatproblem(stproblem):
 		dj_n1 = np.copy(Tguess)
 
 		AllresPCG = []
-		for j in range(self._nIterNewton):
+		# for j in range(self._nIterNewton):
+		for j in range(1):
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)

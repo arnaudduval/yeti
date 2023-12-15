@@ -57,14 +57,14 @@ class mechasimulate(simulate):
 		problem = mechaproblem(material, modelPhy, boundary)
 		Fext    = problem.compute_surfForce(self._funforce, nbFacePosition=1)[0]
 
-		# Run iterative methods
-		timeNoIter = []; problem.addSolverConstraints({'nbIterationsPCG':0})
+		# Run iterative methods	
+		timeNoIter = []; problem.addSolverConstraints({'nIterKrylov':0})
 		for im in self._iterMethods:
 			problem._KrylovPreconditioner = im
 			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 		enablePrint()
-		timeIter, resPCG = [], []; problem.addSolverConstraints({'nbIterationsPCG':100, 'PCGThreshold':1e-12})
+		timeIter, resPCG = [], []; problem.addSolverConstraints({'nIterKrylov':100, 'thresholdKrylov':1e-12})
 		print(self._degree, self._nbcuts)
 		for im in self._iterMethods:
 			problem._KrylovPreconditioner = im

@@ -87,7 +87,7 @@ def exactDiffTemperature_quartCircle(P: list):
 
 # Set global variables
 geoName = 'QA'
-solverArgs = {'nbIterationsPCG':150, 'PCGThreshold':1e-15}
+SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-15}
 degree_list = np.array([2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
@@ -116,7 +116,7 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 
 			# Solve elastic problem
 			problem = heatproblem(material, modelPhy, boundary)
-			problem.addSolverConstraints(solverArgs=solverArgs)
+			problem.addSolverConstraints(solverArgs=SOLVERARGS)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = problem.solveSteadyHeatProblem(Fext=Fext)[0]
 			error_list[j] = problem.normOfError(temperature, normArgs={'type':'semiH1','exactFunction':exactTemperature_quartCircle,
