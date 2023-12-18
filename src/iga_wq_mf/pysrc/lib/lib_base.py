@@ -350,48 +350,27 @@ def lobattoTable(order):
 class solver():
 	
 	def __init__(self):
-		self._nbIter       = 100
-		self._thresholdPCG = 1e-12
+		self._nbIterKrylov    = 100
+		self._thresholdKrylov = 1e-10
 		return
 	
-	def CG(self, Afun, b):
+	def CG(self, Afun, b, Pfun=None):
+		if Pfun is None: Pfun = lambda x: x
 		x = np.zeros(np.shape(b))
 		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
-		if normb <= self._thresholdPCG: return
-		rsold = np.dot(r, r); p = r
-
-		for i in range(self._nbIter):
-			Ap = Afun(p)
-			alpha = rsold/np.dot(p, Ap)
-			x += alpha*p
-			r -= alpha*Ap
-
-			resPCG.append(np.linalg.norm(r)/normb)
-			if (resPCG[-1]<=self._thresholdPCG): break
-
-			rsnew = np.dot(r, r)
-			p = r + rsnew/rsold*p
-			rsold = rsnew
-
-		return x, resPCG
-	
-	def PCG(self, Afun, Pfun, b):
-		x = np.zeros(np.shape(b))
-		r = b; normb = np.linalg.norm(r)
-		resPCG = [1.0]
-		if normb <= self._thresholdPCG: return
+		if normb <= self._thresholdKrylov: return
 		z = Pfun(r)
 		rsold = np.dot(r, z); p = z
 
-		for i in range(self._nbIter):
+		for i in range(self._nbIterKrylov):
 			Ap = Afun(p)
 			alpha = rsold/np.dot(p, Ap)
 			x += alpha*p
 			r -= alpha*Ap
 
 			resPCG.append(np.linalg.norm(r)/normb)
-			if (resPCG[-1]<=self._thresholdPCG): break
+			if (resPCG[-1]<=self._thresholdKrylov): break
 
 			z = Pfun(r)
 			rsnew = np.dot(r, z)
@@ -400,42 +379,16 @@ class solver():
 
 		return x, resPCG
 	
-	def BiCGSTAB(self, Afun, b):
+	def BiCGSTAB(self, Afun, b, Pfun=None):
+		if Pfun is None: Pfun = lambda x: x
 		x = np.zeros(np.shape(b))
 		r = b; normb = np.linalg.norm(r)
 		resPCG = [1.0]
-		if normb <= self._thresholdPCG: return
+		if normb <= self._thresholdKrylov: return
 		rhat = r; p = r
 		rsold = np.dot(r, rhat)
 
-		for i in range(self._nbIter):
-			Ap = Afun(p)
-			alpha = rsold/np.dot(Ap, rhat)
-			s = r - alpha*Ap
-			As = Afun(s)
-			omega = np.dot(As, s)/np.dot(As, As)
-			x += alpha*p + omega*s
-			r = s - omega*As
-
-			resPCG.append(np.linalg.norm(r)/normb)
-			if (resPCG[-1]<=self._thresholdPCG): break
-
-			rsnew = np.dot(r, rhat)
-			beta = (alpha/omega)*(rsnew/rsold)
-			p = r + beta(p - omega*Ap)
-			rsold = rsnew
-
-		return x, resPCG
-	
-	def PBiCGSTAB(self, Afun, Pfun, b):
-		x = np.zeros(np.shape(b))
-		r = b; normb = np.linalg.norm(r)
-		resPCG = [1.0]
-		if normb <= self._thresholdPCG: return
-		rhat = r; p = r
-		rsold = np.dot(r, rhat)
-
-		for i in range(self._nbIter):
+		for i in range(self._nbIterKrylov):
 			ptilde = Pfun(p)
 			Aptilde = Afun(ptilde)
 			alpha = rsold/np.dot(Aptilde, rhat)
@@ -447,7 +400,7 @@ class solver():
 			r = s - omega*Astilde
 
 			resPCG.append(np.linalg.norm(r)/normb)
-			if (resPCG[-1]<=self._thresholdPCG): break
+			if (resPCG[-1]<=self._thresholdKrylov): break
 
 			rsnew = np.dot(r, rhat)
 			beta = (alpha/omega)*(rsnew/rsold)
@@ -456,3 +409,36 @@ class solver():
 
 		return x, resPCG
 	
+	def GMRES(self, Afun, b, Pfun=None, n_restarts=1):
+		if Pfun is None: Pfun = lambda x: x
+    
+		x = np.zeros(len(b))
+		H = np.zeros((self._nbIterKrylov + 1, self._nbIterKrylov))
+		V = np.zeros((self._nbIterKrylov + 1, len(b)))
+		Z = np.zeros((self._nbIterKrylov + 1, len(b)))
+		beta = np.zeros(n_restarts)
+		
+		for m in range(n_restarts):
+			r = b - Afun(x)
+			beta[m] = np.linalg.norm(r)
+			if beta[m] <= self._thresholdKrylov*beta[0]: break
+			V[0] = r / beta[m]
+			e1 = np.zeros(self._nbIterKrylov + 1); e1[0] = beta[m]
+
+			for k in range(self._nbIterKrylov):
+				Z[k] = Pfun(V[k])
+				w = Afun(Z[k])
+
+				for j in range(k+1):
+					H[j, k] = np.dot(w, V[j])
+					w -= H[j, k] * V[j]
+				H[j+1, j] = np.linalg.norm(w)
+				if H[j+1, j] != 0: V[k+1] = w/H[j+1, j]
+				y = np.linalg.lstsq(H[:k+2, :k+1], e1[:k+2])[0]
+				rho = np.linalg.norm(H[:k+2, :k+1] @ y - e1[:k+2])
+				if rho <= self._thresholdKrylov*beta[0]: break
+
+			xk = x + Z[:k+1].T @ y
+			x = np.copy(xk)
+
+		return x
