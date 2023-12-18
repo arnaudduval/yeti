@@ -81,8 +81,8 @@ else:
 	with open(folder + 'refpartpl.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
-	degree_list = np.arange(1, 2)
-	cuts_list   = np.arange(7, 8)
+	degree_list = np.arange(1, 4)
+	cuts_list   = np.arange(2, 9)
 	step_max    = 130
 	step_list  = range(50, step_max, 5)
 	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
@@ -93,25 +93,25 @@ else:
 			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg', 'extra':{'nbQPEL': 2}}}
 			modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
 
-			# for k, step in enumerate(step_list):
-			# 	error_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 'part_ref':part_ref, 
-			# 																'u_ref': disp_ref[:, step]}, isRelative=False)	
+			for k, step in enumerate(step_list):
+				error_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 'part_ref':part_ref, 
+																			'u_ref': disp_ref[:, step]}, isRelative=False)	
 
-	# np.save(folder + 'plasticity1D', error_list)
-	# error_list = np.load(folder + 'plasticity1D.npy')
+	np.save(folder + 'plasticity1D', error_list)
+	error_list = np.load(folder + 'plasticity1D.npy')
 	
-	# for k, step in enumerate(step_list):
-	# 	fig, ax = plt.subplots(figsize=(9, 6))
-	# 	for i, degree in enumerate(degree_list):
-	# 		color = COLORLIST[i]
-	# 		ax.loglog(2**cuts_list, error_list[k, i, :], color=color, marker='o', markerfacecolor='w',
-	# 					markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+	for k, step in enumerate(step_list):
+		fig, ax = plt.subplots(figsize=(9, 6))
+		for i, degree in enumerate(degree_list):
+			color = COLORLIST[i]
+			ax.loglog(2**cuts_list, error_list[k, i, :], color=color, marker='o', markerfacecolor='w',
+						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 
-	# 	ax.set_ylabel(r'$H^1$'+ ' error')
-	# 	ax.set_xlabel('Number of elements')
-	# 	ax.set_ylim(bottom=1e-12, top=1e-3)
-	# 	ax.set_xlim(left=1, right=10**3)
+		ax.set_ylabel(r'$H^1$'+ ' error')
+		ax.set_xlabel('Number of elements')
+		ax.set_ylim(bottom=1e-12, top=1e-3)
+		ax.set_xlim(left=1, right=10**3)
 
-	# 	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	# 	fig.tight_layout()
-	# 	fig.savefig(folder + 'FigPlasticity1_' + str(k) +'.pdf')
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigPlasticity1_' + str(k) +'.pdf')
