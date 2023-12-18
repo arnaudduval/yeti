@@ -88,6 +88,7 @@ material.addCapacityDers(capacityDersProperty, isIsotropic=False)
 
 # Block boundaries
 dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+dirichlet_table[0, 1] = 0; 	dirichlet_table[0, 0] = 0
 stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
 boundary = boundaryCondition(stnbctrlpts)
 boundary.add_DirichletConstTemperature(table=dirichlet_table)
@@ -146,7 +147,7 @@ u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 # modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
 
 ##################################################################
-u_guess = np.random.uniform(-1., 1., np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
+# u_guess = np.random.uniform(-1., 1., np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 problem._Krylov = 'GMRES'
 problem._KrylovPreconditioner = 'TDC'

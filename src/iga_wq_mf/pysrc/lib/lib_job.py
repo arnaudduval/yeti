@@ -302,7 +302,6 @@ class heatproblem(problem):
 			dj_n1[dod] = Tinout[dod, i]
 
 			Fext_n1 = np.copy(Fext_list[:, i])
-			V_n1ref = np.copy(Vj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nIterNewton):
@@ -318,22 +317,21 @@ class heatproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				# Solve for active control points
-				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
-				resPCGj = np.append(resPCGj, resPCG)
-				V_n1ref += deltaV
-
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(V_n1ref, r_dj))
+				resNRj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
+				# Solve for active control points
+				resPCGj = np.array([i, j+1])
+				deltaV, resPCG = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
+				resPCGj = np.append(resPCGj, resPCG)
+				
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
 				AllresPCG.append(resPCGj)
+				if np.sqrt(np.dot(deltaV, deltaV)) <= 1e-12: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -433,7 +431,6 @@ class mechaproblem(problem):
 				dj_n1[k, dod] = dispinout[k, dod, i]
 			
 			Fext_n1 = np.copy(Fext_list[:, :, i])
-			d_n1ref = np.zeros(np.shape(dj_n1))
 
 			print('Step: %d' %i)
 			for j in range(self._nIterNewton):
@@ -452,23 +449,22 @@ class mechaproblem(problem):
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
+
+				resNRj = np.sqrt(block_dot_product(dimen, r_dj, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error: %.5e' %resNRj)
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
 				resPCGj = np.array([i, j+1])
 				deltaD, resPCG = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
 				resPCGj = np.append(resPCGj, resPCG)
-				d_n1ref += deltaD
 				
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(block_dot_product(dimen, d_n1ref, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
-				if j > 0 and isElasticLoad: break
-
 				# Update active control points
 				dj_n1 += deltaD
 				AllresPCG.append(resPCGj)
+				if np.sqrt(block_dot_product(dimen, deltaD, deltaD)) <= 1e-12: break
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
@@ -531,7 +527,6 @@ class mechaproblem(problem):
 				dj_n1[k, dod] = dispinout[k, dod, i]
 
 			Fext_n1 = np.copy(Fext_list[:, :, i])
-			A_n1ref = np.copy(Aj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nIterNewton):
@@ -548,23 +543,22 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				# Solve for active control points
-				resPCGj = np.array([i, j+1])
-				deltaA, resPCG = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
-				resPCGj = np.append(resPCGj, resPCG)
-				A_n1ref += deltaA
-
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(block_dot_product(self.part.dim, A_n1ref, r_dj))
+				resNRj = np.sqrt(block_dot_product(self.part.dim, r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
+				# Solve for active control points
+				resPCGj = np.array([i, j+1])
+				deltaA, resPCG = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
+				resPCGj = np.append(resPCGj, resPCG)
+				
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
 				AllresPCG.append(resPCGj)
+				if np.sqrt(block_dot_product(self.part.dim, deltaA, deltaA)) <= 1e-12: break
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -662,7 +656,6 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			Fext_n1 = np.zeros((self.part.dim+1, nbctrlpts_total))
 			Fext_n1[:-1, :] = np.copy(Fmech_list[:, :, i])
 			Fext_n1[-1, :] = np.copy(Fheat_list[:, i])
-			A_n1ref = np.copy(Aj_n1)
 
 			print('Step: %d' %i)
 			for j in range(self._nIterNewton):
@@ -682,20 +675,19 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dod = [*self.boundary.mchdod, self.boundary.thdod]
 				clean_dirichlet(r_dj, dod) 
 
-				# Solve for active control points
-				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)
-				A_n1ref += deltaA
-
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(block_dot_product(self.part.dim+1, A_n1ref, r_dj))
+				resNRj = np.sqrt(block_dot_product(self.part.dim+1, r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 
+				# Solve for active control points
+				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)
+				
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
+				if np.sqrt(block_dot_product(self.part.dim+1, deltaA, deltaA)) <= 1e-12: break
 
 			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])

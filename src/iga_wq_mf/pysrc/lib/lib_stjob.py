@@ -249,7 +249,6 @@ class stheatproblem(stproblem):
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
-			# Verify convergence of Newton Krylov
 			resNRj = np.sqrt(np.dot(r_dj, r_dj))
 			if j == 0: resNR0 = resNRj
 			print('NR error: %.3e' %resNRj)
@@ -269,5 +268,6 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
+			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
 		return dj_n1, AllresPCG

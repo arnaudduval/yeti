@@ -6,7 +6,7 @@
 
 from . import *
 from .lib_part import part1D
-from .lib_quadrules import GaussQuadrature, WeightedQuadrature
+from .lib_quadrules import GaussQuadrature
 from .lib_material import mechamat
 from .lib_base import evalDersBasisFortran, array2csr_matrix
 
@@ -18,8 +18,8 @@ class problem1D(part1D):
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresholdNR = solverArgs.get('NRThreshold', 1e-10)
-		self._nbIterNR    = solverArgs.get('nbIterationsNR', 50)
+		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-6)
+		self._nIterNewton     = solverArgs.get('nIterationsNewton', 20)
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -207,10 +207,9 @@ class heatproblem1D(problem1D):
 			dj_n1[dod] = Tinout[dod, i]
 
 			Fext_n1 = np.copy(Fext_list[:, i])
-			V_n1ref = np.copy(Vj_n1)
 
 			print('Step: %d' %i)
-			for j in range(self._nbIterNR): 
+			for j in range(self._nIterNewton): 
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
@@ -223,19 +222,15 @@ class heatproblem1D(problem1D):
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
+
+				resNRj = np.sqrt(np.dot(Vj_n1, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error %.5e' %resNRj)
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
 				deltaV = np.zeros(self.nbctrlpts); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
-
-				# Update values
-				V_n1ref += deltaV
-
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(Vj_n1, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= self._thresholdNR*resNR0: break
 				
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
@@ -281,10 +276,9 @@ class heatproblem1D(problem1D):
 			dj_n1[dod] = Tinout[dod, i]
 
 			Fext_n1 = np.copy(Fext_list[:, i])
-			A_n1ref = np.copy(Aj_n1)
 
 			print('Step: %d' %i)
-			for j in range(self._nbIterNR): 
+			for j in range(self._nIterNewton): 
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
@@ -301,18 +295,16 @@ class heatproblem1D(problem1D):
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
-				
+
+				resNRj = np.sqrt(np.dot(r_dj, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error %.5e' %resNRj)
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
 										beta=beta, gamma=gamma, isLumped=isLumped)[np.ix_(dof, dof)])
 				deltaA = np.zeros(self.nbctrlpts); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
-				A_n1ref += deltaA
-
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(A_n1ref, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= self._thresholdNR*resNR0: break
 
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
@@ -383,16 +375,15 @@ class mechaproblem1D(problem1D):
 			dj_n1[dod] = np.copy(dispinout[dod, i])
 
 			Fext_n1 = np.copy(Fext_list[:, i])
-			d_n1ref = np.zeros(self.nbctrlpts)
 
 			print('Step: %d' %i)
-			for j in range(self._nbIterNR): # Newton-Raphson 
+			for j in range(100): # Newton-Raphson 
 				
 				# Compute strain at each quadrature point
 				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
-				output, isElasticLoad = self.mechamat.J2returnMappingAlgorithm1D(strain, pls_n0, a_n0, b_n0, threshold=1e-10)
+				output, isElasticLoad = self.mechamat.J2returnMappingAlgorithm1D(strain, pls_n0, a_n0, b_n0)
 				stress = output['stress']; pls_n1 = output['pls']; a_n1 = output['alpha']
 				b_n1 = output['beta']; Cep = output['mechArgs']
 
@@ -403,20 +394,19 @@ class mechaproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
+				resNRj = np.sqrt(np.dot(r_dj, r_dj))
+				if j == 0: resNR0 = resNRj
+				print('NR error %.5e' %resNRj)
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if j > 0 and isElasticLoad: break
+
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
 				deltaD = np.zeros(self.nbctrlpts); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
-				d_n1ref += deltaD
 
-				# Compute residue of Newton Raphson using an energetic approach
-				resNRj = abs(np.dot(d_n1ref, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNR*resNR0, 1e-14]): break
-				if j > 0 and isElasticLoad: break
-				
 				# Update active control points
 				dj_n1 += deltaD
+				if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = np.ravel(strain)
