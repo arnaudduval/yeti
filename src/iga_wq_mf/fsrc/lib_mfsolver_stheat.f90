@@ -991,12 +991,12 @@ contains
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
         integer :: iter
 
-        x = 0.d0; r = b
+        x = 0.d0; r = b; resPCG = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.le.1.d-14) return
+        resPCG(1) = 1.d0
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1020,8 +1020,8 @@ contains
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            resPCG(iter+1) = norm2(r)/normb
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
+            resPCG(iter+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1072,7 +1072,7 @@ contains
         double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
         integer :: restart, iter, subiter, c
 
-        e1 = 0.d0; beta = 0.d0; x = 0.d0; c = 1
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; resPCG = 0.d0; c = 1
         do restart = 1, nbRestarts
             H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -1083,8 +1083,8 @@ contains
             call clear_dirichlet(solv, nr_total, r)
             beta(restart) = norm2(r)
             if ((restart.eq.1).and.(beta(1).le.1.d-14)) return
-            resPCG(c) = beta(restart)/beta(1); c = c + 1
             if (beta(restart).le.max(threshold*beta(1), 1.d-14)) exit
+            resPCG(c) = beta(restart)/beta(1); c = c + 1
             V(1, :) = r/beta(1)
             e1(1) = beta(restart)
 
@@ -1107,8 +1107,8 @@ contains
                 end if
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
                 beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
-                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
                 if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
+                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
             end do
             x = x + matmul(y(:iter), Z(:iter, :))
         end do
@@ -1385,12 +1385,12 @@ contains
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
         integer :: iter
 
-        x = 0.d0; r = b
+        x = 0.d0; r = b; resPCG = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.le.1.d-14) return
+        resPCG(1) = 1.d0
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1414,8 +1414,8 @@ contains
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            resPCG(iter+1) = norm2(r)/normb
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
+            resPCG(iter+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1466,7 +1466,7 @@ contains
         double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
         integer :: restart, iter, subiter, c
 
-        e1 = 0.d0; beta = 0.d0; x = 0.d0; c = 1
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; resPCG = 0.d0; c = 1
         do restart = 1, nbRestarts
             H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
@@ -1501,8 +1501,8 @@ contains
                 end if
                 call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
                 beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
-                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
                 if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
+                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
             end do
             x = x + matmul(y(:iter), Z(:iter, :))
         end do

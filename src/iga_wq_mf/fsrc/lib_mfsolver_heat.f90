@@ -857,12 +857,12 @@ contains
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
         integer :: iter
 
-        x = 0.d0; r = b
+        x = 0.d0; r = b; resPCG = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.le.1.d-14) return
+        resPCG(1) = 1.d0
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)            
@@ -888,8 +888,8 @@ contains
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            resPCG(iter+1) = norm2(r)/normb
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
+            resPCG(iter+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1254,12 +1254,12 @@ contains
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
         integer :: iter
 
-        x = 0.d0; r = b
+        x = 0.d0; r = b; resPCG = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
-        resPCG = 0.d0; resPCG(1) = 1.d0
         if (normb.le.1.d-14) return
+        resPCG(1) = 1.d0
 
         do iter = 1, nbIterPCG
             call applyfastdiag(solv, nr_total, p, ptilde)
@@ -1283,9 +1283,9 @@ contains
             x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
             
-            resPCG(iter+1) = norm2(r)/normb
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-    
+            resPCG(iter+1) = norm2(r)/normb
+
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
