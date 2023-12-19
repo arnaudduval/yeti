@@ -345,6 +345,26 @@ subroutine solve_linear_system(nr, nc, A, b, x)
 
 end subroutine solve_linear_system
 
+subroutine solve_uppertriangular_system(nr, A, b, x)
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr
+    double precision, intent(in) :: A, b
+    dimension :: A(nr, nr), b(nr)
+
+    double precision, intent(out) :: x
+    dimension :: x(nr)
+
+    ! Local data
+    ! ----------
+    integer :: nhrs, info
+
+    x = b; nhrs = 1
+    call dtrtrs('U', 'N', 'N', nr, nhrs, A, nr, x, nr, info)
+
+end subroutine solve_uppertriangular_system
+
 subroutine solve_complex_uppertriangular_system(nr, A, b, x)
     implicit none 
     ! Input / output data
@@ -359,13 +379,30 @@ subroutine solve_complex_uppertriangular_system(nr, A, b, x)
     ! Local data
     ! ----------
     integer :: nhrs, info
-    double complex :: tmp(nr, 1)
 
-    tmp(:, 1) = b; nhrs = 1
-    call ztrtrs('U', 'N', 'N', nr, nhrs, A, nr, tmp, nr, info)
-    x = tmp(:, 1)
+    x = b; nhrs = 1
+    call ztrtrs('U', 'N', 'N', nr, nhrs, A, nr, x, nr, info)
 
 end subroutine solve_complex_uppertriangular_system
+
+subroutine solve_banded_system(nr, ML, MU, ABanded, b, x)
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, ML, MU
+    double precision, intent(in) :: ABanded, b
+    dimension :: ABanded(2*ML+MU+1, nr), b(nr)
+    double precision, intent(out) :: x(nr)
+
+    ! Local data
+    ! ----------
+    integer :: nhrs, info
+    integer :: ipiv(nr)
+
+    x = b; nhrs = 1
+    call dgbsv(nr, ML, MU, nhrs, ABanded, size(ABanded, dim=1), ipiv, x, nr, info)
+
+end subroutine solve_banded_system
 
 subroutine inverse_matrix(nr, A)
     !! Computes the inverse of a square matrix using LU decomposition
@@ -394,6 +431,29 @@ subroutine inverse_matrix(nr, A)
     A = Acopy
 
 end subroutine inverse_matrix
+
+subroutine convert2bandedstorage(nr, ML, MU, A, B)
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: nr, ML, MU
+    double precision, intent(in) :: A
+    dimension :: A(nr, nr)
+    double precision, intent(out) :: B
+    dimension :: B(2*ML+MU+1, nr)
+    ! Local data
+    ! ----------
+    integer :: i, j, k
+
+    k = ML + MU + 1
+    B = 0.d0
+    do j = 1, nr
+        do i = max(1, j - MU), min(nr, j + ML)
+            B(k+i-j, j) = A(i, j)
+        end do
+    end do
+
+end subroutine convert2bandedstorage
 
 subroutine crossproduct(vA, vB, vC)
     !! Computes cross product in a 3D Euclidean space, v3 =  v1 x v2 (x is cross product)

@@ -309,32 +309,32 @@ subroutine GMRES(nr, A, b, P, x, nbIter, nbRestarts, threshold)
     double precision :: H, V, Z, beta, e1, y, rho
     dimension :: H(nbIter+1, nbIter), V(nbIter+1, nr), Z(nbIter+1, nr), beta(nbRestarts), e1(nbIter+1), y(nbIter)
     double precision :: r(nr), w(nr)
-    integer :: m, k, j
+    integer :: i, j, k
 
     e1 = 0.d0; y = 0.d0; H = 0.d0; V = 0.d0; Z = 0.d0; beta = 0.d0; x = 0.d0
-    do m = 1, nbRestarts
+    do k = 1, nbRestarts
         r = b - matmul(A, x)
-        beta(m) = norm2(r)
-        if (beta(m).le.threshold*beta(1)) exit
+        beta(k) = norm2(r)
+        if (beta(k).le.threshold*beta(1)) exit
         V(1, :) = r/beta(1)
-        e1(1) = beta(m)
+        e1(1) = beta(k)
 
-        do k = 1, nbIter
-            Z(k, :) = matmul(P, V(k, :))
-            w = matmul(A, Z(k, :))
-            do j = 1, k
-                H(j, k) = dot_product(w, V(j, :))
-                w = w - H(j, k)*V(j, :)
+        do j = 1, nbIter
+            Z(j, :) = matmul(P, V(j, :))
+            w = matmul(A, Z(j, :))
+            do i = 1, j
+                H(i, j) = dot_product(w, V(i, :))
+                w = w - H(i, j)*V(i, :)
             end do
-            H(k+1, k) = norm2(w)
-            if (abs(H(k+1, k)).gt.1e-10) then
-                V(k+1, :) = w/H(k+1, k)
+            H(j+1, j) = norm2(w)
+            if (abs(H(j+1, j)).gt.1e-10) then
+                V(j+1, :) = w/H(j+1, j)
             end if
-            call solve_linear_system(k+1, k, H(:k+1, :k), e1(:k+1), y(:k))
-            rho = norm2(matmul(H(:k+1, :k), y(:k)) - e1(:k+1))
+            call solve_linear_system(j+1, j, H(:j+1, :j), e1(:j+1), y(:j))
+            rho = norm2(matmul(H(:j+1, :j), y(:j)) - e1(:j+1))
             if (rho.le.threshold*beta(1)) exit
         end do
-        x = x + matmul(y(:k), Z(:k, :))
+        x = x + matmul(y(:j), Z(:j, :))
     end do
 
 end subroutine GMRES
