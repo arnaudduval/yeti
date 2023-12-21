@@ -23,8 +23,6 @@
 
 !! New data model to avoid global variables that can cause problems with openMP
 
-
-
 subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     &   activeElement,nb_data, &
     &   COORDS3D,IEN,nb_elem_patch,Nkv,Ukv,Nijk,weight, &
@@ -34,10 +32,14 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     &   nb_bc,bc_target, &
     &   bc_target_nbelem,ind_dof_free,nb_dof_free,MCRD,NBINT,nb_load,   &
     &   nb_patch,nb_elem,nnode,nb_cp,nb_dof_tot,nodal_dist, &
-    &   nb_n_dist, nb_cp_n_dist, n_mat_props_max)
+    &   nb_n_dist, nb_cp_n_dist, n_mat_props_max,           &
+    &   len_Ukv, len_weight, len_PROPS, len_IEN, len_indDLoad, &
+    &   len_load_additionalInfos, len_nb_load_additionalInfos, &
+    &   len_bc_target)
 
     use m_nurbspatch, only : nurbspatch, nurbselement
     use omp_lib
+
 
     implicit none
 
@@ -49,51 +51,55 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     double precision, intent(in) :: COORDS3D
     dimension COORDS3D(3,nb_cp)
 
-    double precision, intent(in) :: Ukv, weight
+    integer, intent(in) :: len_Ukv, len_weight
+    double precision, dimension(len_Ukv), intent(in) :: Ukv
+    double precision, dimension(len_weight), intent(in) :: weight
     integer, intent(in) :: Nkv, Jpqr, Nijk
-    dimension Nkv(3,nb_patch), Jpqr(3,nb_patch), Nijk(3,nb_elem),   &
-        &     Ukv(:),weight(:)
+    dimension Nkv(3,nb_patch), Jpqr(3,nb_patch), Nijk(3,nb_elem)
 
 
     !! Patches and Elements
     character(len=*), intent(in) :: TENSOR, ELT_TYPE
-    double precision, intent(in) :: MATERIAL_PROPERTIES,RHO,PROPS
-    integer, intent(in) :: MCRD,NNODE,nb_patch,nb_elem,NBINT,IEN,   &
+    double precision, intent(in) :: MATERIAL_PROPERTIES,RHO
+    integer, intent(in) :: MCRD,NNODE,nb_patch,nb_elem,NBINT,   &
         &     nb_elem_patch, JPROPS
     integer, intent(in) :: n_mat_props      !! Number of material properties per patch
     dimension n_mat_props(nb_patch)
     integer, intent(in) :: n_mat_props_max  !! Maximum value of n_mat_props
+    integer, intent(in) :: len_PROPS, len_IEN
+    double precision, dimension(len_PROPS), intent(in) :: PROPS
+    integer, dimension(len_IEN), intent(in) :: IEN
     dimension MATERIAL_PROPERTIES(n_mat_props_max,nb_patch),  &
         &     RHO(nb_patch),   &
-        &     PROPS(:),    &
         &     NNODE(nb_patch), &
-        &     IEN(:),  &
         &     nb_elem_patch(nb_patch), &
         &     JPROPS(nb_patch),    &
         &     NBINT(nb_patch)
 
 
     !! Loads
-    double precision, intent(in) :: ADLMAG,load_additionalInfos, &
+    double precision, intent(in) :: ADLMAG, &
         &     nodal_dist
-    integer, intent(in) :: nb_load,indDLoad,JDLType,load_target_nbelem
+    integer, intent(in) :: nb_load,JDLType,load_target_nbelem
     integer, intent(in) :: nb_n_dist, nb_cp_n_dist
-    integer, intent(in) :: nb_load_additionalInfos
+    integer, intent(in) :: len_indDLoad, len_nb_load_additionalInfos, len_load_additionalInfos
+    integer, dimension(len_nb_load_additionalInfos), intent(in) :: nb_load_additionalInfos
+    integer, dimension(len_indDLoad), intent(in) :: indDLoad
+    double precision, dimension(len_load_additionalInfos), intent(in) :: load_additionalInfos
     dimension ADLMAG(nb_load),  &
-        &     load_additionalInfos(:),  &
         &     nodal_dist(nb_n_dist, nb_cp_n_dist),  &
-        &     indDLoad(:),  &
         &     JDLType(nb_load), &
-        &     load_target_nbelem(nb_load),   &
-        &     nb_load_additionalInfos(:)
+        &     load_target_nbelem(nb_load)
 
 
     !! Boundary Conditions
     double precision, intent(in) :: bc_values
-    integer, intent(in) :: nb_bc,bc_target,bc_target_nbelem
+    integer, intent(in) :: nb_bc,bc_target_nbelem
     dimension bc_values(2,nb_bc),   &
-        &     bc_target(:),         &
         &     bc_target_nbelem(nb_bc)
+
+    integer, intent(in) :: len_bc_target
+    integer, dimension(len_bc_target), intent(in) :: bc_target
 
 
     !! Degrees Of Freedom
@@ -102,17 +108,17 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
 
 
     !! Storage infos
-    integer, intent(in) :: nb_data,activeElement
-    dimension activeElement(nb_elem)
+    integer(kind=8), intent(in) :: nb_data
+    integer, dimension(nb_elem), intent(in) :: activeElement
 
 
     !! Output variables
     !! ----------------
 
     !! linear system to solve
-    integer,          intent(out) :: Krow,Kcol
-    double precision, intent(out) :: Kdata, F
-    dimension Kdata(nb_data),Krow(nb_data),Kcol(nb_data),F(nb_dof_tot)
+    integer, dimension(nb_data), intent(out) :: Krow,Kcol
+    double precision, dimension(nb_data), intent(out) :: Kdata
+    double precision, dimension(nb_dof_tot), intent(out) :: F
 
     !! Local variables
     !! ---------------
@@ -129,7 +135,8 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
 
     integer, dimension(maxval(nnode)) :: sctr
 
-    integer :: ndofel, nnodeSum, nb_data_elem, count, jelem, loccount, idx
+    integer :: ndofel, nnodeSum, nb_data_elem, count, jelem
+    integer(kind=8) :: loccount, idx
 
 
     Kdata(:) = 0.0

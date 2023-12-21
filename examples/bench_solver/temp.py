@@ -45,8 +45,8 @@ modeleIGA = deepcopy(iga_model_ini)
 # Refine modele
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
-nb_deg[:, 0] = np.array([1, 1, 1])
-nb_ref[:, 0] = np.array([3, 3, 3])
+nb_deg[:, 0] = np.array([2, 2, 2])
+nb_ref[:, 0] = np.array([1, 1, 1])
 modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
@@ -67,7 +67,9 @@ t2 = time.time()
 modeleIGA2 = deepcopy(modeleIGA)
 t3 = time.time()
 dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
-                    *modeleIGA2.get_inputs4system_elemStorage())
+                    **modeleIGA2.get_inputs4system_elemStorage_OMP())
+# dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
+#                      *modeleIGA2.get_inputs4system_elemStorage())
 t4 = time.time()
 
 KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
