@@ -504,7 +504,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta, nbCepArgs = 4
+        integer :: i, j, k, l, m, alpha, beta, zeta, nbCepArgs = 4
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision, allocatable, dimension(:) :: t4, t5, t6
         double precision, allocatable, dimension(:, :) :: kt1
@@ -523,38 +523,38 @@ contains
         allocate(kt1(nbCepArgs, nc_total))
 
         do j = 1, dimen
-            do l = 1, dimen
-                beta = 1; beta(l) = 2
+            do m = 1, dimen
+                beta = 1; beta(m) = 2
                 call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                         nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                         nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, nbCepArgs
-                    kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
+                do k = 1, nbCepArgs
+                    kt1(k, :) = mat%CepArgs(k, :)*t1*mat%detJ
                 end do
 
-                t2 = kt1(1, :)*mat%invJ(l, j, :)
+                t2 = kt1(1, :)*mat%invJ(m, j, :)
                 if (mat%isElastic.eqv..false.) then
-                    t4 = kt1(3, :)*mat%JJnn(l, j, :)
-                    t5 = kt1(4, :)*mat%JJbb(l, j, :)
-                    t6 = kt1(4, :)*mat%JJnn(l, j, :)
+                    t4 = kt1(3, :)*mat%JJnn(m, j, :)
+                    t5 = kt1(4, :)*mat%JJbb(m, j, :)
+                    t6 = kt1(4, :)*mat%JJnn(m, j, :)
                 end if
 
 
                 do i = 1, dimen
-                    t3 = kt1(2, :)*mat%invJ(l, i, :)
+                    t3 = kt1(2, :)*mat%invJ(m, i, :)
                     t9 = 0.d0
 
-                    do k = 1, dimen
-                        alpha = 1; alpha(k) = 2
+                    do l = 1, dimen
+                        alpha = 1; alpha(l) = 2
                         zeta  = beta + (alpha - 1)*2
                         
-                        t7 = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :)
+                        t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
                         if (mat%isElastic.eqv..false.) then
-                            t7 = t7 + t4*mat%JJnn(k, i, :) - t5*mat%JJnn(k, i, :) + t6*mat%JJbb(k, i, :)
+                            t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :) + t6*mat%JJbb(l, i, :)
                         end if
-                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(k, l, :)
+                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
                         call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
@@ -603,7 +603,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, alpha, beta, zeta, nbCepArgs = 4
+        integer :: i, j, k, l, m, alpha, beta, zeta, nbCepArgs = 4
         dimension :: alpha(dimen), beta(dimen), zeta(dimen)
         double precision, allocatable, dimension(:) :: t4, t5, t6
         double precision, allocatable, dimension(:, :) :: kt1
@@ -622,38 +622,38 @@ contains
         allocate(kt1(nbCepArgs, nc_total))
 
         do j = 1, dimen
-            do l = 1, dimen
-                beta = 1; beta(l) = 2
+            do m = 1, dimen
+                beta = 1; beta(m) = 2
                 call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                         nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
                         nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
                         nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
                         array_in(j, :), t1) 
 
-                do i = 1, nbCepArgs
-                    kt1(i, :) = mat%CepArgs(i, :)*t1*mat%detJ
+                do k = 1, nbCepArgs
+                    kt1(k, :) = mat%CepArgs(k, :)*t1*mat%detJ
                 end do
 
-                t2 = kt1(1, :)*mat%invJ(l, j, :)
+                t2 = kt1(1, :)*mat%invJ(m, j, :)
                 if (mat%isElastic.eqv..false.) then
-                    t4 = kt1(3, :)*mat%JJnn(l, j, :)
-                    t5 = kt1(4, :)*mat%JJbb(l, j, :)
-                    t6 = kt1(4, :)*mat%JJnn(l, j, :)
+                    t4 = kt1(3, :)*mat%JJnn(m, j, :)
+                    t5 = kt1(4, :)*mat%JJbb(m, j, :)
+                    t6 = kt1(4, :)*mat%JJnn(m, j, :)
                 end if
 
                 do i = 1, dimen
-                    t3 = kt1(2, :)*mat%invJ(l, i, :)
+                    t3 = kt1(2, :)*mat%invJ(m, i, :)
                     t9 = 0.d0
 
-                    do k = 1, dimen
-                        alpha = 1; alpha(k) = 2
+                    do l = 1, dimen
+                        alpha = 1; alpha(l) = 2
                         zeta  = beta + (alpha - 1)*2
                         
-                        t7 = t2*mat%invJ(k, i, :) + t3*mat%invJ(k, j, :)
+                        t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
                         if (mat%isElastic.eqv..false.) then
-                            t7 = t7 + t4*mat%JJnn(k, i, :) - t5*mat%JJnn(k, i, :) + t6*mat%JJbb(k, i, :)
+                            t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :) + t6*mat%JJbb(l, i, :)
                         end if
-                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(k, l, :)
+                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
                         call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                 nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
