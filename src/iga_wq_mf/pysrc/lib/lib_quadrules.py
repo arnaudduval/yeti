@@ -232,7 +232,7 @@ class WeightedQuadrature(QuadratureRules):
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
 
-		if (self._posRule == 'midpoint') and (self._isUniform) and (self._nbel > self.degree+3):
+		if (self._posRule == 'midpoint') and (self._isUniform) and (self._nbel > self.degree+3) and (self.degree > 1):
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			# Create model
 			degree_model = self.degree
@@ -275,7 +275,7 @@ class WeightedQuadrature(QuadratureRules):
 		else:
 			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
 														self._Bshape[0], self._Bshape[1], size_data, self._wqType)
-		
+
 		self.dersBasis   = basis
 		self.dersWeights = weights
 		self.dersIndices = [indi, indj]

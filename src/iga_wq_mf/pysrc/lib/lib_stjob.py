@@ -102,12 +102,12 @@ class stproblem():
 			for i in range(self.part.dim):
 				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
 				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, time_ref.quadRule.quadPtsPos)
+			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, quadPts[-1])
 			nbqpExact.append(len(quadPts[-1])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 
 			sptimectrlpts = np.zeros((part_ref.dim+1, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
 			for i in range(time_ref.nbctrlpts):
-				inew = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
+				iold = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
 				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
 
 			inpts = [*nbqpExact, *indicesExact, *basisExact]

@@ -1,11 +1,3 @@
-"""
-.. Test of fast diagonalization
-.. We verify speed of fast diagonalization as direct method to solve Sylvester system
-.. TO DO:
-	rebuild the functions to assemble the capacity matrix
-.. Joaquin Cornejo 
-"""
-
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part

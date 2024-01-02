@@ -5,6 +5,7 @@ from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_stjob import stheatproblem
+import pickle
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -12,15 +13,15 @@ def conductivityProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
-			# Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
+			# Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
+			Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 			# Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
-	# Cprop = (1.0 + np.exp(-np.abs(temperature)))
+	# Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
+	Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
 
@@ -30,15 +31,15 @@ def conductivityDersProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
-													-0.125*np.sign(temperature)*np.sin(temperature))
-			# Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
+			# Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
+			# 										-0.125*np.sign(temperature)*np.sin(temperature))
+			Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Kprop 
 
 def capacityDersProperty(args):
 	temperature = args['temperature']
-	Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
-	# Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
+	# Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
+	Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Cprop
 
 def powerDensity(args:dict):
@@ -62,49 +63,87 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# Set global variables
-degree, cuts = 3, 4
+def simulate(degree, cuts, quadArgs):
 
-# Create model 
-geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	# Create model 
+	geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 
-modelGeo = Geomdl(geoArgs)
-modelIGA = modelGeo.getIGAParametrization()
-modelPhy = part(modelIGA, quadArgs=quadArgs)
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-# Create time span
-nbel = int(2**cuts)
-crv = createUniformCurve(degree, nbel, 1.)
-timespan = part1D(crv, {'quadArgs':{'quadrule': 'iga', 'type': 'leg'}})
+	# Create time span
+	crv = createUniformCurve(degree, 2**cuts, 1.)
+	timespan = part1D(crv, {'quadArgs': quadArgs})
 
-# Add material 
-material = heatmat()
-material.addConductivity(conductivityProperty, isIsotropic=False) 
-material.addCapacity(capacityProperty, isIsotropic=False) 
-material.addConductivityDers(conductivityDersProperty, isIsotropic=False) 
-material.addCapacityDers(capacityDersProperty, isIsotropic=False) 
+	# Add material 
+	material = heatmat()
+	material.addConductivity(conductivityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False) 
+	material.addConductivityDers(conductivityDersProperty, isIsotropic=False) 
+	material.addCapacityDers(capacityDersProperty, isIsotropic=False) 
 
-# Block boundaries
-dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-dirichlet_table[0, 1] = 0; 	dirichlet_table[0, 0] = 0
-stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
-boundary = boundaryCondition(stnbctrlpts)
-boundary.add_DirichletConstTemperature(table=dirichlet_table)
+	# Block boundaries
+	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+	dirichlet_table[0, 0] = 0; dirichlet_table[0, 1] = 0
+	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
+	boundary = boundaryCondition(stnbctrlpts)
+	boundary.add_DirichletConstTemperature(table=dirichlet_table)
 
-# ---------------------
-# Transient model
-# ---------------------
-problem = stheatproblem(material, modelPhy, timespan, boundary)
+	problem = stheatproblem(material, modelPhy, timespan, boundary)
+	# External heat force
+	Fext = problem.compute_volForce(powerDensity, 
+									{'Position':problem.part.qpPhy, 
+									'Time':problem.time.qpPhy})
+	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
+	u_sol, _ = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=True)
 
-# External heat force
-Fext = problem.compute_volForce(powerDensity, 
-								{'Position':problem.part.qpPhy, 
-								'Time':problem.time.qpPhy})
-u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
+	return problem, u_sol
 
-##################################################################
+degree_list = np.array([1, 2, 3, 4])
+cuts_list   = np.arange(1, 6)
+
+normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
+
+with open(folder + 'refpart.pkl', 'rb') as inp:
+	part_ref = pickle.load(inp)
+with open(folder + 'reftime.pkl', 'rb') as inp:
+	time_ref = pickle.load(inp)
+u_ref = np.load(folder + 'refu.npy')
+
+fig, ax = plt.subplots(figsize=(8, 6))
+for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
+	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	error_list = np.ones(len(cuts_list))
+
+	for i, degree in enumerate(degree_list):
+		color = COLORLIST[i]
+		for j, cuts in enumerate(cuts_list):
+			problem, displacement = simulate(degree, cuts, quadArgs)
+			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
+															'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
+															isRelative=False)
+			
+		if quadrule == 'iga': 
+			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+			
+		else: 
+			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+		
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
+		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+		ax.set_ylim(top=1e1, bottom=1e-5)
+		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		fig.tight_layout()
+		fig.savefig(folder + 'FigConvergenceNonLinear' + '.pdf')
+
+#################################################################
+## OLD TEST
+#################################################################
 # problem._Krylov = 'GMRES'
 # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 # for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
@@ -148,26 +187,26 @@ u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 
 ##################################################################
 # u_guess = np.random.uniform(-1., 1., np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-problem._Krylov = 'GMRES'
-problem._KrylovPreconditioner = 'TDC'
-problem._nIterNewton = 7
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# problem._Krylov = 'GMRES'
+# problem._KrylovPreconditioner = 'TDC'
+# problem._nIterNewton = 7
 
-for isfull in [True, False]:
-	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
-													isfull=isfull, 
-													isadaptive=False)
-	# Create continous resPCG
-	if isfull: name='Inconsistent\npreconditioner'
-	else: name='Consistent\npreconditioner'
-	resPCGclean = np.array([])
-	for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
-	ax.semilogy(resPCGclean, label=name)
+# for isfull in [True, False]:
+# 	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
+# 													isfull=isfull, 
+# 													isadaptive=False)
+# 	# Create continous resPCG
+# 	if isfull: name='Inconsistent\npreconditioner'
+# 	else: name='Consistent\npreconditioner'
+# 	resPCGclean = np.array([])
+# 	for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+# 	ax.semilogy(resPCGclean, label=name)
 
-# ax.set_xlim(right=50, left=0)
-ax.set_ylim(top=10.0, bottom=1e-12)
-ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-ax.set_ylabel('Relative residue')
-ax.legend()
-fig.tight_layout()
-fig.savefig(folder+problem._Krylov+'residueNL'+'.pdf')
+# # ax.set_xlim(right=50, left=0)
+# ax.set_ylim(top=10.0, bottom=1e-12)
+# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# ax.set_ylabel('Relative residue')
+# ax.legend()
+# fig.tight_layout()
+# fig.savefig(folder+problem._Krylov+'residueNL'+'.pdf')

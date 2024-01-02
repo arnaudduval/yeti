@@ -7,7 +7,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, eraseRowsCSR)
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
 from pysrc.lib.lib_job import problem
 
