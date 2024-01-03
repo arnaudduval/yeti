@@ -237,6 +237,7 @@ class stheatproblem(stproblem):
 		dj_n1 = np.copy(Tguess)
 
 		AllresPCG = []
+		resNewton = []
 		for j in range(self._nIterNewton):
 
 			# Compute temperature at each quadrature point
@@ -268,6 +269,7 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
+			resNewton.append(resNRj)
 			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
-		return dj_n1, AllresPCG
+		return dj_n1, AllresPCG, resNewton

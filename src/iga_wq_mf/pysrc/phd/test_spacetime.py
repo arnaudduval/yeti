@@ -93,9 +93,9 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 	if len(problemArgs) == 0: problemArgs={'isfull':True, 'isadaptive':True, 'NewtonIter':10}
 	problem._nIterNewton = problemArgs['NewtonIter']
-	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=problemArgs['isfull'], 
+	u_sol, resPCG, resNewton = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=problemArgs['isfull'], 
 															isadaptive=problemArgs['isadaptive'])
-	return problem, u_sol, resPCG
+	return problem, u_sol, resPCG, resNewton
 
 normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
@@ -106,7 +106,7 @@ with open(folder + 'reftime.pkl', 'rb') as inp:
 	time_ref = pickle.load(inp)
 u_ref = np.load(folder + 'refu.npy')
 
-# ===========================================
+# # ===========================================
 # degree_list = np.array([1, 2, 3, 4])
 # cuts_list   = np.arange(1, 6)
 # fig, ax = plt.subplots(figsize=(8, 6))
@@ -117,13 +117,13 @@ u_ref = np.load(folder + 'refu.npy')
 # 	for i, degree in enumerate(degree_list):
 # 		color = COLORLIST[i]
 # 		for j, cuts in enumerate(cuts_list):
-# 			problem, displacement, _ = simulate(degree, cuts, quadArgs)
+# 			problem, displacement, _, _ = simulate(degree, cuts, quadArgs)
 # 			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
 # 															'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
 # 															isRelative=False)
 			
 # 		if quadrule == 'iga': 
-# 			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+# 			ax.loglog(2**cuts_list, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 # 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
 # 		else: 
@@ -132,41 +132,46 @@ u_ref = np.load(folder + 'refu.npy')
 		
 # 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
 # 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-# 		ax.set_ylim(top=1e1, bottom=1e-5)
-# 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+# 		ax.set_ylim(top=1e1, bottom=1e-3)
+# 		ax.legend()
 # 		fig.tight_layout()
 # 		fig.savefig(folder + 'NLConvergence_meshsize' + '.pdf')
 
 # # ===========================================
 fig, ax = plt.subplots(figsize=(8, 6))
-degree, cuts = 4, 3
+degree, cuts = 1, 4
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# quadArgs = {'quadrule': 'wq', 'type': 1}
-newtonlist = range(1, 9)
+Niterlist = range(1, 9)
 legendname = ['Adaptive full', 'Adaptive partial', 'Tight full', 'Tight partial']
 
 for i, isadaptive in enumerate([True, False]):
 	for j, isfull in enumerate([True, False]):
 		l = j + i*2
-		krylov_list = np.ones(len(newtonlist))
-		error_list = np.ones(len(newtonlist))
-		for k, niter in enumerate(newtonlist):
+		krylov_list = np.ones(len(Niterlist))
+		newton_list = np.ones(len(Niterlist))
+		error_list  = np.ones(len(Niterlist))
+		for k, niter in enumerate(Niterlist):
 			problemArgs = {'isfull':isfull, 'isadaptive':isadaptive, 'NewtonIter':niter}
-			problem, displacement, resPCG = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+			problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
 			error_list[k] = problem.normOfError(displacement, normArgs={'type':'L2', 
 												'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
 												isRelative=False)
 			resPCGclean = np.array([])
 			for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
 			krylov_list[k] = len(resPCGclean)
+			newton_list[k] = resNewton[-1]
 
 		ax.semilogy(krylov_list, error_list, marker=MARKERLIST[l], label=legendname[l])
+		# ax.semilogy(krylov_list, newton_list, marker=MARKERLIST[l], label=legendname[l])
 		ax.set_xlim(right=200, left=0)
+		ax.set_ylim(top=20, bottom=1e-2)
+		# ax.set_ylim(top=1e2, bottom=1e-4)
 		ax.set_xlabel('Total number of iterations of ' + problem._Krylov + ' solver')
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		# ax.set_ylabel('Newton residue on forces')
+		ax.legend()
 		fig.tight_layout()
-		fig.savefig(folder+'NLConvergence_iters'+'.pdf')
+		fig.savefig(folder+'NLConvergence_iters13'+'.pdf')
 
 
 #################################################################
