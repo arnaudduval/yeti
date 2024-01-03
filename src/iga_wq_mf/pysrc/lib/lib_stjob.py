@@ -257,6 +257,7 @@ class stheatproblem(stproblem):
 			# Update thresholds
 			if isadaptive: threshold_inner = max([self._thresholdKrylov, min([threshold_inner, eps_Kref*resNRj/resNR0])])
 			else: threshold_inner = self._thresholdKrylov
+			resNewton.append(resNRj)
 
 			if resNRj <= max([1e-12, self._thresholdNewton*resNR0]): break
 
@@ -269,7 +270,6 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
-			resNewton.append(resNRj)
 			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
 		return dj_n1, AllresPCG, resNewton

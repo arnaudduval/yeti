@@ -139,10 +139,11 @@ u_ref = np.load(folder + 'refu.npy')
 
 # # ===========================================
 fig, ax = plt.subplots(figsize=(8, 6))
-degree, cuts = 1, 4
+degree, cuts = 4, 3
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 Niterlist = range(1, 9)
-legendname = ['Adaptive full', 'Adaptive partial', 'Tight full', 'Tight partial']
+legendname = ['Inexact regular', 'Inexact modified', 'Exact regular', 'Exact modified']
+caseplot = 1
 
 for i, isadaptive in enumerate([True, False]):
 	for j, isfull in enumerate([True, False]):
@@ -153,26 +154,38 @@ for i, isadaptive in enumerate([True, False]):
 		for k, niter in enumerate(Niterlist):
 			problemArgs = {'isfull':isfull, 'isadaptive':isadaptive, 'NewtonIter':niter}
 			problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+			newton_list[k] = resNewton[-1]
 			error_list[k] = problem.normOfError(displacement, normArgs={'type':'L2', 
 												'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
 												isRelative=False)
 			resPCGclean = np.array([])
 			for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
 			krylov_list[k] = len(resPCGclean)
-			newton_list[k] = resNewton[-1]
 
-		ax.semilogy(krylov_list, error_list, marker=MARKERLIST[l], label=legendname[l])
-		# ax.semilogy(krylov_list, newton_list, marker=MARKERLIST[l], label=legendname[l])
-		ax.set_xlim(right=200, left=0)
-		ax.set_ylim(top=20, bottom=1e-2)
-		# ax.set_ylim(top=1e2, bottom=1e-4)
-		ax.set_xlabel('Total number of iterations of ' + problem._Krylov + ' solver')
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
-		# ax.set_ylabel('Newton residue on forces')
+		if caseplot == 1:
+			yy = error_list; xx = np.append([0], krylov_list[:-1])
+			ylim = [20, 1e-2]; xlim = [200, 0]
+			ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$'
+			xlabel = 'Total number of iterations of ' + problem._Krylov + ' solver'
+		elif caseplot == 2:
+			yy = newton_list; xx = np.append([0], krylov_list[:-1])
+			ylim = [1e2, 1e-4]; xlim = [200, 0]
+			ylabel = 'Norm of Newton residue'
+			xlabel = 'Total number of iterations of ' + problem._Krylov + ' solver'
+		elif caseplot == 3:
+			yy = resNewton; xx = np.arange(0, len(resNewton))
+			ylim = [1e2, 1e-4]; xlim = [8, 0]
+			ylabel = 'Norm of Newton residue'
+			xlabel = 'Number of Newton iterations'
+
+		ax.semilogy(xx, yy, marker=MARKERLIST[l], label=legendname[l])
+		ax.set_xlim(right=xlim[0], left=xlim[1])
+		ax.set_ylim(top=ylim[0], bottom=ylim[1])
+		ax.set_xlabel(xlabel)
+		ax.set_ylabel(ylabel)
 		ax.legend()
 		fig.tight_layout()
-		fig.savefig(folder+'NLConvergence_iters13'+'.pdf')
-
+		fig.savefig(folder+'NLConvergence_iters'+str(degree)+str(caseplot)+'.pdf')
 
 #################################################################
 ## OLD TEST
