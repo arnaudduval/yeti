@@ -13,14 +13,12 @@ def conductivityProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			# Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
 			Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 			# Kprop[i, j, :] = Kref[i, j]
 	return Kprop 
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	# Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
 	Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	# Cprop = np.ones(shape=np.shape(temperature))
 	return Cprop
@@ -31,14 +29,11 @@ def conductivityDersProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			# Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
-			# 										-0.125*np.sign(temperature)*np.sin(temperature))
 			Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Kprop 
 
 def capacityDersProperty(args):
 	temperature = args['temperature']
-	# Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
 	Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Cprop
 
@@ -63,8 +58,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/paper/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def simulate(degree, cuts, quadArgs):
-
+def simulate(degree, cuts, quadArgs, problemArgs={}):
 	# Create model 
 	geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
@@ -97,12 +91,11 @@ def simulate(degree, cuts, quadArgs):
 									{'Position':problem.part.qpPhy, 
 									'Time':problem.time.qpPhy})
 	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
-	u_sol, _ = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=True, isadaptive=True)
-
-	return problem, u_sol
-
-degree_list = np.array([1, 2, 3, 4])
-cuts_list   = np.arange(1, 6)
+	if len(problemArgs) == 0: problemArgs={'isfull':True, 'isadaptive':True, 'NewtonIter':10}
+	problem._nIterNewton = problemArgs['NewtonIter']
+	u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=problemArgs['isfull'], 
+															isadaptive=problemArgs['isadaptive'])
+	return problem, u_sol, resPCG
 
 normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
@@ -113,37 +106,91 @@ with open(folder + 'reftime.pkl', 'rb') as inp:
 	time_ref = pickle.load(inp)
 u_ref = np.load(folder + 'refu.npy')
 
-fig, ax = plt.subplots(figsize=(8, 6))
-for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
-	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-	error_list = np.ones(len(cuts_list))
+# ===========================================
+# degree_list = np.array([1, 2, 3, 4])
+# cuts_list   = np.arange(1, 6)
+# fig, ax = plt.subplots(figsize=(8, 6))
+# for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
+# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+# 	error_list = np.ones(len(cuts_list))
 
-	for i, degree in enumerate(degree_list):
-		color = COLORLIST[i]
-		for j, cuts in enumerate(cuts_list):
-			problem, displacement = simulate(degree, cuts, quadArgs)
-			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
-															'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
-															isRelative=False)
+# 	for i, degree in enumerate(degree_list):
+# 		color = COLORLIST[i]
+# 		for j, cuts in enumerate(cuts_list):
+# 			problem, displacement, _ = simulate(degree, cuts, quadArgs)
+# 			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
+# 															'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
+# 															isRelative=False)
 			
-		if quadrule == 'iga': 
-			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
-						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+# 		if quadrule == 'iga': 
+# 			ax.loglog(2**cuts_list, error_list, label='degree p='+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+# 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
-		else: 
-			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
-					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+# 		else: 
+# 			ax.loglog(2**cuts_list, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+# 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		
+# 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
+# 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+# 		ax.set_ylim(top=1e1, bottom=1e-5)
+# 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+# 		fig.tight_layout()
+# 		fig.savefig(folder + 'NLConvergence_meshsize' + '.pdf')
+
+# # ===========================================
+fig, ax = plt.subplots(figsize=(8, 6))
+degree, cuts = 4, 3
+quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+# quadArgs = {'quadrule': 'wq', 'type': 1}
+newtonlist = range(1, 9)
+legendname = ['Adaptive full', 'Adaptive partial', 'Tight full', 'Tight partial']
+
+for i, isadaptive in enumerate([True, False]):
+	for j, isfull in enumerate([True, False]):
+		l = j + i*2
+		krylov_list = np.ones(len(newtonlist))
+		error_list = np.ones(len(newtonlist))
+		for k, niter in enumerate(newtonlist):
+			problemArgs = {'isfull':isfull, 'isadaptive':isadaptive, 'NewtonIter':niter}
+			problem, displacement, resPCG = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+			error_list[k] = problem.normOfError(displacement, normArgs={'type':'L2', 
+												'part_ref':part_ref, 'time_ref':time_ref, 'u_ref':u_ref}, 
+												isRelative=False)
+			resPCGclean = np.array([])
+			for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+			krylov_list[k] = len(resPCGclean)
+
+		ax.semilogy(krylov_list, error_list, marker=MARKERLIST[l], label=legendname[l])
+		ax.set_xlim(right=200, left=0)
+		ax.set_xlabel('Total number of iterations of ' + problem._Krylov + ' solver')
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
-		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-		ax.set_ylim(top=1e1, bottom=1e-5)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceNonLinear' + '.pdf')
+		fig.savefig(folder+'NLConvergence_iters'+'.pdf')
+
 
 #################################################################
 ## OLD TEST
 #################################################################
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# degree, cuts = 4, 3
+# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+# problemArgs = {'isfull':True, 'isadaptive':False, 'NewtonIter':10}
+# problem, displacement, resPCG = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+
+# # Create continous resPCG
+# resPCGclean = np.array([])
+# for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+
+# ax.semilogy(resPCGclean)
+# ax.set_xlim(right=400, left=0)
+# ax.set_ylim(top=10.0, bottom=1e-12)
+# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# ax.set_ylabel('Relative residue')
+# fig.tight_layout()
+# fig.savefig(folder+problem._Krylov+'NL_FS3'+'.pdf')
+
+##################################################################
 # problem._Krylov = 'GMRES'
 # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 # for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
@@ -161,29 +208,6 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, 
 # ax.legend()
 # fig.tight_layout()
 # fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
-
-##################################################################
-# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# problem._KrylovPreconditioner = 'JMC'
-# u_sol, resPCG = problem.solveFourierSTHeatProblem(u_guess, Fext, 
-# 												isfull=True, 
-# 												isadaptive=False)
-# print(u_sol.max(), u_sol.min())
-
-# # Create continous resPCG
-# resPCGclean = np.array([])
-# for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
-
-# ax.semilogy(resPCGclean)
-# ax.set_xlim(right=400, left=0)
-# ax.set_ylim(top=10.0, bottom=1e-12)
-# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-# ax.set_ylabel('Relative residue')
-# fig.tight_layout()
-# fig.savefig(folder+problem._Krylov+'NL_FS2'+'.pdf')
-
-# u_sol = np.reshape(u_sol, (problem.part.nbctrlpts_total, problem.time.nbctrlpts), order='F')
-# modelPhy.exportResultsCP(fields={'Ulast': u_sol[:, -1], 'Ustart': u_sol[:, 0]}, folder=folder)
 
 ##################################################################
 # u_guess = np.random.uniform(-1., 1., np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0

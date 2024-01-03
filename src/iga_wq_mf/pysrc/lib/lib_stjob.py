@@ -229,7 +229,7 @@ class stheatproblem(stproblem):
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
-		eps_kr0  = solvArgs.get('kr0', 1e-3)
+		eps_kr0  = solvArgs.get('kr0', 1e-2)
 		eps_Kref = solvArgs.get('kryref', 1e-2)
 
 		threshold_inner = eps_kr0
@@ -254,7 +254,7 @@ class stheatproblem(stproblem):
 			print('NR error: %.3e' %resNRj)
 
 			# Update thresholds
-			if isadaptive: threshold_inner = max([self._thresholdKrylov, min([threshold_inner, eps_Kref*resNRj])])
+			if isadaptive: threshold_inner = max([self._thresholdKrylov, min([threshold_inner, eps_Kref*resNRj/resNR0])])
 			else: threshold_inner = self._thresholdKrylov
 
 			if resNRj <= max([1e-12, self._thresholdNewton*resNR0]): break
