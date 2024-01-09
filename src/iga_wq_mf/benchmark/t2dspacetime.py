@@ -38,7 +38,8 @@ def powerDensity(args:dict):
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		f[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*timespan[i])
+		t = timespan[i]
+		f[:, i] = (np.sin(np.pi*x)*np.sin(np.pi*y))*(1. + 2*np.pi**2*t)
 	return np.ravel(f, order='F')
 
 # Select folder

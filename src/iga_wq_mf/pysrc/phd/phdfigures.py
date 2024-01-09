@@ -83,8 +83,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 3
-extension = '.png'
+CASE      = 2
+extension = '.pdf'
 
 if CASE == 0: # B-spline curve
 
@@ -134,28 +134,27 @@ elif CASE == 1: # Univariate functions
 		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)
 		quadRule     = QuadratureRules(degree, knotvector)
 		basis, knots = quadRule.getSampleBasis()
-		B0 = basis[0].toarray(); B1 = basis[0].toarray()
+		B0 = basis[0].toarray(); B1 = basis[1].toarray()
 
-		# fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
-		# for i in range(np.shape(B0)[0]): 
-		# 	ax1.plot(knots, B0[i, :], linewidth=2)
-		# 	ax2.plot(knots, B1[i, :], linewidth=2)
-
-		# for ax in [ax1, ax2]:
-		# 	ax.set_xlabel(r'$\xi$')
-		# 	ax.set_xticks(np.linspace(0, 1, nbel+1))
-		# ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
-		# ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
-
-		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
+		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
 		for i in range(np.shape(B0)[0]): 
 			ax1.plot(knots, B0[i, :], linewidth=2)
+			ax2.plot(knots, B1[i, :], linewidth=2)
 
-		ax1.set_xlabel(r'$\xi$')
-		ax1.set_xticks(np.linspace(0, 1, nbel+1))
-		ax1.set_yticks([0, 0.5, 1])
-
+		for ax in [ax1, ax2]:
+			ax.set_xlabel(r'$\xi$')
+			ax.set_xticks(np.linspace(0, 1, nbel+1))
 		ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
+		ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
+
+		# fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
+		# for i in range(np.shape(B0)[0]): 
+		# 	ax1.plot(knots, B0[i, :], linewidth=2)
+
+		# ax1.set_xlabel(r'$\xi$')
+		# ax1.set_xticks(np.linspace(0, 1, nbel+1))
+		# ax1.set_yticks([0, 0.5, 1])
+		# ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
 
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
@@ -165,9 +164,9 @@ elif CASE == 1: # Univariate functions
 
 elif CASE == 2: # Bivariate functions
 
-	def case2(folder, extension, is2D=True):
+	def case2(folder, extension, is2D=False):
 		# Set filename
-		filename = folder + 'BivariateFunctions' + extension
+		filename = folder + 'BivariateFunctions2' + extension
 
 		# B-Spline properties
 		degree, nbel = 2, 4
@@ -182,15 +181,20 @@ elif CASE == 2: # Bivariate functions
 		Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
 
 		if is2D:
+			from mpl_toolkits.axes_grid1 import make_axes_locatable
 			fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
-									gridspec_kw=dict(height_ratios=[1,3],
-													width_ratios=[3,1]), figsize=(5, 5))
+									gridspec_kw=dict(height_ratios=[1, 3.2],
+													width_ratios=[3.2, 1]), figsize=(5, 5))
+
 			axs[0,1].set_visible(False)
 			axs[0,0].set_box_aspect(1/3)
 			axs[1,0].set_box_aspect(1)
 			axs[1,1].set_box_aspect(3/1)
 			axs[1,0].grid(None)
-			axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
+			im = axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
+			divider = make_axes_locatable(axs[1, 0])
+			fig.colorbar(im, cax=axs[1, 0].inset_axes((0.8, 0.55, 0.025, 0.4)))
+
 			axs[1,0].set_yticks([0, 0.5, 1])
 			axs[1,0].set_xticks([0, 0.5, 1])
 
@@ -210,18 +214,27 @@ elif CASE == 2: # Bivariate functions
 			fig.savefig(filename, dpi=300) 
 
 		else:
-			fig = plt.figure()
-			ax = plt.axes(projection='3d')
-			ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='GnBu', edgecolor='none')
+			fig = plt.figure(figsize=(5, 4))
+			ax = fig.add_subplot(111, projection='3d')
+			ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='GnBu', edgecolor='k', lw=0.02, rasterized=True)
+			for i in range(degree+nbel): 
+				ax.plot3D(knots, 1.1*np.ones(len(knots)), B0[i, :], color="0.8")
+				ax.plot3D(1.1*np.ones(len(knots)), knots, B0[i, :], color="0.8")
+
 			ax.grid(False)
+			ax.plot3D(knots, 1.1*np.ones(len(knots)), B02plot, color=COLORLIST[0])
+			ax.plot3D(1.1*np.ones(len(knots)), knots, B02plot, color=COLORLIST[0])
+			ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+			ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+			ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 			ax.set_xticks([0, 0.5, 1])
 			ax.set_yticks([0, 0.5, 1])
-			ax.set_zticks([0, 0.1, 0.2])
+			ax.set_zticks([0, 0.5, 1])
 			ax.set_xlabel(r'$\xi_1$')
 			ax.set_ylabel(r'$\xi_2$')
-			ax.set_zlabel(r'$B_{i,p}(\xi)$')
+			ax.invert_xaxis()
 			fig.tight_layout()
-			fig.savefig(filename, dpi=300) 
+			fig.savefig(filename, dpi=300, bbox_inches='tight') 
 		return
 	
 	case2(folder, extension)
