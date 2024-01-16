@@ -25,14 +25,6 @@ def exactTemperature(qpPhy):
 	u = (np.sin(np.pi*x)*np.sin(np.pi*y))*t
 	return u
 
-def exactTemperatureDers(qpPhy):
-	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
-	q = np.zeros((1, 3, np.size(x)))
-	q[0, 0, :] = (np.pi*np.cos(np.pi*x)*np.sin(np.pi*y))*t
-	q[0, 1, :] = (np.pi*np.sin(np.pi*x)*np.cos(np.pi*y))*t
-	q[0, 2, :] = (np.sin(np.pi*x)*np.sin(np.pi*y))
-	return q
-
 def powerDensity(args:dict):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
@@ -44,7 +36,7 @@ def powerDensity(args:dict):
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/spacetime/'
+folder = os.path.dirname(full_path) + '/results/d2spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def simulate(degree, cuts, quadArgs):
@@ -80,15 +72,16 @@ def simulate(degree, cuts, quadArgs):
 # ---------------------
 # Transient model
 # ---------------------
-normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
-onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
-onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
+normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
 degree_list = np.array([1, 2, 3, 4])
-cuts_list   = np.arange(1, 6)
+cuts_list   = np.arange(1, 7)
 
 fig, ax = plt.subplots(figsize=(8, 6))
-for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
 
@@ -98,9 +91,8 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 			nbels = 2**cuts_list
 			problem, displacement = simulate(degree, cuts, quadArgs)
 			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
-															'exactFunction':exactTemperature, 
-															'exactFunctionDers':exactTemperatureDers}, 
-															isRelative=False)
+												'exactFunction':exactTemperature,}, 
+												isRelative=False)
 			
 		if quadrule == 'iga': 
 			ax.loglog(nbels, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -114,11 +106,16 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
-		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Pi)}$')
-		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-		ax.set_ylim(top=1e-1, bottom=1e-10)
-		# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		ax.legend()
-		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceAllL2' + '.pdf')
+		fig.savefig(folder + 'FigSPTLinearConvergenceL2' + '.pdf')
+
+# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
+# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
+ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+ax.set_ylim(top=1e-1, bottom=1e-12)
+ax.legend()
+fig.tight_layout()
+fig.savefig(folder + 'FigSPTLinearConvergenceL2' + '.pdf')

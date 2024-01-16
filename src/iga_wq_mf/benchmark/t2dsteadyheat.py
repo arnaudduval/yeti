@@ -88,7 +88,7 @@ def exactDiffTemperature_quartCircle(P: list):
 # Set global variables
 geoName = 'QA'
 SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-15}
-degree_list = np.array([2, 3, 4, 6, 8])
+degree_list = np.array([1, 2, 3, 4, 6, 8])
 cuts_list   = np.arange(2, 9)
 
 for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):

@@ -25,7 +25,7 @@ YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'Isoname':'none'}}
-SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-15, 'KrylovPreconditioner': 'TDC'}
+SOLVERARGS  = {'nIterKrylov':100, 'thresholdKrylov':1e-10, 'KrylovPreconditioner': 'TDC'}
 isReference = False
 
 def forceSurf_infPlate(P:list):
@@ -65,7 +65,6 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		tmp = np.zeros(np.shape(Fext_list))
-		# problem._nbIterNR = 1
 		problem.solvePlasticityProblem(tmp, Fext_list)
 		displacement = tmp[:, :, -1]
 	else:
@@ -87,16 +86,15 @@ else:
 	onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
 	onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
 
-	degree_list = np.array([2, 3, 4, 5])
-	cuts_list   = np.arange(4, 9)
+	degree_list = np.array([1, 2, 3, 4])
+	cuts_list   = np.arange(1, 8)
 
 	disp_ref = np.load(folder + 'dispel.npy')
 	with open(folder + 'refpartel.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(8, 7))
-	# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-	for quadrule, quadtype, plotpars in zip(['wq', 'wq'], [1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
 
@@ -104,20 +102,29 @@ else:
 			meshparam = np.ones(len(cuts_list))
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
-				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=True)
+				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
 				error_list[j] = problem.normOfError(displacement, isRelative=False, 
-												normArgs={'type':'semiH1', 'part_ref':part_ref, 'u_ref':disp_ref})
+								normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
 
-			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+			if quadrule == 'iga': 
+				ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+			else: 
+				ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
-			# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
-			# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
-			ax.set_ylabel(r'$\displaystyle |u - u^h|_{H_1(\Omega)}$')
+			fig.savefig(folder + 'FigElasLinearConvergenceAllH1' + '.pdf')
 
-			ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-			ax.set_ylim(top=1e-4, bottom=1e-18)
-			ax.set_xlim(left=1e-2, right=1)
-			fig.tight_layout()
-			fig.savefig(folder + 'FigConvergenceAll2semiH1' +  GEONAME + '.pdf')
-		
+ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
+ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+
+# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
+ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+ax.set_ylim(top=1e-2, bottom=1e-12)
+ax.set_xlim(left=1e-2, right=2)
+ax.legend()
+fig.tight_layout()
+fig.savefig(folder + 'FigElasLinearConvergenceAllH1' + '.pdf')

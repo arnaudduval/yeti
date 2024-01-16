@@ -18,11 +18,11 @@ class problem():
 
 	def addSolverConstraints(self, solverArgs:dict):
 		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
-		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-12)
+		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-10)
 		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
 		
-		self._nIterNewton = solverArgs.get('nIterNewton', 50)
-		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-10)
+		self._nIterNewton = solverArgs.get('nIterNewton', 20)
+		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-8)
 		return
 	
 	def __getInfo4surfForce(self, nbFacePosition):
@@ -454,7 +454,7 @@ class mechaproblem(problem):
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
-				if j > 0 and isElasticLoad: break
+				# if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
 				resPCGj = np.array([i, j+1])
