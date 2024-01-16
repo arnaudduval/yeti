@@ -82,9 +82,9 @@ if isReference:
 
 else:
 	# Plot results
-	normalPlot  = {'marker': 'o', 'linestyle': '-', 'markersize': 10}
-	onlyMarker1 = {'marker': '.', 'linestyle': ':', 'markersize': 6}
-	onlyMarker2 = {'marker': 'x', 'linestyle': 'None', 'markersize': 6}
+	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
 	degree_list = np.array([1, 2, 3, 4])
 	cuts_list   = np.arange(1, 8)
