@@ -12,10 +12,11 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = False
-FIG_CASE = 1
+dataExist = True
+FIG_CASE = 2
 NONLIN_CASE = 3 # 0, 1, 2 or 3
-c = 0.01 # or 0.001
+if NONLIN_CASE==3: c = 0.01 # or 0.001
+if NONLIN_CASE<3 : c = 0.001 # or 0.001
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
@@ -264,7 +265,7 @@ if not dataExist:
 					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
-		degree, cuts = 4, 3
+		degree, cuts = 2, 3
 		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
@@ -305,24 +306,24 @@ else:
 		plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 
 		figname = folder + 'SPTNonLinearConvergenceL2'+str(NONLIN_CASE)+'.pdf'
-		filenames = ['L2relerror_meshpar_iga_leg']
+		filenames = ['L2relerror_meshpar_iga_leg_']
 		if FIG_CASE == 1:
 			normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 			fig, ax = plt.subplots(figsize=(8, 6))
 
 			for filename, plotops in zip(filenames, plotoptions):
 				quadrule = filename.split('_')[2]
-				table = np.loadtxt(folder+filename+extension)	
+				table = np.loadtxt(folder+filename+str(NONLIN_CASE)+extension)	
 				nbels   = 2**(table[0, 1:])
 				degrees = table[1:, 0]
 				errors  = table[1:, 1:]
 				for i, degree in enumerate(degrees):
 					color = COLORLIST[i]
 					if quadrule == 'iga': 
-						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotops['marker'],
+						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
 									markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 						
-						slope = np.polyfit(np.log10(nbels[2:]),np.log10(errors[i, 2:]), 1)[0]
+						slope = np.polyfit(np.log10(nbels[2:-1]),np.log10(errors[i, 2:-1]), 1)[0]
 						slope = round(slope, 1)
 						annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
 										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
@@ -346,7 +347,7 @@ else:
 
 	elif FIG_CASE == 2:
 
-		degree, cuts = 4, 3
+		degree, cuts = 2, 3
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 
