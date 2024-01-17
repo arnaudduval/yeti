@@ -5,12 +5,19 @@ from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_stjob import stheatproblem
-import pickle
 
-NLCASE = 3 # 0, 1 or 2
-c = 0.005
+# Select folder
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
-def conductivityProperty(args, nlcase=NLCASE):
+extension = '.dat'
+dataExist = False
+FIG_CASE = 1
+NONLIN_CASE = 3 # 0, 1, 2 or 3
+c = 0.01 # or 0.001
+
+def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
@@ -21,7 +28,7 @@ def conductivityProperty(args, nlcase=NLCASE):
 			if nlcase>=2: Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
 	return Kprop 
 
-def conductivityDersProperty(args, nlcase=NLCASE):
+def conductivityDersProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
@@ -33,27 +40,27 @@ def conductivityDersProperty(args, nlcase=NLCASE):
 													-0.125*np.sign(temperature)*np.sin(temperature))
 	return Kprop 
 
-def capacityProperty(args, nlcase=NLCASE):
+def capacityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	if nlcase==0: Cprop = np.ones(len(temperature))
 	if nlcase==1: Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	if nlcase>=2: Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
 	return Cprop
 
-def capacityDersProperty(args, nlcase=NLCASE):
+def capacityDersProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	if nlcase==0: Cprop = np.zeros(len(temperature))
 	if nlcase==1: Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	if nlcase>=2: Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
 	return Cprop
 
-def exactTemperature(qpPhy, nlcase=NLCASE):
+def exactTemperature(qpPhy, nlcase=NONLIN_CASE):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
 	if nlcase<=2: u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*x*(x-6)*np.sin(np.pi*t)
 	if nlcase>2:  u = c*(-6*x + y + 10)*(6*x + y - 10)*x*(2*x-3)*np.sin(np.pi*t)
 	return u
 
-def powerDensity(args:dict, nlcase=NLCASE):
+def powerDensity(args:dict, nlcase=NONLIN_CASE):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
@@ -182,12 +189,7 @@ def powerDensity(args:dict, nlcase=NLCASE):
 			)
 	return np.ravel(f, order='F')
 
-# Select folder
-full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/'
-if not os.path.isdir(folder): os.mkdir(folder)
-
-def simulate(degree, cuts, quadArgs, problemArgs={}, uguess=None, isRandom=False, nlcase=NLCASE):
+def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_CASE):
 	# Create model 
 	if nlcase<=2:
 		geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
@@ -200,14 +202,10 @@ def simulate(degree, cuts, quadArgs, problemArgs={}, uguess=None, isRandom=False
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	# modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga', 'type': 'leg'})
 
 	# Create time span
-	if nlcase<=2:
-		crv = createUniformCurve(degree, 2**cuts, 1.)
-	if nlcase>2:
-		crv = createUniformCurve(degree, 2**cuts, 2.)
-
+	if nlcase<=2: crv = createUniformCurve(degree, 2**cuts, 1.)
+	if nlcase>2:  crv = createUniformCurve(degree, 2**cuts, 2.)
 	timespan = part1D(crv, {'quadArgs': quadArgs})
 
 	# Add material 
@@ -228,176 +226,219 @@ def simulate(degree, cuts, quadArgs, problemArgs={}, uguess=None, isRandom=False
 	Fext = problem.compute_volForce(powerDensity, 
 									{'Position':problem.part.qpPhy, 
 									'Time':problem.time.qpPhy})
-	if uguess is None and isRandom: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
-	if uguess is None and not isRandom: uguess = np.zeros(np.prod(stnbctrlpts))
+	
+	if uguess is None: uguess = np.zeros(np.prod(stnbctrlpts))
+	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
+
 	uguess[boundary.thdod] = 0.0
-	if len(problemArgs) == 0: problemArgs={'isfull':True, 'isadaptive':True}
-	isfull = problemArgs.get('isfull', True)
-	isadaptive = problemArgs.get('isadaptive', True)
-	problem._nIterNewton = problemArgs.get('NewtonIter', 10)
-	problem._Krylov = problemArgs.get('Krylov', 'BICG')
-	problem._KrylovPreconditioner = problemArgs.get('KrylovPrecond', 'JMC')
+	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
+	problem._nIterNewton = problemArgs.get('nIterNewton', 10); problem._Krylov = problemArgs.get('Krylov', 'BICG')
 	problem._thresholdKrylov = problemArgs.get('KrylovThreshold', 1e-10)
-	u_sol, resPCG, resNewton = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
-	return problem, u_sol, resPCG, resNewton
+	
+	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
+	return problem, output
 
-# normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-# onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
-# onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+if not dataExist:
 
-# degree_list = np.array([1, 2, 3, 4])
-# cuts_list   = np.arange(1, 7)
-# fig, ax = plt.subplots(figsize=(8, 6))
-# # for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-# for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
-# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-# 	error_list = np.ones(len(cuts_list))
+	if FIG_CASE == 1:
+		degree_list = np.array([1, 2, 3, 4])
+		cuts_list   = np.arange(1, 6)
+		for quadrule, quadtype in zip(['iga'], ['leg']):
+			sufix = '_' + quadrule + '_' + quadtype + '_' + str(NONLIN_CASE)
+			quadArgs = {'quadrule': quadrule, 'type': quadtype}
+			L2errorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
+			L2relerrorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
+			L2errorTable[0, 1:] = cuts_list; L2relerrorTable[0, 1:] = cuts_list
+			L2errorTable[1:, 0] = degree_list; L2relerrorTable[1:, 0] = degree_list
 
-# 	for i, degree in enumerate(degree_list):
-# 		color = COLORLIST[i]
-# 		for j, cuts in enumerate(cuts_list):
-# 			nbels = 2**cuts_list
-# 			problem, displacement, _, _ = simulate(degree, cuts, quadArgs)
-# 			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
-# 															'exactFunction':exactTemperature}, 
-# 															isRelative=False)
-			
-# 		if quadrule == 'iga': 
-# 			ax.loglog(nbels, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
-# 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			
-# 			slope = np.polyfit(np.log10(nbels[2:]),np.log10(error_list[2:]), 1)[0]
-# 			slope = round(slope, 1)
-# 			annotation.slope_marker((nbels[-2], error_list[-2]), slope, 
-# 							poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
-# 		else: 
-# 			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
-# 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			
-# 		fig.savefig(folder + 'SPTNonLinearConvergenceL2'+str(NLCASE)+'.pdf')
+			for i, degree in enumerate(degree_list):
+				for j, cuts in enumerate(cuts_list):
+					nbels = 2**cuts_list
+					problem, output = simulate(degree, cuts, quadArgs)
+					displacement = output['Solution'][-1]
+					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem.normOfError(displacement, 
+																	normArgs={'type':'L2', 
+																	'exactFunction':exactTemperature},)
 
-# # ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-# # 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
-# # ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-# # 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+					np.savetxt(folder+'L2error_meshpar_test'+sufix+extension, L2errorTable)
+					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
 
-# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
-# ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-# # ax.set_ylim(top=1e2, bottom=1e-9)
-# ax.set_ylim(top=1e0, bottom=1e-11)
-# ax.legend(loc='lower left')
-# fig.tight_layout()
-# fig.savefig(folder + 'SPTNonLinearConvergenceL2'+str(NLCASE)+'.pdf')
+	elif FIG_CASE == 2:
+		degree, cuts = 4, 3
+		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
+		subfolderfolder = folder + meshpartext 
+		if not os.path.isdir(subfolderfolder): os.mkdir(subfolderfolder)
 
-# # ===========================================
-fig1, ax1 = plt.subplots(figsize=(8, 6))
-fig2, ax2 = plt.subplots(figsize=(8, 6))
-fig3, ax3 = plt.subplots(figsize=(8, 6))
-figs = [fig1, fig2, fig3]
-axs  = [ax1, ax2, ax3]
+		for [i, isadaptive], prefix1 in zip(enumerate([False, True]), ['exact', 'inexact']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['regular', 'modified']):
+				prefix = prefix1 + '_' + prefix2 + '_'
+				problemArgs = {'isfull':isfull, 'isadaptive':isadaptive}
+				blockPrint()
+				problem, output = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+				displacements = output['Solution']
+				resKrylovs    = output['KrylovRes']
+				resNewtons    = output['NewtonRes']
+				L2error, L2relerror = [], []
 
-degree, cuts = 4, 4
-quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-Niterlist = range(1, 9)
-legendname = ['Exact regular', 'Exact modified', 'Inexact regular', 'Inexact modified']
-linestyle_list = ['-', '--', '-', '--']
-marker_list = ['s', 's', 'o', 'o']
+				for displacement in displacements:
+					err, relerr  = problem.normOfError(displacement, normArgs={'type':'L2', 
+																	'exactFunction':exactTemperature})
+					L2error.append(err); L2relerror.append(relerr)
+				resKrylovclean = np.array([]); counter_list = [0]
+				for _ in resKrylovs: 
+					resKrylovclean = np.append(resKrylovclean, _[np.nonzero(_)])
+					counter_list.append(counter_list[-1] + len(_[np.nonzero(_)]))
+				enablePrint()
+				print(len(counter_list), len(L2error), len(resNewtons))
+				np.savetxt(subfolderfolder+prefix+'CumulKrylovRes'+extension, resKrylovclean)
+				np.savetxt(subfolderfolder+prefix+'Inner_loops'+extension, counter_list)
+				np.savetxt(subfolderfolder+prefix+'NewtonRes'+extension, resNewtons)
+				np.savetxt(subfolderfolder+prefix+'L2error'+extension, L2error)
+				np.savetxt(subfolderfolder+prefix+'L2relerror'+extension, L2relerror)
 
-for i, isadaptive in enumerate([False, True]):
-	for j, isfull in enumerate([True, False]):
-		l = j + i*2
-		krylov_list = np.ones(len(Niterlist))
-		newton_list = np.ones(len(Niterlist))
-		error_list  = np.ones(len(Niterlist))
-		for k, niter in enumerate(Niterlist):
-			problemArgs = {'isfull':isfull, 'isadaptive':isadaptive, 'NewtonIter':niter}
-			problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
-			newton_list[k] = resNewton[-1]
-			error_list[k]  = problem.normOfError(displacement, normArgs={'type':'L2', 
-															'exactFunction':exactTemperature}, 
-															isRelative=False)
-			resPCGclean = np.array([])
-			for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
-			krylov_list[k] = len(resPCGclean)
-		
-		for caseplot, fig, ax in zip(range(1, 4), figs, axs):
-			if caseplot == 1:
-				yy = error_list; xx = np.append([0], krylov_list[:-1])
-				# ylim = [20, 1e-3]; xlim = [150, 0]
-				# ylim = [20, 1e-6]; xlim = [200, 0]
-				ylim = [None, None]; xlim = [250, 0]
-				ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$'
-				xlabel = 'Total number of iterations of ' + problem._Krylov + ' solver'
-			elif caseplot == 2:
-				yy = newton_list; xx = np.append([0], krylov_list[:-1])
-				# ylim = [1e2, 1e-6]; xlim = [150, 0]
-				# ylim = [1e1, 1e-7]; xlim = [200, 0]
-				ylim = [1e1, 1e-7]; xlim = [250, 0]
-				ylabel = 'Norm of Newton residue'
-				xlabel = 'Total number of iterations of ' + problem._Krylov + ' solver'
-			elif caseplot == 3:
-				yy = resNewton; xx = np.arange(0, len(resNewton))
-				# ylim = [1e2, 1e-6]; xlim = [8, 0]
-				# ylim = [1e1, 1e-7]; xlim = [8, 0]
-				ylim = [1e1, 1e-7]; xlim = [8, 0]
-				ylabel = 'Norm of Newton residue'
-				xlabel = 'Number of Newton iterations'
+else:
+	if FIG_CASE == 1:
+		normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+		onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+		onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+		plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 
-			ax.semilogy(xx, yy, label=legendname[l], marker=marker_list[l], linestyle=linestyle_list[l])
-			# ax.set_xlim(right=xlim[0], left=xlim[1])
-			# ax.set_ylim(top=ylim[0], bottom=ylim[1])
-			ax.set_xlabel(xlabel)
-			ax.set_ylabel(ylabel)
-			ax.legend()
+		figname = folder + 'SPTNonLinearConvergenceL2'+str(NONLIN_CASE)+'.pdf'
+		filenames = ['L2relerror_meshpar_iga_leg']
+		if FIG_CASE == 1:
+			normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+			fig, ax = plt.subplots(figsize=(8, 6))
+
+			for filename, plotops in zip(filenames, plotoptions):
+				quadrule = filename.split('_')[2]
+				table = np.loadtxt(folder+filename+extension)	
+				nbels   = 2**(table[0, 1:])
+				degrees = table[1:, 0]
+				errors  = table[1:, 1:]
+				for i, degree in enumerate(degrees):
+					color = COLORLIST[i]
+					if quadrule == 'iga': 
+						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotops['marker'],
+									markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+						
+						slope = np.polyfit(np.log10(nbels[2:]),np.log10(errors[i, 2:]), 1)[0]
+						slope = round(slope, 1)
+						annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
+										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
+					else: 
+						ax.loglog(nbels, errors[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
+								markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+							
+					fig.savefig(figname)
+
+			# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+			# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
+			# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+			# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+
+			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$')
+			ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+			ax.set_ylim(top=1e1, bottom=1e-11)
+			ax.legend(loc='lower left')
 			fig.tight_layout()
-			fig.savefig(folder+'NLConvergence_iters'+str(degree)+str(caseplot)+str(NLCASE)+'.pdf')
+			fig.savefig(figname)
 
-#################################################################
-## OLD TEST
-##################################################################
-# degree, cuts = 4, 4
-# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# for j, pcgmethod in enumerate(['WP', 'C', 'JMC', 'TDC']):
-# 	problemArgs = {'isfull':False, 'isadaptive':False, 'NewtonIter':1, 
-# 				'Krylov':'BICG', 'KrylovPrecond':pcgmethod, 'KrylovThreshold':1e-12}
-# 	problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
-# 	if pcgmethod == 'WP': pcgname = 'w.o. preconditioner' 
-# 	elif pcgmethod == 'C' : pcgname = 'Classic FD method'
-# 	elif pcgmethod == 'TDC': pcgname = 'Literature'
-# 	elif pcgmethod == 'JMC': pcgname = 'This work'
-# 	ax.semilogy(resPCG[0], marker=MARKERLIST[j], label=pcgname)
+	elif FIG_CASE == 2:
 
-# ax.set_xlim(right=100, left=0)
-# ax.set_ylim(top=10.0, bottom=1e-12)
-# ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-# ax.set_ylabel('Relative residue')
-# ax.legend()
-# fig.tight_layout()
-# fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
+		degree, cuts = 4, 3
+		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
+		subfolderfolder = folder + meshpartext 
 
-## ##################################################################
-# degree, cuts = 4, 4
-# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# stnbctrlpts = [int(2**cuts+degree) for i in range(3)]
-# uguess =  np.random.uniform(-2, 5, np.prod(stnbctrlpts))
-# for krylovmet in ['BICG', 'GMRES']:
-# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# 	for j, isfull in enumerate([True, False]):
-# 		problemArgs = {'isfull':isfull, 'isadaptive':False, 'NewtonIter':1, 'Krylov':krylovmet, 'KrylovThreshold':1e-12}
-# 		problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs, uguess=uguess, isRandom=True)
+		fig1, ax1 = plt.subplots(figsize=(8, 6))
+		fig2, ax2 = plt.subplots(figsize=(8, 6))
+		fig3, ax3 = plt.subplots(figsize=(8, 6))
+		figs = [fig1, fig2, fig3]; axs  = [ax1, ax2, ax3]
+		linestyle_list = ['-', '--', '-', '--']
+		marker_list = ['o', 'o', 's', 's']
 
-# 		# Create continous resPCG
-# 		if isfull: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}+\mathsf{B}$'
-# 		else: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}$'
-# 		resPCGclean = np.array([])
-# 		for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
-# 		ax.semilogy(resPCGclean, marker='x', linestyle=':', label=name)
+		for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['regular', 'modified']):
+				l = j + i*2
+				legendname = prefix1.capitalize() + ' ' + prefix2
+				prefix = prefix1 + '_' + prefix2 + '_'
+				nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
+				newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
+				L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
+				newtonRes = newtonRes/newtonRes[0]
+				
+				for caseplot, fig, ax in zip(range(1, 4), figs, axs):
+					if caseplot == 1:
+						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
+						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
+						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
+						xlabel = 'Total number of inner iterations'
+					elif caseplot == 2:
+						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
+						ylim = [2, 5e-9]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
+						ylabel = 'Relative norm of Newton residue'
+						xlabel = 'Total number of inner iterations'
+					elif caseplot == 3:
+						yy = newtonRes; xx = np.arange(0, len(newtonRes))
+						ylim = [2, 5e-9]; xlim = len(newtonRes)+1
+						ylabel = 'Relative of norm of Newton residue'
+						xlabel = 'Number of outer iterations'
 
-# 	ax.set_xlim(right=50, left=0)
-# 	ax.set_ylim(top=10.0, bottom=1e-12)
-# 	ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-# 	ax.set_ylabel('Relative residue')
-# 	ax.legend()
-# 	fig.tight_layout()
-# 	fig.savefig(folder+problem._Krylov+'residueNL2'+'.pdf')
+					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
+					ax.set_xlim(right=xlim, left=0)
+					ax.set_ylim(top=ylim[0], bottom=ylim[1])
+					ax.set_xlabel(xlabel)
+					ax.set_ylabel(ylabel)
+					ax.legend()
+					fig.tight_layout()
+					fig.savefig(folder+'NLConvergence_iters'+str(NONLIN_CASE)+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+
+# #################################################################
+# ## OLD TEST
+# ##################################################################
+# # degree, cuts = 4, 4
+# # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+# # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# # for j, pcgmethod in enumerate(['WP', 'C', 'JMC', 'TDC']):
+# # 	problemArgs = {'isfull':False, 'isadaptive':False, 'NewtonIter':1, 
+# # 				'Krylov':'BICG', 'KrylovPrecond':pcgmethod, 'KrylovThreshold':1e-12}
+# # 	problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+# # 	if pcgmethod == 'WP': pcgname = 'w.o. preconditioner' 
+# # 	elif pcgmethod == 'C' : pcgname = 'Classic FD method'
+# # 	elif pcgmethod == 'TDC': pcgname = 'Literature'
+# # 	elif pcgmethod == 'JMC': pcgname = 'This work'
+# # 	ax.semilogy(resPCG[0], marker=MARKERLIST[j], label=pcgname)
+
+# # ax.set_xlim(right=100, left=0)
+# # ax.set_ylim(top=10.0, bottom=1e-12)
+# # ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# # ax.set_ylabel('Relative residue')
+# # ax.legend()
+# # fig.tight_layout()
+# # fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
+
+# ## ##################################################################
+# # degree, cuts = 4, 4
+# # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+# # stnbctrlpts = [int(2**cuts+degree) for i in range(3)]
+# # uguess =  np.random.uniform(-2, 5, np.prod(stnbctrlpts))
+# # for krylovmet in ['BICG', 'GMRES']:
+# # 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+# # 	for j, isfull in enumerate([True, False]):
+# # 		problemArgs = {'isfull':isfull, 'isadaptive':False, 'NewtonIter':1, 'Krylov':krylovmet, 'KrylovThreshold':1e-12}
+# # 		problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs, uguess=uguess, isRandom=True)
+
+# # 		# Create continous resPCG
+# # 		if isfull: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}+\mathsf{B}$'
+# # 		else: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}$'
+# # 		resPCGclean = np.array([])
+# # 		for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+# # 		ax.semilogy(resPCGclean, marker='x', linestyle=':', label=name)
+
+# # 	ax.set_xlim(right=50, left=0)
+# # 	ax.set_ylim(top=10.0, bottom=1e-12)
+# # 	ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+# # 	ax.set_ylabel('Relative residue')
+# # 	ax.legend()
+# # 	fig.tight_layout()
+# # 	fig.savefig(folder+problem._Krylov+'residueNL2'+'.pdf')

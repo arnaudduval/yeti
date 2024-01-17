@@ -41,7 +41,7 @@ class stproblem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 
-	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
+	def normOfError(self, u_ctrlpts, normArgs:dict):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether or not the default quadrature is weighted quadrature. 
@@ -149,10 +149,10 @@ class stproblem():
 			tmp1 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm1)
 			tmp2 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm2)
 			
-		if isRelative: error = np.sqrt(tmp1/tmp2)
-		else:          error = np.sqrt(tmp1)
+		error = np.sqrt(tmp1)
+		relerror = np.sqrt(tmp1/tmp2)
 
-		return error
+		return error, relerror
 
 class stheatproblem(stproblem):
 	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
@@ -236,8 +236,7 @@ class stheatproblem(stproblem):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
 
-		AllresPCG = []
-		resNewton = []
+		AllresPCG, AllresNewton, Allsol = [], [], []
 		for j in range(self._nIterNewton):
 
 			# Compute temperature at each quadrature point
@@ -257,7 +256,8 @@ class stheatproblem(stproblem):
 			# Update thresholds
 			if isadaptive: threshold_inner = max([self._thresholdKrylov, min([threshold_inner, eps_Kref*resNRj/resNR0])])
 			else: threshold_inner = self._thresholdKrylov
-			resNewton.append(resNRj)
+			AllresNewton.append(resNRj)
+			Allsol.append(np.copy(dj_n1))
 
 			if resNRj <= max([1e-12, self._thresholdNewton*resNR0]): break
 
@@ -270,6 +270,8 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
-			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
-		return dj_n1, AllresPCG, resNewton
+			# if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
+
+		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol}
+		return output
