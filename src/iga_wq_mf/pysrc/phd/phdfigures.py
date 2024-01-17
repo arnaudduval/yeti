@@ -6,10 +6,11 @@
 .. CASE 2: Bivariate B-spline functions in parametric space
 .. CASE 3: Quadrature points in IGA-Galerkin approach
 .. CASE 4: Quadrature points in IGA-WQ approach
-.. CASE 5: B-spline surface
+.. CASE 5: B-spline surface 2D
 .. CASE 6: Quadrature rules W00 or W11
-.. CASE 7: Plot 3D geometries
-.. CASE 8: Plot example of results
+.. CASE 7: Plot 2D geometries (using paraview)
+.. CASE 8: Plot 3D geometries (using paraview)
+.. CASE 9: Plot example of results (using paraview)
 """
 
 from pysrc.lib.__init__ import *
@@ -83,8 +84,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 2
-extension = '.pdf'
+CASE      = 7
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -306,7 +307,7 @@ elif CASE == 4: # Quadrature points in WQ
 elif CASE == 5: # B-spline surface
 
 	# Set filename
-	filename = folder + 'BsplineSurface' + extension
+	filename = folder + 'BsplineSurface3' + extension
 
 	# Surface properties
 	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': 2*np.ones(3, dtype=int), 
@@ -376,11 +377,15 @@ elif CASE == 7: # 2D Geometries
 
 	def case7(folder):
 		# Create model
-		name    = 'QA'
+		name    = 'TP'
 		filename = folder + 'VTK_' + name + '.png'
 		degree, cuts = 5, 5
-		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+		geoArgs = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
+					'extra':{'XY':np.array([[0.0, -10], [1.5, -1], [1.5, 1], [0.0, 10]])}
+					}
+		# geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
+		# 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 		quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 		modelGeo = Geomdl(geoArgs)
@@ -389,7 +394,7 @@ elif CASE == 7: # 2D Geometries
 		modelPhy.exportResultsCP(folder=folder)
 		
 		# Read data
-		fileVTK   = folder + 'IGAparametrization'
+		fileVTK   = folder + 'out'
 		grid      = pv.read(fileVTK + '.vts')
 		
 		sargs = dict(
