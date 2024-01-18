@@ -129,12 +129,15 @@ class WeightedQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, quadArgs:dict):
 		QuadratureRules.__init__(self, degree, knotvector)
 		self._wqType  = quadArgs.get('type', 1)
-		self._posRule = 'midpoint' # By default
-		if   self._wqType == 1: extraArgsDefault = {'s': 1, 'r': 2}
-		elif self._wqType == 2: extraArgsDefault = {'s': 2, 'r': 3}
-		elif self._wqType == 3: 
+		if   self._wqType == 1: 
 			self._posRule = 'internal'
 			extraArgsDefault = {'s': 2, 'r': 4}
+		elif self._wqType == 2: 
+			self._posRule = 'midpoint'
+			extraArgsDefault = {'s': 2, 'r': 3}
+		elif self._wqType == 3:
+			self._posRule = 'midpoint'
+			extraArgsDefault = {'s': 1, 'r': 3}
 		self._extraArgs = quadArgs.get('extra', extraArgsDefault)
 		return
 	
@@ -259,7 +262,7 @@ class WeightedQuadrature(QuadratureRules):
 		B0shape[self.nbctrlpts-1, 0] = np.nonzero(boolean)[0][0]
 		B0shape[self.nbctrlpts-1, 1] = np.nonzero(boolean)[0][-1]
 	
-		B1shape = np.copy(B0shape)
+		B1shape = np.copy(B0shape) # Eventually it could be different
 		if isfortran: B0shape += 1; B1shape += 1 # change from 0 to 1 index
 		return [B0shape, B1shape]
 	
