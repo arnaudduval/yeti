@@ -379,30 +379,38 @@ class solver():
 
 		return x, resPCG
 	
-	def BiCGSTAB(self, Afun, b, Pfun=None):
+	def BiCGSTAB(self, Afun, b, Pfun=None, dotfun=None, clearfun=None):
 		if Pfun is None: Pfun = lambda x: x
+		if dotfun is None: dotfun = lambda x, y: np.dot(x, y)
+		if clearfun is None: clearfun = lambda x: x
+
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.linalg.norm(r)
+		r = b; normb = np.sqrt(dotfun(r, r))
+		clearfun(r)
 		resPCG = [1.0]
 		if normb <= self._thresholdKrylov: return
 		rhat = r; p = r
-		rsold = np.dot(r, rhat)
+		rsold = dotfun(r, rhat)
 
 		for i in range(self._nbIterKrylov):
 			ptilde = Pfun(p)
+			clearfun(ptilde)
 			Aptilde = Afun(ptilde)
-			alpha = rsold/np.dot(Aptilde, rhat)
+			clearfun(Aptilde)
+			alpha = rsold/dotfun(Aptilde, rhat)
 			s = r - alpha*Aptilde
+
 			stilde = Pfun(s)
+			clearfun(stilde)
 			Astilde = Afun(stilde)
-			omega = np.dot(Astilde, s)/np.dot(Astilde, Astilde)
+			omega = dotfun(Astilde, s)/dotfun(Astilde, Astilde)
 			x += alpha*ptilde + omega*stilde
 			r = s - omega*Astilde
 
-			resPCG.append(np.linalg.norm(r)/normb)
+			resPCG.append(np.sqrt(dotfun(r, r))/normb)
 			if (resPCG[-1]<=self._thresholdKrylov): break
 
-			rsnew = np.dot(r, rhat)
+			rsnew = dotfun(r, rhat)
 			beta = (alpha/omega)*(rsnew/rsold)
 			p = r + beta*(p - omega*Aptilde)
 			rsold = rsnew

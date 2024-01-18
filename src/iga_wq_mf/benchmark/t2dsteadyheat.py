@@ -131,8 +131,8 @@ for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
 			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
 									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
 			
-		# ax.set_ylabel(r'$||u - u^h||_{L_2(\Omega)}$')
-		ax.set_ylabel(r'$|u - u^h|_{H_1(\Omega)}$')
+		ax.set_ylabel(r'$||u - u^h||_{L_2(\Omega)}$')
+		# ax.set_ylabel(r'$|u - u^h|_{H_1(\Omega)}$')
 		ax.set_xlabel('Total number of DOF')
 		ax.set_ylim(top=1e1, bottom=1e-15)
 		ax.set_xlim(left=10, right=1e5)

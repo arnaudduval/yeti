@@ -392,7 +392,6 @@ class mechaproblem(problem):
 				mechArgs, Fext, self._nIterKrylov, self._thresholdKrylov, self._KrylovPreconditioner]
 		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_linearelasticity_2d(*inpts)
 		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_linearelasticity_3d(*inpts)
-		
 		return displacement, resPCG
 	
 	def solvePlasticityProblem(self, dispinout, Fext_list): 

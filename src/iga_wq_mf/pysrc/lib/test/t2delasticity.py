@@ -1,0 +1,158 @@
+"""
+.. Test of elasticity 2D
+.. Infinite plate with a hole under uniaxial traction. 
+.. The analytical solution of this problem is given by Timoshenko
+.. The convergence curves are traced for IGA-Legendre and IGA-WQ
+.. Joaquin Cornejo 
+"""
+
+from pysrc.lib.__init__ import *
+from pysrc.lib.lib_geomdl import Geomdl
+from pysrc.lib.lib_part import part
+from pysrc.lib.lib_material import mechamat, block_dot_product
+from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_job import mechaproblem
+from pysrc.lib.lib_base import solver
+
+# Set global variables
+TRACTION, RINT, REXT = 1.0, 1.0, 2.0
+YOUNG, POISSON = 1e3, 0.3
+GEONAME = 'QA'
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
+		'isoHardLaw': {'Isoname':'none'}}
+SOLVERARGS  = {'nIterKrylov':100, 'thresholdKrylov':1e-8, 'KrylovPreconditioner': 'JMC'}
+isReference = False
+
+def forceSurf_infPlate(P:list):
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	b = RINT**2/r_square
+	theta = np.arcsin(y/np.sqrt(r_square))
+
+	F = np.zeros((2, nnz))
+	F[0, :] = TRACTION/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
+	F[1, :] = TRACTION/2*3*np.sin(3*theta)*(b**2 - b)
+	return F
+
+def exactDisplacement_infPlate(P:list):
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	theta = np.arcsin(y/np.sqrt(r_square))
+	b = RINT**2/r_square # Already squared
+	c = TRACTION*(1.0 + POISSON)*np.sqrt(r_square)/(2*YOUNG)
+
+	disp = np.zeros((2, nnz))
+	disp[0, :] = c*(2*(1-POISSON)*np.cos(theta) + b*(4*(1-POISSON)*np.cos(theta) + np.cos(3*theta)) - b**2*np.cos(3*theta))
+	disp[1, :] = c*(-2*POISSON*np.sin(theta) + b*(2*(-1 + 2*POISSON)*np.sin(theta) + np.sin(3*theta)) - b**2*np.sin(3*theta))
+	
+	return disp
+
+def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
+	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+				'extra':{'Rin':RINT, 'Rex':REXT}
+				}
+	blockPrint()
+	material = mechamat(MATARGS)
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
+	meshparam = modelPhy.compute_mesh_parameter()
+
+	# Set Dirichlet boundaries
+	boundary = boundaryCondition(modelPhy.nbctrlpts)
+	table = np.zeros((2, 2, 2), dtype=int)
+	table[1, 1, 0] = 1; table[1, 0, 1] = 1
+	boundary.add_DirichletDisplacement(table=table)
+	enablePrint()
+
+	# Solve elastic problem
+	problem = mechaproblem(material, modelPhy, boundary)
+	problem.addSolverConstraints(solverArgs=SOLVERARGS)
+	if useElastoAlgo:
+		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
+		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+		tmp = np.zeros(np.shape(Fext_list))
+		problem.solvePlasticityProblem(tmp, Fext_list)
+		displacement = tmp[:, :, -1]
+	else:
+		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+		displacement = problem.solveElasticityProblem(Fext)[0]
+	return problem, displacement, meshparam
+
+# degree_list = np.array([1])
+# cuts_list   = np.arange(2, 6)
+
+# fig, ax = plt.subplots(figsize=(8, 7))
+# for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+# 	error_list = np.ones(len(cuts_list))
+
+# 	for i, degree in enumerate(degree_list):
+# 		meshparam = np.ones(len(cuts_list))
+# 		color = COLORLIST[i]
+# 		for j, cuts in enumerate(cuts_list):
+# 			problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
+# 			error_list[j] = problem.normOfError(displacement, isRelative=False, 
+# 							normArgs={'type':'L2', 'exactFunction':exactDisplacement_infPlate})
+# 		print(error_list)
+
+geoArgs = {'name': GEONAME, 'degree': 1*np.ones(3, dtype=int), 
+			'nb_refinementByDirection': 4*np.ones(3, dtype=int), 
+			'extra':{'Rin':RINT, 'Rex':REXT}
+			}
+blockPrint()
+material = mechamat(MATARGS)
+modelGeo = Geomdl(geoArgs)
+modelIGA = modelGeo.getIGAParametrization()
+modelPhy_iga = part(modelIGA, quadArgs={'quadrule': 'iga'})
+modelPhy_wq1 = part(modelIGA, quadArgs={'quadrule': 'wq', 'type':1})
+modelPhy_wq2 = part(modelIGA, quadArgs={'quadrule': 'wq', 'type':2})
+
+# Set Dirichlet boundaries
+boundary = boundaryCondition(modelPhy_iga.nbctrlpts)
+table = np.zeros((2, 2, 2), dtype=int)
+table[1, 1, 0] = 1; table[1, 0, 1] = 1
+boundary.add_DirichletDisplacement(table=table)
+enablePrint()
+
+problem_wq1 = mechaproblem(material, modelPhy_wq1, boundary)
+Fext_wq1 = problem_wq1.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+problem_wq1._KrylovPreconditioner = 'WP'
+displacement_wq1 = problem_wq1.solveElasticityProblem(Fext_wq1)[0]
+
+problem_wq2 = mechaproblem(material, modelPhy_wq2, boundary)
+Fext_wq2 = problem_wq2.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+problem_wq2._KrylovPreconditioner = 'WP'
+displacement_wq2 = problem_wq2.solveElasticityProblem(Fext_wq2)[0]
+
+problem_iga = mechaproblem(material, modelPhy_iga, boundary)
+Fext_iga = problem_iga.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+displacement_iga = problem_iga.solveElasticityProblem(Fext_iga)[0]
+
+solv = solver()
+solwq1, _ = solv.BiCGSTAB(problem_wq1.compute_mfStiffness, Fext_wq1, dotfun=block_dot_product)
+
+
+# error1 = abs(block_dot_product(2, Fext_wq1-Fext_iga, Fext_wq1-Fext_iga)/block_dot_product(2, Fext_iga, Fext_iga))
+# error2 = abs(block_dot_product(2, Fext_wq2-Fext_iga, Fext_wq2-Fext_iga)/block_dot_product(2, Fext_iga, Fext_iga))
+
+# print('%.3e, %.3e'%(error1, error2))
+
+# error1 = abs(block_dot_product(2, displacement_wq1-displacement_iga, displacement_wq1-displacement_iga)/block_dot_product(2, displacement_iga, displacement_iga))
+# error2 = abs(block_dot_product(2, displacement_wq2-displacement_iga, displacement_wq2-displacement_iga)/block_dot_product(2, displacement_iga, displacement_iga))
+
+# print('%.3e, %.3e'%(error1, error2))
+# print('******')
+
+# # Solve elastic problem
+# for _ in range(10):
+# 	randvec = np.random.uniform(-100, 100, (2, modelPhy_iga.nbctrlpts_total))
+# 	MVwq1 = problem_wq1.compute_mfStiffness(randvec) # or compute_mfMass
+# 	MVwq2 = problem_wq2.compute_mfStiffness(randvec)
+# 	MViga = problem_iga.compute_mfStiffness(randvec)
+
+# 	error1 = abs(block_dot_product(2, MVwq1-MViga, MVwq1-MViga)/block_dot_product(2, MViga, MViga))
+# 	error2 = abs(block_dot_product(2, MVwq2-MViga, MVwq2-MViga)/block_dot_product(2, MViga, MViga))
+
+# 	print('%.3e, %.3e'%(error1, error2))

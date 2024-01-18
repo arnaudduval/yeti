@@ -1218,7 +1218,7 @@ contains
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
-        normb  = norm2(r)
+        normb = norm2(r)
         if (normb.le.1.d-14) return
         resPCG(1) = 1.d0
 

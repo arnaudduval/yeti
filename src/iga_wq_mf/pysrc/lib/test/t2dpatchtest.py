@@ -8,19 +8,19 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import (mechamat, computeVMStress4All)
+from pysrc.lib.lib_material import mechamat, computeSymTensorNorm4All
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import mechaproblem
 
 # Set global variables
 sampleSize   = 2500
-degree, cuts = 2, 8
+degree, cuts = 1, 8
 
 # Create model 
 geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 			'extra':{'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
-quadArgs  = {'quadrule': 'iga', 'type': 'leg'}
+quadArgs  = {'quadrule': 'wq'}
 
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
@@ -66,6 +66,6 @@ print('CPU time: %5e' %(stop-start))
 
 strain = problem.interpolate_strain(disp_cp)
 stress = problem.mechamaterial.evalElasticStress(strain, problem.part.dim)
-stress_vm = computeVMStress4All(stress, problem.part.dim)
+stress_vm = computeSymTensorNorm4All(stress, problem.part.dim)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
 print('Difference: %.4e' %(abs(stress_vm.max()-stress_vm.min())))

@@ -15,7 +15,6 @@ def relativeError(array_interp, array_th, relType='inf'):
 	except: relError = sp.linalg.norm(error, arg)/sp.linalg.norm(array_th, arg)
 	return relError
 
-
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path)
@@ -25,7 +24,7 @@ fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 nbel_list = [2**i for i in np.arange(1, 6)]
 
 for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
-	for degree in range(2, 8):
+	for degree in range(1, 8):
 
 		error_list = []
 
@@ -34,7 +33,9 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# WQ
-			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2, 'extra':{'r': 3, 's': 2}})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1, 
+												# 'extra':{'r': 3, 's': 2},
+												})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			[B0f, B1f] = basis; [W00f, W01f, W10f, W11f] = weights

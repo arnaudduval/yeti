@@ -80,20 +80,24 @@ if isReference:
 	with open(folder + 'refpartel.pkl', 'wb') as outp:
 		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 
-else:
+else:	
+
 	# Plot results
 	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
-	degree_list = np.array([1, 2, 3, 4])
-	cuts_list   = np.arange(1, 8)
+	# degree_list = np.array([1, 2, 3, 4])
+	# cuts_list   = np.arange(1, 8)
+	degree_list = np.array([1])
+	cuts_list   = np.arange(3, 5)
 
 	disp_ref = np.load(folder + 'dispel.npy')
 	with open(folder + 'refpartel.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(8, 7))
+	figname = folder + 'FigElasLinearConvergenceAllH1' + '.pdf'
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
@@ -104,7 +108,7 @@ else:
 			for j, cuts in enumerate(cuts_list):
 				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
 				error_list[j] = problem.normOfError(displacement, isRelative=False, 
-								normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
+								normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref})
 
 			if quadrule == 'iga': 
 				ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -113,7 +117,7 @@ else:
 				ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
-			fig.savefig(folder + 'FigElasLinearConvergenceAllH1' + '.pdf')
+			fig.savefig(figname)
 
 ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
@@ -127,4 +131,4 @@ ax.set_ylim(top=1e-2, bottom=1e-12)
 ax.set_xlim(left=1e-2, right=2)
 ax.legend()
 fig.tight_layout()
-fig.savefig(folder + 'FigElasLinearConvergenceAllH1' + '.pdf')
+fig.savefig(figname)
