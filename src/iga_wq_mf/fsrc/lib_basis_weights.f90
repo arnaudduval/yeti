@@ -189,42 +189,6 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
 
 end subroutine get_basis_coo
 
-subroutine create_uniformmaxregular_knotvector(degree, nbel, knotvector)
-    !! Gets an open uniform with maximum regularity knot-vector 
-
-    implicit none
-    ! Input / output data
-    ! --------------------
-    integer, intent(in):: degree, nbel
-
-    double precision, intent(out) :: knotvector 
-    dimension :: knotvector(nbel+2*degree+1)
-
-    ! Local data
-    ! ----------
-    integer :: i, c
-
-    ! Create knotvector 
-    knotvector = 0.d0
-
-    c = 1
-    do i = 1, degree+1
-        knotvector(c) = 0.d0
-        c = c + 1
-    end do
-
-    do i = 2, nbel
-        knotvector(c) = dble(i - 1)/dble(nbel) 
-        c = c + 1
-    end do
-
-    do i = 1, degree+1
-        knotvector(c) = 1.d0
-        c = c + 1
-    end do
-        
-end subroutine create_uniformmaxregular_knotvector
-
 ! ---------------------------------------------------------------
 ! WQ FUNCTIONS: expected to work in weighted-quadrature approach
 ! ---------------------------------------------------------------

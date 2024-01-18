@@ -131,7 +131,7 @@ class WeightedQuadrature(QuadratureRules):
 		self._wqType  = quadArgs.get('type', 1)
 		self._posRule = 'midpoint' # By default
 		if   self._wqType == 1: extraArgsDefault = {'s': 1, 'r': 2}
-		elif self._wqType == 2: extraArgsDefault = {'s': 2, 'r': 2}
+		elif self._wqType == 2: extraArgsDefault = {'s': 2, 'r': 3}
 		elif self._wqType == 3: 
 			self._posRule = 'internal'
 			extraArgsDefault = {'s': 2, 'r': 4}
@@ -207,52 +207,60 @@ class WeightedQuadrature(QuadratureRules):
 		B1shape = np.zeros((self.nbctrlpts, 2), dtype=int)
 		knots   = np.atleast_1d(knots)
 
-		tablePointsOverSpan = np.zeros((self._nbel, 2), dtype=int)
+		tableKVSpan = np.zeros((self._nbel, 2))
+		for i in range(0, self._nbel):
+			tableKVSpan[i, :] = [self._uniqueKV[i], self._uniqueKV[i+1]]
+		tablePointsOverKVSpan = np.zeros((self._nbel, 2), dtype=int)
 		for i in range(0, self._nbel):
 			left = self._uniqueKV[i]; right = self._uniqueKV[i+1]
 			boolean = (knots>=left)*(knots<=right)
-			tablePointsOverSpan[i, 0] = np.nonzero(boolean)[0][0]
-			tablePointsOverSpan[i, 1] = np.nonzero(boolean)[0][-1]
+			tablePointsOverKVSpan[i, 0] = np.nonzero(boolean)[0][0]
+			tablePointsOverKVSpan[i, 1] = np.nonzero(boolean)[0][-1]
 
-		tableFunctionsOverSpan = np.zeros((self._nbel, self.degree+1), dtype=int)
-		for j in range(0, self.degree+1): tableFunctionsOverSpan[0, j] = j
+		tableFunctionsOverKVSpan = np.zeros((self._nbel, self.degree+1), dtype=int)
+		for j in range(0, self.degree+1): tableFunctionsOverKVSpan[0, j] = j
 		for i in range(1, self._nbel): 
 			multiplicity = findMultiplicity(self.knotvector, self._uniqueKV[i])
-			tableFunctionsOverSpan[i, 0] = tableFunctionsOverSpan[i-1, 0] + multiplicity
+			tableFunctionsOverKVSpan[i, 0] = tableFunctionsOverKVSpan[i-1, 0] + multiplicity
 			for j in range(1, self.degree+1): 
-				tableFunctionsOverSpan[i, j] = tableFunctionsOverSpan[i, 0] + j
+				tableFunctionsOverKVSpan[i, j] = tableFunctionsOverKVSpan[i, 0] + j
 
-		tableSpansOverFunction = np.zeros((self.nbctrlpts, 2), dtype=int)
+		tableFunctionSpans = np.zeros((self.nbctrlpts, 2), dtype=int)
 		for i in range(0, self.nbctrlpts):
-			minspan = 1
+			minFuncSpan = 1
 			for j in range(0, self._nbel):
-				if np.any(tableFunctionsOverSpan[j, :]==i):
-					minspan = j; break
-			maxspan = self._nbel
+				if np.any(tableFunctionsOverKVSpan[j, :]==i):
+					minFuncSpan = j; break
+			maxFuncSpan = self._nbel
 			for j in range(self._nbel-1, -1, -1):
-				if np.any(tableFunctionsOverSpan[j, :]==i):
-					maxspan = j; break
-			tableSpansOverFunction[i, :] = [minspan, maxspan]
+				if np.any(tableFunctionsOverKVSpan[j, :]==i):
+					maxFuncSpan = j; break
+			tableFunctionSpans[i, :] = [minFuncSpan, maxFuncSpan]
 
-		for i in range(0, self.nbctrlpts):
-			minspan, maxspan = tableSpansOverFunction[i, :]
-			minknot = tablePointsOverSpan[minspan, 0] + 1
-			maxknot = tablePointsOverSpan[maxspan, 1] - 1
-			if i == 0: minknot -= 1
-			if i == self.nbctrlpts-1: maxknot += 1
-			B0shape[i, :] = [minknot, maxknot]
+		minFuncSpan, maxFuncSpan = tableFunctionSpans[0, :]
+		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		boolean = (knots>=minKnotOverFuncSpan)*(knots<maxKnotOverFuncSpan)
+		B0shape[0, 0] = np.nonzero(boolean)[0][0]
+		B0shape[0, 1] = np.nonzero(boolean)[0][-1]
 
-		for i in range(0, self.nbctrlpts):
-			minspan, maxspan = tableSpansOverFunction[i, :]
-			minknot = tablePointsOverSpan[minspan, 0] + 1
-			maxknot = tablePointsOverSpan[maxspan, 1] - 1
-			if (i == 0) or (i == 1): minknot -= 1
-			if (i == self.nbctrlpts-1) or (i == self.nbctrlpts-2): maxknot += 1
-			B1shape[i, :] = [minknot, maxknot]
-		
-		if isfortran: 
-			B0shape += 1; B1shape += 1 # change from 0 to 1 index
-		
+		for i in range(1, self.nbctrlpts-1):
+			minFuncSpan, maxFuncSpan = tableFunctionSpans[i, :]
+			minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+			maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+			boolean = (knots>minKnotOverFuncSpan)*(knots<maxKnotOverFuncSpan)
+			B0shape[i, 0] = np.nonzero(boolean)[0][0]
+			B0shape[i, 1] = np.nonzero(boolean)[0][-1]
+
+		minFuncSpan, maxFuncSpan = tableFunctionSpans[self.nbctrlpts-1, :]
+		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		boolean = (knots>minKnotOverFuncSpan)*(knots<=maxKnotOverFuncSpan)
+		B0shape[self.nbctrlpts-1, 0] = np.nonzero(boolean)[0][0]
+		B0shape[self.nbctrlpts-1, 1] = np.nonzero(boolean)[0][-1]
+	
+		B1shape = np.copy(B0shape)
+		if isfortran: B0shape += 1; B1shape += 1 # change from 0 to 1 index
 		return [B0shape, B1shape]
 	
 	def evalDersBasisWeights(self):
@@ -262,51 +270,8 @@ class WeightedQuadrature(QuadratureRules):
 		weights = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
-
-		if (self._isUniform) and (self._nbel > self.degree+3) and (self.degree > 1):
-			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
-			# Create model
-			degree_model = self.degree
-			kv_model     = createUniformKnotvector_Rmultiplicity(degree_model, degree_model + 3)
-			kwargs       = {'type': self._wqType, 'extra': self._extraArgs}
-			WQmodel      = WeightedQuadrature(degree_model, kv_model, quadArgs=kwargs)
-			WQmodel.__findQuadraturePositions()
-			size_data_model = (degree_model + 1)*WQmodel.nbqp
-			Bm, Wm, indim, indjm = basisweights.wq_getbasisweights_csr(WQmodel.degree, WQmodel.knotvector, WQmodel.quadPtsPos, 
-													WQmodel._Bshape[0], WQmodel._Bshape[1], size_data_model, WQmodel._wqType)
-			# Scale the results
-			Wm[:, :2] = Wm[:, :2]*WQmodel._nbel/self._nbel
-			Bm[:, -1] = Bm[:, -1]*self._nbel/WQmodel._nbel
-
-			#Copy model data
-			times = self._nbel - (self.degree + 3); row2copy = self.degree + 2
-			left  = indim[row2copy-1] - 1; right = indim[row2copy] - 1
-			indj2copy = indjm[left:right];  data2copy = np.zeros((len(indj2copy), 6)) 
-			data2copy[:, :2] = Bm[left:right, :]; data2copy[:, 2:] = Wm[left:right, :]
-
-			indi = np.copy(indim); indj = np.copy(indjm)
-			data = np.hstack((Bm, Wm))
-			for i in range(1, times+1):
-				row2copyt  = row2copy + i
-				indj2copyt = indj2copy + i*(s+1)
-
-				indit = indi; indjt = indj; datat = data
-				inditt, indjtt, datatt = insertRowCSR(row2copyt, data2copy, indj2copyt, indit, indjt, datat)
-				indi = np.copy(inditt); indj = np.copy(indjtt); data = np.copy(datatt)
-
-			# Offset of last p+1 rows
-			nbcols = 2*(self.degree + r) + self._nbel*(s + 1) - 2*s - 3  
-			offset = nbcols - np.max(indjm)
-
-			for i in range(self.nbctrlpts-self.degree-1, self.nbctrlpts):
-				indj[indi[i]:indi[i+1]] += offset
-
-			basis = data[:, :2]; weights = data[:, 2:]
-
-		else:
-			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
-														self._Bshape[0], self._Bshape[1], size_data, self._wqType)
-
+		basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
+													self._Bshape[0], self._Bshape[1], size_data, self._wqType)
 		self.dersBasis   = basis
 		self.dersWeights = weights
 		self.dersIndices = [indi, indj]
