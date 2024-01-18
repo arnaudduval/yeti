@@ -9,10 +9,15 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import mechamat, block_dot_product
+from pysrc.lib.lib_material import mechamat, block_dot_product, clean_dirichlet
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import mechaproblem
 from pysrc.lib.lib_base import solver
+
+full_path = os.path.realpath(__file__)
+folder = os.path.dirname(full_path)
+if not os.path.isdir(folder): os.mkdir(folder)
+
 
 # Set global variables
 TRACTION, RINT, REXT = 1.0, 1.0, 2.0
@@ -97,7 +102,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 # 							normArgs={'type':'L2', 'exactFunction':exactDisplacement_infPlate})
 # 		print(error_list)
 
-geoArgs = {'name': GEONAME, 'degree': 1*np.ones(3, dtype=int), 
+geoArgs = {'name': GEONAME, 'degree': 2*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': 4*np.ones(3, dtype=int), 
 			'extra':{'Rin':RINT, 'Rex':REXT}
 			}
@@ -106,7 +111,7 @@ material = mechamat(MATARGS)
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
 modelPhy_iga = part(modelIGA, quadArgs={'quadrule': 'iga'})
-modelPhy_wq1 = part(modelIGA, quadArgs={'quadrule': 'wq', 'type':1})
+modelPhy_wq1 = part(modelIGA, quadArgs={'quadrule': 'wq', 'type':3})
 modelPhy_wq2 = part(modelIGA, quadArgs={'quadrule': 'wq', 'type':2})
 
 # Set Dirichlet boundaries
@@ -118,41 +123,66 @@ enablePrint()
 
 problem_wq1 = mechaproblem(material, modelPhy_wq1, boundary)
 Fext_wq1 = problem_wq1.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-problem_wq1._KrylovPreconditioner = 'WP'
-displacement_wq1 = problem_wq1.solveElasticityProblem(Fext_wq1)[0]
+# problem_wq1._KrylovPreconditioner = 'WP'
+# disp_wq1 = problem_wq1.solveElasticityProblem(Fext_wq1)[0]
 
 problem_wq2 = mechaproblem(material, modelPhy_wq2, boundary)
 Fext_wq2 = problem_wq2.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-problem_wq2._KrylovPreconditioner = 'WP'
-displacement_wq2 = problem_wq2.solveElasticityProblem(Fext_wq2)[0]
+# problem_wq2._KrylovPreconditioner = 'WP'
+# disp_wq2 = problem_wq2.solveElasticityProblem(Fext_wq2)[0]
 
 problem_iga = mechaproblem(material, modelPhy_iga, boundary)
 Fext_iga = problem_iga.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-displacement_iga = problem_iga.solveElasticityProblem(Fext_iga)[0]
+disp_iga = problem_iga.solveElasticityProblem(Fext_iga)[0]
 
 solv = solver()
-solwq1, _ = solv.BiCGSTAB(problem_wq1.compute_mfStiffness, Fext_wq1, dotfun=block_dot_product)
+for niters in range(1, 21, 2):
+	solv._nbIterKrylov = niters
+	outWQ1 = solv.BiCGSTAB(problem_wq1.compute_mfStiffness, Fext_wq1, 
+				dotfun=block_dot_product, cleanfun=clean_dirichlet, dod=boundary.mchdod)
+
+	outWQ2 = solv.BiCGSTAB(problem_wq2.compute_mfStiffness, Fext_wq2, 
+				dotfun=block_dot_product, cleanfun=clean_dirichlet, dod=boundary.mchdod)
+
+	# outIGA = solv.BiCGSTAB(problem_iga.compute_mfStiffness, Fext_iga, 
+	# 			dotfun=block_dot_product, cleanfun=clean_dirichlet, dod=boundary.mchdod)
+
+	solwq1 = outWQ1['sol']; solwq2 = outWQ2['sol']
+	error1 = abs(block_dot_product(solwq1-disp_iga, solwq1-disp_iga)/block_dot_product(disp_iga, disp_iga))
+	error2 = abs(block_dot_product(solwq2-disp_iga, solwq2-disp_iga)/block_dot_product(disp_iga, disp_iga))
+	error3 = abs(block_dot_product(solwq1-solwq2, solwq1-solwq2)/block_dot_product(disp_iga, disp_iga))
+
+	print('%d, %.3e, %.3e, %.3e'%(niters, error1, error2, error3))
+
+# fig, ax = plt.subplots()
+# ax.semilogy(resKryIGA, label='IGA')
+# ax.semilogy(resKryWQ1, label='WQ1')
+# ax.semilogy(resKryWQ2, label='WQ2')
+# ax.legend()
+# fig.savefig(folder+'resKrylov')
 
 
-# error1 = abs(block_dot_product(2, Fext_wq1-Fext_iga, Fext_wq1-Fext_iga)/block_dot_product(2, Fext_iga, Fext_iga))
-# error2 = abs(block_dot_product(2, Fext_wq2-Fext_iga, Fext_wq2-Fext_iga)/block_dot_product(2, Fext_iga, Fext_iga))
+# ======================================
+# error1 = abs(block_dot_product(Fext_wq1-Fext_iga, Fext_wq1-Fext_iga)/block_dot_product(Fext_iga, Fext_iga))
+# error2 = abs(block_dot_product(Fext_wq2-Fext_iga, Fext_wq2-Fext_iga)/block_dot_product(Fext_iga, Fext_iga))
 
 # print('%.3e, %.3e'%(error1, error2))
 
-# error1 = abs(block_dot_product(2, displacement_wq1-displacement_iga, displacement_wq1-displacement_iga)/block_dot_product(2, displacement_iga, displacement_iga))
-# error2 = abs(block_dot_product(2, displacement_wq2-displacement_iga, displacement_wq2-displacement_iga)/block_dot_product(2, displacement_iga, displacement_iga))
+# error1 = abs(block_dot_product(disp_wq1-disp_iga, disp_wq1-disp_iga)/block_dot_product(disp_iga, disp_iga))
+# error2 = abs(block_dot_product(disp_wq2-disp_iga, disp_wq2-disp_iga)/block_dot_product(disp_iga, disp_iga))
 
 # print('%.3e, %.3e'%(error1, error2))
 # print('******')
 
+# ======================================
 # # Solve elastic problem
 # for _ in range(10):
-# 	randvec = np.random.uniform(-100, 100, (2, modelPhy_iga.nbctrlpts_total))
+# 	randvec = np.random.uniform(-100, 100, (modelPhy_iga.nbctrlpts_total))
 # 	MVwq1 = problem_wq1.compute_mfStiffness(randvec) # or compute_mfMass
 # 	MVwq2 = problem_wq2.compute_mfStiffness(randvec)
 # 	MViga = problem_iga.compute_mfStiffness(randvec)
 
-# 	error1 = abs(block_dot_product(2, MVwq1-MViga, MVwq1-MViga)/block_dot_product(2, MViga, MViga))
-# 	error2 = abs(block_dot_product(2, MVwq2-MViga, MVwq2-MViga)/block_dot_product(2, MViga, MViga))
+# 	error1 = abs(block_dot_product(MVwq1-MViga, MVwq1-MViga)/block_dot_product(MViga, MViga))
+# 	error2 = abs(block_dot_product(MVwq2-MViga, MVwq2-MViga)/block_dot_product(MViga, MViga))
 
 # 	print('%.3e, %.3e'%(error1, error2))

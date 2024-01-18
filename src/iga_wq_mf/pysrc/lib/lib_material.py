@@ -8,11 +8,12 @@ def clean_dirichlet(A, dod):
 	for i in range(dim): A[i, dod[i]] = 0.0
 	return
 
-def block_dot_product(d, A, B):
+def block_dot_product(A, B):
 	""" Computes dot product of A and B. 
 		Both are actually vectors arranged following each dimension
 		A = [Au, Av, Aw] and B = [Bu, Bv, Bw]. Then A.B = Au.Bu + Av.Bv + Aw.Bw
 	"""
+	d = min(np.size(A, axis=0), np.size(B, axis=0))
 	result = 0.0
 	for i in range(d): result += A[i, :] @ B[i, :]
 	return result

@@ -132,6 +132,9 @@ class WeightedQuadrature(QuadratureRules):
 		self._posRule = 'midpoint' # By default
 		if   self._wqType == 1: extraArgsDefault = {'s': 1, 'r': 2}
 		elif self._wqType == 2: extraArgsDefault = {'s': 2, 'r': 2}
+		elif self._wqType == 3: 
+			self._posRule = 'internal'
+			extraArgsDefault = {'s': 2, 'r': 4}
 		self._extraArgs = quadArgs.get('extra', extraArgsDefault)
 		return
 	
@@ -139,6 +142,9 @@ class WeightedQuadrature(QuadratureRules):
 		if self._posRule == 'midpoint':
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			self.quadPtsPos = self.__QuadPosMidPointRule(s=s, r=r)
+		elif self._posRule == 'internal':
+			s = self._extraArgs.get('s', 2); r = self._extraArgs.get('r', 4)
+			self.quadPtsPos = self.__QuadPosInternalRule(s=s, r=r)
 		# Add more methods 
 		self._Bshape = self.__getBShape(self.quadPtsPos)
 		self.nbqp    = np.size(self.quadPtsPos)
@@ -164,6 +170,31 @@ class WeightedQuadrature(QuadratureRules):
 		# Inner span
 		for i in range(1, self._nbel-1):
 			tmp = np.linspace(knots[i], knots[i+1], 2+s)
+			quadPtsPos = np.append(quadPtsPos, tmp)
+		
+		quadPtsPos = np.unique(quadPtsPos)
+		quadPtsPos.sort()
+		return quadPtsPos
+	
+	def __QuadPosInternalRule(self, s=2, r=4):	
+		""" Find quadrature points using mid-point rule
+			r is the 'extra' points on the knotspans at the boundaries
+			s is the 'extra' points on the inner knotspans. The number must respect the max rule (see bibliography)
+		"""
+		quadPtsPos = np.array([])
+		knots = self._uniqueKV
+		
+		# First span
+		tmp = np.linspace(knots[0], knots[1], self.degree+r)[1:-1]
+		quadPtsPos = np.append(quadPtsPos, tmp)
+
+		# Last span
+		tmp = np.linspace(knots[-2], knots[-1], self.degree+r)[1:-1]
+		quadPtsPos = np.append(quadPtsPos, tmp)
+
+		# Inner span
+		for i in range(1, self._nbel-1):
+			tmp = np.linspace(knots[i], knots[i+1], 2+s)[1:-1]
 			quadPtsPos = np.append(quadPtsPos, tmp)
 		
 		quadPtsPos = np.unique(quadPtsPos)
@@ -225,14 +256,14 @@ class WeightedQuadrature(QuadratureRules):
 		return [B0shape, B1shape]
 	
 	def evalDersBasisWeights(self):
-		assert self._wqType in [1, 2], 'Method unknown'
+		assert self._wqType in [1, 2, 3], 'Method unknown'
 		size_data = (self.degree + 1)*self.nbqp
 		basis   = np.zeros((size_data, 2))
 		weights = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
 
-		if (self._posRule == 'midpoint') and (self._isUniform) and (self._nbel > self.degree+3) and (self.degree > 1):
+		if (self._isUniform) and (self._nbel > self.degree+3) and (self.degree > 1):
 			s = self._extraArgs.get('s', 1); r = self._extraArgs.get('r', 2)
 			# Create model
 			degree_model = self.degree

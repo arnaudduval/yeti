@@ -351,57 +351,63 @@ class solver():
 	
 	def __init__(self):
 		self._nbIterKrylov    = 100
-		self._thresholdKrylov = 1e-10
+		self._thresholdKrylov = 1e-12
 		return
 	
-	def CG(self, Afun, b, Pfun=None):
+	def CG(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None):
 		if Pfun is None: Pfun = lambda x: x
+		if dotfun is None: dotfun = lambda x, y: np.dot(x, y)
+		if cleanfun is None: cleanfun = lambda x, y: x
+
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.linalg.norm(r)
+		r = np.copy(b); normb = np.sqrt(dotfun(r, r))
+		cleanfun(r, dod)
 		resPCG = [1.0]
 		if normb <= self._thresholdKrylov: return
 		z = Pfun(r)
-		rsold = np.dot(r, z); p = z
+		cleanfun(z, dod)
+		rsold = dotfun(r, z); p = np.copy(z)
 
 		for i in range(self._nbIterKrylov):
 			Ap = Afun(p)
-			alpha = rsold/np.dot(p, Ap)
+			cleanfun(Ap, dod)
+			alpha = rsold/dotfun(p, Ap)
 			x += alpha*p
 			r -= alpha*Ap
 
-			resPCG.append(np.linalg.norm(r)/normb)
+			resPCG.append(np.sqrt(dotfun(r, r))/normb)
 			if (resPCG[-1]<=self._thresholdKrylov): break
 
 			z = Pfun(r)
-			rsnew = np.dot(r, z)
+			rsnew = dotfun(r, z)
 			p = z + rsnew/rsold*p
-			rsold = rsnew
-
-		return x, resPCG
+			rsold = np.copy(rsnew)
+		output={'sol':x, 'res':resPCG}
+		return output
 	
-	def BiCGSTAB(self, Afun, b, Pfun=None, dotfun=None, clearfun=None):
+	def BiCGSTAB(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None):
 		if Pfun is None: Pfun = lambda x: x
 		if dotfun is None: dotfun = lambda x, y: np.dot(x, y)
-		if clearfun is None: clearfun = lambda x: x
+		if cleanfun is None: cleanfun = lambda x, y: x
 
 		x = np.zeros(np.shape(b))
-		r = b; normb = np.sqrt(dotfun(r, r))
-		clearfun(r)
+		r = np.copy(b); normb = np.sqrt(dotfun(r, r))
+		cleanfun(r, dod)
 		resPCG = [1.0]
 		if normb <= self._thresholdKrylov: return
-		rhat = r; p = r
+		rhat = np.copy(r); p = np.copy(r)
 		rsold = dotfun(r, rhat)
 
 		for i in range(self._nbIterKrylov):
 			ptilde = Pfun(p)
-			clearfun(ptilde)
+			cleanfun(ptilde, dod)
 			Aptilde = Afun(ptilde)
-			clearfun(Aptilde)
+			cleanfun(Aptilde, dod)
 			alpha = rsold/dotfun(Aptilde, rhat)
 			s = r - alpha*Aptilde
 
 			stilde = Pfun(s)
-			clearfun(stilde)
+			cleanfun(stilde, dod)
 			Astilde = Afun(stilde)
 			omega = dotfun(Astilde, s)/dotfun(Astilde, Astilde)
 			x += alpha*ptilde + omega*stilde
@@ -413,9 +419,10 @@ class solver():
 			rsnew = dotfun(r, rhat)
 			beta = (alpha/omega)*(rsnew/rsold)
 			p = r + beta*(p - omega*Aptilde)
-			rsold = rsnew
+			rsold = np.copy(rsnew)
 
-		return x, resPCG
+		output={'sol':x, 'res':resPCG}
+		return output
 	
 	def GMRES(self, Afun, b, Pfun=None, n_restarts=1):
 		if Pfun is None: Pfun = lambda x: x

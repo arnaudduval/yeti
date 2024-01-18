@@ -449,7 +449,7 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				resNRj = np.sqrt(block_dot_product(dimen, r_dj, r_dj))
+				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
@@ -463,7 +463,7 @@ class mechaproblem(problem):
 				# Update active control points
 				dj_n1 += deltaD
 				AllresPCG.append(resPCGj)
-				if np.sqrt(block_dot_product(dimen, deltaD, deltaD)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaD, deltaD)) <= 1e-12: break
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
@@ -542,7 +542,7 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				resNRj = np.sqrt(block_dot_product(self.part.dim, r_dj, r_dj))
+				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
@@ -557,7 +557,7 @@ class mechaproblem(problem):
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
 				AllresPCG.append(resPCGj)
-				if np.sqrt(block_dot_product(self.part.dim, deltaA, deltaA)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaA, deltaA)) <= 1e-12: break
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -674,7 +674,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dod = [*self.boundary.mchdod, self.boundary.thdod]
 				clean_dirichlet(r_dj, dod) 
 
-				resNRj = np.sqrt(block_dot_product(self.part.dim+1, r_dj, r_dj))
+				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
@@ -686,7 +686,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
-				if np.sqrt(block_dot_product(self.part.dim+1, deltaA, deltaA)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaA, deltaA)) <= 1e-12: break
 
 			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])
