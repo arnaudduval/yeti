@@ -9,7 +9,6 @@ class QuadratureRules:
 		self.degree       = degree
 		self.knotvector   = knotvector
 		self.__getInfo()
-		self.__verifyUniformityRegularity()
 
 		self.nbqp         = None
 		self.quadPtsPos   = None
@@ -24,15 +23,6 @@ class QuadratureRules:
 		self.nbctrlpts = len(self.knotvector) - self.degree - 1
 		self._uniqueKV = np.unique(self.knotvector)
 		self._nbel     = len(self._uniqueKV) - 1
-		return
-	
-	def __verifyUniformityRegularity(self, threshold=1e-8):
-		self._isMaxReg = False
-		if (self._nbel+self.degree==self.nbctrlpts): self._isMaxReg = True
-
-		self._isUniform = True
-		diffknot = np.diff(np.diff(self._uniqueKV))
-		if np.any(np.abs(diffknot)>=threshold): self._isUniform = False
 		return
 	
 	def getQuadratureRulesInfo(self):
@@ -154,7 +144,7 @@ class WeightedQuadrature(QuadratureRules):
 		return
 
 	# Add rules to get the quadrature points
-	def __QuadPosMidPointRule(self, s=1, r=2):	
+	def __QuadPosMidPointRule(self, s=2, r=3):	
 		""" Find quadrature points using mid-point rule
 			r is the 'extra' points on the knotspans at the boundaries
 			s is the 'extra' points on the inner knotspans. The number must respect the max rule (see bibliography)

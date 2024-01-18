@@ -270,8 +270,7 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
-
-			# if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
+			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
 		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol}
 		return output

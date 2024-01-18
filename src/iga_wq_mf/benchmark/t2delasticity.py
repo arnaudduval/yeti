@@ -21,7 +21,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 TRACTION, RINT, REXT = 1.0, 1.0, 2.0
-YOUNG, POISSON = 1e3, 0.3
+YOUNG, POISSON = 1e3, 0.0
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'Isoname':'none'}}
@@ -38,6 +38,19 @@ def forceSurf_infPlate(P:list):
 	F[0, :] = TRACTION/2*(2*np.cos(theta) - b*(2*np.cos(theta) + 3*np.cos(3*theta)) + 3*b**2*np.cos(3*theta))
 	F[1, :] = TRACTION/2*3*np.sin(3*theta)*(b**2 - b)
 	return F
+
+def exactDisplacement_infPlate(P:list):
+	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	r_square = x**2 + y**2
+	theta = np.arcsin(y/np.sqrt(r_square))
+	b = RINT**2/r_square # Already squared
+	c = TRACTION*(1.0 + POISSON)*np.sqrt(r_square)/(2*YOUNG)
+
+	disp = np.zeros((2, nnz))
+	disp[0, :] = c*(2*(1-POISSON)*np.cos(theta) + b*(4*(1-POISSON)*np.cos(theta) + np.cos(3*theta)) - b**2*np.cos(3*theta))
+	disp[1, :] = c*(-2*POISSON*np.sin(theta) + b*(2*(-1 + 2*POISSON)*np.sin(theta) + np.sin(3*theta)) - b**2*np.sin(3*theta))
+	
+	return disp
 
 def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
@@ -95,8 +108,9 @@ else:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(8, 7))
-	figname = folder + 'FigElasLinearConvergenceAllL2' + '.pdf'
-	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	figname = folder + 'FigElasLinearConvergenceAllL2_nu0' + '.pdf'
+	# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
 
@@ -105,8 +119,10 @@ else:
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
 				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
+				# error_list[j] = problem.normOfError(displacement, isRelative=False, 
+				# 				normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
 				error_list[j] = problem.normOfError(displacement, isRelative=False, 
-								normArgs={'type':'L2', 'part_ref':part_ref, 'u_ref':disp_ref})
+								normArgs={'type':'L2', 'exactFunction':exactDisplacement_infPlate})
 			if quadrule == 'iga': 
 				ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
@@ -118,8 +134,8 @@ else:
 
 ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
-ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
 
 ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
 # ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')

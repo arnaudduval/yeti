@@ -453,7 +453,7 @@ class mechaproblem(problem):
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
 				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
-				# if j > 0 and isElasticLoad: break
+				if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
 				resPCGj = np.array([i, j+1])
