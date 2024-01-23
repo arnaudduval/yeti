@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 extension = '.dat'
 dataExist = True
 FIG_CASE = 2
-NONLIN_CASE = 3 # 0, 1, 2 or 3
+NONLIN_CASE = 1 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.001
 if NONLIN_CASE<3 : c = 0.001 # or 0.001
 
@@ -242,8 +242,8 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 if not dataExist:
 
 	if FIG_CASE == 1:
-		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 6)
+		degree_list = np.array([1, 2])
+		cuts_list   = np.arange(6, 7)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' + str(NONLIN_CASE)
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -265,14 +265,14 @@ if not dataExist:
 					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
-		degree, cuts = 2, 3
+		degree, cuts = 2, 5
 		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 		if not os.path.isdir(subfolderfolder): os.mkdir(subfolderfolder)
 
 		for [i, isadaptive], prefix1 in zip(enumerate([False, True]), ['exact', 'inexact']):
-			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['regular', 'modified']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
 				prefix = prefix1 + '_' + prefix2 + '_'
 				problemArgs = {'isfull':isfull, 'isadaptive':isadaptive}
 				blockPrint()
@@ -347,7 +347,7 @@ else:
 
 	elif FIG_CASE == 2:
 
-		degree, cuts = 2, 3
+		degree, cuts = 2, 5
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 
@@ -359,9 +359,9 @@ else:
 		marker_list = ['o', 'o', 's', 's']
 
 		for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
-			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['regular', 'modified']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
 				l = j + i*2
-				legendname = prefix1.capitalize() + ' ' + prefix2
+				legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
 				prefix = prefix1 + '_' + prefix2 + '_'
 				nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
 				newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
@@ -372,17 +372,20 @@ else:
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
 						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
+						ylim = [2, 0.2e-4]; xlim = 250
 						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
-						xlabel = 'Total number of inner iterations'
+						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
 						ylim = [2, 5e-9]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
-						ylabel = 'Relative norm of Newton residue'
-						xlabel = 'Total number of inner iterations'
+						xlim = 250
+						ylabel = 'Relative norm of outer residue'
+						xlabel = 'Number of inner iterations'
 					elif caseplot == 3:
 						yy = newtonRes; xx = np.arange(0, len(newtonRes))
 						ylim = [2, 5e-9]; xlim = len(newtonRes)+1
-						ylabel = 'Relative of norm of Newton residue'
+						xlim = 10
+						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of outer iterations'
 
 					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
