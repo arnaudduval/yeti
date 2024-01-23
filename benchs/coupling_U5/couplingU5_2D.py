@@ -37,14 +37,14 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-nb_ref[:,0] = np.array([2,2,0])
-nb_deg[:,0] = np.array([1,1,0])
+nb_ref[:,0] = np.array([0,0,0])
+nb_deg[:,0] = np.array([0,0,0])
 
-nb_ref[:,1] = np.array([2,2,0])
-nb_deg[:,1] = np.array([1,1,0])
+nb_ref[:,1] = np.array([0,0,0])
+nb_deg[:,1] = np.array([0,0,0])
 
-nb_ref[:,2] = np.array([2,0,0])
-nb_deg[:,2] = np.array([1,0,0])
+nb_ref[:,2] = np.array([0,0,0])
+nb_deg[:,2] = np.array([0,0,0])
 
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
@@ -65,8 +65,6 @@ print("stiffness matrix assembly done")
 # COUPLING MATRIX
 Cdata, Crow, Ccol = cplg_matrixU5( *modeleIGA.get_inputs4cplgmatrixU5() )
 
-exit()
-
 Cside = sp.coo_matrix((Cdata,(Crow,Ccol)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot),
                       dtype='float64').tocsc()
 Ctot  = Cside + Cside.transpose()
@@ -78,9 +76,15 @@ print("Coupling matrix assembly done")
 t2 = time.time()
 K2solve = Ktot[idof,:][:,idof]
 C2solve = Ctot[idof,:][:,idof] * K2solve.max()
-LU = sp.linalg.splu(K2solve + C2solve)
-x  = LU.solve(Fb[idof])
+# LU = sp.linalg.splu(K2solve + C2solve)
+# x  = LU.solve(Fb[idof])
+# x = sp.linalg.spsolve(K2solve + C2solve, Fb[idof])
 t3 = time.time()
+
+import matplotlib.pyplot as plt
+# plt.spy(K2solve + C2solve)
+plt.spy(Ktot + Ctot)
+plt.show()
 
 print("Resolution done ", t3-t2, " seconds")
 
