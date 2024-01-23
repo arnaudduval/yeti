@@ -1761,31 +1761,48 @@ class IGAparametrization:
             ps = np.intp(self._PROPS[c][3] - 1)   # patch slave
             fs = np.intp(self._PROPS[c][4])       # face slave
 
+            # TODO : differenciate 2D and 3D cases in a more stylish way.
+
             # Number of elements/face - master
-            if fm == 1 or fm == 2:
-                nb_el_m = (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1) * \
-                    (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
-            elif fm == 3 or fm == 4:
-                nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
-                    (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
-            elif fm == 5 or fm == 6:
-                nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
-                    (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1)
+            if self._dim[c] == 2:       # 3D case : interface has dimension 2
+                if fm == 1 or fm == 2:
+                    nb_el_m = (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1) * \
+                        (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
+                elif fm == 3 or fm == 4:
+                    nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
+                        (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
+                elif fm == 5 or fm == 6:
+                    nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
+                        (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1)
+            elif self._dim[c] == 1:     # 2D case : interface has dimension 1
+                if fm == 1 or fm == 2:
+                    nb_el_m = (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1)
+                elif fm == 3 or fm == 4:
+                    nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1)
 
             # Number of elements/face - slave
-            if fs == 1 or fs == 2:
-                nb_el_s = (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1) * \
-                    (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
-            elif fs == 3 or fs == 4:
-                nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
-                    (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
-            elif fs == 5 or fs == 6:
-                nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
-                    (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1)
+            if self._dim[c] == 2:       # 3D case : interface has dimension 2
+                if fs == 1 or fs == 2:
+                    nb_el_s = (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1) * \
+                        (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
+                elif fs == 3 or fs == 4:
+                    nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
+                        (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
+                elif fs == 5 or fs == 6:
+                    nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
+                        (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1)
+            elif self._dim[c] == 1:     # 2D case : interface has dimension 1
+                if fs == 1 or fs == 2:
+                    nb_el_s = (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1)
+                elif fs == 3 or fs == 4:
+                    nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1)
 
             # Number of elements/face - Lagrange
-            nb_el_l = (self._Nkv[0, lg] - 2 * self._Jpqr[0, lg] - 1) * \
-                (self._Nkv[1, lg] - 2 * self._Jpqr[1, lg] - 1)
+            if self._dim[c] == 2:       # 3D case : interface has dimension 2
+                nb_el_l = (self._Nkv[0, lg] - 2 * self._Jpqr[0, lg] - 1) * \
+                    (self._Nkv[1, lg] - 2 * self._Jpqr[1, lg] - 1)
+            elif self._dim[c] == 1:     # 2D case : interface has dimension 1
+                nb_el_l = (self._Nkv[0, lg] - 2 * self._Jpqr[0, lg] - 1)
 
             # Compute integration order
             order = max(self._Jpqr[:, lg]) + \
@@ -1795,7 +1812,9 @@ class IGAparametrization:
             # nb_data += (order**2) * \
             #     (nb_el_m * self._nnode[pm] + nb_el_s * self._nnode[ps]) * \
             #     nb_el_l * self._nnode[lg] * self._mcrd
-            nb_gps = (order**2.) * nb_el_m
+
+            # TODO : verify if number of elements taken into account is the good one in the following line (use nb_el_l instead ???)
+            nb_gps = (order**self._dim[c]) * nb_el_m
             nb_data += nb_gps * self._mcrd * self._nnode[lg] * \
                 (self._nnode[ps]+self._nnode[pm])
 
