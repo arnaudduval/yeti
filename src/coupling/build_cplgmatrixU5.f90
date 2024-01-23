@@ -200,18 +200,30 @@ subroutine cplg_matrixU5(nb_data, &
                     !! v and w direction
                     !! WARNING : THIS MAY NOT WORK PROPERLY WITH REPEATED KNOT INSIDE KNOT VECTOR
                     !!           (CONTINUITY DROP)
-                    nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(2)-2*Jpqr_patch(2)-1) * &
-                        &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
+                    if (dim_patch .eq. 3) then
+                        nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(2)-2*Jpqr_patch(2)-1) * &
+                            &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
+                    elseif (dim_patch .eq. 2) then
+                        nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(2)-2*Jpqr_patch(2)-1)
+                    endif
                 case(3,4)
                     !! u and w direction
                     !! WARNING : THIS MAY NOT WORK PROPERLY WITH REPEATED KNOT INSIDE KNOT VECTOR
                     !!           (CONTINUITY DROP)
-                    nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1) * &
-                        &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
+                    if (dim_patch .eq. 3) then
+                        nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1) * &
+                            &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
+                    elseif (dim_patch .eq. 2) then
+                        nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1)
+                    endif
                 case(5,6)
                     !! u and v direction
                     !! WARNING : THIS MAY NOT WORK PROPERLY WITH REPEATED KNOT INSIDE KNOT VECTOR
                     !!           (CONTINUITY DROP)
+                    if (dim_patch .lt. 3) then
+                        write(*,*) "Can not define face ", masterFace, " in dimension ", dim_patch
+                        call exit(123)
+                    endif
                     nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1) * &
                         &   (Nkv_patch(2)-2*Jpqr_patch(2)-1)
             end select
@@ -219,16 +231,19 @@ subroutine cplg_matrixU5(nb_data, &
             if (allocated(GaussPdsCoords)) deallocate(GaussPdsCoords)
             if (allocated(weightGP)) deallocate(weightGP, xi_master, xi_slave, &
                 &   xi_interface, saveEM, saveES)
-            allocate(GaussPdsCoords(4, nbPtInt**3))
-            allocate(weightGP(nb_gps), xi_master(3, nb_gps), xi_slave(3, nb_gps), &
-                &   xi_interface(3, nb_gps))
+            !! Warning : replacing previous value 3 by dim_patch-1
+            !! TODO : verify if this replacement is OK
+            allocate(GaussPdsCoords(4, nbPtInt**(dim_patch-1)))
+            !! TODO : use dimension dim_patch_interface instead of 3 to store Gauss points informations
+            allocate(weightGP(nb_gps), xi_master(dim_patch, nb_gps), xi_slave(dim_patch, nb_gps), &
+                &   xi_interface(dim_patch, nb_gps))
             allocate(saveEM(nb_gps), saveES(nb_gps))
 
             call Gauss(nbPtInt, dim_patch, GaussPdsCoords, masterFace)
             ielface = 1
             do ielem = 1, nb_elem_patch(masterPatch)
                 call extractNurbsElementInfos(ielem)
-                if(IsElemOnFace(masterFace, Nijk_patch(:,ielem), Jpqr_patch, Nkv_patch)) then
+                if(IsElemOnFace(masterFace, Nijk_patch(:,ielem), Jpqr_patch, Nkv_patch, dim_patch)) then
                     do igps = 1, nbPtInt**(dim_patch-1)
                         idxGP = (ielface-1)*(nbPtInt**(dim_patch-1))+igps
                         weightGP(idxGP) = GaussPdsCoords(1, igps)
@@ -240,7 +255,7 @@ subroutine cplg_matrixU5(nb_data, &
                             !! 2D Jacobian for surface integration
                             !!    Add contribution only if we are not on the parametric direction
                             !!    corresponding to the interface
-                            !!    (e.g., surfaces 2, 3, 4, 5 if masterFace == 0 or 1)
+                            !!    (e.g., surfaces 3, 4, 5, 6 if masterFace == 1 or 2)
                             if ((2*idim .ne. masterFace) .and. (2*idim-1 .ne. masterFace)) then
                                 weightGP(idxGP) = weightGP(idxGP) * &
                                     &   (Ukv_elem(2, idim) - Ukv_elem(1,idim)) * 0.5D0
@@ -251,6 +266,7 @@ subroutine cplg_matrixU5(nb_data, &
                 endif
             enddo
 
+            write(*,*) "A"
 
             !! Compute coordinates in physical space
             !! -------------------------------------
@@ -332,6 +348,7 @@ subroutine cplg_matrixU5(nb_data, &
                 !!! <--- CHECK PROJECTION
             enddo
 
+            write(*,*) "B"
 
             !! Projection on slave patch
             !! -------------------------
@@ -455,12 +472,21 @@ subroutine cplg_matrixU5(nb_data, &
                 enddo
             !! Classical case: project points on surface
             else
+                write(*,*) "C"
                 !!! CHECK PROJECTION --->
                 write(11, *) '# Physical coordinates - slave side'
                 !!! <--- CHECK PROJECTION
                 do igps = 1, nb_gps
-                    call point_inversion_surface(x_phys(:, igps), slaveFace, COORDS3D, nb_cp, &
-                        &   .false., xi_slave(:,igps), info)
+                    if (dim_patch .eq. 3) then
+                        call point_inversion_surface(x_phys(:, igps), slaveFace, COORDS3D, nb_cp,   &
+                            &   .false., xi_slave(:,igps), info)
+                    elseif (dim_patch .eq. 2) then
+                        call point_inversion_plane_curve(x_phys(:, igps), slaveFace, COORDS3D,      &
+                            &   nb_cp, .false., xi_slave(:, igps), info)
+                    else
+                        write(*,*) "Dimension ", dim_patch, " not available"
+                        call exit(123)
+                    endif
                     !! Projection info. message
                     if (info .ne. 0) then
                         write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
@@ -492,19 +518,30 @@ subroutine cplg_matrixU5(nb_data, &
 
             !! Define integration points on Lagrange patch
             !! -------------------------------------------
-
-            select case(masterFace)
-                case(1,2)
-                    xi_interface(1,:) = xi_master(2,:)
-                    xi_interface(2,:) = xi_master(3,:)
-                case(3,4)
-                    xi_interface(1,:) = xi_master(1,:)
-                    xi_interface(2,:) = xi_master(3,:)
-                case(5,6)
-                    xi_interface(1,:) = xi_master(1,:)
-                    xi_interface(2,:) = xi_master(2,:)
-            end select
-            xi_interface(3,:) = zero
+            write(*,*) "D"
+            if (dim_patch .eq. 3) then
+                select case(masterFace)
+                    case(1,2)
+                        xi_interface(1,:) = xi_master(2,:)
+                        xi_interface(2,:) = xi_master(3,:)
+                    case(3,4)
+                        xi_interface(1,:) = xi_master(1,:)
+                        xi_interface(2,:) = xi_master(3,:)
+                    case(5,6)
+                        xi_interface(1,:) = xi_master(1,:)
+                        xi_interface(2,:) = xi_master(2,:)
+                end select
+                xi_interface(3,:) = zero
+            elseif (dim_patch .eq. 2) then
+                select case(masterFace)
+                    case(1,2)
+                        xi_interface(1,:) = xi_master(2,:)
+                    case(3,4)
+                        xi_interface(1,:) = xi_master(1,:)
+                end select
+                xi_interface(2,:) = zero
+                xi_interface(3,:) = zero
+            endif
 
             call extractNurbsPatchMechInfos(iPatch, IEN, PROPS, JPROPS, &
                 &   NNODE, nb_elem_patch, ELT_TYPE, TENSOR)
@@ -527,7 +564,7 @@ subroutine cplg_matrixU5(nb_data, &
 
             !! Fill coupling matrix
             !! --------------------
-
+            write(*,*) "E"
             do idom = 1, 2      !! 1 : master, 2 : slave
                 if (idom .eq. 1) then
                     domPatch = masterPatch
@@ -570,11 +607,12 @@ subroutine cplg_matrixU5(nb_data, &
             enddo
         endif
     enddo
-
+    write(*,*) "F"
     !! Deallocations
     deallocate(sctr, sctr_l)
     deallocate(COORDS_elem)
     deallocate(CMAT)
+    write(*,*) "G"
 
 end subroutine cplg_matrixU5
 
