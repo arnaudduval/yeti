@@ -233,7 +233,7 @@ subroutine cplg_matrixU5(nb_data, &
                 &   xi_interface, saveEM, saveES)
             !! Warning : replacing previous value 3 by dim_patch-1
             !! TODO : verify if this replacement is OK
-            allocate(GaussPdsCoords(4, nbPtInt**(dim_patch-1)))
+            allocate(GaussPdsCoords(4, nbPtInt**(dim_patch)))
             !! TODO : use dimension dim_patch_interface instead of 3 to store Gauss points informations
             allocate(weightGP(nb_gps), xi_master(dim_patch, nb_gps), xi_slave(dim_patch, nb_gps), &
                 &   xi_interface(dim_patch, nb_gps))
@@ -265,8 +265,6 @@ subroutine cplg_matrixU5(nb_data, &
                     ielface = ielface + 1
                 endif
             enddo
-
-            write(*,*) "A"
 
             !! Compute coordinates in physical space
             !! -------------------------------------
@@ -348,8 +346,6 @@ subroutine cplg_matrixU5(nb_data, &
                 !!! <--- CHECK PROJECTION
             enddo
 
-            write(*,*) "B"
-
             !! Projection on slave patch
             !! -------------------------
             call extractNurbsPatchGeoInfos(slavePatch, Nkv,Jpqr,Nijk,Ukv,    &
@@ -367,9 +363,9 @@ subroutine cplg_matrixU5(nb_data, &
             if (allocated(x_phys_slave)) deallocate(x_phys_slave)
             allocate(x_phys_slave(MCRD, nb_gps))
             x_phys_slave(:,:) = zero
-            !!! <--- CHECK PROJECTION
+            !! <--- CHECK PROJECTION
 
-            !! Check if slave patch is embedded
+            ! Check if slave patch is embedded
             if (ELT_TYPE_patch .eq. 'U10') then
                 IsSlaveEmbded = .true.
                 i_embded_patch = int(PROPS_patch(2))
@@ -472,7 +468,6 @@ subroutine cplg_matrixU5(nb_data, &
                 enddo
             !! Classical case: project points on surface
             else
-                write(*,*) "C"
                 !!! CHECK PROJECTION --->
                 write(11, *) '# Physical coordinates - slave side'
                 !!! <--- CHECK PROJECTION
@@ -518,7 +513,7 @@ subroutine cplg_matrixU5(nb_data, &
 
             !! Define integration points on Lagrange patch
             !! -------------------------------------------
-            write(*,*) "D"
+
             if (dim_patch .eq. 3) then
                 select case(masterFace)
                     case(1,2)
@@ -564,7 +559,7 @@ subroutine cplg_matrixU5(nb_data, &
 
             !! Fill coupling matrix
             !! --------------------
-            write(*,*) "E"
+
             do idom = 1, 2      !! 1 : master, 2 : slave
                 if (idom .eq. 1) then
                     domPatch = masterPatch
@@ -599,7 +594,6 @@ subroutine cplg_matrixU5(nb_data, &
                                 Cdata(count) = factor*CMAT(k,i)
                                 Crow(count) = idof + k - 1
                                 Ccol(count) = jdof + k - 1
-                                count = count+1
                             enddo
                         enddo
                     enddo
@@ -607,12 +601,12 @@ subroutine cplg_matrixU5(nb_data, &
             enddo
         endif
     enddo
-    write(*,*) "F"
+
     !! Deallocations
     deallocate(sctr, sctr_l)
     deallocate(COORDS_elem)
     deallocate(CMAT)
-    write(*,*) "G"
+
 
 end subroutine cplg_matrixU5
 
