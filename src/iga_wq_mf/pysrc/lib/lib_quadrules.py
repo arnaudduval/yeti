@@ -1,7 +1,6 @@
 from .__init__ import *
-from .lib_base import (legendreTable, lobattoTable, 
-						findMultiplicity, createUniformKnotvector_Rmultiplicity, 
-						insertRowCSR, evalDersBasisFortran, array2csr_matrix
+from .lib_base import (legendreTable, lobattoTable, findMultiplicity, 
+							evalDersBasisFortran, array2csr_matrix
 )
 
 class QuadratureRules:

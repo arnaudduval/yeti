@@ -14,7 +14,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 extension = '.dat'
 dataExist = True
 FIG_CASE = 2
-NONLIN_CASE = 1 # 0, 1, 2 or 3
+NONLIN_CASE = 3 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.001
 if NONLIN_CASE<3 : c = 0.001 # or 0.001
 
@@ -265,7 +265,7 @@ if not dataExist:
 					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
-		degree, cuts = 2, 5
+		degree, cuts = 4, 3
 		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
@@ -347,14 +347,15 @@ else:
 
 	elif FIG_CASE == 2:
 
-		degree, cuts = 2, 5
+		degree, cuts = 4, 3
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 
 		fig1, ax1 = plt.subplots(figsize=(8, 6))
 		fig2, ax2 = plt.subplots(figsize=(8, 6))
 		fig3, ax3 = plt.subplots(figsize=(8, 6))
-		figs = [fig1, fig2, fig3]; axs  = [ax1, ax2, ax3]
+		fig4, ax4 = plt.subplots(figsize=(8, 6))
+		figs = [fig1, fig2, fig3, fig4]; axs  = [ax1, ax2, ax3, ax4]
 		linestyle_list = ['-', '--', '-', '--']
 		marker_list = ['o', 'o', 's', 's']
 
@@ -368,17 +369,17 @@ else:
 				L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
 				newtonRes = newtonRes/newtonRes[0]
 				
-				for caseplot, fig, ax in zip(range(1, 4), figs, axs):
+				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
 						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
-						ylim = [2, 0.2e-4]; xlim = 250
+						ylim = [2, 0.2e-4]; xlim = 650
 						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
 						ylim = [2, 5e-9]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
-						xlim = 250
+						xlim = 650
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 3:
@@ -386,6 +387,12 @@ else:
 						ylim = [2, 5e-9]; xlim = len(newtonRes)+1
 						xlim = 10
 						ylabel = 'Relative norm of outer residue'
+						xlabel = 'Number of outer iterations'
+					elif caseplot == 4:
+						yy = L2relerror; xx = np.arange(0, len(newtonRes))
+						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = len(newtonRes)+1
+						ylim = [2, 0.2e-4]; xlim = 10
+						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
 						xlabel = 'Number of outer iterations'
 
 					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])

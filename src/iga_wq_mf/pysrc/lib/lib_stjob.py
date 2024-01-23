@@ -229,14 +229,15 @@ class stheatproblem(stproblem):
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
-		eps_kr0  = solvArgs.get('kr0', 1e-2)
-		eps_Kref = solvArgs.get('kryref', 1e-2)
+		eps_kr0  = solvArgs.get('kr0', 1e-1)
+		gamma_kr = solvArgs.get('krgamma', 0.9)
+		omega_kr = solvArgs.get('kromega', 1.7)
 
-		threshold_inner = eps_kr0
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
 
 		AllresPCG, AllresNewton, Allsol = [], [], []
+		threshold_inner = None
 		for j in range(self._nIterNewton):
 
 			# Compute temperature at each quadrature point
@@ -249,17 +250,28 @@ class stheatproblem(stproblem):
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
-			resNRj = np.sqrt(np.dot(r_dj, r_dj))
-			if j == 0: resNR0 = resNRj
-			print('NR error: %.3e' %resNRj)
+			resNRjnew = np.sqrt(np.dot(r_dj, r_dj))
+			if j == 0: resNR0 = resNRjnew
+			print('NR error: %.3e' %resNRjnew)
 
 			# Update thresholds
-			if isadaptive: threshold_inner = max([self._thresholdKrylov, min([threshold_inner, eps_Kref*resNRj/resNR0])])
-			else: threshold_inner = self._thresholdKrylov
-			AllresNewton.append(resNRj)
+			if isadaptive: 
+				if j == 0: 
+					threshold_ref = eps_kr0
+				else:
+					eps_kr_k = gamma_kr*np.power(resNRjnew/resNRjold, omega_kr)
+					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
+					if eps_kr_r <= 0.1: threshold_ref = eps_kr_k
+					else: threshold_ref = max([eps_kr_k, eps_kr_r])
+				threshold_inner = max([self._thresholdKrylov, threshold_ref])
+			else: 
+				threshold_inner = self._thresholdKrylov
+				
+			AllresNewton.append(resNRjnew)
 			Allsol.append(np.copy(dj_n1))
 
-			if resNRj <= max([1e-12, self._thresholdNewton*resNR0]): break
+			if resNRjnew <= max([1e-12, self._thresholdNewton*resNR0]): break
+			resNRjold = np.copy(resNRjnew)
 
 			# Solve for active control points
 			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
