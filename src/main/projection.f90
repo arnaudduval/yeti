@@ -485,8 +485,8 @@ subroutine projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, max
         endif
         ! 2. Zero cosine
         err = abs(dot_product(Cu, r))/sqrt(dot_product(Cu,Cu)*dot_product(r,r))
-        if (err .le. tol2) then
-            info = 0
+        if ((err .le. tol2).and.(i .ne. 1)) then
+            info = 4
             exit
         endif
 
