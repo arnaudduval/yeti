@@ -75,6 +75,9 @@
 *MATERIAL,NAME=MAT
 *Elastic
 60.e9, 0.30
+*MATERIAL,NAME=MAT2
+*Elastic
+30.e9, 0.30
 *MATERIAL,NAME=MATvoid
 *Elastic
 0.00, 0.00
