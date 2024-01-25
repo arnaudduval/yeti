@@ -202,7 +202,7 @@ class mechamat(material):
 			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
 			resNRj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
 			if k == 0: resNR0 = resNRj
-			if resNRj <= max([threshold*resNR0, 1e-14]): break
+			if resNRj <= max([threshold*resNR0, 1e-12]): break
 			normal = hateta/normhateta
 			normhatetaders = computeSymDoubleContraction4All(normal, hatbeta, dim=dim)
 			df = np.sqrt(3.0/2.0)*normhatetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)			

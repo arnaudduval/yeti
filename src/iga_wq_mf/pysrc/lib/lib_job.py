@@ -320,7 +320,7 @@ class heatproblem(problem):
 				resNRj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 
 				# Solve for active control points
 				resPCGj = np.array([i, j+1])
@@ -452,7 +452,7 @@ class mechaproblem(problem):
 				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 				if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
@@ -545,7 +545,7 @@ class mechaproblem(problem):
 				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 
 				# Solve for active control points
 				resPCGj = np.array([i, j+1])
@@ -677,7 +677,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 
 				# Solve for active control points
 				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)

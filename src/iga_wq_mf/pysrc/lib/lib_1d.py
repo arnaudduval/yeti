@@ -226,7 +226,7 @@ class heatproblem1D(problem1D):
 				resNRj = np.sqrt(np.dot(Vj_n1, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
@@ -299,7 +299,7 @@ class heatproblem1D(problem1D):
 				resNRj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
@@ -397,7 +397,7 @@ class mechaproblem1D(problem1D):
 				resNRj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNR0 = resNRj
 				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-14]): break
+				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
 				if j > 0 and isElasticLoad: break
 
 				# Solver for active control points

@@ -20,7 +20,7 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._Krylov = solverArgs.get('Krylov', 'BICG')
+		self._Krylov = solverArgs.get('Krylov', 'GMRES')
 		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
 		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-10)
 		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
@@ -229,9 +229,9 @@ class stheatproblem(stproblem):
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
-		eps_kr0  = solvArgs.get('kr0', 1e-1)
+		eps_kr0  = solvArgs.get('kr0', .25)
 		gamma_kr = solvArgs.get('krgamma', 0.9)
-		omega_kr = solvArgs.get('kromega', 1.7)
+		omega_kr = solvArgs.get('kromega', 1.5)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
@@ -269,6 +269,9 @@ class stheatproblem(stproblem):
 				
 			AllresNewton.append(resNRjnew)
 			Allsol.append(np.copy(dj_n1))
+			enablePrint()
+			print(threshold_inner)
+			blockPrint()
 
 			if resNRjnew <= max([1e-12, self._thresholdNewton*resNR0]): break
 			resNRjold = np.copy(resNRjnew)

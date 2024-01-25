@@ -17,6 +17,7 @@ FIG_CASE = 2
 NONLIN_CASE = 3 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.001
 if NONLIN_CASE<3 : c = 0.001 # or 0.001
+degree, cuts = 4, 4
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
@@ -265,7 +266,7 @@ if not dataExist:
 					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
-		degree, cuts = 4, 3
+
 		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
@@ -347,7 +348,6 @@ else:
 
 	elif FIG_CASE == 2:
 
-		degree, cuts = 4, 3
 		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 
@@ -372,26 +372,22 @@ else:
 				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
-						ylim = [2, 0.2e-4]; xlim = 650
+						xlim = 10*np.ceil(nbInnerLoops[-1]/10); ylim = [2, 0.2e-6]
 						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-						ylim = [2, 5e-9]; xlim = 10*np.ceil(nbInnerLoops[-1]/10)
-						xlim = 650
+						xlim = 10*np.ceil(nbInnerLoops[-1]/10); ylim = [2, 5e-9]
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 3:
 						yy = newtonRes; xx = np.arange(0, len(newtonRes))
-						ylim = [2, 5e-9]; xlim = len(newtonRes)+1
-						xlim = 10
+						xlim = 10; ylim = [2, 5e-9]
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of outer iterations'
 					elif caseplot == 4:
 						yy = L2relerror; xx = np.arange(0, len(newtonRes))
-						ylim = [2*L2relerror[0], 0.5*L2relerror[-1]]; xlim = len(newtonRes)+1
-						ylim = [2, 0.2e-4]; xlim = 10
+						xlim = 10; ylim = [2, 0.2e-6]
 						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
 						xlabel = 'Number of outer iterations'
 
@@ -403,6 +399,34 @@ else:
 					ax.legend()
 					fig.tight_layout()
 					fig.savefig(folder+'NLConvergence_iters'+str(NONLIN_CASE)+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+
+	elif FIG_CASE == 3:
+		...
+		# degree, cuts = 4, 4
+		# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+		# stnbctrlpts = [int(2**cuts+degree) for i in range(3)]
+		# uguess =  np.random.random(np.prod(stnbctrlpts))
+		# for krylovmet in ['BICG', 'GMRES']:
+		# 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+		# 	for j, isfull in enumerate([True, False]):
+		# 		problemArgs = {'isfull':isfull, 'isadaptive':False, 'NewtonIter':1, 'Krylov':krylovmet, 'KrylovThreshold':1e-12}
+		# 		problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs, uguess=uguess, isRandom=True)
+
+		# 		# Create continous resPCG
+		# 		if isfull: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}+\mathsf{B}$'
+		# 		else: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}$'
+		# 		resPCGclean = np.array([])
+		# 		for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
+		# 		ax.semilogy(resPCGclean, marker='x', linestyle=':', label=name)
+
+		# 	ax.set_xlim(right=50, left=0)
+		# 	ax.set_ylim(top=10.0, bottom=1e-12)
+		# 	ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
+		# 	ax.set_ylabel('Relative residue')
+		# 	ax.legend()
+		# 	fig.tight_layout()
+		# 	fig.savefig(folder+problem._Krylov+'residueNL2'+'.pdf')
+
 
 # #################################################################
 # ## OLD TEST
@@ -429,27 +453,4 @@ else:
 # # fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
 
 # ## ##################################################################
-# # degree, cuts = 4, 4
-# # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# # stnbctrlpts = [int(2**cuts+degree) for i in range(3)]
-# # uguess =  np.random.uniform(-2, 5, np.prod(stnbctrlpts))
-# # for krylovmet in ['BICG', 'GMRES']:
-# # 	fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# # 	for j, isfull in enumerate([True, False]):
-# # 		problemArgs = {'isfull':isfull, 'isadaptive':False, 'NewtonIter':1, 'Krylov':krylovmet, 'KrylovThreshold':1e-12}
-# # 		problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs, uguess=uguess, isRandom=True)
 
-# # 		# Create continous resPCG
-# # 		if isfull: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}+\mathsf{B}$'
-# # 		else: name=r'$\mathsf{P}$' + ' for ' +  r'$\mathsf{A}$'
-# # 		resPCGclean = np.array([])
-# # 		for pcglist in resPCG: resPCGclean = np.append(resPCGclean, pcglist[np.nonzero(pcglist)])
-# # 		ax.semilogy(resPCGclean, marker='x', linestyle=':', label=name)
-
-# # 	ax.set_xlim(right=50, left=0)
-# # 	ax.set_ylim(top=10.0, bottom=1e-12)
-# # 	ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-# # 	ax.set_ylabel('Relative residue')
-# # 	ax.legend()
-# # 	fig.tight_layout()
-# # 	fig.savefig(folder+problem._Krylov+'residueNL2'+'.pdf')

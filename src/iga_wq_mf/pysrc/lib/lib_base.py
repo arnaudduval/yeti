@@ -360,17 +360,16 @@ class solver():
 		if cleanfun is None: cleanfun = lambda x, y: x
 
 		x = np.zeros(np.shape(b))
-		r = np.copy(b); normb = np.sqrt(dotfun(r, r))
-		cleanfun(r, dod)
+		r = np.copy(b); cleanfun(r, dod)
+		normb = np.sqrt(dotfun(r, r))
 		resPCG = [1.0]
 		if normb <= self._thresholdKrylov: return
-		z = Pfun(r)
-		cleanfun(z, dod)
-		rsold = dotfun(r, z); p = np.copy(z)
+		z = Pfun(r); cleanfun(z, dod)
+		p = np.copy(z)
+		rsold = dotfun(r, z)
 
 		for i in range(self._nbIterKrylov):
-			Ap = Afun(p)
-			cleanfun(Ap, dod)
+			Ap = Afun(p); cleanfun(Ap, dod)
 			alpha = rsold/dotfun(p, Ap)
 			x += alpha*p
 			r -= alpha*Ap
@@ -378,7 +377,7 @@ class solver():
 			resPCG.append(np.sqrt(dotfun(r, r))/normb)
 			if (resPCG[-1]<=self._thresholdKrylov): break
 
-			z = Pfun(r)
+			z = Pfun(r); cleanfun(z, dod)
 			rsnew = dotfun(r, z)
 			p = z + rsnew/rsold*p
 			rsold = np.copy(rsnew)
@@ -391,24 +390,22 @@ class solver():
 		if cleanfun is None: cleanfun = lambda x, y: x
 
 		x = np.zeros(np.shape(b))
-		r = np.copy(b); normb = np.sqrt(dotfun(r, r))
-		cleanfun(r, dod)
+		r = np.copy(b); cleanfun(r, dod)
+		normb = np.sqrt(dotfun(r, r))
 		resPCG = [1.0]
 		if normb <= self._thresholdKrylov: return
-		rhat = np.copy(r); p = np.copy(r)
+		rhat = np.copy(r)
+		p = np.copy(r)
 		rsold = dotfun(r, rhat)
 
 		for i in range(self._nbIterKrylov):
-			ptilde = Pfun(p)
-			cleanfun(ptilde, dod)
-			Aptilde = Afun(ptilde)
-			cleanfun(Aptilde, dod)
+			ptilde = Pfun(p); cleanfun(ptilde, dod)
+			Aptilde = Afun(ptilde); cleanfun(Aptilde, dod)
 			alpha = rsold/dotfun(Aptilde, rhat)
 			s = r - alpha*Aptilde
 
-			stilde = Pfun(s)
-			cleanfun(stilde, dod)
-			Astilde = Afun(stilde)
+			stilde = Pfun(s); cleanfun(stilde, dod)
+			Astilde = Afun(stilde); cleanfun(Astilde, dod)
 			omega = dotfun(Astilde, s)/dotfun(Astilde, Astilde)
 			x += alpha*ptilde + omega*stilde
 			r = s - omega*Astilde
@@ -424,38 +421,40 @@ class solver():
 		output={'sol':x, 'res':resPCG}
 		return output
 	
-	def GMRES(self, Afun, b, Pfun=None, n_restarts=1):
+	def GMRES(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None, n_restarts=1):
 		if Pfun is None: Pfun = lambda x: x
+		if dotfun is None: dotfun = lambda x, y: np.dot(x, y)
+		if cleanfun is None: cleanfun = lambda x, y: x
     
-		x = np.zeros(len(b))
+		x = np.zeros(*np.shape(b))
 		H = np.zeros((self._nbIterKrylov + 1, self._nbIterKrylov))
-		V = np.zeros((self._nbIterKrylov + 1, len(b)))
-		Z = np.zeros((self._nbIterKrylov + 1, len(b)))
-		beta = np.zeros(n_restarts)
+		V = np.zeros((self._nbIterKrylov + 1, *np.shape(b)))
+		Z = np.zeros((self._nbIterKrylov + 1, *np.shape(b)))
+		normb = np.zeros(n_restarts)
 		
 		AllresPCG = []
 		for m in range(n_restarts):
-			r = b - Afun(x)
-			beta[m] = np.linalg.norm(r)
-			if beta[m] <= self._thresholdKrylov*beta[0]: break
-			V[0] = r / beta[m]
-			e1 = np.zeros(self._nbIterKrylov + 1); e1[0] = beta[m]
+			r = b - Afun(x); cleanfun(r, dod)
+			normb[m] = np.sqrt(dotfun(r, r))
+			if normb[m] <= self._thresholdKrylov*normb[0]: break
+			V[0] = r/normb[m]
+			e1 = np.zeros(self._nbIterKrylov + 1); e1[0] = normb[m]
 			
-			resPCG = []
+			resPCG = [1.0]
 			for k in range(self._nbIterKrylov):
-				Z[k] = Pfun(V[k])
-				w = Afun(Z[k])
+				Z[k] = Pfun(V[k]); cleanfun(Z[k], dod)
+				w = Afun(Z[k]); cleanfun(w, dod)
 				for j in range(k+1):
-					H[j, k] = np.dot(w, V[j])
+					H[j, k] = dotfun(w, V[j])
 					w -= H[j, k] * V[j]
-				H[j+1, j] = np.linalg.norm(w)
+				H[j+1, j] = np.sqrt(dotfun(w, w))
 				if H[j+1, j] != 0: V[k+1] = w/H[j+1, j]
 				y = np.linalg.lstsq(H[:k+2, :k+1], e1[:k+2])[0]
 				zeta = np.linalg.norm(H[:k+2, :k+1] @ y - e1[:k+2])
-				if zeta <= self._thresholdKrylov*beta[0]: break
-				resPCG.append(zeta/beta[0])
+				resPCG.append(zeta/normb[0])
+				if resPCG[-1] <= self._thresholdKrylov: break
 				
-			x = x + Z[:k+1].T @ y
+			for j in range(k+1): x = x + Z[j]*y[j]
 			AllresPCG.append(resPCG)
 
 		return x, AllresPCG

@@ -5,7 +5,7 @@
 
 import pickle
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve, createAsymmetricalCurve
+from pysrc.lib.lib_base import createUniformCurve
 from pysrc.lib.lib_1d import mechaproblem1D
 from pysrc.lib.lib_material import mechamat
 
@@ -15,8 +15,8 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-YOUNG, CST, LENGTH  = 2e11, 4.e8, 1
-NBSTEPS = 251
+YOUNG, CST, LENGTH  = 2e11, 4.e7, 1
+NBSTEPS = 201
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e6, 'poisson_ratio':0.3,
 		'isoHardLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
@@ -42,7 +42,7 @@ def simulate(degree, nbel, args, step=-2):
 
 if isReference:
 
-	degree, nbel = 2, 4096
+	degree, nbel = 2, 8192
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
 	np.save(folder + 'disppl', displacement)
@@ -82,36 +82,54 @@ else:
 		part_ref = pickle.load(inp)
 
 	degree_list = np.arange(1, 4)
-	cuts_list   = np.arange(2, 9)
-	step_max    = 130
-	step_list  = range(50, step_max, 5)
-	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
+	cuts_list   = np.arange(1, 10)
+	step_max    = 200
+	step_list   = range(20, step_max, 5)
+	errorL2_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
+	errorH1_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
 
-	for i, degree in enumerate(degree_list):
-		for j, cuts in enumerate(cuts_list):
-			nbel = 2**cuts
-			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg', 'extra':{'nbQPEL': 2}}}
-			modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
+	# for i, degree in enumerate(degree_list):
+	# 	for j, cuts in enumerate(cuts_list):
+	# 		nbel = 2**cuts
+	# 		args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg', 'extra':{'nbQPEL': 2}}}
+	# 		modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
 
-			for k, step in enumerate(step_list):
-				error_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 'part_ref':part_ref, 
-																			'u_ref': disp_ref[:, step]}, isRelative=False)	
+	# 		for k, step in enumerate(step_list):
+	# 			errorL2_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'L2', 'part_ref':part_ref, 
+	# 																		'u_ref': disp_ref[:, step]}, isRelative=False)	
+	# 			errorH1_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 'part_ref':part_ref, 
+	# 																		'u_ref': disp_ref[:, step]}, isRelative=False)	
 
-	np.save(folder + 'plasticity1D', error_list)
-	error_list = np.load(folder + 'plasticity1D.npy')
-	
-	for k, step in enumerate(step_list):
-		fig, ax = plt.subplots(figsize=(9, 6))
-		for i, degree in enumerate(degree_list):
-			color = COLORLIST[i]
-			ax.loglog(2**cuts_list, error_list[k, i, :], color=color, marker='o', markerfacecolor='w',
-						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+	# np.save(folder + 'plasticity1DL2', errorL2_list)
+	# np.save(folder + 'plasticity1DH1', errorH1_list)
 
-		ax.set_ylabel(r'$H^1$'+ ' error')
-		ax.set_xlabel('Number of elements')
-		ax.set_ylim(bottom=1e-12, top=1e-3)
-		ax.set_xlim(left=1, right=10**3)
+	for error_name in ['H1', 'L2']:
+		error_list = np.load(folder + 'plasticity1D' + error_name + '.npy')
 
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		fig.tight_layout()
-		fig.savefig(folder + 'FigPlasticity1_' + str(k) +'.pdf')
+		for k, step in enumerate(step_list):
+			fig, ax = plt.subplots(figsize=(9, 6))
+			for i, degree in enumerate(degree_list):
+				color = COLORLIST[i]
+				ax.loglog(2**cuts_list, error_list[k, i, :], color=color, marker='s', markerfacecolor='w',
+							markersize=10, linestyle='-', label='IGA-GL deg. ' + str(degree))
+				
+				if degree < 3:
+					slope = np.polyfit(np.log(2**cuts_list), np.log(error_list[k, i, :]), 1)[0]
+					slope = round(slope, 1)
+					annotation.slope_marker((2**cuts_list[-2],  error_list[k, i, -2]), slope, 
+									poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+
+			if error_name == 'H1':
+				ax.set_ylabel(r'$||u-u^h||_{H^1(\Omega)}$')
+				ax.set_ylim(bottom=1e-10, top=1e-3)
+			if error_name == 'L2':
+				ax.set_ylabel(r'$||u-u^h||_{L^2(\Omega)}$')
+				ax.set_ylim(bottom=1e-11, top=1e-4)
+			
+			ax.set_xlabel('Number of elements')
+			ax.set_xlim(left=1, right=10**3)
+
+			ax.legend()
+			fig.tight_layout()
+			fig.savefig(folder + 'FigPlasticity2_' + str(k) +'.pdf')
+			plt.close(fig)
