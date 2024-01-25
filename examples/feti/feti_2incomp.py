@@ -13,7 +13,7 @@ from coupling.cplgmatrix import cplg_matrix
 import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
-modeleIGA = IGAparametrization(filename='twoplatesDDincomp')
+modeleIGA = IGAparametrization(filename='twoplatesDD')
 
 ti = time.time()
 
@@ -21,17 +21,17 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-p = 1
-r = 1
+p = 3
+r = 3
 # domains
 nb_deg[:2,:2] = p
-nb_ref[:2, 0] = r+1 #r+1
+nb_ref[:2, 0] = r #r+1
 nb_ref[:2, 1] = r
 # curves
 nb_ref[0,(2,3)] = r+2
 # lgrge
 nb_deg[0,4] = p
-nb_ref[0,4] = p
+nb_ref[0,4] = r
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
 modeleIGA._NBPINT[ np.where(modeleIGA._ELT_TYPE == 'U00') ] = 6
@@ -154,7 +154,7 @@ if True:
     from solver import PCPGortho
     t1 = time.time()
     lmbda,nbiter= PCPGortho(Sd,t, x0=lmbda0, P=Proj,
-                            M=None, tol=1.e-8, maxiter=300,savetxt=True)
+                            M=None, tol=1.e-10, maxiter=300,savetxt=True)
     print(' Resolution with PCPG algo')
     print(' (duration : %.2f s, nb iter : %i).\n\n' % (time.time() - t1,nbiter))
 
@@ -166,47 +166,222 @@ if True:
 
     SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(utot[idof]))
     pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-        'coupling_pcpg',SOL.transpose(),nb_ref=np.array([4,4,1]),
+        'coupling_pcpg',SOL.transpose(),nb_ref=np.array([3,3,1]),
         Flag=np.array([True,True,True])))
     
-    cpi1 = manip.get_boundCPindice_wEdges(modeleIGA._Nkv,modeleIGA._Jpqr,modeleIGA._dim, 2, num_patch=0, offset=0,num_orientation=0)
-    print(cpi1)
 
-    print(np.max(cpi1))
+    n_sample = 1000
 
-    cpi2 = manip.get_boundCPindice(modeleIGA._Nkv,modeleIGA._Jpqr, 1, num_patch=1, offset=0) + np.max(cpi1) + 1
-    print(cpi2)
-    cpi2b = manip.get_boundCPindice(modeleIGA._Nkv,modeleIGA._Jpqr, 1, num_patch=1, offset=0) 
+    x_sample_P1, u_sample_P1, dudx_sample_P1, norm_sample_P1, tan_sample_P1, dudxi_sample_P1 = \
+        pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(1, 2, n_sample, 'patch_1', SOL.transpose()))
+    x_sample_P2, u_sample_P2, dudx_sample_P2, norm_sample_P2, tan_sample_P2, dudxi_sample_P2 = \
+        pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(2, 1, n_sample, 'patch_2', SOL.transpose()))
+
+    # print(x_sample_P1)
+
+    delta = np.zeros((2, n_sample))
+    for i_sample in range(n_sample):
+        for i in range(2):
+            delta[i, i_sample] = (dudx_sample_P1[i, :, i_sample] @ tan_sample_P1[:, i_sample]) - \
+                                 (dudx_sample_P2[i, :, i_sample] @ tan_sample_P2[:, i_sample])
 
 
-    SOLi1 = SOL[cpi1]
+    print(np.shape(u_sample_P1))
 
-    SOLi2 = SOL[cpi2]
+        
+    dudx_t1 = np.zeros((2, n_sample))
+    for i_sample in range(n_sample):
+        dudx_t1[0, i_sample] = dudx_sample_P1[0, 0, i_sample] * tan_sample_P1[0, i_sample] + dudx_sample_P1[0, 1, i_sample] * tan_sample_P1[1, i_sample]
+        dudx_t1[1, i_sample] = dudx_sample_P1[1, 0, i_sample] * tan_sample_P1[0, i_sample] + dudx_sample_P1[1, 1, i_sample] * tan_sample_P1[1, i_sample]
 
-    print(SOL[cpi1])
-    print(SOL[cpi2])
-    print(modeleIGA._dim)
+    dudx_t2 = np.zeros((2, n_sample))
+    for i_sample in range(n_sample):
+        for i in range(2):
+            dudx_t2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ tan_sample_P2[:, i_sample]) 
+
+    dudx_n1 = np.zeros((2, n_sample))
+    for i_sample in range(n_sample):
+        for i in range(2):
+            dudx_n1[i, i_sample] = (dudx_sample_P1[i, :, i_sample] @ norm_sample_P1[:, i_sample]) 
+
+    dudx_n2 = np.zeros((2, n_sample))
+    for i_sample in range(n_sample):
+        for i in range(2):
+            dudx_n2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ norm_sample_P2[:, i_sample]) 
+                                     
+
+    import matplotlib.pyplot as plt
+
+    # print(delta[0, :])
+
+
+
+    # cpi1 = manip.get_boundCPindice_wEdges(modeleIGA._Nkv,modeleIGA._Jpqr,modeleIGA._dim, 2, num_patch=0, offset=0,num_orientation=0)
+    # print(cpi1)
+
+    # print(np.max(cpi1))
+
+    # cpi2 = manip.get_boundCPindice(modeleIGA._Nkv,modeleIGA._Jpqr, 1, num_patch=1, offset=0) + np.max(cpi1) + 1
+    # print(cpi2)
+
+    # SOLi1 = SOL[cpi1]
+
+    # SOLi2 = SOL[cpi2]
+
+    # print(SOL[cpi1])
+    # print(SOL[cpi2])
+    # print(modeleIGA._dim)
 
 
     # pp.generatecplginterfacetxt(*modeleIGA.get_inputs4postprocCPLG(
     #     'coupling_txt',SOL.transpose(), nb_ref=5,
     #     Flag=np.array([True, False, False])))
+
+
+    np.save('/home/agagnaire/yeti/temp/x_sample_P1', x_sample_P1)
+    np.save('/home/agagnaire/yeti/temp/x_sample_P2', x_sample_P2)
+    np.save('/home/agagnaire/yeti/temp/u_sample_P1', u_sample_P1)
+    np.save('/home/agagnaire/yeti/temp/u_sample_P2', u_sample_P2)
+    np.save('/home/agagnaire/yeti/temp/dudx_sample_P1', dudx_sample_P1)
+    np.save('/home/agagnaire/yeti/temp/dudx_sample_P2', dudx_sample_P2)
     
-    print(np.shape(SOL))
-    np.savetxt('/home/agagnaire/yeti/temp/u', u)
-    np.savetxt('/home/agagnaire/yeti/temp/SOL', SOL)
-    np.savetxt('/home/agagnaire/yeti/temp/SOLi1', SOLi1)
-    np.savetxt('/home/agagnaire/yeti/temp/SOLi2', SOLi2)
-    np.savetxt('/home/agagnaire/yeti/temp/cpi1', cpi1)
-    np.savetxt('/home/agagnaire/yeti/temp/cpi2b', cpi2b)
+
+    print(np.max(delta))
+    print(np.max(dudx_sample_P2[0,1]))
     
+    print(np.max(delta/dudx_sample_P1))
+    
+    # plt.plot(range(n_sample), delta[0, :], label='comp 1')
+    # plt.plot(range(n_sample), delta[1, :], label='comp 2')
+    # plt.autoscale()
+    # plt.legend()
+    # plt.show()
+
+    plt.subplot(221)
+    plt.plot(range(n_sample), dudx_sample_P1[0,0], label='dUx/dx sous domaine 1') # dUx/dx
+    plt.plot(range(n_sample), dudx_sample_P2[0,0], label='dUx/dx sous domaine 2')
+    plt.ylim(-1.5e-6,1.5e-6)
+    plt.legend()
+    plt.title('dUx/dx')
+    
+    plt.subplot(222)
+    plt.plot(range(n_sample), dudx_sample_P1[0,1], label='dUx/dy sous domaine 1') # dUx/dy
+    plt.plot(range(n_sample), dudx_sample_P2[0,1], label='dUx/dy sous domaine 2')
+    plt.ylim(-1.25e-6,1.25e-6)
+    plt.legend()
+    plt.title('dUx/dy')
+
+    plt.subplot(223)
+    plt.plot(range(n_sample), dudx_sample_P1[1,0], label='dUy/dx sous domaine 1') # dUy/dx
+    plt.plot(range(n_sample), dudx_sample_P2[1,0], label='dUy/dx sous domaine 2')
+    plt.ylim(-1.5e-6,1.5e-6)
+    plt.legend()
+    plt.title('dUy/dx')
+
+    plt.subplot(224)
+    plt.plot(range(n_sample), dudx_sample_P1[1,1], label='dUy/dy sous domaine 1') # dUy/dy
+    plt.plot(range(n_sample), dudx_sample_P2[1,1], label='dUy/dy sous domaine 2')
+    plt.ylim(-1.25e-6,1.25e-6)
+    plt.legend()
+    plt.title('dUy/dy')
+    plt.show()
+
+    plt.subplot(221)
+    plt.plot(range(n_sample), dudxi_sample_P1[0,0], label='dUx/dXi sous domaine 1')
+    plt.plot(range(n_sample), dudxi_sample_P2[0,0], label='dUx/dXi sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUx/dXi')
+
+    plt.subplot(222)
+    plt.plot(range(n_sample), dudxi_sample_P1[0,1], label='dUx/dEta sous domaine 1')
+    plt.plot(range(n_sample), dudxi_sample_P2[0,1], label='dUx/dEta sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUx/dEta')
+
+    plt.subplot(223)
+    plt.plot(range(n_sample), dudxi_sample_P1[1,0], label='dUy/dXi sous domaine 1')
+    plt.plot(range(n_sample), dudxi_sample_P2[1,0], label='dUy/dXi sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUy/dXi')
+
+    plt.subplot(224)
+    plt.plot(range(n_sample), dudxi_sample_P1[1,1], label='dUy/dEta sous domaine 1')
+    plt.plot(range(n_sample), dudxi_sample_P2[1,1], label='dUy/dEta sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUy/dEta')
+    plt.show()
+    
+
+
+    plt.subplot(221)
+    plt.plot(range(n_sample), dudx_n1[0,:], label='dUx/dx*nx + dUx/dy*ny sous domaine 1') # dUx/dx
+    plt.plot(range(n_sample), dudx_n2[0,:], label='dUx/dx*nx + dUx/dy*ny sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUx/dx*nx + dUx/dy*ny')
+    
+
+
+    plt.subplot(222)
+    plt.plot(range(n_sample), dudx_n1[1,:], label='dUy/dx*nx + dUy/dy*ny sous domaine 1') # dUx/dy
+    plt.plot(range(n_sample), dudx_n2[1,:], label='dUy/dx*nx + dUy/dy*ny sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUy/dx*nx + dUy/dy*ny')
+
+
+    # 0 dUx 1 dUy, 0 dx, 1 dy     Ex :  dudx_sample_P1[1,1] dUy/dy interface 1
+
+
+    plt.subplot(223)
+    plt.plot(range(n_sample), dudx_t1[0,:], label='dUx/dx*tx + dUx/dy*ty sous domaine 1') # dUy/dx
+    plt.plot(range(n_sample), dudx_t2[0,:], label='dUx/dx*tx + dUx/dy*ty sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUx/dx*tx + dUx/dy*ty ')
+
+
+    plt.subplot(224)
+    plt.plot(range(n_sample), dudx_t1[1,:], label='dUy/dx*tx + dUy/dy*ty sous domaine 1') # dUy/dy
+    plt.plot(range(n_sample), dudx_t2[1,:], label='dUy/dx*tx + dUy/dy*ty sous domaine 2')
+    plt.autoscale()
+    plt.legend()
+    plt.title('dUy/dx*tx + dUy/dy*ty')
+    plt.show()
+
+    delta_t = np.abs(dudx_t1-dudx_t2)
+    delta_n = np.abs(dudx_t1-dudx_t2)
+
+
+    plt.subplot(221)
+    plt.plot(range(n_sample), delta_n[0,:]/np.max((np.abs(dudx_n1[0,:]),np.abs(dudx_n2[0,:])))) 
+    plt.autoscale()
+    plt.title('delta norm x')
+    
+
+    plt.subplot(222)
+    plt.plot(range(n_sample), delta_n[1,:]/np.max((np.abs(dudx_n1[1,:]),np.abs(dudx_n2[1,:])))) 
+    plt.autoscale()
+    plt.title('delta norm y')
+
+    plt.subplot(223)
+    plt.plot(range(n_sample), delta_t[0,:]/np.max((np.abs(dudx_t1[0,:]),np.abs(dudx_t2[0,:])))) 
+    plt.autoscale()
+    plt.title('delta tan x')
+    
+
+    plt.subplot(224)
+    plt.plot(range(n_sample), delta_t[1,:]/np.max((np.abs(dudx_t1[1,:]),np.abs(dudx_t2[1,:])))) 
+    plt.autoscale()
+    plt.title('delta tan y')
+    plt.show()
+
 
     exit()
-
-    
-
-
-
 
 # RESOLUTION Decomposition de Domaine
 time2 = time.time()
