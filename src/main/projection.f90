@@ -513,6 +513,8 @@ subroutine projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, max
         info = 1
     endif
 
+    call point_on_2D_solid_curve(u, iface, xi)
+
 end subroutine projection_curve
 
 !! Compute derivative curve of a 2D solid
