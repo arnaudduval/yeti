@@ -237,10 +237,12 @@ subroutine cplg_matrixU5(nb_data, &
 
             write(*,*) dim_patch
 
+            ! TODO : maybe there are too much value allocated (use nbPtInt**(dim_patch-1) instead ?) => to verify
             allocate(GaussPdsCoords(4, nbPtInt**(dim_patch)))
             !! TODO : use dimension dim_patch_interface instead of 3 to store Gauss points informations
             allocate(weightGP(nb_gps), xi_master(dim_patch, nb_gps), xi_slave(dim_patch, nb_gps), &
                 &   xi_interface(dim_patch, nb_gps))
+            !! TODO : allocated xi_interface(dim_patch - 1, nb_gps)
             allocate(saveEM(nb_gps), saveES(nb_gps))
 
             call Gauss(nbPtInt, dim_patch, GaussPdsCoords, masterFace)
@@ -647,6 +649,8 @@ subroutine cplingdispU5(Rl, Rd, detJ, NNODE_l, NNODE_d, MCRD, CMAT)
     CMAT(:,:) = zero
 
     ! Assembling
+    !! TODO Use 3 dimension for CMAT for sake of simplicity : CMAT(MCRD, NNODE_d, NNODE_l)
+    !! TODO 2 : First direction with size MCRD is not necessary : it contains the same values
     count = 1
     do j = 1, NNODE_l
         do i = 1, NNODE_d
