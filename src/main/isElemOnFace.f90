@@ -18,7 +18,9 @@ function IsElemOnFace(face, Nijk, Jpqr, Nkv, dim)
     implicit none
     integer :: face, Nijk, Jpqr, Nkv
     integer :: dim
-    dimension Nijk(dim), Jpqr(dim), Nkv(dim)
+    !! TODO adapt array dimension to problem dimension
+    ! dimension Nijk(dim), Jpqr(dim), Nkv(dim)
+    dimension Nijk(3), Jpqr(3), Nkv(3)
     logical :: IsElemOnFace
 
     IsElemOnFace = .false.
