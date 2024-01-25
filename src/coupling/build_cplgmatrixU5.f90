@@ -201,6 +201,7 @@ subroutine cplg_matrixU5(nb_data, &
                     !! WARNING : THIS MAY NOT WORK PROPERLY WITH REPEATED KNOT INSIDE KNOT VECTOR
                     !!           (CONTINUITY DROP)
                     if (dim_patch .eq. 3) then
+                        write(*,*) "Dimension 3"
                         nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(2)-2*Jpqr_patch(2)-1) * &
                             &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
                     elseif (dim_patch .eq. 2) then
@@ -211,6 +212,7 @@ subroutine cplg_matrixU5(nb_data, &
                     !! WARNING : THIS MAY NOT WORK PROPERLY WITH REPEATED KNOT INSIDE KNOT VECTOR
                     !!           (CONTINUITY DROP)
                     if (dim_patch .eq. 3) then
+                        write(*,*) "Dimension 3"
                         nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1) * &
                             &   (Nkv_patch(3)-2*Jpqr_patch(3)-1)
                     elseif (dim_patch .eq. 2) then
@@ -224,6 +226,7 @@ subroutine cplg_matrixU5(nb_data, &
                         write(*,*) "Can not define face ", masterFace, " in dimension ", dim_patch
                         call exit(123)
                     endif
+                    write(*,*) "Dimension 3"
                     nb_gps = (nbPtInt**(dim_patch-1)) * (Nkv_patch(1)-2*Jpqr_patch(1)-1) * &
                         &   (Nkv_patch(2)-2*Jpqr_patch(2)-1)
             end select
@@ -231,8 +234,9 @@ subroutine cplg_matrixU5(nb_data, &
             if (allocated(GaussPdsCoords)) deallocate(GaussPdsCoords)
             if (allocated(weightGP)) deallocate(weightGP, xi_master, xi_slave, &
                 &   xi_interface, saveEM, saveES)
-            !! Warning : replacing previous value 3 by dim_patch-1
-            !! TODO : verify if this replacement is OK
+
+            write(*,*) dim_patch
+
             allocate(GaussPdsCoords(4, nbPtInt**(dim_patch)))
             !! TODO : use dimension dim_patch_interface instead of 3 to store Gauss points informations
             allocate(weightGP(nb_gps), xi_master(dim_patch, nb_gps), xi_slave(dim_patch, nb_gps), &
@@ -265,6 +269,7 @@ subroutine cplg_matrixU5(nb_data, &
                     ielface = ielface + 1
                 endif
             enddo
+
 
             !! Compute coordinates in physical space
             !! -------------------------------------
@@ -345,6 +350,7 @@ subroutine cplg_matrixU5(nb_data, &
                 write(11, *) x_phys(:, igps)
                 !!! <--- CHECK PROJECTION
             enddo
+
 
             !! Projection on slave patch
             !! -------------------------
@@ -513,7 +519,7 @@ subroutine cplg_matrixU5(nb_data, &
 
             !! Define integration points on Lagrange patch
             !! -------------------------------------------
-
+            write(*,*) dim_patch
             if (dim_patch .eq. 3) then
                 select case(masterFace)
                     case(1,2)
@@ -594,6 +600,7 @@ subroutine cplg_matrixU5(nb_data, &
                                 Cdata(count) = factor*CMAT(k,i)
                                 Crow(count) = idof + k - 1
                                 Ccol(count) = jdof + k - 1
+                                count = count+1
                             enddo
                         enddo
                     enddo
@@ -606,7 +613,6 @@ subroutine cplg_matrixU5(nb_data, &
     deallocate(sctr, sctr_l)
     deallocate(COORDS_elem)
     deallocate(CMAT)
-
 
 end subroutine cplg_matrixU5
 
