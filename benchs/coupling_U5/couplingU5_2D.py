@@ -37,14 +37,14 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-nb_ref[:,0] = np.array([0,0,0])
-nb_deg[:,0] = np.array([0,0,0])
+nb_ref[:,0] = np.array([2,2,0])
+nb_deg[:,0] = np.array([1,1,0])
 
-nb_ref[:,1] = np.array([0,0,0])
-nb_deg[:,1] = np.array([0,0,0])
+nb_ref[:,1] = np.array([2,2,0])
+nb_deg[:,1] = np.array([1,1,0])
 
-nb_ref[:,2] = np.array([0,0,0])
-nb_deg[:,2] = np.array([0,0,0])
+nb_ref[:,2] = np.array([1,0,0])
+nb_deg[:,2] = np.array([1,0,0])
 
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
@@ -78,23 +78,29 @@ K2solve = Ktot[idof,:][:,idof]
 C2solve = Ctot[idof,:][:,idof] * K2solve.max()
 # LU = sp.linalg.splu(K2solve + C2solve)
 # x  = LU.solve(Fb[idof])
-# x = sp.linalg.spsolve(K2solve + C2solve, Fb[idof])
+x = sp.linalg.spsolve(K2solve + C2solve, Fb[idof])
 t3 = time.time()
 
 import matplotlib.pyplot as plt
 # plt.spy(K2solve + C2solve)
-plt.spy(Ktot + Ctot)
-plt.show()
+# plt.spy(Ktot[idof,:][:,idof] + Ctot[idof,:][:,idof])
+# plt.spy(Ktot + Ctot)
+# plt.show()
+
 
 print("Resolution done ", t3-t2, " seconds")
 
-exit()
+# exit()
 
 # Postprocessing
 SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'couplingU5',SOL.transpose(),nb_ref=np.array([1,1,1]),
     Flag=np.array([True,True,False])))
+
+print(modeleIGA._nb_dof_tot)
+
+exit()
 
 # Verify result
 xtest = np.array([6.,0.,2.])
