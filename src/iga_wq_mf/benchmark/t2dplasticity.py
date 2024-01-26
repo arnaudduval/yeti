@@ -98,8 +98,10 @@ else:
 			problem, displacement, _, _= simulate(degree, cuts, quadArgs, step=step_max)
 
 			for k, step in enumerate(step_list):
-				error_list[k, i, j] = problem.normOfError(displacement[:, :, step], 
-								normArgs={'typenorm':'H1', 'part_ref':part_ref, 'u_ref': disp_ref[:, :, step]})
+				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
+														normArgs={'typenorm':'H1', 
+														'part_ref':part_ref, 
+														'u_ref': disp_ref[:, :, step]})
 
 	np.save(folder + 'plasticity2D', error_list)
 	error_list = np.load(folder + 'plasticity2D.npy')

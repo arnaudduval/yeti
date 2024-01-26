@@ -80,7 +80,8 @@ for i, degree in enumerate(degree_list):
 	color = COLORLIST[i]
 	for j, cuts in enumerate(cuts_list):
 		problem, displacement = simulate(degree, cuts, quadArgs)
-		error_list[j] = problem.normOfError(displacement[0, :], normArgs={'type':'L2', 'exactFunction':exactDisplacement_infPlate})
+		error_list[j], _ = problem.normOfError(displacement[0, :], normArgs={'type':'L2', 
+												'exactFunction':exactDisplacement_infPlate})
 	ax.loglog(2**cuts_list, error_list, color=color, marker='.', linestyle='--')
 
 # Load data

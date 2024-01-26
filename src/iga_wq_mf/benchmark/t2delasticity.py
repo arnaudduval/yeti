@@ -119,10 +119,10 @@ else:
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
 				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
-				# error_list[j] = problem.normOfError(displacement, isRelative=False, 
-				# 				normArgs={'type':'H1', 'part_ref':part_ref, 'u_ref':disp_ref})
-				error_list[j] = problem.normOfError(displacement, isRelative=False, 
-								normArgs={'type':'L2', 'exactFunction':exactDisplacement_infPlate})
+				# error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'H1', 
+				#										'part_ref':part_ref, 'u_ref':disp_ref})
+				error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'L2', 
+														'exactFunction':exactDisplacement_infPlate})
 			if quadrule == 'iga': 
 				ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])

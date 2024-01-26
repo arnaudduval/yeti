@@ -98,19 +98,19 @@ class stproblem():
 
 		part_ref = normArgs.get('part_ref', None); time_ref = normArgs.get('time_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part) and isinstance(time_ref, part1D) and isinstance(u_ref, np.ndarray):
-			nbqpExact, basisExact, indicesExact = [], [], []
+			basisExact, indicesExact = [], [], []
 			for i in range(self.part.dim):
 				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
-				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+				basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, quadPts[-1])
-			nbqpExact.append(len(quadPts[-1])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+			basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 
 			sptimectrlpts = np.zeros((part_ref.dim+1, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
 			for i in range(time_ref.nbctrlpts):
 				iold = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
 				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
 
-			inpts = [*nbqpExact, *indicesExact, *basisExact]
+			inpts = [*nbqp, *indicesExact, *basisExact]
 			if self.part.dim == 2:   
 				u_exact = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ref))    
 				JqpExact = geophy.eval_jacobien_3d(*inpts, sptimectrlpts)
@@ -149,10 +149,10 @@ class stproblem():
 			tmp1 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm1)
 			tmp2 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm2)
 			
-		error = np.sqrt(tmp1)
+		abserror = np.sqrt(tmp1)
 		relerror = np.sqrt(tmp1/tmp2)
 
-		return error, relerror
+		return abserror, relerror
 
 class stheatproblem(stproblem):
 	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):

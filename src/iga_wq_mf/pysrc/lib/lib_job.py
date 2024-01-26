@@ -95,7 +95,7 @@ class problem():
 		if nr == 1: volForce = np.ravel(volForce)
 		return volForce	
 	
-	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
+	def normOfError(self, u_ctrlpts, normArgs:dict):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
@@ -140,11 +140,11 @@ class problem():
 
 		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part) and isinstance(u_ref, np.ndarray):
-			nbqpExact, basisExact, indicesExact = [], [], []
+			basisExact, indicesExact = [], []
 			for i in range(self.part.dim):
 				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
-				nbqpExact.append(len(quadPts[i])); basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-			inpts = [*nbqpExact, *indicesExact, *basisExact]
+				basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
+			inpts = [*nbqp, *indicesExact, *basisExact]
 			if self.part.dim == 2:   
 				u_exact = geophy.interpolate_meshgrid_2d(*inpts, np.atleast_2d(u_ref))    
 				JqpExact = geophy.eval_jacobien_2d(*inpts, part_ref.ctrlpts)
@@ -183,10 +183,10 @@ class problem():
 			tmp1 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm1)
 			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm2)
 			
-		if isRelative: error = np.sqrt(tmp1/tmp2)
-		else:          error = np.sqrt(tmp1)
+		abserror = np.sqrt(tmp1)
+		relerror = np.sqrt(tmp1/tmp2)
 
-		return error
+		return abserror, relerror
 
 	def L2projectionCtrlpts(self, u_atqp):
 		" Given the solution field (function) over a physical space, it computes the L2 projection, ie. the value at control points. "
