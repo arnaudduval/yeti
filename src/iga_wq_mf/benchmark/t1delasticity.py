@@ -15,7 +15,7 @@ folder = os.path.dirname(full_path) + '/results/d1elastoplasticity/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Global variables
-YOUNG, CST, LENGTH = 2e11, 4.e8, 1
+YOUNG, CST, LENGTH = 2e11, 4.e7, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':0.3,
 		'isoHardLaw': {'Isoname':'none'}}
 MECHAMATERIAL = mechamat(MATARGS)
@@ -40,7 +40,7 @@ def simulate(degree, nbel, args):
 
 if isReference:
 
-	degree, nbel = 2, 4096
+	degree, nbel = 2, 8192
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement = simulate(degree, nbel, args)
 	np.save(folder + 'dispel', displacement)
@@ -60,26 +60,29 @@ else:
 		part_ref = pickle.load(inp)
 
 	degree_list = np.arange(1, 4)
-	cuts_list   = np.arange(2, 9)
+	cuts_list   = np.arange(1, 9)
 	error_list  = np.zeros(len(cuts_list))
 
-	fig, ax = plt.subplots()
+	fig, ax = plt.subplots(figsize=(9, 6))
 	for degree in degree_list:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
 			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 			modelPhy, displacement = simulate(degree, nbel, args)
-			# error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'exactFunction': exactDisplacement, 
+			# error_list[j], _ = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 
+			# 														'exactFunction': exactDisplacement, 
 			# 														'exactFunctionDers': exactDisplacementDers})
-			error_list[j] = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 'part_ref': part_ref, 
+			error_list[j], _ = modelPhy.normOfError2(displacement[:, -1], normArgs={'type':'H1', 
+																	'part_ref': part_ref, 
 																	'u_ref': disp_ref[:, -1]})		
 
-		ax.loglog(2**cuts_list, error_list, label='degree '+str(degree), marker='o')
-		ax.set_ylabel(r'$H^1$'+ ' Relative error (\%)')
+		ax.loglog(2**cuts_list, error_list, marker='s', markerfacecolor='w',
+					markersize=10, linestyle='-', label='IGA-GL deg. ' + str(degree))
+		ax.set_ylabel(r'$||u-u^h||_{H^1(\Omega)}$')
 		ax.set_xlabel('Number of elements')
-		ax.set_ylim(bottom=1e-10, top=1e0)
+		ax.set_ylim(bottom=1e-14, top=1e-4)
 		ax.set_xlim(left=1, right=10**3)
 
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+		ax.legend()
 		fig.tight_layout()
 		fig.savefig(folder + 'FigElasticityH1app' +'.pdf')

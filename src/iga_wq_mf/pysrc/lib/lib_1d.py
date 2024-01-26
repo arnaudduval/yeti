@@ -62,7 +62,7 @@ class problem1D(part1D):
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
 	
-	def normOfError(self, u_ctrlpts, normArgs:dict, isRelative=True):
+	def normOfError2(self, u_ctrlpts, normArgs:dict):
 		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
 			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
 			whether the default quadrature is weighted quadrature. 
@@ -114,10 +114,11 @@ class problem1D(part1D):
 
 		tmp1 = np.einsum('i,i->', parametricWeights, norm1)
 		tmp2 = np.einsum('i,i->', parametricWeights, norm2)
+		
+		abserror = np.sqrt(tmp1)
+		relerror = np.sqrt(tmp1/tmp2)
 
-		if isRelative: error = np.sqrt(tmp1/tmp2)
-		else:          error = np.sqrt(tmp1)
-		return error
+		return abserror, relerror
 
 class heatproblem1D(problem1D):
 	def __init__(self, part, kwargs:dict):

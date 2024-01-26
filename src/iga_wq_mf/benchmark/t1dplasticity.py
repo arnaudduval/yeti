@@ -95,10 +95,12 @@ else:
 	# 		modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
 
 	# 		for k, step in enumerate(step_list):
-	# 			errorL2_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'L2', 'part_ref':part_ref, 
-	# 																		'u_ref': disp_ref[:, step]}, isRelative=False)	
-	# 			errorH1_list[k, i, j] = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 'part_ref':part_ref, 
-	# 																		'u_ref': disp_ref[:, step]}, isRelative=False)	
+	# 			errorL2_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'L2', 
+	# 																		'part_ref':part_ref, 
+	# 																		'u_ref': disp_ref[:, step]})	
+	# 			errorH1_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 
+	# 																		'part_ref':part_ref, 
+	# 																		'u_ref': disp_ref[:, step]})	
 
 	# np.save(folder + 'plasticity1DL2', errorL2_list)
 	# np.save(folder + 'plasticity1DH1', errorH1_list)
