@@ -18,8 +18,8 @@ class problem1D(part1D):
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-6)
-		self._nIterNewton     = solverArgs.get('nIterationsNewton', 20)
+		self._thresNL = solverArgs.get('thresNL', 1e-6)
+		self._itersNL = solverArgs.get('itersNL', 20)
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):
@@ -42,13 +42,13 @@ class problem1D(part1D):
 	
 	def compute_volForce(self, volfun):
 		" Computes 'volumetric' source vector in 1D "
-		prop = volfun(self.qpPhy)*self.detJ
-		volForce = self._denseweights[0] @ prop 
-		return volForce
+		prop  = volfun(self.qpPhy)*self.detJ
+		force = self._denseweights[0] @ prop 
+		return force
 	
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
 		if isSample: basis = self.quadRule.getSampleBasis(sampleSize=sampleSize)[0]
-		else: 		 basis 		  = self.quadRule.getDenseQuadRules()[0]
+		else: 		 basis = self.quadRule.getDenseQuadRules()[0]
 		u_interp = basis[0].T @ u_ctrlpts
 		if isSample: x_interp = basis[0].T @ self.ctrlpts
 		else: 		 x_interp = self.qpPhy
@@ -132,15 +132,15 @@ class heatproblem1D(problem1D):
 	
 	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
 		Ccoefs = Cprop*self.detJ
-		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
-		if isLumped: C = np.diag(C.sum(axis=1))
-		array_out = C @ array_in
+		matrix = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
+		if isLumped: matrix = np.diag(matrix.sum(axis=1))
+		array_out = matrix @ array_in
 		return array_out
 	
 	def compute_mfConductivity(self, Kprop, array_in):
 		Kcoefs = Kprop*self.invJ
-		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
-		array_out = K @ array_in
+		matrix = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
+		array_out = matrix @ array_in
 		return array_out
 
 	def interpolate_temperature(self, T_ctrlpts):
@@ -161,9 +161,9 @@ class heatproblem1D(problem1D):
 		Ccoefs = Cprop*self.detJ
 		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
-		tangentM = C + alpha*dt*K
+		matrix = C + alpha*dt*K
 
-		return tangentM
+		return matrix
 
 	def compute_CattaneoMatrix(self, Kprop, Cprop, Mprop, dt, beta=0.25, gamma=0.5, isLumped=False):
 		Kcoefs = Kprop*self.invJ
@@ -173,9 +173,9 @@ class heatproblem1D(problem1D):
 		Mcoefs = Mprop*self.detJ
 		M = self._denseweights[0] @ np.diag(Mcoefs) @ self._densebasis[0].T
 		if isLumped: M = np.diag(M.sum(axis=1))
-		tangentM = M + gamma*dt*C + beta*dt**2*K
+		matrix = M + gamma*dt*C + beta*dt**2*K
 
-		return tangentM
+		return matrix
 
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
 		" Solves transient heat problem in 1D. "
@@ -210,7 +210,7 @@ class heatproblem1D(problem1D):
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton): 
+			for j in range(self._itersNL): 
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
@@ -224,10 +224,10 @@ class heatproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				resNRj = np.sqrt(np.dot(Vj_n1, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(np.dot(Vj_n1, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('Nonlinear error %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
@@ -279,7 +279,7 @@ class heatproblem1D(problem1D):
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton): 
+			for j in range(self._itersNL): 
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
@@ -297,10 +297,10 @@ class heatproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				resNRj = np.sqrt(np.dot(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(np.dot(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('Nonlinear error %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
@@ -395,10 +395,10 @@ class mechaproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				resNRj = np.sqrt(np.dot(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(np.dot(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('Nonlinear error %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 				if j > 0 and isElasticLoad: break
 
 				# Solver for active control points

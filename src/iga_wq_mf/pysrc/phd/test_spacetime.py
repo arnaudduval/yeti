@@ -234,8 +234,8 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 
 	uguess[boundary.thdod] = 0.0
 	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
-	problem._nIterNewton = problemArgs.get('nIterNewton', 10); problem._Krylov = problemArgs.get('Krylov', 'BICG')
-	problem._thresholdKrylov = problemArgs.get('KrylovThreshold', 1e-10)
+	problem._itersNL = problemArgs.get('nIterNewton', 10); problem._LinSolv = problemArgs.get('Krylov', 'BICG')
+	problem._thresLin = problemArgs.get('KrylovThreshold', 1e-10)
 	
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output

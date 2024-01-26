@@ -63,7 +63,7 @@ if not dataExist:
 		SOLVERARGS = {'nIterKrylov':150, 'thresholdKrylov':1e-12, 'thresholdNewton':1e-9}
 		problem = mechaproblem(material, modelPhy, boundary)
 		problem.addSolverConstraints(solverArgs=SOLVERARGS)
-		problem._KrylovPreconditioner = PCGmethod
+		problem._linPreCond = PCGmethod
 		Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 		for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref

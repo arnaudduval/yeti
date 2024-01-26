@@ -20,13 +20,12 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._Krylov = solverArgs.get('Krylov', 'GMRES')
-		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
-		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-10)
-		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
-
-		self._nIterNewton = solverArgs.get('nIterNewton', 20)
-		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-8)
+		self._LinSolv = solverArgs.get('Krylov', 'GMRES')
+		self._itersLin = solverArgs.get('nIterKrylov', 100)
+		self._thresLin = solverArgs.get('thresholdKrylov', 1e-10)
+		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
+		self._itersNL = solverArgs.get('nIterNewton', 20)
+		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
 		return
 	
 	def compute_volForce(self, volfun, args=None): 
@@ -209,7 +208,7 @@ class stheatproblem(stproblem):
 	
 	def _solveLinearizedSTHeatProblem(self, Fext, args=None, isfull=False, threshold=None):
 		assert args is not None, 'Please enter a valid argument'
-		if threshold is None: threshold = self._thresholdKrylov
+		if threshold is None: threshold = self._thresLin
 		Cprop = self.heatmaterial.capacity(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		if isfull:
@@ -217,13 +216,13 @@ class stheatproblem(stproblem):
 			Cdersprop = self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]
 			Kdersprop = np.einsum('ijk,jk->ik', self.heatmaterial.conductivityDers(args), gradTemperature[:self.part.dim, :])
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._nIterKrylov, 
-					threshold, self._KrylovPreconditioner, self._Krylov]
+					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._itersLin, 
+					threshold, self._linPreCond, self._LinSolv]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_3d(*inpts)
 		else:
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-					self.time.detJ, Cprop, Kprop, Fext, self._nIterKrylov, threshold, self._KrylovPreconditioner, self._Krylov]
+					self.time.detJ, Cprop, Kprop, Fext, self._itersLin, threshold, self._linPreCond, self._LinSolv]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue
@@ -238,7 +237,7 @@ class stheatproblem(stproblem):
 
 		AllresPCG, AllresNewton, Allsol = [], [], []
 		threshold_inner = None
-		for j in range(self._nIterNewton):
+		for j in range(self._itersNL):
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
@@ -250,31 +249,31 @@ class stheatproblem(stproblem):
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
-			resNRjnew = np.sqrt(np.dot(r_dj, r_dj))
-			if j == 0: resNR0 = resNRjnew
-			print('NR error: %.3e' %resNRjnew)
+			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
+			if j == 0: resNL0 = resNLj1
+			print('Nonlinear error: %.3e' %resNLj1)
 
 			# Update thresholds
 			if isadaptive: 
 				if j == 0: 
 					threshold_ref = eps_kr0
 				else:
-					eps_kr_k = gamma_kr*np.power(resNRjnew/resNRjold, omega_kr)
+					eps_kr_k = gamma_kr*np.power(resNLj1/resNLj0, omega_kr)
 					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
 					if eps_kr_r <= 0.1: threshold_ref = eps_kr_k
 					else: threshold_ref = max([eps_kr_k, eps_kr_r])
-				threshold_inner = max([self._thresholdKrylov, threshold_ref])
+				threshold_inner = max([self._thresLin, threshold_ref])
 			else: 
-				threshold_inner = self._thresholdKrylov
+				threshold_inner = self._thresLin
 				
-			AllresNewton.append(resNRjnew)
+			AllresNewton.append(resNLj1)
 			Allsol.append(np.copy(dj_n1))
 			enablePrint()
 			print(threshold_inner)
 			blockPrint()
 
-			if resNRjnew <= max([1e-12, self._thresholdNewton*resNR0]): break
-			resNRjold = np.copy(resNRjnew)
+			if resNLj1 <= max([1e-12, self._thresNL*resNL0]): break
+			resNLj0 = np.copy(resNLj1)
 
 			# Solve for active control points
 			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 

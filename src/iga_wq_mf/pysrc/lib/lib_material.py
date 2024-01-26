@@ -65,7 +65,7 @@ class material():
 		return
 
 class heatmat(material):
-	"""" In our work we consider nonlinar materials, 
+	""" In our work we consider nonlinar materials, 
 	meaning that its thermal properties could change depending on the position, temperature, etc.
 	"""
 	def __init__(self, matArgs=dict()):
@@ -200,9 +200,9 @@ class mechamat(material):
 			hateta = computeDeviatoric4All(stress_trial - avrbeta, dim=dim)
 			normhateta = computeSymTensorNorm4All(hateta, dim=dim)
 			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNRj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
-			if k == 0: resNR0 = resNRj
-			if resNRj <= max([threshold*resNR0, 1e-12]): break
+			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
+			if k == 0: resNL0 = resNLj
+			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = hateta/normhateta
 			normhatetaders = computeSymDoubleContraction4All(normal, hatbeta, dim=dim)
 			df = np.sqrt(3.0/2.0)*normhatetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)			
@@ -217,8 +217,8 @@ class mechamat(material):
 			mechArgs = np.zeros((2, nnz))
 			mechArgs[0, :] = self.lame_lambda; mechArgs[1, :] = self.lame_mu
 		else:
-			plsInd = plsVars["plsInd"]; normal = plsVars["normal"]; hatbeta = plsVars["hatbeta"]
-			theta  = np.ravel(plsVars["theta"]); thetatilde = np.ravel(plsVars["thetatilde"])
+			plsInd = plsVars['plsInd']; normal = plsVars['normal']; hatbeta = plsVars['hatbeta']
+			theta  = np.ravel(plsVars['theta']); thetatilde = np.ravel(plsVars['thetatilde'])
 			nvoigt = np.size(hatbeta, axis=0)
 			mechArgs = np.zeros((4+2*nvoigt, nnz))
 			mechArgs[0, :] = self.lame_lambda; mechArgs[0, plsInd] += 2.0/3.0*self.lame_mu*theta 
@@ -274,10 +274,10 @@ class mechamat(material):
 				for j, ind in enumerate(plsInd):
 					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + np.sqrt(3.0/2.0)*ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
 					
-			plsVars = {"plsInd": plsInd, "normal": normal, "hatbeta": hatbeta, "theta": theta, "thetatilde": thetatilde}
+			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatbeta': hatbeta, 'theta': theta, 'thetatilde': thetatilde}
 
 		mechArgs = self.__consistentTangentAlgorithm3D(nnz, isElasticMatrix+isElasticLoad, plsVars)
-		output = {"stress": stress_n1, "pls": pls_n1, "alpha": alpha_n1, "beta": beta_n1, "mechArgs": mechArgs}
+		output = {'stress': stress_n1, 'pls': pls_n1, 'alpha': alpha_n1, 'beta': beta_n1, 'mechArgs': mechArgs}
 
 		return output, isElasticLoad
 	
@@ -290,9 +290,9 @@ class mechamat(material):
 			hateta = stress_trial - avrbeta
 			normhateta = np.abs(hateta)
 			f = normhateta - (self.elasticmodulus + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNRj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
-			if k == 0: resNR0 = resNRj
-			if resNRj <= max([threshold*resNR0, 1e-12]): break
+			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
+			if k == 0: resNL0 = resNLj
+			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = np.sign(hateta)
 			normhatetaders = normal*hatbeta
 			df = normhatetaders - (self.elasticmodulus + const2) - self._isoHardening._isohardfunders(alpha_n1)			
@@ -304,7 +304,7 @@ class mechamat(material):
 		mechArgs = np.zeros((1, nnz))
 		mechArgs[0, :] = self.elasticmodulus
 		if not isElastic:
-			plsInd = plsVars["plsInd"]; theta = plsVars["theta"]
+			plsInd = plsVars['plsInd']; theta = plsVars['theta']
 			mechArgs[0, plsInd] = self.elasticmodulus*(1 - theta)
 		return mechArgs
 	
@@ -350,10 +350,10 @@ class mechamat(material):
 				for j, ind in enumerate(plsInd):
 					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
 
-			plsVars = {"plsInd": plsInd, "normal": normal, "hatbeta": hatbeta, "theta": theta}
+			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatbeta': hatbeta, 'theta': theta}
 
 		mechArgs = self.__consistentTangentAlgorithm1D(np.size(alpha_n0, axis=1), isElasticMatrix+isElasticLoad, plsVars)
-		output = {"stress": stress_n1, "pls": pls_n1, "alpha": alpha_n1, "beta": beta_n1, "mechArgs": mechArgs}
+		output = {'stress': stress_n1, 'pls': pls_n1, 'alpha': alpha_n1, 'beta': beta_n1, 'mechArgs': mechArgs}
 
 		return output, isElasticLoad
 

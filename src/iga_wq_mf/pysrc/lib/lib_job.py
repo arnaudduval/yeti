@@ -17,12 +17,11 @@ class problem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._nIterKrylov = solverArgs.get('nIterKrylov', 100)
-		self._thresholdKrylov = solverArgs.get('thresholdKrylov', 1e-10)
-		self._KrylovPreconditioner = solverArgs.get('KrylovPreconditioner', 'JMC')
-		
-		self._nIterNewton = solverArgs.get('nIterNewton', 20)
-		self._thresholdNewton = solverArgs.get('thresholdNewton', 1e-8)
+		self._itersLin = solverArgs.get('nIterKrylov', 100)
+		self._thresLin = solverArgs.get('thresholdKrylov', 1e-10)
+		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
+		self._itersNL = solverArgs.get('nIterNewton', 20)
+		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
 		return
 	
 	def __getInfo4surfForce(self, nbFacePosition):
@@ -196,7 +195,7 @@ class problem():
 		if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
 
 		volForce = np.atleast_2d(volForce)
-		inpts = [*self._getInputs(), self.part.detJ, volForce, self._nIterKrylov, self._thresholdKrylov]
+		inpts = [*self._getInputs(), self.part.detJ, volForce, self._itersLin, self._thresLin]
 		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
 		if nr == 1: u_interp = np.ravel(u_interp)
@@ -204,7 +203,7 @@ class problem():
 	
 	def compute_eigs_LOBPCG(self, ishigher=False):
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
-				ishigher, self._nIterKrylov, self._thresholdKrylov]
+				ishigher, self._itersLin, self._thresLin]
 		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_2d(*inpts)
 		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_3d(*inpts)
 		return eigenval, eigenvec
@@ -257,7 +256,7 @@ class heatproblem(problem):
 		if args is None: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
-				prop, Fext,  self._nIterKrylov, self._thresholdKrylov, self._KrylovPreconditioner]
+				prop, Fext,  self._itersLin, self._thresLin, self._linPreCond]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_linearsteady_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_linearsteady_heat_3d(*inpts)
 		return temperature, residue
@@ -267,7 +266,7 @@ class heatproblem(problem):
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-				Cprop, Kprop, tsfactor, Fext, self._nIterKrylov, self._thresholdKrylov, self._KrylovPreconditioner]
+				Cprop, Kprop, tsfactor, Fext, self._itersLin, self._thresLin, self._linPreCond]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
@@ -284,7 +283,7 @@ class heatproblem(problem):
 		factor = dt2/dt1
 		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 	
-		AllresPCG = []
+		AllresLin = []
 		for i in range(1, nsteps):
 			
 			# Get delta time
@@ -304,7 +303,7 @@ class heatproblem(problem):
 			Fext_n1 = np.copy(Fext_list[:, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton):
+			for j in range(self._itersNL):
 
 				# Compute temperature at each quadrature point
 				temperature = self.interpolate_temperature(dj_n1)
@@ -317,26 +316,26 @@ class heatproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				resNRj = np.sqrt(np.dot(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(np.dot(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 
 				# Solve for active control points
-				resPCGj = np.array([i, j+1])
-				deltaV, resPCG = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
-				resPCGj = np.append(resPCGj, resPCG)
+				resLinj = np.array([i, j+1])
+				deltaV, resLin = self._solveLinearizedTransientProblem(r_dj, alpha*dt, args=args, isLumped=isLumped)
+				resLinj = np.append(resLinj, resLin)
 				
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
-				AllresPCG.append(resPCGj)
+				AllresLin.append(resLinj)
 				if np.sqrt(np.dot(deltaV, deltaV)) <= 1e-12: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
 
-		return AllresPCG
+		return AllresLin
 
 class mechaproblem(problem):
 	def __init__(self, mechanical_material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
@@ -389,10 +388,10 @@ class mechaproblem(problem):
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
-				mechArgs, Fext, self._nIterKrylov, self._thresholdKrylov, self._KrylovPreconditioner]
-		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_linearelasticity_2d(*inpts)
-		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_linearelasticity_3d(*inpts)
-		return displacement, resPCG
+				mechArgs, Fext, self._itersLin, self._thresLin, self._linPreCond]
+		if   self.part.dim == 2: displacement, residual = plasticitysolver.solver_linearelasticity_2d(*inpts)
+		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_linearelasticity_3d(*inpts)
+		return displacement, residual
 	
 	def solvePlasticityProblem(self, dispinout, Fext_list): 
 
@@ -414,7 +413,7 @@ class mechaproblem(problem):
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
 		Allstrain 	 = np.zeros((nvoigt, nbqp_total, nsteps))
 		Allhardening = np.zeros((1, nbqp_total, nsteps))
-		AllresPCG 	 = []
+		AllresLin 	 = []
 
 		for i in range(1, nsteps):
 			
@@ -432,7 +431,7 @@ class mechaproblem(problem):
 			Fext_n1 = np.copy(Fext_list[:, :, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton):
+			for j in range(self._itersNL):
 
 				# Compute strain at each quadrature point
 				strain = self.interpolate_strain(dj_n1)
@@ -449,20 +448,20 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 				if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
-				resPCGj = np.array([i, j+1])
-				deltaD, resPCG = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
-				resPCGj = np.append(resPCGj, resPCG)
+				resLinj = np.array([i, j+1])
+				deltaD, resLin = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
+				resLinj = np.append(resLinj, resLin)
 				
 				# Update active control points
 				dj_n1 += deltaD
-				AllresPCG.append(resPCGj)
+				AllresLin.append(resLinj)
 				if np.sqrt(block_dot_product(deltaD, deltaD)) <= 1e-12: break
 
 			dispinout[:, :, i] = dj_n1
@@ -472,7 +471,7 @@ class mechaproblem(problem):
 
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
-		return AllresPCG, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
+		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 
 	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, args=None, isLumped=False):
 		if mechArgs is None:
@@ -483,10 +482,10 @@ class mechaproblem(problem):
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, mechArgs, massProp, tsfactor,
-				Fext, self._nIterKrylov, self._thresholdKrylov, self._KrylovPreconditioner]
-		if   self.part.dim == 2: displacement, resPCG = plasticitysolver.solver_lineardynamics_2d(*inpts)
-		elif self.part.dim == 3: displacement, resPCG = plasticitysolver.solver_lineardynamics_3d(*inpts)
-		return displacement, resPCG
+				Fext, self._itersLin, self._thresLin, self._linPreCond]
+		if   self.part.dim == 2: displacement, residual = plasticitysolver.solver_lineardynamics_2d(*inpts)
+		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_lineardynamics_3d(*inpts)
+		return displacement, residual
 
 	def solveDynamicsProblem(self, dispinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -504,7 +503,7 @@ class mechaproblem(problem):
 				A_n0[k, dod] = 2.0/(dt1*dt2)*((dispinout[k, dod, 2] - factor*dispinout[k, dod, 1])/(factor - 1) + dispinout[k, dod, 0])
 		else: raise Warning('We need more than 2 steps')
 
-		AllresPCG = []
+		AllresLin = []
 		for i in range(1, nsteps):
 			
 			# Get delta time
@@ -528,7 +527,7 @@ class mechaproblem(problem):
 			Fext_n1 = np.copy(Fext_list[:, :, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton):
+			for j in range(self._itersNL):
 
 				# Compute strain and stress at each quadrature point
 				strain = self.interpolate_strain(dj_n1)
@@ -542,28 +541,28 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 
 				# Solve for active control points
-				resPCGj = np.array([i, j+1])
-				deltaA, resPCG = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
-				resPCGj = np.append(resPCGj, resPCG)
+				resLinj = np.array([i, j+1])
+				deltaA, resLin = self._solveLinearizedElastoDynamicProblem(Fext=r_dj, tsfactor=beta*dt**2, isLumped=isLumped)
+				resLinj = np.append(resLinj, resLin)
 				
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
-				AllresPCG.append(resPCGj)
+				AllresLin.append(resLinj)
 				if np.sqrt(block_dot_product(deltaA, deltaA)) <= 1e-12: break
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
 			A_n0 = np.copy(Aj_n1)
 
-		return AllresPCG
+		return AllresLin
 
 class thermomechaproblem(heatproblem, mechaproblem):
 
@@ -657,7 +656,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			Fext_n1[-1, :] = np.copy(Fheat_list[:, i])
 
 			print('Step: %d' %i)
-			for j in range(self._nIterNewton):
+			for j in range(self._itersNL):
 				
 				# Compute strain and stress at each quadrature point
 				strain = self.interpolate_strain(dj_n1[:-1, :])
@@ -674,10 +673,10 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dod = [*self.boundary.mchdod, self.boundary.thdod]
 				clean_dirichlet(r_dj, dod) 
 
-				resNRj = np.sqrt(block_dot_product(r_dj, r_dj))
-				if j == 0: resNR0 = resNRj
-				print('NR error: %.5e' %resNRj)
-				if resNRj <= max([self._thresholdNewton*resNR0, 1e-12]): break
+				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
+				if j == 0: resNL0 = resNLj
+				print('Nonlinear error: %.5e' %resNLj)
+				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 
 				# Solve for active control points
 				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)

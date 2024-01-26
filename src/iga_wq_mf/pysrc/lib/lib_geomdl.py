@@ -234,7 +234,7 @@ class Geomdl():
 			func    = self._create_prism
 			if self._degree is None: self._degree = np.array([2, 2, 2])
 
-		else: raise Warning("Not developped in this library")
+		else: raise Warning('Not developped in this library')
 
 		nbel = [int(2**self._cuts[i]) for i in range(dimen)]
 		part = func(*geoArgs, *self._degree[:dimen], *nbel)

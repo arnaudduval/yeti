@@ -69,7 +69,7 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	return problem, displacement[:, :, :step+1], meshparam, internalVars
 
 if isReference:
-	degree, cuts = 4, 7
+	degree, cuts = 2, 8
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs, step=50)
 	np.save(folder + 'disppl', displacement)

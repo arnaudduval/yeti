@@ -143,7 +143,7 @@ print('%.3e, %.3e, %.3e'%(error1, error2, error3))
 
 solv = solver()
 for niters in range(1, 170, 20):
-	solv._nbIterKrylov = niters
+	solv._itersLin = niters
 	outWQ1 = solv.BiCGSTAB(problem_wq1.compute_mfStiffness, Fext_wq1, 
 				dotfun=block_dot_product, cleanfun=clean_dirichlet, dod=boundary.mchdod)
 

@@ -350,8 +350,8 @@ def lobattoTable(order):
 class solver():
 	
 	def __init__(self):
-		self._nbIterKrylov    = 100
-		self._thresholdKrylov = 1e-12
+		self._itersLin = 100
+		self._thresLin = 1e-12
 		return
 	
 	def CG(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None):
@@ -362,26 +362,26 @@ class solver():
 		x = np.zeros(np.shape(b))
 		r = np.copy(b); cleanfun(r, dod)
 		normb = np.sqrt(dotfun(r, r))
-		resPCG = [1.0]
-		if normb <= self._thresholdKrylov: return
+		resLin = [1.0]
+		if normb <= self._thresLin: return
 		z = Pfun(r); cleanfun(z, dod)
 		p = np.copy(z)
 		rsold = dotfun(r, z)
 
-		for i in range(self._nbIterKrylov):
+		for i in range(self._itersLin):
 			Ap = Afun(p); cleanfun(Ap, dod)
 			alpha = rsold/dotfun(p, Ap)
 			x += alpha*p
 			r -= alpha*Ap
 
-			resPCG.append(np.sqrt(dotfun(r, r))/normb)
-			if (resPCG[-1]<=self._thresholdKrylov): break
+			resLin.append(np.sqrt(dotfun(r, r))/normb)
+			if (resLin[-1]<=self._thresLin): break
 
 			z = Pfun(r); cleanfun(z, dod)
 			rsnew = dotfun(r, z)
 			p = z + rsnew/rsold*p
 			rsold = np.copy(rsnew)
-		output={'sol':x, 'res':resPCG}
+		output={'sol':x, 'res':resLin}
 		return output
 	
 	def BiCGSTAB(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None):
@@ -392,13 +392,13 @@ class solver():
 		x = np.zeros(np.shape(b))
 		r = np.copy(b); cleanfun(r, dod)
 		normb = np.sqrt(dotfun(r, r))
-		resPCG = [1.0]
-		if normb <= self._thresholdKrylov: return
+		resLin = [1.0]
+		if normb <= self._thresLin: return
 		rhat = np.copy(r)
 		p = np.copy(r)
 		rsold = dotfun(r, rhat)
 
-		for i in range(self._nbIterKrylov):
+		for i in range(self._itersLin):
 			ptilde = Pfun(p); cleanfun(ptilde, dod)
 			Aptilde = Afun(ptilde); cleanfun(Aptilde, dod)
 			alpha = rsold/dotfun(Aptilde, rhat)
@@ -410,15 +410,15 @@ class solver():
 			x += alpha*ptilde + omega*stilde
 			r = s - omega*Astilde
 
-			resPCG.append(np.sqrt(dotfun(r, r))/normb)
-			if (resPCG[-1]<=self._thresholdKrylov): break
+			resLin.append(np.sqrt(dotfun(r, r))/normb)
+			if (resLin[-1]<=self._thresLin): break
 
 			rsnew = dotfun(r, rhat)
 			beta = (alpha/omega)*(rsnew/rsold)
 			p = r + beta*(p - omega*Aptilde)
 			rsold = np.copy(rsnew)
 
-		output={'sol':x, 'res':resPCG}
+		output={'sol':x, 'res':resLin}
 		return output
 	
 	def GMRES(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None, n_restarts=1):
@@ -427,21 +427,21 @@ class solver():
 		if cleanfun is None: cleanfun = lambda x, y: x
     
 		x = np.zeros(*np.shape(b))
-		H = np.zeros((self._nbIterKrylov + 1, self._nbIterKrylov))
-		V = np.zeros((self._nbIterKrylov + 1, *np.shape(b)))
-		Z = np.zeros((self._nbIterKrylov + 1, *np.shape(b)))
+		H = np.zeros((self._itersLin + 1, self._itersLin))
+		V = np.zeros((self._itersLin + 1, *np.shape(b)))
+		Z = np.zeros((self._itersLin + 1, *np.shape(b)))
 		normb = np.zeros(n_restarts)
 		
-		AllresPCG = []
+		AllresLin = []
 		for m in range(n_restarts):
 			r = b - Afun(x); cleanfun(r, dod)
 			normb[m] = np.sqrt(dotfun(r, r))
-			if normb[m] <= self._thresholdKrylov*normb[0]: break
+			if normb[m] <= self._thresLin*normb[0]: break
 			V[0] = r/normb[m]
-			e1 = np.zeros(self._nbIterKrylov + 1); e1[0] = normb[m]
+			e1 = np.zeros(self._itersLin + 1); e1[0] = normb[m]
 			
-			resPCG = [1.0]
-			for k in range(self._nbIterKrylov):
+			resLin = [1.0]
+			for k in range(self._itersLin):
 				Z[k] = Pfun(V[k]); cleanfun(Z[k], dod)
 				w = Afun(Z[k]); cleanfun(w, dod)
 				for j in range(k+1):
@@ -451,10 +451,10 @@ class solver():
 				if H[j+1, j] != 0: V[k+1] = w/H[j+1, j]
 				y = np.linalg.lstsq(H[:k+2, :k+1], e1[:k+2])[0]
 				zeta = np.linalg.norm(H[:k+2, :k+1] @ y - e1[:k+2])
-				resPCG.append(zeta/normb[0])
-				if resPCG[-1] <= self._thresholdKrylov: break
+				resLin.append(zeta/normb[0])
+				if resLin[-1] <= self._thresLin: break
 				
 			for j in range(k+1): x = x + Z[j]*y[j]
-			AllresPCG.append(resPCG)
+			AllresLin.append(resLin)
 
-		return x, AllresPCG
+		return x, AllresLin
