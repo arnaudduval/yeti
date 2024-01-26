@@ -112,7 +112,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
                                 nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
                                 data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, &
-                                nbIterPCG, threshold, methodPCG, methodSolver, x, resPCG)
+                                iterations, threshold, linprecond, linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -140,15 +140,15 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
-    character(len=10), intent(in) :: methodPCG, methodSolver
-    integer, intent(in) :: nbIterPCG    
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
     double precision, intent(in) :: Fext
     dimension :: Fext(nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -174,17 +174,17 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_t/)
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
@@ -196,18 +196,18 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table, mat%Kmean)
                         
-        if (methodSolver.eq.'BICG') then
+        if (linsolver.eq.'BICG') then
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
-        else if (methodSolver.eq.'GMRES') then
+                        iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbRestarts, iterations, threshold, Fext, x, residual)
         else
             stop 'unknown method'
         end if
@@ -222,7 +222,7 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
                                 nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
                                 data_W_t, table, invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop, &
-                                Fext, nbIterPCG, threshold, methodPCG, methodSolver, x, resPCG)
+                                Fext, iterations, threshold, linprecond, linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -251,15 +251,15 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Cdersprop(nc_total), &
                 Kprop(dimen_sp, dimen_sp, nc_total), Kdersprop(dimen_sp, nc_total)
-    character(len=10), intent(in) :: methodPCG, methodSolver
-    integer, intent(in) :: nbIterPCG    
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
     double precision, intent(in) :: Fext
     dimension :: Fext(nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -288,17 +288,17 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
     nc_list = (/nc_u, nc_v, nc_t/)
     solv%matrixfreetype = 2
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
@@ -309,18 +309,18 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
                         nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t, table, mat%Kmean)
         
-        if (methodSolver.eq.'BICG') then
+        if (linsolver.eq.'BICG') then
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
-        else if (methodSolver.eq.'GMRES') then
+                        iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbRestarts, iterations, threshold, Fext, x, residual)
         else
             stop 'unknown method'
         end if
@@ -444,8 +444,8 @@ end subroutine mf_stconductivity_3d
 subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
-                                data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, nbIterPCG, threshold, methodPCG, &
-                                methodSolver, x, resPCG)
+                                data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, iterations, threshold, linprecond, &
+                                linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -475,15 +475,15 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
-    character(len=10), intent(in) :: methodPCG, methodSolver
-    integer, intent(in) :: nbIterPCG    
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
     double precision, intent(in) :: Fext
     dimension :: Fext(nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -510,17 +510,17 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
@@ -531,18 +531,18 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
         
-        if (methodSolver.eq.'BICG') then
+        if (linsolver.eq.'BICG') then
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
-        else if (methodSolver.eq.'GMRES') then
+                        iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbRestarts, iterations, threshold, Fext, x, residual)
         else
             stop 'unknown method'
         end if
@@ -557,7 +557,7 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
                                 data_W_t, table, invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop, &
-                                Fext, nbIterPCG, threshold, methodPCG, methodSolver, x, resPCG)
+                                Fext, iterations, threshold, linprecond, linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -588,15 +588,15 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
                 Cprop(nc_total), Cdersprop(nc_total), &
                 Kprop(dimen_sp, dimen_sp, nc_total), Kdersprop(dimen_sp, nc_total)
-    character(len=10), intent(in) :: methodPCG, methodSolver
-    integer, intent(in) :: nbIterPCG    
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
     double precision, intent(in) :: Fext
     dimension :: Fext(nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -626,17 +626,17 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
     solv%matrixfreetype = 2
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
@@ -648,18 +648,18 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
                         data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
 
-        if (methodSolver.eq.'BICG') then
+        if (linsolver.eq.'BICG') then
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
-        else if (methodSolver.eq.'GMRES') then
+                        iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, Fext, x, resPCG)
+                        nbRestarts, iterations, threshold, Fext, x, residual)
         else
             stop 'unknown method'
         end if

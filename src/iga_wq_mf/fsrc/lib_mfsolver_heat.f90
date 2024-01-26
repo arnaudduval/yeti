@@ -820,7 +820,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -842,12 +842,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -855,16 +855,16 @@ contains
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
         dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde)            
             call clear_dirichlet(solv, nr_total, ptilde)
 
@@ -889,7 +889,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -901,7 +901,7 @@ contains
 
     subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                        data_W_u, data_W_v, ishigher, iterations, threshold, eigenvec, eigenval)
         !! Using LOBPCG algorithm to compute the stability of the transient heat problem
         
         implicit none
@@ -926,7 +926,7 @@ contains
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
         logical, intent(in) :: ishigher
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold
         
         double precision, intent(out) :: eigenvec, eigenval
@@ -965,7 +965,7 @@ contains
         p = 0.d0
         norm = 1.d0
 
-        do k = 1, nbIterPCG
+        do k = 1, iterations
             if (norm.le.threshold) return
     
             g = v - eigenval*u
@@ -1217,7 +1217,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1239,12 +1239,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -1252,16 +1252,16 @@ contains
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
         dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -1284,7 +1284,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
 
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1297,7 +1297,7 @@ contains
     subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ishigher, nbIterPCG, threshold, eigenvec, eigenval)
+                        data_W_u, data_W_v, data_W_w, ishigher, iterations, threshold, eigenvec, eigenval)
         !! Using LOBPCG algorithm to compute the stability of the transient heat problem
         
         implicit none
@@ -1322,7 +1322,7 @@ contains
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
         
         logical, intent(in) :: ishigher
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold
         
         double precision, intent(out) :: eigenvec, eigenval
@@ -1362,7 +1362,7 @@ contains
         p = 0.d0
         norm = 1.d0
 
-        do k = 1, nbIterPCG
+        do k = 1, iterations
             if (norm.le.threshold) return
     
             g = v - eigenval*u

@@ -954,7 +954,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, nbIterPCG, threshold, b, x, resPCG)
+                        indi_t, indj_t, data_W_u, data_W_v, data_W_t, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -976,12 +976,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_t
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -989,16 +989,16 @@ contains
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
         dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -1021,7 +1021,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1035,7 +1035,7 @@ contains
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, b, x, resPCG)
+                        nbRestarts, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1057,23 +1057,23 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_t
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_t(nnz_t, 4)
 
-        integer, intent(in) :: nbRestarts, nbIterPCG
+        integer, intent(in) :: nbRestarts, iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbRestarts*(nbIterPCG+1))
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(nbRestarts*(iterations+1))
 
         ! Local data
         ! -----------
         double precision :: H, V, Z, beta, e1, y
-        dimension :: H(nbIterPCG+1, nbIterPCG), V(nbIterPCG+1, nr_total), &
-                    Z(nbIterPCG+1, nr_total), beta(nbRestarts+1), e1(nbIterPCG+1), y(nbIterPCG)
+        dimension :: H(iterations+1, iterations), V(iterations+1, nr_total), &
+                    Z(iterations+1, nr_total), beta(nbRestarts+1), e1(iterations+1), y(iterations)
         double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
-        integer :: restart, iter, subiter, c
+        integer :: i, j, k, c
 
-        e1 = 0.d0; beta = 0.d0; x = 0.d0; resPCG = 0.d0; c = 1
-        do restart = 1, nbRestarts
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; residual = 0.d0; c = 1
+        do k = 1, nbRestarts
             H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -1081,36 +1081,36 @@ contains
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, x, Ax)
             r = b - Ax
             call clear_dirichlet(solv, nr_total, r)
-            beta(restart) = norm2(r)
-            if ((restart.eq.1).and.(beta(1).le.1.d-14)) return
-            if (beta(restart).le.max(threshold*beta(1), 1.d-14)) exit
-            resPCG(c) = beta(restart)/beta(1); c = c + 1
+            beta(k) = norm2(r)
+            if ((k.eq.1).and.(beta(1).le.1.d-14)) return
+            if (beta(k).le.max(threshold*beta(1), 1.d-14)) exit
+            residual(c) = beta(k)/beta(1); c = c + 1
             V(1, :) = r/beta(1)
-            e1(1) = beta(restart)
+            e1(1) = beta(k)
 
-            do iter = 1, nbIterPCG
-                call applyfastdiag(solv, nr_total, V(iter, :), Pv)
+            do j = 1, iterations
+                call applyfastdiag(solv, nr_total, V(j, :), Pv)
                 call clear_dirichlet(solv, nr_total, Pv)
-                Z(iter, :) = Pv
+                Z(j, :) = Pv
                 call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_t, indj_t, data_W_u, data_W_v, data_W_t, Pv, w)
                 call clear_dirichlet(solv, nr_total, w)
-                do subiter = 1, iter
-                    H(subiter, iter) = dot_product(w, V(subiter, :))
-                    w = w - H(subiter, iter)*V(subiter, :)
+                do i = 1, j
+                    H(i, j) = dot_product(w, V(i, :))
+                    w = w - H(i, j)*V(i, :)
                 end do
-                H(iter+1, iter) = norm2(w)
-                if (abs(H(iter+1, iter)).gt.1e-12) then
-                    V(iter+1, :) = w/H(iter+1, iter)
+                H(j+1, j) = norm2(w)
+                if (abs(H(j+1, j)).gt.1e-12) then
+                    V(j+1, :) = w/H(j+1, j)
                 end if
-                call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
-                beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
-                if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
-                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
+                call solve_linear_system(j+1, j, H(:j+1, :j), e1(:j+1), y(:j))
+                beta(k+1) = norm2(matmul(H(:j+1, :j), y(:j)) - e1(:j+1))
+                if (beta(k+1).le.max(threshold*beta(1), 1.d-14)) exit
+                residual(c) = beta(k+1)/beta(1); c = c + 1
             end do
-            x = x + matmul(y(:iter), Z(:iter, :))
+            x = x + matmul(y(:j), Z(:j, :))
         end do
 
     end subroutine PGMRES
@@ -1348,7 +1348,7 @@ contains
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbIterPCG, threshold, b, x, resPCG)
+                        iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1370,12 +1370,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -1383,16 +1383,16 @@ contains
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
         dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
                         ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         rsold = dot_product(r, rhat); normb = norm2(r)
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
@@ -1415,7 +1415,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
     
             rsnew = dot_product(r, rhat)
             beta = (alpha/omega)*(rsnew/rsold)
@@ -1429,7 +1429,7 @@ contains
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-                        nbRestarts, nbIterPCG, threshold, b, x, resPCG)
+                        nbRestarts, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1451,23 +1451,23 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w, data_W_t
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4), data_W_t(nnz_t, 4)
 
-        integer, intent(in) :: nbRestarts, nbIterPCG
+        integer, intent(in) :: nbRestarts, iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(nr_total), resPCG(nbRestarts*(nbIterPCG+1))
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(nbRestarts*(iterations+1))
 
         ! Local data
         ! -----------
         double precision :: H, V, Z, beta, e1, y
-        dimension :: H(nbIterPCG+1, nbIterPCG), V(nbIterPCG+1, nr_total), &
-                    Z(nbIterPCG+1, nr_total), beta(nbRestarts+1), e1(nbIterPCG+1), y(nbIterPCG)
+        dimension :: H(iterations+1, iterations), V(iterations+1, nr_total), &
+                    Z(iterations+1, nr_total), beta(nbRestarts+1), e1(iterations+1), y(iterations)
         double precision :: r(nr_total), w(nr_total), Ax(nr_total), Pv(nr_total)
-        integer :: restart, iter, subiter, c
+        integer :: i, j, k, c
 
-        e1 = 0.d0; beta = 0.d0; x = 0.d0; resPCG = 0.d0; c = 1
-        do restart = 1, nbRestarts
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; residual = 0.d0; c = 1
+        do k = 1, nbRestarts
             H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
@@ -1475,36 +1475,36 @@ contains
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, x, Ax)
             r = b - Ax
             call clear_dirichlet(solv, nr_total, r)
-            beta(restart) = norm2(r)
-            if ((restart.eq.1).and.(beta(1).le.1.d-14)) return
-            resPCG(c) = beta(restart)/beta(1); c = c + 1
-            if (beta(restart).le.max(threshold*beta(1), 1.d-14)) exit
+            beta(k) = norm2(r)
+            if ((k.eq.1).and.(beta(1).le.1.d-14)) return
+            residual(c) = beta(k)/beta(1); c = c + 1
+            if (beta(k).le.max(threshold*beta(1), 1.d-14)) exit
             V(1, :) = r/beta(1)
-            e1(1) = beta(restart)
+            e1(1) = beta(k)
 
-            do iter = 1, nbIterPCG
-                call applyfastdiag(solv, nr_total, V(iter, :), Pv)
+            do j = 1, iterations
+                call applyfastdiag(solv, nr_total, V(j, :), Pv)
                 call clear_dirichlet(solv, nr_total, Pv)
-                Z(iter, :) = Pv
+                Z(j, :) = Pv
                 call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, Pv, w)
                 call clear_dirichlet(solv, nr_total, w)
-                do subiter = 1, iter
-                    H(subiter, iter) = dot_product(w, V(subiter, :))
-                    w = w - H(subiter, iter)*V(subiter, :)
+                do i = 1, j
+                    H(i, j) = dot_product(w, V(i, :))
+                    w = w - H(i, j)*V(i, :)
                 end do
-                H(iter+1, iter) = norm2(w)
-                if (abs(H(iter+1, iter)).gt.1e-12) then
-                    V(iter+1, :) = w/H(iter+1, iter)
+                H(j+1, j) = norm2(w)
+                if (abs(H(j+1, j)).gt.1e-12) then
+                    V(j+1, :) = w/H(j+1, j)
                 end if
-                call solve_linear_system(iter+1, iter, H(:iter+1, :iter), e1(:iter+1), y(:iter))
-                beta(restart+1) = norm2(matmul(H(:iter+1, :iter), y(:iter)) - e1(:iter+1))
-                if (beta(restart+1).le.max(threshold*beta(1), 1.d-14)) exit
-                resPCG(c) = beta(restart+1)/beta(1); c = c + 1
+                call solve_linear_system(j+1, j, H(:j+1, :j), e1(:j+1), y(:j))
+                beta(k+1) = norm2(matmul(H(:j+1, :j), y(:j)) - e1(:j+1))
+                if (beta(k+1).le.max(threshold*beta(1), 1.d-14)) exit
+                residual(c) = beta(k+1)/beta(1); c = c + 1
             end do
-            x = x + matmul(y(:iter), Z(:iter, :))
+            x = x + matmul(y(:j), Z(:j, :))
         end do
 
     end subroutine PGMRES

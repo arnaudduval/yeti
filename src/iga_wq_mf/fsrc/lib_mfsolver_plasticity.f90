@@ -1175,8 +1175,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, &
-                        nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1198,12 +1197,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(solv%dimen, nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(solv%dimen, nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -1212,17 +1211,17 @@ contains
         dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), & 
                         s(solv%dimen, nr_total), ptilde(solv%dimen, nr_total), Aptilde(solv%dimen, nr_total), &
                         Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
         normb = norm2(r)
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde)
             call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
@@ -1249,7 +1248,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
             call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
@@ -1442,7 +1441,7 @@ contains
     subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                         data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b, x, resPCG)
+                        data_W_u, data_W_v, data_W_w, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
@@ -1464,12 +1463,12 @@ contains
         double precision, intent(in) :: data_W_u, data_W_v, data_W_w
         dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
 
-        integer, intent(in) :: nbIterPCG
+        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(solv%dimen, nr_total)
         
-        double precision, intent(out) :: x, resPCG
-        dimension :: x(solv%dimen, nr_total), resPCG(nbIterPCG+1)
+        double precision, intent(out) :: x, residual
+        dimension :: x(solv%dimen, nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
@@ -1478,17 +1477,17 @@ contains
         dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), & 
                         s(solv%dimen, nr_total), ptilde(solv%dimen, nr_total), Aptilde(solv%dimen, nr_total), &
                         Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
-        integer :: iter
+        integer :: k
 
-        x = 0.d0; r = b; resPCG = 0.d0
+        x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
         call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
         normb = norm2(r) 
         if (normb.le.1.d-14) return
-        resPCG(1) = 1.d0
+        residual(1) = 1.d0
 
-        do iter = 1, nbIterPCG
+        do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde) 
             call clear_dirichlet(solv, nr_total, ptilde)
             call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -1516,7 +1515,7 @@ contains
             r = s - omega*Astilde    
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            resPCG(iter+1) = norm2(r)/normb
+            residual(k+1) = norm2(r)/normb
             call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)

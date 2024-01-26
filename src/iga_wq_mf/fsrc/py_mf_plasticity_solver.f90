@@ -526,7 +526,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             table, invJ, detJ, nbmechArgs, mechArgs, &
-                            Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            Fext, iterations, threshold, linprecond, x, residual)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -554,15 +554,15 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     double precision, intent(in) :: invJ, detJ, mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
-    character(len=10), intent(in) :: methodPCG
-    integer, intent(in) :: nbIterPCG
+    character(len=10), intent(in) :: linprecond
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
     double precision, intent(in) :: Fext
     dimension :: Fext(dimen, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(dimen, nr_total), residual(iterations+1)
 
     ! Local data
     ! -----------
@@ -588,17 +588,17 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 2
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then
+        if (linprecond.eq.'JMC') then
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
@@ -612,7 +612,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)    
+                        data_W_u, data_W_v, iterations, threshold, Fext, x, residual)    
     else 
         stop 'Unknown method'                    
     end if
@@ -622,7 +622,7 @@ end subroutine solver_linearelasticity_2d
 subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, invJ, detJ, nbmechArgs, mechArgs, Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                            table, invJ, detJ, nbmechArgs, mechArgs, Fext, iterations, threshold, linprecond, x, residual)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -652,15 +652,15 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     double precision, intent(in) :: invJ, detJ, mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
-    character(len=10), intent(in) :: methodPCG
-    integer, intent(in) :: nbIterPCG
+    character(len=10), intent(in) :: linprecond
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
     double precision, intent(in) :: Fext
     dimension :: Fext(dimen, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(dimen, nr_total), residual(iterations+1)
 
     ! Local data
     ! -----------
@@ -687,17 +687,17 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 2
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then
+        if (linprecond.eq.'JMC') then
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
@@ -712,7 +712,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
+                        iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method'                   
     end if
@@ -721,8 +721,8 @@ end subroutine solver_linearelasticity_3d
 
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, isLumped, table, &
-                            invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, Fext, nbIterPCG, &
-                            threshold, methodPCG, x, resPCG)
+                            invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, Fext, iterations, &
+                            threshold, linprecond, x, residual)
 
     use matrixfreeplasticity
     use plasticitysolver2
@@ -745,15 +745,15 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
-    character(len=10), intent(in) :: methodPCG
-    integer, intent(in) :: nbIterPCG
+    character(len=10), intent(in) :: linprecond
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
     double precision, intent(in) :: Fext
     dimension :: Fext(dimen, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(dimen, nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -781,17 +781,17 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
     solv%matrixfreetype = 3
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
@@ -813,7 +813,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, nbIterPCG, threshold, Fext, x, resPCG)
+                        data_W_u, data_W_v, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if
@@ -824,7 +824,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, islumped, &
                                 table, invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, &
-                                Fext, nbIterPCG, threshold, methodPCG, x, resPCG)
+                                Fext, iterations, threshold, linprecond, x, residual)
 
     use matrixfreeplasticity
     use plasticitysolver3
@@ -849,15 +849,15 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
-    character(len=10), intent(in) :: methodPCG
-    integer, intent(in) :: nbIterPCG
+    character(len=10), intent(in) :: linprecond
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
     double precision, intent(in) :: Fext
     dimension :: Fext(dimen, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(dimen, nr_total), resPCG(nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(dimen, nr_total), residual(iterations+1)
 
     ! Local data
     ! ----------
@@ -886,17 +886,17 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
     solv%matrixfreetype = 3
 
-    if ((methodPCG.eq.'WP').or.(methodPCG.eq.'JMC').or.(methodPCG.eq.'C').or.(methodPCG.eq.'TDC')) then
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-        if (methodPCG.eq.'WP') then
+        if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
 
-        if (methodPCG.eq.'JMC') then 
+        if (linprecond.eq.'JMC') then 
             call compute_mean(mat, nc_list)
         end if
 
-        if (methodPCG.eq.'TDC') then
+        if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
@@ -918,7 +918,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        nbIterPCG, threshold, Fext, x, resPCG)
+                        iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if

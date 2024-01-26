@@ -503,7 +503,7 @@ end subroutine interpolate_meshgrid_1d
 subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, detJ, &
-                            b, nbIterPCG, threshold, x, resPCG)
+                            b, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -527,12 +527,12 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     double precision, target, intent(in) :: detJ
     dimension :: detJ(nc_total)
-    integer, intent(in) :: nbIterPCG
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold, b
     dimension :: b(nm, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nm, nr_total), residual(nm, iterations+1)
 
     ! Local data
     ! ----------
@@ -569,7 +569,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
                     data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
+                    data_W_u, data_W_v, data_W_w, iterations, threshold, b(i, :), x(i, :), residual(i, :))
     end do
                 
 end subroutine l2projection_ctrlpts_3d
@@ -577,7 +577,7 @@ end subroutine l2projection_ctrlpts_3d
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, detJ, &
-                            b, nbIterPCG, threshold, x, resPCG)
+                            b, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -599,12 +599,12 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     double precision, target, intent(in) :: detJ
     dimension :: detJ(nc_total)
-    integer, intent(in) :: nbIterPCG
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold, b
     dimension :: b(nm, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nm, nr_total), residual(nm, iterations+1)
 
     ! Local data
     ! ----------
@@ -638,14 +638,14 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     do i = 1, nm
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                     indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, nbIterPCG, threshold, b(i, :), x(i, :), resPCG(i, :))
+                    data_W_u, data_W_v, iterations, threshold, b(i, :), x(i, :), residual(i, :))
     end do
 
 end subroutine l2projection_ctrlpts_2d
 
 subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
                             nnz_u, indi_u, indj_u, data_B_u, data_W_u, detJ, &
-                            b, nbIterPCG, threshold, x, resPCG)
+                            b, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
 
@@ -660,12 +660,12 @@ subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
 
     double precision, intent(in) :: detJ
     dimension :: detJ(nc_total)
-    integer, intent(in) :: nbIterPCG
+    integer, intent(in) :: iterations
     double precision, intent(in) :: threshold, b
     dimension :: b(nm, nr_total)
     
-    double precision, intent(out) :: x, resPCG
-    dimension :: x(nm, nr_total), resPCG(nm, nbIterPCG+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nm, nr_total), residual(nm, iterations+1)
 
     ! Local data
     ! ----------
@@ -676,7 +676,7 @@ subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
     dimension :: WW(nr_u, nc_u), BB(nr_u, nc_u), A(nr_u, nr_u)
 
     if (nr_total.ne.nr_u) stop 'Size problem'
-    resPCG = threshold
+    residual = threshold
     do i = 1, nnz_u
         data_Wt(i) = data_W_u(i, 1) * detJ(indj_u(i)) 
     end do
