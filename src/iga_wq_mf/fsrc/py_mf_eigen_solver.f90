@@ -56,7 +56,7 @@ subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_capacityprop(mat, nc_total, Cprop)
     nc_list = (/nc_u, nc_v/)
 
-    solv%withdiag = .false.
+    ! solv%withdiag = .false.
     call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                             data_W_u, data_W_v, table, mean)
@@ -128,7 +128,7 @@ subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     call setup_capacityprop(mat, nc_total, Cprop)
     nc_list = (/nc_u, nc_v, nc_w/)
 
-    solv%withdiag = .false.
+    ! solv%withdiag = .false.
     call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                             data_W_u, data_W_v, data_W_w, table, mean)
@@ -200,7 +200,7 @@ subroutine solver_lobpcg_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_massprop(mat, nc_total, Mprop)
     nc_list = (/nc_u, nc_v/)
 
-    solv%withdiag = .false.
+    ! solv%withdiag = .false.
     call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                             data_W_u, data_W_v, table, mean)
@@ -274,7 +274,7 @@ subroutine solver_lobpcg_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     call setup_massprop(mat, nc_total, Mprop)
     nc_list = (/nc_u, nc_v, nc_w/)
 
-    solv%withdiag = .false.
+    ! solv%withdiag = .false.
     call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                             indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                             data_W_u, data_W_v, data_W_w, table, mean)

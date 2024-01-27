@@ -16,41 +16,41 @@ from pysrc.lib.lib_job import heatproblem, mechaproblem
 
 # Set global variables
 geoName = 'QA'
-degree_list = np.array([1, 2, 3])
-cuts_list   = np.arange(2, 8)
-
-# quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
-quadArgs    = {'quadrule': 'wq', 'type': 2}
+degree_list = np.array([1])
+cuts_list   = np.arange(2, 9)
 matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.0,
 				'isoHardLaw': {'Isoname':'none'}}
 
-for j, cuts in enumerate(cuts_list):
-	for i, degree in enumerate(degree_list):
-		geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-					'extra':{'Rin':1.0, 'Rex':2.0}
-		}
+for i, degree in enumerate(degree_list):
+	for j, cuts in enumerate(cuts_list):
+		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+						'extra':{'Rin':1.0, 'Rex':2.0}
+			}
+			quadArgs    = {'quadrule': quadrule, 'type': quadtype}
 
-		blockPrint()			
-		modelGeo = Geomdl(geoArgs)
-		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs=quadArgs)
+			blockPrint()			
+			modelGeo = Geomdl(geoArgs)
+			modelIGA = modelGeo.getIGAParametrization()
+			modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-		heatmaterial = heatmat()
-		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
-		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=2)
-		elasticmaterial = mechamat(matArgs=matArgs)
+			heatmaterial = heatmat()
+			heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
+			heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=2)
+			elasticmaterial = mechamat(matArgs=matArgs)
 
-		# Set Dirichlet boundaries
-		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletConstTemperature(table=np.ones((2, 2), dtype=int))
-		boundary.add_DirichletDisplacement(table=np.ones((2, 2, 2), dtype=int))
-		enablePrint()
+			# Set Dirichlet boundaries
+			boundary = boundaryCondition(modelPhy.nbctrlpts)
+			boundary.add_DirichletConstTemperature(table=np.ones((2, 2), dtype=int))
+			boundary.add_DirichletDisplacement(table=np.ones((2, 2, 2), dtype=int))
+			enablePrint()
 
-		# Solve elastic problem
-		heatprob = heatproblem(heatmaterial, modelPhy, boundary)
-		mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary)
+			# Solve elastic problem
+			heatprob = heatproblem(heatmaterial, modelPhy, boundary)
+			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary)
 
-		# eigenval = heatprob.compute_eigs_LOBPCG()[0]
-		eigenval = mecaprob.compute_eigs_LOBPCG()[0]
-		print('degree:%d, nbel:%d, eig:%.3e' %(degree, 2**cuts, eigenval))
+			# eigenval = heatprob.compute_eigs_LOBPCG()[0]
+			eigenval = mecaprob.compute_eigs_LOBPCG()[0]
+			print('eig:%.3e, degree:%d, nbel:%d' %(eigenval, degree, 2**cuts))
+		print('***')
