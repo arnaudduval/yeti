@@ -1295,7 +1295,7 @@ contains
                         data_W_u, data_W_v, eigenvec, v)
         call clear_dirichlet(solv, nr_total, v)
         call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
-        p = 0.d0
+        call random_number(p)
         norm = 1.d0
 
         do k = 1, iterations
@@ -1340,13 +1340,8 @@ contains
             call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
             call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
 
-            if (k.eq.1) then
-                allocate(ll(d-1), qq(d-1, d-1))
-                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
-            else
-                allocate(ll(d), qq(d, d))
-                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
-            end if
+            allocate(ll(d), qq(d, d))
+            call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
             
             if (ishigher) then 
                 eigenval = maxval(ll); ii = maxloc(ll, dim=1)
@@ -1717,7 +1712,7 @@ contains
         call clear_dirichlet(solv, nr_total, v)
         
         call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
-        p = 0.d0
+        call random_number(p)
         norm = 1.d0
 
         do k = 1, iterations
@@ -1762,13 +1757,8 @@ contains
             call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
             call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
 
-            if (k.eq.1) then
-                allocate(ll(d-1), qq(d-1, d-1))
-                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
-            else
-                allocate(ll(d), qq(d, d))
-                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
-            end if
+            allocate(ll(d), qq(d, d))
+            call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
             
             if (ishigher) then 
                 eigenval = maxval(ll); ii = maxloc(ll, dim=1)

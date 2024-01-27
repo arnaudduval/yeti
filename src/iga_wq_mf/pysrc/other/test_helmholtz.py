@@ -17,8 +17,8 @@ from pysrc.lib.lib_job import heatproblem, mechaproblem
 # Set global variables
 geoName = 'QA'
 degree_list = np.array([1])
-cuts_list   = np.arange(2, 9)
-matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.0,
+cuts_list   = np.arange(2, 8)
+matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.3,
 				'isoHardLaw': {'Isoname':'none'}}
 
 for i, degree in enumerate(degree_list):
