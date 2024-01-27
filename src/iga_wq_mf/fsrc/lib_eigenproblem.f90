@@ -136,6 +136,38 @@ subroutine rayleigh_submatrix(d, nr, VV1, VV2, MM)
 
 end subroutine rayleigh_submatrix
 
+subroutine rayleigh_submatrix2(d, nm, nr, VV1, VV2, MM)
+    !! Computes the Rayleigh submatrix from vectors VV1 and VV2
+    !! MM_ij = dot_product(VV1_i, VV2_j)
+
+    implicit none
+    ! Input / output data
+    ! ------------------- 
+    integer :: d, nm, nr
+    double precision, intent(in) :: VV1, VV2
+    double precision, intent(out) :: MM
+    dimension :: VV1(d, nm, nr), VV2(d, nm, nr), MM(d, d)
+
+    ! Local data
+    ! ----------
+    integer :: i, j
+    double precision :: result
+
+    do i = 1, d
+        call block_dot_product(nm, nr, VV1(i, :, :), VV2(i, :, :), result)
+        MM(i, i) =  result
+    end do
+
+    do i = 1, d
+        do j = i+1, d
+            call block_dot_product(nm, nr, VV1(i, :, :), VV2(j, :, :), result)
+            MM(i, i) =  result
+            MM(j, i) = MM(i, j)
+        end do 
+    end do
+
+end subroutine rayleigh_submatrix2
+
 subroutine rayleighquotient(nr, A, B, C, x, rho, nbIter, threshold)
     !! Preconditioned conjugate gradient - Rayleigh quotient maximization for the computation 
     !! of the greatest eigenvalue of A x = rho B x

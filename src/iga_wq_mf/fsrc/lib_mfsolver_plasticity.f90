@@ -1,30 +1,3 @@
-subroutine block_dot_product(nm, nr, A, B, result)
-    !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
-    !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
-    !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
-
-    implicit none
-    ! Input/ output data
-    ! ------------------
-    integer, intent(in) :: nm, nr
-    double precision, intent(in) :: A, B
-    dimension :: A(nm, nr), B(nm, nr)
-
-    double precision :: result
-
-    ! Local data
-    ! ----------
-    integer :: i
-    double precision :: tmp
-
-    result = 0.d0
-    do i = 1, nm 
-        tmp = dot_product(A(i, :), B(i, :))
-        result = result + tmp
-    end do
-
-end subroutine block_dot_product
-
 module matrixfreeplasticity
 
     implicit none
@@ -1257,6 +1230,161 @@ contains
 
     end subroutine PBiCGSTAB
 
+    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, ishigher, iterations, threshold, eigenvec, eigenval)
+        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: d = 3
+        type(cgsolver) :: solv
+        type(mecamat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+        integer, intent(in) :: indi_T_u, indi_T_v
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
+        integer, intent(in) :: indj_T_u, indj_T_v
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
+        double precision, intent(in) :: data_BT_u, data_BT_v
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+
+        integer, intent(in) :: indi_u, indi_v
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
+        integer, intent(in) :: indj_u, indj_v
+        dimension :: indj_u(nnz_u), indj_v(nnz_v)
+        double precision, intent(in) :: data_W_u, data_W_v
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+        
+        logical, intent(in) :: ishigher
+        integer, intent(in) :: iterations
+        double precision, intent(in) :: threshold
+        
+        double precision, intent(out) :: eigenvec, eigenval
+        dimension :: eigenvec(solv%dimen, nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: k, ii
+        double precision, dimension(d, solv%dimen, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(d, d) :: AA1, BB1
+        double precision, dimension(d) :: delta
+        double precision, dimension(solv%dimen, nr_total) :: u, v, g, gtil, p, tmp
+        double precision :: q, norm, prod
+        double precision, allocatable, dimension(:) ::  ll
+        double precision, allocatable, dimension(:, :) ::  qq
+
+        call random_number(eigenvec)
+        call clear_dirichlet(solv, nr_total, eigenvec)
+        norm = norm2(eigenvec)
+        eigenvec = eigenvec/norm
+
+        call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, eigenvec, u)
+        call clear_dirichlet(solv, nr_total, u)
+        
+        call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+        q = sqrt(prod)
+        eigenvec = eigenvec/q; u = u/q
+        call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                        data_W_u, data_W_v, eigenvec, v)
+        call clear_dirichlet(solv, nr_total, v)
+        
+        call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
+        p = 0.d0
+        norm = 1.d0
+
+        do k = 1, iterations
+            if (norm.le.threshold) return
+    
+            g = v - eigenval*u
+            norm = norm2(g)
+            call applyfastdiag(solv, nr_total, g, gtil)
+            call clear_dirichlet(solv, nr_total, gtil)
+            g = gtil
+
+            RM1(1, :, :) = eigenvec; RM1(2, :, :) = -g; RM1(3, :, :) = p
+            RM2(1, :, :) = v; RM3(1, :, :) = u;
+            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                    data_W_u, data_W_v, -g, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM2(2, :, :) = tmp
+
+            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                    data_W_u, data_W_v, p, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM2(3, :, :) = tmp
+
+            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                    data_W_u, data_W_v, -g, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM3(2, :, :) = tmp
+            
+            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                    data_W_u, data_W_v, p, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM3(3, :, :) = tmp
+            
+            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
+
+            if (k.eq.1) then
+                allocate(ll(d-1), qq(d-1, d-1))
+                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+            else
+                allocate(ll(d), qq(d, d))
+                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
+            end if
+            
+            if (ishigher) then 
+                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
+            else
+                eigenval = minval(ll); ii = minloc(ll, dim=1)
+            end if
+
+            delta = 0.d0
+            if (k.eq.1) then
+                delta(:2) = qq(:, ii)
+            else
+                delta = qq(:, ii)
+            end if
+    
+            p = -g*delta(2) + p*delta(3)
+            eigenvec = eigenvec*delta(1) + p
+            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                        data_W_u, data_W_v, eigenvec, u)
+            call clear_dirichlet(solv, nr_total, u)
+            
+            call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+            q = sqrt(prod)
+            eigenvec = eigenvec/q; u = u/q
+            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
+                                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
+                                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
+                                        data_W_u, data_W_v, eigenvec, v)
+            call clear_dirichlet(solv, nr_total, v)
+            
+            norm = norm2(g)
+            deallocate(ll, qq)
+        end do
+
+    end subroutine LOBPCGSTAB
+
 end module plasticitysolver2
 
 module plasticitysolver3
@@ -1523,5 +1651,160 @@ contains
         end do
 
     end subroutine PBiCGSTAB
+
+    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, ishigher, iterations, threshold, eigenvec, eigenval)
+        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+        
+        implicit none
+        ! Input / output data
+        ! -------------------
+        integer, parameter :: d = 3
+        type(cgsolver) :: solv
+        type(mecamat) :: mat
+        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
+        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
+        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
+        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
+        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
+        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+
+        integer, intent(in) :: indi_u, indi_v, indi_w
+        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
+        integer, intent(in) :: indj_u, indj_v, indj_w
+        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
+        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+        
+        logical, intent(in) :: ishigher
+        integer, intent(in) :: iterations
+        double precision, intent(in) :: threshold
+        
+        double precision, intent(out) :: eigenvec, eigenval
+        dimension :: eigenvec(solv%dimen, nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: k, ii
+        double precision, dimension(d, solv%dimen, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(d, d) :: AA1, BB1
+        double precision, dimension(d) :: delta
+        double precision, dimension(solv%dimen, nr_total) :: u, v, g, gtil, p, tmp
+        double precision :: q, norm, prod
+        double precision, allocatable, dimension(:) ::  ll
+        double precision, allocatable, dimension(:, :) ::  qq
+
+        call random_number(eigenvec)
+        call clear_dirichlet(solv, nr_total, eigenvec)
+        norm = norm2(eigenvec)
+        eigenvec = eigenvec/norm
+
+        call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, u)
+        call clear_dirichlet(solv, nr_total, u)
+        
+        call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+        q = sqrt(prod)
+        eigenvec = eigenvec/q; u = u/q
+        call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+        call clear_dirichlet(solv, nr_total, v)
+        
+        call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
+        p = 0.d0
+        norm = 1.d0
+
+        do k = 1, iterations
+            if (norm.le.threshold) return
+    
+            g = v - eigenval*u
+            norm = norm2(g)
+            call applyfastdiag(solv, nr_total, g, gtil)
+            call clear_dirichlet(solv, nr_total, gtil)
+            g = gtil
+
+            RM1(1, :, :) = eigenvec; RM1(2, :, :) = -g; RM1(3, :, :) = p
+            RM2(1, :, :) = v; RM3(1, :, :) = u;
+            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM2(2, :, :) = tmp
+
+            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM2(3, :, :) = tmp
+
+            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM3(2, :, :) = tmp
+            
+            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call clear_dirichlet(solv, nr_total, tmp)
+            RM3(3, :, :) = tmp
+            
+            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
+
+            if (k.eq.1) then
+                allocate(ll(d-1), qq(d-1, d-1))
+                call compute_eigdecomp_pdr(size(ll), AA1(:d-1, :d-1), BB1(:d-1, :d-1), ll, qq)
+            else
+                allocate(ll(d), qq(d, d))
+                call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
+            end if
+            
+            if (ishigher) then 
+                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
+            else
+                eigenval = minval(ll); ii = minloc(ll, dim=1)
+            end if
+
+            delta = 0.d0
+            if (k.eq.1) then
+                delta(:2) = qq(:, ii)
+            else
+                delta = qq(:, ii)
+            end if
+    
+            p = -g*delta(2) + p*delta(3)
+            eigenvec = eigenvec*delta(1) + p
+            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_W_u, data_W_v, data_W_w, eigenvec, u)
+            call clear_dirichlet(solv, nr_total, u)
+            
+            call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+            q = sqrt(prod)
+            eigenvec = eigenvec/q; u = u/q
+            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
+                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+            call clear_dirichlet(solv, nr_total, v)
+            
+            norm = norm2(g)
+            deallocate(ll, qq)
+        end do
+
+    end subroutine LOBPCGSTAB
 
 end module plasticitysolver3

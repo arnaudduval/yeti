@@ -37,7 +37,7 @@ class material():
 			raise Warning('Not implemented')
 		return prop
 	
-	def setTensorProperty(self, inpt, shape=(3, 3), isIsotropic=False):
+	def setTensorProperty(self, inpt, shape=3, isIsotropic=False):
 
 		def create3ArrayFrom2Array(inpt, x):
 			lenx = np.max(np.shape(x))
@@ -50,7 +50,7 @@ class material():
 		if isIsotropic:
 			# Isotropic material 
 			if np.isscalar(inpt):
-				prop = lambda x: inpt*np.eye((*shape, np.max(np.shape(x))))
+				prop = lambda x: create3ArrayFrom2Array(inpt*np.eye(shape), x)
 			else:
 				prop = lambda x: create3ArrayFrom2Array(inpt, x)
 		elif callable(inpt):
@@ -82,7 +82,7 @@ class heatmat(material):
 		self.capacity = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
-	def addConductivity(self, inpt, isIsotropic, shape=(3, 3)):
+	def addConductivity(self, inpt, isIsotropic, shape=3):
 		if isIsotropic: self._isConductivityIsotropic = True
 		self.conductivity = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
@@ -91,7 +91,7 @@ class heatmat(material):
 		self.capacityDers = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
-	def addConductivityDers(self, inpt, isIsotropic, shape=(3, 3)):
+	def addConductivityDers(self, inpt, isIsotropic, shape=3):
 		self.conductivityDers = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
 		return
 

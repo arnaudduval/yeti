@@ -200,13 +200,6 @@ class problem():
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
 		if nr == 1: u_interp = np.ravel(u_interp)
 		return u_interp
-	
-	def compute_eigs_LOBPCG(self, ishigher=False):
-		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
-				ishigher, self._itersLin, self._thresLin]
-		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_2d(*inpts)
-		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_helmholtz_lobpcg_3d(*inpts)
-		return eigenval, eigenvec
 
 	def fastDiagonalization(self, array_in, fdtype='heat'):
 		if fdtype == 'heat':
@@ -251,6 +244,16 @@ class heatproblem(problem):
 		if args is None: args = self.part.qpPhy
 		intForce = self.compute_mfCapacity(flux, args=args, isLumped=isLumped) + self.compute_mfConductivity(temp, args=args)
 		return intForce
+	
+	def compute_eigs_LOBPCG(self, ishigher=False, args=None):
+		if args is None: args = self.part.qpPhy
+		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+		Kprop = self.heatmaterial.conductivity(args)
+		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
+				Cprop, Kprop, ishigher, self._itersLin, self._thresLin]
+		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_lobpcg_heat_2d(*inpts)
+		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_lobpcg_heat_3d(*inpts)
+		return eigenval, eigenvec
 
 	def solveSteadyHeatProblem(self, Fext, args=None):
 		if args is None: args = self.part.qpPhy
@@ -381,6 +384,19 @@ class mechaproblem(problem):
 		if args is None: args = self.part.qpPhy
 		intForce = self.compute_MechStaticIntForce(stress) + self.compute_mfMass(accel, args=args, isLumped=isLumped)
 		return intForce
+	
+	def compute_eigs_LOBPCG(self, ishigher=False, mechArgs=None, args=None):
+		if mechArgs is None:
+			mechArgs = np.zeros((2, self.part.nbqp_total))
+			mechArgs[0, :] = self.mechamaterial.lame_lambda
+			mechArgs[1, :] = self.mechamaterial.lame_mu
+		if args is None: args = self.part.qpPhy
+		massProp = self.mechamaterial.density(args)
+		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
+				mechArgs, massProp, ishigher, self._itersLin, self._thresLin]
+		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_lobpcg_elasticity_2d(*inpts)
+		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_lobpcg_elasticity_3d(*inpts)
+		return eigenval, eigenvec
 
 	def solveElasticityProblem(self, Fext, mechArgs=None):
 		if mechArgs is None:

@@ -273,6 +273,33 @@ subroutine gemm_AWB(type, nrA, ncA, A, nrB, ncB, B, W, nrR, ncR, R)
 
 end subroutine gemm_AWB
 
+subroutine block_dot_product(nm, nr, A, B, result)
+    !! Computes dot product of A and B. Both are actually vectors arranged following each dimension
+    !! Vector A is composed of [Au, Av, Aw] and B of [Bu, Bv, Bw]. 
+    !! Dot product A.B = Au.Bu + Av.Bv + Aw.Bw 
+
+    implicit none
+    ! Input/ output data
+    ! ------------------
+    integer, intent(in) :: nm, nr
+    double precision, intent(in) :: A, B
+    dimension :: A(nm, nr), B(nm, nr)
+
+    double precision :: result
+
+    ! Local data
+    ! ----------
+    integer :: i
+    double precision :: tmp
+
+    result = 0.d0
+    do i = 1, nm 
+        tmp = dot_product(A(i, :), B(i, :))
+        result = result + tmp
+    end do
+
+end subroutine block_dot_product
+
 subroutine solve_linear_system(nr, nc, A, b, x)
     !! Solves linear equation system A x = b
     !! It was adapted to solve any kind of linear systems (under, well and over determined systems).
