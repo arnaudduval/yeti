@@ -161,7 +161,7 @@ subroutine rayleigh_submatrix2(d, nm, nr, VV1, VV2, MM)
     do i = 1, d
         do j = i+1, d
             call block_dot_product(nm, nr, VV1(i, :, :), VV2(j, :, :), result)
-            MM(i, i) =  result
+            MM(i, j) =  result
             MM(j, i) = MM(i, j)
         end do 
     end do

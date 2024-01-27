@@ -16,15 +16,16 @@ from pysrc.lib.lib_job import heatproblem, mechaproblem
 
 # Set global variables
 geoName = 'QA'
-degree_list = np.array([2, 3, 4])
-cuts_list   = np.arange(3, 6)
-quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
-# quadArgs    = {'quadrule': 'wq', 'type': }
-matArgs 	= {'elastic_modulus':1e3, 'elastic_limit':1e10, 'poisson_ratio':0.3,
+degree_list = np.array([1, 2, 3])
+cuts_list   = np.arange(2, 8)
+
+# quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
+quadArgs    = {'quadrule': 'wq', 'type': 2}
+matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.0,
 				'isoHardLaw': {'Isoname':'none'}}
 
-for i, degree in enumerate(degree_list):
-	for j, cuts in enumerate(cuts_list):
+for j, cuts in enumerate(cuts_list):
+	for i, degree in enumerate(degree_list):
 		geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 					'extra':{'Rin':1.0, 'Rex':2.0}

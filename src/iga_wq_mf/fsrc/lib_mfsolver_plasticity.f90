@@ -1285,7 +1285,7 @@ contains
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, u)
         call clear_dirichlet(solv, nr_total, u)
-        
+
         call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
         q = sqrt(prod)
         eigenvec = eigenvec/q; u = u/q
@@ -1294,7 +1294,6 @@ contains
                         data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
                         data_W_u, data_W_v, eigenvec, v)
         call clear_dirichlet(solv, nr_total, v)
-        
         call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
         p = 0.d0
         norm = 1.d0
