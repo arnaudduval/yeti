@@ -12,8 +12,8 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = True
-FIG_CASE = 2
+dataExist = False
+FIG_CASE = 0
 NONLIN_CASE = 3 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.001
 if NONLIN_CASE<3 : c = 0.001 # or 0.001

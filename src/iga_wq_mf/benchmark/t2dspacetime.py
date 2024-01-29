@@ -66,8 +66,8 @@ def simulate(degree, cuts, quadArgs):
 	# External heat force
 	Fext = problem.compute_volForce(powerDensity, {'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
 	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
-	u_sol = problem.solveFourierSTHeatProblem(u_guess, Fext)[0]
-	return problem, u_sol
+	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=True)
+	return problem, output
 
 # ---------------------
 # Transient model
@@ -89,10 +89,10 @@ for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 		color = COLORLIST[i]
 		for j, cuts in enumerate(cuts_list):
 			nbels = 2**cuts_list
-			problem, displacement = simulate(degree, cuts, quadArgs)
-			error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
-												'exactFunction':exactTemperature,}, 
-												isRelative=False)
+			problem, output = simulate(degree, cuts, quadArgs)
+			displacement = output['Solution'][-1]
+			_, error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
+												'exactFunction':exactTemperature,})
 			
 		if quadrule == 'iga': 
 			ax.loglog(nbels, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -100,7 +100,7 @@ for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 			
 			slope = np.polyfit(np.log10(nbels),np.log10(error_list), 1)[0]
 			slope = round(slope, 1)
-			annotation.slope_marker((nbels[1], error_list[1]), slope, 
+			annotation.slope_marker((nbels[-2], error_list[-2]), slope, 
 							poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 		else: 
 			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
@@ -113,9 +113,9 @@ for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 # ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
 # 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}$')
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$')
 ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-ax.set_ylim(top=1e-1, bottom=1e-12)
+ax.set_ylim(top=1e1, bottom=1e-11)
 ax.legend()
 fig.tight_layout()
 fig.savefig(folder + 'FigSPTLinearConvergenceL2' + '.pdf')
