@@ -20,7 +20,7 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._LinSolv = solverArgs.get('Krylov', 'GMRES')
+		self._linSolv = solverArgs.get('Krylov', 'GMRES')
 		self._itersLin = solverArgs.get('nIterKrylov', 100)
 		self._thresLin = solverArgs.get('thresholdKrylov', 1e-10)
 		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
@@ -217,12 +217,12 @@ class stheatproblem(stproblem):
 			Kdersprop = np.einsum('ijk,jk->ik', self.heatmaterial.conductivityDers(args), gradTemperature[:self.part.dim, :])
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._itersLin, 
-					threshold, self._linPreCond, self._LinSolv]
+					threshold, self._linPreCond, self._linSolv]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_3d(*inpts)
 		else:
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-					self.time.detJ, Cprop, Kprop, Fext, self._itersLin, threshold, self._linPreCond, self._LinSolv]
+					self.time.detJ, Cprop, Kprop, Fext, self._itersLin, threshold, self._linPreCond, self._linSolv]
 			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
 		return temperature, residue

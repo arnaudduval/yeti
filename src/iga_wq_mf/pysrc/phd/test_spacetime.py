@@ -234,7 +234,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 
 	uguess[boundary.thdod] = 0.0
 	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
-	problem._itersNL = problemArgs.get('nIterNewton', 10); problem._LinSolv = problemArgs.get('Krylov', 'BICG')
+	problem._itersNL = problemArgs.get('nIterNewton', 10); problem._linSolv = problemArgs.get('Krylov', 'BICG')
 	problem._thresLin = problemArgs.get('KrylovThreshold', 1e-10)
 	
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
@@ -426,31 +426,3 @@ else:
 		# 	ax.legend()
 		# 	fig.tight_layout()
 		# 	fig.savefig(folder+problem._Krylov+'residueNL2'+'.pdf')
-
-
-# #################################################################
-# ## OLD TEST
-# ##################################################################
-# # degree, cuts = 4, 4
-# # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-# # fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-# # for j, pcgmethod in enumerate(['WP', 'C', 'JMC', 'TDC']):
-# # 	problemArgs = {'isfull':False, 'isadaptive':False, 'NewtonIter':1, 
-# # 				'Krylov':'BICG', 'KrylovPrecond':pcgmethod, 'KrylovThreshold':1e-12}
-# # 	problem, displacement, resPCG, resNewton = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
-# # 	if pcgmethod == 'WP': pcgname = 'w.o. preconditioner' 
-# # 	elif pcgmethod == 'C' : pcgname = 'Classic FD method'
-# # 	elif pcgmethod == 'TDC': pcgname = 'Literature'
-# # 	elif pcgmethod == 'JMC': pcgname = 'This work'
-# # 	ax.semilogy(resPCG[0], marker=MARKERLIST[j], label=pcgname)
-
-# # ax.set_xlim(right=100, left=0)
-# # ax.set_ylim(top=10.0, bottom=1e-12)
-# # ax.set_xlabel('Number of iterations of ' + problem._Krylov + ' solver')
-# # ax.set_ylabel('Relative residue')
-# # ax.legend()
-# # fig.tight_layout()
-# # fig.savefig(folder+problem._Krylov+'residueLinear'+'.pdf')
-
-# ## ##################################################################
-
