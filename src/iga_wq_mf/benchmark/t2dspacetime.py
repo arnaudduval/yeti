@@ -113,7 +113,7 @@ for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 # ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
 # 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$')
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
 ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
 ax.set_ylim(top=1e1, bottom=1e-11)
 ax.legend()

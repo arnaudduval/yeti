@@ -12,12 +12,12 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = False
-FIG_CASE = 0
-NONLIN_CASE = 3 # 0, 1, 2 or 3
+dataExist = True
+FIG_CASE = 2
+NONLIN_CASE = 1 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.001
 if NONLIN_CASE<3 : c = 0.001 # or 0.001
-degree, cuts = 4, 4
+degree, cuts = 4, 3
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
@@ -339,7 +339,7 @@ else:
 			# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
 			# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$')
+			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
 			ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
 			ax.set_ylim(top=1e1, bottom=1e-11)
 			ax.legend(loc='lower left')
@@ -373,7 +373,7 @@ else:
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
 						xlim = 10*np.ceil(nbInnerLoops[-1]/10); ylim = [2, 0.2e-6]
-						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
+						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
@@ -388,7 +388,7 @@ else:
 					elif caseplot == 4:
 						yy = L2relerror; xx = np.arange(0, len(newtonRes))
 						xlim = 10; ylim = [2, 0.2e-6]
-						ylabel = r'$\displaystyle ||u - u^h||_{L_2(\Pi)}/||u||_{L_2(\Pi)}$'
+						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of outer iterations'
 
 					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])

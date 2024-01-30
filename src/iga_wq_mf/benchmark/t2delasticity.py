@@ -137,8 +137,8 @@ ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 # ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
 # 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
 
-ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
-# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H_1(\Omega)}$')
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
+# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
 ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
 ax.set_ylim(top=1e-2, bottom=1e-14)
 ax.set_xlim(left=1e-2, right=5)

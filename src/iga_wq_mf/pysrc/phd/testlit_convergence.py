@@ -95,7 +95,7 @@ for i, deg in enumerate(degree_list):
 
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 ax.set_xlabel('Number of elements')
-ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L^2(\Omega)}}{||u||_{L^2(\Omega)}}$')
 ax.set_xlim(left=1e0, right=80)
 ax.set_ylim(bottom=1e-12, top=1e0)
 fig.tight_layout()
