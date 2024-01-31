@@ -18,8 +18,8 @@ class problem1D(part1D):
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresNL = solverArgs.get('thresNL', 1e-6)
-		self._itersNL = solverArgs.get('itersNL', 20)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-6)
+		self._itersNL = solverArgs.get('iters_nonlinear', 20)
 		return
 
 	def add_DirichletCondition(self, table=[0, 0]):

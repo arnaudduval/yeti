@@ -69,7 +69,7 @@ if not dataExist:
 			# ---------------------
 			# Transient model
 			# ---------------------			
-			SOLVERARGS = {'KrylovPreconditioner': PCGmethod}
+			SOLVERARGS = {'preconditioner': PCGmethod}
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs=SOLVERARGS)
 
@@ -123,7 +123,7 @@ else:
 		axs[1].set_title('Last NR iterations')
 		for ax in axs:
 			ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-			ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+			ax.set_ylabel('Relative residue')
 			ax.set_ybound(lower=1e-12, upper=10)
 
 		axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))

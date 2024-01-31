@@ -19,7 +19,7 @@ geoName = 'QA'
 degree_list = np.array([1])
 cuts_list   = np.arange(2, 8)
 matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.3,
-				'isoHardLaw': {'Isoname':'none'}}
+				'isoHardLaw': {'name':'none'}}
 
 for i, degree in enumerate(degree_list):
 	for j, cuts in enumerate(cuts_list):

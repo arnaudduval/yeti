@@ -16,7 +16,7 @@ TRACTION, RINT, REXT = 1.0, 1.0, 2
 YOUNG, POISSON = 1e3, 0.1
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISSON, 
-			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
+			'plasticLaw': {'name':'linear', 'Eiso':YOUNG/10}}
 
 DEGREE_LIST = np.arange(5, 6)
 CUTS_LIST   = np.arange(6, 7)
@@ -58,13 +58,13 @@ class mechasimulate(simulate):
 		Fext    = problem.compute_surfForce(self._funforce, nbFacePosition=1)[0]
 
 		# Run iterative methods	
-		timeNoIter = []; problem.addSolverConstraints({'nIterKrylov':0})
+		timeNoIter = []; problem.addSolverConstraints({'iters_linear':0})
 		for im in self._iterMethods:
 			problem._linPreCond = im
 			time_temp = self.run_iterativeSolver(problem, Fext=Fext)[-1]
 			timeNoIter.append(time_temp)
 		enablePrint()
-		timeIter, resPCG = [], []; problem.addSolverConstraints({'nIterKrylov':100, 'thresholdKrylov':1e-12})
+		timeIter, resPCG = [], []; problem.addSolverConstraints({'iters_linear':100, 'thres_linear':1e-12})
 		print(self._degree, self._nbcuts)
 		for im in self._iterMethods:
 			problem._linPreCond = im

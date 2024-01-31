@@ -110,10 +110,10 @@ class mechamat(material):
 		if any(prop is None for prop in [self.elasticModulus, self.elasticLimit, self.poissonRatio]): raise Warning('Mechanics not well defined')
 		self.__setExtraMechanicalProperties()
 
-		isoLaw = matArgs.get('isoHardLaw', {})
-		self._isoHardening = self.isotropicHardening(self.elasticLimit, isohardArgs=isoLaw)
+		isohardArgs = matArgs.get('isoHardLaw', {})
+		self._isoHardening = self.isotropicHardening(self.elasticLimit, isohardArgs=isohardArgs)
 		kineLaw = matArgs.get('kineHardLaw', {})
-		chabocheTable = kineLaw.get('kineparameters', np.array([[0, 0]]))
+		chabocheTable = kineLaw.get('parameters', np.array([[0, 0]]))
 		# By default if only one parameter we consider a linear kinematic hardening
 		# Armstrong Frederick hardening is only considering a single row [[b, c]]
 		if np.isscalar(chabocheTable): chabocheTable = np.array([[chabocheTable, 0]]) 
@@ -143,7 +143,7 @@ class mechamat(material):
 	class isotropicHardening():
 		def __init__(self, elasticlimit, isohardArgs:dict):
 			self.__elasticlimit = elasticlimit
-			isoname = isohardArgs.get('Isoname', 'none').lower()
+			isoname = isohardArgs.get('name', 'none').lower()
 			if   isoname == 'linear': self.__setIsoLinearModel(isohardArgs)
 			elif isoname == 'swift' : self.__setIsoSwiftModel(isohardArgs)
 			elif isoname == 'voce'  : self.__setIsoVoceModel(isohardArgs)

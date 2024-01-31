@@ -21,7 +21,6 @@ YOUNG, POISSON = 1e5, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'plasticLaw': {'Isoname':'none'}}
-SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-15, 'KrylovPreconditioner': 'TDC'}
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -68,7 +67,6 @@ def simulate(degree, cuts, quadArgs):
 
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
-	problem.addSolverConstraints(solverArgs=SOLVERARGS)
 	Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 	displacement = problem.solveElasticityProblem(Fext=Fext)[0]
 	return problem, displacement

@@ -17,7 +17,6 @@ folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-solverArgs  = {'nbIterationsPCG':150, 'PCGThreshold':1e-8}
 quadArgs    = {'quadrule': 'iga', 'type': 'leg'}
 dataExist     = False
 withReference = True

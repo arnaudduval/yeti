@@ -17,11 +17,11 @@ class problem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._itersLin = solverArgs.get('nIterKrylov', 100)
-		self._thresLin = solverArgs.get('thresholdKrylov', 1e-8)
-		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
-		self._itersNL = solverArgs.get('nIterNewton', 20)
-		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
+		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
+		self._itersNL = solverArgs.get('iters_nonlinear', 20)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
+		self._itersLin = solverArgs.get('iters_linear', 100)
+		self._thresLin = solverArgs.get('thres_linear', 1e-8)
 		self._safeguard = 1e-12
 		return
 	

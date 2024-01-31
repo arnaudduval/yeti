@@ -24,8 +24,7 @@ NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
-			'isoHardLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
-SOLVERARGS  = {'nIterKrylov':150, 'thresholdKrylov':1e-10, 'KrylovPreconditioner': 'TDC', 'thresholdNewton':1e-9}
+			'isoHardLaw': {'name':'linear', 'Eiso':YOUNG/10}}
 isReference = False
 
 def forceSurf_infPlate(P:list):
@@ -60,7 +59,6 @@ def simulate(degree, cuts, quadArgs, step=-2):
 
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
-	problem.addSolverConstraints(solverArgs=SOLVERARGS)
 	Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 	Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 	for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref

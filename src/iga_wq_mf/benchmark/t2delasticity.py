@@ -24,8 +24,7 @@ TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.0
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
-		'isoHardLaw': {'Isoname':'none'}}
-SOLVERARGS  = {'nIterKrylov':200, 'thresholdKrylov':1e-10, 'KrylovPreconditioner': 'TDC'}
+		'isoHardLaw': {'name':'none'}}
 isReference = False
 
 def forceSurf_infPlate(P:list):
@@ -73,7 +72,6 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
-	problem.addSolverConstraints(solverArgs=SOLVERARGS)
 	if useElastoAlgo:
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]

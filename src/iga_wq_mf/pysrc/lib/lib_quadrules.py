@@ -53,7 +53,7 @@ class GaussQuadrature(QuadratureRules):
 	def __init__(self, degree, knotvector, quadArgs:dict):
 		QuadratureRules.__init__(self, degree, knotvector)
 		self._gaussType = quadArgs.get('type', 'leg').lower()
-		extraArgs = quadArgs.get('extra', {'nbQPEL': 1})
+		extraArgs = quadArgs.get('extra', {'nb_qp_el': 1})
 		if self._gaussType == 'leg': # Legendre 
 			self._order = self.degree + 1
 			self._tablefunction = legendreTable
@@ -61,7 +61,7 @@ class GaussQuadrature(QuadratureRules):
 			self._order = self.degree + 2
 			self._tablefunction = lobattoTable
 		elif self._gaussType == 'legextra':
-			self._order = self.degree + extraArgs.get('nbQPEL')
+			self._order = self.degree + extraArgs.get('nb_qp_el')
 			self._tablefunction = legendreTable
 		else: 
 			raise Warning('Not found')

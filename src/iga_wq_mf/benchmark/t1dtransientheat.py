@@ -67,8 +67,8 @@ XX, TIME = np.meshgrid(x_interp, time_list)
 fig, ax  = plt.subplots(figsize=(10, 4))
 levels   = np.array([-0.1]); levels = np.append(levels, np.linspace(0, 1, 9))
 norm 	 = mpl.colors.BoundaryNorm(levels, len(levels))
-colors   = list(plt.cm.Greys(np.linspace(0, 1, len(levels)+1))); colors[0] = "red"
-cmap = mpl.colors.ListedColormap(colors,"", len(colors))
+colors   = list(plt.cm.Greys(np.linspace(0, 1, len(levels)+1))); colors[0] = 'red'
+cmap = mpl.colors.ListedColormap(colors, '', len(colors))
 im   = ax.contourf(XX, TIME, temp_interp.T, norm=norm, cmap=cmap)
 cbar = plt.colorbar(im, )
 cbar.set_label(r'$\displaystyle\frac{u - u_0}{u_1 - u_0}$')

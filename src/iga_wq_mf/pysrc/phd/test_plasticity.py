@@ -17,7 +17,7 @@ GEONAME = 'QA'
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1.5, 'poisson_ratio': POISSON, 
-			'plasticLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
+			'plasticLaw': {'name':'linear', 'Eiso':YOUNG/10}}
 ITERMETHODS = ['C', 'JMC', 'TDC']
 dataExist = True
 
@@ -60,9 +60,7 @@ if not dataExist:
 		enablePrint()
 
 		# Solve elastic problem
-		SOLVERARGS = {'nIterKrylov':150, 'thresholdKrylov':1e-12, 'thresholdNewton':1e-9}
 		problem = mechaproblem(material, modelPhy, boundary)
-		problem.addSolverConstraints(solverArgs=SOLVERARGS)
 		problem._linPreCond = PCGmethod
 		Fref = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))

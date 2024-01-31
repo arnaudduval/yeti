@@ -17,9 +17,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Global variables
 YOUNG, CST, LENGTH = 2e11, 4.e7, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':0.3,
-		'isoHardLaw': {'Isoname':'none'}}
+		'isoHardLaw': {'name':'none'}}
 MECHAMATERIAL = mechamat(MATARGS)
-
 isReference = False
 
 def forceVol(P:list):

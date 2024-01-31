@@ -19,7 +19,7 @@ YOUNG, CST, LENGTH  = 2e11, 4.e7, 1
 NBSTEPS = 201
 TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e6, 'poisson_ratio':0.3,
-		'isoHardLaw': {'Isoname':'linear', 'Eiso':YOUNG/10}}
+		'isoHardLaw': {'name':'linear', 'Eiso':YOUNG/10}}
 MECHAMATERIAL = mechamat(MATARGS)
 isReference = False
 
@@ -88,22 +88,22 @@ else:
 	errorL2_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
 	errorH1_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
 
-	# for i, degree in enumerate(degree_list):
-	# 	for j, cuts in enumerate(cuts_list):
-	# 		nbel = 2**cuts
-	# 		args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg', 'extra':{'nbQPEL': 2}}}
-	# 		modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
+			nbel = 2**cuts
+			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg', 'extra':{'nbQPEL': 2}}}
+			modelPhy, displacement, _, _ = simulate(degree, nbel, args, step=step_max)
 
-	# 		for k, step in enumerate(step_list):
-	# 			errorL2_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'L2', 
-	# 																		'part_ref':part_ref, 
-	# 																		'u_ref': disp_ref[:, step]})	
-	# 			errorH1_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 
-	# 																		'part_ref':part_ref, 
-	# 																		'u_ref': disp_ref[:, step]})	
+			for k, step in enumerate(step_list):
+				errorL2_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'L2', 
+																			'part_ref':part_ref, 
+																			'u_ref': disp_ref[:, step]})	
+				errorH1_list[k, i, j], _ = modelPhy.normOfError(displacement[:, step], normArgs={'type':'H1', 
+																			'part_ref':part_ref, 
+																			'u_ref': disp_ref[:, step]})	
 
-	# np.save(folder + 'plasticity1DL2', errorL2_list)
-	# np.save(folder + 'plasticity1DH1', errorH1_list)
+	np.save(folder + 'plasticity1DL2', errorL2_list)
+	np.save(folder + 'plasticity1DH1', errorH1_list)
 
 	for error_name in ['H1', 'L2']:
 		error_list = np.load(folder + 'plasticity1D' + error_name + '.npy')

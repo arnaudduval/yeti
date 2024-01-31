@@ -20,12 +20,12 @@ class stproblem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._linSolv = solverArgs.get('Krylov', 'GMRES')
-		self._itersLin = solverArgs.get('nIterKrylov', 100)
-		self._thresLin = solverArgs.get('thresholdKrylov', 1e-8)
-		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
-		self._itersNL = solverArgs.get('nIterNewton', 20)
-		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
+		self._linSolv = solverArgs.get('linearsolver', 'GMRES')
+		self._itersLin = solverArgs.get('iters_linear', 100)
+		self._thresLin = solverArgs.get('thres_linear', 1e-8)
+		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
+		self._itersNL = solverArgs.get('iters_nonlinear', 20)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
 		self._safeguard = 1e-12
 		return
 	
@@ -252,7 +252,9 @@ class stheatproblem(stproblem):
 
 			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
 			if j == 0: resNL0 = resNLj1
+			enablePrint()
 			print('Nonlinear error: %.3e' %resNLj1)
+			blockPrint()
 
 			# Update thresholds
 			if isadaptive: 
@@ -269,9 +271,9 @@ class stheatproblem(stproblem):
 				
 			AllresNewton.append(resNLj1)
 			Allsol.append(np.copy(dj_n1))
-			enablePrint()
-			print(threshold_inner)
-			blockPrint()
+			# enablePrint()
+			# print(threshold_inner)
+			# blockPrint()
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)
