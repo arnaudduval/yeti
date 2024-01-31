@@ -12,12 +12,12 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = True
+dataExist = False
 FIG_CASE = 2
 NONLIN_CASE = 1 # 0, 1, 2 or 3
-if NONLIN_CASE==3: c = 0.01 # or 0.001
-if NONLIN_CASE<3 : c = 0.001 # or 0.001
-degree, cuts = 4, 3
+if NONLIN_CASE==3: c = 0.01 # or 0.01
+if NONLIN_CASE<3 : c = 0.01 # or 0.001
+degree, cuts = 4, 4
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']

@@ -22,10 +22,11 @@ class stproblem():
 	def addSolverConstraints(self, solverArgs:dict):
 		self._linSolv = solverArgs.get('Krylov', 'GMRES')
 		self._itersLin = solverArgs.get('nIterKrylov', 100)
-		self._thresLin = solverArgs.get('thresholdKrylov', 1e-10)
+		self._thresLin = solverArgs.get('thresholdKrylov', 1e-8)
 		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
 		self._itersNL = solverArgs.get('nIterNewton', 20)
 		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
+		self._safeguard = 1e-12
 		return
 	
 	def compute_volForce(self, volfun, args=None): 
@@ -272,7 +273,7 @@ class stheatproblem(stproblem):
 			print(threshold_inner)
 			blockPrint()
 
-			if resNLj1 <= max([1e-12, self._thresNL*resNL0]): break
+			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)
 
 			# Solve for active control points
@@ -284,7 +285,7 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
-			if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
+			if np.sqrt(np.dot(deltaD, deltaD)) <= self._safeguard: break
 
 		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol}
 		return output

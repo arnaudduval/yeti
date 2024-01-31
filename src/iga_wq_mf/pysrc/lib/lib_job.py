@@ -18,10 +18,11 @@ class problem():
 
 	def addSolverConstraints(self, solverArgs:dict):
 		self._itersLin = solverArgs.get('nIterKrylov', 100)
-		self._thresLin = solverArgs.get('thresholdKrylov', 1e-10)
+		self._thresLin = solverArgs.get('thresholdKrylov', 1e-8)
 		self._linPreCond = solverArgs.get('KrylovPreconditioner', 'JMC')
 		self._itersNL = solverArgs.get('nIterNewton', 20)
 		self._thresNL = solverArgs.get('thresholdNewton', 1e-8)
+		self._safeguard = 1e-12
 		return
 	
 	def __getInfo4surfForce(self, nbFacePosition):
@@ -322,7 +323,7 @@ class heatproblem(problem):
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
 				print('NonLinear error: %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 
 				# Solve for active control points
 				resLinj = np.array([i, j+1])
@@ -333,7 +334,7 @@ class heatproblem(problem):
 				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
 				AllresLin.append(resLinj)
-				if np.sqrt(np.dot(deltaV, deltaV)) <= 1e-12: break
+				if np.sqrt(np.dot(deltaV, deltaV)) <= self._safeguard: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -467,7 +468,7 @@ class mechaproblem(problem):
 				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
 				print('NonLinear error: %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 				if j > 0 and isElasticLoad: break
 				
 				# Solver for active control points
@@ -478,7 +479,7 @@ class mechaproblem(problem):
 				# Update active control points
 				dj_n1 += deltaD
 				AllresLin.append(resLinj)
-				if np.sqrt(block_dot_product(deltaD, deltaD)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaD, deltaD)) <= self._safeguard: break
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
@@ -560,7 +561,7 @@ class mechaproblem(problem):
 				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
 				print('NonLinear error: %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 
 				# Solve for active control points
 				resLinj = np.array([i, j+1])
@@ -572,7 +573,7 @@ class mechaproblem(problem):
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
 				AllresLin.append(resLinj)
-				if np.sqrt(block_dot_product(deltaA, deltaA)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaA, deltaA)) <= self._safeguard: break
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -692,7 +693,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
 				print('Nonlinear error: %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 
 				# Solve for active control points
 				deltaA = self._solveLinearizedThermoElasticityProblem(Fext=r_dj, tsfactor1=gamma*dt, tsfactor2=beta*dt**2, args=args, isLumped=isLumped)
@@ -701,7 +702,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
-				if np.sqrt(block_dot_product(deltaA, deltaA)) <= 1e-12: break
+				if np.sqrt(block_dot_product(deltaA, deltaA)) <= self._safeguard: break
 
 			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])
