@@ -265,15 +265,15 @@ class stheatproblem(stproblem):
 					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
 					if eps_kr_r <= 0.1: threshold_ref = eps_kr_k
 					else: threshold_ref = max([eps_kr_k, eps_kr_r])
-				threshold_inner = max([self._thresLin, threshold_ref])
+				threshold_inner = min([eps_kr0, max([self._thresLin, threshold_ref])])
 			else: 
 				threshold_inner = self._thresLin
 				
 			AllresNewton.append(resNLj1)
 			Allsol.append(np.copy(dj_n1))
-			# enablePrint()
-			# print(threshold_inner)
-			# blockPrint()
+			enablePrint()
+			print(threshold_inner)
+			blockPrint()
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)

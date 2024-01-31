@@ -12,11 +12,11 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = False
+dataExist = True
 FIG_CASE = 2
 NONLIN_CASE = 1 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.01
-if NONLIN_CASE<3 : c = 0.01 # or 0.001
+if NONLIN_CASE<3 : c = 0.05 # or 0.001
 degree, cuts = 4, 4
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
@@ -233,6 +233,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
+	problem._itersNL = 11
 	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
@@ -369,12 +370,12 @@ else:
 				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-						xlim = 10*np.ceil(nbInnerLoops[-1]/10); ylim = [2, 0.2e-6]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = [2, 0.2e-6]
 						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-						xlim = 10*np.ceil(nbInnerLoops[-1]/10); ylim = [2, 5e-9]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = [2, 5e-9]
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 3:
@@ -390,7 +391,7 @@ else:
 
 					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
 					ax.set_xlim(right=xlim, left=0)
-					ax.set_ylim(top=ylim[0], bottom=ylim[1])
+					# ax.set_ylim(top=ylim[0], bottom=ylim[1])
 					ax.set_xlabel(xlabel)
 					ax.set_ylabel(ylabel)
 					ax.legend()
