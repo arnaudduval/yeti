@@ -74,7 +74,7 @@ class heatmat(material):
 		self.conductivity = None
 		self._isCapacityIsotropic     = False
 		self._isConductivityIsotropic = False
-		self.refTemperature = matArgs.get('RefTemp', 300)
+		self.refTemp = matArgs.get('ref_temp', 300)
 		return
 	
 	def addCapacity(self, inpt, isIsotropic):
@@ -103,15 +103,15 @@ class mechamat(material):
 
 	def __init__(self, matArgs:dict):
 		material.__init__(self)
-		self.thermalexpansion = matArgs.get('thermal_expansion', 1.0)
-		self.elasticmodulus = matArgs.get('elastic_modulus', None)
-		self.poissonratio   = matArgs.get('poisson_ratio', None)
-		self.elasticlimit   = matArgs.get('elastic_limit', 1e15)
-		if any(prop is None for prop in [self.elasticmodulus, self.elasticlimit, self.poissonratio]): raise Warning('Mechanics not well defined')
+		self.thermalExpansion = matArgs.get('thermal_expansion', 1.0)
+		self.elasticModulus = matArgs.get('elastic_modulus', None)
+		self.poissonRatio   = matArgs.get('poisson_ratio', None)
+		self.elasticLimit   = matArgs.get('elastic_limit', 1e15)
+		if any(prop is None for prop in [self.elasticModulus, self.elasticLimit, self.poissonRatio]): raise Warning('Mechanics not well defined')
 		self.__setExtraMechanicalProperties()
 
 		isoLaw = matArgs.get('isoHardLaw', {})
-		self._isoHardening = self.isotropicHardening(self.elasticlimit, isohardArgs=isoLaw)
+		self._isoHardening = self.isotropicHardening(self.elasticLimit, isohardArgs=isoLaw)
 		kineLaw = matArgs.get('kineHardLaw', {})
 		chabocheTable = kineLaw.get('kineparameters', np.array([[0, 0]]))
 		# By default if only one parameter we consider a linear kinematic hardening
@@ -122,8 +122,8 @@ class mechamat(material):
 		return
 		
 	def __setExtraMechanicalProperties(self):
-		E  = self.elasticmodulus
-		nu = self.poissonratio
+		E  = self.elasticModulus
+		nu = self.poissonRatio
 		self.lame_lambda, self.lame_mu, self.lame_bulk = None, None, None
 		if E is not None and nu is not None:
 			lamb = nu*E/((1+nu)*(1-2*nu))
@@ -250,7 +250,7 @@ class mechamat(material):
 		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
 		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
 
-		plsInd = np.nonzero(np.ravel(f_trial)/self.elasticlimit>threshold)[0]
+		plsInd = np.nonzero(np.ravel(f_trial)/self.elasticLimit>threshold)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
@@ -289,23 +289,23 @@ class mechamat(material):
 			avrbeta, hatbeta, const1, const2 = self.__sumOverChabocheTable(dgamma, beta_n0)
 			hateta = stress_trial - avrbeta
 			normhateta = np.abs(hateta)
-			f = normhateta - (self.elasticmodulus + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
+			f = normhateta - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
 			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
 			if k == 0: resNL0 = resNLj
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = np.sign(hateta)
 			normhatetaders = normal*hatbeta
-			df = normhatetaders - (self.elasticmodulus + const2) - self._isoHardening._isohardfunders(alpha_n1)			
+			df = normhatetaders - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(alpha_n1)			
 			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
-			theta = -self.elasticmodulus/df
+			theta = -self.elasticModulus/df
 		return dgamma, hatbeta, normal, theta
 	
 	def __consistentTangentAlgorithm1D(self, nnz, isElastic, plsVars={}):
 		mechArgs = np.zeros((1, nnz))
-		mechArgs[0, :] = self.elasticmodulus
+		mechArgs[0, :] = self.elasticModulus
 		if not isElastic:
 			plsInd = plsVars['plsInd']; theta = plsVars['theta']
-			mechArgs[0, plsInd] = self.elasticmodulus*(1 - theta)
+			mechArgs[0, plsInd] = self.elasticModulus*(1 - theta)
 		return mechArgs
 	
 	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, isElasticMatrix=False, threshold=1e-8):
@@ -315,7 +315,7 @@ class mechamat(material):
 
 		# Compute trial stress
 		strain_trial = strain_n1 - pls_n0
-		stress_trial = self.elasticmodulus*strain_trial
+		stress_trial = self.elasticModulus*strain_trial
 
 		# Compute shifted stress
 		eta_trial = stress_trial - np.sum(beta_n0, axis=0)
@@ -326,7 +326,7 @@ class mechamat(material):
 		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
 		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
 
-		plsInd = np.nonzero(np.ravel(f_trial)/self.elasticlimit>threshold)[0]
+		plsInd = np.nonzero(np.ravel(f_trial)/self.elasticLimit>threshold)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
@@ -339,7 +339,7 @@ class mechamat(material):
 			alpha_n1[:, plsInd] += dgamma
 
 			# Update stress
-			stress_n1[:, plsInd] -= self.elasticmodulus*dgamma*normal
+			stress_n1[:, plsInd] -= self.elasticModulus*dgamma*normal
 			
 			# Update plastic strain
 			pls_n1[:, plsInd] += dgamma*normal

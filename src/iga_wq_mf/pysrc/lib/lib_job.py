@@ -597,7 +597,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 
 	def compute_mfCoupled(self, array_in, args=None, isThermal=True):
 		if args is None: args = self.part.qpPhy
-		prop = 3*self.mechamaterial.thermalexpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
+		prop = 3*self.mechamaterial.thermalExpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if isThermal:
 			if self.part.dim == 2: array_out = heatsolver.mf_thmchcoupled_2d(*inpts, array_in)
@@ -613,7 +613,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel[:-1, :], args=args, isLumped=isLumped) 
 							- self.compute_mfCoupled(disp[-1, :], args=args, isThermal=False))
 		intForce[-1, :]  = (self.compute_HeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
-							+ self.heatmaterial.refTemperature*self.compute_mfCoupled(vel[:-1, :], args=args, isThermal=True))
+							+ self.heatmaterial.refTemp*self.compute_mfCoupled(vel[:-1, :], args=args, isThermal=True))
 		return intForce
 
 	def _solveLinearizedThermoElasticityProblem(self, Fext, tsfactor1, tsfactor2, mechArgs=None, args=None, isLumped=False):

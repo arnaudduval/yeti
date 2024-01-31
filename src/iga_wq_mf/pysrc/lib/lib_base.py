@@ -381,7 +381,7 @@ class solver():
 			rsnew = dotfun(r, z)
 			p = z + rsnew/rsold*p
 			rsold = np.copy(rsnew)
-		output={'sol':x, 'res':resLin}
+		output = {'sol':x, 'res':resLin}
 		return output
 	
 	def BiCGSTAB(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None):
@@ -418,7 +418,7 @@ class solver():
 			p = r + beta*(p - omega*Aptilde)
 			rsold = np.copy(rsnew)
 
-		output={'sol':x, 'res':resLin}
+		output = {'sol':x, 'res':resLin}
 		return output
 	
 	def GMRES(self, Afun, b, Pfun=None, dotfun=None, cleanfun=None, dod=None, n_restarts=1):
@@ -456,5 +456,5 @@ class solver():
 				
 			for j in range(k+1): x = x + Z[j]*y[j]
 			AllresLin.append(resLin)
-
-		return x, AllresLin
+		output = {'sol':x, 'res':resLin}
+		return x, output
