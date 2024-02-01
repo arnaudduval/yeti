@@ -35,16 +35,19 @@ modeleIGA = IGAparametrization(filename=FILENAME)
 
 nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
-additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
+# additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
+additional_knots = {"patches":np.array([1]),"1":np.array([]),"2":np.array([0.4]),"3":np.array([])}
+modeleIGA.refine(nb_ref,nb_deg,additional_knots)
+additional_knots = {"patches":np.array([0]),"1":np.array([]),"2":np.array([0.5]),"3":np.array([])}
 
 nb_ref[:,0] = np.array([2,2,0])
-nb_deg[:,0] = np.array([1,1,0])
+nb_deg[:,0] = np.array([1,0,0])
 
 nb_ref[:,1] = np.array([2,2,0])
-nb_deg[:,1] = np.array([1,1,0])
+nb_deg[:,1] = np.array([1,0,0])
 
-nb_ref[:,2] = np.array([1,0,0])
-nb_deg[:,2] = np.array([1,0,0])
+nb_ref[:,2] = np.array([2,0,0])
+nb_deg[:,2] = np.array([2,0,0])
 
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
@@ -95,27 +98,17 @@ print("Resolution done ", t3-t2, " seconds")
 # Postprocessing
 SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    'couplingU5',SOL.transpose(),nb_ref=np.array([1,1,1]),
+    'couplingU5_2D',SOL.transpose(),nb_ref=np.array([4,4,4]),
     Flag=np.array([True,True,False])))
 
-print(modeleIGA._nb_dof_tot)
+x1, u1, dudx1, norm1, tan1, dudxi1 = pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(1, 2, 1000, SOL.transpose()))
+x2, u2, dudx2, norm2, tan2, dudxi2 = pp.postproc_curve_2d(**modeleIGA.get_inputs4post_curve_2D(2, 1, 1000, SOL.transpose()))
+
+import matplotlib.pyplot as plt
+
+plt.plot(x1[1,:], u1[0, :])
+plt.plot(x2[1,:], u2[0, :])
+
+plt.show()
 
 exit()
-
-# Verify result
-xtest = np.array([6.,0.,2.])
-search = np.arange(np.shape(modeleIGA._COORDS)[1])
-for i in range(3):
-    search = intersect1d(search, np.where(modeleIGA._COORDS[i,:] == xtest[i]))
-
-# Reference FE solution computed with Abaqus
-ref = -1.136E-2
-print("Reference solution : ", ref)
-print("Computed solution : ", SOL[search[0],2])
-
-error = ( SOL[search[0],2] - ref ) / ref
-
-if abs(error) > 0.02:
-    sys.exit(-1)
-else:
-    sys.exit(0)
