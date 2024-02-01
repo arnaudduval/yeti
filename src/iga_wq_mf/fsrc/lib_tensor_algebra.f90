@@ -385,8 +385,8 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
     double precision, intent(out) :: array_out
     dimension :: array_out(nr_u*nr_v)
 
-    ! Local data 
-    ! ----------
+    ! Local data
+    ! __________
     double precision, allocatable, dimension(:) :: R1
 
     allocate(R1(nr_u*nc_v))
@@ -424,13 +424,6 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
 
     ! Local data 
     ! ----------
-    ! double precision :: Mu, Mv, Mw
-    ! dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w)
-    ! call csr2dense(nnz_u, indi_u, indj_u, data_u, nr_u, nc_u, Mu)
-    ! call csr2dense(nnz_v, indi_v, indj_v, data_v, nr_v, nc_v, Mv)
-    ! call csr2dense(nnz_w, indi_w, indj_w, data_w, nr_w, nc_w, Mw)
-    ! call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_in, array_out)
-
     double precision, allocatable, dimension(:) :: R1, R2
 
     allocate(R1(nr_u*nc_v*nc_w))
@@ -473,14 +466,6 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
 
     ! Local data 
     ! ----------
-    ! double precision :: Mu, Mv, Mw, Mt
-    ! dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w), Mt(nr_t, nc_t)
-    ! call csr2dense(nnz_u, indi_u, indj_u, data_u, nr_u, nc_u, Mu)
-    ! call csr2dense(nnz_v, indi_v, indj_v, data_v, nr_v, nc_v, Mv)
-    ! call csr2dense(nnz_w, indi_w, indj_w, data_w, nr_w, nc_w, Mw)
-    ! call csr2dense(nnz_t, indi_t, indj_t, data_t, nr_t, nc_t, Mt)
-    ! call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv, Mw, Mt, array_in, array_out)
-
     double precision, allocatable, dimension(:) :: R1, R2, R3
 
     allocate(R1(nr_u*nc_v*nc_w*nc_t))

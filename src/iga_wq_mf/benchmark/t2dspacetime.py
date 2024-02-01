@@ -71,10 +71,11 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=False)
 	return problem, output
 
-degree, cuts = 4, 4
+degree, cuts = 3, 5
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
-for j, pcgmethod in enumerate(['WP', 'C', 'JMC', 'TDC']):
+start = time.time()
+for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
 	problemArgs = {'linearsolver':'GMRES', 'preconditioner':pcgmethod, 'thres_linear':1e-12}
 	problem, output = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
 	resPCG = output['KrylovRes']
@@ -83,63 +84,65 @@ for j, pcgmethod in enumerate(['WP', 'C', 'JMC', 'TDC']):
 	elif pcgmethod == 'TDC': pcgname = 'Literature'
 	elif pcgmethod == 'JMC': pcgname = 'This work'
 	ax.semilogy(resPCG[0], marker=MARKERLIST[j], label=pcgname)
+finish = time.time()
+print('Time: %.4e' %(finish-start))
 
-ax.set_xlim(right=100, left=0)
-ax.set_ylim(top=10.0, bottom=1e-12)
-ax.set_xlabel('Number of iterations of ' + problem._linSolv + ' solver')
-ax.set_ylabel('Relative residue')
-ax.legend()
-fig.tight_layout()
-fig.savefig(folder+problem._linSolv+'residueLinear'+'.pdf')
+# ax.set_xlim(right=100, left=0)
+# ax.set_ylim(top=10.0, bottom=1e-12)
+# ax.set_xlabel('Number of iterations of ' + problem._linSolv + ' solver')
+# ax.set_ylabel('Relative residue')
+# ax.legend()
+# fig.tight_layout()
+# fig.savefig(folder+problem._linSolv+'residueLinear'+'.pdf')
 
-# ---------------------
-# Transient model
-# ---------------------
-normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
-onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+# # ---------------------
+# # Transient model
+# # ---------------------
+# normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+# onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+# onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
-degree_list = np.array([1, 2, 3, 4])
-cuts_list   = np.arange(1, 7)
-figname = folder + 'FigSPTLinearConvergenceL2' + '.pdf'
+# degree_list = np.array([1, 2, 3, 4])
+# cuts_list   = np.arange(1, 7)
+# figname = folder + 'FigSPTLinearConvergenceL2' + '.pdf'
 
-fig, ax = plt.subplots(figsize=(8, 6))
-# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
-	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-	error_list = np.ones(len(cuts_list))
+# fig, ax = plt.subplots(figsize=(8, 6))
+# # for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+# for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
+# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+# 	error_list = np.ones(len(cuts_list))
 
-	for i, degree in enumerate(degree_list):
-		color = COLORLIST[i]
-		for j, cuts in enumerate(cuts_list):
-			nbels = 2**cuts_list
-			problem, output = simulate(degree, cuts, quadArgs)
-			displacement = output['Solution'][-1]
-			_, error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
-												'exactFunction':exactTemperature,})
+# 	for i, degree in enumerate(degree_list):
+# 		color = COLORLIST[i]
+# 		for j, cuts in enumerate(cuts_list):
+# 			nbels = 2**cuts_list
+# 			problem, output = simulate(degree, cuts, quadArgs)
+# 			displacement = output['Solution'][-1]
+# 			_, error_list[j] = problem.normOfError(displacement, normArgs={'type':'L2', 
+# 												'exactFunction':exactTemperature,})
 			
-		if quadrule == 'iga': 
-			ax.loglog(nbels, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
-						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+# 		if quadrule == 'iga': 
+# 			ax.loglog(nbels, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+# 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
-			slope = np.polyfit(np.log10(nbels),np.log10(error_list), 1)[0]
-			slope = round(slope, 1)
-			annotation.slope_marker((nbels[-2], error_list[-2]), slope, 
-							poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-		else: 
-			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
-					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+# 			slope = np.polyfit(np.log10(nbels),np.log10(error_list), 1)[0]
+# 			slope = round(slope, 1)
+# 			annotation.slope_marker((nbels[-2], error_list[-2]), slope, 
+# 							poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+# 		else: 
+# 			ax.loglog(nbels, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+# 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 		
-		fig.savefig(figname)
+# 		fig.savefig(figname)
 
-# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
-# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+# # ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+# # 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
+# # ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+# # 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
-ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-ax.set_ylim(top=1e1, bottom=1e-11)
-ax.legend()
-fig.tight_layout()
-fig.savefig(figname)
+# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
+# ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+# ax.set_ylim(top=1e1, bottom=1e-11)
+# ax.legend()
+# fig.tight_layout()
+# fig.savefig(figname)
