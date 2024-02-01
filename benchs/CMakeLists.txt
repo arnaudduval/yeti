@@ -91,6 +91,9 @@ add_test(NAME embeddedsolid1-NLmap COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/E
 add_test(NAME embeddedsolid2-NLembded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded)
 
 # Couling between solid patches with projected Gauss points
+add_test(NAME coupling_U5_2D_compatible
+COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5_2D_compatible.py
+         WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 add_test(NAME coupling_U5
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
@@ -224,6 +227,7 @@ set_tests_properties(
                      coupling-postprocessing
                      embeddedsolid1-NLmap
                      embeddedsolid2-NLembded
+                     coupling_U5_2D_compatible
                      coupling_U5
                      ROM1-plateWithHole
                      post_faces
