@@ -732,7 +732,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4post_curve_2D(self, i_patch, i_face, n_sample, filename, sol):
+    def get_inputs4post_curve_2D(self, i_patch, i_face, n_sample, sol):
         """
         Get the necessary inputs for function postproc.XXXXXXXXXXXXX in order to compute
         mechanical quantities (displacement and displacement gradient) along
@@ -746,15 +746,13 @@ class IGAparametrization:
             Index of side curve to process (1, 2, 3 or 4)
         n_sample : int
             Number of sample points to generate
-        filename : str
-            Name of output file
         sol : numpy array
             Problem solution
 
         Returns
         -------
         inputs : dict
-            Necessary inputs for function postproc.XXXXXXXXXXXXX
+            Necessary inputs for function postproc.postproc_curve_2D
         """
 
         assert(i_face > 0)
@@ -766,8 +764,7 @@ class IGAparametrization:
                             self._ELT_TYPE[i_patch-1] +
                             'is not handled')
 
-        inputs = {'filename': filename,
-                  'sol': sol,
+        inputs = {'sol': sol,
                   'n_sample': n_sample,
                   'i_patch': i_patch,
                   'i_face': i_face,
