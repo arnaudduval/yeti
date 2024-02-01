@@ -236,7 +236,7 @@ subroutine cplg_matrixU5(nb_data, &
             allocate(GaussPdsCoords(dim_patch+1, nbPtInt**(dim_patch)))
             !! TODO : use dimension dim_patch_interface instead of 3 to store Gauss points informations
             allocate(weightGP(nb_gps), xi_master(dim_patch, nb_gps), xi_slave(dim_patch, nb_gps), &
-                &   xi_interface(dim_patch, nb_gps))
+                &   xi_interface(3, nb_gps))
             !! TODO : allocated xi_interface(dim_patch - 1, nb_gps)
             allocate(saveEM(nb_gps), saveES(nb_gps))
 
@@ -505,8 +505,6 @@ subroutine cplg_matrixU5(nb_data, &
                         enddo
                     enddo
                     write(11, *) x_phys_slave(:, igps)
-                    ! write(*,*) xi_master(:, igps), x_phys(:, igps), x_phys_slave(:, igps)
-                    write(*,*) norm2(x_phys(:, igps) - x_phys_slave(:, igps))
                     !!! <--- CHECK PROJECTION
                 enddo
             endif
