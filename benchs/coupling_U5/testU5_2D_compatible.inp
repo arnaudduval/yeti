@@ -1,0 +1,83 @@
+** Copyright 2021 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms
+** of the GNU Lesser General Public License as published by the Free Software
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*Part, name=testU5_2D
+*USER ELEMENT, NODES=4, TYPE=U1, COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2
+*USER ELEMENT, NODES=1, TYPE=U5, COORDINATES=2, INTEGRATION=8, TENSOR=NONE
+1
+*Node, nset=Allnode
+1,  0.0, 0.0, 0.0
+2,  10.0, 0.0, 0.0
+3,  0.0, 7.0, 0.0
+4,  10.0, 7.0,  0.0
+
+5,  10.0, 0.0, 0.0
+6,  21.0, 0.0, 0.0
+7,  10.0, 7.0, 0.0
+8,  21.0, 7.0, 0.0
+
+9, 0.0, 0.0, 0.0
+
+*Element,type=U1,elset=Allels
+1,  4, 3, 2, 1
+2,  8, 7, 6, 5
+*Element,type=U5,elset=Lagrange
+3, 9
+*ELSET,ELSET=EltPatch1,generate
+1,1,1
+*ELSET,ELSET=EltPatch2,generate
+2,2,1
+*ELSET,ELSET=EltPatch3,generate
+3,3,1
+*NSET,NSET=CPX0Patch1
+1, 3
+*NSET,NSET=CPXmaxPatch2
+6, 8
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=MAT
+1
+*UEL PROPERTY, ELSET=EltPatch2, MATERIAL=MAT
+2
+*UEL PROPERTY, ELSET=EltPatch3, MATERIAL=MATvoid
+3, 2, 1, 1, 2
+** Maitre = patch 2 (face 1), esclave = patch 1 (face 2)
+*End Part
+
+** ASSEMBLY
+*Assembly, name=Assembly
+*Instance, name=I1, part=testU5_2D
+*End Instance
+*End Assembly
+*MATERIAL,NAME=MAT
+*Elastic
+210000., 0.3
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.0, 0.0
+*STEP,extrapolation=NO, NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+*Boundary
+I1.CPX0Patch1, 1, 2, 0.0
+** DLOAD
+*DLOAD
+I1.EltPatch2, U22, 7.
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
+
