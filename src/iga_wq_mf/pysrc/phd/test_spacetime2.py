@@ -12,11 +12,11 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = True
-ISLINEAR = True
+dataExist = False
+ISLINEAR = False
 FIG_CASE = 1
 c = 0.05
-degree, cuts = 4, 4
+degree, cuts = 8, 4
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -154,16 +154,16 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	problem._thresLin = 1e-10; problem._itersNL = 20
-	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
+	problem._thresLin = 1e-10; problem._itersNL = 30
+	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 
 if not dataExist:
 
 	if FIG_CASE == 1:
-		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 6)
+		degree_list = np.array([1])
+		cuts_list   = np.arange(1, 7)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' 
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -175,14 +175,17 @@ if not dataExist:
 			for i, degree in enumerate(degree_list):
 				for j, cuts in enumerate(cuts_list):
 					nbels = 2**cuts_list
+					blockPrint()
 					problem, output = simulate(degree, cuts, quadArgs)
+					enablePrint()
 					displacement = output['Solution'][-1]
 					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem.normOfError(displacement, 
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature},)
 
-					np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
-					np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
+					print(L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1])
+					# np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
+					# np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
 

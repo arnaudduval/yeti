@@ -242,7 +242,10 @@ class stheatproblem(stproblem):
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
-		
+			if j == 0:
+				temp_ref = np.copy(temperature)
+				gradtemp_ref = np.copy(gradtemperature)
+
 			# Compute internal force
 			Fint_dj = self.compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
 
@@ -274,7 +277,13 @@ class stheatproblem(stproblem):
 			resNLj0 = np.copy(resNLj1)
 
 			# Solve for active control points
-			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
+			if j < 6:
+				deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
+											args={'temperature':temp_ref, 
+												'gradients':gradtemp_ref}, 
+											isfull=isfull, threshold=threshold_inner)	
+			else: 
+				deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
 										args={'temperature':temperature, 
 											'gradients':gradtemperature}, 
 										isfull=isfull, threshold=threshold_inner)			
