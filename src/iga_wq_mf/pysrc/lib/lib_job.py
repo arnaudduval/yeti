@@ -22,7 +22,7 @@ class problem():
 		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
 		self._itersLin = solverArgs.get('iters_linear', 100)
 		self._thresLin = solverArgs.get('thres_linear', 1e-8)
-		self._safeguard = 1e-12
+		self._safeguard = 1e-14
 		return
 	
 	def __getInfo4surfForce(self, nbFacePosition):
@@ -334,7 +334,6 @@ class heatproblem(problem):
 				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
 				AllresLin.append(resLinj)
-				if np.sqrt(np.dot(deltaV, deltaV)) <= self._safeguard: break
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -479,7 +478,6 @@ class mechaproblem(problem):
 				# Update active control points
 				dj_n1 += deltaD
 				AllresLin.append(resLinj)
-				if np.sqrt(block_dot_product(deltaD, deltaD)) <= self._safeguard: break
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
@@ -573,7 +571,6 @@ class mechaproblem(problem):
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
 				AllresLin.append(resLinj)
-				if np.sqrt(block_dot_product(deltaA, deltaA)) <= self._safeguard: break
 
 			dispinout[:, :, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -702,7 +699,6 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				dj_n1 += beta*dt**2*deltaA
 				Vj_n1 += gamma*dt*deltaA
 				Aj_n1 += deltaA
-				if np.sqrt(block_dot_product(deltaA, deltaA)) <= self._safeguard: break
 
 			dispinout[:, :, i] = np.copy(dj_n1[:-1, :])
 			Tinout[:, i] = np.copy(dj_n1[-1, :])

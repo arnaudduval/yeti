@@ -26,7 +26,7 @@ class stproblem():
 		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
 		self._itersNL = solverArgs.get('iters_nonlinear', 20)
 		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
-		self._safeguard = 1e-12
+		self._safeguard = 1e-14
 		return
 	
 	def compute_volForce(self, volfun, args=None): 
@@ -229,9 +229,9 @@ class stheatproblem(stproblem):
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
-		eps_kr0  = solvArgs.get('kr0', .25)
-		gamma_kr = solvArgs.get('krgamma', 0.9)
-		omega_kr = solvArgs.get('kromega', 1.5)
+		eps_kr0  = solvArgs.get('initial', .5)
+		gamma_kr = solvArgs.get('coefficient', 0.9)
+		omega_kr = solvArgs.get('exponential', 1.5)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
@@ -271,9 +271,9 @@ class stheatproblem(stproblem):
 				
 			AllresNewton.append(resNLj1)
 			Allsol.append(np.copy(dj_n1))
-			enablePrint()
-			print(threshold_inner)
-			blockPrint()
+			# enablePrint()
+			# print(threshold_inner)
+			# blockPrint()
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)
@@ -287,7 +287,6 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
-			if np.sqrt(np.dot(deltaD, deltaD)) <= self._safeguard: break
 
 		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol}
 		return output

@@ -13,11 +13,11 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
 dataExist = True
-FIG_CASE = 2
+FIG_CASE = 1
 NONLIN_CASE = 1 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.01
-if NONLIN_CASE<3 : c = 0.05 # or 0.001
-degree, cuts = 4, 4
+if NONLIN_CASE<3 : c = 0.05 # or 0.001, 0.05
+degree, cuts = 4, 5
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
@@ -234,15 +234,15 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 
 	uguess[boundary.thdod] = 0.0
 	problem._itersNL = 11
-	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
+	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 
 if not dataExist:
 
 	if FIG_CASE == 1:
-		degree_list = np.array([1, 2])
-		cuts_list   = np.arange(6, 7)
+		degree_list = np.array([1, 2, 3, 4])
+		cuts_list   = np.arange(1, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' + str(NONLIN_CASE)
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -304,8 +304,8 @@ else:
 		onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 		plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 
-		figname = folder + 'SPTNonLinearConvergenceL2'+str(NONLIN_CASE)+'.pdf'
-		filenames = ['L2relerror_meshpar_iga_leg_']
+		figname = folder + 'SPTNonLinearConvergence2L2'+str(NONLIN_CASE)+'.pdf'
+		filenames = ['L2relerror_meshpar_test_iga_leg_']
 		if FIG_CASE == 1:
 			normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 			fig, ax = plt.subplots(figsize=(8, 6))
@@ -370,28 +370,29 @@ else:
 				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
 					if caseplot == 1:
 						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = [2, 0.2e-6]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
 						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 2:
 						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = [2, 5e-9]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of inner iterations'
 					elif caseplot == 3:
 						yy = newtonRes; xx = np.arange(0, len(newtonRes))
-						xlim = 10; ylim = [2, 5e-9]
+						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of outer iterations'
 					elif caseplot == 4:
 						yy = L2relerror; xx = np.arange(0, len(newtonRes))
-						xlim = 10; ylim = [2, 0.2e-6]
+						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
 						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of outer iterations'
 
 					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
 					ax.set_xlim(right=xlim, left=0)
 					# ax.set_ylim(top=ylim[0], bottom=ylim[1])
+					ax.set_ylim(top=1e1, bottom=ylim)
 					ax.set_xlabel(xlabel)
 					ax.set_ylabel(ylabel)
 					ax.legend()
