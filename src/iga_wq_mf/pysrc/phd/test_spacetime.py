@@ -14,9 +14,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 extension = '.dat'
 dataExist = True
 FIG_CASE = 1
-NONLIN_CASE = 1 # 0, 1, 2 or 3
-if NONLIN_CASE==3: c = 0.01 # or 0.01
-if NONLIN_CASE<3 : c = 0.05 # or 0.001, 0.05
+NONLIN_CASE = 1 # 0, 1
+if NONLIN_CASE<3 : c = 0.001 # or 0.001, 0.05
 degree, cuts = 4, 5
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):
@@ -27,7 +26,6 @@ def conductivityProperty(args, nlcase=NONLIN_CASE):
 		for j in range(2):
 			if nlcase==0: Kprop[i, j, :] = Kref[i, j]
 			if nlcase==1: Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
-			if nlcase>=2: Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
 	return Kprop 
 
 def conductivityDersProperty(args, nlcase=NONLIN_CASE):
@@ -38,35 +36,30 @@ def conductivityDersProperty(args, nlcase=NONLIN_CASE):
 		for j in range(2):
 			if nlcase==0: Kprop[i, j, :] = np.zeros(len(temperature))
 			if nlcase==1: Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
-			if nlcase>=2: Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
-													-0.125*np.sign(temperature)*np.sin(temperature))
 	return Kprop 
 
 def capacityProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	if nlcase==0: Cprop = np.ones(len(temperature))
 	if nlcase==1: Cprop = (1.0 + np.exp(-np.abs(temperature)))
-	if nlcase>=2: Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
 	return Cprop
 
 def capacityDersProperty(args, nlcase=NONLIN_CASE):
 	temperature = args['temperature']
 	if nlcase==0: Cprop = np.zeros(len(temperature))
 	if nlcase==1: Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
-	if nlcase>=2: Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
 	return Cprop
 
 def exactTemperature(qpPhy, nlcase=NONLIN_CASE):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
 	if nlcase<=2: u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*x*(x-6)*np.sin(np.pi*t)
-	if nlcase>2:  u = c*(-6*x + y + 10)*(6*x + y - 10)*x*(2*x-3)*np.sin(np.pi*t)
 	return u
 
 def powerDensity(args:dict, nlcase=NONLIN_CASE):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
-	if nlcase<=2:
+	if nlcase==1:
 		for i in range(nc_tm):
 			t = timespan[i]
 			u = c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
@@ -112,94 +105,12 @@ def powerDensity(args:dict, nlcase=NONLIN_CASE):
 				#
 				+ c*x*np.pi*np.cos(np.pi*t)*(np.exp(-np.abs(u)) + 1)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
 			)
-	if nlcase>2: 
-		for i in range(nc_tm):
-			t = timespan[i]
-			u = c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-			f[:, i] = (
-				((np.exp(-np.abs(u)/4)*np.sin(u))/2 + 1)*(
-					72*c*x*np.sin(np.pi*t)*(2*x - 3) 
-					- 12*c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ 12*c*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					- 24*c*x*np.sin(np.pi*t)*(y - 6*x + 10) 
-					+ 24*c*x*np.sin(np.pi*t)*(6*x + y - 10) 
-					- 4*c*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- 2*((np.exp(-np.abs(u)/4)*np.sin(u))/4 + 1/2)*(
-					c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ 2*c*x*np.sin(np.pi*t)*(y - 6*x + 10) 
-					+ 2*c*x*np.sin(np.pi*t)*(6*x + y - 10)
-					) 
-				#
-				- (np.exp(-np.abs(u)/4)*np.cos(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)) 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)))/4
-					)*(
-					c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10))
-						)/4 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10))
-						)/16
-					)*(
-					2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10))
-					)/4 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)))/16
-					)*(
-					c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10))
-					)/2 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)))/8
-					)*(
-					2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- 2*c*x*np.sin(np.pi*t)*(np.exp(-np.abs(u)/4)*np.sin(u) + 2)*(2*x - 3) 
-				+ c*x*np.pi*np.cos(np.pi*t)*(2*x - 3)*(np.exp(-(c**2*x**2*np.sin(np.pi*t)**2*(2*x - 3)**2*(y - 6*x + 10)**2*(6*x + y - 10)**2)/10) 
-				+ np.sin(10*u)/4 + 1)*(y - 6*x + 10)*(6*x + y - 10) 
-			)
 	return np.ravel(f, order='F')
 
 def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_CASE):
 	# Create model 
-	if nlcase<=2:
-		geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-	if nlcase>2:
-		geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
-					'extra':{'XY':np.array([[0.0, -10], [1.5, -1], [1.5, 1], [0.0, 10]])}}
+	geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -233,8 +144,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	problem._itersNL = 11
-	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
+	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True); problem._itersNL = 11
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 
