@@ -286,7 +286,8 @@ class heatproblem(problem):
 		dt2 = time_list[2] - time_list[0]
 		factor = dt2/dt1
 		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-	
+		# ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
+
 		AllresLin = []
 		for i in range(1, nsteps):
 			

@@ -8,65 +8,69 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/spacetime/'
+folder = os.path.dirname(full_path) + '/results/paper/spacetime2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
 dataExist = True
+ISLINEAR = True
 FIG_CASE = 1
-NONLIN_CASE = 1 # 0, 1, 2 or 3
-if NONLIN_CASE==3: c = 0.01 # or 0.01
-if NONLIN_CASE<3 : c = 0.05 # or 0.001, 0.05
-degree, cuts = 4, 5
+c = 0.05
+degree, cuts = 4, 4
 
-def conductivityProperty(args, nlcase=NONLIN_CASE):
+def conductivityProperty(args):
 	temperature = args['temperature']
 	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			if nlcase==0: Kprop[i, j, :] = Kref[i, j]
-			if nlcase==1: Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
-			if nlcase>=2: Kprop[i, j, :] = Kref[i, j]*(1+0.5*np.exp(-0.25*np.abs(temperature))*(np.sin(temperature)))
+			if ISLINEAR: Kprop[i, j, :] = 3*Kref[i, j]
+			else: Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 	return Kprop 
 
-def conductivityDersProperty(args, nlcase=NONLIN_CASE):
+def conductivityDersProperty(args):
 	temperature = args['temperature']
 	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			if nlcase==0: Kprop[i, j, :] = np.zeros(len(temperature))
-			if nlcase==1: Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
-			if nlcase>=2: Kprop[i, j, :] = Kref[i, j]*np.exp(-0.25*np.abs(temperature))*(0.5*np.cos(temperature)
-													-0.125*np.sign(temperature)*np.sin(temperature))
+			if ISLINEAR: Kprop[i, j, :] = np.zeros((2, 2))
+			else: Kprop[i, j, :] = -Kref[i, j]*2.0*np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Kprop 
 
-def capacityProperty(args, nlcase=NONLIN_CASE):
+def capacityProperty(args):
 	temperature = args['temperature']
-	if nlcase==0: Cprop = np.ones(len(temperature))
-	if nlcase==1: Cprop = (1.0 + np.exp(-np.abs(temperature)))
-	if nlcase>=2: Cprop = 1 + np.exp(-0.1*temperature**2)+0.25*np.sin(10*temperature)
+	if ISLINEAR: Cprop = 2*np.ones(len(temperature))
+	else: Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	return Cprop
 
-def capacityDersProperty(args, nlcase=NONLIN_CASE):
+def capacityDersProperty(args):
 	temperature = args['temperature']
-	if nlcase==0: Cprop = np.zeros(len(temperature))
-	if nlcase==1: Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
-	if nlcase>=2: Cprop = 2.5*np.cos(10*temperature)-0.2*np.exp(-0.1*temperature**2)*temperature
+	if ISLINEAR: Cprop = np.zeros(len(temperature))
+	else: Cprop = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return Cprop
 
-def exactTemperature(qpPhy, nlcase=NONLIN_CASE):
+def exactTemperature(qpPhy):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
-	if nlcase<=2: u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*x*(x-6)*np.sin(np.pi*t)
-	if nlcase>2:  u = c*(-6*x + y + 10)*(6*x + y - 10)*x*(2*x-3)*np.sin(np.pi*t)
+	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*x*(x-6)*np.sin(np.pi*t)
 	return u
 
-def powerDensity(args:dict, nlcase=NONLIN_CASE):
+def powerDensity(args:dict):
 	position = args['Position']; timespan = args['Time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
-	if nlcase<=2:
+	if ISLINEAR:
+		for i in range(nc_tm):
+			t = timespan[i]
+			f[:, i] = (12*c*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
+			- 48*c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
+			- 6*c*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
+			- 282*c*x*np.sin(np.pi*t)*(x - 6) 
+			- 48*c*x*np.sin(np.pi*t)*(6*y - 5*x + 45) 
+			+ 12*c*x*np.sin(np.pi*t)*(5*x + 6*y - 45) 
+			+ 2*c*x*np.pi*np.cos(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+			)
+	else: 
 		for i in range(nc_tm):
 			t = timespan[i]
 			u = c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
@@ -112,102 +116,19 @@ def powerDensity(args:dict, nlcase=NONLIN_CASE):
 				#
 				+ c*x*np.pi*np.cos(np.pi*t)*(np.exp(-np.abs(u)) + 1)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
 			)
-	if nlcase>2: 
-		for i in range(nc_tm):
-			t = timespan[i]
-			u = c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-			f[:, i] = (
-				((np.exp(-np.abs(u)/4)*np.sin(u))/2 + 1)*(
-					72*c*x*np.sin(np.pi*t)*(2*x - 3) 
-					- 12*c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ 12*c*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					- 24*c*x*np.sin(np.pi*t)*(y - 6*x + 10) 
-					+ 24*c*x*np.sin(np.pi*t)*(6*x + y - 10) 
-					- 4*c*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- 2*((np.exp(-np.abs(u)/4)*np.sin(u))/4 + 1/2)*(
-					c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ 2*c*x*np.sin(np.pi*t)*(y - 6*x + 10) 
-					+ 2*c*x*np.sin(np.pi*t)*(6*x + y - 10)
-					) 
-				#
-				- (np.exp(-np.abs(u)/4)*np.cos(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)) 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)))/4
-					)*(
-					c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10))
-						)/4 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10))
-						)/16
-					)*(
-					2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10))
-					)/4 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)))/16
-					)*(
-					c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					+ c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10)
-					) 
-				#
-				- ((np.exp(-np.abs(u)/4)*np.cos(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10))
-					)/2 
-					- (np.exp(-np.abs(u)/4)*np.sign(u)*np.sin(u)*(2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-						+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-						- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-						+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)))/8
-					)*(
-					2*c*x*np.sin(np.pi*t)*(y - 6*x + 10)*(6*x + y - 10) 
-					+ 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10) 
-					- 6*c*x*np.sin(np.pi*t)*(2*x - 3)*(6*x + y - 10) 
-					+ c*np.sin(np.pi*t)*(2*x - 3)*(y - 6*x + 10)*(6*x + y - 10)
-					) 
-				#
-				- 2*c*x*np.sin(np.pi*t)*(np.exp(-np.abs(u)/4)*np.sin(u) + 2)*(2*x - 3) 
-				+ c*x*np.pi*np.cos(np.pi*t)*(2*x - 3)*(np.exp(-(c**2*x**2*np.sin(np.pi*t)**2*(2*x - 3)**2*(y - 6*x + 10)**2*(6*x + y - 10)**2)/10) 
-				+ np.sin(10*u)/4 + 1)*(y - 6*x + 10)*(6*x + y - 10) 
-			)
 	return np.ravel(f, order='F')
 
-def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_CASE):
+def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# Create model 
-	if nlcase<=2:
-		geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-	if nlcase>2:
-		geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
-					'extra':{'XY':np.array([[0.0, -10], [1.5, -1], [1.5, 1], [0.0, 10]])}}
+	geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 	# Create time span
-	if nlcase<=2: crv = createUniformCurve(degree, 2**cuts, 1.)
-	if nlcase>2:  crv = createUniformCurve(degree, 2**cuts, 2.)
+	crv = createUniformCurve(degree, 2**cuts, 2.)
 	timespan = part1D(crv, {'quadArgs': quadArgs})
 
 	# Add material 
@@ -233,7 +154,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}, nlcase=NONLIN_
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	problem._itersNL = 11
+	problem._thresLin = 1e-10; problem._itersNL = 20
 	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
@@ -244,7 +165,7 @@ if not dataExist:
 		degree_list = np.array([1, 2, 3, 4])
 		cuts_list   = np.arange(1, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
-			sufix = '_' + quadrule + '_' + quadtype + '_' + str(NONLIN_CASE)
+			sufix = '_' + quadrule + '_' + quadtype + '_' 
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			L2errorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
 			L2relerrorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
@@ -260,13 +181,13 @@ if not dataExist:
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature},)
 
-					np.savetxt(folder+'L2error_meshpar_test'+sufix+extension, L2errorTable)
-					np.savetxt(folder+'L2relerror_meshpar_test'+sufix+extension, L2relerrorTable)
+					np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
+					np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
 
 		quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
+		meshpartext = '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 		if not os.path.isdir(subfolderfolder): os.mkdir(subfolderfolder)
 
@@ -290,7 +211,6 @@ if not dataExist:
 					resKrylovclean = np.append(resKrylovclean, _[np.nonzero(_)])
 					counter_list.append(counter_list[-1] + len(_[np.nonzero(_)]))
 				enablePrint()
-				print(len(counter_list), len(L2error), len(resNewtons))
 				np.savetxt(subfolderfolder+prefix+'CumulKrylovRes'+extension, resKrylovclean)
 				np.savetxt(subfolderfolder+prefix+'Inner_loops'+extension, counter_list)
 				np.savetxt(subfolderfolder+prefix+'NewtonRes'+extension, resNewtons)
@@ -304,15 +224,15 @@ else:
 		onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 		plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 
-		figname = folder + 'SPTNonLinearConvergence2L2'+str(NONLIN_CASE)+'.pdf'
-		filenames = ['L2relerror_meshpar_test_iga_leg_']
+		figname = folder + 'SPTNonLinearConvergenceL2'+'.pdf'
+		filenames = ['L2relerror_meshpar_iga_leg_']
 		if FIG_CASE == 1:
 			normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 			fig, ax = plt.subplots(figsize=(8, 6))
 
 			for filename, plotops in zip(filenames, plotoptions):
 				quadrule = filename.split('_')[2]
-				table = np.loadtxt(folder+filename+str(NONLIN_CASE)+extension)	
+				table = np.loadtxt(folder+filename+extension)	
 				nbels   = 2**(table[0, 1:])
 				degrees = table[1:, 0]
 				errors  = table[1:, 1:]
@@ -322,10 +242,10 @@ else:
 						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
 									markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 						
-						slope = np.polyfit(np.log10(nbels[2:-1]),np.log10(errors[i, 2:-1]), 1)[0]
-						slope = round(slope, 1)
-						annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
-										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
+						# slope = np.polyfit(np.log10(nbels[2:-1]),np.log10(errors[i, 2:-1]), 1)[0]
+						# slope = round(slope, 1)
+						# annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
+						# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
 					else: 
 						ax.loglog(nbels, errors[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
 								markersize=plotops['markersize'], linestyle=plotops['linestyle'])
@@ -346,7 +266,7 @@ else:
 
 	elif FIG_CASE == 2:
 
-		meshpartext = str(NONLIN_CASE) + '_' + str(degree) + '_' + str(cuts) + '/'
+		meshpartext = '_' + str(degree) + '_' + str(cuts) + '/'
 		subfolderfolder = folder + meshpartext 
 
 		fig1, ax1 = plt.subplots(figsize=(8, 6))
@@ -397,4 +317,5 @@ else:
 					ax.set_ylabel(ylabel)
 					ax.legend()
 					fig.tight_layout()
-					fig.savefig(folder+'NLConvergence_iters'+str(NONLIN_CASE)+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+					fig.savefig(folder+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+
