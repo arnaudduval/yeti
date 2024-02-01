@@ -16,7 +16,7 @@
 
 
 !! Compute displacement and displacement gradient along a side curve of a given patch
-subroutine postproc_curve_2d(filename, sol, n_sample, i_patch, i_face,                  &
+subroutine postproc_curve_2d(sol, n_sample, i_patch, i_face,                  &
     &           x_sample, u_sample, dudx_sample, norm_sample, tan_sample, dudxi_sample, &
     &           ien, props, jprops, nnode, nb_elem_patch, elt_type, tensor,         &
     &           coords,                                                             &
@@ -38,7 +38,6 @@ subroutine postproc_curve_2d(filename, sol, n_sample, i_patch, i_face,          
     integer, intent(in) :: mcrd, nb_cp
     double precision, intent(in) :: sol
     dimension sol(mcrd, nb_cp)
-    character(len=*), intent(in) :: filename
     integer, intent(in) :: n_sample, i_patch, i_face
     double precision :: coords(3, nb_cp)
 
@@ -65,7 +64,7 @@ subroutine postproc_curve_2d(filename, sol, n_sample, i_patch, i_face,          
     integer, intent(in) :: jpqr
     dimension jpqr(3, nb_patch)
 
-    double precision, intent(out) :: x_sample, u_sample, dudx_sample, norm_sample, tan_sample, dudxi_sample 
+    double precision, intent(out) :: x_sample, u_sample, dudx_sample, norm_sample, tan_sample, dudxi_sample
     dimension x_sample(mcrd, n_sample), u_sample(mcrd, n_sample)
     dimension dudx_sample(mcrd, mcrd, n_sample), norm_sample(mcrd, n_sample), tan_sample(mcrd, n_sample)
     dimension dudxi_sample(mcrd, mcrd, n_sample)
