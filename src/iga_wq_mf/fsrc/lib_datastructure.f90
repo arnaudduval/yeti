@@ -13,6 +13,7 @@ module structured_data
         logical :: isspacetime = .false.
         type(basis_data) :: basisdata
         integer, allocatable, dimension(:) :: dof, dod
+        double precision, allocatable, dimension(:) :: meancoefs
         double precision, allocatable, dimension(:, :) :: univrightcoefs, univleftcoefs
         double precision, allocatable, dimension(:, :) :: eigval_sp_dir
         double precision, allocatable, dimension(:, :, :) :: eigvec_sp_dir
@@ -381,6 +382,19 @@ contains
         redsyst%univleftcoefs  = univleftcoefs
     end subroutine setup_univariatecoefs
 
+    subroutine setup_meancoefs(redsyst, size_array, array)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(reduced_system) :: redsyst
+        integer, intent(in) :: size_array
+        double precision, intent(in) :: array
+        dimension :: array(size_array)
+
+        allocate(redsyst%meancoefs(size_array))
+        redsyst%meancoefs = array
+    end subroutine setup_meancoefs
+
     subroutine update_reducedsystem(redsyst, dimen, table)
         implicit none 
         ! Input / output data
@@ -480,14 +494,12 @@ contains
 
     end subroutine update_reducedsystem
 
-    subroutine space_eigendecomposition(redsyst, size_in, array_in)
+    subroutine space_eigendecomposition(redsyst)
         implicit none 
         ! Input / output data
         ! --------------------
         type(reduced_system) :: redsyst
         integer :: size_in
-        double precision, intent(in) :: array_in
-        dimension :: array_in(size_in)
         
         ! Local data
         ! ----------
@@ -539,15 +551,15 @@ contains
                                     ones(1:redsyst%basisdata%nrows(1)), ones(1:redsyst%basisdata%nrows(2)), &
                                     redsyst%eigval_sp_dir(1, 1:redsyst%basisdata%nrows(1)), &
                                     redsyst%eigval_sp_dir(2, 1:redsyst%basisdata%nrows(2)), &
-                                    array_in(1:dimen_sp), redsyst%diageigval_sp)
+                                    redsyst%meancoefs(1:dimen_sp), redsyst%diageigval_sp)
         else if (dimen_sp.eq.3) then
             call find_parametric_diag_3d(redsyst%basisdata%nrows(1), redsyst%basisdata%nrows(2), &
                                     redsyst%basisdata%nrows(3), ones(1:redsyst%basisdata%nrows(1)), &
                                     ones(1:redsyst%basisdata%nrows(2)), ones(1:redsyst%basisdata%nrows(3)), &
                                     redsyst%eigval_sp_dir(1, 1:redsyst%basisdata%nrows(1)), &
                                     redsyst%eigval_sp_dir(2, 1:redsyst%basisdata%nrows(2)), &
-                                    redsyst%eigval_sp_dir(3, 1:redsyst%basisdata%nrows(3)), array_in(1:dimen_sp), &
-                                    redsyst%diageigval_sp)
+                                    redsyst%eigval_sp_dir(3, 1:redsyst%basisdata%nrows(3)), &
+                                    redsyst%meancoefs(1:dimen_sp), redsyst%diageigval_sp)
         else
             stop 'Until not coded'
         end if

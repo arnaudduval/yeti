@@ -388,7 +388,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+            call setup_univariatecoefs(solv%redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
 
@@ -579,14 +579,14 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+            call setup_univariatecoefs(solv%redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Kmean)
-        if (solv%applyfd) solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
+        if (solv%applyfd) solv%redsyst%diageigval_sp = mat%Cmean + tsfactor*solv%redsyst%diageigval_sp
 
         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
