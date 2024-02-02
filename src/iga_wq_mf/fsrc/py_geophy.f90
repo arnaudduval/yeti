@@ -508,7 +508,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
     
     use matrixfreeheat
-    use heatsolver3
+    use heatsolver
     use structured_data
 
     implicit none 
@@ -536,40 +536,33 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     ! Local data
     ! ----------
+    integer :: i 
     type(thermomat) :: mat
     type(cgsolver) :: solv
-    integer :: i 
-
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    logical :: table(dimen, 2)   
-    double precision :: mean(dimen) = 1.d0
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    logical :: table(dimen, 2) = .false. 
     double precision :: ones(nc_total)
 
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call multicsr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
+                        data_B_w, data_W_u, data_W_v, data_W_w)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
+    call space_eigendecomposition(redsyst)
 
     ! Set material and solver
     mat%dimen = dimen; ones = 1.d0
-    mat%detJ => detJ; mat%ncols_sp = nc_total
     call setup_capacityprop(mat, nc_total, ones)
-    solv%matrixfreetype = 1
+    mat%detJ => detJ
 
-    table = .false.; solv%withdiag = .false.
-    call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                            data_W_u, data_W_v, data_W_w, table, mean)
+    solv%matrixfreetype = 1; solv%withdiag = .false.
+    call initialize_solver(solv, globsyst, redsyst)
 
     do i = 1, nm
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, iterations, threshold, b(i, :), x(i, :), residual(i, :))
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b(i, :), x(i, :), residual(i, :))
     end do
                 
 end subroutine l2projection_ctrlpts_3d
@@ -582,17 +575,17 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
     
     use matrixfreeheat
-    use heatsolver2
+    use heatsolver
     use structured_data
 
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v)
+                    indi_v(nr_v+1), indj_v(nnz_v) 
     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
@@ -608,39 +601,35 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     ! Local data
     ! ----------
+    integer :: i 
     type(thermomat) :: mat
     type(cgsolver) :: solv
-    integer :: i
-
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    logical :: table(dimen, 2)   
-    double precision :: mean(dimen) = 1.d0
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    logical :: table(dimen, 2) = .false. 
     double precision :: ones(nc_total)
 
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                        data_W_u, data_W_v)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
+    call space_eigendecomposition(redsyst)
 
+    ! Set material and solver
     mat%dimen = dimen; ones = 1.d0
-    mat%detJ => detJ; mat%ncols_sp = nc_total
     call setup_capacityprop(mat, nc_total, ones)
-    solv%matrixfreetype = 1
+    mat%detJ => detJ
 
-    table = .false.; solv%withdiag = .false.
-    call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
-                            data_W_u, data_W_v, table, mean)
+    solv%matrixfreetype = 1; solv%withdiag = .false.
+    call initialize_solver(solv, globsyst, redsyst)
 
     do i = 1, nm
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                    data_W_u, data_W_v, iterations, threshold, b(i, :), x(i, :), residual(i, :))
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b(i, :), x(i, :), residual(i, :))
     end do
-
+                
 end subroutine l2projection_ctrlpts_2d
 
 subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &

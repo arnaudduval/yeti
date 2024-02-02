@@ -489,8 +489,8 @@ contains
         ! Input / output data
         ! -------------------
         type(cgsolver) :: solv
-        type(basis_data), pointer :: globsyst
-        type(reduced_system), pointer :: redsyst
+        type(basis_data), target :: globsyst
+        type(reduced_system), target :: redsyst
         solv%globsyst => globsyst
         solv%redsyst => redsyst
     end subroutine initialize_solver

@@ -4,8 +4,8 @@ module structured_data
     type :: basis_data
         integer :: dimen, nr_total, nc_total
         integer, allocatable, dimension(:) :: nrows, ncols, nnzs
-        integer, allocatable, dimension(:, :) :: indi, indj, indi_T, indj_T
-        double precision, allocatable, dimension(:, :, :) :: data_bw, data_bw_T
+        integer, allocatable, dimension(:, :) :: indi, indj
+        double precision, allocatable, dimension(:, :, :) :: data_bw 
         double precision, allocatable, dimension(:, :, :, :) :: BTdense, Wdense
     end type basis_data
 
@@ -210,42 +210,57 @@ contains
 
     end subroutine init_4basisdata
 
-    subroutine getcsr2csc(basisdata)
-        implicit none 
+    subroutine clearbasisdata(basisdata)
+        implicit none
         ! Input / output data
         ! --------------------
         type(basis_data) :: basisdata
+        basisdata%dimen = 1
+        basisdata%nr_total = 1
+        basisdata%nc_total = 1
+        if (allocated(basisdata%nrows)) deallocate(basisdata%nrows)
+        if (allocated(basisdata%ncols)) deallocate(basisdata%ncols)
+        if (allocated(basisdata%nnzs)) deallocate(basisdata%nnzs)
+        if (allocated(basisdata%indi)) deallocate(basisdata%indi)
+        if (allocated(basisdata%indj)) deallocate(basisdata%indj)
+        if (allocated(basisdata%data_bw)) deallocate(basisdata%data_bw)
+        if (allocated(basisdata%Wdense)) deallocate(basisdata%Wdense)
+        if (allocated(basisdata%BTdense)) deallocate(basisdata%BTdense)
+    end subroutine clearbasisdata
 
+    subroutine copybasisdata(basisdata_in, basisdata_inout)
+        implicit none
+        ! Input / output data
+        ! --------------------
+        type(basis_data), intent(in) :: basisdata_in
+        type(basis_data), intent(inout) :: basisdata_inout
         ! Local data
         ! ----------
-        integer :: it, nr, nc, nnz
-        integer, dimension(:), allocatable :: indi, indj, indi_T, indj_T
-        double precision, dimension(:, :), allocatable :: bw, bw_T
+        integer :: dimen, size2, size3
+        call clearbasisdata(basisdata_inout)
+        basisdata_inout%dimen = basisdata_in%dimen
+        basisdata_inout%nr_total = basisdata_in%nr_total
+        basisdata_inout%nc_total = basisdata_in%nc_total
+        dimen = basisdata_in%dimen
+        allocate(basisdata_inout%nrows(dimen)); basisdata_inout%nrows=basisdata_in%nrows
+        allocate(basisdata_inout%ncols(dimen)); basisdata_inout%ncols=basisdata_in%ncols
+        allocate(basisdata_inout%nnzs(dimen)); basisdata_inout%nnzs=basisdata_in%nnzs
 
-        if (allocated(basisdata%indi_T)) deallocate(basisdata%indi_T)
-        if (allocated(basisdata%indj_T)) deallocate(basisdata%indj_T)
-        if (allocated(basisdata%data_bw_T)) deallocate(basisdata%data_bw_T)
-        allocate(basisdata%indi_T(basisdata%dimen, maxval(basisdata%ncols)+1), &
-                basisdata%indj_T(basisdata%dimen, maxval(basisdata%nnzs)), &
-                basisdata%data_bw_T(basisdata%dimen, maxval(basisdata%nnzs), 6))
-
-        do it = 1, basisdata%dimen
-            nr  = basisdata%nrows(it)
-            nc  = basisdata%ncols(it)
-            nnz = basisdata%nnzs(it)
-            allocate(indi(nr+1), indi_T(nc+1), &
-                    indj(nnz), indj_T(nnz), &
-                    bw(nnz, 6), bw_T(nnz, 6))
-            indi = basisdata%indi(it, 1:nr+1)
-            indj = basisdata%indj(it, 1:nnz)
-            bw   = basisdata%data_bw(it, 1:nnz, :)
-            call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
-            basisdata%indi_T(it, 1:nc+1) = indi_T
-            basisdata%indj_T(it, 1:nnz)  = indj_T
-            basisdata%data_bw_T(it, 1:nnz, :) = bw_T
-            deallocate(indi, indj, indi_T, indj_T, bw, bw_T)
-        end do
-    end subroutine getcsr2csc
+        allocate(basisdata_inout%indi(dimen, maxval(basisdata_in%nrows)+1)) 
+        basisdata_inout%indi=basisdata_in%indi
+        allocate(basisdata_inout%indj(dimen, maxval(basisdata_in%nnzs))) 
+        basisdata_inout%indj=basisdata_in%indj
+        allocate(basisdata_inout%data_bw(dimen, maxval(basisdata_in%nnzs), 6)) 
+        basisdata_inout%data_bw=basisdata_in%data_bw
+        if (allocated(basisdata_in%Wdense)) then
+            size2 = size(basisdata_in%Wdense, dim=2)
+            size3 = size(basisdata_in%Wdense, dim=3)
+            allocate(basisdata_inout%Wdense(dimen, size2, size3, 4))
+            basisdata_inout%Wdense=basisdata_in%Wdense
+            allocate(basisdata_inout%BTdense(dimen, size2, size3, 2)) 
+            basisdata_inout%BTdense=basisdata_in%BTdense
+        end if
+    end subroutine copybasisdata
 
     subroutine getcsrc2dense(basisdata)
         implicit none 
@@ -368,32 +383,6 @@ contains
     end subroutine get_innernodes__
 
     !! -------------
-    subroutine setup_univariatecoefs(redsyst, nr, nc, univrightcoefs, univleftcoefs)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(reduced_system) :: redsyst
-        integer, intent(in) :: nr, nc
-        double precision, intent(in) :: univrightcoefs, univleftcoefs
-        dimension :: univrightcoefs(nr, nc), univleftcoefs(nr, nc)
-
-        allocate(redsyst%univrightcoefs(nr, nc), redsyst%univleftcoefs(nr, nc))
-        redsyst%univrightcoefs = univrightcoefs
-        redsyst%univleftcoefs  = univleftcoefs
-    end subroutine setup_univariatecoefs
-
-    subroutine setup_meancoefs(redsyst, size_array, array)
-        implicit none 
-        ! Input / output data
-        ! --------------------
-        type(reduced_system) :: redsyst
-        integer, intent(in) :: size_array
-        double precision, intent(in) :: array
-        dimension :: array(size_array)
-
-        allocate(redsyst%meancoefs(size_array))
-        redsyst%meancoefs = array
-    end subroutine setup_meancoefs
 
     subroutine update_reducedsystem(redsyst, dimen, table)
         implicit none 
@@ -494,6 +483,33 @@ contains
 
     end subroutine update_reducedsystem
 
+    subroutine setup_univariatecoefs(redsyst, nr, nc, univrightcoefs, univleftcoefs)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(reduced_system) :: redsyst
+        integer, intent(in) :: nr, nc
+        double precision, intent(in) :: univrightcoefs, univleftcoefs
+        dimension :: univrightcoefs(nr, nc), univleftcoefs(nr, nc)
+
+        allocate(redsyst%univrightcoefs(nr, nc), redsyst%univleftcoefs(nr, nc))
+        redsyst%univrightcoefs = univrightcoefs
+        redsyst%univleftcoefs  = univleftcoefs
+    end subroutine setup_univariatecoefs
+
+    subroutine setup_meancoefs(redsyst, size_array, array)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(reduced_system) :: redsyst
+        integer, intent(in) :: size_array
+        double precision, intent(in) :: array
+        dimension :: array(size_array)
+
+        allocate(redsyst%meancoefs(size_array))
+        redsyst%meancoefs = array
+    end subroutine setup_meancoefs
+
     subroutine space_eigendecomposition(redsyst)
         implicit none 
         ! Input / output data
@@ -505,7 +521,7 @@ contains
         ! ----------
         integer :: i, nr, nc, nnz, ncols, nrows, dimen_sp
         integer, dimension(:), allocatable :: indi, indj
-        double precision, dimension(:), allocatable :: ones, eigvalues, massdiag, stiffdiag
+        double precision, dimension(:), allocatable :: ones, means, eigvalues, massdiag, stiffdiag
         double precision, dimension(:, :), allocatable :: basis, eigvectors
         
         if (redsyst%isspacetime) then 
@@ -546,12 +562,14 @@ contains
                 redsyst%diageigval_sp(product(redsyst%basisdata%nrows(:dimen_sp))))
         ones = 1.d0; redsyst%diageigval_sp = 0.d0
 
+        allocate(means(dimen_sp)); means = 1.d0
+        if (allocated(redsyst%meancoefs)) means = redsyst%diageigval_sp(1:dimen_sp)
         if (dimen_sp.eq.2) then 
             call find_parametric_diag_2d(redsyst%basisdata%nrows(1), redsyst%basisdata%nrows(2), &
                                     ones(1:redsyst%basisdata%nrows(1)), ones(1:redsyst%basisdata%nrows(2)), &
                                     redsyst%eigval_sp_dir(1, 1:redsyst%basisdata%nrows(1)), &
                                     redsyst%eigval_sp_dir(2, 1:redsyst%basisdata%nrows(2)), &
-                                    redsyst%meancoefs(1:dimen_sp), redsyst%diageigval_sp)
+                                    means(1:dimen_sp), redsyst%diageigval_sp)
         else if (dimen_sp.eq.3) then
             call find_parametric_diag_3d(redsyst%basisdata%nrows(1), redsyst%basisdata%nrows(2), &
                                     redsyst%basisdata%nrows(3), ones(1:redsyst%basisdata%nrows(1)), &
@@ -559,7 +577,7 @@ contains
                                     redsyst%eigval_sp_dir(1, 1:redsyst%basisdata%nrows(1)), &
                                     redsyst%eigval_sp_dir(2, 1:redsyst%basisdata%nrows(2)), &
                                     redsyst%eigval_sp_dir(3, 1:redsyst%basisdata%nrows(3)), &
-                                    redsyst%meancoefs(1:dimen_sp), redsyst%diageigval_sp)
+                                    means(1:dimen_sp), redsyst%diageigval_sp)
         else
             stop 'Until not coded'
         end if
