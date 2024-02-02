@@ -181,7 +181,7 @@ subroutine solver_linearspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -295,7 +295,7 @@ subroutine solver_linearspacetime_full_heat_2d(nr_total, nc_total, nc_sp, nc_tm,
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -517,7 +517,7 @@ subroutine solver_linearspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -633,7 +633,7 @@ subroutine solver_linearspacetime_full_heat_3d(nr_total, nc_total, nc_sp, nc_tm,
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then

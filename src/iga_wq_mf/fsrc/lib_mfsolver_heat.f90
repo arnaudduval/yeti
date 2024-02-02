@@ -233,30 +233,35 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+        if (basisdata%dimen.eq.3) then
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+        end if
 
         tmp_in = array_in; if (mat%isLumped) tmp_in = 1.d0
         if (basisdata%dimen.eq.2) then
             call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
                                 BT_u(:, :, 1), BT_v(:, :, 1), & 
                                 tmp_in, tmp)
-            tmp = tmp*mat%Cprop*mat%detJ
-            call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, &
-                                W_u(:, :, 1), W_v(:, :, 1), &
-                                tmp, array_out)
-
         else if (basisdata%dimen.eq.3) then
-            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
-
             call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                                 BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), & 
                                 tmp_in, tmp)
-            tmp = tmp*mat%Cprop*mat%detJ
+        end if
+
+        tmp = tmp*mat%Cprop*mat%detJ
+
+        if (basisdata%dimen.eq.2) then
+            call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, &
+                                W_u(:, :, 1), W_v(:, :, 1), &
+                                tmp, array_out)
+        else if (basisdata%dimen.eq.3) then
             call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), &
                                 tmp, array_out)
         end if
+
         if (mat%isLumped) array_out = array_out*array_in
         
     end subroutine mf_u_v
@@ -299,45 +304,41 @@ contains
                                 transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
 
-        array_out = 0.d0
-        if (basisdata%dimen.eq.2) then
-            do j = 1, basisdata%dimen
-                beta = 1; beta(j) = 2
-                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
-                                    BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
-                                    array_in, tmp_0)
-                do i = 1, basisdata%dimen
-                    alpha = 1; alpha(i) = 2
-                    zeta = beta + (alpha - 1)*2
-                    tmp_1 = tmp_0*coefs(i, j, :)
-                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
-                                        W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
-                                        tmp_1, tmp_2)
-                    array_out = array_out + tmp_2
-                end do
-            end do
-
-        else if (basisdata%dimen.eq.3) then
+        if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+        end if
 
-            do j = 1, basisdata%dimen
-                beta = 1; beta(j) = 2
+        array_out = 0.d0
+        do j = 1, basisdata%dimen
+            beta = 1; beta(j) = 2
+            if (basisdata%dimen.eq.2) then
+                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                                    BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
+                                    array_in, tmp_0)
+            else if (basisdata%dimen.eq.3) then
                 call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                                     BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
                                     array_in, tmp_0)
-                do i = 1, basisdata%dimen
-                    alpha = 1; alpha(i) = 2
-                    zeta = beta + (alpha - 1)*2
-                    tmp_1 = tmp_0*coefs(i, j, :)
+            end if
+            do i = 1, basisdata%dimen
+                alpha = 1; alpha(i) = 2
+                zeta = beta + (alpha - 1)*2
+                tmp_1 = tmp_0*coefs(i, j, :)
+
+                if (basisdata%dimen.eq.2) then
+                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
+                                        W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
+                                        tmp_1, tmp_2)
+                else if (basisdata%dimen.eq.3) then
                     call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                         W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), & 
                                         tmp_1, tmp_2)
-                    array_out = array_out + tmp_2
-                end do
+                end if
+                array_out = array_out + tmp_2
             end do
-        end if
+        end do
         
     end subroutine mf_gradu_gradv
 
@@ -401,45 +402,41 @@ contains
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
 
-        array_out = 0.d0
-        if (basisdata%dimen.eq.2) then
-            do i = 1, basisdata%dimen
-                beta = 1
-                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
-                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
-                            array_in(i, :), t1)  
-                t1 = t1*mat%Hprop*mat%detJ
-                do k = 1, basisdata%dimen
-                    alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
-                    t2 = t1*mat%invJ(k, i, :)
-                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
-                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
-                                t2, t3)
-                    array_out = array_out + t3
-                end do
-            end do
-
-        else if (basisdata%dimen.eq.3) then
+        if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+        end if
 
+        array_out = 0.d0
             do i = 1, basisdata%dimen
                 beta = 1
-                call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
-                            array_in(i, :), t1)  
+                if (basisdata%dimen.eq.2) then
+                    call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
+                                array_in(i, :), t1)  
+                else if (basisdata%dimen.eq.3) then
+                    call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
+                                array_in(i, :), t1)  
+                end if
+
                 t1 = t1*mat%Hprop*mat%detJ
                 do k = 1, basisdata%dimen
                     alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
                     t2 = t1*mat%invJ(k, i, :)
-                    call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), &
-                                t2, t3)
+                    if (basisdata%dimen.eq.2) then
+                        call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
+                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
+                                    t2, t3)
+                    else if (basisdata%dimen.eq.3) then
+                        call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), &
+                                    t2, t3)
+                    end if
                     array_out = array_out + t3
                 end do
             end do
-        end if
                     
     end subroutine mf_gradu_tv
 
@@ -568,9 +565,7 @@ contains
         type(cgsolver) :: solv
         integer, intent(in) :: size_inout
         double precision, intent(inout) :: array_inout(size_inout)
-
         call set2zero(solv%redsyst, size_inout, array_inout)
-
     end subroutine clear_dirichlet
 
     subroutine PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b, x, residual)
