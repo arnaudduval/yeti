@@ -1,18 +1,18 @@
 module matrixfreeplasticity
-
+    use structured_data
     implicit none
     type :: mecamat
     
-        integer :: dimen, nvoigt
+        integer :: dimen, nvoigt, ncols_sp
         logical :: isLumped = .false., isElastic = .true.
         double precision :: scalars(2) = (/1.d0, 1.d0/)
+        ! Material properties
         double precision, dimension(:), pointer :: detJ=>null(), Mprop=>null(), Hprop=>null()
         double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null(), BB=>null()
         double precision, dimension(:, :, :), pointer :: invJ=>null()
         double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, JJbb
         double precision, dimension(:, :), allocatable :: Smean
         double precision, dimension(:), allocatable :: Mmean
-        integer :: ncols_sp
     
     end type mecamat
 
@@ -237,7 +237,7 @@ contains
         end if
     end subroutine compute_separationvariables
 
-    subroutine compute_mean(mat, nclist)
+    subroutine compute_variablesmean(mat, nclist)
         !! Computes the average of the material properties (for the moment it only considers elastic materials)
 
         implicit none 
@@ -318,190 +318,142 @@ contains
             mat%Mmean = tensor(1, 1)
         end if
 
-    end subroutine compute_mean
+    end subroutine compute_variablesmean
 
-    subroutine mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_W_u, data_W_v, array_in, array_out)
+    subroutine mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
 
         implicit none 
         ! Input / output data 
         ! -------------------
-        integer, parameter :: dimen = 2
         type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
+        type(basis_data) :: basisdata
+        integer, intent(in) :: nr_total
         double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
+        dimension :: array_in(basisdata%dimen, nr_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
+        dimension :: array_out(basisdata%dimen, nr_total)
 
         ! Local data 
         ! ----------
         integer :: i
+        integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w
+        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, W_u, W_v, W_w
         double precision :: tmp_in, array_tmp, array_tmp2
-        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nr_total)
+        dimension :: tmp_in(nr_total), array_tmp(basisdata%nc_total), array_tmp2(nr_total)
 
-        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-        do i = 1, dimen
-            tmp_in = array_in(i, :); if (mat%isLumped) tmp_in = 1.d0
+        if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+        if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
 
-            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                                tmp_in, array_tmp)
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
+        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
 
-            array_tmp = array_tmp*mat%Mprop*mat%detJ
+        array_out = 0.d0
+        if (basisdata%dimen.eq.2) then
 
-            call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                                array_tmp, array_tmp2)
+            do i = 1, mat%dimen
+                tmp_in = array_in(i, :); if (mat%isLumped) tmp_in = 1.d0
 
-            array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
+                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                                    BT_u(:, :, 1), BT_v(:, :, 1), & 
+                                    tmp_in, array_tmp)
 
-        end do
+                array_tmp = array_tmp*mat%Mprop*mat%detJ
 
-    end subroutine mf_tu_tv_2d
+                call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v,  &
+                                    W_u(:, :, 1), W_v(:, :, 1), &
+                                    array_tmp, array_tmp2)
+                array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
+            end do
 
-    subroutine mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+        else if (basisdata%dimen.eq.3) then
 
-        implicit none 
-        ! Input / output data 
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
 
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
+            do i = 1, mat%dimen
+                tmp_in = array_in(i, :); if (mat%isLumped) tmp_in = 1.d0
 
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+                call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                                    BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), & 
+                                    tmp_in, array_tmp)
 
-        double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
+                array_tmp = array_tmp*mat%Mprop*mat%detJ
 
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data 
-        ! ----------
-        integer :: i
-        double precision :: tmp_in, array_tmp, array_tmp2
-        dimension :: tmp_in(nr_total), array_tmp(nc_total), array_tmp2(nr_total)
-
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-
-        do i = 1, dimen
-            tmp_in = array_in(i, :); if (mat%isLumped) tmp_in = 1.d0
-
-            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                                nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), & 
-                                nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                                nnz_w, indi_T_w, indj_T_w, data_BT_w(:, 1), & 
-                                tmp_in, array_tmp)
-
-            array_tmp = array_tmp*mat%Mprop*mat%detJ
-
-            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, 1), &
-                                array_tmp, array_tmp2)
-            array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
-        end do
+                call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                    W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), &
+                                    array_tmp, array_tmp2)
+                array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
+            end do
+        end if
             
-    end subroutine mf_tu_tv_3d
+    end subroutine mf_tu_tv
 
-    subroutine mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_W_u, data_W_v, array_in, array_out)
-        !! Computes S.u in 2D where S is stiffness matrix
-        !! IN CSR FORMAT
+    subroutine mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_out)
 
         implicit none 
         ! Input / output data 
         ! -------------------
-        integer, parameter :: dimen = 2
         type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+        type(basis_data) :: basisdata
+        integer, intent(in) :: nr_total
 
         double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
+        dimension :: array_in(basisdata%dimen, nr_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
+        dimension :: array_out(basisdata%dimen, nr_total)
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, m, alpha, beta, zeta, nbCepArgs = 4
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
+        integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w
+        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, W_u, W_v, W_w
+        integer :: i, j, k, l, m, alpha, beta, zeta, nbCepArgs = 2
+        dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         double precision, allocatable, dimension(:) :: t4, t5, t6
         double precision, allocatable, dimension(:, :) :: kt1
         double precision :: t1, t2, t3, t7, t8, t9
-        dimension :: t1(nc_total), t2(nc_total), t3(nc_total), &
-                        t7(nc_total), t8(nr_total), t9(nr_total)
+        dimension :: t1(basisdata%nc_total), t2(basisdata%nc_total), t3(basisdata%nc_total), &
+                        t7(basisdata%nc_total), t8(basisdata%nc_total), t9(basisdata%nr_total)
 
-        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-        array_out = 0.d0
+        if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+        if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
 
-        if (mat%isElastic) then 
-            nbCepArgs = 2
-        else
-            allocate(t4(nc_total), t5(nc_total), t6(nc_total))
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
+        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+
+        if (basisdata%dimen.eq.3) then
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
         end if
-        allocate(kt1(nbCepArgs, nc_total))
+                
+        if (.not.mat%isElastic) then 
+            nbCepArgs = 4
+            allocate(t4(basisdata%nc_total), t5(basisdata%nc_total), t6(basisdata%nc_total))
+        end if
+        allocate(kt1(nbCepArgs, basisdata%nc_total))
 
-        do j = 1, dimen
-            do m = 1, dimen
+        array_out = 0.d0
+        do j = 1, mat%dimen
+            do m = 1, mat%dimen
                 beta = 1; beta(m) = 2
-                call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
-                        nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                        nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                        array_in(j, :), t1) 
+                if (basisdata%dimen.eq.2) then
+                    call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
+                            array_in(j, :), t1) 
+                else if (basisdata%dimen.eq.3) then
+                    call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
+                            array_in(j, :), t1) 
+                end if
 
                 do k = 1, nbCepArgs
                     kt1(k, :) = mat%CepArgs(k, :)*t1*mat%detJ
@@ -514,12 +466,11 @@ contains
                     t6 = kt1(4, :)*mat%JJnn(m, j, :)
                 end if
 
-
-                do i = 1, dimen
+                do i = 1, mat%dimen
                     t3 = kt1(2, :)*mat%invJ(m, i, :)
                     t9 = 0.d0
 
-                    do l = 1, dimen
+                    do l = 1, mat%dimen
                         alpha = 1; alpha(l) = 2
                         zeta  = beta + (alpha - 1)*2
                         
@@ -528,963 +479,244 @@ contains
                             t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :) + t6*mat%JJbb(l, i, :)
                         end if
                         if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
-                        call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
-                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                t7, t8)
+                        if (basisdata%dimen.eq.2) then
+                            call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), t8, t9) 
+                        else if (basisdata%dimen.eq.3) then
+                            call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), t8, t9)
+                        end if
+
                         t9 = t9 + t8
                     end do
-            
+
                     array_out(i, :) = array_out(i, :) + t9
                 end do
             end do
         end do
             
-    end subroutine mf_gradtu_gradtv_2d
+    end subroutine mf_gradtu_gradtv
 
-    subroutine mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
+    subroutine mf_tutv_gradtugradtv(mat, basisdata, nr_total, array_in, array_out)
 
         implicit none 
         ! Input / output data 
         ! -------------------
-        integer, parameter :: dimen = 3
         type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+        type(basis_data) :: basisdata
+        integer, intent(in) :: nr_total
 
         double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
+        dimension :: array_in(basisdata%dimen, nr_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
+        dimension :: array_out(basisdata%dimen, nr_total)
+
+        ! Local data
+        ! ---------------
+        double precision :: array_tmp
+        dimension :: array_tmp(basisdata%dimen, nr_total)
+
+        call mf_tu_tv_3d(mat, basisdata, nr_total, array_in, array_out)
+
+        array_out = mat%scalars(1)*array_out
+
+        call mf_gradtu_gradtv_3d(mat, basisdata, nr_total, array_in, array_tmp)
+        
+        array_out = array_out + mat%scalars(2)*array_tmp
+
+    end subroutine mf_tutv_gradtugradtv
+
+    subroutine mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
+        implicit none 
+        ! Input / output data 
+        ! -------------------
+        type(mecamat) :: mat
+        type(basis_data) :: basisdata
+        integer, intent(in) :: nr_total
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
+
+        double precision, intent(out) :: array_out
+        dimension :: array_out(basisdata%dimen, nr_total)
 
         ! Local data 
         ! ----------
-        integer :: i, j, k, l, m, alpha, beta, zeta, nbCepArgs = 4
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision, allocatable, dimension(:) :: t4, t5, t6
-        double precision, allocatable, dimension(:, :) :: kt1
-        double precision :: t1, t2, t3, t7, t8, t9
-        dimension :: t1(nc_total), t2(nc_total), t3(nc_total), &
-                        t7(nc_total), t8(nc_total), t9(nr_total)
+        integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w
+        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, W_u, W_v, W_w
+        integer :: i, l, alpha, beta, zeta
+        dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
+        double precision :: t1, t2, t3
+        dimension :: t1(basisdata%nc_total), t2(basisdata%nc_total), t3(basisdata%nr_total)
 
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
+        if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+        if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
+        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+
         array_out = 0.d0
-        
-        if (mat%isElastic) then 
-            nbCepArgs = 2
-        else
-            allocate(t4(nc_total), t5(nc_total), t6(nc_total))
+        if (basisdata%dimen.eq.2) then
+
+            do l = 1, basisdata%dimen
+                beta = 1; beta(l) = 2
+                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
+                            array_in, t1) 
+                t1 = t1*mat%Hprop*mat%detJ
+                do i = 1, basisdata%dimen
+                    alpha = 1; zeta = beta + (alpha - 1)*2
+                    t2 = t1*mat%invJ(l, i, :)
+                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), t2, t3)
+                    array_out(i, :) = array_out(i, :) + t3
+                end do
+            end do
+
+        else if (basisdata%dimen.eq.3) then
+
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+
+            do l = 1, basisdata%dimen
+                beta = 1; beta(l) = 2
+                call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
+                            array_in, t1) 
+                t1 = t1*mat%Hprop*mat%detJ
+                do i = 1, basisdata%dimen
+                    alpha = 1; zeta = beta + (alpha - 1)*2
+                    t2 = t1*mat%invJ(l, i, :)
+                    call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), t2, t3)
+                    array_out(i, :) = array_out(i, :) + t3
+                end do
+            end do
         end if
-        allocate(kt1(nbCepArgs, nc_total))
+            
+    end subroutine mf_u_gradtv
 
-        do j = 1, dimen
-            do m = 1, dimen
-                beta = 1; beta(m) = 2
-                call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                        nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                        nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                        nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
-                        array_in(j, :), t1) 
+    subroutine intforce(mat, basisdata, nr_total, nc_total, stress, array_out)
+        !! Computes internal force vector in 3D 
+        !! IN CSR FORMAT
 
-                do k = 1, nbCepArgs
-                    kt1(k, :) = mat%CepArgs(k, :)*t1*mat%detJ
-                end do
+        implicit none 
+        ! Input / output data
+        ! -------------------
+        type(mecamat) :: mat
+        type(basis_data) :: basisdata
+        integer, intent(in) :: nr_total, nc_total
+        double precision, intent(in) :: stress
+        dimension :: stress(mat%nvoigt, nc_total)
 
-                t2 = kt1(1, :)*mat%invJ(m, j, :)
-                if (mat%isElastic.eqv..false.) then
-                    t4 = kt1(3, :)*mat%JJnn(m, j, :)
-                    t5 = kt1(4, :)*mat%JJbb(m, j, :)
-                    t6 = kt1(4, :)*mat%JJnn(m, j, :)
+        double precision, intent(out) :: array_out
+        dimension :: array_out(basisdata%dimen, nr_total)
+
+        ! Local data
+        ! ----------
+        integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w
+        double precision, dimension(:, :, :), allocatable :: W_u, W_v, W_w
+        double precision :: Tstress, t1, t2
+        dimension :: Tstress(basisdata%dimen, basisdata%dimen), &
+                    t1(basisdata%dimen, basisdata%dimen, nc_total), t2(nr_total)
+        integer :: i, k, alpha(basisdata%dimen), zeta(basisdata%dimen)
+        
+        if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+        if (nc_total.ne.basisdata%nc_total) stop 'Size problem'
+        if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+        allocate(W_u(nr_u, nc_u, 4), W_v(nr_v, nc_v, 4))
+        W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+        W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+        if (basisdata%dimen.eq.3) then
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+            allocate(W_w(nr_w, nc_w, 4))
+            W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+        end if
+
+        do i = 1, nc_total
+            call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
+            t1(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
+        end do
+        
+        array_out = 0.d0
+        do i = 1, basisdata%dimen
+            do k = 1, basisdata%dimen
+                alpha = 1; alpha(k) = 2
+                zeta  = 1 + (alpha - 1)*2
+                if (basisdata%dimen.eq.2) then
+                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, &
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
+                                t1(k, i, :), t2)
+                else if (basisdata%dimen.eq.3) then
+                    call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), &
+                                t1(k, i, :), t2)
                 end if
-
-                do i = 1, dimen
-                    t3 = kt1(2, :)*mat%invJ(m, i, :)
-                    t9 = 0.d0
-
-                    do l = 1, dimen
-                        alpha = 1; alpha(l) = 2
-                        zeta  = beta + (alpha - 1)*2
-                        
-                        t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
-                        if (mat%isElastic.eqv..false.) then
-                            t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :) + t6*mat%JJbb(l, i, :)
-                        end if
-                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
-                        call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t8, t9)
-                        t9 = t9 + t8
-                    end do
-
-                    array_out(i, :) = array_out(i, :) + t9
-                end do
-            end do
-        end do
-            
-    end subroutine mf_gradtu_gradtv_3d
-
-    subroutine mf_tutv_gradtugradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_W_u, data_W_v, array_in, array_out)
-        !! Computes S.u in 2D where S is stiffness matrix
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data 
-        ! -------------------
-        integer, parameter :: dimen = 2
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data
-        ! ---------------
-        double precision :: array_tmp
-        dimension :: array_tmp(dimen, nr_total)
-
-        call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_out)
-
-        array_out = mat%scalars(1)*array_out
-
-        call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_tmp)
-
-        array_out = array_out + mat%scalars(2)*array_tmp
-
-    end subroutine mf_tutv_gradtugradtv_2d
-
-    subroutine mf_tutv_gradtugradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-
-        implicit none 
-        ! Input / output data 
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(dimen, nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data
-        ! ---------------
-        double precision :: array_tmp
-        dimension :: array_tmp(dimen, nr_total)
-
-        call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                    data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                    data_W_u, data_W_v, data_W_w, array_in, array_out)
-
-        array_out = mat%scalars(1)*array_out
-
-        call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_W_u, data_W_v, data_W_w, array_in, array_tmp)
-        
-        array_out = array_out + mat%scalars(2)*array_tmp
-
-    end subroutine mf_tutv_gradtugradtv_3d
-
-    subroutine mf_u_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_W_u, data_W_v, array_in, array_out)
-        implicit none 
-        ! Input / output data 
-        ! -------------------
-        integer, parameter :: dimen = 2
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data 
-        ! ----------
-        integer :: i, l, alpha, beta, zeta
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision :: t1, t2, t3
-        dimension :: t1(nc_total), t2(nc_total), t3(nr_total)
-        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-        array_out = 0.d0     
-        do l = 1, dimen
-            beta = 1; beta(l) = 2
-            call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
-                        nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                        nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                        array_in, t1) 
-            t1 = t1*mat%Hprop*mat%detJ
-            do i = 1, dimen
-                alpha = 1; zeta = beta + (alpha - 1)*2
-                t2 = t1*mat%invJ(l, i, :)
-                call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
-                            nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                            nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), t2, t3)
-                array_out(i, :) = array_out(i, :) + t3
-            end do
-        end do
-            
-    end subroutine mf_u_gradtv_2d
-
-    subroutine mf_u_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-        implicit none 
-        ! Input / output data 
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data 
-        ! ----------
-        integer :: i, l, alpha, beta, zeta
-        dimension :: alpha(dimen), beta(dimen), zeta(dimen)
-        double precision :: t1, t2, t3
-        dimension :: t1(nc_total), t2(nc_total), t3(nr_total)
-
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-        array_out = 0.d0     
-        do l = 1, dimen
-            beta = 1; beta(l) = 2
-            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                        nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), & 
-                        nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), & 
-                        nnz_w, indi_T_w, indj_T_w, data_BT_w(:, beta(3)), & 
-                        array_in, t1) 
-            t1 = t1*mat%Hprop*mat%detJ
-            do i = 1, dimen
-                alpha = 1; zeta = beta + (alpha - 1)*2
-                t2 = t1*mat%invJ(l, i, :)
-                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                            nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                            nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                            nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), t2, t3)
-                array_out(i, :) = array_out(i, :) + t3
-            end do
-        end do
-            
-    end subroutine mf_u_gradtv_3d
-
-    subroutine intforce_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, stress, array_out)
-        !! Computes internal force vector in 3D 
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: dimen = 2
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
-        dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                        indi_v(nr_v+1), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-        double precision, intent(in) :: stress
-        dimension :: stress(mat%nvoigt, nc_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data
-        ! ----------
-        double precision :: Tstress, t1, t2
-        dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
-        integer :: i, k, alpha(dimen), zeta(dimen)
-        
-        if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-        
-        do i = 1, nc_total
-            call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
-            t1(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
-        end do
-        
-        array_out = 0.d0
-        do i = 1, dimen
-            do k = 1, dimen
-                alpha = 1; alpha(k) = 2
-                zeta  = 1 + (alpha - 1)*2
-
-                call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                t1(k, i, :), t2)
                 array_out(i, :) = array_out(i, :) + t2
             end do
         end do
 
-    end subroutine intforce_2d
-
-    subroutine intforce_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, stress, array_out)
-        !! Computes internal force vector in 3D 
-        !! IN CSR FORMAT
-
-        implicit none 
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: dimen = 3
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
-        dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                        indi_v(nr_v+1), indj_v(nnz_v), &
-                        indi_w(nr_w+1), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-        double precision, intent(in) :: stress
-        dimension :: stress(mat%nvoigt, nc_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(dimen, nr_total)
-
-        ! Local data
-        ! ----------
-        double precision :: Tstress, t1, t2
-        dimension :: Tstress(dimen, dimen), t1(dimen, dimen, nc_total), t2(nr_total)
-        integer :: i, k, alpha(dimen), zeta(dimen)
-        
-        if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-        
-        do i = 1, nc_total
-            call array2symtensor(mat%dimen, mat%nvoigt, stress(:, i), Tstress)
-            t1(:, :, i) = matmul(mat%invJ(:, :, i), Tstress)*mat%detJ(i)
-        end do
-        
-        array_out = 0.d0
-        do i = 1, dimen
-            do k = 1, dimen
-                alpha = 1; alpha(k) = 2
-                zeta  = 1 + (alpha - 1)*2
-
-                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
-                                nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
-                                t1(k, i, :), t2)
-                array_out(i, :) = array_out(i, :) + t2
-            end do
-        end do
-
-    end subroutine intforce_3d
+    end subroutine intforce
 
 end module matrixfreeplasticity
 
-module plasticitysolver2
-
-    use matrixfreeplasticity
-    use structured_data
-    
-    type cgsolver
-        logical :: withdiag = .true., applyfd = .true.
-        integer :: matrixfreetype = 2, dimen = 2
-        type(reduced_system) :: disp_struct(2)
-        end type cgsolver
-
-contains
-
-    subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_out)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-        integer, intent(in) :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                        indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
-                        indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-        double precision, intent(in) :: array_in
-        dimension :: array_in(solv%dimen, nr_total)
-
-        double precision, intent(out) :: array_out
-        dimension :: array_out(solv%dimen, nr_total)
-
-        if (solv%matrixfreetype.eq.1) then
-
-            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                            nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                            data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_W_u, data_W_v, array_in, array_out)
-
-
-        else if (solv%matrixfreetype.eq.2) then
-
-            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_W_u, data_W_v, array_in, array_out)
-
-        else if (solv%matrixfreetype.eq.3) then
-
-            call mf_tutv_gradtugradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                data_W_u, data_W_v, array_in, array_out)
-
-        else
-            stop 'Not coded'
-        end if
-
-    end subroutine matrixfree_spMdV
-
-    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, &
-                            nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, table, mean)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-
-        integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
-                        indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_B_u, data_B_v, data_W_u, data_W_v
-        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), &
-                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-        logical, intent(in) :: table
-        dimension :: table(solv%dimen, 2, solv%dimen)
-        double precision, intent(in) :: mean
-        dimension :: mean(solv%dimen, solv%dimen)
-
-        ! Local data
-        ! ----------
-        integer :: i
-
-        do i = 1, solv%dimen
-            call init_2basisdata(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_B_u, data_B_v, data_W_u, data_W_v)
-            call update_reducedsystem(solv%disp_struct(i), solv%dimen, table(:, :, i))
-            if (.not.solv%applyfd) cycle
-            call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
-        end do
-        
-    end subroutine initializefastdiag
-
-    subroutine applyfastdiag(solv, nr_total, array_in, array_out)
-        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-        !! Applied to steady heat problems
-        !! by G. Sanaglli and M. Tani
-        
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        type(cgsolver) :: solv
-        integer, intent(in) :: nr_total
-        double precision, intent(in) :: array_in
-        dimension :: array_in(solv%dimen, nr_total)
-    
-        double precision, intent(out) :: array_out
-        dimension :: array_out(solv%dimen, nr_total)
-    
-        ! Local data
-        ! ----------
-        integer :: nr_u, nr_v, i
-        double precision, allocatable, dimension(:) :: tmp, tmp2
-
-        if (.not.solv%applyfd) then
-            array_out = array_in
-            return
-        end if
-
-        array_out  = 0.d0
-        do i = 1, solv%dimen
-            ! Compute (Uv x Uu)'.array_in
-            nr_u = solv%disp_struct(i)%nrows(1)
-            nr_v = solv%disp_struct(i)%nrows(2)
-            allocate(tmp(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, transpose(solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
-                    transpose(solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), array_in(i, solv%disp_struct(i)%dof), tmp)
-            
-            if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%diageigval_sp
-            end if
-
-            ! Compute (Uv x Uu).array_tmp
-            allocate(tmp2(nr_u*nr_v))
-            call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
-                    solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
-            array_out(i, solv%disp_struct(i)%dof) = tmp2            
-            deallocate(tmp, tmp2)
-        end do
-
-    end subroutine applyfastdiag
-
-    subroutine clear_dirichlet(solv, nnz, array)
-        implicit none
-        ! Input / output  data 
-        !---------------------
-        type(cgsolver) :: solv
-        integer, intent(in) :: nnz
-        double precision, intent(inout) :: array(solv%dimen, nnz)
-
-        ! Local data
-        ! ----------
-        integer :: i
-
-        do i = 1, solv%dimen
-            call set2zero(solv%disp_struct(i), nnz, array(i, :))
-        end do
-
-    end subroutine clear_dirichlet
-
-    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, iterations, threshold, b, x, residual)
-
-        implicit none
-        ! Input / output data
-        ! -------------------
-        type(cgsolver) :: solv
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-
-        integer, intent(in) :: iterations
-        double precision, intent(in) :: threshold, b
-        dimension :: b(solv%dimen, nr_total)
-        
-        double precision, intent(out) :: x, residual
-        dimension :: x(solv%dimen, nr_total), residual(iterations+1)
-
-        ! Local data
-        ! -----------
-        double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
-        double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
-        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), & 
-                        s(solv%dimen, nr_total), ptilde(solv%dimen, nr_total), Aptilde(solv%dimen, nr_total), &
-                        Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
-        integer :: k
-
-        x = 0.d0; r = b; residual = 0.d0
-        call clear_dirichlet(solv, nr_total, r)
-        rhat = r; p = r
-        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
-        normb = norm2(r)
-        if (normb.le.1.d-14) return
-        residual(1) = 1.d0
-
-        do k = 1, iterations
-            call applyfastdiag(solv, nr_total, p, ptilde)
-            call clear_dirichlet(solv, nr_total, ptilde)
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ptilde, Aptilde)
-            call clear_dirichlet(solv, nr_total, Aptilde)
-            call block_dot_product(solv%dimen, nr_total, Aptilde, rhat, prod)
-            alpha = rsold/prod
-            s = r - alpha*Aptilde
-            
-            call applyfastdiag(solv, nr_total, s, stilde)
-            call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, stilde, Astilde)
-            call clear_dirichlet(solv, nr_total, Astilde)            
-            call block_dot_product(solv%dimen, nr_total, Astilde, s, prod)
-            call block_dot_product(solv%dimen, nr_total, Astilde, Astilde, prod2)
-
-            omega = prod/prod2
-            x = x + alpha*ptilde + omega*stilde
-            r = s - omega*Astilde    
-            
-            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
-            residual(k+1) = norm2(r)/normb
-            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
-            beta = (alpha/omega)*(rsnew/rsold)
-            p = r + beta*(p - omega*Aptilde)
-            rsold = rsnew
-        end do
-
-    end subroutine PBiCGSTAB
-
-    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, ishigher, iterations, threshold, eigenvec, eigenval)
-        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
-        
-        implicit none
-        ! Input / output data
-        ! -------------------
-        integer, parameter :: d = 3
-        type(cgsolver) :: solv
-        type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
-        integer, intent(in) :: indi_T_u, indi_T_v
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
-        integer, intent(in) :: indj_T_u, indj_T_v
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
-        double precision, intent(in) :: data_BT_u, data_BT_v
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-        integer, intent(in) :: indi_u, indi_v
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1)
-        integer, intent(in) :: indj_u, indj_v
-        dimension :: indj_u(nnz_u), indj_v(nnz_v)
-        double precision, intent(in) :: data_W_u, data_W_v
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
-        
-        logical, intent(in) :: ishigher
-        integer, intent(in) :: iterations
-        double precision, intent(in) :: threshold
-        
-        double precision, intent(out) :: eigenvec, eigenval
-        dimension :: eigenvec(solv%dimen, nr_total)
-
-        ! Local data
-        ! ----------
-        integer :: k, ii
-        double precision, dimension(d, solv%dimen, nr_total) :: RM1, RM2, RM3
-        double precision, dimension(d, d) :: AA1, BB1
-        double precision, dimension(d) :: delta
-        double precision, dimension(solv%dimen, nr_total) :: u, v, g, gtil, p, tmp
-        double precision :: q, norm, prod
-        double precision, allocatable, dimension(:) ::  ll
-        double precision, allocatable, dimension(:, :) ::  qq
-
-        call random_number(eigenvec)
-        call clear_dirichlet(solv, nr_total, eigenvec)
-        norm = norm2(eigenvec)
-        eigenvec = eigenvec/norm
-
-        call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, eigenvec, u)
-        call clear_dirichlet(solv, nr_total, u)
-
-        call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
-        q = sqrt(prod)
-        eigenvec = eigenvec/q; u = u/q
-        call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, eigenvec, v)
-        call clear_dirichlet(solv, nr_total, v)
-        call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
-        call random_number(p)
-        norm = 1.d0
-
-        do k = 1, iterations
-            if (norm.le.threshold) return
-    
-            g = v - eigenval*u
-            norm = norm2(g)
-            call applyfastdiag(solv, nr_total, g, gtil)
-            call clear_dirichlet(solv, nr_total, gtil)
-            g = gtil
-
-            RM1(1, :, :) = eigenvec; RM1(2, :, :) = -g; RM1(3, :, :) = p
-            RM2(1, :, :) = v; RM3(1, :, :) = u;
-            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_W_u, data_W_v, -g, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM2(2, :, :) = tmp
-
-            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_W_u, data_W_v, p, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM2(3, :, :) = tmp
-
-            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_W_u, data_W_v, -g, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM3(2, :, :) = tmp
-            
-            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                    nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                    data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                    data_W_u, data_W_v, p, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM3(3, :, :) = tmp
-            
-            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
-            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
-
-            allocate(ll(d), qq(d, d))
-            call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
-            
-            if (ishigher) then 
-                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
-            else
-                eigenval = minval(ll); ii = minloc(ll, dim=1)
-            end if
-
-            delta = 0.d0
-            if (k.eq.1) then
-                delta(:2) = qq(:, ii)
-            else
-                delta = qq(:, ii)
-            end if
-    
-            p = -g*delta(2) + p*delta(3)
-            eigenvec = eigenvec*delta(1) + p
-            call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                        data_W_u, data_W_v, eigenvec, u)
-            call clear_dirichlet(solv, nr_total, u)
-            
-            call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
-            q = sqrt(prod)
-            eigenvec = eigenvec/q; u = u/q
-            call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
-                                        nnz_u, nnz_v, indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                                        data_W_u, data_W_v, eigenvec, v)
-            call clear_dirichlet(solv, nr_total, v)
-            
-            norm = norm2(g)
-            deallocate(ll, qq)
-        end do
-
-    end subroutine LOBPCGSTAB
-
-end module plasticitysolver2
-
-module plasticitysolver3
+module plasticitysolver
 
     use matrixfreeplasticity
     use structured_data
 
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
-        integer :: matrixfreetype = 2, dimen = 3
-        type(reduced_system) :: disp_struct(3)
+        integer :: matrixfreetype = 2
+        type(basis_data), pointer :: globsyst=>null()
+        type(reduced_system), dimension(:), pointer :: redsyst=>null()
     end type cgsolver
 
 contains
 
-    subroutine matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, array_out)
+    subroutine matrixfree_matvec(solv, mat, nr_total, array_in, array_out)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver) :: solv
         type(mecamat)  :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-        dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                        indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
+        integer, intent(in) :: nr_total
         double precision, intent(in) :: array_in
-        dimension :: array_in(solv%dimen, nr_total)
+        dimension :: array_in(solv%globsyst%dimen, nr_total)
 
         double precision, intent(out) :: array_out
-        dimension :: array_out(solv%dimen, nr_total)
+        dimension :: array_out(solv%globsyst%dimen, nr_total)
 
         if (solv%matrixfreetype.eq.1) then
-
-            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, array_in, array_out)
-
+            call mf_tu_tv(mat, solv%globsyst, nr_total, array_in, array_out)
         else if (solv%matrixfreetype.eq.2) then
-
-            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_W_u, data_W_v, data_W_w, array_in, array_out)
-        
+            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, array_in, array_out)
         else if (solv%matrixfreetype.eq.3) then
-
-            call mf_tutv_gradtugradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                                data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_W_u, data_W_v, data_W_w, array_in, array_out)
-                            
+            call mf_tutv_gradtugradtv_3d(mat,  solv%globsyst, nr_total, array_in, array_out)
         else
             stop 'Not coded'
         end if
 
-    end subroutine matrixfree_spMdV
+    end subroutine matrixfree_matvec
 
-    subroutine initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, mean)
-
+    subroutine initialize_solver(solv, globsyst, redsyst)
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver) :: solv
-        integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-
-        integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
-        dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
-                        indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w
-        dimension :: data_B_u(nnz_u, 2), data_B_v(nnz_v, 2), data_B_w(nnz_w, 2), &
-                    data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-        logical, intent(in) :: table
-        dimension :: table(solv%dimen, 2, solv%dimen)
-        double precision, intent(in) :: mean
-        dimension :: mean(solv%dimen, solv%dimen)
-
-        ! Local data
-        ! ----------
-        integer :: i
-
-        do i = 1, solv%dimen
-            call init_3basisdata(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                                nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                                data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-            call update_reducedsystem(solv%disp_struct(i), solv%dimen, table(:, :, i))
-            if (.not.solv%applyfd) cycle
-            call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
-        end do
-        
-    end subroutine initializefastdiag
+        type(basis_data), target :: globsyst
+        type(reduced_system), dimension(:), target :: redsyst
+        solv%globsyst => globsyst
+        solv%redsyst => redsyst
+    end subroutine initialize_solver
 
     subroutine applyfastdiag(solv, nr_total, array_in, array_out)
         !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
@@ -1497,10 +729,10 @@ contains
         type(cgsolver) :: solv
         integer, intent(in) :: nr_total
         double precision, intent(in) :: array_in
-        dimension :: array_in(solv%dimen, nr_total)
+        dimension :: array_in(solv%globsyst%dimen, nr_total)
     
         double precision, intent(out) :: array_out
-        dimension :: array_out(solv%dimen, nr_total)
+        dimension :: array_out(solv%globsyst%dimen, nr_total)
 
         ! Local data
         ! ----------
@@ -1513,98 +745,95 @@ contains
         end if
 
         array_out = 0.d0
-        do i = 1, solv%dimen
-            ! Compute (Uw x Uv x Uu)'.array_in
-            nr_u = solv%disp_struct(i)%nrows(1)
-            nr_v = solv%disp_struct(i)%nrows(2)
-            nr_w = solv%disp_struct(i)%nrows(3)
-            allocate(tmp(nr_u*nr_v*nr_w))
+        do i = 1, solv%globsyst%dimen
 
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            transpose(solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
-                            transpose(solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
-                            transpose(solv%disp_struct(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
-                            array_in(i, solv%disp_struct(i)%dof), tmp)
+            nr_u = solv%redsyst(i)%basisdata%nrows(1)
+            nr_v = solv%redsyst(i)%basisdata%nrows(2)
+
+            if (solv%globsyst%dimen.eq.2) then
+                allocate(tmp(nr_u*nr_v))
+                call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
+                            transpose(solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                            transpose(solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                            array_in(i, solv%redsyst(i)%dof), tmp)
+            else if (solv%globsyst%dimen.eq.3) then
+                nr_w = solv%redsyst(i)%basisdata%nrows(3)
+                allocate(tmp(nr_u*nr_v*nr_w))
+                call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+                            transpose(solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                            transpose(solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                            transpose(solv%redsyst(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
+                            array_in(i, solv%redsyst(i)%dof), tmp)
+            end if           
 
             if (solv%withdiag) then
-                tmp = tmp/solv%disp_struct(i)%diageigval_sp
+                tmp = tmp/solv%redsyst(i)%diageigval_sp
             end if
 
-            ! Compute (Uw x Uv x Uu).array_tmp
-            allocate(tmp2(nr_u*nr_v*nr_w))
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
-                            solv%disp_struct(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
-                            solv%disp_struct(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-                            solv%disp_struct(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
-            array_out(i, solv%disp_struct(i)%dof) = tmp2
+            if (solv%globsyst%dimen.eq.2) then
+                allocate(tmp2(nr_u*nr_v))
+                call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
+                            solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                            solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
+            else if (solv%globsyst%dimen.eq.3) then
+                nr_w = solv%redsyst(i)%basisdata%nrows(3)
+                allocate(tmp2(nr_u*nr_v*nr_w))
+                call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
+                            solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                            solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                            solv%redsyst(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+            end if
+
+            array_out(i, solv%redsyst(i)%dof) = tmp2
             deallocate(tmp, tmp2)
         end do
 
     end subroutine applyfastdiag
 
-    subroutine clear_dirichlet(solv, nnz, array)
+    subroutine clear_dirichlet(solv, size_inout, array_inout)
         implicit none
         ! Input / output  data 
         !---------------------
         type(cgsolver) :: solv
-        integer, intent(in) :: nnz
-        double precision, intent(inout) :: array(solv%dimen, nnz)
+        integer, intent(in) :: size_inout
+        double precision, intent(inout) :: array_inout(solv%globsyst%dimen, size_inout)
 
         ! Local data
         ! ----------
         integer :: i
-
-        do i = 1, solv%dimen
-            call set2zero(solv%disp_struct(i), nnz, array(i, :))
+        do i = 1, solv%globsyst%dimen
+            call set2zero(solv%redsyst(i), size_inout, array_inout(i, :))
         end do
-
     end subroutine clear_dirichlet
 
-    subroutine PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, iterations, threshold, b, x, residual)
+    subroutine PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b, x, residual)
 
         implicit none
         ! Input / output data
         ! -------------------
         type(cgsolver) :: solv
         type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-
-        integer, intent(in) :: iterations
+        integer, intent(in) :: nr_total, iterations
         double precision, intent(in) :: threshold, b
-        dimension :: b(solv%dimen, nr_total)
+        dimension :: b(solv%globsyst%dimen, nr_total)
         
         double precision, intent(out) :: x, residual
-        dimension :: x(solv%dimen, nr_total), residual(iterations+1)
+        dimension :: x(solv%globsyst%dimen, nr_total), residual(iterations+1)
 
         ! Local data
         ! -----------
         double precision :: prod, prod2, rsold, rsnew, alpha, omega, beta, normb
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
-        dimension ::    r(solv%dimen, nr_total), rhat(solv%dimen, nr_total), p(solv%dimen, nr_total), & 
-                        s(solv%dimen, nr_total), ptilde(solv%dimen, nr_total), Aptilde(solv%dimen, nr_total), &
-                        Astilde(solv%dimen, nr_total), stilde(solv%dimen, nr_total)
+        dimension ::    r(solv%globsyst%dimen, nr_total), rhat(solv%globsyst%dimen, nr_total), &
+                        p(solv%globsyst%dimen, nr_total), s(solv%globsyst%dimen, nr_total), &
+                        ptilde(solv%globsyst%dimen, nr_total), Aptilde(solv%globsyst%dimen, nr_total), &
+                        Astilde(solv%globsyst%dimen, nr_total), stilde(solv%globsyst%dimen, nr_total)
         integer :: k
 
         x = 0.d0; r = b; residual = 0.d0
         call clear_dirichlet(solv, nr_total, r)
         rhat = r; p = r
-        call block_dot_product(solv%dimen, nr_total, r, rhat, rsold)
+        call block_dot_product(solv%globsyst%dimen, nr_total, r, rhat, rsold)
         normb = norm2(r) 
         if (normb.le.1.d-14) return
         residual(1) = 1.d0
@@ -1612,25 +841,19 @@ contains
         do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde) 
             call clear_dirichlet(solv, nr_total, ptilde)
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ptilde, Aptilde)
+            call matrixfree_matvec(solv, mat, nr_total, ptilde, Aptilde)
             call clear_dirichlet(solv, nr_total, Aptilde)
-            call block_dot_product(solv%dimen, nr_total, Aptilde, rhat, prod)
+            call block_dot_product(solv%globsyst%dimen, nr_total, Aptilde, rhat, prod)
             alpha = rsold/prod
             s = r - alpha*Aptilde
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, stilde, Astilde)
+            call matrixfree_spMdV(solv, mat, nr_total, stilde, Astilde)
             call clear_dirichlet(solv, nr_total, Astilde)
             
-            call block_dot_product(solv%dimen, nr_total, Astilde, s, prod)
-            call block_dot_product(solv%dimen, nr_total, Astilde, Astilde, prod2)
+            call block_dot_product(solv%globsyst%dimen, nr_total, Astilde, s, prod)
+            call block_dot_product(solv%globsyst%dimen, nr_total, Astilde, Astilde, prod2)
 
             omega = prod/prod2
             x = x + alpha*ptilde + omega*stilde
@@ -1638,7 +861,7 @@ contains
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
             residual(k+1) = norm2(r)/normb
-            call block_dot_product(solv%dimen, nr_total, r, rhat, rsnew)
+            call block_dot_product(solv%globsyst%dimen, nr_total, r, rhat, rsnew)
             beta = (alpha/omega)*(rsnew/rsold)
             p = r + beta*(p - omega*Aptilde)
             rsold = rsnew
@@ -1646,47 +869,29 @@ contains
 
     end subroutine PBiCGSTAB
 
-    subroutine LOBPCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, ishigher, iterations, threshold, eigenvec, eigenval)
+    subroutine LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
         !! Using LOBPCG algorithm to compute the stability of the transient heat problem
         
         implicit none
         ! Input / output data
         ! -------------------
-        integer, parameter :: d = 3
+        integer, parameter :: sizemat = 3
         type(cgsolver) :: solv
         type(mecamat) :: mat
-        integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
-        integer, intent(in) :: indi_T_u, indi_T_v, indi_T_w
-        dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
-        integer, intent(in) :: indj_T_u, indj_T_v, indj_T_w
-        dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-        double precision, intent(in) :: data_BT_u, data_BT_v, data_BT_w
-        dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-        integer, intent(in) :: indi_u, indi_v, indi_w
-        dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1)
-        integer, intent(in) :: indj_u, indj_v, indj_w
-        dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
-        double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-        dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
-        
+        integer, intent(in) :: nr_total, iterations        
         logical, intent(in) :: ishigher
-        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold
         
         double precision, intent(out) :: eigenvec, eigenval
-        dimension :: eigenvec(solv%dimen, nr_total)
+        dimension :: eigenvec(solv%globsyst%dimen, nr_total)
 
         ! Local data
         ! ----------
         integer :: k, ii
-        double precision, dimension(d, solv%dimen, nr_total) :: RM1, RM2, RM3
-        double precision, dimension(d, d) :: AA1, BB1
-        double precision, dimension(d) :: delta
-        double precision, dimension(solv%dimen, nr_total) :: u, v, g, gtil, p, tmp
+        double precision, dimension(sizemat, solv%globsyst%dimen, nr_total) :: RM1, RM2, RM3
+        double precision, dimension(sizemat, sizemat) :: AA1, BB1
+        double precision, dimension(sizemat) :: delta
+        double precision, dimension(solv%globsyst%dimen, nr_total) :: u, v, g, gtil, p, tmp
         double precision :: q, norm, prod
         double precision, allocatable, dimension(:) ::  ll
         double precision, allocatable, dimension(:, :) ::  qq
@@ -1696,22 +901,16 @@ contains
         norm = norm2(eigenvec)
         eigenvec = eigenvec/norm
 
-        call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, eigenvec, u)
+        call mf_tu_tv(mat, solv%globsyst, nr_total, eigenvec, u)
         call clear_dirichlet(solv, nr_total, u)
         
-        call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+        call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod)
         q = sqrt(prod)
         eigenvec = eigenvec/q; u = u/q
-        call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+        call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, eigenvec, v)
         call clear_dirichlet(solv, nr_total, v)
         
-        call block_dot_product(solv%dimen, nr_total, eigenvec, v, eigenval)
+        call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, v, eigenval)
         call random_number(p)
         norm = 1.d0
 
@@ -1726,38 +925,26 @@ contains
 
             RM1(1, :, :) = eigenvec; RM1(2, :, :) = -g; RM1(3, :, :) = p
             RM2(1, :, :) = v; RM3(1, :, :) = u;
-            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, -g, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM2(2, :, :) = tmp
 
-            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call mf_gradtu_gradtv_3d(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM2(3, :, :) = tmp
 
-            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, -g, tmp)
+            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, -g, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM3(2, :, :) = tmp
             
-            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, p, tmp)
+            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM3(3, :, :) = tmp
             
-            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
-            call rayleigh_submatrix2(d, solv%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
+            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
+            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
 
-            allocate(ll(d), qq(d, d))
+            allocate(ll(sizemat), qq(sizemat, sizemat))
             call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
             
             if (ishigher) then 
@@ -1775,19 +962,13 @@ contains
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p
-            call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                            nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                            data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_W_u, data_W_v, data_W_w, eigenvec, u)
+            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, eigenvec, u)
             call clear_dirichlet(solv, nr_total, u)
             
-            call block_dot_product(solv%dimen, nr_total, eigenvec, u, prod)
+            call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod)
             q = sqrt(prod)
             eigenvec = eigenvec/q; u = u/q
-            call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
-                        nnz_u, nnz_v, nnz_w, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, eigenvec, v)
+            call mf_gradtu_gradtv_3d(mat, solv%globsyst, nr_total, eigenvec, v)
             call clear_dirichlet(solv, nr_total, v)
             
             norm = norm2(g)
@@ -1796,4 +977,4 @@ contains
 
     end subroutine LOBPCGSTAB
 
-end module plasticitysolver3
+end module plasticitysolver

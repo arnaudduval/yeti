@@ -452,8 +452,8 @@ module heatsolver
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 1
-        type(basis_data), pointer :: globsyst
-        type(reduced_system), pointer :: redsyst
+        type(basis_data), pointer :: globsyst=>null()
+        type(reduced_system), pointer :: redsyst=>null()
     end type cgsolver
 
 contains
@@ -580,8 +580,7 @@ contains
         ! -------------------
         type(cgsolver) :: solv
         type(thermomat) :: mat
-        integer, intent(in) :: nr_total
-        integer, intent(in) :: iterations
+        integer, intent(in) :: nr_total, iterations
         double precision, intent(in) :: threshold, b
         dimension :: b(nr_total)
         
@@ -639,9 +638,8 @@ contains
         integer, parameter :: sizemat = 3
         type(cgsolver) :: solv
         type(thermomat) :: mat
-        integer, intent(in) :: nr_total
+        integer, intent(in) :: nr_total, iterations
         logical, intent(in) :: ishigher
-        integer, intent(in) :: iterations
         double precision, intent(in) :: threshold
         
         double precision, intent(out) :: eigenvec, eigenval
