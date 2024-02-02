@@ -133,13 +133,14 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
 end subroutine interpolate_strain_3d
 
 subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
-                            indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, &
+                            indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v, &
                             invJ, detJ, stress, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -148,8 +149,9 @@ subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
     integer, intent(in) ::  indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v)
-    double precision, intent(in) :: data_W_u, data_W_v
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
     double precision, intent(in) :: invJ, detJ, stress
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), stress(nvoigt, nc_total)
 
@@ -159,23 +161,28 @@ subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
     ! Local data
     ! ----------
     type(mecamat) :: mat
+    type(basis_data) :: basisdata
     integer :: nr_total
 
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, &
+                        indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v
-    call intforce_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, stress, array_out)
+    call intforce(mat, basisdata, nr_total, nc_total, stress, array_out)
 
 end subroutine get_intforce_2d
 
 subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
+                            indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w,&
                             invJ, detJ, stress, array_out)
     !! Computes internal force vector in 3D 
     !! Probably correct (?)
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -185,8 +192,10 @@ subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
                     indi_v(nr_v+1), indj_v(nnz_v), &
                     indi_w(nr_w+1), indj_w(nnz_w)
-    double precision, intent(in) :: data_W_u, data_W_v, data_W_w
-    dimension :: data_W_u(nnz_u, 4), data_W_v(nnz_v, 4), data_W_w(nnz_w, 4)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
     double precision, intent(in) :: invJ, detJ, stress
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), stress(nvoigt, nc_total)
 
@@ -196,12 +205,16 @@ subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     ! Local data
     ! ----------
     type(mecamat) :: mat
+    type(basis_data) :: basisdata
     integer :: nr_total
 
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v*nr_w
-    call intforce_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, stress, array_out)
+    call intforce(mat, basisdata, nr_total, nc_total, stress, array_out)
 
 end subroutine get_intforce_3d
 
@@ -214,6 +227,7 @@ subroutine mf_mass_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -239,21 +253,14 @@ subroutine mf_mass_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
-    call mf_tu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+    call mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
 end subroutine mf_mass_2d
 
 subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -265,6 +272,7 @@ subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -292,22 +300,16 @@ subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
 
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
-    call mf_tu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
+    call mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_mass_3d
 
@@ -344,22 +346,15 @@ subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
-    call mf_gradtu_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_out)
+    call mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_stiffness_2d
 
@@ -398,23 +393,16 @@ subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
-    call mf_gradtu_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, array_out)
+    call mf_gradtu_gradtv(mat, basisdata, nr_total,  array_in, array_out)
 
 end subroutine mf_stiffness_3d
 
@@ -450,21 +438,14 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, &
+                        data_B_u, data_B_v, data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_u_gradtv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, array_in, array_out)
+    call mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_thmchcoupled_2d
 
@@ -503,22 +484,15 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     ! Local data 
     ! ----------
     type(mecamat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                        data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_u_gradtv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, array_in, array_out)
+    call mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_thmchcoupled_3d
 
@@ -535,7 +509,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     !! IN CSR FORMAT 
 
     use matrixfreeplasticity
-    use plasticitysolver2
+    use plasticitysolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -568,19 +542,20 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
 
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
+                        data_W_u, data_W_v)
+    do i = 1, dimen
+        call copybasisdata(globsyst, redsyst(i)%basisdata)
+        call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
+        call getcsrc2dense(redsyst(i)%basisdata)
+    end do
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
@@ -595,24 +570,27 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         end if
 
         if (linprecond.eq.'JMC') then
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
+            do i = 1, dimen
+                call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+            end do
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
-                                univMcoefs(i, :, :), univKcoefs(i, :, :))
+                call setup_univariatecoefs(redsyst(i), dimen, maxval(nc_list), univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
 
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Smean)
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, iterations, threshold, Fext, x, residual)    
+        if (solv%applyfd) then
+            do i = 1, dimen
+                call space_eigendecomposition(redsyst(i))
+            end do
+        end if
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)    
     else 
         stop 'Unknown method'                    
     end if
@@ -631,7 +609,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     !! IN CSR FORMAT 
 
     use matrixfreeplasticity
-    use plasticitysolver3
+    use plasticitysolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -666,20 +644,20 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
     
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    do i = 1, dimen
+        call copybasisdata(globsyst, redsyst(i)%basisdata)
+        call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
+        call getcsrc2dense(redsyst(i)%basisdata)
+    end do
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
@@ -694,25 +672,26 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         end if
 
         if (linprecond.eq.'JMC') then
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
+            do i = 1, dimen
+                call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+            end do
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
-                                            univMcoefs(i, :, :), univKcoefs(i, :, :))
+                call setup_univariatecoefs(redsyst(i), dimen, maxval(nc_list), univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
-
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                        data_W_u, data_W_v, data_W_w, table, mat%Smean)
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        iterations, threshold, Fext, x, residual)
+        if (solv%applyfd) then
+            do i = 1, dimen
+                call space_eigendecomposition(redsyst(i))
+            end do
+        end if
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method'                   
     end if
@@ -725,7 +704,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                             threshold, linprecond, x, residual)
 
     use matrixfreeplasticity
-    use plasticitysolver2
+    use plasticitysolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -759,19 +738,20 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     ! ----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
     
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                        data_W_u, data_W_v)
+    do i = 1, dimen
+        call copybasisdata(globsyst, redsyst(i)%basisdata)
+        call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
+        call getcsrc2dense(redsyst(i)%basisdata)
+    end do
+    call getcsrc2dense(globsyst)
 
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
@@ -787,33 +767,32 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             solv%applyfd = .false.
         end if
 
-        if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+        if (linprecond.eq.'JMC') then
+            call compute_variablesmean(mat, nc_list)
+            do i = 1, dimen
+                call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+            end do
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
-                                univMcoefs(i, :, :), univKcoefs(i, :, :))
+                call setup_univariatecoefs(redsyst(i), dimen, maxval(nc_list), univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                                 indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                                 data_W_u, data_W_v, table, mat%Smean)
-        
         if (solv%applyfd) then
-        do i = 1, dimen
-            solv%disp_struct(i)%diageigval_sp = mat%Mmean(i) + tsfactor*solv%disp_struct(i)%diageigval_sp
-        end do
+            do i = 1, dimen
+                call space_eigendecomposition(redsyst(i))
+            end do
         end if
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
 
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
-                        data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if
@@ -827,7 +806,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 Fext, iterations, threshold, linprecond, x, residual)
 
     use matrixfreeplasticity
-    use plasticitysolver3
+    use plasticitysolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -863,20 +842,20 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     ! ----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
     
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    do i = 1, dimen
+        call copybasisdata(globsyst, redsyst(i)%basisdata)
+        call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
+        call getcsrc2dense(redsyst(i)%basisdata)
+    end do
+    call getcsrc2dense(globsyst)
 
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
@@ -892,33 +871,32 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             solv%applyfd = .false.
         end if
 
-        if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+        if (linprecond.eq.'JMC') then
+            call compute_variablesmean(mat, nc_list)
+            do i = 1, dimen
+                call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+            end do
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, dimen, maxval(nc_list)), univKcoefs(dimen, dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
             do i = 1, dimen
-                call setup_univariatecoefs(solv%disp_struct(i), size(univMcoefs, dim=2), size(univMcoefs, dim=3), &
-                                univMcoefs(i, :, :), univKcoefs(i, :, :))
+                call setup_univariatecoefs(redsyst(i), dimen, maxval(nc_list), univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
     
         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w, table, mat%Smean)
-        
         if (solv%applyfd) then
-        do i = 1, dimen
-            solv%disp_struct(i)%diageigval_sp = mat%Mmean + tsfactor*solv%disp_struct(i)%diageigval_sp
-        end do
+            do i = 1, dimen
+                call space_eigendecomposition(redsyst(i))
+            end do
         end if
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
 
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, &
-                        iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if

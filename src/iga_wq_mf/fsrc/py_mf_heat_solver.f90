@@ -345,7 +345,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
@@ -432,7 +432,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
@@ -523,13 +523,13 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
+            call setup_univariatecoefs(redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
         
         if (solv%applyfd) call space_eigendecomposition(redsyst)
+        if (solv%applyfd) redsyst%diageigval_sp = mat%Cmean + tsfactor*redsyst%diageigval_sp
         call initialize_solver(solv, globsyst, redsyst)
-        if (solv%applyfd) solv%redsyst%diageigval_sp = mat%Cmean + tsfactor*solv%redsyst%diageigval_sp
         call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
@@ -617,12 +617,12 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
         
         if (solv%applyfd) call space_eigendecomposition(redsyst)
+        if (solv%applyfd) redsyst%diageigval_sp = mat%Cmean + tsfactor*redsyst%diageigval_sp
         call initialize_solver(solv, globsyst, redsyst)
-        if (solv%applyfd) solv%redsyst%diageigval_sp = mat%Cmean + tsfactor*solv%redsyst%diageigval_sp
         call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
