@@ -1112,3 +1112,36 @@ subroutine multicsr2csc(nm, nr, nc, nnz, a_csr, indj_csr, indi_csr, a_csc, indj_
     call multicoo2csr(nm, nc, nnz, a_csr, indj_csr, indi_coo, a_csc, indj_csc, indi_csc)
 
 end subroutine multicsr2csc
+
+subroutine multicsr2dense(nm, nnz, indi_csr, indj_csr, a_csr, nr, nc, AA)
+    !! Gets a dense matrix from a CSR format
+    !! Repeated indices (i, j) are added
+
+    implicit none 
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nm, nnz, nr, nc 
+    integer, intent(in) :: indi_csr, indj_csr
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
+    double precision, intent(in) :: a_csr
+    dimension :: a_csr(nnz, nm)
+
+    double precision, intent(out) :: AA
+    dimension :: AA(nr, nc, nm)
+
+    ! Local data
+    ! -------------
+    integer :: i, j, k, l
+
+    AA = 0.d0
+
+    do i = 1, nr
+        do k = indi_csr(i), indi_csr(i+1)-1
+            j = indj_csr(k)
+            do l = 1, nm
+                AA(i, j, l) = AA(i, j, l) + a_csr(k, l)
+            end do
+        end do
+    end do
+    
+end subroutine multicsr2dense

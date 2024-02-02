@@ -733,12 +733,12 @@ end module matrixfreestheat
 module stheatsolver2
 
     use matrixfreestheat
-    use datastructure
+    use structured_data
     type stcgsolver
         integer :: matrixfreetype = 1, dimen = 3
         logical :: applyfd = .true.
         double precision :: Cmean = 1.d0
-        type(structure) :: temp_struct
+        type(reduced_system) :: temp_struct
     end type stcgsolver
 
 contains
@@ -831,10 +831,10 @@ contains
         double precision, intent(in) :: Kmean
         dimension :: Kmean(solv%dimen)
 
-        call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+        call init_3basisdata(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, data_W_t)
-        call update_datastructure(solv%temp_struct, solv%dimen, table)
+        call update_reducedsystem(solv%temp_struct, solv%dimen, table)
         solv%temp_struct%isspacetime = .true.
         if (.not.solv%applyfd) return
         call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
@@ -1120,12 +1120,12 @@ end module stheatsolver2
 module stheatsolver3
 
     use matrixfreestheat
-    use datastructure
+    use structured_data
     type stcgsolver
         integer :: matrixfreetype = 1, dimen = 4
         logical :: applyfd = .true.
         double precision :: Cmean = 1.d0
-        type(structure) :: temp_struct
+        type(reduced_system) :: temp_struct
     end type stcgsolver
 
 contains
@@ -1220,10 +1220,10 @@ contains
         double precision, intent(in) :: Kmean
         dimension :: Kmean(solv%dimen)
         
-        call init_4datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+        call init_4basisdata(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                             nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t)
-        call update_datastructure(solv%temp_struct, solv%dimen, table)
+        call update_reducedsystem(solv%temp_struct, solv%dimen, table)
         solv%temp_struct%isspacetime = .true.
         if (.not.solv%applyfd) return
         call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)

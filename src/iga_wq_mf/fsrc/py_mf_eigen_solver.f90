@@ -9,7 +9,7 @@ subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     use matrixfreeheat
     use heatsolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -78,7 +78,7 @@ subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
 
     use matrixfreeheat
     use heatsolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -152,7 +152,7 @@ subroutine solver_lobpcg_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
 
     use matrixfreeplasticity
     use plasticitysolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -223,7 +223,7 @@ subroutine solver_lobpcg_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
 
     use matrixfreeplasticity
     use plasticitysolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -296,7 +296,7 @@ subroutine fastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use heatsolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -340,7 +340,7 @@ subroutine fastdiagonalization_3d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     !! IN CSR FORMAT
 
     use heatsolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------

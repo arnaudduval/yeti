@@ -2,13 +2,14 @@ module matrixfreeheat
 
     implicit none
     type thermomat
-        integer :: dimen
+        integer :: dimen, ncols_sp
         logical :: isLumped = .false.
-        double precision :: Cmean, scalars(2) = (/1.d0, 1.d0/)
+        double precision :: scalars(2) = (/1.d0, 1.d0/)
+        ! Material properties
+        double precision :: Cmean
         double precision, dimension(:), allocatable :: Kmean
         double precision, dimension(:), pointer :: Hprop=>null(), Cprop=>null(), detJ=>null()
         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
-        integer :: ncols_sp
     end type thermomat
 
 contains
@@ -87,7 +88,8 @@ contains
         integer, intent(in) :: nc_list
         dimension :: nc_list(mat%dimen)
 
-        double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), univKcoefs(mat%dimen, maxval(nc_list))
+        double precision, intent(out) :: univMcoefs(mat%dimen, maxval(nc_list)), &
+                                        univKcoefs(mat%dimen, maxval(nc_list))
 
         ! Local data
         ! ----------
@@ -144,7 +146,7 @@ contains
         
     end subroutine compute_separationvariables
 
-    subroutine compute_mean(mat, nclist)
+    subroutine compute_variablesmean(mat, nclist)
         !! Computes the average of the material properties
 
         implicit none 
@@ -199,7 +201,7 @@ contains
             end if
         end if   
 
-    end subroutine compute_mean
+    end subroutine compute_variablesmean
 
     subroutine mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                             indi_T_u, indj_T_u, indi_T_v, indj_T_v, &
@@ -668,11 +670,11 @@ end module matrixfreeheat
 module heatsolver2
 
     use matrixfreeheat
-    use datastructure
+    use structured_data
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 1, dimen = 2
-        type(structure) :: temp_struct
+        type(reduced_system) :: temp_struct
     end type cgsolver
 
 contains
@@ -749,10 +751,10 @@ contains
         double precision, intent(in) :: Kmean
         dimension :: Kmean(solv%dimen)
 
-        call init_2datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, &
+        call init_2basisdata(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v)
-        call update_datastructure(solv%temp_struct, solv%dimen, table_dirichlet)
+        call update_reducedsystem(solv%temp_struct, solv%dimen, table_dirichlet)
         if (.not.solv%applyfd) return
         call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
     
@@ -1050,11 +1052,11 @@ end module heatsolver2
 module heatsolver3
 
     use matrixfreeheat
-    use datastructure
+    use structured_data
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 1, dimen = 3
-        type(structure) :: temp_struct
+        type(reduced_system) :: temp_struct
     end type cgsolver
 
 contains
@@ -1136,11 +1138,11 @@ contains
         double precision, intent(in) :: Kmean
         dimension :: Kmean(solv%dimen)
 
-        call init_3datastructure(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+        call init_3basisdata(solv%temp_struct, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
         if (.not.solv%applyfd) return
-        call update_datastructure(solv%temp_struct, solv%dimen, table)
+        call update_reducedsystem(solv%temp_struct, solv%dimen, table)
         call space_eigendecomposition(solv%temp_struct, solv%dimen, Kmean)
     
     end subroutine initializefastdiag

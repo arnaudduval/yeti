@@ -509,7 +509,7 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     
     use matrixfreeheat
     use heatsolver3
-    use datastructure
+    use structured_data
 
     implicit none 
     ! Input / output data
@@ -583,7 +583,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     
     use matrixfreeheat
     use heatsolver2
-    use datastructure
+    use structured_data
 
     implicit none 
     ! Input / output data

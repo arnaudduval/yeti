@@ -324,7 +324,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     use matrixfreeheat
     use heatsolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -382,7 +382,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         end if
         
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -416,7 +416,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     use matrixfreeheat
     use heatsolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -477,7 +477,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         end if
         
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -573,7 +573,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -672,7 +672,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         end if
 
         if (linprecond.eq.'JMC') then 
-            call compute_mean(mat, nc_list)
+            call compute_variablesmean(mat, nc_list)
         end if
 
         if (linprecond.eq.'TDC') then

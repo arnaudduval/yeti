@@ -975,12 +975,12 @@ end module matrixfreeplasticity
 module plasticitysolver2
 
     use matrixfreeplasticity
-    use datastructure
+    use structured_data
     
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 2, dimen = 2
-        type(structure) :: disp_struct(2)
+        type(reduced_system) :: disp_struct(2)
         end type cgsolver
 
 contains
@@ -1068,10 +1068,10 @@ contains
         integer :: i
 
         do i = 1, solv%dimen
-            call init_2datastructure(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, &
+            call init_2basisdata(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, &
                                     nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                     data_B_u, data_B_v, data_W_u, data_W_v)
-            call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            call update_reducedsystem(solv%disp_struct(i), solv%dimen, table(:, :, i))
             if (.not.solv%applyfd) cycle
             call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do
@@ -1384,12 +1384,12 @@ end module plasticitysolver2
 module plasticitysolver3
 
     use matrixfreeplasticity
-    use datastructure
+    use structured_data
 
     type cgsolver
         logical :: withdiag = .true., applyfd = .true.
         integer :: matrixfreetype = 2, dimen = 3
-        type(structure) :: disp_struct(3)
+        type(reduced_system) :: disp_struct(3)
     end type cgsolver
 
 contains
@@ -1476,10 +1476,10 @@ contains
         integer :: i
 
         do i = 1, solv%dimen
-            call init_3datastructure(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+            call init_3basisdata(solv%disp_struct(i), nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
-            call update_datastructure(solv%disp_struct(i), solv%dimen, table(:, :, i))
+            call update_reducedsystem(solv%disp_struct(i), solv%dimen, table(:, :, i))
             if (.not.solv%applyfd) cycle
             call space_eigendecomposition(solv%disp_struct(i), solv%dimen, mean(i, :))
         end do

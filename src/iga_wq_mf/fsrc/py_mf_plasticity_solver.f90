@@ -536,7 +536,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     use matrixfreeplasticity
     use plasticitysolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -632,7 +632,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     use matrixfreeplasticity
     use plasticitysolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -726,7 +726,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     use matrixfreeplasticity
     use plasticitysolver2
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -828,7 +828,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     use matrixfreeplasticity
     use plasticitysolver3
-    use datastructure
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
