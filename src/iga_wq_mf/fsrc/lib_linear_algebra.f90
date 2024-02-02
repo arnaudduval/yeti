@@ -908,98 +908,6 @@ end subroutine erase_rows_csr
 ! Indices
 ! --------
 
-subroutine coo2csr(nm, nr, nnz, a_coo, indi_coo, indj_coo, a_csr, indj_csr, indi_csr)
-    !! Change COO format to CSR format
-
-    implicit none 
-    ! Input / output data
-    ! --------------------
-    integer, intent(in) :: nm, nr, nnz
-    double precision, intent(in) :: a_coo
-    dimension :: a_coo(nnz, nm)
-    integer, intent(in) :: indi_coo, indj_coo
-    dimension :: indi_coo(nnz), indj_coo(nnz)
-
-    double precision, intent(out) :: a_csr
-    dimension :: a_csr(nnz, nm)
-    integer, intent(out) :: indj_csr, indi_csr
-    dimension :: indj_csr(nnz), indi_csr(nr+1)
-
-    ! Local data
-    ! ----------
-    integer :: i, j, k, c, iad
-    double precision :: x
-    dimension :: x(nm)
-    
-    ! Get number of nonzero values for each row
-    indi_csr = 0
-    do  k = 1, nnz
-        indi_csr(indi_coo(k)) = indi_csr(indi_coo(k)) + 1
-    end do
-
-    ! Get CSR format for i-indices 
-    k = 1
-    do j = 1, nr+1
-        c = indi_csr(j)
-        indi_csr(j) = k
-        k = k + c
-    end do
-
-    ! Sort COO nonzero values and update values of CSR j-indices
-    do k = 1, nnz
-        i = indi_coo(k)
-        j = indj_coo(k)
-        x = a_coo(k, :)
-        iad = indi_csr(i)
-        a_csr(iad, :) =  x
-        indj_csr(iad) = j
-        indi_csr(i) = iad + 1
-    end do
-
-    ! Update i-indices
-    do  j = nr, 1, -1
-        indi_csr(j+1) = indi_csr(j)
-    end do
-    indi_csr(1) = 1
-
-end subroutine coo2csr
-
-subroutine csr2csc(nm, nr, nc, nnz, a_csr, indj_csr, indi_csr, a_csc, indj_csc, indi_csc)
-    !! Gets CSC format from CSR format. 
-    !! It only works when csr is close to coo format, i.e., nonzero values are sorted in order of occurrence
-
-    implicit none
-    ! Input / output data 
-    ! -------------------
-    integer, intent(in) :: nm, nnz, nr, nc
-    integer, intent(in) :: indi_csr, indj_csr
-    dimension :: indi_csr(nr+1), indj_csr(nnz)
-    double precision, intent(in) :: a_csr
-    dimension :: a_csr(nnz, nm)
-
-    integer, intent(out) :: indi_csc, indj_csc
-    dimension :: indi_csc(nc+1), indj_csc(nnz)
-    double precision, intent(out) :: a_csc
-    dimension :: a_csc(nnz, nm)
-
-    ! Local data
-    ! ----------
-    integer :: indi_coo 
-    dimension :: indi_coo(nnz)
-    integer :: i, j, c
-
-    c = 0
-    do i = 1, nr
-        do j = indi_csr(i), indi_csr(i+1) - 1
-            c = c + 1
-            indi_coo(c) = i
-        end do
-    end do
-
-    call coo2csr(nm, nc, nnz, a_csr, indj_csr, indi_coo, a_csc, indj_csc, indi_csc)
-
-end subroutine csr2csc
-
 subroutine coo2dense(nnz, indi_coo, indj_coo, a_coo, nr, nc, AA)
     !! Gets a dense matrix from COO format
     !! Repeated indices (i, j) are added
@@ -1061,7 +969,6 @@ subroutine csr2dense(nnz, indi_csr, indj_csr, a_csr, nr, nc, AA)
     
 end subroutine csr2dense
 
-
 subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
     !! Gets CSR format from matrix 
     !! If nnz < 0, the it only computes the number of nonzero values
@@ -1113,3 +1020,95 @@ subroutine dense2csr(nr, nc, AA, nnz, indi_csr, indj_csr, a_csr)
     end if
 
 end subroutine dense2csr
+
+subroutine multicoo2csr(nm, nr, nnz, a_coo, indi_coo, indj_coo, a_csr, indj_csr, indi_csr)
+    !! Change COO format to CSR format
+
+    implicit none 
+    ! Input / output data
+    ! --------------------
+    integer, intent(in) :: nm, nr, nnz
+    double precision, intent(in) :: a_coo
+    dimension :: a_coo(nnz, nm)
+    integer, intent(in) :: indi_coo, indj_coo
+    dimension :: indi_coo(nnz), indj_coo(nnz)
+
+    double precision, intent(out) :: a_csr
+    dimension :: a_csr(nnz, nm)
+    integer, intent(out) :: indj_csr, indi_csr
+    dimension :: indj_csr(nnz), indi_csr(nr+1)
+
+    ! Local data
+    ! ----------
+    integer :: i, j, k, c, iad
+    double precision :: x
+    dimension :: x(nm)
+    
+    ! Get number of nonzero values for each row
+    indi_csr = 0
+    do  k = 1, nnz
+        indi_csr(indi_coo(k)) = indi_csr(indi_coo(k)) + 1
+    end do
+
+    ! Get CSR format for i-indices 
+    k = 1
+    do j = 1, nr+1
+        c = indi_csr(j)
+        indi_csr(j) = k
+        k = k + c
+    end do
+
+    ! Sort COO nonzero values and update values of CSR j-indices
+    do k = 1, nnz
+        i = indi_coo(k)
+        j = indj_coo(k)
+        x = a_coo(k, :)
+        iad = indi_csr(i)
+        a_csr(iad, :) =  x
+        indj_csr(iad) = j
+        indi_csr(i) = iad + 1
+    end do
+
+    ! Update i-indices
+    do  j = nr, 1, -1
+        indi_csr(j+1) = indi_csr(j)
+    end do
+    indi_csr(1) = 1
+
+end subroutine multicoo2csr
+
+subroutine multicsr2csc(nm, nr, nc, nnz, a_csr, indj_csr, indi_csr, a_csc, indj_csc, indi_csc)
+    !! Gets CSC format from CSR format. 
+    !! It only works when csr is close to coo format, i.e., nonzero values are sorted in order of occurrence
+
+    implicit none
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nm, nnz, nr, nc
+    integer, intent(in) :: indi_csr, indj_csr
+    dimension :: indi_csr(nr+1), indj_csr(nnz)
+    double precision, intent(in) :: a_csr
+    dimension :: a_csr(nnz, nm)
+
+    integer, intent(out) :: indi_csc, indj_csc
+    dimension :: indi_csc(nc+1), indj_csc(nnz)
+    double precision, intent(out) :: a_csc
+    dimension :: a_csc(nnz, nm)
+
+    ! Local data
+    ! ----------
+    integer :: indi_coo 
+    dimension :: indi_coo(nnz)
+    integer :: i, j, c
+
+    c = 0
+    do i = 1, nr
+        do j = indi_csr(i), indi_csr(i+1) - 1
+            c = c + 1
+            indi_coo(c) = i
+        end do
+    end do
+
+    call multicoo2csr(nm, nc, nnz, a_csr, indj_csr, indi_coo, a_csc, indj_csc, indi_csc)
+
+end subroutine multicsr2csc

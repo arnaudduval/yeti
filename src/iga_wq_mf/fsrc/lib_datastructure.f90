@@ -286,7 +286,7 @@ contains
             end do
 
         else
-            stop 'Try 2, 3 or 4 dimensions'
+            stop 'Try 1, 2, 3 or 4 dimensions'
         end if
 
         mask = .true.
@@ -418,7 +418,7 @@ contains
             indi = datstruct%indi(i, 1:nr+1)
             indj = datstruct%indj(i, 1:nnz)
             bw   = datstruct%bw(i, 1:nnz, :)
-            call csr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
+            call multicsr2csc(6, nr, nc, nnz, bw, indj, indi, bw_T, indj_T, indi_T)
             datstruct%indi_T(i, 1:nc+1) = indi_T
             datstruct%indj_T(i, 1:nnz)  = indj_T
             datstruct%bw_T(i, 1:nnz, :) = bw_T
