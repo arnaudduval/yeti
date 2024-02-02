@@ -14,7 +14,7 @@ subroutine mf_capacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeheat
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -39,21 +39,14 @@ subroutine mf_capacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data 
     ! ---------- 
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
-    call mf_u_v_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+    call mf_u_v(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_capacity_2d
 
@@ -66,7 +59,7 @@ subroutine mf_capacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     !! IN CSR FORMAT
 
     use matrixfreeheat
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -92,23 +85,15 @@ subroutine mf_capacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     ! Local data 
     ! ---------- 
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
-    call mf_u_v_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
-
+    call mf_u_v(mat, basisdata, nr_total, array_in, array_out)
 end subroutine mf_capacity_3d
 
 subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
@@ -143,20 +128,14 @@ subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                        data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_gradu_gradv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+    call mf_gradu_gradv_2d(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_conductivity_2d
 
@@ -194,21 +173,14 @@ subroutine mf_conductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_gradu_gradv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
+    call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_conductivity_3d
 
@@ -244,20 +216,14 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
+    type(basis_data) :: basisdata
+    call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                        data_W_u, data_W_v)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_gradu_tv_2d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, array_in, array_out)
+    call mf_gradu_tv(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_thmchcoupled_2d
 
@@ -295,21 +261,14 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-    
+    type(basis_data) :: basisdata
+    call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_gradu_tv_3d(mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, data_BT_u, data_BT_v, data_BT_w, &
-                    indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_W_u, data_W_v, data_W_w, array_in, array_out)
+    call mf_gradu_tv_3d(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_thmchcoupled_3d
 
@@ -323,7 +282,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use heatsolver2
+    use heatsolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -355,21 +314,18 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    type(cgsolver) :: solv
+    type(cgsolver) :: solv    
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst
     integer :: nc_list(dimen)
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
+                        data_W_u, data_W_v)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
@@ -383,22 +339,18 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         
         if (linprecond.eq.'JMC') then 
             call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen, mat%Kmean(1:dimen))
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-                                        univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
 
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_B_u, data_B_v, data_W_u, data_W_v, table, mat%Kmean)
-
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                    indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, &
-                    indi_u, indj_u, indi_v, indj_v, data_W_u, data_W_v, iterations, threshold, Fext, x, residual)
-                
+        if (solv%applyfd) call space_eigendecomposition(redsyst)
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if
@@ -415,7 +367,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use heatsolver3
+    use heatsolver
     use structured_data
     implicit none 
     ! Input / output data
@@ -449,22 +401,18 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    type(cgsolver) :: solv
+    type(cgsolver) :: solv    
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst
     integer :: nc_list(dimen)
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
-
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     solv%matrixfreetype = 2
@@ -478,22 +426,18 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         
         if (linprecond.eq.'JMC') then 
             call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen, mat%Kmean(1:dimen))
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-                                        univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
 
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%Kmean)
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, iterations, threshold, Fext, x, residual)
+        if (solv%applyfd) call space_eigendecomposition(redsyst)
+        call initialize_solver(solv, globsyst, redsyst)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
 
     else 
         stop 'Unknown method' 
@@ -511,7 +455,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use heatsolver2
+    use heatsolver
 
     implicit none 
     ! Input / output data
@@ -544,27 +488,26 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    type(cgsolver) :: solv
+    type(cgsolver) :: solv    
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst
     integer :: nc_list(dimen)
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+                        data_W_u, data_W_v)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
 
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indj_T_u, indj_T_v
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v)
-    double precision :: data_BT_u, data_BT_v
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    
-    if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
-    mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v/)
+    mat%isLumped = isLumped
+    mat%scalars = (/1.d0, tsfactor/)
     solv%matrixfreetype = 3
+    nc_list = (/nc_u, nc_v/)
 
     if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
@@ -574,6 +517,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
         if (linprecond.eq.'JMC') then 
             call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen, mat%Kmean)
         end if
 
         if (linprecond.eq.'TDC') then
@@ -582,15 +526,11 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
             call setup_univariatecoefs(solv%redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
                                         univMcoefs, univKcoefs)
         end if
-    
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                                indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
-                                data_W_u, data_W_v, table, mat%Kmean)
+        
+        if (solv%applyfd) call space_eigendecomposition(redsyst)
+        call initialize_solver(solv, globsyst, redsyst)
         if (solv%applyfd) solv%redsyst%diageigval_sp = mat%Cmean + tsfactor*solv%redsyst%diageigval_sp
-
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, data_BT_u, data_BT_v, indi_u, indj_u, indi_v, indj_v, &
-                        data_W_u, data_W_v, iterations, threshold, Fext, x, residual)
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if
@@ -607,7 +547,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-    use heatsolver3
+    use heatsolver
 
     implicit none 
     ! Input / output data
@@ -642,28 +582,26 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     ! Local data
     ! ----------
     type(thermomat) :: mat
-    type(cgsolver) :: solv
+    type(cgsolver) :: solv    
+    type(basis_data) :: globsyst
+    type(reduced_system), target :: redsyst
     integer :: nc_list(dimen)
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
 
-    ! Csr format
-    integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w
-    dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), &
-                    indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w)
-    double precision :: data_BT_u, data_BT_v, data_BT_w
-    dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2)
-    
-    if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-
-    mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
     call setup_conductivityprop(mat, nc_total, Kprop)
-    mat%scalars = (/1.d0, tsfactor/); nc_list = (/nc_u, nc_v, nc_w/)
+    mat%isLumped = isLumped
+    mat%scalars = (/1.d0, tsfactor/)
     solv%matrixfreetype = 3
+    nc_list = (/nc_u, nc_v, nc_w/)
 
     if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
@@ -673,23 +611,19 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
         if (linprecond.eq.'JMC') then 
             call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen, mat%Kmean)
         end if
 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-                                        univMcoefs, univKcoefs)
+            call setup_univariatecoefs(solv%redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
-    
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                                indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                                data_W_u, data_W_v, data_W_w, table, mat%Kmean)
-        if (solv%applyfd) solv%temp_struct%diageigval_sp = mat%Cmean + tsfactor*solv%temp_struct%diageigval_sp
-        call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-                        data_BT_u, data_BT_v, data_BT_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                        data_W_u, data_W_v, data_W_w, iterations, threshold, Fext, x, residual)
+        
+        if (solv%applyfd) call space_eigendecomposition(redsyst)
+        call initialize_solver(solv, globsyst, redsyst)
+        if (solv%applyfd) solv%redsyst%diageigval_sp = mat%Cmean + tsfactor*solv%redsyst%diageigval_sp
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
         stop 'Unknown method' 
     end if

@@ -57,6 +57,7 @@ subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_capacityprop(mat, nc_total, Cprop)
 
     nr_total = nr_u*nr_v
+    solv%applyfd = .false.
     call initialize_solver(solv, globsyst, redsyst)
     call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
@@ -122,6 +123,7 @@ subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     call setup_capacityprop(mat, nc_total, Cprop)
 
     nr_total = nr_u*nr_v*nr_w
+    solv%applyfd = .false.
     call initialize_solver(solv, globsyst, redsyst)
     call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
