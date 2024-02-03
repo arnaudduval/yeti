@@ -394,231 +394,216 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr
 
 end subroutine mf_stconductivity_3d
 
-! subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                                 indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
-!                                 data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, iterations, threshold, linprecond, &
-!                                 linsolver, x, residual)
-!     !! Precontionned bi-conjugate gradient to solve transient heat problems
-!     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
-!     !! bn is compute beforehand (In python or fortran).
-!     !! IN CSR FORMAT
+subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
+                                data_W_t, table, invJ, detJ, detG, Cprop, Kprop, Fext, iterations, threshold, linprecond, &
+                                linsolver, x, residual)
+    !! Precontionned bi-conjugate gradient to solve transient heat problems
+    !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
+    !! bn is compute beforehand (In python or fortran).
+    !! IN CSR FORMAT
 
-!     use matrixfreestheat
-!     use stheatsolver
+    use matrixfreestheat
+    use stheatsolver
 
-!     implicit none 
-!     ! Input / output data
-!     ! -------------------
-!     integer, parameter :: dimen_sp = 3
-!     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
-!                             nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
-!     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
-!     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
-!     integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
-!     dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-!     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
-!     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-!                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-!                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
-!                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
-!     logical, intent(in) :: table
-!     dimension :: table(dimen_sp+1, 2) 
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 3, dimen = dimen_sp + 1
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
+                            nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+    integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
+                    data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2) 
 
-!     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
-!     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
-!                 Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
-!     character(len=10), intent(in) :: linprecond, linsolver
-!     integer, intent(in) :: iterations    
-!     double precision, intent(in) :: threshold
+    double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
+                Cprop(nc_total), Kprop(dimen_sp, dimen_sp, nc_total)
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
+    double precision, intent(in) :: threshold
 
-!     double precision, intent(in) :: Fext
-!     dimension :: Fext(nr_total)
+    double precision, intent(in) :: Fext
+    dimension :: Fext(nr_total)
     
-!     double precision, intent(out) :: x, residual
-!     dimension :: x(nr_total), residual(iterations+1)
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
-!     ! Local data
-!     ! ----------
-!     type(stthermomat) :: mat
-!     type(stcgsolver) :: solv
-!     integer :: nc_list(dimen_sp+1), nbRestarts=1
-!     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    ! Local data
+    ! ----------
+    type(stthermomat) :: mat
+    type(stcgsolver) :: solv
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    integer :: nc_list(dimen), nbRestarts=1
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
-!     ! Csr format
-!     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w, indi_T_t, indj_T_t
-!     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1), &
-!                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-!     double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-!     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
+    call init_4basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
+                        data_W_u, data_W_v, data_W_w, data_W_t)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
+    redsyst%isspacetime = .true.
     
-!     if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
-!     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-!     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-!     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-!     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
+    call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
+    call setup_capacityprop(mat, size(Cprop), Cprop)
+    call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
+    nc_list = (/nc_u, nc_v, nc_w, nc_t/)
 
-!     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-!     call setup_capacityprop(mat, size(Cprop), Cprop)
-!     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
-!     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-!     if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
+        if (linprecond.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
-!         if (linprecond.eq.'WP') then
-!             solv%applyfd = .false.
-!         end if
+        if (linprecond.eq.'JMC') then 
+            call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen_sp, mat%Kmean(1:dimen_sp))
+        end if
 
-!         if (linprecond.eq.'JMC') then 
-!             call compute_variablesmean(mat, nc_list)
-!         end if
+        if (linprecond.eq.'TDC') then
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
+        end if
 
-!         if (linprecond.eq.'TDC') then
-!             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
-!             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-!             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-!                                         univMcoefs, univKcoefs)
-!         end if
-!         solv%Cmean = mat%Cmean
-!         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-!                         data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
-        
-!         if (linsolver.eq.'BICG') then
-!         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-!                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-!                         iterations, threshold, Fext, x, residual)
-!         else if (linsolver.eq.'GMRES') then
-!         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-!                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-!                         nbRestarts, iterations, threshold, Fext, x, residual)
-!         else
-!             stop 'unknown method'
-!         end if
+        solv%scalarleft = mat%Cmean
+        if (solv%applyfd) then
+            call space_eigendecomposition(redsyst)
+            call time_schurdecomposition(redsyst)
+        end if
+        call initialize_solver(solv, globsyst, redsyst)
+
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total,  nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'unknown method'
+        end if
+    else 
+        stop 'Unknown method' 
+    end if
+
+end subroutine solver_picardspacetime_heat_3d
+
+subroutine solver_newtonspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+                                indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
+                                data_W_t, table, invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop, &
+                                Fext, iterations, threshold, linprecond, linsolver, x, residual)
+    !! Precontionned bi-conjugate gradient to solve transient heat problems
+    !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
+    !! bn is compute beforehand (In python or fortran).
+    !! IN CSR FORMAT
+
+    use matrixfreestheat
+    use stheatsolver
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 3, dimen = dimen_sp + 1
+    integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
+                            nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+    integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
+                    data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
+    logical, intent(in) :: table
+    dimension :: table(dimen_sp+1, 2) 
+
+    double precision, intent(in) :: invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop
+    dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
+                Cprop(nc_total), Cdersprop(nc_total), &
+                Kprop(dimen_sp, dimen_sp, nc_total), Kdersprop(dimen_sp, nc_total)
+    character(len=10), intent(in) :: linprecond, linsolver
+    integer, intent(in) :: iterations    
+    double precision, intent(in) :: threshold
+
+    double precision, intent(in) :: Fext
+    dimension :: Fext(nr_total)
     
-!     else 
-!         stop 'Unknown method' 
-!     end if
+    double precision, intent(out) :: x, residual
+    dimension :: x(nr_total), residual(iterations+1)
 
-! end subroutine solver_picardspacetime_heat_3d
+    ! Local data
+    ! ----------
+    type(stthermomat) :: mat
+    type(stcgsolver) :: solv
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    integer :: nc_list(dimen), nbRestarts=1
+    double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
 
-! subroutine solver_newtonspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                                 nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-!                                 indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, &
-!                                 data_W_t, table, invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop, &
-!                                 Fext, iterations, threshold, linprecond, linsolver, x, residual)
-!     !! Precontionned bi-conjugate gradient to solve transient heat problems
-!     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
-!     !! bn is compute beforehand (In python or fortran).
-!     !! IN CSR FORMAT
+    call init_4basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
+                        data_W_u, data_W_v, data_W_w, data_W_t)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(globsyst)
+    call getcsrc2dense(redsyst%basisdata)
+    redsyst%isspacetime = .true.
 
-!     use matrixfreestheat
-!     use stheatsolver
+    call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
+    call setup_capacityprop(mat, size(Cprop), Cprop)
+    call setup_capacityDersprop(mat, size(Cdersprop), Cdersprop)
+    call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
+    call setup_conductivityDersprop(mat, size(Kdersprop, dim=2), Kdersprop)
+    nc_list = (/nc_u, nc_v, nc_w, nc_t/)
+    solv%matrixfreetype = 2
 
-!     implicit none 
-!     ! Input / output data
-!     ! -------------------
-!     integer, parameter :: dimen_sp = 3
-!     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
-!                             nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
-!     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
-!     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
-!     integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
-!     dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
-!     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
-!     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
-!                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
-!                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
-!                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
-!     logical, intent(in) :: table
-!     dimension :: table(dimen_sp+1, 2) 
+    if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
 
-!     double precision, intent(in) :: invJ, detJ, detG, Cprop, Cdersprop, Kprop, Kdersprop
-!     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
-!                 Cprop(nc_total), Cdersprop(nc_total), &
-!                 Kprop(dimen_sp, dimen_sp, nc_total), Kdersprop(dimen_sp, nc_total)
-!     character(len=10), intent(in) :: linprecond, linsolver
-!     integer, intent(in) :: iterations    
-!     double precision, intent(in) :: threshold
+        if (linprecond.eq.'WP') then
+            solv%applyfd = .false.
+        end if
 
-!     double precision, intent(in) :: Fext
-!     dimension :: Fext(nr_total)
-    
-!     double precision, intent(out) :: x, residual
-!     dimension :: x(nr_total), residual(iterations+1)
+        if (linprecond.eq.'JMC') then 
+            call compute_variablesmean(mat, nc_list)
+            call setup_meancoefs(redsyst, dimen_sp, mat%Kmean(1:dimen_sp))
+        end if
 
-!     ! Local data
-!     ! ----------
-!     type(stthermomat) :: mat
-!     type(stcgsolver) :: solv
-!     integer :: nc_list(dimen_sp+1), nbRestarts=1
-!     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+        if (linprecond.eq.'TDC') then
+            allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
+            call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
+        end if
 
-!     ! Csr format
-!     integer :: indi_T_u, indi_T_v, indi_T_w, indj_T_u, indj_T_v, indj_T_w, indi_T_t, indj_T_t
-!     dimension ::    indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1), &
-!                     indj_T_u(nnz_u), indj_T_v(nnz_v), indj_T_w(nnz_w), indj_T_t(nnz_t)
-!     double precision :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
-!     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2), data_BT_w(nnz_w, 2), data_BT_t(nnz_t, 2)
-    
-!     if ((nc_total.ne.nc_sp*nc_tm).or.(nc_total.ne.nc_u*nc_v*nc_w*nc_t)) stop 'Size problem'
-!     call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-!     call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-!     call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
-!     call csr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
+        solv%scalarleft = mat%Cmean
+        if (solv%applyfd) then
+            call space_eigendecomposition(redsyst)
+            call time_schurdecomposition(redsyst)
+        end if
+        call initialize_solver(solv, globsyst, redsyst)
 
-!     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
-!     call setup_capacityprop(mat, size(Cprop), Cprop)
-!     call setup_capacityDersprop(mat, size(Cdersprop), Cdersprop)
-!     call setup_conductivityprop(mat, size(Kprop, dim=3), Kprop)
-!     call setup_conductivityDersprop(mat, size(Kdersprop, dim=2), Kdersprop)
-!     nc_list = (/nc_u, nc_v, nc_w, nc_t/)
-!     solv%matrixfreetype = 2
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total,  nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'unknown method'
+        end if
+    else 
+        stop 'Unknown method' 
+    end if
 
-!     if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
-
-!         if (linprecond.eq.'WP') then
-!             solv%applyfd = .false.
-!         end if
-
-!         if (linprecond.eq.'JMC') then 
-!             call compute_variablesmean(mat, nc_list)
-!         end if
-
-!         if (linprecond.eq.'TDC') then
-!             allocate(univMcoefs(dimen_sp+1, maxval(nc_list)), univKcoefs(dimen_sp+1, maxval(nc_list)))
-!             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-!             call setup_univariatecoefs(solv%temp_struct, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-!                                         univMcoefs, univKcoefs)
-!         end if
-
-!         solv%Cmean = mat%Cmean
-!         call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, indi_t, indj_t, &
-!                         data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, data_W_w, data_W_t, table, mat%Kmean)
-
-!         if (linsolver.eq.'BICG') then
-!         call PBiCGSTAB(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-!                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-!                         iterations, threshold, Fext, x, residual)
-!         else if (linsolver.eq.'GMRES') then
-!         call PGMRES(solv, mat, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                         nnz_u, nnz_v, nnz_w, nnz_t, indi_T_u, indj_T_u, indi_T_v, indj_T_v, indi_T_w, indj_T_w, &
-!                         indi_T_t, indj_T_t, data_BT_u, data_BT_v, data_BT_w, data_BT_t, indi_u, indj_u, indi_v, indj_v, &
-!                         indi_w, indj_w, indi_t, indj_t, data_W_u, data_W_v, data_W_w, data_W_t, &
-!                         nbRestarts, iterations, threshold, Fext, x, residual)
-!         else
-!             stop 'unknown method'
-!         end if
-        
-!     else 
-!         stop 'Unknown method' 
-!     end if
-
-! end subroutine solver_newtonspacetime_heat_3d
+end subroutine solver_newtonspacetime_heat_3d
