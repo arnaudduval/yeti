@@ -15,8 +15,6 @@ module matrixfreeheat
 contains
 
     subroutine setup_geometry(mat, dimen, nnz, invJ, detJ)
-        !! Points to the data of the inverse and determinant of the Jacobian. 
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -31,11 +29,9 @@ contains
         mat%ncols_sp = nnz
         allocate(mat%Kmean(mat%dimen))
         mat%Kmean = 1.d0; mat%Cmean = 1.d0
-
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -43,14 +39,11 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(mat%dimen, mat%dimen, nnz)
-
         mat%Kprop => prop
         mat%ncols_sp = nnz
-
     end subroutine setup_conductivityprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -58,10 +51,8 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-
         mat%Cprop => prop
         mat%ncols_sp = nnz
-
     end subroutine setup_capacityprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -72,14 +63,11 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-
         mat%Hprop => prop
         mat%ncols_sp = nnz
-
     end subroutine setup_thmchcoupledprop
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-        
         use separatevariables
         implicit none 
         ! Input / output data
@@ -120,7 +108,6 @@ contains
             end if
 
             univMcoefs = oper%univmasscoefs; univKcoefs = oper%univstiffcoefs
-
         else
             allocate(CC(mat%dimen+1, mat%ncols_sp), update(mat%dimen+1), nc_list_t(mat%dimen+1))
             update = .true.; update(mat%dimen+1) = .false.
@@ -147,8 +134,6 @@ contains
     end subroutine compute_separationvariables
 
     subroutine compute_variablesmean(mat, nclist)
-        !! Computes the average of the material properties
-
         implicit none 
         ! Input / output data
         ! -------------------
@@ -261,7 +246,6 @@ contains
                                 W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), &
                                 tmp, array_out)
         end if
-
         if (mat%isLumped) array_out = array_out*array_in
         
     end subroutine mf_u_v
@@ -298,17 +282,16 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-
-        do i = 1, basisdata%nc_total
-            coefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), &
-                                transpose(mat%invJ(:, :, i))))*mat%detJ(i)
-        end do
-
         if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
         end if
+
+        do i = 1, basisdata%nc_total
+            coefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), &
+                                transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+        end do
 
         array_out = 0.d0
         do j = 1, basisdata%dimen
@@ -401,7 +384,6 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-
         if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -409,34 +391,34 @@ contains
         end if
 
         array_out = 0.d0
-            do i = 1, basisdata%dimen
-                beta = 1
-                if (basisdata%dimen.eq.2) then
-                    call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
-                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
-                                array_in(i, :), t1)  
-                else if (basisdata%dimen.eq.3) then
-                    call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
-                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
-                                array_in(i, :), t1)  
-                end if
+        do i = 1, basisdata%dimen
+            beta = 1
+            if (basisdata%dimen.eq.2) then
+                call sumfacto2d_dM(nc_u, nr_u, nc_v, nr_v, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), & 
+                            array_in(i, :), t1)  
+            else if (basisdata%dimen.eq.3) then
+                call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
+                            BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), & 
+                            array_in(i, :), t1)  
+            end if
 
-                t1 = t1*mat%Hprop*mat%detJ
-                do k = 1, basisdata%dimen
-                    alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
-                    t2 = t1*mat%invJ(k, i, :)
-                    if (basisdata%dimen.eq.2) then
-                        call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
-                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
-                                    t2, t3)
-                    else if (basisdata%dimen.eq.3) then
-                        call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
-                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), &
-                                    t2, t3)
-                    end if
-                    array_out = array_out + t3
-                end do
+            t1 = t1*mat%Hprop*mat%detJ
+            do k = 1, basisdata%dimen
+                alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
+                t2 = t1*mat%invJ(k, i, :)
+                if (basisdata%dimen.eq.2) then
+                    call sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, & 
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), &
+                                t2, t3)
+                else if (basisdata%dimen.eq.3) then
+                    call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), &
+                                t2, t3)
+                end if
+                array_out = array_out + t3
             end do
+        end do
                     
     end subroutine mf_gradu_tv
 
@@ -519,17 +501,17 @@ contains
         end if
         nr_u = solv%redsyst%basisdata%nrows(1)
         nr_v = solv%redsyst%basisdata%nrows(2)
+        nr_w = 1
+        if (solv%globsyst%dimen.eq.3) nr_w = solv%redsyst%basisdata%nrows(3)
 
         array_out = 0.d0
+        allocate(tmp(nr_u*nr_v*nr_w))
         if (solv%globsyst%dimen.eq.2) then
-            allocate(tmp(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                         array_in(solv%redsyst%dof), tmp)
         else if (solv%globsyst%dimen.eq.3) then
-            nr_w = solv%redsyst%basisdata%nrows(3)
-            allocate(tmp(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
@@ -539,14 +521,12 @@ contains
 
         tmp = tmp/solv%redsyst%diageigval_sp
 
+        allocate(tmp2(nr_u*nr_v*nr_w))
         if (solv%globsyst%dimen.eq.2) then
-            allocate(tmp2(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
         else if (solv%globsyst%dimen.eq.3) then
-            nr_w = solv%redsyst%basisdata%nrows(3)
-            allocate(tmp2(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
@@ -586,8 +566,8 @@ contains
         ! -----------
         double precision :: rsold, rsnew, alpha, omega, beta, normb
         double precision :: r, rhat, p, s, ptilde, Aptilde, Astilde, stilde
-        dimension ::    r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
-                        ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
+        dimension :: r(nr_total), rhat(nr_total), p(nr_total), s(nr_total), &
+                    ptilde(nr_total), Aptilde(nr_total), Astilde(nr_total), stilde(nr_total)
         integer :: k
 
         x = 0.d0; r = b; residual = 0.d0
@@ -706,13 +686,7 @@ contains
             else
                 eigenval = minval(ll); ii = minloc(ll, dim=1)
             end if
-
-            delta = 0.d0
-            if (k.eq.1) then
-                delta(:2) = qq(:, ii)
-            else
-                delta = qq(:, ii)
-            end if
+            delta = qq(:, ii)
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p

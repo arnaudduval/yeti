@@ -10,7 +10,7 @@ module structured_data
     end type basis_data
 
     type :: reduced_system
-        logical :: isspacetime = .false.
+        logical :: isspacetime = .false., isalreadyreduced=.false.
         type(basis_data) :: basisdata
         integer, allocatable, dimension(:) :: dof, dod
         double precision, allocatable, dimension(:) :: meancoefs
@@ -257,6 +257,10 @@ contains
             size3 = size(basisdata_in%Wdense, dim=3)
             allocate(basisdata_inout%Wdense(dimen, size2, size3, 4))
             basisdata_inout%Wdense=basisdata_in%Wdense
+        end if
+        if (allocated(basisdata_in%BTdense)) then
+            size2 = size(basisdata_in%BTdense, dim=2)
+            size3 = size(basisdata_in%BTdense, dim=3)
             allocate(basisdata_inout%BTdense(dimen, size2, size3, 2)) 
             basisdata_inout%BTdense=basisdata_in%BTdense
         end if
@@ -318,12 +322,12 @@ contains
 
         if (dimen.ne.basisdata%dimen) stop 'Not the same dimension'
         inf = 1; sup = basisdata%nrows
+        do i = 1, dimen
+            if (table(i, 1)) inf(i) = inf(i) + 1
+            if (table(i, 2)) sup(i) = sup(i) - 1  
+        end do
         
         if ((ndof.lt.0).or.(ndod.lt.0)) then
-            do i = 1, dimen
-                if (table(i, 1)) inf(i) = inf(i) + 1
-                if (table(i, 2)) sup(i) = sup(i) - 1  
-            end do
             tmp  = sup - inf + 1
             ndof = product(tmp)
             ndod = basisdata%nr_total - ndof
@@ -395,7 +399,8 @@ contains
 
         ! Local data
         ! ----------
-        integer :: ndof, ndod, it, row2er_it, nr_it, nnz_it, nr_new_list(dimen), nnz_new_list(dimen)
+        integer :: ndof, ndod, it, row2er_it, nr_it, nnz_it
+        integer, dimension(dimen) :: nr_new_list, nnz_new_list
         integer, allocatable, dimension(:) :: dof, dod, rows2er 
         integer, dimension(:, :), allocatable :: indi_in, indj_in
         double precision, dimension(:, :, :), allocatable :: basis_in
@@ -403,10 +408,15 @@ contains
         double precision, dimension(:, :), allocatable :: basis_out
 
         if (dimen.ne.redsyst%basisdata%dimen) stop 'Not the same dimension'
+        if (redsyst%isalreadyreduced) stop 'Data basis has already been reduced'
+
         ndof = -1; ndod = -1
         call get_innernodes__(redsyst%basisdata, dimen, table, ndof, ndod, dof, dod)
         allocate(dof(ndof), dod(ndod))
         call get_innernodes__(redsyst%basisdata, dimen, table, ndof, ndod, dof, dod)
+        allocate(redsyst%dof(ndof), redsyst%dod(ndod))
+        if (ndof.gt.0) redsyst%dof = dof; deallocate(dof)
+        if (ndod.gt.0) redsyst%dod = dod; deallocate(dod)
 
         nr_new_list  = redsyst%basisdata%nrows 
         nnz_new_list = 0
@@ -434,7 +444,6 @@ contains
                             nnz_new_list(it), indi_out, indj_out, basis_out)
             deallocate(rows2er)
             nr_new_list(it) = nr_it - row2er_it
-
         end do
 
         allocate(indi_in(dimen, maxval(redsyst%basisdata%nrows)+1), &
@@ -480,6 +489,7 @@ contains
         redsyst%basisdata%nrows = nr_new_list
         redsyst%basisdata%nnzs  = nnz_new_list
         redsyst%basisdata%nr_total = product(nr_new_list)
+        redsyst%isalreadyreduced = .true.
 
     end subroutine update_reducedsystem
 
@@ -491,7 +501,9 @@ contains
         integer, intent(in) :: nr, nc
         double precision, intent(in) :: univrightcoefs, univleftcoefs
         dimension :: univrightcoefs(nr, nc), univleftcoefs(nr, nc)
-
+        if (nr.lt.redsyst%basisdata%dimen-1) stop 'Size problem'
+        if (allocated(redsyst%univleftcoefs)) deallocate(redsyst%univleftcoefs)
+        if (allocated(redsyst%univrightcoefs)) deallocate(redsyst%univrightcoefs)
         allocate(redsyst%univrightcoefs(nr, nc), redsyst%univleftcoefs(nr, nc))
         redsyst%univrightcoefs = univrightcoefs
         redsyst%univleftcoefs  = univleftcoefs
@@ -505,7 +517,8 @@ contains
         integer, intent(in) :: size_array
         double precision, intent(in) :: array
         dimension :: array(size_array)
-
+        if (size_array.lt.redsyst%basisdata%dimen-1) stop 'Size problem'
+        if (allocated(redsyst%meancoefs)) deallocate(redsyst%meancoefs)
         allocate(redsyst%meancoefs(size_array))
         redsyst%meancoefs = array
     end subroutine setup_meancoefs
@@ -515,7 +528,6 @@ contains
         ! Input / output data
         ! --------------------
         type(reduced_system) :: redsyst
-        integer :: size_in
         
         ! Local data
         ! ----------
@@ -524,12 +536,9 @@ contains
         double precision, dimension(:), allocatable :: ones, means, eigvalues, massdiag, stiffdiag
         double precision, dimension(:, :), allocatable :: basis, eigvectors
         
-        if (redsyst%isspacetime) then 
-            dimen_sp = redsyst%basisdata%dimen - 1
-        else
-            dimen_sp = redsyst%basisdata%dimen
-        end if
-        if (size_in.lt.dimen_sp) stop 'Size problem'  
+        dimen_sp = redsyst%basisdata%dimen
+        if (redsyst%isspacetime) dimen_sp = redsyst%basisdata%dimen - 1
+
         nrows = maxval(redsyst%basisdata%nrows); ncols = maxval(redsyst%basisdata%ncols)
         allocate(redsyst%eigval_sp_dir(dimen_sp, nrows), &
                 redsyst%eigvec_sp_dir(dimen_sp, nrows, nrows), ones(ncols))
@@ -579,7 +588,7 @@ contains
                                     redsyst%eigval_sp_dir(3, 1:redsyst%basisdata%nrows(3)), &
                                     means(1:dimen_sp), redsyst%diageigval_sp)
         else
-            stop 'Until not coded'
+            stop 'Try 2 or 3 dimensions'
         end if
 
     end subroutine space_eigendecomposition
@@ -602,8 +611,7 @@ contains
         pos_tm = redsyst%basisdata%dimen
         nr = redsyst%basisdata%nrows(pos_tm); nc = redsyst%basisdata%ncols(pos_tm); nnz = redsyst%basisdata%nnzs(pos_tm)
         
-        allocate(univrightcoefs(nc), univleftcoefs(nc), &
-                indi(nr+1), indj(nnz), basis(nnz, 6))
+        allocate(univrightcoefs(nc), univleftcoefs(nc), indi(nr+1), indj(nnz), basis(nnz, 6))
         univrightcoefs = 1.d0; univleftcoefs = 1.d0
         indi = redsyst%basisdata%indi(pos_tm, 1:nr+1)
         indj = redsyst%basisdata%indj(pos_tm, 1:nnz)
@@ -614,9 +622,8 @@ contains
                 Adiag(nr), Mdiag(nr))
 
         if (allocated(redsyst%univrightcoefs).and.allocated(redsyst%univleftcoefs)) then 
-            if ((size(redsyst%univrightcoefs, dim=1).lt.pos_tm).or.(size(redsyst%univleftcoefs, dim=1).lt.pos_tm)) then 
-                stop 'Size problem'
-            end if 
+            if (size(redsyst%univrightcoefs, dim=1).lt.pos_tm) stop 'Size problem'
+            if (size(redsyst%univleftcoefs, dim=1).lt.pos_tm) stop 'Size problem'
             call advmass_schurdecomposition(nr, nc, redsyst%univrightcoefs(pos_tm, 1:nc), &
                                     redsyst%univleftcoefs(pos_tm, 1:nc), nnz, indi, indj, &
                                     basis(:, 1:2), basis(:, 3:6), redsyst%Lschur_tm, redsyst%Rschur_tm,&
