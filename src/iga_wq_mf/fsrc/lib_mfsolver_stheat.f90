@@ -592,84 +592,104 @@ contains
         x = realpart(Usol)
     end subroutine solve_schurtriangular__
 
-    ! subroutine applyfastdiag(solv, nr_total, array_in, array_out)
-    !     !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
-    !     !! Applied to steady heat problems
-    !     !! by G. Sanaglli and M. Tani
+    subroutine applyfastdiag(solv, nr_total, array_in, array_out)
+        !! Fast diagonalization based on "Isogeometric preconditionners based on fast solvers for the Sylvester equations"
+        !! Applied to steady heat problems
+        !! by G. Sanaglli and M. Tani
         
-    !     implicit none
-    !     ! Input / output  data 
-    !     !---------------------
-    !     type(stcgsolver) :: solv
-    !     integer, intent(in) :: nr_total
-    !     double precision, intent(in) :: array_in
-    !     dimension :: array_in(nr_total)
+        implicit none
+        ! Input / output  data 
+        !---------------------
+        type(stcgsolver) :: solv
+        integer, intent(in) :: nr_total
+        double precision, intent(in) :: array_in
+        dimension :: array_in(nr_total)
     
-    !     double precision, intent(out) :: array_out
-    !     dimension :: array_out(nr_total)
+        double precision, intent(out) :: array_out
+        dimension :: array_out(nr_total)
     
-    !     ! Local data
-    !     ! ----------
-    !     integer :: nr_u, nr_v, nr_w, nr_t, i, j, k, l
-    !     double precision, allocatable, dimension(:, :) :: identity
-    !     double precision, allocatable, dimension(:) :: tmp, tmp1, tmp2, tmp3, btmp, sol
-    !     integer, allocatable, dimension(:, :, :, :) :: dof
-    !     integer, allocatable, dimension(:) :: indices 
-    !     double precision :: eigval
-    !     integer :: nrows(solv%dimen)
+        ! Local data
+        ! ----------
+        integer :: pos_tm, i, j, k, l
+        integer :: nr_u, nr_v, nr_w, nr_t
+        double precision, allocatable, dimension(:, :) :: identity
+        double precision, allocatable, dimension(:) :: tmp1, tmp4, btmp, stmp
+        double precision, allocatable, dimension(:, :, :, :) :: tmp2
+        integer, allocatable, dimension(:, :, :, :) :: dof
+        double precision :: eigval
 
-    !     if (.not.solv%applyfd) then
-    !         array_out = array_in
-    !         return
-    !     end if
+        if (.not.solv%applyfd) then
+            array_out = array_in
+            return
+        end if
+        pos_tm = solv%globsyst%dimen
+        allocate(identity(nr_t, nr_t))
+        call create_identity(nr_t, identity)
+        nr_u = solv%redsyst%basisdata%nrows(1)
+        nr_v = solv%redsyst%basisdata%nrows(2)
+        nr_t = solv%redsyst%basisdata%nrows(pos_tm)
+        if (solv%globsyst%dimen.eq.3) then
+            allocate(dof(nr_u, nr_v, 1, nr_t))
+            nr_w = 1
+        else if (solv%globsyst%dimen.eq.4) then
+            allocate(dof(nr_u, nr_v, nr_w, nr_t))
+            nr_w = solv%redsyst%basisdata%nrows(3)
+        end if
 
-    !     array_out = 0.d0
-    !     nrows = solv%temp_struct%nrows
-    !     nr_u = nrows(1); nr_v = nrows(2); nr_w = nrows(3); nr_t = nrows(4)
-    !     allocate(dof(nr_u, nr_v, nr_w, nr_t))
-    !     dof  = reshape(solv%temp_struct%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
+        dof = reshape(solv%redsyst%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
 
-    !     ! Compute (Ut x Uw x Uv x Uu)'.array_in
-    !     allocate(tmp(nr_u*nr_v*nr_w*nr_t), identity(nr_t, nr_t))
-    !     call create_identity(nr_t, identity)
+        array_out = 0.d0
+        allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
+        if (solv%globsyst%dimen.eq.3) then
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+                        transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                        transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                        identity, array_in(solv%redsyst%dof), tmp1)
+        else if (solv%globsyst%dimen.eq.4) then
+            call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+                        transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
+                        transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
+                        transpose(solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
+                        identity, array_in(solv%redsyst%dof), tmp1)
+        end if  
 
-    !     call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
-    !                     transpose(solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
-    !                     transpose(solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
-    !                     transpose(solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
-    !                     identity, array_in(solv%temp_struct%dof), tmp)
+        allocate(tmp2(nr_u, nr_v, nr_w, nr_t))
+        tmp2 = reshape(tmp1, shape=(/nr_u, nr_v, nr_w, nr_t/))
+        deallocate(tmp1)
+        allocate(btmp(nr_t), stmp(nr_t))
+        do k = 1, nr_w
+            do j = 1, nr_v
+                do i = 1, nr_u
+                    l = i + (j - 1)*nr_u + (k - 1)*nr_u*nr_v
+                    eigval = solv%redsyst%diageigval_sp(l)
+                    btmp = tmp2(i, j, k, :)
+                    call solve_schurtriangular__(solv, nr_t, (/solv%scalarleft, eigval/), btmp, stmp)
+                    tmp2(i, j, k, :) = stmp
+                end do
+            end do
+        end do  
+        deallocate(stmp, btmp)
+        allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
+        tmp1 = pack(tmp2, .true.)
+        deallocate(tmp2)
 
-    !     allocate(tmp1(nr_total))
-    !     tmp1 = 0.d0; tmp1(solv%temp_struct%dof) = tmp
-    !     deallocate(tmp)
+        allocate(tmp4(nr_u*nr_v*nr_w*nr_t))
+        if (solv%globsyst%dimen.eq.3) then
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+                        solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                        solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                        identity, tmp1, tmp4)
+        else if (solv%globsyst%dimen.eq.4) then
+            call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+                        solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
+                        solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
+                        solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
+                        identity, tmp1, tmp4)
+        end if  
+        array_out(solv%redsyst%dof) = tmp4
+        deallocate(tmp1, tmp4)
 
-    !     allocate(btmp(nr_t), sol(nr_t), indices(nr_t), tmp2(nr_total))
-    !     tmp2 = 0.d0
-    !     do k = 1, nr_w
-    !         do j = 1, nr_v
-    !             do i = 1, nr_u
-    !                 l = i + (j - 1)*nr_u + (k - 1)*nr_u*nr_v
-    !                 eigval = solv%temp_struct%diageigval_sp(l)
-    !                 indices = dof(i, j, k, :)
-    !                 btmp = tmp1(indices)
-    !                 call solve_schurtriangular__(solv, nr_t, (/solv%scalarleft, eigval/), btmp, sol)
-    !                 tmp2(indices) = sol
-    !             end do
-    !         end do
-    !     end do  
-    !     deallocate(tmp1)
-
-    !     ! Compute (Ut x Uw x Uv x Uu).array_tmp
-    !     allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
-    !     call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
-    !                     solv%temp_struct%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
-    !                     solv%temp_struct%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-    !                     solv%temp_struct%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
-    !                     identity, tmp2(solv%temp_struct%dof), tmp3)
-    !     array_out(solv%temp_struct%dof) = tmp3
-    !     deallocate(tmp2, tmp3)
-
-    ! end subroutine applyfastdiag
+    end subroutine applyfastdiag
 
     subroutine clear_dirichlet(solv, size_inout, array_inout)
         implicit none

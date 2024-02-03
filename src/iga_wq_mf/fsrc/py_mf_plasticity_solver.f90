@@ -542,7 +542,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
-    type(basis_data) :: globsyst
+    type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
@@ -644,7 +644,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     ! -----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
-    type(basis_data) :: globsyst
+    type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
@@ -738,7 +738,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     ! ----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
-    type(basis_data) :: globsyst
+    type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
@@ -842,7 +842,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     ! ----------
     type(mecamat) :: mat
     type(cgsolver) :: solv
-    type(basis_data) :: globsyst
+    type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
     integer :: i, nc_list(dimen)
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs

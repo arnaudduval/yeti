@@ -521,13 +521,13 @@ contains
         nr_v = solv%redsyst%basisdata%nrows(2)
 
         array_out = 0.d0
-        if (solv%redsyst%basisdata%dimen.eq.2) then
+        if (solv%globsyst%dimen.eq.2) then
             allocate(tmp(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                         array_in(solv%redsyst%dof), tmp)
-        else if (solv%redsyst%basisdata%dimen.eq.3) then
+        else if (solv%globsyst%dimen.eq.3) then
             nr_w = solv%redsyst%basisdata%nrows(3)
             allocate(tmp(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
@@ -539,12 +539,12 @@ contains
 
         tmp = tmp/solv%redsyst%diageigval_sp
 
-        if (solv%redsyst%basisdata%dimen.eq.2) then
+        if (solv%globsyst%dimen.eq.2) then
             allocate(tmp2(nr_u*nr_v))
             call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
-        else if (solv%redsyst%basisdata%dimen.eq.3) then
+        else if (solv%globsyst%dimen.eq.3) then
             nr_w = solv%redsyst%basisdata%nrows(3)
             allocate(tmp2(nr_u*nr_v*nr_w))
             call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
