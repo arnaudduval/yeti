@@ -39,7 +39,6 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -50,11 +49,9 @@ contains
 
         mat%Kprop => prop
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
-
     end subroutine setup_conductivityprop
 
     subroutine setup_conductivityDersprop(mat, nnz, prop)
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -65,7 +62,6 @@ contains
 
         mat%Kdersprop => prop
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
-
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -243,7 +239,6 @@ contains
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
-
         if (basisdata%dimen.eq.4) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -313,7 +308,6 @@ contains
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
-
         if (basisdata%dimen.eq.4) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -385,7 +379,6 @@ contains
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
-
         if (basisdata%dimen.eq.4) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -464,7 +457,6 @@ contains
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
-
         if (basisdata%dimen.eq.4) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -628,14 +620,9 @@ contains
         nr_u = solv%redsyst%basisdata%nrows(1)
         nr_v = solv%redsyst%basisdata%nrows(2)
         nr_t = solv%redsyst%basisdata%nrows(pos_tm)
-        if (solv%globsyst%dimen.eq.3) then
-            allocate(dof(nr_u, nr_v, 1, nr_t))
-            nr_w = 1
-        else if (solv%globsyst%dimen.eq.4) then
-            allocate(dof(nr_u, nr_v, nr_w, nr_t))
-            nr_w = solv%redsyst%basisdata%nrows(3)
-        end if
-
+        nr_w = 1
+        if (solv%globsyst%dimen.eq.4) nr_w = solv%redsyst%basisdata%nrows(3)
+        allocate(dof(nr_u, nr_v, nr_w, nr_t))
         dof = reshape(solv%redsyst%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
 
         array_out = 0.d0

@@ -104,8 +104,8 @@ subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! This function is adapted to python
     !! IN CSR FORMAT
 
-    use matrixfreeheat
-
+    use matrixfreeheat 
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -148,7 +148,7 @@ subroutine mf_conductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -193,7 +193,7 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeheat
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -236,7 +236,7 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     !! IN CSR FORMAT
 
     use matrixfreeheat
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -324,8 +324,8 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -412,8 +412,8 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                         data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
     
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -458,7 +458,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     use matrixfreeheat
     use heatsolver
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -500,8 +500,8 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
@@ -525,8 +525,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (linprecond.eq.'TDC') then
             allocate(univMcoefs(dimen, maxval(nc_list)), univKcoefs(dimen, maxval(nc_list)))
             call compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
-            call setup_univariatecoefs(redsyst, size(univMcoefs, dim=1), size(univMcoefs, dim=2), &
-                                        univMcoefs, univKcoefs)
+            call setup_univariatecoefs(redsyst, dimen, maxval(nc_list), univMcoefs, univKcoefs)
         end if
         
         if (solv%applyfd) call space_eigendecomposition(redsyst)
@@ -550,7 +549,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     use matrixfreeheat
     use heatsolver
-
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
@@ -594,8 +593,8 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
                         data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)

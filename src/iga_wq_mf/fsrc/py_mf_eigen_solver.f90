@@ -48,9 +48,9 @@ subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
     call space_eigendecomposition(redsyst)
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
@@ -114,9 +114,9 @@ subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         data_B_w, data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
     call space_eigendecomposition(redsyst)
+    call getcsrc2dense(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
@@ -310,9 +310,9 @@ subroutine fastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, &
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
     call space_eigendecomposition(redsyst)
+    call getcsrc2dense(globsyst)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call initialize_solver(solv, globsyst, redsyst)
@@ -363,12 +363,12 @@ subroutine fastdiagonalization_3d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
                         data_B_w, data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
     call space_eigendecomposition(redsyst)
+    call getcsrc2dense(globsyst)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
-    call initializefastdiag(solv, globsyst, redsyst)
+    call initialize_solver(solv, globsyst, redsyst)
     call applyfastdiag(solv, nr_total, array_in, array_out)
 
 end subroutine fastdiagonalization_3d

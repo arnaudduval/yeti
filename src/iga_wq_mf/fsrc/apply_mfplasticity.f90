@@ -42,7 +42,6 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_massprop(mat, nnz, prop)
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -53,7 +52,6 @@ contains
 
         mat%Mprop => prop
         mat%ncols_sp = nnz
-
     end subroutine setup_massprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -67,12 +65,9 @@ contains
 
         mat%Hprop => prop
         mat%ncols_sp = nnz
-
     end subroutine setup_thmchcoupledprop
 
     subroutine setup_mechanicalArguments(mat, nbrows, mechArgs)
-        !! Points to data of the mechanical behavior 
-
         implicit none
         ! Input / output data
         ! -------------------
@@ -110,7 +105,6 @@ contains
     end subroutine setup_mechanicalArguments
 
     subroutine setup_jacobienjacobien(mat)
-        
         implicit none
         ! Input / output data
         ! -------------------
@@ -125,7 +119,6 @@ contains
         do i = 1, mat%ncols_sp
             mat%JJjj(:, :, i) = matmul(mat%invJ(:, :, i), transpose(mat%invJ(:, :, i)))
         end do
-
     end subroutine setup_jacobienjacobien
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
@@ -350,7 +343,6 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-
         if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -358,7 +350,6 @@ contains
         end if
 
         array_out = 0.d0
-
         do i = 1, mat%dimen
             tmp_in = array_in(i, :); if (mat%isLumped) tmp_in = 1.d0
             if (basisdata%dimen.eq.2) then
@@ -382,7 +373,6 @@ contains
                                     W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), &
                                     array_tmp, array_tmp2)
             end if
-
             array_out(i, :) = array_tmp2; if (mat%isLumped) array_out(i, :) = array_tmp2*array_in(i, :)
         end do
 
@@ -423,7 +413,6 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-
         if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -513,11 +502,8 @@ contains
         dimension :: array_tmp(basisdata%dimen, nr_total)
 
         call mf_tu_tv_3d(mat, basisdata, nr_total, array_in, array_out)
-
         array_out = mat%scalars(1)*array_out
-
         call mf_gradtu_gradtv_3d(mat, basisdata, nr_total, array_in, array_tmp)
-        
         array_out = array_out + mat%scalars(2)*array_tmp
 
     end subroutine mf_tutv_gradtugradtv
@@ -552,7 +538,6 @@ contains
         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4))
         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-
         if (basisdata%dimen.eq.3) then
             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
@@ -560,7 +545,6 @@ contains
         end if
 
         array_out = 0.d0
-
         do l = 1, basisdata%dimen
             beta = 1; beta(l) = 2
             if (basisdata%dimen.eq.2) then
@@ -729,7 +713,7 @@ contains
         ! Local data
         ! ----------
         integer :: nr_u, nr_v, nr_w, i
-        double precision, allocatable, dimension(:) :: tmp, tmp2
+        double precision, allocatable, dimension(:) :: tmp1, tmp2
 
         if (.not.solv%applyfd) then
             array_out = array_in
@@ -741,43 +725,41 @@ contains
 
             nr_u = solv%redsyst(i)%basisdata%nrows(1)
             nr_v = solv%redsyst(i)%basisdata%nrows(2)
+            nr_w = 1
+            if (solv%globsyst%dimen.eq.3) nr_w = solv%redsyst(i)%basisdata%nrows(3)
 
+            allocate(tmp1(nr_u*nr_v*nr_w))
             if (solv%globsyst%dimen.eq.2) then
-                allocate(tmp(nr_u*nr_v))
                 call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                             transpose(solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                             transpose(solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
-                            array_in(i, solv%redsyst(i)%dof), tmp)
-            else if (solv%globsyst%dimen.eq.3) then
-                nr_w = solv%redsyst(i)%basisdata%nrows(3)
-                allocate(tmp(nr_u*nr_v*nr_w))
+                            array_in(i, solv%redsyst(i)%dof), tmp1)
+            else if (solv%globsyst%dimen.eq.3) then                
                 call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                             transpose(solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                             transpose(solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                             transpose(solv%redsyst(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
-                            array_in(i, solv%redsyst(i)%dof), tmp)
+                            array_in(i, solv%redsyst(i)%dof), tmp1)
             end if           
 
             if (solv%withdiag) then
-                tmp = tmp/solv%redsyst(i)%diageigval_sp
+                tmp1 = tmp1/solv%redsyst(i)%diageigval_sp
             end if
 
+            allocate(tmp2(nr_u*nr_v*nr_w))
             if (solv%globsyst%dimen.eq.2) then
-                allocate(tmp2(nr_u*nr_v))
                 call sumfacto2d_dM(nr_u, nr_u, nr_v, nr_v, &
                             solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
-                            solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp, tmp2)
-            else if (solv%globsyst%dimen.eq.3) then
-                nr_w = solv%redsyst(i)%basisdata%nrows(3)
-                allocate(tmp2(nr_u*nr_v*nr_w))
+                            solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), tmp1, tmp2)
+            else if (solv%globsyst%dimen.eq.3) then                
                 call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, &
                             solv%redsyst(i)%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                             solv%redsyst(i)%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-                            solv%redsyst(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp, tmp2)
+                            solv%redsyst(i)%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), tmp1, tmp2)
             end if
 
             array_out(i, solv%redsyst(i)%dof) = tmp2
-            deallocate(tmp, tmp2)
+            deallocate(tmp1, tmp2)
         end do
 
     end subroutine applyfastdiag
@@ -841,7 +823,7 @@ contains
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
-            call matrixfree_spMdV(solv, mat, nr_total, stilde, Astilde)
+            call matrixfree_matvec(solv, mat, nr_total, stilde, Astilde)
             call clear_dirichlet(solv, nr_total, Astilde)
             
             call block_dot_product(solv%globsyst%dimen, nr_total, Astilde, s, prod)
@@ -944,13 +926,7 @@ contains
             else
                 eigenval = minval(ll); ii = minloc(ll, dim=1)
             end if
-
-            delta = 0.d0
-            if (k.eq.1) then
-                delta(:2) = qq(:, ii)
-            else
-                delta = qq(:, ii)
-            end if
+            delta = qq(:, ii)
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p

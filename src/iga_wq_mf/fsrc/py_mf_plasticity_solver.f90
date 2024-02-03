@@ -163,7 +163,6 @@ subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
     type(mecamat) :: mat
     type(basis_data) :: basisdata
     integer :: nr_total
-
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, &
                         indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
@@ -207,7 +206,6 @@ subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
     type(mecamat) :: mat
     type(basis_data) :: basisdata
     integer :: nr_total
-
     call init_3basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w)
@@ -231,7 +229,7 @@ subroutine mf_mass_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 2
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -276,7 +274,7 @@ subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -305,12 +303,10 @@ subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
-
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
     call mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
-
 end subroutine mf_mass_3d
 
 subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
@@ -322,10 +318,11 @@ subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 2
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -350,12 +347,10 @@ subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
-
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_out)
-
 end subroutine mf_stiffness_2d
 
 subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -367,10 +362,11 @@ subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, nbmechArgs
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -398,12 +394,10 @@ subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
-
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call mf_gradtu_gradtv(mat, basisdata, nr_total,  array_in, array_out)
-
 end subroutine mf_stiffness_3d
 
 subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
@@ -415,10 +409,11 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 2, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 2
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -458,10 +453,11 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     !! IN CSR FORMAT
 
     use matrixfreeplasticity
+    use structured_data
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3, nvoigt = dimen*(dimen+1)/2
+    integer, parameter :: dimen = 3
     integer, intent(in) :: nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v, indi_w, indj_w
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
@@ -489,7 +485,6 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
-
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
     call mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
@@ -685,6 +680,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                 call setup_univariatecoefs(redsyst(i), dimen, maxval(nc_list), univMcoefs(i, :, :), univKcoefs(i, :, :))
             end do
         end if
+        
         if (solv%applyfd) then
             do i = 1, dimen
                 call space_eigendecomposition(redsyst(i))
@@ -782,12 +778,12 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             end do
         end if
     
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                                indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
-                                data_W_u, data_W_v, table, mat%Smean)
         if (solv%applyfd) then
             do i = 1, dimen
                 call space_eigendecomposition(redsyst(i))
+            end do
+            do i = 1, dimen
+                solv%redsyst(i)%diageigval_sp = mat%Mmean(i) + tsfactor*solv%redsyst(i)%diageigval_sp
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
@@ -886,12 +882,12 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             end do
         end if
     
-        call initializefastdiag(solv, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
-                        data_W_u, data_W_v, data_W_w, table, mat%Smean)
         if (solv%applyfd) then
             do i = 1, dimen
                 call space_eigendecomposition(redsyst(i))
+            end do
+            do i = 1, dimen
+                solv%redsyst(i)%diageigval_sp = mat%Mmean(i) + tsfactor*solv%redsyst(i)%diageigval_sp
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
