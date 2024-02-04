@@ -135,7 +135,7 @@ subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_gradu_gradv_2d(mat, basisdata, nr_total, array_in, array_out)
+    call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_conductivity_2d
 
@@ -268,7 +268,7 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
     call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
-    call mf_gradu_tv_3d(mat, basisdata, nr_total, array_in, array_out)
+    call mf_gradu_tv(mat, basisdata, nr_total, array_in, array_out)
     
 end subroutine mf_thmchcoupled_3d
 

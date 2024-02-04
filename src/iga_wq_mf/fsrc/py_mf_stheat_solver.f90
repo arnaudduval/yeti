@@ -131,7 +131,7 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr
     call getcsrc2dense(basisdata)
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_conductivityprop(mat, nc_total, prop)
-    call mf_gradx_u_gradx_v_3d(mat, basisdata, nr_total, array_in, array_out)
+    call mf_gradx_u_gradx_v(mat, basisdata, nr_total, array_in, array_out)
 
 end subroutine mf_stconductivity_2d
 
