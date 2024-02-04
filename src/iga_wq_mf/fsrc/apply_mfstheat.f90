@@ -221,37 +221,57 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
-        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+        integer :: pos_tm, i, j, k
         double precision :: tmp
         dimension :: tmp(basisdata%nc_total)
-        integer :: i, j, k
+        integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+        double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
+        integer, dimension(:), allocatable :: indiT_u, indiT_v, indiT_w, indiT_t, indjT_u, indjT_v, indjT_w, indjT_t
+        double precision, dimension(:, :), allocatable :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
 
         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
         pos_tm = mat%dimen
-        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
-        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
-        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
-        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
-                BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
-        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
-        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-        BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1); nnz_u = basisdata%nnzs(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2); nnz_v = basisdata%nnzs(2)
+        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm); nnz_t = basisdata%nnzs(pos_tm)
+        allocate(indi_u(nr_u+1), indj_u(nnz_u), data_W_u(nnz_u, 4), indiT_u(nc_u+1), indjT_u(nnz_u), data_BT_u(nnz_u, 2))
+        indi_u = basisdata%indi(1, 1:nr_u+1); indj_u = basisdata%indj(1, 1:nnz_u)
+        data_W_u = basisdata%data_bw(1, 1:nnz_u, 3:6)
+        indiT_u = basisdata%indiT(1, 1:nc_u+1); indjT_u = basisdata%indjT(1, 1:nnz_u)
+        data_BT_u = basisdata%data_bwT(1, 1:nnz_u, 1:2)
+        allocate(indi_v(nr_v+1), indj_v(nnz_v), data_W_v(nnz_v, 4), indiT_v(nc_v+1), indjT_v(nnz_v), data_BT_v(nnz_v, 2))
+        indi_v = basisdata%indi(2, 1:nr_v+1); indj_v = basisdata%indj(2, 1:nnz_v)
+        data_W_v = basisdata%data_bw(2, 1:nnz_v, 3:6)
+        indiT_v = basisdata%indiT(2, 1:nc_v+1); indjT_v = basisdata%indjT(2, 1:nnz_v)
+        data_BT_v = basisdata%data_bwT(2, 1:nnz_v, 1:2)
+        allocate(indi_t(nr_t+1), indj_v(nnz_t), data_W_t(nnz_t, 4), indiT_t(nc_t+1), indjT_t(nnz_t), data_BT_t(nnz_t, 2))
+        indi_t = basisdata%indi(pos_tm, 1:nr_t+1); indj_t = basisdata%indj(pos_tm, 1:nnz_t)
+        data_W_t = basisdata%data_bw(pos_tm, 1:nnz_t, 3:6)
+        indiT_t = basisdata%indiT(pos_tm, 1:nc_t+1); indjT_t = basisdata%indjT(pos_tm, 1:nnz_t)
+        data_BT_t = basisdata%data_bwT(pos_tm, 1:nnz_t, 1:2)
         if (basisdata%dimen.eq.4) then
-            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3); nnz_w = basisdata%nnzs(3)
+            allocate(indi_w(nr_w+1), indj_w(nnz_w), data_W_w(nnz_w, 4), indiT_w(nc_w+1), indjT_w(nnz_w), data_BT_w(nnz_w, 2))
+            indi_w = basisdata%indi(3, 1:nr_w+1); indj_w = basisdata%indj(3, 1:nnz_w)
+            data_W_w = basisdata%data_bw(3, 1:nnz_w, 3:6)
+            indiT_w = basisdata%indiT(3, 1:nc_w+1); indjT_w = basisdata%indjT(3, 1:nnz_w)
+            data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
         if (basisdata%dimen.eq.3) then
-            call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-                                BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
                                 array_in, tmp)
         else if (basisdata%dimen.eq.4) then
-            call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                                BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
+            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_w, indiT_w, indjT_w, data_BT_w(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
                                 array_in, tmp)
         end if
 
@@ -263,13 +283,18 @@ contains
         end do
 
         if (basisdata%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                            W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 1), &
-                            tmp, array_out)
+            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                                tmp, array_out)
         else if (basisdata%dimen.eq.4) then
-            call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                            W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 1), &
-                            tmp, array_out)
+            call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                                nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                                tmp, array_out)
         end if
         
     end subroutine mf_u_v
@@ -290,38 +315,58 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
-        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+        integer :: pos_tm, i, j, k
         double precision :: tmp
-        dimension :: tmp(basisdata%nc_total)
-        integer :: i, j, k
+        dimension :: tmp(basisdata%nc_total)        
+        integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+        double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
+        integer, dimension(:), allocatable :: indiT_u, indiT_v, indiT_w, indiT_t, indjT_u, indjT_v, indjT_w, indjT_t
+        double precision, dimension(:, :), allocatable :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
 
         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
         pos_tm = mat%dimen
-        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
-        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
-        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
-        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
-                BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
-        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
-        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-        BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1); nnz_u = basisdata%nnzs(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2); nnz_v = basisdata%nnzs(2)
+        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm); nnz_t = basisdata%nnzs(pos_tm)
+        allocate(indi_u(nr_u+1), indj_u(nnz_u), data_W_u(nnz_u, 4), indiT_u(nc_u+1), indjT_u(nnz_u), data_BT_u(nnz_u, 2))
+        indi_u = basisdata%indi(1, 1:nr_u+1); indj_u = basisdata%indj(1, 1:nnz_u)
+        data_W_u = basisdata%data_bw(1, 1:nnz_u, 3:6)
+        indiT_u = basisdata%indiT(1, 1:nc_u+1); indjT_u = basisdata%indjT(1, 1:nnz_u)
+        data_BT_u = basisdata%data_bwT(1, 1:nnz_u, 1:2)
+        allocate(indi_v(nr_v+1), indj_v(nnz_v), data_W_v(nnz_v, 4), indiT_v(nc_v+1), indjT_v(nnz_v), data_BT_v(nnz_v, 2))
+        indi_v = basisdata%indi(2, 1:nr_v+1); indj_v = basisdata%indj(2, 1:nnz_v)
+        data_W_v = basisdata%data_bw(2, 1:nnz_v, 3:6)
+        indiT_v = basisdata%indiT(2, 1:nc_v+1); indjT_v = basisdata%indjT(2, 1:nnz_v)
+        data_BT_v = basisdata%data_bwT(2, 1:nnz_v, 1:2)
+        allocate(indi_t(nr_t+1), indj_v(nnz_t), data_W_t(nnz_t, 4), indiT_t(nc_t+1), indjT_t(nnz_t), data_BT_t(nnz_t, 2))
+        indi_t = basisdata%indi(pos_tm, 1:nr_t+1); indj_t = basisdata%indj(pos_tm, 1:nnz_t)
+        data_W_t = basisdata%data_bw(pos_tm, 1:nnz_t, 3:6)
+        indiT_t = basisdata%indiT(pos_tm, 1:nc_t+1); indjT_t = basisdata%indjT(pos_tm, 1:nnz_t)
+        data_BT_t = basisdata%data_bwT(pos_tm, 1:nnz_t, 1:2)
         if (basisdata%dimen.eq.4) then
-            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3); nnz_w = basisdata%nnzs(3)
+            allocate(indi_w(nr_w+1), indj_w(nnz_w), data_W_w(nnz_w, 4), indiT_w(nc_w+1), indjT_w(nnz_w), data_BT_w(nnz_w, 2))
+            indi_w = basisdata%indi(3, 1:nr_w+1); indj_w = basisdata%indj(3, 1:nnz_w)
+            data_W_w = basisdata%data_bw(3, 1:nnz_w, 3:6)
+            indiT_w = basisdata%indiT(3, 1:nc_w+1); indjT_w = basisdata%indjT(3, 1:nnz_w)
+            data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
         if (basisdata%dimen.eq.3) then
-            call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-                            BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 2), & 
-                            array_in, tmp)
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 2), & 
+                                array_in, tmp)
         else if (basisdata%dimen.eq.4) then
-            call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                            BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 2), & 
-                            array_in, tmp)
+            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_w, indiT_w, indjT_w, data_BT_w(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 2), & 
+                                array_in, tmp)
         end if
 
         do j = 1, mat%ncols_tm
@@ -332,13 +377,18 @@ contains
         end do
 
         if (basisdata%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-                            W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 2), &
-                            tmp, array_out)
+            call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                nnz_t, indi_t, indj_t, data_W_t(:, 2), &
+                                tmp, array_out)
         else if (basisdata%dimen.eq.4) then
-            call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-                            W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 2), &
-                            tmp, array_out)
+            call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                                nnz_u, indi_u, indj_u, data_W_u(:, 1), &
+                                nnz_v, indi_v, indj_v, data_W_v(:, 1), &
+                                nnz_w, indi_w, indj_w, data_W_w(:, 1), &
+                                nnz_t, indi_t, indj_t, data_W_t(:, 2), &
+                                tmp, array_out)
         end if
         
     end subroutine mf_u_partialt_v
@@ -359,30 +409,46 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
-        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+        integer :: pos_tm, i, j, k, alpha, zeta 
+        dimension :: alpha(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: tmp_0, tmp_1, tmp_2, coefs
         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
                     tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%nc_total)
-        integer :: i, j, k, alpha, zeta
-        dimension :: alpha(basisdata%dimen), zeta(basisdata%dimen)
+
+        integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+        double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
+        integer, dimension(:), allocatable :: indiT_u, indiT_v, indiT_w, indiT_t, indjT_u, indjT_v, indjT_w, indjT_t
+        double precision, dimension(:, :), allocatable :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
 
         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
         pos_tm = mat%dimen
-        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
-        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
-        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
-        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
-                BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
-        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
-        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-        BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1); nnz_u = basisdata%nnzs(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2); nnz_v = basisdata%nnzs(2)
+        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm); nnz_t = basisdata%nnzs(pos_tm)
+        allocate(indi_u(nr_u+1), indj_u(nnz_u), data_W_u(nnz_u, 4), indiT_u(nc_u+1), indjT_u(nnz_u), data_BT_u(nnz_u, 2))
+        indi_u = basisdata%indi(1, 1:nr_u+1); indj_u = basisdata%indj(1, 1:nnz_u)
+        data_W_u = basisdata%data_bw(1, 1:nnz_u, 3:6)
+        indiT_u = basisdata%indiT(1, 1:nc_u+1); indjT_u = basisdata%indjT(1, 1:nnz_u)
+        data_BT_u = basisdata%data_bwT(1, 1:nnz_u, 1:2)
+        allocate(indi_v(nr_v+1), indj_v(nnz_v), data_W_v(nnz_v, 4), indiT_v(nc_v+1), indjT_v(nnz_v), data_BT_v(nnz_v, 2))
+        indi_v = basisdata%indi(2, 1:nr_v+1); indj_v = basisdata%indj(2, 1:nnz_v)
+        data_W_v = basisdata%data_bw(2, 1:nnz_v, 3:6)
+        indiT_v = basisdata%indiT(2, 1:nc_v+1); indjT_v = basisdata%indjT(2, 1:nnz_v)
+        data_BT_v = basisdata%data_bwT(2, 1:nnz_v, 1:2)
+        allocate(indi_t(nr_t+1), indj_v(nnz_t), data_W_t(nnz_t, 4), indiT_t(nc_t+1), indjT_t(nnz_t), data_BT_t(nnz_t, 2))
+        indi_t = basisdata%indi(pos_tm, 1:nr_t+1); indj_t = basisdata%indj(pos_tm, 1:nnz_t)
+        data_W_t = basisdata%data_bw(pos_tm, 1:nnz_t, 3:6)
+        indiT_t = basisdata%indiT(pos_tm, 1:nc_t+1); indjT_t = basisdata%indjT(pos_tm, 1:nnz_t)
+        data_BT_t = basisdata%data_bwT(pos_tm, 1:nnz_t, 1:2)
         if (basisdata%dimen.eq.4) then
-            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3); nnz_w = basisdata%nnzs(3)
+            allocate(indi_w(nr_w+1), indj_w(nnz_w), data_W_w(nnz_w, 4), indiT_w(nc_w+1), indjT_w(nnz_w), data_BT_w(nnz_w, 2))
+            indi_w = basisdata%indi(3, 1:nr_w+1); indj_w = basisdata%indj(3, 1:nnz_w)
+            data_W_w = basisdata%data_bw(3, 1:nnz_w, 3:6)
+            indiT_w = basisdata%indiT(3, 1:nc_w+1); indjT_w = basisdata%indjT(3, 1:nnz_w)
+            data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
         do j = 1, mat%ncols_tm
@@ -394,13 +460,18 @@ contains
 
         array_out = 0.d0
         if (basisdata%dimen.eq.3) then
-            call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-                            BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
-                            array_in, tmp_0)
+            call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
+                                array_in, tmp_0)
         else if (basisdata%dimen.eq.4) then
-            call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                            BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
-                            array_in, tmp_0)
+            call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                                nnz_u, indiT_u, indjT_u, data_BT_u(:, 1), &
+                                nnz_v, indiT_v, indjT_v, data_BT_v(:, 1), & 
+                                nnz_w, indiT_w, indjT_w, data_BT_w(:, 1), & 
+                                nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
+                                array_in, tmp_0)
         end if
         
         do i = 1, mat%dimen_sp
@@ -408,13 +479,18 @@ contains
             zeta  = 1 + (alpha - 1)*2
             tmp_1 = tmp_0*coefs(i, :)
             if (basisdata%dimen.eq.3) then
-                call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
-                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_t(:, :, 1), & 
-                                tmp_1, tmp_2)
+                call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
+                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                    nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                                    tmp_1, tmp_2)
             else if (basisdata%dimen.eq.4) then
-                call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
-                                W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), W_t(:, :, 1), & 
-                                tmp_1, tmp_2)
+                call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
+                                    nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                    nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                    nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
+                                    nnz_t, indi_t, indj_t, data_W_t(:, 1), &
+                                    tmp_1, tmp_2)
             end if
             array_out = array_out + tmp_2
         end do
@@ -437,30 +513,45 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
-        double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+        integer :: pos_tm, i, j, k, alpha, beta, zeta
+        dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: tmp_0, tmp_1, tmp_2, coefs
         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
                     tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%dimen, basisdata%nc_total)
-        integer :: i, j, k, alpha, beta, zeta
-        dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
+        integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+        integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+        double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
+        integer, dimension(:), allocatable :: indiT_u, indiT_v, indiT_w, indiT_t, indjT_u, indjT_v, indjT_w, indjT_t
+        double precision, dimension(:, :), allocatable :: data_BT_u, data_BT_v, data_BT_w, data_BT_t
 
         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
         pos_tm = mat%dimen
-        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
-        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
-        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
-        allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
-                BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
-        BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
-        BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-        BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+        nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1); nnz_u = basisdata%nnzs(1)
+        nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2); nnz_v = basisdata%nnzs(2)
+        nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm); nnz_t = basisdata%nnzs(pos_tm)
+        allocate(indi_u(nr_u+1), indj_u(nnz_u), data_W_u(nnz_u, 4), indiT_u(nc_u+1), indjT_u(nnz_u), data_BT_u(nnz_u, 2))
+        indi_u = basisdata%indi(1, 1:nr_u+1); indj_u = basisdata%indj(1, 1:nnz_u)
+        data_W_u = basisdata%data_bw(1, 1:nnz_u, 3:6)
+        indiT_u = basisdata%indiT(1, 1:nc_u+1); indjT_u = basisdata%indjT(1, 1:nnz_u)
+        data_BT_u = basisdata%data_bwT(1, 1:nnz_u, 1:2)
+        allocate(indi_v(nr_v+1), indj_v(nnz_v), data_W_v(nnz_v, 4), indiT_v(nc_v+1), indjT_v(nnz_v), data_BT_v(nnz_v, 2))
+        indi_v = basisdata%indi(2, 1:nr_v+1); indj_v = basisdata%indj(2, 1:nnz_v)
+        data_W_v = basisdata%data_bw(2, 1:nnz_v, 3:6)
+        indiT_v = basisdata%indiT(2, 1:nc_v+1); indjT_v = basisdata%indjT(2, 1:nnz_v)
+        data_BT_v = basisdata%data_bwT(2, 1:nnz_v, 1:2)
+        allocate(indi_t(nr_t+1), indj_v(nnz_t), data_W_t(nnz_t, 4), indiT_t(nc_t+1), indjT_t(nnz_t), data_BT_t(nnz_t, 2))
+        indi_t = basisdata%indi(pos_tm, 1:nr_t+1); indj_t = basisdata%indj(pos_tm, 1:nnz_t)
+        data_W_t = basisdata%data_bw(pos_tm, 1:nnz_t, 3:6)
+        indiT_t = basisdata%indiT(pos_tm, 1:nc_t+1); indjT_t = basisdata%indjT(pos_tm, 1:nnz_t)
+        data_BT_t = basisdata%data_bwT(pos_tm, 1:nnz_t, 1:2)
         if (basisdata%dimen.eq.4) then
-            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-            allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-            BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+            nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3); nnz_w = basisdata%nnzs(3)
+            allocate(indi_w(nr_w+1), indj_w(nnz_w), data_W_w(nnz_w, 4), indiT_w(nc_w+1), indjT_w(nnz_w), data_BT_w(nnz_w, 2))
+            indi_w = basisdata%indi(3, 1:nr_w+1); indj_w = basisdata%indj(3, 1:nnz_w)
+            data_W_w = basisdata%data_bw(3, 1:nnz_w, 3:6)
+            indiT_w = basisdata%indiT(3, 1:nc_w+1); indjT_w = basisdata%indjT(3, 1:nnz_w)
+            data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
         do j = 1, mat%ncols_tm
@@ -475,13 +566,19 @@ contains
         do j = 1, mat%dimen_sp
             beta = 1; beta(j) = 2
             if (basisdata%dimen.eq.3) then
-                call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_t(:, :, 1), & 
-                                array_in, tmp_0)
+                call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+                                    nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                                    nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
+                                    nnz_v, indiT_v, indjT_v, data_BT_v(:, beta(2)), & 
+                                    nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
+                                    array_in, tmp_0)
             else if (basisdata%dimen.eq.4) then
-                call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-                                BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), BT_t(:, :, 1), & 
-                                array_in, tmp_0)
+                call sumfacto4d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+                                    nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
+                                    nnz_v, indiT_v, indjT_v, data_BT_v(:, beta(2)), & 
+                                    nnz_w, indiT_w, indjT_w, data_BT_w(:, beta(3)), & 
+                                    nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
+                                    array_in, tmp_0)
             end if
 
             do i = 1, mat%dimen_sp
@@ -489,13 +586,18 @@ contains
                 zeta = beta + (alpha - 1)*2
                 tmp_1 = tmp_0*coefs(i, j, :)
                 if (basisdata%dimen.eq.3) then
-                    call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
-                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_t(:, :, 1), & 
-                                    tmp_1, tmp_2)
+                    call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
+                                        nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                        nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), &  
+                                        tmp_1, tmp_2)
                 else if (basisdata%dimen.eq.4) then
-                    call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
-                                    W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), W_t(:, :, 1), & 
-                                    tmp_1, tmp_2)
+                    call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
+                                        nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
+                                        nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
+                                        nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
+                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), & 
+                                        tmp_1, tmp_2)
                 end if
                 array_out = array_out + tmp_2
             end do
@@ -806,3 +908,318 @@ contains
     end subroutine PGMRES
 
 end module stheatsolver
+
+! module matrixfreestheat
+!     use structured_data
+!     implicit none
+!     type stthermomat
+!         integer :: dimen, dimen_sp, ncols_sp, ncols_tm, ncols_total
+!         ! Material properties
+!         double precision :: Cmean
+!         double precision, dimension(:), allocatable :: Kmean
+!         double precision, dimension(:), pointer :: Cprop=>null(), Cdersprop=>null(), detJ=>null(), detG=>null()
+!         double precision, dimension(:, :), pointer :: Kdersprop=>null()
+!         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
+!     end type stthermomat
+
+! contains
+
+!     subroutine mf_u_v(mat, basisdata, nr_total, array_in, array_out)
+
+!         implicit none 
+!         ! Input / output data
+!         ! -------------------
+!         type(stthermomat) :: mat
+!         type(basis_data) :: basisdata
+!         integer, intent(in) :: nr_total
+!         double precision, intent(in) :: array_in
+!         dimension :: array_in(nr_total)
+
+!         double precision, intent(out) :: array_out
+!         dimension :: array_out(nr_total)
+
+!         ! Local data 
+!         ! ----------
+!         integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
+!         double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+!         double precision :: tmp
+!         dimension :: tmp(basisdata%nc_total)
+!         integer :: i, j, k
+
+!         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+!         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+!         pos_tm = mat%dimen
+!         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+!         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+!         nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
+!         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
+!                 BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
+!         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+!         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+!         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+!         if (basisdata%dimen.eq.4) then
+!             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+!             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+!             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+!         end if
+
+!         if (basisdata%dimen.eq.3) then
+!             call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+!                                 BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
+!                                 array_in, tmp)
+!         else if (basisdata%dimen.eq.4) then
+!             call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+!                                 BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
+!                                 array_in, tmp)
+!         end if
+
+!         do j = 1, mat%ncols_tm
+!             do i = 1, mat%ncols_sp
+!                 k = i + (j-1)*mat%ncols_sp
+!                 tmp(k) = tmp(k)*mat%Cdersprop(k)*mat%detJ(i)*mat%detG(j)
+!             end do
+!         end do
+
+!         if (basisdata%dimen.eq.3) then
+!             call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+!                             W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 1), &
+!                             tmp, array_out)
+!         else if (basisdata%dimen.eq.4) then
+!             call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+!                             W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 1), &
+!                             tmp, array_out)
+!         end if
+        
+!     end subroutine mf_u_v
+
+!     subroutine mf_u_partialt_v(mat, basisdata, nr_total, array_in, array_out)
+
+!         implicit none 
+!         ! Input / output data
+!         ! -------------------
+!         type(stthermomat) :: mat
+!         type(basis_data) :: basisdata
+!         integer, intent(in) :: nr_total
+!         double precision, intent(in) :: array_in
+!         dimension :: array_in(nr_total)
+
+!         double precision, intent(out) :: array_out
+!         dimension :: array_out(nr_total)
+
+!         ! Local data 
+!         ! ----------
+!         integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
+!         double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+!         double precision :: tmp
+!         dimension :: tmp(basisdata%nc_total)
+!         integer :: i, j, k
+
+!         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+!         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+!         pos_tm = mat%dimen
+!         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+!         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+!         nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
+!         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
+!                 BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
+!         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+!         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+!         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+!         if (basisdata%dimen.eq.4) then
+!             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+!             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+!             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+!         end if
+
+!         if (basisdata%dimen.eq.3) then
+!             call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 2), & 
+!                             array_in, tmp)
+!         else if (basisdata%dimen.eq.4) then
+!             call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 2), & 
+!                             array_in, tmp)
+!         end if
+
+!         do j = 1, mat%ncols_tm
+!             do i = 1, mat%ncols_sp
+!                 k = i + (j-1)*mat%ncols_sp
+!                 tmp(k) = tmp(k)*mat%Cprop(k)*mat%detJ(i)
+!             end do
+!         end do
+
+!         if (basisdata%dimen.eq.3) then
+!             call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+!                             W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 2), &
+!                             tmp, array_out)
+!         else if (basisdata%dimen.eq.4) then
+!             call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+!                             W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 2), &
+!                             tmp, array_out)
+!         end if
+        
+!     end subroutine mf_u_partialt_v
+
+!     subroutine mf_gradx_u_v(mat, basisdata, nr_total, array_in, array_out)
+
+!         implicit none 
+!         ! Input / output data
+!         ! -------------------
+!         type(stthermomat) :: mat
+!         type(basis_data) :: basisdata
+!         integer, intent(in) :: nr_total
+!         double precision, intent(in) :: array_in
+!         dimension :: array_in(nr_total)
+
+!         double precision, intent(out) :: array_out
+!         dimension :: array_out(nr_total)
+
+!         ! Local data 
+!         ! -----------
+!         integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
+!         double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+!         double precision :: tmp_0, tmp_1, tmp_2, coefs
+!         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
+!                     tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%nc_total)
+!         integer :: i, j, k, alpha, zeta
+!         dimension :: alpha(basisdata%dimen), zeta(basisdata%dimen)
+
+!         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+!         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+!         pos_tm = mat%dimen
+!         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+!         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+!         nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
+!         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
+!                 BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
+!         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+!         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+!         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+!         if (basisdata%dimen.eq.4) then
+!             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+!             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+!             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+!         end if
+
+!         do j = 1, mat%ncols_tm
+!             do i = 1, mat%ncols_sp
+!                 k = i + (j-1)*mat%ncols_sp
+!                 coefs(:, k) = matmul(mat%invJ(:, :, i), mat%Kdersprop(:, k))*mat%detJ(i)*mat%detG(j)
+!             end do
+!         end do
+
+!         array_out = 0.d0
+!         if (basisdata%dimen.eq.3) then
+!             call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
+!                             array_in, tmp_0)
+!         else if (basisdata%dimen.eq.4) then
+!             call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
+!                             array_in, tmp_0)
+!         end if
+        
+!         do i = 1, mat%dimen_sp
+!             alpha = 1; alpha(i) = 2
+!             zeta  = 1 + (alpha - 1)*2
+!             tmp_1 = tmp_0*coefs(i, :)
+!             if (basisdata%dimen.eq.3) then
+!                 call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
+!                                 W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_t(:, :, 1), & 
+!                                 tmp_1, tmp_2)
+!             else if (basisdata%dimen.eq.4) then
+!                 call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
+!                                 W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), W_t(:, :, 1), & 
+!                                 tmp_1, tmp_2)
+!             end if
+!             array_out = array_out + tmp_2
+!         end do
+
+!     end subroutine mf_gradx_u_v
+
+!     subroutine mf_gradx_u_gradx_v(mat, basisdata, nr_total, array_in, array_out)
+
+!         implicit none 
+!         ! Input / output data
+!         ! -------------------
+!         type(stthermomat) :: mat
+!         type(basis_data) :: basisdata
+!         integer, intent(in) :: nr_total
+!         double precision, intent(in) :: array_in
+!         dimension :: array_in(nr_total)
+
+!         double precision, intent(out) :: array_out
+!         dimension :: array_out(nr_total)
+
+!         ! Local data 
+!         ! -----------
+!         integer :: pos_tm, nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
+!         double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+!         double precision :: tmp_0, tmp_1, tmp_2, coefs
+!         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
+!                     tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%dimen, basisdata%nc_total)
+!         integer :: i, j, k, alpha, beta, zeta
+!         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
+
+!         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+!         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
+
+!         pos_tm = mat%dimen
+!         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+!         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+!         nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
+!         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
+!                 BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
+!         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+!         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+!         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+!         if (basisdata%dimen.eq.4) then
+!             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+!             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+!             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+!         end if
+
+!         do j = 1, mat%ncols_tm
+!             do i = 1, mat%ncols_sp
+!                 k = i + (j-1)*mat%ncols_sp
+!                 coefs(:, :, k) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, k), &
+!                                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
+!             end do
+!         end do
+
+!         array_out = 0.d0
+!         do j = 1, mat%dimen_sp
+!             beta = 1; beta(j) = 2
+!             if (basisdata%dimen.eq.3) then
+!                 call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+!                                 BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_t(:, :, 1), & 
+!                                 array_in, tmp_0)
+!             else if (basisdata%dimen.eq.4) then
+!                 call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+!                                 BT_u(:, :, beta(1)), BT_v(:, :, beta(2)), BT_w(:, :, beta(3)), BT_t(:, :, 1), & 
+!                                 array_in, tmp_0)
+!             end if
+
+!             do i = 1, mat%dimen_sp
+!                 alpha = 1; alpha(i) = 2
+!                 zeta = beta + (alpha - 1)*2
+!                 tmp_1 = tmp_0*coefs(i, j, :)
+!                 if (basisdata%dimen.eq.3) then
+!                     call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
+!                                     W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_t(:, :, 1), & 
+!                                     tmp_1, tmp_2)
+!                 else if (basisdata%dimen.eq.4) then
+!                     call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
+!                                     W_u(:, :, zeta(1)), W_v(:, :, zeta(2)), W_w(:, :, zeta(3)), W_t(:, :, 1), & 
+!                                     tmp_1, tmp_2)
+!                 end if
+!                 array_out = array_out + tmp_2
+!             end do
+!         end do
+
+!     end subroutine mf_gradx_u_gradx_v
+
+! end module matrixfreestheat
