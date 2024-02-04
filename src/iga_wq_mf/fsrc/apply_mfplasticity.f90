@@ -384,7 +384,6 @@ contains
                 call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
                                     nnz_u, indi_u, indj_u, data_W_u(:, 1), &
                                     nnz_v, indi_v, indj_v, data_W_v(:, 1), &
-                                    nnz_w, indi_w, indj_w, data_W_w(:, 1), &
                                     array_tmp, array_tmp2)
             else if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
@@ -913,13 +912,13 @@ contains
 
     end subroutine PBiCGSTAB
 
-    subroutine LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
-        !! Using LOBPCG algorithm to compute the stability of the transient heat problem
+    subroutine RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
+        !! Using RQMIN algorithm to compute the stability of the transient heat problem
         
         implicit none
         ! Input / output data
         ! -------------------
-        integer, parameter :: sizemat = 3
+        integer, parameter :: sizemat = 2
         type(cgsolver) :: solv
         type(mecamat) :: mat
         integer, intent(in) :: nr_total, iterations        
@@ -931,88 +930,83 @@ contains
 
         ! Local data
         ! ----------
-        integer :: k, ii
+        integer :: k, j, ii
+        double precision, dimension(sizemat) :: ll
         double precision, dimension(sizemat, solv%globsyst%dimen, nr_total) :: RM1, RM2, RM3
-        double precision, dimension(sizemat, sizemat) :: AA1, BB1
-        double precision, dimension(sizemat) :: delta
-        double precision, dimension(solv%globsyst%dimen, nr_total) :: u, v, g, gtil, p, tmp
-        double precision :: q, norm, prod
-        double precision, allocatable, dimension(:) ::  ll
-        double precision, allocatable, dimension(:, :) ::  qq
+        double precision, dimension(sizemat, sizemat) :: AA1, BB1, qq
+        double precision, dimension(solv%globsyst%dimen, nr_total) :: u, v, g, gtil, p, tmp, Mg, Mgtil
+        double precision :: q, gnorm, delta, prod1, prod2
 
         call random_number(eigenvec)
         call clear_dirichlet(solv, nr_total, eigenvec)
-        norm = norm2(eigenvec)
-        eigenvec = eigenvec/norm
 
         call mf_tu_tv(mat, solv%globsyst, nr_total, eigenvec, u)
         call clear_dirichlet(solv, nr_total, u)
         
-        call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod)
-        q = sqrt(prod)
+        call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod1)
+        q = sqrt(prod1)
         eigenvec = eigenvec/q; u = u/q
         call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, eigenvec, v)
         call clear_dirichlet(solv, nr_total, v)
         
         call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, v, eigenval)
-        call random_number(p)
-        norm = 1.d0
+        g = eigenvec; gnorm = 1.d0
 
         do k = 1, iterations
-            if (norm.le.threshold) return
-    
-            g = v - eigenval*u
-            norm = norm2(g)
-            call applyfastdiag(solv, nr_total, g, gtil)
-            call clear_dirichlet(solv, nr_total, gtil)
-            g = gtil
+            if (gnorm.le.threshold) return
+            gtil = g
+            tmp = 2*(v - eigenval*u)
+            call applyfastdiag(solv, nr_total, tmp, g)
+            call clear_dirichlet(solv, nr_total, g)
 
-            RM1(1, :, :) = eigenvec; RM1(2, :, :) = -g; RM1(3, :, :) = p
+            if (k.eq.1) then
+                p = -g
+            else
+                call mf_tu_tv(mat, solv%globsyst, nr_total, g, Mg)
+                call mf_tu_tv(mat, solv%globsyst, nr_total, gtil, Mgtil)
+                call block_dot_product(solv%globsyst%dimen, nr_total, g, Mg, prod1)
+                call block_dot_product(solv%globsyst%dimen, nr_total, gtil, Mgtil, prod2)
+                p = -g + prod1/prod2*p
+            end if
+
+            RM1(1, :, :) = eigenvec; RM1(2, :, :) = p
             RM2(1, :, :) = v; RM3(1, :, :) = u;
-            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, -g, tmp)
+            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM2(2, :, :) = tmp
 
-            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, p, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM2(3, :, :) = tmp
-
-            call mf_tu_tv(mat, solv%globsyst, nr_total, -g, tmp)
+            call mf_tu_tv(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM3(2, :, :) = tmp
             
-            call mf_tu_tv(mat, solv%globsyst, nr_total, p, tmp)
-            call clear_dirichlet(solv, nr_total, tmp)
-            RM3(3, :, :) = tmp
+            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM2, AA1)
+            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM3, BB1)
             
-            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM2, AA1); AA1 = 0.5d0*(AA1 + transpose(AA1))
-            call rayleigh_submatrix2(sizemat, solv%globsyst%dimen, nr_total, RM1, RM3, BB1); BB1 = 0.5d0*(BB1 + transpose(BB1))
-
-            allocate(ll(sizemat), qq(sizemat, sizemat))
-            call compute_eigdecomp_pdr(size(ll), AA1, BB1, ll, qq)
+            call compute_eigdecomp_pdr(sizemat, AA1, BB1, ll, qq)
+            do j = 1, sizemat
+                if ((ll(j).lt.0.d0)) ll(j) = 0.d0
+            end do
             
             if (ishigher) then 
                 eigenval = maxval(ll); ii = maxloc(ll, dim=1)
             else
                 eigenval = minval(ll); ii = minloc(ll, dim=1)
             end if
-            delta = qq(:, ii)
+
+            if (abs(qq(1, ii)).gt.1.d-8) delta = qq(2, ii)/qq(1, ii)
     
-            p = -g*delta(2) + p*delta(3)
-            eigenvec = eigenvec*delta(1) + p
+            eigenvec = eigenvec + delta*p
             call mf_tu_tv(mat, solv%globsyst, nr_total, eigenvec, u)
             call clear_dirichlet(solv, nr_total, u)
             
-            call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod)
-            q = sqrt(prod)
+            call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod1)
+            q = sqrt(prod1)
             eigenvec = eigenvec/q; u = u/q
             call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, eigenvec, v)
-            call clear_dirichlet(solv, nr_total, v)
-            
-            norm = norm2(g)
-            deallocate(ll, qq)
+            call clear_dirichlet(solv, nr_total, v)            
+            gnorm = norm2(g)
         end do
 
-    end subroutine LOBPCGSTAB
+    end subroutine RQMIN
 
 end module plasticitysolver

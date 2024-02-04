@@ -246,14 +246,14 @@ class heatproblem(problem):
 		intForce = self.compute_mfCapacity(flux, args=args, isLumped=isLumped) + self.compute_mfConductivity(temp, args=args)
 		return intForce
 	
-	def compute_eigs_LOBPCG(self, ishigher=False, args=None):
+	def compute_eigs(self, ishigher=False, args=None):
 		if args is None: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				Cprop, Kprop, ishigher, self._itersLin, self._thresLin]
-		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_lobpcg_heat_2d(*inpts)
-		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_lobpcg_heat_3d(*inpts)
+		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_eig_heat_2d(*inpts)
+		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_eig_heat_3d(*inpts)
 		return eigenval, eigenvec
 
 	def solveSteadyHeatProblem(self, Fext, args=None):
@@ -386,7 +386,7 @@ class mechaproblem(problem):
 		intForce = self.compute_MechStaticIntForce(stress) + self.compute_mfMass(accel, args=args, isLumped=isLumped)
 		return intForce
 	
-	def compute_eigs_LOBPCG(self, ishigher=False, mechArgs=None, args=None):
+	def compute_eigs(self, ishigher=False, mechArgs=None, args=None):
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
@@ -395,8 +395,8 @@ class mechaproblem(problem):
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
 				mechArgs, massProp, ishigher, self._itersLin, self._thresLin]
-		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_lobpcg_elasticity_2d(*inpts)
-		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_lobpcg_elasticity_3d(*inpts)
+		if self.part.dim == 2: eigenval, eigenvec = eigensolver.solver_eig_elasticity_2d(*inpts)
+		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_eig_elasticity_3d(*inpts)
 		return eigenval, eigenvec
 
 	def solveElasticityProblem(self, Fext, mechArgs=None):

@@ -1,4 +1,4 @@
-subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_eig_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, table, &
                             invJ, detJ, Cprop, Kprop, ishigher, iterations, &
@@ -43,27 +43,29 @@ subroutine solver_lobpcg_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(reduced_system), target :: redsyst
     integer :: nr_total
 
-    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
-                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
+    call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
+                        indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
-    call space_eigendecomposition(redsyst)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
 
     nr_total = nr_u*nr_v
-    solv%applyfd = .false.
+    solv%withdiag = .false.
+    call space_eigendecomposition(redsyst)
     call initialize_solver(solv, globsyst, redsyst)
-    call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
+    call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
-end subroutine solver_lobpcg_heat_2d
+end subroutine solver_eig_heat_2d
 
-subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_eig_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             table, invJ, detJ, Cprop, Kprop, ishigher, iterations, threshold, eigenval, eigenvec)
@@ -109,27 +111,29 @@ subroutine solver_lobpcg_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     type(reduced_system), target :: redsyst
     integer :: nr_total
     
-    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
-                        data_B_w, data_W_u, data_W_v, data_W_w)
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
-    call space_eigendecomposition(redsyst)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
 
     nr_total = nr_u*nr_v*nr_w
-    solv%applyfd = .false.
+    solv%withdiag = .false.
+    call space_eigendecomposition(redsyst)
     call initialize_solver(solv, globsyst, redsyst)
-    call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
+    call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
-end subroutine solver_lobpcg_heat_3d
+end subroutine solver_eig_heat_3d
 
-subroutine solver_lobpcg_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
+subroutine solver_eig_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             table, invJ, detJ, nbmechArgs, mechArgs, Mprop, ishigher, iterations, &
@@ -172,7 +176,7 @@ subroutine solver_lobpcg_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(cgsolver) :: solv
     type(basis_data) :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen), nr_total
+    integer :: i, nr_total
 
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
@@ -181,24 +185,25 @@ subroutine solver_lobpcg_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
         call space_eigendecomposition(redsyst(i))
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
-    nc_list = (/nc_u, nc_v/)
-    nr_total = product(nc_list)
 
+    nr_total = nr_u*nr_v
     solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
-    call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
+    call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
-end subroutine solver_lobpcg_elasticity_2d
+end subroutine solver_eig_elasticity_2d
 
-subroutine solver_lobpcg_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
+subroutine solver_eig_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
                             table, invJ, detJ, nbmechArgs, mechArgs, Mprop, ishigher, iterations, &
@@ -243,7 +248,7 @@ subroutine solver_lobpcg_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
     type(cgsolver) :: solv
     type(basis_data) :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen), nr_total
+    integer :: i, nr_total
 
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
@@ -252,22 +257,23 @@ subroutine solver_lobpcg_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, n
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
         call space_eigendecomposition(redsyst(i))
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
-    nc_list = (/nc_u, nc_v, nc_w/)
-    nr_total = product(nc_list)
 
+    nr_total = nr_u*nr_v*nr_w
     solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
-    call LOBPCGSTAB(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
+    call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
-end subroutine solver_lobpcg_elasticity_3d
+end subroutine solver_eig_elasticity_3d
 
 subroutine fastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &

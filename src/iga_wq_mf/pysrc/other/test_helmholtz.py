@@ -16,14 +16,14 @@ from pysrc.lib.lib_job import heatproblem, mechaproblem
 
 # Set global variables
 geoName = 'QA'
-degree_list = np.array([1])
+degree_list = np.array([2])
 cuts_list   = np.arange(2, 8)
 matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.3,
 				'isoHardLaw': {'name':'none'}}
 
-for i, degree in enumerate(degree_list):
-	for j, cuts in enumerate(cuts_list):
-		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 						'extra':{'Rin':1.0, 'Rex':2.0}
@@ -51,6 +51,6 @@ for i, degree in enumerate(degree_list):
 			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary)
 
 			# eigenval = heatprob.compute_eigs_LOBPCG()[0]
-			eigenval = mecaprob.compute_eigs_LOBPCG()[0]
+			eigenval = mecaprob.compute_eigs()[0]
 			print('eig:%.3e, degree:%d, nbel:%d' %(eigenval, degree, 2**cuts))
-		print('***')
+	print('***')
