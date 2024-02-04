@@ -166,6 +166,7 @@ subroutine get_intforce_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,  &
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, &
                         indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v
     call intforce(mat, basisdata, nr_total, nc_total, stress, array_out)
@@ -210,6 +211,7 @@ subroutine get_intforce_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, 
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     nr_total = nr_u*nr_v*nr_w
     call intforce(mat, basisdata, nr_total, nc_total, stress, array_out)
@@ -255,6 +257,7 @@ subroutine mf_mass_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
@@ -303,6 +306,7 @@ subroutine mf_mass_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_massprop(mat, nc_total, prop)
@@ -347,6 +351,7 @@ subroutine mf_stiffness_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -394,6 +399,7 @@ subroutine mf_stiffness_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
@@ -438,6 +444,7 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         indi_u, indj_u, indi_v, indj_v, &
                         data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
     call mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
@@ -485,6 +492,7 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                         data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
     call mf_u_gradtv(mat, basisdata, nr_total, array_in, array_out)
@@ -549,8 +557,10 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)    
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
@@ -651,8 +661,10 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)    
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)
@@ -746,8 +758,10 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)    
 
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
@@ -850,8 +864,10 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
         call copybasisdata(globsyst, redsyst(i)%basisdata)
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
+        call getcsr2csc(redsyst(i)%basisdata)
     end do
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)    
 
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)

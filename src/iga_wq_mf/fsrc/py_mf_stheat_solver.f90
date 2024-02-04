@@ -41,6 +41,7 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, 
                         indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_B_u, data_B_v, data_B_t, &
                         data_W_u, data_W_v, data_W_t)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_capacityprop(mat, size(prop), prop)
     call mf_u_partialt_v(mat, basisdata, nr_total, array_in, array_out)
@@ -86,6 +87,7 @@ subroutine mf_stcapacity_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, 
                         indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
                         data_W_u, data_W_v, data_W_w, data_W_t)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_capacityprop(mat, size(prop), prop)
     call mf_u_partialt_v(mat, basisdata, nr_total, array_in, array_out)
@@ -129,6 +131,7 @@ subroutine mf_stconductivity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr
                         indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_B_u, data_B_v, data_B_t, &
                         data_W_u, data_W_v, data_W_t)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradx_u_gradx_v(mat, basisdata, nr_total, array_in, array_out)
@@ -175,7 +178,7 @@ subroutine mf_stconductivity_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr
                         indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
                         data_W_u, data_W_v, data_W_w, data_W_t)
     call getcsrc2dense(basisdata)
-
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradx_u_gradx_v(mat, basisdata, nr_total, array_in, array_out)
@@ -241,7 +244,9 @@ subroutine solver_picardspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     redsyst%isspacetime = .true.
 
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
@@ -346,7 +351,9 @@ subroutine solver_newtonspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     redsyst%isspacetime = .true.
 
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
@@ -456,7 +463,9 @@ subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     redsyst%isspacetime = .true.
     
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
@@ -564,7 +573,9 @@ subroutine solver_newtonspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     redsyst%isspacetime = .true.
 
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)

@@ -43,6 +43,7 @@ subroutine mf_capacity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
     call init_2basisdata(basisdata, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
@@ -90,6 +91,7 @@ subroutine mf_capacity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     mat%isLumped = isLumped
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
@@ -133,6 +135,7 @@ subroutine mf_conductivity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                         data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_out)
@@ -178,6 +181,7 @@ subroutine mf_conductivity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
     call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_out)
@@ -221,6 +225,7 @@ subroutine mf_thmchcoupled_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
                         data_W_u, data_W_v)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
     call mf_gradu_tv(mat, basisdata, nr_total, array_in, array_out)
@@ -266,6 +271,7 @@ subroutine mf_thmchcoupled_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, 
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
                         data_W_u, data_W_v, data_W_w)
     call getcsrc2dense(basisdata)
+    call getcsr2csc(basisdata)
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_thmchcoupledprop(mat, nc_total, prop)
     call mf_gradu_tv(mat, basisdata, nr_total, array_in, array_out)
@@ -325,7 +331,9 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -412,7 +420,9 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_conductivityprop(mat, nc_total, prop)
@@ -500,7 +510,9 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
@@ -593,7 +605,9 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
     call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, Cprop)
