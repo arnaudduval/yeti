@@ -376,7 +376,7 @@ class mechaproblem(problem):
 	
 	def compute_MechStaticIntForce(self, stress):
 		"Compute internal force using sigma coefficients "
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.invJ, self.part.detJ, stress]
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, stress]
 		if   self.part.dim == 2: intForce = plasticitysolver.get_intforce_2d(*inpts)
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce

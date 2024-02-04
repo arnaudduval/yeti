@@ -42,6 +42,7 @@ subroutine mf_stcapacity_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, 
                         data_W_u, data_W_v, data_W_t)
     call getcsrc2dense(basisdata)
     call getcsr2csc(basisdata)
+
     call setup_geometry(mat, dimen_sp, size(detJ), size(detG), invJ, detJ, detG)
     call setup_capacityprop(mat, size(prop), prop)
     call mf_u_partialt_v(mat, basisdata, nr_total, array_in, array_out)
@@ -277,6 +278,7 @@ subroutine solver_picardspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
             call space_eigendecomposition(redsyst)
             call time_schurdecomposition(redsyst)
         end if
+        
         call initialize_solver(solv, globsyst, redsyst)
         if (linsolver.eq.'BICG') then
             call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)

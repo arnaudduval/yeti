@@ -68,10 +68,10 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 	Fext = problem.compute_volForce(powerDensity, {'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
 	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 	problem.addSolverConstraints(solverArgs=problemArgs)
-	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=False)
+	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=True)
 	return problem, output
 
-degree, cuts = 3, 5
+degree, cuts = 2, 3
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 start = time.time()

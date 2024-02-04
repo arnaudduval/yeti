@@ -219,13 +219,13 @@ class stheatproblem(stproblem):
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 					self.time.detJ, Cprop, Cdersprop, Kprop, Kdersprop, Fext, self._itersLin, 
 					threshold, self._linPreCond, self._linSolv]
-			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_2d(*inpts)
-			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_full_heat_3d(*inpts)
+			if self.part.dim == 2: temperature, residue = stheatsolver.solver_newtonspacetime_heat_2d(*inpts)
+			if self.part.dim == 3: temperature, residue = stheatsolver.solver_newtonspacetime_heat_3d(*inpts)
 		else:
 			inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
 					self.time.detJ, Cprop, Kprop, Fext, self._itersLin, threshold, self._linPreCond, self._linSolv]
-			if self.part.dim == 2: temperature, residue = stheatsolver.solver_linearspacetime_heat_2d(*inpts)
-			if self.part.dim == 3: temperature, residue = stheatsolver.solver_linearspacetime_heat_3d(*inpts)
+			if self.part.dim == 2: temperature, residue = stheatsolver.solver_picardspacetime_heat_2d(*inpts)
+			if self.part.dim == 3: temperature, residue = stheatsolver.solver_picardspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
 	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
@@ -242,9 +242,6 @@ class stheatproblem(stproblem):
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
-			if j == 0:
-				temp_ref = np.copy(temperature)
-				gradtemp_ref = np.copy(gradtemperature)
 
 			# Compute internal force
 			Fint_dj = self.compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
@@ -277,13 +274,7 @@ class stheatproblem(stproblem):
 			resNLj0 = np.copy(resNLj1)
 
 			# Solve for active control points
-			if j < 6:
-				deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
-											args={'temperature':temp_ref, 
-												'gradients':gradtemp_ref}, 
-											isfull=isfull, threshold=threshold_inner)	
-			else: 
-				deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
+			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
 										args={'temperature':temperature, 
 											'gradients':gradtemperature}, 
 										isfull=isfull, threshold=threshold_inner)			

@@ -567,7 +567,6 @@ contains
             beta = 1; beta(j) = 2
             if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-                                    nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
                                     nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
                                     nnz_v, indiT_v, indjT_v, data_BT_v(:, beta(2)), & 
                                     nnz_t, indiT_t, indjT_t, data_BT_t(:, 1), & 
@@ -602,7 +601,6 @@ contains
                 array_out = array_out + tmp_2
             end do
         end do
-
     end subroutine mf_gradx_u_gradx_v
 
 end module matrixfreestheat
@@ -707,30 +705,30 @@ contains
         integer :: pos_tm, i, j, k, l
         integer :: nr_u, nr_v, nr_w, nr_t
         double precision, allocatable, dimension(:, :) :: identity
-        double precision, allocatable, dimension(:) :: tmp1, tmp4, btmp, stmp
+        double precision, allocatable, dimension(:) :: tmp1, tmp3, btmp, stmp
         double precision, allocatable, dimension(:, :, :, :) :: tmp2
         integer, allocatable, dimension(:, :, :, :) :: dof
         double precision :: eigval
-
+        
         if (.not.solv%applyfd) then
             array_out = array_in
             return
         end if
         pos_tm = solv%globsyst%dimen
-        allocate(identity(nr_t, nr_t))
-        call create_identity(nr_t, identity)
         nr_u = solv%redsyst%basisdata%nrows(1)
         nr_v = solv%redsyst%basisdata%nrows(2)
         nr_t = solv%redsyst%basisdata%nrows(pos_tm)
-        nr_w = 1
-        if (solv%globsyst%dimen.eq.4) nr_w = solv%redsyst%basisdata%nrows(3)
+        nr_w = 1; if (solv%globsyst%dimen.eq.4) nr_w = solv%redsyst%basisdata%nrows(3)
+
+        allocate(identity(nr_t, nr_t))
+        call create_identity(nr_t, identity)
         allocate(dof(nr_u, nr_v, nr_w, nr_t))
         dof = reshape(solv%redsyst%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
 
         array_out = 0.d0
         allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
         if (solv%globsyst%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                         identity, array_in(solv%redsyst%dof), tmp1)
@@ -740,7 +738,7 @@ contains
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                         transpose(solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
                         identity, array_in(solv%redsyst%dof), tmp1)
-        end if  
+        end if 
 
         allocate(tmp2(nr_u, nr_v, nr_w, nr_t))
         tmp2 = reshape(tmp1, shape=(/nr_u, nr_v, nr_w, nr_t/))
@@ -762,21 +760,21 @@ contains
         tmp1 = pack(tmp2, .true.)
         deallocate(tmp2)
 
-        allocate(tmp4(nr_u*nr_v*nr_w*nr_t))
+        allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
         if (solv%globsyst%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-                        identity, tmp1, tmp4)
+                        identity, tmp1, tmp3)
         else if (solv%globsyst%dimen.eq.4) then
             call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
                         solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
-                        identity, tmp1, tmp4)
-        end if  
-        array_out(solv%redsyst%dof) = tmp4
-        deallocate(tmp1, tmp4)
+                        identity, tmp1, tmp3)
+        end if 
+        array_out(solv%redsyst%dof) = tmp3
+        deallocate(tmp1, tmp3)
 
     end subroutine applyfastdiag
 
