@@ -625,7 +625,7 @@ contains
                                         nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                         t2, t3)
                 else if (basisdata%dimen.eq.3) then
-                    call sumfacto3d_spdM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
+                    call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                         nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                         nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
