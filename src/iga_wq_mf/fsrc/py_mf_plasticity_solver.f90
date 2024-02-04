@@ -560,7 +560,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
         call getcsr2csc(redsyst(i)%basisdata)
     end do
     call getcsrc2dense(globsyst)
-    call getcsr2csc(globsyst)    
+    call getcsr2csc(globsyst)
 
     call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_jacobienjacobien(mat)

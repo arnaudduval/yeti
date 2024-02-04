@@ -240,11 +240,11 @@ contains
         ! Local data
         ! ----------
         integer :: dimen, size2, size3
+        dimen = basisdata_in%dimen
         call clearbasisdata(basisdata_inout)
         basisdata_inout%dimen = basisdata_in%dimen
         basisdata_inout%nr_total = basisdata_in%nr_total
         basisdata_inout%nc_total = basisdata_in%nc_total
-        dimen = basisdata_in%dimen
         allocate(basisdata_inout%nrows(dimen)); basisdata_inout%nrows=basisdata_in%nrows
         allocate(basisdata_inout%ncols(dimen)); basisdata_inout%ncols=basisdata_in%ncols
         allocate(basisdata_inout%nnzs(dimen)); basisdata_inout%nnzs=basisdata_in%nnzs
@@ -255,16 +255,19 @@ contains
         basisdata_inout%indj=basisdata_in%indj
         allocate(basisdata_inout%data_bw(dimen, maxval(basisdata_in%nnzs), 6)) 
         basisdata_inout%data_bw=basisdata_in%data_bw
+
         if (allocated(basisdata_in%indiT)) then
             allocate(basisdata_inout%indiT(dimen, maxval(basisdata_in%ncols)+1)) 
             basisdata_inout%indiT=basisdata_in%indiT
         end if
-
-        allocate(basisdata_inout%indjT(dimen, maxval(basisdata_in%nnzs))) 
-        basisdata_inout%indjT=basisdata_in%indjT
-
-        allocate(basisdata_inout%data_bwT(dimen, maxval(basisdata_in%nnzs), 6)) 
-        basisdata_inout%data_bwT=basisdata_in%data_bwT
+        if (allocated(basisdata_in%indjT)) then
+            allocate(basisdata_inout%indjT(dimen, maxval(basisdata_in%nnzs)))
+            basisdata_inout%indjT=basisdata_in%indjT
+        end if
+        if (allocated(basisdata_in%data_bwT)) then
+            allocate(basisdata_inout%data_bwT(dimen, maxval(basisdata_in%nnzs), 6)) 
+            basisdata_inout%data_bwT=basisdata_in%data_bwT
+        end if
 
         if (allocated(basisdata_in%Wdense)) then
             size2 = size(basisdata_in%Wdense, dim=2)
