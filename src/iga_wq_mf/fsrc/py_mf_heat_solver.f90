@@ -333,7 +333,6 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     nc_list = (/nc_u, nc_v/)
 
     if ((linprecond.eq.'WP').or.(linprecond.eq.'JMC').or.(linprecond.eq.'C').or.(linprecond.eq.'TDC')) then
-
         if (linprecond.eq.'WP') then
             solv%applyfd = .false.
         end if
@@ -353,7 +352,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
         call initialize_solver(solv, globsyst, redsyst)
         call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
     else 
-        stop 'Unknown method' 
+        stop 'Unknown method'  
     end if
 
 end subroutine solver_linearsteady_heat_2d

@@ -572,7 +572,7 @@ contains
         ones = 1.d0; redsyst%diageigval_sp = 0.d0
 
         allocate(means(dimen_sp)); means = 1.d0
-        if (allocated(redsyst%meancoefs)) means = redsyst%diageigval_sp(1:dimen_sp)
+        if (allocated(redsyst%meancoefs)) means = redsyst%meancoefs(1:dimen_sp)
         if (dimen_sp.eq.2) then 
             call find_parametric_diag_2d(redsyst%basisdata%nrows(1), redsyst%basisdata%nrows(2), &
                                     ones(1:redsyst%basisdata%nrows(1)), ones(1:redsyst%basisdata%nrows(2)), &
