@@ -501,9 +501,9 @@ contains
         double precision :: array_tmp
         dimension :: array_tmp(basisdata%dimen, nr_total)
 
-        call mf_tu_tv_3d(mat, basisdata, nr_total, array_in, array_out)
+        call mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
         array_out = mat%scalars(1)*array_out
-        call mf_gradtu_gradtv_3d(mat, basisdata, nr_total, array_in, array_tmp)
+        call mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_tmp)
         array_out = array_out + mat%scalars(2)*array_tmp
 
     end subroutine mf_tutv_gradtugradtv
@@ -676,7 +676,7 @@ contains
         else if (solv%matrixfreetype.eq.2) then
             call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, array_in, array_out)
         else if (solv%matrixfreetype.eq.3) then
-            call mf_tutv_gradtugradtv_3d(mat,  solv%globsyst, nr_total, array_in, array_out)
+            call mf_tutv_gradtugradtv(mat,  solv%globsyst, nr_total, array_in, array_out)
         else
             stop 'Not coded'
         end if
@@ -903,15 +903,15 @@ contains
             call clear_dirichlet(solv, nr_total, tmp)
             RM2(2, :, :) = tmp
 
-            call mf_gradtu_gradtv_3d(mat, solv%globsyst, nr_total, p, tmp)
+            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM2(3, :, :) = tmp
 
-            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, -g, tmp)
+            call mf_tu_tv(mat, solv%globsyst, nr_total, -g, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM3(2, :, :) = tmp
             
-            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, p, tmp)
+            call mf_tu_tv(mat, solv%globsyst, nr_total, p, tmp)
             call clear_dirichlet(solv, nr_total, tmp)
             RM3(3, :, :) = tmp
             
@@ -930,13 +930,13 @@ contains
     
             p = -g*delta(2) + p*delta(3)
             eigenvec = eigenvec*delta(1) + p
-            call mf_tu_tv_3d(mat, solv%globsyst, nr_total, eigenvec, u)
+            call mf_tu_tv(mat, solv%globsyst, nr_total, eigenvec, u)
             call clear_dirichlet(solv, nr_total, u)
             
             call block_dot_product(solv%globsyst%dimen, nr_total, eigenvec, u, prod)
             q = sqrt(prod)
             eigenvec = eigenvec/q; u = u/q
-            call mf_gradtu_gradtv_3d(mat, solv%globsyst, nr_total, eigenvec, v)
+            call mf_gradtu_gradtv(mat, solv%globsyst, nr_total, eigenvec, v)
             call clear_dirichlet(solv, nr_total, v)
             
             norm = norm2(g)
