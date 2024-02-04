@@ -198,7 +198,7 @@ subroutine solver_picardspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen_sp = 2, dimen = dimen_sp+1
+    integer, parameter :: dimen_sp = 2
     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
@@ -209,7 +209,7 @@ subroutine solver_picardspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     logical, intent(in) :: table
-    dimension :: table(dimen, 2) 
+    dimension :: table(dimen_sp+1, 2) 
 
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
@@ -230,9 +230,11 @@ subroutine solver_picardspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     type(stcgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen), nbRestarts=1
+    integer :: nc_list(dimen_sp+1), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    integer :: dimen 
 
+    dimen = dimen_sp + 1
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
                         indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_B_u, data_B_v, data_B_t, &
                         data_W_u, data_W_v, data_W_t)
@@ -300,7 +302,7 @@ subroutine solver_newtonspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen_sp = 2, dimen = dimen_sp + 1
+    integer, parameter :: dimen_sp = 2
     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_t
     dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
@@ -333,9 +335,11 @@ subroutine solver_newtonspacetime_heat_2d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     type(stcgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen), nbRestarts=1
+    integer :: nc_list(dimen_sp+1), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    integer :: dimen
 
+    dimen = dimen_sp + 1
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, nnz_u, nnz_v, nnz_t, &
                         indi_u, indj_u, indi_v, indj_v, indi_t, indj_t, data_B_u, data_B_v, data_B_t, &
                         data_W_u, data_W_v, data_W_t)
@@ -406,7 +410,7 @@ subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen_sp = 3, dimen = dimen_sp + 1
+    integer, parameter :: dimen_sp = 3
     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
                             nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
@@ -419,7 +423,7 @@ subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
                     data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
     logical, intent(in) :: table
-    dimension :: table(dimen, 2) 
+    dimension :: table(dimen_sp+1, 2) 
 
     double precision, intent(in) :: invJ, detJ, detG, Cprop, Kprop
     dimension :: invJ(dimen_sp, dimen_sp, nc_sp), detJ(nc_sp), detG(nc_tm), &
@@ -440,9 +444,11 @@ subroutine solver_picardspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     type(stcgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen), nbRestarts=1
+    integer :: nc_list(dimen_sp+1), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    integer :: dimen 
 
+    dimen = dimen_sp + 1
     call init_4basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
@@ -511,7 +517,7 @@ subroutine solver_newtonspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen_sp = 3, dimen = dimen_sp + 1
+    integer, parameter :: dimen_sp = 3
     integer, intent(in) :: nr_total, nc_total, nc_sp, nc_tm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, &
                             nc_t, nnz_u, nnz_v, nnz_w, nnz_t    
     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
@@ -546,9 +552,11 @@ subroutine solver_newtonspacetime_heat_3d(nr_total, nc_total, nc_sp, nc_tm, nr_u
     type(stcgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen), nbRestarts=1
+    integer :: nc_list(dimen_sp+1), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
+    integer :: dimen
 
+    dimen = dimen_sp + 1
     call init_4basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
                         nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, &
                         indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &

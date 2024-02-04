@@ -48,8 +48,8 @@ subroutine interpolate_strain_2d(nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,
     double precision :: dersu, dersx
     dimension :: dersu(dimen, dimen, nc_total), dersx(dimen, dimen)
 
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
 
     ! Compute jacobian of displacement field with respect to u (in parametric space)
     do i = 1, dimen
@@ -107,9 +107,9 @@ subroutine interpolate_strain_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, n
     double precision :: dersu, dersx
     dimension :: dersu(dimen, dimen, nc_total), dersx(dimen, dimen)
 
-    call csr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
-    call csr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    call csr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
+    call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
+    call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
+    call multicsr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
     ! Compute jacobian of displacement field with respect to u (in parametric space)
     do i = 1, dimen

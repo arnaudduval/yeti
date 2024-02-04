@@ -74,7 +74,7 @@ subroutine get_genbasis_csr(degree, size_kv, knotvector, nb_knots, knots, basis,
     call get_genbasis_coo(degree, size_kv, knotvector, nb_knots, knots, basis_coo, indices)
 
     ! Convert COO to CSR format
-    call coo2csr(2, size_kv-degree-1, size_data, basis_coo, indices(:, 1), indices(:, 2), basis, indj, indi)
+    call multicoo2csr(2, size_kv-degree-1, size_data, basis_coo, indices(:, 1), indices(:, 2), basis, indj, indi)
     deallocate(basis_coo)
 
 end subroutine get_genbasis_csr
@@ -144,7 +144,7 @@ subroutine wq_getbasisweights_csr(degree, size_kv, knotvector, nbqp, quadptspos,
     ! Convert COO to CSR format
     allocate(dummy1(size_data, 6), dummy2(size_data, 6))
     dummy1(:, :2) = basis; dummy1(:, 3:) = weights; dummy2 = 0.d0
-    call coo2csr(6, size_kv-degree-1, size_data, dummy1(1:size_data, 1:6), &
+    call multicoo2csr(6, size_kv-degree-1, size_data, dummy1(1:size_data, 1:6), &
                 indices(:, 1), indices(:, 2), dummy2, indj, indi)
     basis = dummy2(:, :2); weights = dummy2(:, 3:)
     deallocate(dummy1, dummy2)
