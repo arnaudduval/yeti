@@ -684,7 +684,7 @@ contains
         double precision, dimension(sizemat, nr_total) :: RM1, RM2, RM3
         double precision, dimension(sizemat, sizemat) :: AA1, BB1, qq
         double precision, dimension(nr_total) :: u, v, g, gtil, p, tmp, Mg, Mgtil
-        double precision :: q, gnorm, delta
+        double precision :: q, gnorm, gnorm0, delta
 
         call random_number(eigenvec)
         call clear_dirichlet(solv, nr_total, eigenvec)
@@ -698,10 +698,10 @@ contains
         call clear_dirichlet(solv, nr_total, v)
         
         eigenval = dot_product(eigenvec, v)
-        g = eigenvec; gnorm = 1.d0
+        g = eigenvec; gnorm0 = norm2(g); gnorm = gnorm0
 
         do k = 1, iterations
-            if (gnorm.le.threshold) return
+            if (gnorm.le.threshold*gnorm0) return
             gtil = g
             tmp = 2*(v - eigenval*u)
             call applyfastdiag(solv, nr_total, tmp, g)

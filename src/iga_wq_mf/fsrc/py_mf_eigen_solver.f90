@@ -41,7 +41,7 @@ subroutine solver_eig_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nr_total
+    integer :: nr_total, nc_list(dimen)
 
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
@@ -57,8 +57,12 @@ subroutine solver_eig_heat_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
 
+    nc_list = (/nc_u, nc_v/)
     nr_total = nr_u*nr_v
-    solv%withdiag = .false.
+    solv%withdiag = .true.
+    call compute_variablesmean(mat, nc_list)
+    call setup_meancoefs(redsyst, dimen, mat%Kmean(1:dimen))
+
     call space_eigendecomposition(redsyst)
     call initialize_solver(solv, globsyst, redsyst)
     call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
@@ -109,7 +113,7 @@ subroutine solver_eig_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nr_total
+    integer :: nr_total, nc_list(dimen)
     
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
@@ -125,8 +129,12 @@ subroutine solver_eig_heat_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
     call setup_conductivityprop(mat, nc_total, Kprop)
     call setup_capacityprop(mat, nc_total, Cprop)
 
+    nc_list = (/nc_u, nc_v, nc_w/)
     nr_total = nr_u*nr_v*nr_w
-    solv%withdiag = .false.
+    solv%withdiag = .true.
+    call compute_variablesmean(mat, nc_list)
+    call setup_meancoefs(redsyst, dimen, mat%Kmean(1:dimen))
+
     call space_eigendecomposition(redsyst)
     call initialize_solver(solv, globsyst, redsyst)
     call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
@@ -176,7 +184,7 @@ subroutine solver_eig_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     type(cgsolver) :: solv
     type(basis_data) :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nr_total
+    integer :: i, nr_total, nc_list(dimen)
 
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
@@ -186,7 +194,6 @@ subroutine solver_eig_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
         call update_reducedsystem(redsyst(i), dimen, table(:, :, i))
         call getcsrc2dense(redsyst(i)%basisdata)
         call getcsr2csc(redsyst(i)%basisdata)
-        call space_eigendecomposition(redsyst(i))
     end do
     call getcsrc2dense(globsyst)
     call getcsr2csc(globsyst)
@@ -196,8 +203,17 @@ subroutine solver_eig_elasticity_2d(nc_total, nr_u, nc_u, nr_v, nc_v, &
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
 
+    nc_list = (/nc_u, nc_v/)
     nr_total = nr_u*nr_v
-    solv%withdiag = .false.
+    solv%withdiag = .true.
+    call compute_variablesmean(mat, nc_list)
+    do i = 1, dimen
+        call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+    end do
+
+    do i = 1, dimen
+        call space_eigendecomposition(redsyst(i))
+    end do
     call initialize_solver(solv, globsyst, redsyst)
     call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 
@@ -248,7 +264,7 @@ subroutine solver_eig_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     type(cgsolver) :: solv
     type(basis_data) :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nr_total
+    integer :: i, nr_total, nc_list(dimen)
 
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
@@ -268,8 +284,17 @@ subroutine solver_eig_elasticity_3d(nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w
     call setup_mechanicalArguments(mat, nbmechArgs, mechArgs)
     call setup_massprop(mat, nc_total, Mprop)
 
-    nr_total = nr_u*nr_v*nr_w
-    solv%withdiag = .false.
+    nc_list = (/nc_u, nc_v, nc_w/)
+    nr_total = nr_u*nr_v
+    solv%withdiag = .true.
+    call compute_variablesmean(mat, nc_list)
+    do i = 1, dimen
+        call setup_meancoefs(redsyst(i), dimen, mat%Smean(i, 1:dimen))
+    end do
+
+    do i = 1, dimen
+        call space_eigendecomposition(redsyst(i))
+    end do
     call initialize_solver(solv, globsyst, redsyst)
     call RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
 

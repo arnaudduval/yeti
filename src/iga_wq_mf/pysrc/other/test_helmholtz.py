@@ -16,7 +16,7 @@ from pysrc.lib.lib_job import heatproblem, mechaproblem
 
 # Set global variables
 geoName = 'QA'
-degree_list = np.array([2])
+degree_list = np.array([1])
 cuts_list   = np.arange(2, 8)
 matArgs 	= {'elastic_modulus':1e0, 'elastic_limit':1e10, 'poisson_ratio':0.3,
 				'isoHardLaw': {'name':'none'}}
@@ -48,9 +48,9 @@ for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 
 			# Solve elastic problem
 			heatprob = heatproblem(heatmaterial, modelPhy, boundary)
-			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary)
+			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary); mecaprob._thresLin=1e-12
 
-			# eigenval = heatprob.compute_eigs_LOBPCG()[0]
-			eigenval = mecaprob.compute_eigs()[0]
+			eigenval = heatprob.compute_eigs()[0]
+			# eigenval = mecaprob.compute_eigs()[0]
 			print('eig:%.3e, degree:%d, nbel:%d' %(eigenval, degree, 2**cuts))
 	print('***')
