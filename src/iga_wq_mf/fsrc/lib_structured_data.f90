@@ -4,8 +4,8 @@ module structured_data
     type :: basis_data
         integer :: dimen, nr_total, nc_total
         integer, allocatable, dimension(:) :: nrows, ncols, nnzs
-        integer, allocatable, dimension(:, :) :: indi, indj
-        double precision, allocatable, dimension(:, :, :) :: data_bw 
+        integer, allocatable, dimension(:, :) :: indi, indj, indiT, indjT
+        double precision, allocatable, dimension(:, :, :) :: data_bw, data_bwT
         double precision, allocatable, dimension(:, :, :, :) :: BTdense, Wdense
     end type basis_data
 
@@ -224,6 +224,9 @@ contains
         if (allocated(basisdata%indi)) deallocate(basisdata%indi)
         if (allocated(basisdata%indj)) deallocate(basisdata%indj)
         if (allocated(basisdata%data_bw)) deallocate(basisdata%data_bw)
+        if (allocated(basisdata%indiT)) deallocate(basisdata%indiT)
+        if (allocated(basisdata%indjT)) deallocate(basisdata%indjT)
+        if (allocated(basisdata%data_bwT)) deallocate(basisdata%data_bwT)
         if (allocated(basisdata%Wdense)) deallocate(basisdata%Wdense)
         if (allocated(basisdata%BTdense)) deallocate(basisdata%BTdense)
     end subroutine clearbasisdata
@@ -252,6 +255,17 @@ contains
         basisdata_inout%indj=basisdata_in%indj
         allocate(basisdata_inout%data_bw(dimen, maxval(basisdata_in%nnzs), 6)) 
         basisdata_inout%data_bw=basisdata_in%data_bw
+        if (allocated(basisdata_in%indiT)) then
+            allocate(basisdata_inout%indiT(dimen, maxval(basisdata_in%ncols)+1)) 
+            basisdata_inout%indiT=basisdata_in%indiT
+        end if
+
+        allocate(basisdata_inout%indjT(dimen, maxval(basisdata_in%nnzs))) 
+        basisdata_inout%indjT=basisdata_in%indjT
+
+        allocate(basisdata_inout%data_bwT(dimen, maxval(basisdata_in%nnzs), 6)) 
+        basisdata_inout%data_bwT=basisdata_in%data_bwT
+
         if (allocated(basisdata_in%Wdense)) then
             size2 = size(basisdata_in%Wdense, dim=2)
             size3 = size(basisdata_in%Wdense, dim=3)
@@ -281,9 +295,9 @@ contains
 
         if (allocated(basisdata%BTdense)) deallocate(basisdata%BTdense)
         if (allocated(basisdata%Wdense)) deallocate(basisdata%Wdense)
-        allocate(basisdata%BTdense(basisdata%dimen, maxval(basisdata%ncols), maxval(basisdata%nrows), 2))
-        allocate(basisdata%Wdense(basisdata%dimen, maxval(basisdata%nrows), maxval(basisdata%ncols), 4))
-
+        allocate(basisdata%BTdense(basisdata%dimen, maxval(basisdata%ncols), maxval(basisdata%nrows), 2), &
+                basisdata%Wdense(basisdata%dimen, maxval(basisdata%nrows), maxval(basisdata%ncols), 4))
+        basisdata%BTdense = 0.d0; basisdata%Wdense = 0.d0
         do it = 1, basisdata%dimen
             nr  = basisdata%nrows(it)
             nc  = basisdata%ncols(it)
@@ -302,6 +316,44 @@ contains
             deallocate(indi, indj, data_basis, basisdense)
         end do
     end subroutine getcsrc2dense
+
+    subroutine getcsr2csc(basisdata)
+        implicit none 
+        ! Input / output data
+        ! --------------------
+        type(basis_data) :: basisdata
+
+        ! Local data
+        ! ----------
+        integer :: i, nr, nc, nnz
+        integer, dimension(:), allocatable :: indi, indj, indiT, indjT
+        double precision, dimension(:, :), allocatable :: bw, bwT
+
+        if (allocated(basisdata%indiT)) deallocate(basisdata%indiT)
+        if (allocated(basisdata%indjT)) deallocate(basisdata%indjT)
+        if (allocated(basisdata%data_bwT)) deallocate(basisdata%data_bwT)
+        allocate(basisdata%indiT(basisdata%dimen, maxval(basisdata%ncols)+1), &
+                basisdata%indjT(basisdata%dimen, maxval(basisdata%nnzs)), &
+                basisdata%data_bwT(basisdata%dimen, maxval(basisdata%nnzs), 6))
+        basisdata%indiT = 0.d0; basisdata%indjT = 0.d0; basisdata%data_bwT = 0.d0 
+        do i = 1, basisdata%dimen
+            nr  = basisdata%nrows(i)
+            nc  = basisdata%ncols(i)
+            nnz = basisdata%nnzs(i)
+            allocate(indi(nr+1), indiT(nc+1), &
+                    indj(nnz), indjT(nnz), &
+                    bw(nnz, 6), bwT(nnz, 6))
+            indi = basisdata%indi(i, 1:nr+1)
+            indj = basisdata%indj(i, 1:nnz)
+            bw   = basisdata%data_bw(i, 1:nnz, :)
+            call multicsr2csc(6, nr, nc, nnz, bw, indj, indi, bwT, indjT, indiT)
+            basisdata%indiT(i, 1:nc+1) = indiT
+            basisdata%indjT(i, 1:nnz)  = indjT
+            basisdata%data_bwT(i, 1:nnz, :) = bwT
+            deallocate(indi, indj, indiT, indjT, bw, bwT)
+        end do
+
+    end subroutine getcsr2csc
 
     subroutine get_innernodes__(basisdata, dimen, table, ndof, ndod, dof, dod)
         implicit none 
