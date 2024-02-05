@@ -7,6 +7,9 @@ class boundaryCondition():
 		self._nbctrlpts = nbctrlpts
 		self._dim = np.count_nonzero(nbctrlpts>1)
 		assert self._dim != 1, 'Not possible'
+		self._thndof, self._thndod = nbctrlpts, 0
+		self._mchndof, self._mchndod = self._dim*nbctrlpts, 0
+		self._nbctrlpts_total = np.product(self._nbctrlpts)
 		self.clear_Dirichlet()
 		return
 	
@@ -73,6 +76,8 @@ class boundaryCondition():
 		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
 		self.thdod = np.sort(np.array(list(dod), dtype=int))
 		self.thdof = np.sort(np.array(list(dof), dtype=int))
+		self._thndof = np.size(self.thdof)
+		self._thndod = np.size(self.thdod)
 		return
 
 	def add_DirichletConstTemperature(self, table=None, temperature=0.0):
@@ -99,12 +104,15 @@ class boundaryCondition():
 
 	def __update_mchDirichletBound(self):
 		nbctrlpts_total = np.product(self._nbctrlpts)
-		self.mchdof    = [[] for i in range(self._dim)]
+		self.mchdof = [[] for i in range(self._dim)]
+		self._mchndof, self._mchndod = 0, 0
 		for i, dod in enumerate(self.mchdod):
 			dod = set(dod)
 			dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
 			self.mchdod[i] = np.sort(np.array(list(dod), dtype=int))
 			self.mchdof[i] = np.sort(np.array(list(dof), dtype=int))
+			self._mchndof += np.size(self.mchdof[i])
+			self._mchndod += np.size(self.mchdod[i])		
 		return
 
 	def add_DirichletDisplacement(self, table=None, displacement=0.0):

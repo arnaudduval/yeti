@@ -12,11 +12,11 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime3/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = False
-ISLINEAR = True
-FIG_CASE = 1
-c = 0.001
-degree, cuts = 8, 4
+dataExist = True
+ISLINEAR = False
+FIG_CASE = 2
+c = 0.0001
+degree, cuts = 4, 6
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -168,7 +168,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 if not dataExist:
 
 	if FIG_CASE == 1:
-		degree_list = np.array([1])
+		degree_list = np.array([1, 2, 3, 4])
 		cuts_list   = np.arange(1, 7)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' 
@@ -189,9 +189,8 @@ if not dataExist:
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature},)
 
-					print(L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1])
-					# np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
-					# np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
+					np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
+					np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
 
 	elif FIG_CASE == 2:
 
@@ -251,10 +250,10 @@ else:
 						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
 									markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 						
-						# slope = np.polyfit(np.log10(nbels[2:-1]),np.log10(errors[i, 2:-1]), 1)[0]
-						# slope = round(slope, 1)
-						# annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
-						# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
+						slope = np.polyfit(np.log10(nbels[2:]),np.log10(errors[i, 2:]), 1)[0]
+						slope = round(slope, 1)
+						annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
+										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
 					else: 
 						ax.loglog(nbels, errors[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
 								markersize=plotops['markersize'], linestyle=plotops['linestyle'])
@@ -268,7 +267,7 @@ else:
 
 			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
 			ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-			ax.set_ylim(top=1e1, bottom=1e-11)
+			ax.set_ylim(top=1e1, bottom=1e-7)
 			ax.legend(loc='lower left')
 			fig.tight_layout()
 			fig.savefig(figname)

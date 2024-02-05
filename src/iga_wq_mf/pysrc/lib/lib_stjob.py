@@ -24,7 +24,7 @@ class stproblem():
 		self._itersLin = solverArgs.get('iters_linear', 100)
 		self._thresLin = solverArgs.get('thres_linear', 1e-8)
 		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
-		self._itersNL = solverArgs.get('iters_nonlinear', 20)
+		self._itersNL = solverArgs.get('iters_nonlinear', 15)
 		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
 		self._safeguard = 1e-14
 		return
