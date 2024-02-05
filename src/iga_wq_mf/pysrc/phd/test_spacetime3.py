@@ -8,14 +8,14 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/spacetime2/'
+folder = os.path.dirname(full_path) + '/results/paper/spacetime3/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
 dataExist = False
-ISLINEAR = False
+ISLINEAR = True
 FIG_CASE = 1
-c = 0.05
+c = 0.001
 degree, cuts = 8, 4
 
 def conductivityProperty(args):
@@ -24,7 +24,7 @@ def conductivityProperty(args):
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
-			if ISLINEAR: Kprop[i, j, :] = 3*Kref[i, j]
+			if ISLINEAR: Kprop[i, j, :] = Kref[i, j]
 			else: Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 	return Kprop 
 
@@ -40,7 +40,7 @@ def conductivityDersProperty(args):
 
 def capacityProperty(args):
 	temperature = args['temperature']
-	if ISLINEAR: Cprop = 2*np.ones(len(temperature))
+	if ISLINEAR: Cprop = np.ones(len(temperature))
 	else: Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	return Cprop
 
@@ -52,7 +52,7 @@ def capacityDersProperty(args):
 
 def exactTemperature(qpPhy):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
-	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*x*(x-6)*np.sin(np.pi*t)
+	u = c*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*t)
 	return u
 
 def powerDensity(args:dict):
@@ -62,66 +62,73 @@ def powerDensity(args:dict):
 	if ISLINEAR:
 		for i in range(nc_tm):
 			t = timespan[i]
-			f[:, i] = (12*c*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
-			- 48*c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-			- 6*c*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-			- 282*c*x*np.sin(np.pi*t)*(x - 6) 
-			- 48*c*x*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-			+ 12*c*x*np.sin(np.pi*t)*(5*x + 6*y - 45) 
-			+ 2*c*x*np.pi*np.cos(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+			f[:, i] = (
+				3*c*np.pi**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25) 
+				- 16*c*y**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+				- 6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+				- 6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+				- 8*c*x*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+				- c*np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*t)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25) 
+				- 4*c*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+				- 2*c*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+				- 4*c*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+				- 2*c*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 25) 
+				- 2*c*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+				- 8*c*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+				- 2*c*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+				- 8*c*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 25) 
+				- 8*c*x**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+				+ c*np.pi*np.cos(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)
 			)
 	else: 
 		for i in range(nc_tm):
 			t = timespan[i]
-			u = c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-			f[:, i] = (
-				4*np.sign(u)*np.exp(-np.abs(u))*(
-					6*c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					+ 6*c*x*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45)
-					)**2
-				#
-				- (2*np.exp(-np.abs(u)) + 1)*(
-					10*c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					- 10*c*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
-					+ 2*c*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-					- 50*c*x*np.sin(np.pi*t)*(x - 6) + 10*c*x*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-					- 10*c*x*np.sin(np.pi*t)*(5*x + 6*y - 45)
-					) 
-				#
-				- 2*(np.exp(-np.abs(u)) + 1/2)*(
-					6*c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					+ 6*c*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
-					+ 6*c*x*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-					+ 6*c*x*np.sin(np.pi*t)*(5*x + 6*y - 45)
-					) 
-				#	
-				+ 2*np.sign(u)*np.exp(-np.abs(u))*(
-					c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-					+ 5*c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					- 5*c*x*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
-					+ c*x*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-					)**2 
-				#
-				+ 2*np.sign(u)*np.exp(-np.abs(u))*(
-					6*c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					+ 6*c*x*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45)
-					)*(
-					c*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-					+ 5*c*x*np.sin(np.pi*t)*(x - 6)*(6*y - 5*x + 45) 
-					- 5*c*x*np.sin(np.pi*t)*(x - 6)*(5*x + 6*y - 45) 
-					+ c*x*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-					) 
-				#
-				- 72*c*x*np.sin(np.pi*t)*(4*np.exp(-np.abs(u)) + 2)*(x - 6) 
-				#
-				+ c*x*np.pi*np.cos(np.pi*t)*(np.exp(-np.abs(u)) + 1)*(x - 6)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+			u = c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)
+			f[:, i] = (2*np.sign(u)*np.exp(-abs(u))*(
+							2*c*x*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*x*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							+ c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25))**2 
+						- (4*np.exp(-abs(u)) + 2)*(
+							8*c*y**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+							+ 2*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							+ 4*c*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+							+ 4*c*y*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 25) 
+							- c*np.pi**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)) 
+						- 2*(np.exp(-abs(u)) + 1/2)*(
+							8*c*x*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+							+ c*np.pi**2*np.cos(np.pi*x)*np.cos(np.pi*y)*np.sin(np.pi*t)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25) 
+							+ 2*c*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1) 
+							+ 2*c*x*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 25) 
+							+ 2*c*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*y*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 25)) 
+						- (2*np.exp(-abs(u)) + 1)*(
+							8*c*x**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y) 
+							+ 2*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							+ 4*c*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 4*c*x*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							- c*np.pi**2*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)) 
+						+ 4*np.sign(u)*np.exp(-abs(u))*(
+							2*c*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							+ c*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25))**2 
+						+ 2*np.sign(u)*np.exp(-abs(u))*(
+							2*c*x*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+							+ 2*c*x*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+							+ c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*np.sin(np.pi*y)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25))*(
+								2*c*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 1) 
+								+ 2*c*y*np.sin(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(x**2 + y**2 - 25) 
+								+ c*np.pi*np.cos(np.pi*y)*np.sin(np.pi*t)*np.sin(np.pi*x)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)) 
+						+ c*np.pi*np.cos(np.pi*t)*np.sin(np.pi*x)*np.sin(np.pi*y)*(np.exp(-abs(u)) + 1)*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)
 			)
 	return np.ravel(f, order='F')
 
 def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# Create model 
-	geoArgs = {'name': 'tp', 'degree': degree*np.ones(3, dtype=int), 
-				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+	geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
+				'extra':{'Rin':1, 'Rex':5}}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -154,8 +161,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	problem._thresLin = 1e-10; problem._itersNL = 30
-	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
+	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 

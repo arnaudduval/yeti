@@ -47,10 +47,10 @@ for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 			enablePrint()
 
 			# Solve elastic problem
-			heatprob = heatproblem(heatmaterial, modelPhy, boundary)
-			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary); mecaprob._thresLin=1e-12
+			heatprob = heatproblem(heatmaterial, modelPhy, boundary); heatprob._itersLin = 500
+			mecaprob = mechaproblem(elasticmaterial, modelPhy, boundary); mecaprob._itersLin = 500
 
-			eigenval = heatprob.compute_eigs()[0]
-			# eigenval = mecaprob.compute_eigs()[0]
+			# eigenval = heatprob.compute_eigs()[0]
+			eigenval = mecaprob.compute_eigs()[0]
 			print('eig:%.3e, degree:%d, nbel:%d' %(eigenval, degree, 2**cuts))
 	print('***')
