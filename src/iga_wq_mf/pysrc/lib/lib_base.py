@@ -354,7 +354,7 @@ class solver():
 		self._thresLin = 1e-12
 		return
 	
-	def eigs(self, N, Afun, Bfun=None, neigvals=100, which='SM', allowcomplex=False):
+	def eigs(self, N, Afun, Bfun=None, neigvals=100, sigma=0, allowcomplex=False):
 		""" 
 		Computes the eigenvalues of the linear system A x = lambda x or A x = lambda B x 
 		by an iterative solver (with a matrix free approach).
@@ -362,8 +362,10 @@ class solver():
 		"""
 		ALinOp = sp.linalg.LinearOperator((N, N), matvec=Afun)
 		if Bfun is not None: BLinOp = sp.linalg.LinearOperator((N, N), matvec=Bfun)
-		if Bfun is None: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, which=which)
-		else: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, B=BLinOp, which=which)
+		# if Bfun is None: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, which=which, maxiter=2000)
+		# else: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, M=BLinOp, which=which, maxiter=2000)
+		if Bfun is None: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, sigma=sigma, maxiter=2000)
+		else: eigvals, eigvecs = sp.linalg.eigs(A=ALinOp, k=neigvals, M=BLinOp, sigma=sigma, maxiter=2000)
 		if not allowcomplex: eigvals = np.absolute(eigvals)
 		return eigvals, eigvecs
 	
