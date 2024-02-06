@@ -8,8 +8,10 @@ module matrixfreeheat
         ! Material properties
         double precision :: Cmean
         double precision, dimension(:), allocatable :: Kmean
-        double precision, dimension(:), pointer :: Hprop=>null(), Cprop=>null(), detJ=>null()
-        double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
+        double precision, dimension(:), pointer :: detJ=>null()
+        double precision, dimension(:, :, :), pointer :: invJ=>null()
+        double precision, dimension(:), allocatable :: Cprop, Hprop
+        double precision, dimension(:, :, :), allocatable :: Kprop
     end type thermomat
 
 contains
@@ -32,6 +34,7 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
+        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -39,8 +42,24 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(mat%dimen, mat%dimen, nnz)
-        mat%Kprop => prop
-        mat%ncols_sp = nnz
+
+        ! Local data 
+        ! ----------
+        integer :: i, nb_tasks
+
+        if ((.not.associated(mat%invJ)).or.(.not.associated(mat%detJ))) stop 'Define geometry'
+        if (nnz.ne.mat%ncols_sp) stop 'Size problem'
+        allocate(mat%Kprop(mat%dimen, mat%dimen, nnz))
+
+        !$OMP PARALLEL PRIVATE(coefs)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, mat%ncols_sp/nb_tasks) 
+        do i = 1, mat%ncols_sp
+            mat%Kprop(:, :, i) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, i), &
+                    transpose(mat%invJ(:, :, i))))*mat%detJ(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -51,8 +70,11 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        mat%Cprop => prop
-        mat%ncols_sp = nnz
+
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
+        if (nnz.ne.mat%ncols_sp) stop 'Size problem'
+        allocate(mat%Cprop(nnz))
+        mat%Cprop = prop*mat%detJ
     end subroutine setup_capacityprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -63,8 +85,11 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        mat%Hprop => prop
-        mat%ncols_sp = nnz
+
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
+        if (nnz.ne.mat%ncols_sp) stop 'Size problem'
+        allocate(mat%Hprop(nnz))
+        mat%Hprop = prop*mat%detJ
     end subroutine setup_thmchcoupledprop
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
@@ -86,18 +111,15 @@ contains
         integer, allocatable, dimension(:) :: nc_list_t
         logical, allocatable, dimension(:) :: update
         double precision, allocatable, dimension(:, :) :: CC
-        double precision :: tensor(mat%dimen, mat%dimen)
 
-        if (.not.associated(mat%Cprop)) then
+        if (.not.allocated(mat%Cprop)) then
             allocate(CC(mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
             update = .true.; nc_list_t = nc_list
             call initialize_operator(oper, mat%dimen, nc_list_t, update)
             
             do gp = 1, mat%ncols_sp
-                tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
-                        transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                 do i = 1, mat%dimen
-                    CC(i, gp) = tensor(i, i)
+                    CC(i, gp) = mat%Kprop(i, i, gp)
                 end do
             end do
 
@@ -115,12 +137,10 @@ contains
             call initialize_operator(oper, mat%dimen+1, nc_list_t, update)
 
             do gp = 1, mat%ncols_sp
-                tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
-                        transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
                 do i = 1, mat%dimen
-                    CC(i, gp) = tensor(i, i)
+                    CC(i, gp) = mat%Kprop(i, i, gp)
                 end do
-                CC(mat%dimen+1, gp) = mat%Cprop(gp)*mat%detJ(gp)
+                CC(mat%dimen+1, gp) = mat%Cprop(gp)
             end do
 
             if (mat%dimen.eq.2) then
@@ -147,7 +167,6 @@ contains
         integer :: i, c, gp, sample(NP**mat%dimen), indlist(mat%dimen, NP)
         double precision, dimension(:, :), allocatable :: CC_K
         double precision, dimension(:), allocatable :: CC_M
-        double precision :: tensor(mat%dimen, mat%dimen)
         
         ! Select sample
         do i = 1, mat%dimen 
@@ -159,10 +178,8 @@ contains
         allocate(CC_K(mat%dimen, size(sample)))
         do c = 1, size(sample)
             gp = sample(c)
-            tensor = matmul(mat%invJ(:, :, gp), matmul(mat%Kprop(:, :, gp), &
-                            transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
             do i = 1, mat%dimen
-                CC_K(i, c) = tensor(i, i)
+                CC_K(i, c) = mat%Kprop(i, i, gp)
             end do
         end do
         do i = 1, mat%dimen
@@ -173,11 +190,11 @@ contains
             end if
         end do
 
-        if (associated(mat%Cprop)) then
+        if (allocated(mat%Cprop)) then
             allocate(CC_M(size(sample)))
             do c = 1, size(sample)
                 gp = sample(c)
-                CC_M(c) = mat%Cprop(gp)*mat%detJ(gp)
+                CC_M(c) = mat%Cprop(gp)
             end do
             if (mat%dimen.eq.2) then
                 call trapezoidal_rule_2d(NP, NP, CC_M, mat%Cmean)
@@ -251,7 +268,7 @@ contains
                                 tmp_in, tmp)
         end if
 
-        tmp = tmp*mat%Cprop*mat%detJ
+        tmp = tmp*mat%Cprop
 
         if (basisdata%dimen.eq.2) then
             call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
@@ -285,9 +302,8 @@ contains
 
         ! Local data 
         ! -----------
-        double precision :: tmp_0, tmp_1, tmp_2, coefs
-        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(nr_total), &
-                    coefs(basisdata%dimen, basisdata%dimen, basisdata%nc_total)
+        double precision :: tmp_0, tmp_1, tmp_2
+        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(nr_total)
         integer :: i, j, alpha, beta, zeta
         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
@@ -320,11 +336,6 @@ contains
             data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
-        do i = 1, basisdata%nc_total
-            coefs(:, :, i) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, i), &
-                                transpose(mat%invJ(:, :, i))))*mat%detJ(i)
-        end do
-
         array_out = 0.d0
         do j = 1, basisdata%dimen
             beta = 1; beta(j) = 2
@@ -343,7 +354,7 @@ contains
             do i = 1, basisdata%dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                tmp_1 = tmp_0*coefs(i, j, :)
+                tmp_1 = tmp_0*mat%Kprop(i, j, :)
 
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
@@ -360,7 +371,7 @@ contains
                 array_out = array_out + tmp_2
             end do
         end do
-        
+
     end subroutine mf_gradu_gradv
 
     subroutine mf_uv_gradugradv(mat, basisdata, nr_total, array_in, array_out)
@@ -457,7 +468,7 @@ contains
                                     array_in(i, :), t1)  
             end if
 
-            t1 = t1*mat%Hprop*mat%detJ
+            t1 = t1*mat%Hprop
             do k = 1, basisdata%dimen
                 alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
                 t2 = t1*mat%invJ(k, i, :)

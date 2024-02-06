@@ -23,8 +23,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
 
     ! Local data
     ! ----------
-    double precision, allocatable, dimension(:, :) :: Rt
-    double precision, allocatable, dimension(:, :) :: Xt
+    double precision, allocatable, dimension(:, :) :: Rt, Xt
     integer :: ju, jv, jw, jt, nb_tasks
 
     R = 0.d0
@@ -33,7 +32,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v
@@ -58,7 +57,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do ju = 1, nc_u
@@ -83,7 +82,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_v/nb_tasks) 
         do jt = 1, nc_t
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -108,7 +107,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, size(X)/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
@@ -155,98 +154,110 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
 
     ! Local data
     ! ----------
-    integer :: i, ju, jv, jw, jt, nb_tasks
-    double precision :: Rt(nr)
-    double precision, allocatable, dimension(:) :: Xt
+    integer :: ju, jv, jw, jt, nb_tasks
+    double precision :: Rt(nr, nc_u)
+    double precision, allocatable, dimension(:, :) :: Xt
 
     if (mode.eq.1) then 
-        
-        allocate(Xt(nc_u))
+
+        allocate(Xt(nc_u, nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_v/nb_tasks) 
+        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     do ju = 1, nc_u
-                        Xt(ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
-                    call spmat_dot_dvec(nr, nc_u, nnz, indi, indj, dat, Xt, Rt)
-                    do i = 1, nr
-                        R(i+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(i)
+                end do
+                call spmat_dot_dmat(nr, nc_u, nc_v, nnz, indi, indj, dat, Xt, Rt)
+                do jv = 1, nc_v
+                    do ju = 1, nr
+                        R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
+        deallocate(Xt)
 
     else if (mode.eq.2) then 
 
-        allocate(Xt(nc_v))
+        allocate(Xt(nc_v, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_w*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do ju = 1, nc_u
                     do jv = 1, nc_v
-                        Xt(jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
-                    call spmat_dot_dvec(nr, nc_v, nnz, indi, indj, dat, Xt, Rt)
-                    do i = 1, nr
-                        R(ju+(i-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(i)
+                end do
+                call spmat_dot_dmat(nr, nc_v, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                do ju = 1, nc_u
+                    do jv = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
+        deallocate(Xt)
 
     else if (mode.eq.3) then 
 
-        allocate(Xt(nc_w))
+        allocate(Xt(nc_w, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_t*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_v/nb_tasks) 
         do jt = 1, nc_t
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do jw = 1, nc_w
-                        Xt(jw) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
-                    call spmat_dot_dvec(nr, nc_w, nnz, indi, indj, dat, Xt, Rt)
-                    do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(i-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(i)
+                end do
+                call spmat_dot_dmat(nr, nc_w, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                do ju = 1, nc_u
+                    do jw = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
+        deallocate(Xt)
 
     else if (mode.eq.4) then 
-
-        allocate(Xt(nc_t))
+        
+        allocate(Xt(nc_t, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(2) SCHEDULE(DYNAMIC, nc_w*nc_v*nc_u/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
         do jw = 1, nc_w
             do jv = 1, nc_v
                 do ju = 1, nc_u
                     do jt = 1, nc_t
-                        Xt(jt) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                        Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
-                    call spmat_dot_dvec(nr, nc_t, nnz, indi, indj, dat, Xt, Rt)
-                    do i = 1, nr
-                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(i-1)*nc_u*nc_v*nc_w) = Rt(i)
+                end do
+                call spmat_dot_dmat(nr, nc_t, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                do ju = 1, nc_u
+                    do jt = 1, nr
+                        R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
                     end do
                 end do
             end do
         end do
         !$OMP END DO NOWAIT
         !$OMP END PARALLEL
-        
+        deallocate(Xt)
+
     end if
 
 end subroutine tensor_n_mode_product_spM

@@ -11,9 +11,9 @@ folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist     = True
+dataExist     = False
 # withReference = True
-degree_list   = range(2, 3)
+degree_list   = range(5, 6)
 cuts          = 6
 
 if not dataExist:
@@ -29,56 +29,56 @@ if not dataExist:
 
 	for i, degree in enumerate(degree_list):
 		
-		blockPrint()
-
-		# Create model
 		geoArgs = {'name': 'CB', 'degree': degree*np.ones(3, dtype=int), 
-			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
-		quadArgs  = {'quadrule': 'iga', 'type': 'leg'} 
-
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
+		}
+		blockPrint()			
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs=quadArgs)
+		modelPhy = part(modelIGA, quadArgs={'quadrule':'iga', 'type':'leg'})
 
-		# Add material 
-		material = heatmat()
-		material.addConductivity(np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]]), isIsotropic=True) 
-		material.addCapacity(1.0, isIsotropic=True) 
-
-		# Block boundaries
+		heatmaterial = heatmat()
+		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
+		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=3)
+	
+		# Set Dirichlet boundaries
 		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletConstTemperature(table=np.array([[1, 1], [1, 1], [1, 1]]))
-		problem = heatproblem(material, modelPhy, boundary)
+		boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=int))
+		enablePrint()
 
-		nrows = modelPhy.nbctrlpts[0] - 2
-		V = np.random.random(nrows**3)
+		# Solve elastic problem
+		problem = heatproblem(heatmaterial, modelPhy, boundary)
 
+		v_in = np.random.random(boundary._nbctrlpts_total)
 		# # --------------
 		# # Compute matrix !!! to add
 		# # --------------
 		# dof = problem.boundary.thdof 
 		# CC  = problem.eval_capacity_matrix()[:, dof][dof, :]
 		
-		# start = time.process_time()
-		# R = CC @ V
-		# stop = time.process_time()
+		# start = time.time()
+		# R = CC @ v_in
+		# stop = time.time()
 		# timePython[i, 1] = stop - start
 		# np.savetxt(folder_data+'matvec_Python_'+'.dat', timePython)
 
 		# ------------------
 		# Compute MF product
 		# ------------------
-		start = time.process_time()
-		problem.compute_mfCapacity(V, args=problem.part.qpPhy)
-		stop = time.process_time()
-		timeMF_Mass_matrix[i, 1] = stop - start
+		print('******')
+		start = time.time()
+		problem.compute_mfCapacity(v_in)
+		stop = time.time()
+		print('Time Capacity:%.2e' %(stop-start))
+		# timeMF_Mass_matrix[i, 1] = stop - start
 		# np.savetxt(folder_data+'matvec_MF_Mass_'+'.dat', timeMF_Mass_matrix)
 
-		start = time.process_time()
-		problem.compute_mfConductivity(V, args=problem.part.qpPhy)
-		stop = time.process_time()
-		timeMF_Stiff_matrix[i, 1] = stop - start
-		# np.savetxt(folder_data+'matvec_MF_Stiff_'+'.dat', timeMF_Stiff_matrix)
+		start = time.time()
+		problem.compute_mfConductivity(v_in)
+		stop = time.time()
+		print('Time Conductivity:%.2e' %(stop-start))
+		# timeMF_Stiff_matrix[i, 1] = stop - start
+		# # np.savetxt(folder_data+'matvec_MF_Stiff_'+'.dat', timeMF_Stiff_matrix)
 
 		enablePrint()
 

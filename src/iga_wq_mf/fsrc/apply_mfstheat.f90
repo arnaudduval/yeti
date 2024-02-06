@@ -6,9 +6,11 @@ module matrixfreestheat
         ! Material properties
         double precision :: Cmean
         double precision, dimension(:), allocatable :: Kmean
-        double precision, dimension(:), pointer :: Cprop=>null(), Cdersprop=>null(), detJ=>null(), detG=>null()
-        double precision, dimension(:, :), pointer :: Kdersprop=>null()
-        double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
+        double precision, dimension(:), pointer ::detJ=>null(), detG=>null()
+        double precision, dimension(:, :, :), pointer :: invJ=>null()
+        double precision, dimension(:), allocatable ::  Cprop, Cdersprop
+        double precision, dimension(:, :), allocatable :: Kdersprop
+        double precision, dimension(:, :, :), allocatable :: Kprop
     end type stthermomat
 
 contains
@@ -47,8 +49,21 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(mat%dimen_sp, mat%dimen_sp, nnz)
 
-        mat%Kprop => prop
+        ! Local data 
+        ! ----------
+        integer :: i, j, k
+
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
+        allocate(mat%Kprop(mat%dimen_sp, mat%dimen_sp, nnz))
+
+        do j = 1, mat%ncols_tm
+            do i = 1, mat%ncols_sp
+                k = i + (j-1)*mat%ncols_sp
+                mat%Kprop(:, :, k) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, k), &
+                                    transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
+            end do
+        end do
     end subroutine setup_conductivityprop
 
     subroutine setup_conductivityDersprop(mat, nnz, prop)
@@ -60,8 +75,20 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(mat%dimen_sp, nnz)
 
-        mat%Kdersprop => prop
+        ! Local data 
+        ! ----------
+        integer :: i, j, k
+
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
+        allocate(mat%Kdersprop(mat%dimen_sp, nnz))
+
+        do j = 1, mat%ncols_tm
+            do i = 1, mat%ncols_sp
+                k = i + (j-1)*mat%ncols_sp
+                mat%Kdersprop(:, k) = matmul(mat%invJ(:, :, i), prop(:, k))*mat%detJ(i)*mat%detG(j)
+            end do
+        end do
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -74,8 +101,20 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
 
-        mat%Cprop => prop
+        ! Local data 
+        ! ----------
+        integer :: i, j, k
+
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
+        allocate(mat%Cprop(nnz))
+
+        do j = 1, mat%ncols_tm
+            do i = 1, mat%ncols_sp
+                k = i + (j-1)*mat%ncols_sp
+                mat%Cprop(k) = prop(k)*mat%detJ(i)
+            end do
+        end do
 
     end subroutine setup_capacityprop
 
@@ -89,8 +128,19 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
 
-        mat%Cdersprop => prop
+        ! Local data 
+        ! ----------
+        integer :: i, j, k
+
+        if ((.not.associated(mat%detJ)).or.(.not.associated(mat%detG))) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
+        allocate(mat%Cdersprop(nnz))
+        do j = 1, mat%ncols_tm
+            do i = 1, mat%ncols_sp
+                k = i + (j-1)*mat%ncols_sp
+                mat%Cdersprop(k) = prop(k)*mat%detJ(i)*mat%detG(j)
+            end do
+        end do
 
     end subroutine setup_capacityDersprop
 
@@ -113,7 +163,6 @@ contains
         integer :: i, j, k, l
         logical, allocatable, dimension(:) :: update
         double precision, allocatable, dimension(:, :) :: CC
-        double precision :: tensor(mat%dimen_sp, mat%dimen_sp)
 
         allocate(CC(mat%dimen_sp+1, mat%ncols_total), update(mat%dimen_sp+1)); update = .true.
         call initialize_operator(oper, size(nc_list), nc_list, update)
@@ -121,12 +170,10 @@ contains
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
-                tensor = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, k), &
-                                    transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
                 do l = 1, mat%dimen_sp
-                    CC(l, k) = tensor(l, l)
+                    CC(l, k) = mat%Kprop(l, l, k)
                 end do
-                CC(mat%dimen_sp+1, k) = mat%Cprop(k)*mat%detJ(i)
+                CC(mat%dimen_sp+1, k) = mat%Cprop(k)
             end do
         end do
 
@@ -155,7 +202,6 @@ contains
         integer :: i, c_sp, c_tm, cp, gsp, gtm, gp, indlist_sp(mat%dimen_sp, NP), sample_sp(NP**mat%dimen_sp), sample_tm(NP)
         double precision, dimension(:, :), allocatable :: CC_K
         double precision, dimension(:), allocatable :: CC_M
-        double precision :: tensor(mat%dimen_sp, mat%dimen_sp)
         
         do i = 1, mat%dimen_sp
             indlist_sp(i, :) = (/1, int((nclist(i) + 1)/2), nclist(i)/)
@@ -170,10 +216,8 @@ contains
                 gsp = sample_sp(c_sp)
                 gp  = gsp + (gtm - 1)*mat%ncols_sp
                 cp  = c_sp + (c_tm - 1)*size(sample_sp)
-                tensor = matmul(mat%invJ(:, :, gsp), matmul(mat%Kprop(:, :, gp), &
-                                transpose(mat%invJ(:, :, gsp))))*mat%detJ(gsp)*mat%detG(gtm)
                 do i = 1, mat%dimen_sp
-                    CC_K(i, cp) = tensor(i, i)
+                    CC_K(i, cp) = mat%Kprop(i, i, gp)
                 end do
             end do
         end do
@@ -193,7 +237,7 @@ contains
                 gsp = sample_sp(c_sp)
                 gp  = gsp + (gtm - 1)*mat%ncols_sp
                 cp  = c_sp + (c_tm - 1)*size(sample_sp)
-                CC_M(cp) = mat%Cprop(gp)*mat%detJ(gsp)
+                CC_M(cp) = mat%Cprop(gp)
             end do
         end do
 
@@ -221,7 +265,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm, i, j, k
+        integer :: pos_tm
         double precision :: tmp
         dimension :: tmp(basisdata%nc_total)
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
@@ -275,12 +319,7 @@ contains
                                 array_in, tmp)
         end if
 
-        do j = 1, mat%ncols_tm
-            do i = 1, mat%ncols_sp
-                k = i + (j-1)*mat%ncols_sp
-                tmp(k) = tmp(k)*mat%Cdersprop(k)*mat%detJ(i)*mat%detG(j)
-            end do
-        end do
+        tmp = tmp*mat%Cdersprop
 
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -315,7 +354,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm, i, j, k
+        integer :: pos_tm
         double precision :: tmp
         dimension :: tmp(basisdata%nc_total)        
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
@@ -369,12 +408,7 @@ contains
                                 array_in, tmp)
         end if
 
-        do j = 1, mat%ncols_tm
-            do i = 1, mat%ncols_sp
-                k = i + (j-1)*mat%ncols_sp
-                tmp(k) = tmp(k)*mat%Cprop(k)*mat%detJ(i)
-            end do
-        end do
+        tmp = tmp*mat%Cprop
 
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -409,11 +443,10 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, i, j, k, alpha, zeta 
+        integer :: pos_tm, i, alpha, zeta 
         dimension :: alpha(basisdata%dimen), zeta(basisdata%dimen)
-        double precision :: tmp_0, tmp_1, tmp_2, coefs
-        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
-                    tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%nc_total)
+        double precision :: tmp_0, tmp_1, tmp_2
+        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(basisdata%nr_total)
 
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
         integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
@@ -451,13 +484,6 @@ contains
             data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
-        do j = 1, mat%ncols_tm
-            do i = 1, mat%ncols_sp
-                k = i + (j-1)*mat%ncols_sp
-                coefs(:, k) = matmul(mat%invJ(:, :, i), mat%Kdersprop(:, k))*mat%detJ(i)*mat%detG(j)
-            end do
-        end do
-
         array_out = 0.d0
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
@@ -477,7 +503,7 @@ contains
         do i = 1, mat%dimen_sp
             alpha = 1; alpha(i) = 2
             zeta  = 1 + (alpha - 1)*2
-            tmp_1 = tmp_0*coefs(i, :)
+            tmp_1 = tmp_0*mat%Kdersprop(i, :)
             if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -513,11 +539,10 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, i, j, k, alpha, beta, zeta
+        integer :: pos_tm, i, j, alpha, beta, zeta
         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
-        double precision :: tmp_0, tmp_1, tmp_2, coefs
-        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), &
-                    tmp_2(basisdata%nr_total), coefs(basisdata%dimen, basisdata%dimen, basisdata%nc_total)
+        double precision :: tmp_0, tmp_1, tmp_2
+        dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(basisdata%nr_total)
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
         integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
         double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
@@ -554,14 +579,6 @@ contains
             data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
 
-        do j = 1, mat%ncols_tm
-            do i = 1, mat%ncols_sp
-                k = i + (j-1)*mat%ncols_sp
-                coefs(:, :, k) = matmul(mat%invJ(:, :, i), matmul(mat%Kprop(:, :, k), &
-                                    transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
-            end do
-        end do
-
         array_out = 0.d0
         do j = 1, mat%dimen_sp
             beta = 1; beta(j) = 2
@@ -583,7 +600,7 @@ contains
             do i = 1, mat%dimen_sp
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                tmp_1 = tmp_0*coefs(i, j, :)
+                tmp_1 = tmp_0*mat%Kprop(i, j, :)
                 if (basisdata%dimen.eq.3) then
                     call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -972,12 +989,6 @@ end module stheatsolver
 !                                 array_in, tmp)
 !         end if
 
-!         do j = 1, mat%ncols_tm
-!             do i = 1, mat%ncols_sp
-!                 k = i + (j-1)*mat%ncols_sp
-!                 tmp(k) = tmp(k)*mat%Cdersprop(k)*mat%detJ(i)*mat%detG(j)
-!             end do
-!         end do
 
 !         if (basisdata%dimen.eq.3) then
 !             call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
