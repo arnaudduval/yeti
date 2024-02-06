@@ -41,6 +41,7 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
+        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -51,12 +52,15 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k
+        integer :: i, j, k, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Kprop(mat%dimen_sp, mat%dimen_sp, nnz))
 
+        !$OMP PARALLEL PRIVATE(k)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
@@ -64,9 +68,12 @@ contains
                                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
     subroutine setup_conductivityDersprop(mat, nnz, prop)
+        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -77,18 +84,23 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k
+        integer :: i, j, k, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Kdersprop(mat%dimen_sp, nnz))
 
+        !$OMP PARALLEL PRIVATE(k)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Kdersprop(:, k) = matmul(mat%invJ(:, :, i), prop(:, k))*mat%detJ(i)*mat%detG(j)
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -108,7 +120,7 @@ contains
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Cprop(nnz))
-
+        
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp

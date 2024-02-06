@@ -51,7 +51,7 @@ contains
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Kprop(mat%dimen, mat%dimen, nnz))
 
-        !$OMP PARALLEL PRIVATE(coefs)
+        !$OMP PARALLEL
         nb_tasks = omp_get_num_threads()
         !$OMP DO SCHEDULE(STATIC, mat%ncols_sp/nb_tasks) 
         do i = 1, mat%ncols_sp
