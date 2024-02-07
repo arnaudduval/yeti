@@ -155,12 +155,11 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
     ! Local data
     ! ----------
     integer :: ju, jv, jw, jt, nb_tasks
-    double precision :: Rt(nr, nc_u)
-    double precision, allocatable, dimension(:, :) :: Xt
+    double precision, allocatable, dimension(:, :) :: Xt, Rt
 
     if (mode.eq.1) then 
 
-        allocate(Xt(nc_u, nc_v))
+        allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
@@ -171,7 +170,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
                         Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-                call spmat_dot_dmat(nr, nc_u, nc_v, nnz, indi, indj, dat, Xt, Rt)
+                call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_u, nc_v, Xt, Rt)
                 do jv = 1, nc_v
                     do ju = 1, nr
                         R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
@@ -185,7 +184,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
 
     else if (mode.eq.2) then 
 
-        allocate(Xt(nc_v, nc_u))
+        allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
@@ -196,7 +195,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
                         Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-                call spmat_dot_dmat(nr, nc_v, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_v, nc_u, Xt, Rt)
                 do ju = 1, nc_u
                     do jv = 1, nr
                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
@@ -210,7 +209,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
 
     else if (mode.eq.3) then 
 
-        allocate(Xt(nc_w, nc_u))
+        allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_v/nb_tasks) 
@@ -221,7 +220,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
                         Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-                call spmat_dot_dmat(nr, nc_w, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_w, nc_u, Xt, Rt)
                 do ju = 1, nc_u
                     do jw = 1, nr
                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
@@ -235,7 +234,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
 
     else if (mode.eq.4) then 
         
-        allocate(Xt(nc_t, nc_u))
+        allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
@@ -246,7 +245,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
                         Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
                     end do
                 end do
-                call spmat_dot_dmat(nr, nc_t, nc_u, nnz, indi, indj, dat, Xt, Rt)
+                call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_t, nc_u, Xt, Rt)
                 do ju = 1, nc_u
                     do jt = 1, nr
                         R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)

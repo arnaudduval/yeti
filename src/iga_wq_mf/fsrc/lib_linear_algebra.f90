@@ -610,21 +610,21 @@ subroutine spmat_dot_dvec(nr, nc, nnz, indi, indj, A, array_in, array_out)
 
 end subroutine spmat_dot_dvec
 
-subroutine spmat_dot_dmat(nr, ncA, nc, nnz, indi, indj, A, matrix_in, matrix_out)
+subroutine spmat_dot_dmat(nr, nnz, indi, indj, A, nr_in, nc_in, matrix_in, matrix_out)
     !! Computes the dot product of sparse matrix with dense vector. It returns a dense vector
     !! Sparse matrix in CSR format
 
     implicit none
     ! Input / output data 
     ! -------------------
-    integer, intent(in) :: nr, ncA, nc, nnz 
+    integer, intent(in) :: nr, nr_in, nc_in, nnz 
     integer, intent(in) :: indi, indj
     dimension :: indi(nr+1), indj(nnz)
     double precision, intent(in) :: A, matrix_in
-    dimension :: A(nnz), matrix_in(ncA, nc)
+    dimension :: A(nnz), matrix_in(nr_in, nc_in)
 
     double precision, intent(out) :: matrix_out
-    dimension :: matrix_out(nr, nc)
+    dimension :: matrix_out(nr, nc_in)
 
     ! Local data
     ! ----------
