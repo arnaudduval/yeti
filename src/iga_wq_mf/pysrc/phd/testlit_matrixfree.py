@@ -13,7 +13,7 @@ folder2find = os.path.dirname(full_path) + '/data/'
 # Set global variables
 dataExist     = False
 # withReference = True
-degree_list   = range(5, 6)
+degree_list   = range(1, 6)
 cuts          = 6
 
 if not dataExist:

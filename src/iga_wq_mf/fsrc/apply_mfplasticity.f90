@@ -4,15 +4,17 @@ module matrixfreeplasticity
     type :: mecamat
     
         integer :: dimen, nvoigt, ncols_sp
-        logical :: isLumped = .false., isElastic = .true.
+        logical :: isLumped = .false., isElastic = .true., withNN = .false., withBB = .false.
         double precision :: scalars(2) = (/1.d0, 1.d0/)
         ! Material properties
-        double precision, dimension(:), pointer :: detJ=>null(), Mprop=>null(), Hprop=>null()
-        double precision, dimension(:, :), pointer :: CepArgs=>null(), NN=>null(), BB=>null()
-        double precision, dimension(:, :, :), pointer :: invJ=>null()
-        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, JJbb
         double precision, dimension(:, :), allocatable :: Smean
         double precision, dimension(:), allocatable :: Mmean
+        double precision, dimension(:), pointer :: detJ=>null()
+        double precision, dimension(:, :, :), pointer :: invJ=>null()
+        double precision, dimension(:), allocatable :: Mprop, Hprop
+        double precision, dimension(:, :), allocatable :: CepArgs
+        double precision, dimension(:, :), pointer :: NN=>null(), BB=>null()
+        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, JJbb
     
     end type mecamat
 
@@ -50,8 +52,10 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
 
-        mat%Mprop => prop
-        mat%ncols_sp = nnz
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
+        if (nnz.ne.mat%ncols_sp) stop 'Size problem'
+        allocate(mat%Mprop(nnz))
+        mat%Mprop = prop*mat%detJ
     end subroutine setup_massprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -63,8 +67,10 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
 
-        mat%Hprop => prop
-        mat%ncols_sp = nnz
+        if (.not.associated(mat%detJ)) stop 'Define geometry'
+        if (nnz.ne.mat%ncols_sp) stop 'Size problem'
+        allocate(mat%Hprop(nnz))
+        mat%Hprop = prop*mat%detJ
     end subroutine setup_thmchcoupledprop
 
     subroutine setup_mechanicalArguments(mat, nbrows, mechArgs)
@@ -84,23 +90,38 @@ contains
 
         if (nbrows.gt.2) mat%isElastic = .false.
         if (mat%isElastic) then
-            mat%CepArgs => mechArgs(:2, :)
+            if (nbrows.lt.2) stop 'Size problem'
+            allocate(mat%CepArgs(2, mat%ncols_sp))
+            mat%CepArgs = mechArgs(:2, :)
         else
-            mat%CepArgs => mechArgs(:4, :)    
+            if (nbrows.lt.4) stop 'Size problem'
+            allocate(mat%CepArgs(4, mat%ncols_sp))
+            mat%CepArgs = mechArgs(:4, :)  
             mat%NN      => mechArgs(5:5+mat%nvoigt, :)
-            mat%BB      => mechArgs(5+mat%nvoigt:5+2*mat%nvoigt, :)
+            mat%BB      => mechArgs(6+mat%nvoigt:6+2*mat%nvoigt, :)
 
             if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
             if (.not.allocated(mat%JJbb)) allocate(mat%JJbb(mat%dimen, mat%dimen, mat%ncols_sp))
             mat%JJnn = 0.d0; mat%JJbb = 0.d0
-            if (all(abs(mat%NN).le.threshold)) return
-            do i = 1, mat%ncols_sp
-                call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), tensor)
-                mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
-                call array2symtensor(mat%dimen, mat%nvoigt, mat%BB(:, i), tensor)
-                mat%JJbb(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
-            end do
+            if (any(abs(mat%NN).gt.threshold)) then
+                mat%withNN = .true.
+                do i = 1, mat%ncols_sp
+                    call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), tensor)
+                    mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+                end do
+            end if
+            if (any(abs(mat%BB).gt.threshold)) then
+                mat%withBB = .true.
+                do i = 1, mat%ncols_sp
+                    call array2symtensor(mat%dimen, mat%nvoigt, mat%BB(:, i), tensor)
+                    mat%JJbb(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+                end do
+            end if
         end if
+
+        do i = 1, size(mat%CepArgs, dim=1)
+            mat%CepArgs(i, :) = mat%CepArgs(i, :)*mat%detJ
+        end do
 
     end subroutine setup_mechanicalArguments
 
@@ -145,7 +166,7 @@ contains
         dimension :: DD(mat%dimen, mat%dimen), NN(mat%nvoigt), TNN(mat%dimen, mat%dimen), &
                     BB(mat%nvoigt), TBB(mat%dimen, mat%dimen), tensor(mat%dimen, mat%dimen)
 
-        if (.not.associated(mat%Mprop)) then
+        if (.not.allocated(mat%Mprop)) then
             allocate(CC(mat%dimen, mat%ncols_sp), update(mat%dimen), nc_list_t(mat%dimen))
             update = .true.; nc_list_t = nc_list
             call initialize_operator(oper, mat%dimen, nc_list_t, update)
@@ -171,7 +192,7 @@ contains
                             end do
                         end do
                     end if
-                    tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                    tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))
                     do j = 1, mat%dimen
                         CC(j, gp) = tensor(j, j)
                     end do
@@ -212,11 +233,11 @@ contains
                             end do
                         end do
                     end if
-                    tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                    tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))
                     do j = 1, mat%dimen
                         CC(j, gp) = tensor(j, j)
                     end do
-                    CC(mat%dimen+1, gp) = mat%Mprop(gp)*mat%detJ(gp)
+                    CC(mat%dimen+1, gp) = mat%Mprop(gp)
                 end do
 
                 if (mat%dimen.eq.2) then
@@ -282,7 +303,7 @@ contains
                     end do
                 end if
                 
-                tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))*mat%detJ(gp)
+                tensor = matmul(mat%invJ(:, :, gp), matmul(DD, transpose(mat%invJ(:, :, gp))))
                 do j = 1, mat%dimen
                     Scoefs(j, c) = tensor(j, j)
                 end do 
@@ -297,11 +318,11 @@ contains
             end do   
         end do
 
-        if (associated(mat%Mprop)) then
+        if (allocated(mat%Mprop)) then
             allocate(Mcoefs(size(sample)))
             do c = 1, size(sample)
                 gp = sample(c)
-                Mcoefs(c) = mat%Mprop(gp)*mat%detJ(gp)
+                Mcoefs(c) = mat%Mprop(gp)
             end do
             if (mat%dimen.eq.2) then
                 call trapezoidal_rule_2d(3, 3, Mcoefs, tensor(1, 1))
@@ -378,7 +399,7 @@ contains
                                     tmp_in, array_tmp)
             end if
             
-            array_tmp = array_tmp*mat%Mprop*mat%detJ
+            array_tmp = array_tmp*mat%Mprop
 
             if (basisdata%dimen.eq.2) then
                 call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
@@ -475,14 +496,15 @@ contains
                 end if
 
                 do k = 1, nbCepArgs
-                    kt1(k, :) = mat%CepArgs(k, :)*t1*mat%detJ
+                    kt1(k, :) = mat%CepArgs(k, :)*t1
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(m, j, :)
+                t4 = 0.d0; t5 = 0.d0; t6 = 0.d0
                 if (mat%isElastic.eqv..false.) then
-                    t4 = kt1(3, :)*mat%JJnn(m, j, :)
-                    t5 = kt1(4, :)*mat%JJbb(m, j, :)
-                    t6 = kt1(4, :)*mat%JJnn(m, j, :)
+                    if (mat%withNN) t4 = kt1(3, :)*mat%JJnn(m, j, :)
+                    if (mat%withBB) t5 = kt1(4, :)*mat%JJbb(m, j, :)
+                    if (mat%withNN) t6 = kt1(4, :)*mat%JJnn(m, j, :)
                 end if
 
                 do i = 1, mat%dimen
@@ -495,7 +517,8 @@ contains
                         
                         t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
                         if (mat%isElastic.eqv..false.) then
-                            t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :) + t6*mat%JJbb(l, i, :)
+                            if (mat%withNN) t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :)  
+                            if (mat%withBB) t7 = t7 + t6*mat%JJbb(l, i, :)
                         end if
                         if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
                         if (basisdata%dimen.eq.2) then
@@ -613,7 +636,7 @@ contains
                                     array_in, t1) 
             end if
             
-            t1 = t1*mat%Hprop*mat%detJ
+            t1 = t1*mat%Hprop
             do i = 1, basisdata%dimen
                 alpha = 1; zeta = beta + (alpha - 1)*2
                 t2 = t1*mat%invJ(l, i, :)
