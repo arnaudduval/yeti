@@ -16,7 +16,7 @@ dataExist = True
 FIG_CASE = 1
 NONLIN_CASE = 1 # 0, 1, 2 or 3
 if NONLIN_CASE==3: c = 0.01 # or 0.01
-if NONLIN_CASE<3 : c = 0.05 # or 0.001, 0.05
+if NONLIN_CASE<3 : c = 0.001 # or 0.001, 0.05
 degree, cuts = 4, 5
 
 def conductivityProperty(args, nlcase=NONLIN_CASE):

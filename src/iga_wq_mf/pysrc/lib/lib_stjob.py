@@ -236,7 +236,7 @@ class stheatproblem(stproblem):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
 
-		AllresPCG, AllresNewton, Allsol = [], [], []
+		AllresPCG, AllresNewton, Allsol, Allthres = [], [], [], []
 		threshold_inner = None
 		for j in range(self._itersNL):
 
@@ -282,6 +282,7 @@ class stheatproblem(stproblem):
 			# Update active control points
 			dj_n1 += deltaD
 			AllresPCG.append(resPCGj)
+			Allthres.append(threshold_inner)
 
-		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol}
+		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
 		return output

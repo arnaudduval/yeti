@@ -32,7 +32,7 @@ subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, 
         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v
@@ -162,7 +162,7 @@ subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, in
         allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
         !$OMP PARALLEL PRIVATE(Xt, Rt)
         nb_tasks = omp_get_num_threads()
-        !$OMP DO COLLAPSE(1) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
         do jt = 1, nc_t
             do jw = 1, nc_w
                 do jv = 1, nc_v

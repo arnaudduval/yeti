@@ -12,11 +12,11 @@ folder = os.path.dirname(full_path) + '/results/paper/spacetime2/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = False
+dataExist = True
 ISLINEAR = False
-FIG_CASE = 1
-c = 0.05
-degree, cuts = 8, 4
+FIG_CASE = 2
+c = 0.001
+degree, cuts = 4, 3
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -203,6 +203,7 @@ if not dataExist:
 				displacements = output['Solution']
 				resKrylovs    = output['KrylovRes']
 				resNewtons    = output['NewtonRes']
+				thresholds    = output['Threshold']
 				L2error, L2relerror = [], []
 
 				for displacement in displacements:
@@ -219,6 +220,7 @@ if not dataExist:
 				np.savetxt(subfolderfolder+prefix+'NewtonRes'+extension, resNewtons)
 				np.savetxt(subfolderfolder+prefix+'L2error'+extension, L2error)
 				np.savetxt(subfolderfolder+prefix+'L2relerror'+extension, L2relerror)
+				np.savetxt(subfolderfolder+prefix+'threshold'+extension, np.array(thresholds))
 
 else:
 	if FIG_CASE == 1:
@@ -280,45 +282,67 @@ else:
 		linestyle_list = ['-', '--', '-', '--']
 		marker_list = ['o', 'o', 's', 's']
 
-		for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
+		# for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
+		# 	for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
+		# 		l = j + i*2
+		# 		legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
+		# 		prefix = prefix1 + '_' + prefix2 + '_'
+		# 		nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
+		# 		newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
+		# 		L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
+		# 		newtonRes = newtonRes/newtonRes[0]
+				
+		# 		for caseplot, fig, ax in zip(range(1, 5), figs, axs):
+		# 			if caseplot == 1:
+		# 				yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
+		# 				xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
+		# 				ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
+		# 				xlabel = 'Number of inner iterations'
+		# 			elif caseplot == 2:
+		# 				yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
+		# 				xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
+		# 				ylabel = 'Relative norm of outer residue'
+		# 				xlabel = 'Number of inner iterations'
+		# 			elif caseplot == 3:
+		# 				yy = newtonRes; xx = np.arange(0, len(newtonRes))
+		# 				xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
+		# 				ylabel = 'Relative norm of outer residue'
+		# 				xlabel = 'Number of outer iterations'
+		# 			elif caseplot == 4:
+		# 				yy = L2relerror; xx = np.arange(0, len(newtonRes))
+		# 				xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
+		# 				ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
+		# 				xlabel = 'Number of outer iterations'
+
+		# 			ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
+		# 			ax.set_xlim(right=xlim, left=0)
+		# 			# ax.set_ylim(top=ylim[0], bottom=ylim[1])
+		# 			ax.set_ylim(top=1e1, bottom=ylim)
+		# 			ax.set_xlabel(xlabel)
+		# 			ax.set_ylabel(ylabel)
+		# 			ax.legend()
+		# 			fig.tight_layout()
+		# 			fig.savefig(folder+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+
+		fig, ax = plt.subplots(figsize=(8, 6))
+		for [i, isadaptive], prefix1 in zip(enumerate([True]), ['inexact']):
 			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
 				l = j + i*2
 				legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
 				prefix = prefix1 + '_' + prefix2 + '_'
-				nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
-				newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
-				L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
-				newtonRes = newtonRes/newtonRes[0]
-				
-				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
-					if caseplot == 1:
-						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
-						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
-						xlabel = 'Number of inner iterations'
-					elif caseplot == 2:
-						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
-						ylabel = 'Relative norm of outer residue'
-						xlabel = 'Number of inner iterations'
-					elif caseplot == 3:
-						yy = newtonRes; xx = np.arange(0, len(newtonRes))
-						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
-						ylabel = 'Relative norm of outer residue'
-						xlabel = 'Number of outer iterations'
-					elif caseplot == 4:
-						yy = L2relerror; xx = np.arange(0, len(newtonRes))
-						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
-						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
-						xlabel = 'Number of outer iterations'
+				threshold = np.loadtxt(subfolderfolder+prefix+'threshold'+extension)
 
-					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
-					ax.set_xlim(right=xlim, left=0)
-					# ax.set_ylim(top=ylim[0], bottom=ylim[1])
-					ax.set_ylim(top=1e1, bottom=ylim)
-					ax.set_xlabel(xlabel)
-					ax.set_ylabel(ylabel)
-					ax.legend()
-					fig.tight_layout()
-					fig.savefig(folder+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+				yy = threshold; xx = np.arange(0, len(threshold))
+				xlim = 10
+				ylabel = 'Adaptive threshold'
+				xlabel = 'Number of outer iterations'
 
+				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
+				ax.set_xlim(right=xlim, left=0)
+				# ax.set_ylim(top=ylim[0], bottom=ylim[1])
+				ax.set_ylim(top=1, bottom=1e-4)
+				ax.set_xlabel(xlabel)
+				ax.set_ylabel(ylabel)
+				ax.legend()
+				fig.tight_layout()
+				fig.savefig(folder+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
