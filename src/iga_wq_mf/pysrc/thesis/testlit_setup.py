@@ -50,9 +50,9 @@ if not dataExist:
 		inputs = [coefs, *nbqp, *indices, *basis, *wgt]
 
 		start = time.process_time()
-		assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
-		nnz = np.prod(nnz_I_list)
-		info = assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
+		# assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
+		# nnz = np.prod(nnz_I_list)
+		# info = assembly.wq_get_capacity_3d(*inputs, nnz_I_list, nnz)
 		stop = time.process_time()
 		time_matrix[i, 1] = stop - start         
 
@@ -64,9 +64,9 @@ if not dataExist:
 		inputs = [coefs, *nbqp, *indices, *basis, *wgt]
 
 		start = time.process_time()
-		assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
-		nnz = np.prod(nnz_I_list)
-		info = assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
+		# assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
+		# nnz = np.prod(nnz_I_list)
+		# info = assembly.wq_get_conductivity_3d(*inputs, nnz_I_list, nnz)
 		stop = time.process_time()
 		time_matrix[i, 2] = stop - start 
 
