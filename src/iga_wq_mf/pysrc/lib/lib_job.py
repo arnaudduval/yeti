@@ -196,7 +196,8 @@ class problem():
 		if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
 
 		volForce = np.atleast_2d(volForce)
-		inpts = [*self._getInputs(), self.part.detJ, volForce, self._itersLin, self._thresLin]
+		table = np.zeros((self.part.dim, 2), dtype=bool); prop = np.ones(self.part.nbqp_total)
+		inpts = [*self._getInputs(), table, self.part.detJ, prop, volForce, self._itersLin, self._thresLin]
 		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
 		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
 		if nr == 1: u_interp = np.ravel(u_interp)
@@ -286,7 +287,7 @@ class heatproblem(problem):
 		dt2 = time_list[2] - time_list[0]
 		factor = dt2/dt1
 		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		# ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
+		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 
 		AllresLin = []
 		for i in range(1, nsteps):

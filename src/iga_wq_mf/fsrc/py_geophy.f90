@@ -502,8 +502,8 @@ end subroutine interpolate_meshgrid_1d
 
 subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
-                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, detJ, &
-                            b, iterations, threshold, x, residual)
+                            data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
+                            detJ, prop, Fext, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -525,11 +525,14 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
                     data_B_w(nnz_w, 2), data_W_w(nnz_w, 4)
 
-    double precision, target, intent(in) :: detJ
-    dimension :: detJ(nc_total)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2)
+
+    double precision, target, intent(in) :: detJ, prop
+    dimension :: detJ(nc_total), prop(nc_total)
     integer, intent(in) :: iterations
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nm, nr_total)
+    double precision, intent(in) :: threshold, Fext
+    dimension :: Fext(nm, nr_total)
     
     double precision, intent(out) :: x, residual
     dimension :: x(nm, nr_total), residual(nm, iterations+1)
@@ -541,8 +544,6 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    logical :: table(dimen, 2) = .false. 
-    double precision :: ones(nc_total)
 
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
@@ -554,23 +555,21 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call space_eigendecomposition(redsyst)
 
     ! Set material and solver
-    mat%dimen = dimen; ones = 1.d0
-    call setup_capacityprop(mat, nc_total, ones)
-    mat%detJ => detJ
-
+    mat%dimen = dimen; mat%detJ => detJ
+    call setup_capacityprop(mat, nc_total, prop)
     solv%matrixfreetype = 1; solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
 
     do i = 1, nm
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b(i, :), x(i, :), residual(i, :))
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext(i, :), x(i, :), residual(i, :))
     end do
                 
 end subroutine l2projection_ctrlpts_3d
 
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, detJ, &
-                            b, iterations, threshold, x, residual)
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, detJ, prop, &
+                            Fext, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -590,11 +589,14 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
 
-    double precision, target, intent(in) :: detJ
-    dimension :: detJ(nc_total)
+    logical, intent(in) :: table
+    dimension :: table(dimen, 2)
+
+    double precision, target, intent(in) :: detJ, prop
+    dimension :: detJ(nc_total), prop(nc_total)
     integer, intent(in) :: iterations
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nm, nr_total)
+    double precision, intent(in) :: threshold, Fext
+    dimension :: Fext(nm, nr_total)
     
     double precision, intent(out) :: x, residual
     dimension :: x(nm, nr_total), residual(nm, iterations+1)
@@ -606,8 +608,6 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    logical :: table(dimen, 2) = .false. 
-    double precision :: ones(nc_total)
 
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
@@ -619,64 +619,16 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call space_eigendecomposition(redsyst)
 
     ! Set material and solver
-    mat%dimen = dimen; ones = 1.d0
-    call setup_capacityprop(mat, nc_total, ones)
-    mat%detJ => detJ
-
+    mat%dimen = dimen; mat%detJ => detJ
+    call setup_capacityprop(mat, nc_total, prop)
     solv%matrixfreetype = 1; solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
 
     do i = 1, nm
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b(i, :), x(i, :), residual(i, :))
+        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext(i, :), x(i, :), residual(i, :))
     end do
                 
 end subroutine l2projection_ctrlpts_2d
-
-subroutine l2projection_ctrlpts_1d(nm, nr_total, nc_total, nr_u, nc_u, &
-                            nnz_u, indi_u, indj_u, data_B_u, data_W_u, detJ, &
-                            b, iterations, threshold, x, residual)
-    !! Preconditioned conjugate gradient to solve interpolation problem
-    !! IN CSR FORMAT
-
-    implicit none 
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nm, nr_total, nc_total, nr_u, nc_u, nnz_u
-    integer, intent(in) :: indi_u, indj_u
-    dimension :: indi_u(nr_u+1), indj_u(nnz_u)
-    double precision, intent(in) :: data_B_u, data_W_u
-    dimension :: data_B_u(nnz_u, 2), data_W_u(nnz_u, 4)
-
-    double precision, intent(in) :: detJ
-    dimension :: detJ(nc_total)
-    integer, intent(in) :: iterations
-    double precision, intent(in) :: threshold, b
-    dimension :: b(nm, nr_total)
-    
-    double precision, intent(out) :: x, residual
-    dimension :: x(nm, nr_total), residual(nm, iterations+1)
-
-    ! Local data
-    ! ----------
-    integer :: i 
-    double precision :: data_Wt
-    dimension :: data_Wt(nnz_u)
-    double precision :: WW, BB, A
-    dimension :: WW(nr_u, nc_u), BB(nr_u, nc_u), A(nr_u, nr_u)
-
-    if (nr_total.ne.nr_u) stop 'Size problem'
-    residual = threshold
-    do i = 1, nnz_u
-        data_Wt(i) = data_W_u(i, 1) * detJ(indj_u(i)) 
-    end do
-    call csr2dense(nnz_u, indi_u, indj_u, data_Wt, nr_u, nc_u, WW)
-    call csr2dense(nnz_u, indi_u, indj_u, data_B_u(:, 1), nr_u, nc_u, BB)
-    A = matmul(WW, transpose(BB))
-    do i = 1, nm
-        call solve_linear_system(nr_u, nr_u, A, b(i, :), x(i, :))
-    end do
-
-end subroutine l2projection_ctrlpts_1d
 
 !! CLASSICAL APPROACH
 

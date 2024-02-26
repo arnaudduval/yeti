@@ -16,7 +16,7 @@ dataExist = True
 ISLINEAR = False
 FIG_CASE = 2
 c = 0.001
-degree, cuts = 4, 3
+degree, cuts = 2, 5
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -334,7 +334,7 @@ else:
 
 				yy = threshold; xx = np.arange(0, len(threshold))
 				xlim = 10
-				ylabel = 'Adaptive threshold'
+				ylabel = 'Forcing term'
 				xlabel = 'Number of outer iterations'
 
 				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
