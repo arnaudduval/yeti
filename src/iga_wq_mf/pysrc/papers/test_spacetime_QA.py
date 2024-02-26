@@ -8,7 +8,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/spacetime_QA/'
+folder = os.path.dirname(full_path) + '/results/spacetime/QA/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'

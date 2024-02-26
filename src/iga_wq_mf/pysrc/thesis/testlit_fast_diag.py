@@ -9,7 +9,6 @@
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
-from pysrc.lib.lib_job import problem
 
 # Select folder
 full_path = os.path.realpath(__file__)

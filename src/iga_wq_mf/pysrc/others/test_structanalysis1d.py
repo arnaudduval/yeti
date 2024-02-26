@@ -4,7 +4,7 @@
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
-from pysrc.other.lib_structanalysis import Timoshenko
+from pysrc.others.lib_structanalysis import Timoshenko
 
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/'
