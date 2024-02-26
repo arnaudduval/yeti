@@ -4,11 +4,11 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import mechaproblem
-from pysrc.phd.lib_simulation import decoder, simulate
+from pysrc.papers.lib_simulation import decoder, simulate
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/'
+folder = os.path.dirname(full_path) + '/results/elastoplastic/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables

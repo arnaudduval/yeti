@@ -27,7 +27,7 @@ def capacityProperty(P:list):
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/paper/'
+folder = os.path.dirname(full_path) + '/results/heattransfer/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
