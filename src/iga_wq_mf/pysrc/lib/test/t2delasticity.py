@@ -82,7 +82,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 		displacement = tmp[:, :, -1]
 	else:
 		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-		displacement = problem.solveElasticityProblem(Fext)[0]
+		displacement = problem._solveLinearizedElasticityProblem(Fext)[0]
 	return problem, displacement, meshparam
 
 # degree_list = np.array([1])
@@ -124,17 +124,17 @@ enablePrint()
 problem_wq1 = mechaproblem(material, modelPhy_wq1, boundary)
 problem_wq1.addSolverConstraints(solverArgs=SOLVERARGS)
 Fext_wq1 = problem_wq1.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-disp_wq1 = problem_wq1.solveElasticityProblem(Fext_wq1)[0]
+disp_wq1 = problem_wq1._solveLinearizedElasticityProblem(Fext_wq1)[0]
 
 problem_wq2 = mechaproblem(material, modelPhy_wq2, boundary)
 problem_wq2.addSolverConstraints(solverArgs=SOLVERARGS)
 Fext_wq2 = problem_wq2.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-disp_wq2 = problem_wq2.solveElasticityProblem(Fext_wq2)[0]
+disp_wq2 = problem_wq2._solveLinearizedElasticityProblem(Fext_wq2)[0]
 
 problem_iga = mechaproblem(material, modelPhy_iga, boundary)
 problem_iga.addSolverConstraints(solverArgs=SOLVERARGS)
 Fext_iga = problem_iga.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
-disp_iga = problem_iga.solveElasticityProblem(Fext_iga)[0]
+disp_iga = problem_iga._solveLinearizedElasticityProblem(Fext_iga)[0]
 
 error1 = abs(block_dot_product(disp_wq1-disp_iga, disp_wq1-disp_iga)/block_dot_product(disp_iga, disp_iga))
 error2 = abs(block_dot_product(disp_wq2-disp_iga, disp_wq2-disp_iga)/block_dot_product(disp_iga, disp_iga))

@@ -236,7 +236,7 @@ class stheatproblem(stproblem):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		dj_n1 = np.copy(Tguess)
 
-		AllresPCG, AllresNewton, Allsol, Allthres = [], [], [], []
+		AllresLin, AllresNewton, Allsol, Allthres = [], [], [], []
 		threshold_inner = None
 		for j in range(self._itersNL):
 
@@ -274,15 +274,15 @@ class stheatproblem(stproblem):
 			resNLj0 = np.copy(resNLj1)
 
 			# Solve for active control points
-			deltaD, resPCGj = self._solveLinearizedSTHeatProblem(r_dj, 
+			deltaD, resLinj = self._solveLinearizedSTHeatProblem(r_dj, 
 										args={'temperature':temperature, 
 											'gradients':gradtemperature}, 
 										isfull=isfull, threshold=threshold_inner)			
 
 			# Update active control points
 			dj_n1 += deltaD
-			AllresPCG.append(resPCGj)
+			AllresLin.append(resLinj)
 			Allthres.append(threshold_inner)
 
-		output = {'KrylovRes': AllresPCG, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
+		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
 		return output

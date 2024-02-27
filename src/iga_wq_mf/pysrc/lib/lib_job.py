@@ -219,7 +219,7 @@ class heatproblem(problem):
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
-		if args is None: args = self.part.qpPhy
+		assert args is not None, 'Please enter a valid argument'
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
@@ -227,7 +227,7 @@ class heatproblem(problem):
 		return array_out
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
-		if args is None: args = self.part.qpPhy
+		assert args is not None, 'Please enter a valid argument'
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_capacity_2d(*inpts, array_in)
@@ -242,13 +242,13 @@ class heatproblem(problem):
 		T_interp = np.ravel(T_interp)
 		return T_interp
 
-	def compute_HeatIntForce(self, temp, flux, args=None, isLumped=False):
-		if args is None: args = self.part.qpPhy
+	def compute_TransientHeatIntForce(self, temp, flux, args=None, isLumped=False):
+		assert args is not None, 'Please enter a valid argument'
 		intForce = self.compute_mfCapacity(flux, args=args, isLumped=isLumped) + self.compute_mfConductivity(temp, args=args)
 		return intForce
 	
 	def compute_eigs(self, ishigher=False, args=None):
-		if args is None: args = self.part.qpPhy
+		assert args is not None, 'Please enter a valid argument'
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
@@ -257,8 +257,8 @@ class heatproblem(problem):
 		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_eig_heat_3d(*inpts)
 		return eigenval, eigenvec
 
-	def solveSteadyHeatProblem(self, Fext, args=None):
-		if args is None: args = self.part.qpPhy
+	def _solveLinearizedSteadyProblem(self, Fext, args=None):
+		assert args is not None, 'Please enter a valid argument'
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				prop, Fext,  self._itersLin, self._thresLin, self._linPreCond]
@@ -266,8 +266,48 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_linearsteady_heat_3d(*inpts)
 		return temperature, residue
 	
+	def solveFourierSteadyProblem(self, Tinout, Fext):
+		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
+		dj_n1 = np.copy(Tinout)
+
+		AllresLin, AllresNewton, Allsol, Allthres = [], [], [], []
+		threshold_inner = None
+		for j in range(self._itersNL):
+
+			# Compute temperature at each quadrature point
+			temperature = self.interpolate_temperature(dj_n1)
+
+			# Compute internal force
+			Fint_dj = self.compute_mfConductivity(dj_n1, args={'temperature':temperature})
+
+			# Compute residue
+			r_dj = Fext - Fint_dj
+			r_dj[dod] = 0.0
+
+			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
+			if j == 0: resNL0 = resNLj1
+			print('Nonlinear error: %.3e' %resNLj1)
+				
+			AllresNewton.append(resNLj1)
+			Allsol.append(np.copy(dj_n1))
+
+			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
+
+			# Solve for active control points
+			deltaD, resLinj = self._solveLinearizedSteadyProblem(r_dj, 
+										args={'temperature':temperature})			
+
+			# Update active control points
+			dj_n1 += deltaD
+			AllresLin.append(resLinj)
+			Allthres.append(threshold_inner)
+
+		Tinout = np.copy(dj_n1)
+		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
+		return output
+	
 	def _solveLinearizedTransientProblem(self, Fext, tsfactor, args=None, isLumped=False):
-		if args is None: args = self.part.qpPhy
+		assert args is not None, 'Please enter a valid argument'
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
@@ -315,8 +355,8 @@ class heatproblem(problem):
 				temperature = self.interpolate_temperature(dj_n1)
 			
 				# Compute internal force
-				args = np.row_stack((self.part.qpPhy, temperature))
-				Fint_dj = self.compute_HeatIntForce(dj_n1, Vj_n1, args=args, isLumped=isLumped)
+				args={'temperature':temperature, 'position':self.part.qpPhy}
+				Fint_dj = self.compute_TransientHeatIntForce(dj_n1, Vj_n1, args=args, isLumped=isLumped)
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -400,7 +440,7 @@ class mechaproblem(problem):
 		if self.part.dim == 3: eigenval, eigenvec = eigensolver.solver_eig_elasticity_3d(*inpts)
 		return eigenval, eigenvec
 
-	def solveElasticityProblem(self, Fext, mechArgs=None):
+	def _solveLinearizedElasticityProblem(self, Fext, mechArgs=None):
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
@@ -474,7 +514,7 @@ class mechaproblem(problem):
 				
 				# Solver for active control points
 				resLinj = np.array([i, j+1])
-				deltaD, resLin = self.solveElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
+				deltaD, resLin = self._solveLinearizedElasticityProblem(Fext=r_dj, mechArgs=mechArgs)
 				resLinj = np.append(resLinj, resLin)
 				
 				# Update active control points
@@ -504,7 +544,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_lineardynamics_3d(*inpts)
 		return displacement, residual
 
-	def solveDynamicsProblem(self, dispinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
+	def solveElastoDynamicProblem(self, dispinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		V_n0 = np.zeros((self.part.dim, nbctrlpts_total))
 		A_n0 = np.zeros((self.part.dim, nbctrlpts_total))
@@ -611,7 +651,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		intForce = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
 		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel[:-1, :], args=args, isLumped=isLumped) 
 							- self.compute_mfCoupled(disp[-1, :], args=args, isThermal=False))
-		intForce[-1, :]  = (self.compute_HeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
+		intForce[-1, :]  = (self.compute_TransientHeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
 							+ self.heatmaterial.refTemp*self.compute_mfCoupled(vel[:-1, :], args=args, isThermal=True))
 		return intForce
 

@@ -60,7 +60,7 @@ Fext = problem.compute_surfForce(forceSurfFun, nbFacePosition=3)[0]
 
 # Solve in fortran 
 start = time.time()
-disp_cp = problem.solveElasticityProblem(Fext=Fext)[0]
+disp_cp = problem._solveLinearizedElasticityProblem(Fext=Fext)[0]
 stop = time.time()
 print('CPU time: %5e' %(stop-start))
 

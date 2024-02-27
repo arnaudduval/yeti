@@ -81,7 +81,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	else:
 		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		v_out = problem.compute_mfStiffness(Fext)
-		displacement = problem.solveElasticityProblem(Fext)[0]
+		displacement = problem._solveLinearizedElasticityProblem(Fext)[0]
 	return problem, displacement, meshparam
 
 if isReference:

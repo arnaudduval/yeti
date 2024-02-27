@@ -118,7 +118,7 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 			start=time.time()
 			problem = heatproblem(material, modelPhy, boundary)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
-			temperature = problem.solveSteadyHeatProblem(Fext=Fext)[0]
+			temperature = problem._solveLinearizedSteadyProblem(Fext=Fext)[0]
 			error_list[j], _ = problem.normOfError(temperature, normArgs={'type':'semiH1',
 												'exactFunction':exactTemperature_quartCircle,
 												'exactFunctionDers':exactDiffTemperature_quartCircle})
