@@ -136,7 +136,8 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
+	problem._itersNL = 30
+	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 
