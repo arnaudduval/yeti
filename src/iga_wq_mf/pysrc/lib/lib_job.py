@@ -1,7 +1,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product)
+from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product, callableDensity)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
 
@@ -215,11 +215,11 @@ class heatproblem(problem):
 	def __init__(self, heat_material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
 		problem.__init__(self, part, boundary, solverArgs)
 		self.heatmaterial = heat_material
-		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
+		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=callableDensity, isIsotropic=False)
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
-		assert args is not None, 'Please enter a valid argument'
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
@@ -227,7 +227,7 @@ class heatproblem(problem):
 		return array_out
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
-		assert args is not None, 'Please enter a valid argument'
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_capacity_2d(*inpts, array_in)
@@ -242,13 +242,13 @@ class heatproblem(problem):
 		T_interp = np.ravel(T_interp)
 		return T_interp
 
-	def compute_TransientHeatIntForce(self, temp, flux, args=None, isLumped=False):
+	def _compute_TransientHeatIntForce(self, temp, flux, args=None, isLumped=False):
 		assert args is not None, 'Please enter a valid argument'
 		intForce = self.compute_mfCapacity(flux, args=args, isLumped=isLumped) + self.compute_mfConductivity(temp, args=args)
 		return intForce
 	
-	def compute_eigs(self, ishigher=False, args=None):
-		assert args is not None, 'Please enter a valid argument'
+	def solveEigenProblem(self, ishigher=False, args=None):
+		if args is None: args = {'position': self.part.qpPhy}
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
@@ -356,7 +356,7 @@ class heatproblem(problem):
 			
 				# Compute internal force
 				args={'temperature':temperature, 'position':self.part.qpPhy}
-				Fint_dj = self.compute_TransientHeatIntForce(dj_n1, Vj_n1, args=args, isLumped=isLumped)
+				Fint_dj = self._compute_TransientHeatIntForce(dj_n1, Vj_n1, args=args, isLumped=isLumped)
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -386,11 +386,11 @@ class mechaproblem(problem):
 	def __init__(self, mechanical_material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
 		problem.__init__(self, part, boundary, solverArgs)
 		self.mechamaterial = mechanical_material
-		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=1.0, isIsotropic=True)
+		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=callableDensity, isIsotropic=False)
 		return
 	
 	def compute_mfMass(self, array_in, args=None, isLumped=False):
-		if args is None: args = self.part.qpPhy
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = plasticitysolver.mf_mass_2d(*inpts, array_in)
@@ -399,7 +399,6 @@ class mechaproblem(problem):
 	
 	def compute_mfStiffness(self, array_in, mechArgs=None):
 		if mechArgs is None: 
-			dimen = self.part.dim; nvoigt = int(dimen*(dimen+1)/2)
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
@@ -422,17 +421,17 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: intForce = plasticitysolver.get_intforce_3d(*inpts)
 		return intForce
 
-	def compute_MechDynamicIntForce(self, stress, accel, args=None, isLumped=False):
-		if args is None: args = self.part.qpPhy
+	def _compute_MechDynamicIntForce(self, stress, accel, args=None, isLumped=False):
+		assert args is not None, 'Please enter a valid argument'
 		intForce = self.compute_MechStaticIntForce(stress) + self.compute_mfMass(accel, args=args, isLumped=isLumped)
 		return intForce
 	
-	def compute_eigs(self, ishigher=False, mechArgs=None, args=None):
+	def solveEigenProblem(self, ishigher=False, mechArgs=None, args=None):
 		if mechArgs is None:
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		if args is None: args = self.part.qpPhy
+		if args is None: args = {'position': self.part.qpPhy}
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
 				mechArgs, massProp, ishigher, self._itersLin, self._thresLin]
@@ -451,7 +450,7 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_linearelasticity_3d(*inpts)
 		return displacement, residual
 	
-	def solvePlasticityProblem(self, dispinout, Fext_list): 
+	def solveElastoPlasticityProblem(self, dispinout, Fext_list): 
 
 		dimen  = self.part.dim
 		nvoigt = int(dimen*(dimen+1)/2)
@@ -535,7 +534,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		if args is None: args = self.part.qpPhy
+		assert args is not None, 'Please enter a valid argument'
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, mechArgs, massProp, tsfactor,
@@ -559,6 +558,7 @@ class mechaproblem(problem):
 				V_n0[k, dod] = 1.0/(dt1*(factor-factor**2))*(dispinout[k, dod, 2] - (factor**2)*dispinout[k, dod, 1] - (1 - factor**2)*dispinout[k, dod, 0])
 				A_n0[k, dod] = 2.0/(dt1*dt2)*((dispinout[k, dod, 2] - factor*dispinout[k, dod, 1])/(factor - 1) + dispinout[k, dod, 0])
 		else: raise Warning('We need more than 2 steps')
+		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY AND ACCELERATION IN DOF
 
 		AllresLin = []
 		for i in range(1, nsteps):
@@ -591,8 +591,8 @@ class mechaproblem(problem):
 				stress = self.mechamaterial.evalElasticStress(strain, self.part.dim)
 
 				# Compute internal force 
-				args = self.part.qpPhy
-				Fint_dj = self.compute_MechDynamicIntForce(stress, Aj_n1, args=args, isLumped=isLumped)
+				args = {'position': self.part.qpPhy}
+				Fint_dj = self._compute_MechDynamicIntForce(stress, Aj_n1, args=args, isLumped=isLumped)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -635,7 +635,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 		return
 
 	def compute_mfCoupled(self, array_in, args=None, isThermal=True):
-		if args is None: args = self.part.qpPhy
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = 3*self.mechamaterial.thermalExpansion*self.mechamaterial.lame_bulk*np.ones(self.part.nbqp_total)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if isThermal:
@@ -646,12 +646,12 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			if self.part.dim == 3: array_out = plasticitysolver.mf_thmchcoupled_3d(*inpts, array_in)
 		return array_out
 	
-	def compute_ThermomechIntForce(self, disp, vel, accel, stress, args=None, isLumped=False):
-		if args is None: args = self.part.qpPhy
+	def _compute_ThermomechIntForce(self, disp, vel, accel, stress, args=None, isLumped=False):
+		assert args is not None, 'Please enter a valid argument'
 		intForce = np.zeros((self.part.dim+1, self.part.nbctrlpts_total))
-		intForce[:-1, :] = (self.compute_MechDynamicIntForce(stress, accel[:-1, :], args=args, isLumped=isLumped) 
+		intForce[:-1, :] = (self._compute_MechDynamicIntForce(stress, accel[:-1, :], args=args, isLumped=isLumped) 
 							- self.compute_mfCoupled(disp[-1, :], args=args, isThermal=False))
-		intForce[-1, :]  = (self.compute_TransientHeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
+		intForce[-1, :]  = (self._compute_TransientHeatIntForce(disp[-1, :], vel[-1, :], args=args, isLumped=isLumped)
 							+ self.heatmaterial.refTemp*self.compute_mfCoupled(vel[:-1, :], args=args, isThermal=True))
 		return intForce
 
@@ -680,6 +680,7 @@ class thermomechaproblem(heatproblem, mechaproblem):
 			V_n0[-1, dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 			A_n0[-1, dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
 		else: raise Warning('We need more than 2 steps')
+		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY AND ACCELERATION IN DOF
 
 		for i in range(1, nsteps):
 			
@@ -720,8 +721,8 @@ class thermomechaproblem(heatproblem, mechaproblem):
 				temperature = self.interpolate_temperature(dj_n1[-1, :])
 
 				# Compute internal force 
-				args = np.row_stack((self.part.qpPhy, temperature))
-				Fint_dj = self.compute_ThermomechIntForce(dj_n1, Vj_n1, Aj_n1, stress, 
+				args = {'position': self.part.qpPhy, 'temperature': temperature}
+				Fint_dj = self._compute_ThermomechIntForce(dj_n1, Vj_n1, Aj_n1, stress, 
 														args=args, isLumped=isLumped)
 				
 				# Compute residue

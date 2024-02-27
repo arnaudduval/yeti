@@ -247,14 +247,22 @@ class part():
 		# Create point data 
 		pointData = {}
 		for fieldname, fieldvalue in fields.items():
-			fieldvalue = np.atleast_2d(fieldvalue); nr = np.size(fieldvalue, axis=0)
-			fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
+			fieldinterp = None
+			if isinstance(fieldvalue, np.ndarray):
+				fieldvalue = np.atleast_2d(fieldvalue)
+				fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
+			if callable(fieldvalue):
+				fieldinterp = fieldvalue(qpPhy)
+
+			if fieldinterp is None or not isinstance(fieldinterp, np.ndarray): continue
+			nr = np.size(fieldinterp, axis=0)
 			if nr>1:
 				for l in range(nr):
 					newfieldname = fieldname + str(l+1)
 					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), shape, order='F')
 			else:
 				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), shape, order='F')
+
 		pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
 
 		# Export geometry

@@ -66,7 +66,7 @@ if not dataExist:
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 		for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref
 		displacement = np.zeros(np.shape(Fext_list))
-		resPCG, _ = problem.solvePlasticityProblem(displacement, Fext_list[:, :, :STEP + 1])
+		resPCG, _ = problem.solveElastoPlasticityProblem(displacement, Fext_list[:, :, :STEP + 1])
 		np.savetxt(filename, resPCG)
 
 else:

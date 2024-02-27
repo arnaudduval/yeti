@@ -1,5 +1,10 @@
 from .__init__ import *
 
+def callableDensity(inpt:dict):
+	x = inpt.get('position', np.array([1.]))
+	y = np.ones(np.max(np.shape(x)))
+	return y
+
 def clean_dirichlet(A, dod):
 	""" Set to 0 (Dirichlet condition) the values of an array using the indices in each dimension
 		A is actually a vector arranged following each dimension [Au, Av, Aw]

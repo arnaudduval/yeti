@@ -63,7 +63,7 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 	for k in range(len(TIME_LIST)): Fext_list[:, :, k] = np.sin(TIME_LIST[k])*Fref
 	displacement = np.zeros(np.shape(Fext_list))
-	_, internalVars = problem.solvePlasticityProblem(displacement, Fext_list[:, :, :step+1])
+	_, internalVars = problem.solveElastoPlasticityProblem(displacement, Fext_list[:, :, :step+1])
 	return problem, displacement[:, :, :step+1], meshparam, internalVars
 
 if isReference:

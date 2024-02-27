@@ -2,7 +2,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat)
+from .lib_material import (heatmat, callableDensity)
 from .lib_part import part, part1D
 from .lib_boundary import boundaryCondition
 
@@ -158,11 +158,11 @@ class stheatproblem(stproblem):
 	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
 		stproblem.__init__(self, part, tspan, boundary, solverArgs)
 		self.heatmaterial = heat_material
-		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=1.0, isIsotropic=True)
+		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=callableDensity, isIsotropic=False)
 		return
 	
 	def compute_mfSTConductivity(self, array_in, args=None):
-		assert args is not None, 'Please enter a valid argument'
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stconductivity_2d(*inpts, array_in)
@@ -170,7 +170,7 @@ class stheatproblem(stproblem):
 		return array_out
 	
 	def compute_mfSTCapacity(self, array_in, args=None):
-		assert args is not None, 'Please enter a valid argument'
+		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.capacity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacity_2d(*inpts, array_in)
@@ -202,7 +202,7 @@ class stheatproblem(stproblem):
 		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ)); uders_interp = uders_interp[0, :, :]
 		return u_interp, uders_interp
 
-	def compute_STHeatIntForce(self, array_in, args=None):
+	def _compute_STHeatIntForce(self, array_in, args=None):
 		assert args is not None, 'Please enter a valid argument'
 		intForce = self.compute_mfSTCapacity(array_in, args) + self.compute_mfSTConductivity(array_in, args)
 		return intForce
@@ -244,7 +244,7 @@ class stheatproblem(stproblem):
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
 
 			# Compute internal force
-			Fint_dj = self.compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
+			Fint_dj = self._compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
 
 			# Compute residue
 			r_dj = Fext - Fint_dj

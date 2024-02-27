@@ -78,7 +78,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
 		tmp = np.zeros(np.shape(Fext_list))
-		problem.solvePlasticityProblem(tmp, Fext_list)
+		problem.solveElastoPlasticityProblem(tmp, Fext_list)
 		displacement = tmp[:, :, -1]
 	else:
 		Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
