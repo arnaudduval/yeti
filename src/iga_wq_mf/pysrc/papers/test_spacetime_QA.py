@@ -12,11 +12,11 @@ folder = os.path.dirname(full_path) + '/results/spacetime/QA/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-dataExist = True
-ISLINEAR = False
-FIG_CASE = 2
-c = 0.0001
-degree, cuts = 4, 5
+FIG_CASE  = 1
+DATAEXIST = True
+ISLINEAR  = True
+c = 0.01
+degree, cuts = 2, 6
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -126,7 +126,7 @@ def powerDensity(args:dict):
 
 def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# Create model 
-	geoArgs = {'name': 'qa', 'degree': degree*np.ones(3, dtype=int), 
+	geoArgs = {'name': 'QA', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
 				'extra':{'Rin':1, 'Rex':5}}
 
@@ -135,7 +135,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 	# Create time span
-	crv = createUniformCurve(degree, 2**cuts, 2.)
+	crv = createUniformCurve(degree, 2**cuts, 1.)
 	timespan = part1D(crv, {'quadArgs': quadArgs})
 
 	# Add material 
@@ -161,25 +161,29 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
 
 	uguess[boundary.thdod] = 0.0
-	isfull = problemArgs.get('isfull', False); isadaptive = problemArgs.get('isadaptive', True)
+	isfull = problemArgs.get('isfull', True); isadaptive = problemArgs.get('isadaptive', True)
 	output = problem.solveFourierSTHeatProblem(uguess, Fext, isfull=isfull, isadaptive=isadaptive)
 	return problem, output
 
-if not dataExist:
+if not DATAEXIST:
 
 	if FIG_CASE == 1:
+		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		degree_list = np.array([1, 2, 3, 4])
 		cuts_list   = np.arange(1, 7)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
-			sufix = '_' + quadrule + '_' + quadtype + '_' 
+			sufix = '_' + quadrule + '_' + quadtype + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			L2errorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
 			L2relerrorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
 			L2errorTable[0, 1:] = cuts_list; L2relerrorTable[0, 1:] = cuts_list
 			L2errorTable[1:, 0] = degree_list; L2relerrorTable[1:, 0] = degree_list
-
-			for i, degree in enumerate(degree_list):
-				for j, cuts in enumerate(cuts_list):
+			filename1 = folder+'L2error_meshpar'+sufix+extension
+			filename2 = folder+'L2relerror_meshpar'+sufix+extension
+			if os.path.exists(filename1): raise Warning('File exist')
+			if os.path.exists(filename2): raise Warning('File exist')
+			for j, cuts in enumerate(cuts_list):
+				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
 					blockPrint()
 					problem, output = simulate(degree, cuts, quadArgs)
@@ -189,8 +193,8 @@ if not dataExist:
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature},)
 
-					np.savetxt(folder+'L2error_meshpar'+sufix+extension, L2errorTable)
-					np.savetxt(folder+'L2relerror_meshpar'+sufix+extension, L2relerrorTable)
+					np.savetxt(filename1, L2errorTable)
+					np.savetxt(filename2, L2relerrorTable)
 
 	elif FIG_CASE == 2:
 
@@ -233,45 +237,47 @@ else:
 		onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 		plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 
-		figname = folder + 'SPTNonLinearConvergenceL2'+'.pdf'
+		lastsufix = 'linear' if ISLINEAR else 'nonlin'
+		figname = folder + 'SPTNonLinearConvergenceL2'+lastsufix+'.pdf'
 		filenames = ['L2relerror_meshpar_iga_leg_']
-		if FIG_CASE == 1:
-			normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-			fig, ax = plt.subplots(figsize=(8, 6))
 
-			for filename, plotops in zip(filenames, plotoptions):
-				quadrule = filename.split('_')[2]
-				table = np.loadtxt(folder+filename+extension)	
-				nbels   = 2**(table[0, 1:])
-				degrees = table[1:, 0]
-				errors  = table[1:, 1:]
-				for i, degree in enumerate(degrees):
-					color = COLORLIST[i]
-					if quadrule == 'iga': 
-						ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
-									markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+		normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+		fig, ax = plt.subplots(figsize=(8, 6))
+
+		for filename, plotops in zip(filenames, plotoptions):
+			quadrule = filename.split('_')[2]
+			table = np.loadtxt(folder+filename+lastsufix+extension)	
+			nbels   = 2**(table[0, 1:])
+			degrees = table[1:, 0]
+			errors  = table[1:, 1:]
+			for i, degree in enumerate(degrees):
+				color = COLORLIST[i]
+				if quadrule == 'iga': 
+					ax.loglog(nbels, errors[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
+								markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+					
+					# slope = np.polyfit(np.log10(nbels[2:]),np.log10(errors[i, 2:]), 1)[0]
+					# slope = round(slope, 1)
+					# annotation.slope_marker((nbels[-1], errors[i, -1]), slope, 
+					# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
+				else: 
+					ax.loglog(nbels, errors[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
+							markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 						
-						slope = np.polyfit(np.log10(nbels[2:]),np.log10(errors[i, 2:]), 1)[0]
-						slope = round(slope, 1)
-						annotation.slope_marker((nbels[-2], errors[i, -2]), slope, 
-										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)			
-					else: 
-						ax.loglog(nbels, errors[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
-								markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-							
-					fig.savefig(figname)
+				fig.savefig(figname)
 
-			# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-			# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
-			# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-			# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
+		# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+		# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 2")
+		# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+		# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
-			ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-			ax.set_ylim(top=1e1, bottom=1e-7)
-			ax.legend(loc='lower left')
-			fig.tight_layout()
-			fig.savefig(figname)
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
+		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+		ax.set_xlim(left=1, right=100)
+		ax.set_ylim(top=1e1, bottom=1e-7)
+		ax.legend(loc='lower left')
+		fig.tight_layout()
+		fig.savefig(figname)
 
 	elif FIG_CASE == 2:
 
@@ -286,47 +292,47 @@ else:
 		linestyle_list = ['-', '--', '-', '--']
 		marker_list = ['o', 'o', 's', 's']
 
-		# for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
-		# 	for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
-		# 		l = j + i*2
-		# 		legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
-		# 		prefix = prefix1 + '_' + prefix2 + '_'
-		# 		nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
-		# 		newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
-		# 		L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
-		# 		newtonRes = newtonRes/newtonRes[0]
+		for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
+				l = j + i*2
+				legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
+				prefix = prefix1 + '_' + prefix2 + '_'
+				nbInnerLoops = np.loadtxt(subfolderfolder+prefix+'Inner_loops'+extension)
+				newtonRes = np.loadtxt(subfolderfolder+prefix+'NewtonRes'+extension)
+				L2relerror = np.loadtxt(subfolderfolder+prefix+'L2relerror'+extension)
+				newtonRes = newtonRes/newtonRes[0]
 				
-		# 		for caseplot, fig, ax in zip(range(1, 5), figs, axs):
-		# 			if caseplot == 1:
-		# 				yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-		# 				xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
-		# 				ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
-		# 				xlabel = 'Number of inner iterations'
-		# 			elif caseplot == 2:
-		# 				yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-		# 				xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
-		# 				ylabel = 'Relative norm of outer residue'
-		# 				xlabel = 'Number of inner iterations'
-		# 			elif caseplot == 3:
-		# 				yy = newtonRes; xx = np.arange(0, len(newtonRes))
-		# 				xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
-		# 				ylabel = 'Relative norm of outer residue'
-		# 				xlabel = 'Number of outer iterations'
-		# 			elif caseplot == 4:
-		# 				yy = L2relerror; xx = np.arange(0, len(newtonRes))
-		# 				xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
-		# 				ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
-		# 				xlabel = 'Number of outer iterations'
+				for caseplot, fig, ax in zip(range(1, 5), figs, axs):
+					if caseplot == 1:
+						yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
+						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
+						xlabel = 'Number of inner iterations'
+					elif caseplot == 2:
+						yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
+						xlim = 10*np.ceil(np.max(nbInnerLoops)/10); ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
+						ylabel = 'Relative norm of outer residue'
+						xlabel = 'Number of inner iterations'
+					elif caseplot == 3:
+						yy = newtonRes; xx = np.arange(0, len(newtonRes))
+						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(newtonRes))))
+						ylabel = 'Relative norm of outer residue'
+						xlabel = 'Number of outer iterations'
+					elif caseplot == 4:
+						yy = L2relerror; xx = np.arange(0, len(newtonRes))
+						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
+						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
+						xlabel = 'Number of outer iterations'
 
-		# 			ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
-		# 			ax.set_xlim(right=xlim, left=0)
-		# 			# ax.set_ylim(top=ylim[0], bottom=ylim[1])
-		# 			ax.set_ylim(top=1e1, bottom=ylim)
-		# 			ax.set_xlabel(xlabel)
-		# 			ax.set_ylabel(ylabel)
-		# 			ax.legend()
-		# 			fig.tight_layout()
-		# 			fig.savefig(folder+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+					ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
+					ax.set_xlim(right=xlim, left=0)
+					# ax.set_ylim(top=ylim[0], bottom=ylim[1])
+					ax.set_ylim(top=1e1, bottom=ylim)
+					ax.set_xlabel(xlabel)
+					ax.set_ylabel(ylabel)
+					ax.legend()
+					fig.tight_layout()
+					fig.savefig(folder+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
 
 		fig, ax = plt.subplots(figsize=(8, 6))
 		for [i, isadaptive], prefix1 in zip(enumerate([True]), ['inexact']):
