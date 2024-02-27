@@ -11,11 +11,12 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/spacetime/TR/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
+# 1: 0.000001, 2: 0.0001, 3: 0.001
 extension = '.dat'
 FIG_CASE  = 1
 DATAEXIST = True
 ISLINEAR  = False
-c = 0.001
+c = 0.01
 degree, cuts = 2, 5
 
 def conductivityProperty(args):
@@ -144,7 +145,7 @@ if not DATAEXIST:
 	if FIG_CASE == 1:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 7)
+		cuts_list   = np.arange(1, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -154,8 +155,8 @@ if not DATAEXIST:
 			L2errorTable[1:, 0] = degree_list; L2relerrorTable[1:, 0] = degree_list
 			filename1 = folder+'L2error_meshpar'+sufix+extension
 			filename2 = folder+'L2relerror_meshpar'+sufix+extension
-			if os.path.exists(filename1): raise Warning('File exist')
-			if os.path.exists(filename2): raise Warning('File exist')
+			# if os.path.exists(filename1): raise Warning('File exist')
+			# if os.path.exists(filename2): raise Warning('File exist')
 			for j, cuts in enumerate(cuts_list):
 				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
