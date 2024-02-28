@@ -47,6 +47,15 @@ class problem():
 			Jqp = geophy.eval_jacobien_2d(*inpts)
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 		return nnz, indices, basis, weights, Jqp, qpPhy, CPList
+	
+	def _solveL2projection(self, Fext, table=None, prop=None):
+		if table is None: table = np.zeros((self.part.dim, 2), dtype=bool)
+		if prop is None: prop = np.ones(self.part.nbqp_total)
+		inpts = [*self._getInputs(), table, self.part.detJ, prop, Fext, self._itersLin, self._thresLin]
+		if self.part.dim == 2: sol, _ = geophy.l2projection_ctrlpts_2d(*inpts)
+		if self.part.dim == 3: sol, _ = geophy.l2projection_ctrlpts_3d(*inpts)
+		if np.size(sol, axis=0) == 1: sol = np.ravel(sol)
+		return sol
 
 	def compute_surfForce(self, surffun, nbFacePosition):
 		""" Computes the surface foce over the boundary of a geometry. 
@@ -188,19 +197,13 @@ class problem():
 
 		return abserror, relerror
 
-	def L2projectionCtrlpts(self, u_atqp):
+	def L2projectionCtrlpts(self, u_atqp, table=None, prop=None):
 		" Given the solution field (function) over a physical space, it computes the L2 projection, ie. the value at control points. "
-		prop = np.atleast_2d(u_atqp); nr = np.size(prop, axis=0)
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, prop]
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.weights, self.part.detJ, np.atleast_2d(u_atqp)]
 		if self.part.dim == 2: volForce = geophy.get_forcevol_2d(*inpts)
 		if self.part.dim == 3: volForce = geophy.get_forcevol_3d(*inpts)
-
 		volForce = np.atleast_2d(volForce)
-		table = np.zeros((self.part.dim, 2), dtype=bool); prop = np.ones(self.part.nbqp_total)
-		inpts = [*self._getInputs(), table, self.part.detJ, prop, volForce, self._itersLin, self._thresLin]
-		if self.part.dim == 2: u_interp, _ = geophy.l2projection_ctrlpts_2d(*inpts)
-		if self.part.dim == 3: u_interp, _ = geophy.l2projection_ctrlpts_3d(*inpts)
-		if nr == 1: u_interp = np.ravel(u_interp)
+		u_interp = self._solveL2projection(volForce, table=table, prop=prop)
 		return u_interp
 
 	def fastDiagonalization(self, array_in, fdtype='heat'):
@@ -317,8 +320,16 @@ class heatproblem(problem):
 		return temperature, residue
 
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
+
+		def computeVelocity(self:heatproblem, Fext, args=None):
+			if args is None: args = {'position': self.part.qpPhy}
+			prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+			velocity = self._solveL2projection(Fext, table=self.boundary.thDirichletTable, prop=prop)
+			return velocity
+
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
+		dof = self.boundary.getThermalBoundaryConditionInfo()[-1]
 
 		# Compute inital velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
@@ -328,6 +339,11 @@ class heatproblem(problem):
 		factor = dt2/dt1
 		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
+		temperature = self.interpolate_temperature(Tinout[:, 0])
+		args={'temperature':temperature, 'position':self.part.qpPhy}
+		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
+				- self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0[dof] = computeVelocity(self, tmp, args=args)[dof]
 
 		AllresLin = []
 		for i in range(1, nsteps):
