@@ -237,13 +237,13 @@ class heatproblem(problem):
 		if self.part.dim == 3: array_out = heatsolver.mf_capacity_3d(*inpts, array_in)
 		return array_out
 
-	def interpolate_temperature(self, T_ctrlpts):
+	def interpolate_temperature(self, u_ctrlpts):
 		" Computes the temperature at the quadrature points "
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, np.atleast_2d(T_ctrlpts)]
-		if self.part.dim == 2:   T_interp = geophy.interpolate_meshgrid_2d(*inpts)
-		elif self.part.dim == 3: T_interp = geophy.interpolate_meshgrid_3d(*inpts)
-		T_interp = np.ravel(T_interp)
-		return T_interp
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, np.atleast_2d(u_ctrlpts)]
+		if self.part.dim == 2:   u_interp = geophy.interpolate_meshgrid_2d(*inpts)
+		elif self.part.dim == 3: u_interp = geophy.interpolate_meshgrid_3d(*inpts)
+		u_interp = np.ravel(u_interp)
+		return u_interp
 
 	def _compute_TransientHeatIntForce(self, temp, flux, args=None, isLumped=False):
 		assert args is not None, 'Please enter a valid argument'
@@ -423,12 +423,12 @@ class mechaproblem(problem):
 		elif self.part.dim == 3: array_out = plasticitysolver.mf_stiffness_3d(*inpts, array_in)
 		return array_out
 	
-	def interpolate_strain(self, displacement):
+	def interpolate_strain(self, u_ctrlpts):
 		" Compute strain field from displacement field "
-		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, displacement]
-		if   self.part.dim == 2: strain = plasticitysolver.interpolate_strain_2d(*inpts)
-		elif self.part.dim == 3: strain = plasticitysolver.interpolate_strain_3d(*inpts)
-		return strain
+		inpts = [*self.part.nbqp[:self.part.dim], *self.part.indices, *self.part.basis, self.part.invJ, u_ctrlpts]
+		if   self.part.dim == 2: uders_interp = plasticitysolver.interpolate_strain_2d(*inpts)
+		elif self.part.dim == 3: uders_interp = plasticitysolver.interpolate_strain_3d(*inpts)
+		return uders_interp
 	
 	def compute_MechStaticIntForce(self, stress):
 		"Compute internal force using sigma coefficients "

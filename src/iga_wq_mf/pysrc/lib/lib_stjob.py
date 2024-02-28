@@ -228,13 +228,13 @@ class stheatproblem(stproblem):
 			if self.part.dim == 3: temperature, residue = stheatsolver.solver_picardspacetime_heat_3d(*inpts)
 		return temperature, residue
 	
-	def solveFourierSTHeatProblem(self, Tguess, Fext, isfull=False, isadaptive=True, solvArgs={}):
+	def solveFourierSTHeatProblem(self, Tinout, Fext, isfull=False, isadaptive=True, solvArgs={}):
 		eps_kr0  = solvArgs.get('initial', .5)
 		gamma_kr = solvArgs.get('coefficient', 0.9)
 		omega_kr = solvArgs.get('exponential', 1.5)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
-		dj_n1 = np.copy(Tguess)
+		dj_n1 = np.copy(Tinout)
 
 		AllresLin, AllresNewton, Allsol, Allthres = [], [], [], []
 		threshold_inner = None
@@ -283,6 +283,7 @@ class stheatproblem(stproblem):
 			dj_n1 += deltaD
 			AllresLin.append(resLinj)
 			Allthres.append(threshold_inner)
-
+			
+		Tinout = np.copy(dj_n1)
 		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
 		return output
