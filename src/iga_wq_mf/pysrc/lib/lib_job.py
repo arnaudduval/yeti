@@ -1,7 +1,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product, callableDensity)
+from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product)
 from .lib_part import part
 from .lib_boundary import boundaryCondition
 
@@ -218,7 +218,7 @@ class heatproblem(problem):
 	def __init__(self, heat_material:heatmat, part:part, boundary:boundaryCondition, solverArgs={}):
 		problem.__init__(self, part, boundary, solverArgs)
 		self.heatmaterial = heat_material
-		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=callableDensity, isIsotropic=False)
+		if self.heatmaterial.density is None: self.heatmaterial.density = lambda x: np.ones(self.part.nbqp_total)
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
@@ -396,7 +396,7 @@ class mechaproblem(problem):
 	def __init__(self, mechanical_material:mechamat, part:part, boundary:boundaryCondition, solverArgs={}):
 		problem.__init__(self, part, boundary, solverArgs)
 		self.mechamaterial = mechanical_material
-		if self.mechamaterial.density is None: self.mechamaterial.addDensity(inpt=callableDensity, isIsotropic=False)
+		if self.mechamaterial.density is None: self.mechamaterial.density = lambda x: np.ones(self.part.nbqp_total)
 		return
 	
 	def compute_mfMass(self, array_in, args=None, isLumped=False):

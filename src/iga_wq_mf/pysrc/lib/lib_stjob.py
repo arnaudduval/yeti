@@ -2,7 +2,7 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
 from .lib_quadrules import GaussQuadrature
-from .lib_material import (heatmat, callableDensity)
+from .lib_material import (heatmat)
 from .lib_part import part, part1D
 from .lib_boundary import boundaryCondition
 
@@ -158,7 +158,7 @@ class stheatproblem(stproblem):
 	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
 		stproblem.__init__(self, part, tspan, boundary, solverArgs)
 		self.heatmaterial = heat_material
-		if self.heatmaterial.density is None: self.heatmaterial.addDensity(inpt=callableDensity, isIsotropic=False)
+		if self.heatmaterial.density is None: self.heatmaterial.density = lambda x: np.ones(self.part.nbqp_total)
 		return
 	
 	def compute_mfSTConductivity(self, array_in, args=None):

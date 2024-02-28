@@ -57,7 +57,7 @@ def simulation(degree, cuts, quadArgs):
 	def Capacity(x):
 		x_in = np.zeros(boundary._nbctrlpts_total)
 		x_in[boundary.thdof] = x
-		y = heatprob_ref.compute_mfCapacity(x_in)
+		y = heatprob_ref.compute_mfCapacity(x_in, args=modelPhy_ref.qpPhy)
 		x_out = y[boundary.thdof]
 		return x_out
 	
@@ -67,7 +67,7 @@ def simulation(degree, cuts, quadArgs):
 		for i, dof in enumerate(boundary.mchdof):
 			x_in[i, dof] = x[c:c+len(dof)]
 			c += len(dof)
-		y = mecaprob_ref.compute_mfMass(x_in)
+		y = mecaprob_ref.compute_mfMass(x_in, args=modelPhy_ref.qpPhy)
 		x_out = np.array([])
 		for i, dof in enumerate(boundary.mchdof):
 			x_out = np.append(x_out, y[i, dof])
@@ -76,7 +76,7 @@ def simulation(degree, cuts, quadArgs):
 	def Conductivity(x):
 		x_in = np.zeros(boundary._nbctrlpts_total)
 		x_in[boundary.thdof] = x
-		y = heatprob.compute_mfConductivity(x_in)
+		y = heatprob.compute_mfConductivity(x_in, args=modelPhy.qpPhy)
 		x_out = y[boundary.thdof]
 		return x_out
 	
