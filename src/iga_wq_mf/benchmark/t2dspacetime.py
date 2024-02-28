@@ -27,7 +27,7 @@ def exactTemperature(qpPhy):
 	return u
 
 def powerDensity(args:dict):
-	position = args['Position']; timespan = args['Time']
+	position = args['position']; timespan = args['time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
@@ -65,7 +65,7 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 
 	problem = stheatproblem(material, modelPhy, timespan, boundary)
 	# External heat force
-	Fext = problem.compute_volForce(powerDensity, {'Position':problem.part.qpPhy, 'Time':problem.time.qpPhy})
+	Fext = problem.compute_volForce(powerDensity, {'position':problem.part.qpPhy, 'time':problem.time.qpPhy})
 	u_guess = np.zeros(np.prod(stnbctrlpts)); u_guess[boundary.thdod] = 0.0
 	problem.addSolverConstraints(solverArgs=problemArgs)
 	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=True)

@@ -31,7 +31,7 @@ class stproblem():
 	
 	def compute_volForce(self, volfun, args=None): 
 		" Computes the volume force over a geometry "
-		assert args is not None, 'Please enter a valid argument'
+		if args is None: args={'position': self.part.qpPhy}
 		prop = volfun(args)
 		prop = np.atleast_2d(prop); nr = np.size(prop, axis=0)
 		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, *self.time.quadRule.dersIndices, 

@@ -20,7 +20,8 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d2transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def conductivityProperty(P:list):
+def conductivityProperty(args:dict):
+	P = args.get('position')
 	Kref  = np.array([[1, 0.5],[0.5, 2]])
 	Kprop = np.zeros((2, 2, np.size(P, axis=1)))
 	for i in range(2): 
@@ -28,10 +29,11 @@ def conductivityProperty(P:list):
 			Kprop[i, j, :] = Kref[i, j] 
 	return Kprop 
 
-def powerDensity_quartCircle(P: list):
+def powerDensity_quartCircle(args):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
+	P = args.get('position')
 	x = P[0, :]
 	y = P[1, :]
 

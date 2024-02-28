@@ -57,7 +57,7 @@ def exactTemperature(qpPhy):
 	return u
 
 def powerDensity(args:dict):
-	position = args['Position']; timespan = args['Time']
+	position = args['position']; timespan = args['time']
 	x = position[0, :]; y = position[1, :]
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
 	if ISLINEAR:
@@ -129,8 +129,8 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 	problem = stheatproblem(material, modelPhy, timespan, boundary)
 	# External heat force
 	Fext = problem.compute_volForce(powerDensity, 
-									{'Position':problem.part.qpPhy, 
-									'Time':problem.time.qpPhy})
+									{'position':problem.part.qpPhy, 
+									'time':problem.time.qpPhy})
 	
 	if uguess is None: uguess = np.zeros(np.prod(stnbctrlpts))
 	# if uguess is None: uguess = np.random.uniform(-2, 5, np.prod(stnbctrlpts))
