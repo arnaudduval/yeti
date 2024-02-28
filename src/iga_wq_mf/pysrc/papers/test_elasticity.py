@@ -21,7 +21,7 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':2e10, 'poisson_ratio': POISS
 DEGREE_LIST = np.arange(5, 6)
 CUTS_LIST   = np.arange(6, 7)
 ITERMETHODS = ['WP', 'C', 'JMC']
-dataExist   = True
+dataExist   = False
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)

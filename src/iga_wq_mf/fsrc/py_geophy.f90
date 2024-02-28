@@ -503,7 +503,7 @@ end subroutine interpolate_meshgrid_1d
 subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, table, &
-                            detJ, prop, Fext, iterations, threshold, x, residual)
+                            invJ, detJ, prop, Fext, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -528,8 +528,8 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical, intent(in) :: table
     dimension :: table(dimen, 2)
 
-    double precision, target, intent(in) :: detJ, prop
-    dimension :: detJ(nc_total), prop(nc_total)
+    double precision, target, intent(in) :: invJ, detJ, prop
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold, Fext
     dimension :: Fext(nm, nr_total)
@@ -545,17 +545,19 @@ subroutine l2projection_ctrlpts_3d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
 
-    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
-                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, &
-                        data_B_w, data_W_u, data_W_v, data_W_w)
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
+                        indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
+                        data_W_u, data_W_v, data_W_w)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     call space_eigendecomposition(redsyst)
 
     ! Set material and solver
-    mat%dimen = dimen; mat%detJ => detJ
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
     solv%matrixfreetype = 1; solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
@@ -568,7 +570,7 @@ end subroutine l2projection_ctrlpts_3d
 
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, table, detJ, prop, &
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, invJ, detJ, prop, &
                             Fext, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
@@ -592,8 +594,8 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     logical, intent(in) :: table
     dimension :: table(dimen, 2)
 
-    double precision, target, intent(in) :: detJ, prop
-    dimension :: detJ(nc_total), prop(nc_total)
+    double precision, target, intent(in) :: invJ, detJ, prop
+    dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(nc_total)
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold, Fext
     dimension :: Fext(nm, nr_total)
@@ -614,12 +616,14 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
                         data_W_u, data_W_v)
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
-    call getcsrc2dense(globsyst)
     call getcsrc2dense(redsyst%basisdata)
+    call getcsr2csc(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
+    call getcsr2csc(globsyst)
     call space_eigendecomposition(redsyst)
 
     ! Set material and solver
-    mat%dimen = dimen; mat%detJ => detJ
+    call setup_geometry(mat, dimen, nc_total, invJ, detJ)
     call setup_capacityprop(mat, nc_total, prop)
     solv%matrixfreetype = 1; solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)

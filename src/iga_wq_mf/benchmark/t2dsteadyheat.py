@@ -29,7 +29,7 @@ def conductivityProperty(args:dict):
 			Kprop[i, j, :] = Kref[i, j] 
 	return Kprop 
 
-def powerDensity_quartCircle(args):
+def powerDensity_quartCircle(args:dict):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
@@ -120,7 +120,8 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 			start=time.time()
 			problem = heatproblem(material, modelPhy, boundary)
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
-			temperature = problem._solveLinearizedSteadyProblem(Fext=Fext)[0]
+			temperature = np.zeros(problem.part.nbctrlpts_total)
+			problem.solveFourierSteadyProblem(temperature, Fext=Fext)
 			error_list[j], _ = problem.normOfError(temperature, normArgs={'type':'semiH1',
 												'exactFunction':exactTemperature_quartCircle,
 												'exactFunctionDers':exactDiffTemperature_quartCircle})

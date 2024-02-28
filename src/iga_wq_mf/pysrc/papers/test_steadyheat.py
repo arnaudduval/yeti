@@ -6,7 +6,8 @@ from pysrc.lib.lib_part import part
 from pysrc.lib.lib_job import heatproblem
 from pysrc.papers.lib_simulation import decoder, simulate
 
-def conductivityProperty(P:list):
+def conductivityProperty(args:dict):
+	P = args.get('position')
 	dimen = np.size(P, axis=0)
 	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
 	# Kref  = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 3]])
@@ -20,10 +21,11 @@ def conductivityProperty(P:list):
 	# if dimen > 2: Kprop[2, 2, :] += 2.5*np.cos(np.pi*x)**2
 	return Kprop 
 
-def powerDensity_cube(P: list):
+def powerDensity_cube(args:dict):
 	""" u = sin(pi*x)*sin(pi*y)*sin(pi*z)
 		f = -div(lambda * grad(u))
 	"""
+	P = args.get('position')
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
@@ -37,10 +39,11 @@ def powerDensity_cube(P: list):
 
 	return f
 
-def powerDensity_prism(P: list):
+def powerDensity_prism(args:dict):
 	""" u = (-5*x+6*y+45)*(5*x+6*y-45)*x*(x-6)*sin(pi*z)
 		f = -div(lambda * grad(u))
 	"""
+	P = args.get('position')
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :]
@@ -61,10 +64,11 @@ def powerDensity_prism(P: list):
 	
 	return f
 
-def powerDensity_thickRing(P: list):
+def powerDensity_thickRing(args:dict):
 	""" u = sin(5*pi*x)*sin(5*pi*y)*sin(5*pi*z)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
+	P = args.get('position')
 	x = P[0, :]
 	y = P[1, :]
 	z = P[2, :] 
@@ -95,10 +99,11 @@ def powerDensity_thickRing(P: list):
 
 	return f
 
-def powerDensity_quartCircle(P: list):
+def powerDensity_quartCircle(args:dict):
 	""" u = sin(pi*x)*sin(pi*y)*(x**2+y**2-1)*(x**2+y**2-4)
 		f = -div(lambda * grad(u))
 	"""
+	P = args.get('position')
 	x = P[0, :]
 	y = P[1, :]
 
@@ -173,7 +178,7 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/heattransfer/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = True
+dataExist   = False
 degree_list = np.arange(4, 5)
 cuts_list   = np.arange(5, 6)
 name_list   = ['qa']

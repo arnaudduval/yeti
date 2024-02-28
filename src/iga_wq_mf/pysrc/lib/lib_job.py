@@ -51,7 +51,7 @@ class problem():
 	def _solveL2projection(self, Fext, table=None, prop=None):
 		if table is None: table = np.zeros((self.part.dim, 2), dtype=bool)
 		if prop is None: prop = np.ones(self.part.nbqp_total)
-		inpts = [*self._getInputs(), table, self.part.detJ, prop, np.atleast_2d(Fext), self._itersLin, self._thresLin]
+		inpts = [*self._getInputs(), table, self.part.invJ, self.part.detJ, prop, np.atleast_2d(Fext), self._itersLin, self._thresLin]
 		if self.part.dim == 2: sol, _ = geophy.l2projection_ctrlpts_2d(*inpts)
 		if self.part.dim == 3: sol, _ = geophy.l2projection_ctrlpts_3d(*inpts)
 		if np.size(sol, axis=0) == 1: sol = np.ravel(sol)
@@ -271,42 +271,35 @@ class heatproblem(problem):
 	
 	def solveFourierSteadyProblem(self, Tinout, Fext):
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
-		dj_n1 = np.copy(Tinout)
-
-		AllresLin, AllresNewton, Allsol, Allthres = [], [], [], []
-		threshold_inner = None
+		AllresLin, AllresNewton, Allsol = [], [], []
 		for j in range(self._itersNL):
 
 			# Compute temperature at each quadrature point
-			temperature = self.interpolate_temperature(dj_n1)
+			temperature = self.interpolate_temperature(Tinout)
 
 			# Compute internal force
-			Fint_dj = self.compute_mfConductivity(dj_n1, args={'temperature':temperature})
+			args = {'temperature':temperature, 'position': self.part.qpPhy}
+			Fint_dj = self.compute_mfConductivity(Tinout, args=args)
 
 			# Compute residue
 			r_dj = Fext - Fint_dj
 			r_dj[dod] = 0.0
 
 			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
-			if j == 0: resNL0 = resNLj1
-			print('Nonlinear error: %.3e' %resNLj1)
-				
+			if j == 0: resNL0 = resNLj1				
 			AllresNewton.append(resNLj1)
-			Allsol.append(np.copy(dj_n1))
+			Allsol.append(np.copy(Tinout))
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 
 			# Solve for active control points
-			deltaD, resLinj = self._solveLinearizedSteadyProblem(r_dj, 
-										args={'temperature':temperature})			
+			deltaD, resLinj = self._solveLinearizedSteadyProblem(r_dj, args=args)			
 
 			# Update active control points
-			dj_n1 += deltaD
+			Tinout += deltaD
 			AllresLin.append(resLinj)
-			Allthres.append(threshold_inner)
 
-		Tinout = np.copy(dj_n1)
-		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
+		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol}
 		return output
 	
 	def _solveLinearizedTransientProblem(self, Fext, tsfactor, args=None, isLumped=False):
@@ -319,12 +312,13 @@ class heatproblem(problem):
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
 
-	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
+	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 
-		def computeVelocity(self:heatproblem, Fext, args=None):
+		def computeVelocity(self:heatproblem, Fext, args=None, isLumped=False):
 			if args is None: args = {'position': self.part.qpPhy}
 			prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
-			velocity = self._solveL2projection(Fext, table=self.boundary.thDirichletTable, prop=prop)
+			if isLumped: velocity = Fext/self.compute_mfCapacity(np.ones(self.part.nbctrlpts_total), args=args, isLumped=isLumped)
+			else: velocity = self._solveL2projection(Fext, table=self.boundary.thDirichletTable, prop=prop)
 			return velocity
 
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -343,7 +337,7 @@ class heatproblem(problem):
 		args={'temperature':temperature, 'position':self.part.qpPhy}
 		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
 				- self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0[dof] = computeVelocity(self, np.atleast_2d(tmp), args=args)[dof]
+		V_n0[dof] = computeVelocity(self, np.atleast_2d(tmp), args=args, isLumped=isLumped)[dof]
 
 		AllresLin = []
 		for i in range(1, nsteps):

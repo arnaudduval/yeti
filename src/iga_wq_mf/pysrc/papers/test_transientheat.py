@@ -6,9 +6,9 @@ from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job import heatproblem
 
-def conductivityProperty(P:list):
+def conductivityProperty(args:dict):
+	T = args.get('temperature')
 	cst = 10.0
-	T   = P[3, :]
 	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
 	Kprop = np.zeros((3, 3, len(T)))
 	for i in range(3): 
@@ -19,9 +19,9 @@ def conductivityProperty(P:list):
 			Kprop[i, j, :] = Kref[i, j]*cst*(1.0 + 2.0/(1.0 + np.exp(-5.0*(T-1.0))))
 	return Kprop 
 
-def capacityProperty(P:list):
+def capacityProperty(args:dict):
+	T = args.get('temperature')
 	cst = 1.0
-	T   = P[3, :]
 	Cprop = cst*(1 + np.exp(-2.0*abs(T)))
 	return Cprop
 
@@ -40,7 +40,7 @@ elif example == 2: nbsteps = 6
 
 if not dataExist:
 
-	degree, cuts = 6, 5
+	degree, cuts = 4, 5
 	time_list    = np.linspace(0, 0.25, nbsteps)  
 
 	for PCGmethod in IterMethods:

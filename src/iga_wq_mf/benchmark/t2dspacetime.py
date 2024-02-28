@@ -8,8 +8,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 def conductivityProperty(args):
 	temperature = args['temperature']
-	# Kref  = np.array([[1., 0.0, 0.0],[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-	Kref  = np.array([[1., 0.5, 0.0],[0.5, 2.0, 0.0], [0.0, 0.0, 1.0]])
+	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
