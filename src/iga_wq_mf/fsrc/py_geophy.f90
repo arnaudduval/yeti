@@ -582,7 +582,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     implicit none 
     ! Input / output data
     ! -------------------
-    integer, parameter :: dimen = 3
+    integer, parameter :: dimen = 2
     integer, intent(in) :: nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
