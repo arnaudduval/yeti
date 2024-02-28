@@ -230,8 +230,8 @@ class mechamat(material):
 			mechArgs[1, :] = self.lame_mu; mechArgs[1, plsInd] = self.lame_mu*(1 - theta)
 			mechArgs[2, plsInd] = -2*self.lame_mu*(thetatilde - theta)
 			mechArgs[3, plsInd] = -np.sqrt(2.0/3.0)*theta*thetatilde
-			mechArgs[4:nvoigt+4, plsInd] = normal
-			mechArgs[nvoigt+4:, plsInd]  = hatbeta
+			mechArgs[4:4+nvoigt, plsInd] = normal
+			mechArgs[4+nvoigt:, plsInd]  = hatbeta
 		return mechArgs
 	
 	def J2returnMappingAlgorithm3D(self, strain_n1, pls_n0, alpha_n0, beta_n0, isElasticMatrix=False, threshold=1e-8):

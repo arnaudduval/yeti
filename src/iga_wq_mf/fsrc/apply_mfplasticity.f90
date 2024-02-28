@@ -94,11 +94,11 @@ contains
             allocate(mat%CepArgs(2, mat%ncols_sp))
             mat%CepArgs = mechArgs(:2, :)
         else
-            if (nbrows.lt.4) stop 'Size problem'
+            if (nbrows.lt.4+2*mat%nvoigt) stop 'Size problem'
             allocate(mat%CepArgs(4, mat%ncols_sp))
             mat%CepArgs = mechArgs(:4, :)  
-            mat%NN      => mechArgs(5:5+mat%nvoigt, :)
-            mat%BB      => mechArgs(6+mat%nvoigt:6+2*mat%nvoigt, :)
+            mat%NN      => mechArgs(5:4+mat%nvoigt, :)
+            mat%BB      => mechArgs(5+mat%nvoigt:4+2*mat%nvoigt, :)
 
             if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
             if (.not.allocated(mat%JJbb)) allocate(mat%JJbb(mat%dimen, mat%dimen, mat%ncols_sp))
@@ -181,7 +181,7 @@ contains
                     end do
 
                     ! Plastic
-                    if (mat%isElastic.eqv..false.) then
+                    if (.not.mat%isElastic) then
                         NN = mat%NN(:, gp); BB = mat%BB(:, gp)
                         call array2symtensor(mat%dimen, size(NN), NN, TNN)
                         call array2symtensor(mat%dimen, size(BB), BB, TBB)
@@ -222,7 +222,7 @@ contains
                     end do
                     
                     ! Plastic
-                    if (mat%isElastic.eqv..false.) then
+                    if (.not.mat%isElastic) then
                         NN = mat%NN(:, gp); BB = mat%BB(:, gp)
                         call array2symtensor(mat%dimen, size(NN), NN, TNN)
                         call array2symtensor(mat%dimen, size(BB), BB, TBB)
@@ -291,7 +291,7 @@ contains
                 end do
                 
                 ! Plastic
-                if (mat%isElastic.eqv..false.) then
+                if (.not.mat%isElastic) then
                     NN = mat%NN(:, gp); BB = mat%NN(:, gp)
                     call array2symtensor(mat%dimen, size(NN), NN, TNN)
                     call array2symtensor(mat%dimen, size(BB), BB, TBB)
@@ -450,7 +450,6 @@ contains
 
         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1); nnz_u = basisdata%nnzs(1)
         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2); nnz_v = basisdata%nnzs(2)
         allocate(indi_u(nr_u+1), indj_u(nnz_u), data_W_u(nnz_u, 4), indiT_u(nc_u+1), indjT_u(nnz_u), data_BT_u(nnz_u, 2))
@@ -500,8 +499,8 @@ contains
                 end do
 
                 t2 = kt1(1, :)*mat%invJ(m, j, :)
-                t4 = 0.d0; t5 = 0.d0; t6 = 0.d0
-                if (mat%isElastic.eqv..false.) then
+                if (.not.mat%isElastic) then
+                    t4 = 0.d0; t5 = 0.d0; t6 = 0.d0
                     if (mat%withNN) t4 = kt1(3, :)*mat%JJnn(m, j, :)
                     if (mat%withBB) t5 = kt1(4, :)*mat%JJbb(m, j, :)
                     if (mat%withNN) t6 = kt1(4, :)*mat%JJnn(m, j, :)
@@ -516,10 +515,11 @@ contains
                         zeta  = beta + (alpha - 1)*2
                         
                         t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
-                        if (mat%isElastic.eqv..false.) then
+                        if (.not.mat%isElastic) then
                             if (mat%withNN) t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :)  
                             if (mat%withBB) t7 = t7 + t6*mat%JJbb(l, i, :)
                         end if
+
                         if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
                         if (basisdata%dimen.eq.2) then
                             call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
@@ -533,7 +533,7 @@ contains
                                                 nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
                                                 t7, t8)
                         end if
-
+                        
                         t9 = t9 + t8
                     end do
 
@@ -903,7 +903,6 @@ contains
         normb = norm2(r) 
         if (normb.le.1.d-14) return
         residual(1) = 1.d0
-
         do k = 1, iterations
             call applyfastdiag(solv, nr_total, p, ptilde) 
             call clear_dirichlet(solv, nr_total, ptilde)
