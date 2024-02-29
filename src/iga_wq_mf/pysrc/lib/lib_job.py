@@ -138,7 +138,7 @@ class problem():
 			u_interp = geophy.interpolate_meshgrid_3d(*inpts, np.atleast_2d(u_ctrlpts))
 			derstemp = geophy.eval_jacobien_3d(*inpts, np.atleast_2d(u_ctrlpts))
 	
-		u_interp = np.atleast_2d(u_interp); uders_interp = None
+		u_interp = np.atleast_2d(u_interp)
 		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
 
 		# Compute u exact
@@ -337,7 +337,7 @@ class heatproblem(problem):
 		args={'temperature':temperature, 'position':self.part.qpPhy}
 		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
 				- self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0[dof] = computeVelocity(self, np.atleast_2d(tmp), args=args, isLumped=isLumped)[dof]
+		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
 
 		AllresLin = []
 		for i in range(1, nsteps):

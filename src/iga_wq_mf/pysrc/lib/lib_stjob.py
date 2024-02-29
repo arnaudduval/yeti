@@ -86,7 +86,7 @@ class stproblem():
 			u_interp = geophy.interpolate_meshgrid_4d(*inpts, np.atleast_2d(u_ctrlpts))
 			derstemp = geophy.eval_jacobien_4d(*inpts, np.atleast_2d(u_ctrlpts))
 
-		u_interp = np.atleast_2d(u_interp); uders_interp = None
+		u_interp = np.atleast_2d(u_interp)
 		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ))
 
 		# Compute u exact

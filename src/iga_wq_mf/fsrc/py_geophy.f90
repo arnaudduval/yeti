@@ -570,8 +570,8 @@ end subroutine l2projection_ctrlpts_3d
 
 subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
-                            data_B_u, data_B_v, data_W_u, data_W_v, table, invJ, detJ, prop, &
-                            Fext, iterations, threshold, x, residual)
+                            data_B_u, data_B_v, data_W_u, data_W_v, table, &
+                            invJ, detJ, prop, Fext, iterations, threshold, x, residual)
     !! Preconditioned conjugate gradient to solve interpolation problem
     !! IN CSR FORMAT
     
@@ -586,7 +586,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     integer, intent(in) :: nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
     integer, intent(in) :: indi_u, indj_u, indi_v, indj_v
     dimension ::    indi_u(nr_u+1), indj_u(nnz_u), &
-                    indi_v(nr_v+1), indj_v(nnz_v) 
+                    indi_v(nr_v+1), indj_v(nnz_v)
     double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v
     dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
                     data_B_v(nnz_v, 2), data_W_v(nnz_v, 4)
@@ -627,7 +627,7 @@ subroutine l2projection_ctrlpts_2d(nm, nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     call setup_capacityprop(mat, nc_total, prop)
     solv%matrixfreetype = 1; solv%withdiag = .false.
     call initialize_solver(solv, globsyst, redsyst)
-
+    
     do i = 1, nm
         call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext(i, :), x(i, :), residual(i, :))
     end do

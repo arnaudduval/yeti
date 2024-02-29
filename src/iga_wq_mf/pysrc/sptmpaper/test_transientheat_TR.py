@@ -14,9 +14,9 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
 FIG_CASE  = 1
-DATAEXIST = False
+DATAEXIST = True
 ISLINEAR  = False
-c = 0.01
+c = 0.001
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -89,7 +89,7 @@ def simulate(degree, cuts, quadArgs):
 	
 	nbsteps   = 2**cuts
 	time_list = np.linspace(0, 1, nbsteps+1) 
-	time_crv  = part1D(createUniformCurve(1, 2**cuts, 1.), {'quadArgs': quadArgs})
+	time_crv  = part1D(createUniformCurve(1, nbsteps, 1.), {'quadArgs': quadArgs})
 
 	# Add material 
 	material = heatmat()
@@ -116,7 +116,7 @@ def simulate(degree, cuts, quadArgs):
 
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
-	problem.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_list, alpha=0.5)
+	problem.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_list, alpha=0.5, isLumped=True)
 
 	return problem_st, Tinout
 
@@ -139,12 +139,13 @@ if not DATAEXIST:
 			for j, cuts in enumerate(cuts_list):
 				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
-					blockPrint()
-					problem_st, displacement = simulate(degree, cuts, quadArgs)
-					enablePrint()
+					problem_st, output = simulate(degree, cuts, quadArgs)
+					displacement = np.ravel(output, order='F')
 					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem_st.normOfError(displacement, 
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature},)
+					np.savetxt(filename1, L2errorTable)
+					np.savetxt(filename2, L2relerrorTable)
 else:
 
 	if FIG_CASE == 1:

@@ -854,14 +854,16 @@ contains
             call clear_dirichlet(solv, nr_total, Aptilde)
             alpha = rsold/dot_product(Aptilde, rhat)
             s = r - alpha*Aptilde
+            x = x + alpha*ptilde
+            if (norm2(s).le.max(threshold*normb, 1.d-14)) exit
             
             call applyfastdiag(solv, nr_total, s, stilde)
             call clear_dirichlet(solv, nr_total, stilde)
             call matrixfree_matvec(solv, mat, nr_total, stilde, Astilde)
             call clear_dirichlet(solv, nr_total, Astilde)
             omega = dot_product(Astilde, s)/dot_product(Astilde, Astilde)
-            x = x + alpha*ptilde + omega*stilde
             r = s - omega*Astilde    
+            x = x + omega*stilde
             
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
             residual(k+1) = norm2(r)/normb
