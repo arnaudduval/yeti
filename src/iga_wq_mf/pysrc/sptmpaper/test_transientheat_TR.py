@@ -13,12 +13,12 @@ folder = os.path.dirname(full_path) + '/results/transient/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
-FIG_CASE  = 1
-DATAEXIST = True
+FIG_CASE  = 3
+DATAEXIST = False
 ISLINEAR  = False
 c = 0.001
 
-def conductivityProperty(args):
+def conductivityProperty(args:dict):
 	temperature = args['temperature']
 	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
@@ -28,13 +28,20 @@ def conductivityProperty(args):
 			else: Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0*np.exp(-np.abs(temperature)))
 	return Kprop 
 
-def capacityProperty(args):
+def capacityProperty(args:dict):
 	temperature = args['temperature']
 	if ISLINEAR: Cprop = np.ones(len(temperature))
 	else: Cprop = (1.0 + np.exp(-np.abs(temperature)))
 	return Cprop
 
-def exactTemperature(qpPhy):
+def exactTemperature_inc(args:dict):
+	qpPhy = args.get('position')
+	t = args.get('time')
+	x = qpPhy[0, :]; y = qpPhy[1, :]
+	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*np.sin(np.pi*x)*np.sin(np.pi*t)
+	return u
+
+def exactTemperature_st(qpPhy):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
 	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*np.sin(np.pi*x)*np.sin(np.pi*t)
 	return u
@@ -79,17 +86,19 @@ def powerDensity(args:dict):
 		)
 	return f
 
-def simulate(degree, cuts, quadArgs):
+def simulate(degree, cuts, quadArgs, cuts_time=None):
 	geoArgs = {'name': 'TP', 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	
-	nbsteps   = 2**cuts
-	time_list = np.linspace(0, 1, nbsteps+1) 
-	time_crv  = part1D(createUniformCurve(1, nbsteps, 1.), {'quadArgs': quadArgs})
+
+	if cuts_time is None: cuts_time = np.copy(cuts)
+	timespan  = 1
+	nbsteps   = 2**cuts_time
+	time_inc  = np.linspace(0, timespan, nbsteps+1) 
+	time_crv  = part1D(createUniformCurve(1, nbsteps, timespan), {'quadArgs': quadArgs})
 
 	# Add material 
 	material = heatmat()
@@ -97,8 +106,8 @@ def simulate(degree, cuts, quadArgs):
 	material.addCapacity(capacityProperty, isIsotropic=False) 
 
 	# Block boundaries
-	boundary = boundaryCondition(modelPhy.nbctrlpts)
-	boundary.add_DirichletConstTemperature(table=np.ones((2, 2)))
+	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
+	boundary_inc.add_DirichletConstTemperature(table=np.ones((2, 2)))
 
 	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts])
@@ -106,19 +115,19 @@ def simulate(degree, cuts, quadArgs):
 	boundary_st.add_DirichletConstTemperature(table=dirichlet_table)
 
 	# Transient model
-	problem = heatproblem(material, modelPhy, boundary)
-	problem_st = stheatproblem(material, modelPhy, time_crv, boundary_st)
+	problem_inc = heatproblem(material, modelPhy, boundary_inc)
+	problem_st  = stheatproblem(material, modelPhy, time_crv, boundary_st)
 
 	# Add external force 
-	Fext_list = np.zeros((problem.part.nbctrlpts_total, len(time_list)))
-	for i, t in enumerate(time_list):
-		Fext_list[:, i] = problem.compute_volForce(powerDensity, args={'position':problem.part.qpPhy, 'time':t})
+	Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
+	for i, t in enumerate(time_inc):
+		Fext_list[:, i] = problem_inc.compute_volForce(powerDensity, args={'position':problem_inc.part.qpPhy, 'time':t})
 
 	# Solve
-	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
-	problem.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_list, alpha=0.5, isLumped=True)
+	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
+	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_inc, alpha=0.5)
 
-	return problem_st, Tinout
+	return problem_inc, problem_st, Tinout
 
 if not DATAEXIST:
 	if FIG_CASE == 1:
@@ -134,18 +143,49 @@ if not DATAEXIST:
 			L2errorTable[1:, 0] = degree_list; L2relerrorTable[1:, 0] = degree_list
 			filename1 = folder+'L2error_meshpar'+sufix+extension
 			filename2 = folder+'L2relerror_meshpar'+sufix+extension
-			# if os.path.exists(filename1): raise Warning('File exist')
-			# if os.path.exists(filename2): raise Warning('File exist')
 			for j, cuts in enumerate(cuts_list):
 				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
-					problem_st, output = simulate(degree, cuts, quadArgs)
-					displacement = np.ravel(output, order='F')
-					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem_st.normOfError(displacement, 
-																	normArgs={'type':'L2', 
-																	'exactFunction':exactTemperature},)
+					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs)
+					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem_st.normOfError(np.ravel(output, order='F'), 
+																								normArgs={'type':'L2', 
+																								'exactFunction':exactTemperature_st},)
 					np.savetxt(filename1, L2errorTable)
 					np.savetxt(filename2, L2relerrorTable)
+
+	elif FIG_CASE == 3:
+		lastsufix = 'linear' if ISLINEAR else 'nonlin'
+		degree_list = np.array([1, 2, 3, 4])
+		cuts_list   = np.arange(1, 6)
+		for quadrule, quadtype in zip(['iga'], ['leg']):
+			quadArgs = {'quadrule': quadrule, 'type': quadtype}
+			error_list = np.ones((len(degree_list), len(cuts_list), 2**np.max(cuts_list)))
+			for j, cuts in enumerate(cuts_list):
+				for i, degree in enumerate(degree_list):
+					nbels = 2**cuts_list
+					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=np.max(cuts_list))
+					for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
+						_, error_list[i, j, k] = problem_inc.normOfError(output[:, k+1], 
+																		normArgs={'type':'L2',
+																				'exactFunction':exactTemperature_inc,
+																				'exactExtraArgs':{'time':step}})
+			np.save(folder + 'incrementalheat', error_list)
+			error_list = np.load(folder + 'incrementalheat.npy')
+
+			for k in range(np.size(error_list, axis=2)):
+				fig, ax = plt.subplots(figsize=(9, 6))
+				for i, degree in enumerate(degree_list):
+					color = COLORLIST[i]
+					ax.loglog(2**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
+								markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+				ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+				ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
+				ax.set_ylim(top=1e2, bottom=1e-4)
+				ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+				fig.tight_layout()
+				fig.savefig(folder + 'steps1/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
+				plt.close(fig)
+
 else:
 
 	if FIG_CASE == 1:

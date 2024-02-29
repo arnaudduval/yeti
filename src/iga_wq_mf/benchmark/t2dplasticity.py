@@ -97,7 +97,7 @@ else:
 
 			for k, step in enumerate(step_list):
 				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
-														normArgs={'typenorm':'H1', 
+														normArgs={'type':'H1', 
 														'part_ref':part_ref, 
 														'u_ref': disp_ref[:, :, step]})
 

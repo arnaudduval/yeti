@@ -93,8 +93,15 @@ class stproblem():
 		u_exact, uders_exact = None, None
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
-		if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
-		if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(qpPhy))
+		exactextraArgs = normArgs.get('exactExtraArgs', None)
+		if exactextraArgs is not None:
+			assert isinstance(exactextraArgs, dict), 'Error type of extra args'
+			if not exactextraArgs.has_key('position'): exactextraArgs['position'] = qpPhy
+			if callable(exactfun): u_exact = np.atleast_2d(exactfun(exactextraArgs))
+			if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(exactextraArgs))
+		else:
+			if callable(exactfun): u_exact = np.atleast_2d(exactfun(qpPhy))
+			if callable(exactfunders): uders_exact = np.atleast_3d(exactfunders(qpPhy))
 
 		part_ref = normArgs.get('part_ref', None); time_ref = normArgs.get('time_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(part_ref, part) and isinstance(time_ref, part1D) and isinstance(u_ref, np.ndarray):
