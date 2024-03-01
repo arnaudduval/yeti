@@ -155,9 +155,10 @@ class stproblem():
 		if self.part.dim == 3: 
 			tmp1 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm1)
 			tmp2 = np.einsum('i,j,k,l,ijkl->', parametricWeights[0], parametricWeights[1], parametricWeights[2], parametricWeights[3], norm2)
-			
+	
 		abserror = np.sqrt(tmp1)
-		relerror = np.sqrt(tmp1/tmp2)
+		relerror = np.sqrt(tmp1/tmp2) if tmp2!=0 else np.sqrt(tmp1)
+		if tmp2 == 0: print('Warning: Dividing by zero')
 
 		return abserror, relerror
 
@@ -241,17 +242,15 @@ class stheatproblem(stproblem):
 		omega_kr = solvArgs.get('exponential', 1.5)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
-		dj_n1 = np.copy(Tinout)
-
-		AllresLin, AllresNewton, Allsol, Allthres = [], [], [], []
+		AllresLin, AllresNewton, Allsol, Allthres, Alldelta = [], [], [], [], []
 		threshold_inner = None
 		for j in range(self._itersNL):
 
 			# Compute temperature at each quadrature point
-			temperature, gradtemperature = self.interpolate_STtemperature_gradients(dj_n1)
+			temperature, gradtemperature = self.interpolate_STtemperature_gradients(Tinout)
 
 			# Compute internal force
-			Fint_dj = self._compute_STHeatIntForce(dj_n1, args={'temperature':temperature})
+			Fint_dj = self._compute_STHeatIntForce(Tinout, args={'temperature':temperature})
 
 			# Compute residue
 			r_dj = Fext - Fint_dj
@@ -275,7 +274,7 @@ class stheatproblem(stproblem):
 				threshold_inner = self._thresLin
 				
 			AllresNewton.append(resNLj1)
-			Allsol.append(np.copy(dj_n1))
+			Allsol.append(np.copy(Tinout))
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)
@@ -287,10 +286,10 @@ class stheatproblem(stproblem):
 										isfull=isfull, threshold=threshold_inner)			
 
 			# Update active control points
-			dj_n1 += deltaD
+			Tinout += deltaD
 			AllresLin.append(resLinj)
 			Allthres.append(threshold_inner)
+			Alldelta.append(deltaD)
 			
-		Tinout = np.copy(dj_n1)
-		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres}
+		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres, 'Delta':Alldelta}
 		return output

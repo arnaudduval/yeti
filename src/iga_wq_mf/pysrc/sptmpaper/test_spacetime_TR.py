@@ -295,7 +295,7 @@ else:
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of outer iterations'
 					elif caseplot == 4:
-						yy = L2relerror; xx = np.arange(0, len(newtonRes))
+						yy = L2relerror; xx = np.arange(0, len(L2relerror))
 						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
 						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of outer iterations'

@@ -10,13 +10,14 @@ from pysrc.lib.lib_stjob import stheatproblem
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/spacetime/QA/'
 if not os.path.isdir(folder): os.mkdir(folder)
+# 1: 0.01
 
 extension = '.dat'
-FIG_CASE  = 1
+FIG_CASE  = 2
 DATAEXIST = True
-ISLINEAR  = True
-c = 0.01
-degree, cuts = 2, 6
+ISLINEAR  = False
+c = 0.0001
+degree, cuts = 2, 5
 
 def conductivityProperty(args):
 	temperature = args['temperature']
@@ -53,6 +54,11 @@ def capacityDersProperty(args):
 def exactTemperature(qpPhy):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
 	u = c*(x**2 + y**2 - 1)*(x**2 + y**2 - 25)*np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*t)
+	return u
+
+def zeros(qpPhy):
+	x = qpPhy[0, :]
+	u = np.zeros(len(x))
 	return u
 
 def powerDensity(args:dict):
@@ -180,8 +186,8 @@ if not DATAEXIST:
 			L2errorTable[1:, 0] = degree_list; L2relerrorTable[1:, 0] = degree_list
 			filename1 = folder+'L2error_meshpar'+sufix+extension
 			filename2 = folder+'L2relerror_meshpar'+sufix+extension
-			if os.path.exists(filename1): raise Warning('File exist')
-			if os.path.exists(filename2): raise Warning('File exist')
+			# if os.path.exists(filename1): raise Warning('File exist')
+			# if os.path.exists(filename2): raise Warning('File exist')
 			for j, cuts in enumerate(cuts_list):
 				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
@@ -210,15 +216,18 @@ if not DATAEXIST:
 				blockPrint()
 				problem, output = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
 				displacements = output['Solution']
+				deltadisps 	  = output['Delta']
 				resKrylovs    = output['KrylovRes']
 				resNewtons    = output['NewtonRes']
 				thresholds    = output['Threshold']
-				L2error, L2relerror = [], []
+				L2error, L2relerror, L2normDelta = [], [], []
 
-				for displacement in displacements:
+				for displacement, deltadisp in zip(displacements, deltadisps):
 					err, relerr  = problem.normOfError(displacement, normArgs={'type':'L2', 
 																	'exactFunction':exactTemperature})
-					L2error.append(err); L2relerror.append(relerr)
+					normdelta, _ = problem.normOfError(-deltadisp, normArgs={'type':'L2', 
+																'exactFunction':zeros})
+					L2error.append(err); L2relerror.append(relerr), L2normDelta.append(normdelta)
 				resKrylovclean = np.array([]); counter_list = [0]
 				for _ in resKrylovs: 
 					resKrylovclean = np.append(resKrylovclean, _[np.nonzero(_)])
@@ -229,7 +238,9 @@ if not DATAEXIST:
 				np.savetxt(subfolderfolder+prefix+'NewtonRes'+extension, resNewtons)
 				np.savetxt(subfolderfolder+prefix+'L2error'+extension, L2error)
 				np.savetxt(subfolderfolder+prefix+'L2relerror'+extension, L2relerror)
+				np.savetxt(subfolderfolder+prefix+'L2normDelta'+extension, L2normDelta)
 				np.savetxt(subfolderfolder+prefix+'threshold'+extension, np.array(thresholds))
+
 else:
 	if FIG_CASE == 1:
 		normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
@@ -319,7 +330,7 @@ else:
 						ylabel = 'Relative norm of outer residue'
 						xlabel = 'Number of outer iterations'
 					elif caseplot == 4:
-						yy = L2relerror; xx = np.arange(0, len(newtonRes))
+						yy = L2relerror; xx = np.arange(0, len(L2relerror))
 						xlim = 10; ylim = np.power(10, np.floor(np.log10(np.min(L2relerror))))
 						ylabel = r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$'
 						xlabel = 'Number of outer iterations'
@@ -342,18 +353,37 @@ else:
 				prefix = prefix1 + '_' + prefix2 + '_'
 				threshold = np.loadtxt(subfolderfolder+prefix+'threshold'+extension)
 
-				yy = threshold; xx = np.arange(0, len(threshold))
-				xlim = 10
+				yy = threshold; xx = np.arange(0, len(yy))
 				ylabel = 'Forcing term'
 				xlabel = 'Number of outer iterations'
 
 				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
-				ax.set_xlim(right=xlim, left=0)
-				# ax.set_ylim(top=ylim[0], bottom=ylim[1])
+				ax.set_xlim(right=10, left=0)
 				ax.set_ylim(top=1, bottom=1e-4)
 				ax.set_xlabel(xlabel)
 				ax.set_ylabel(ylabel)
 				ax.legend()
 				fig.tight_layout()
 				fig.savefig(folder+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
+
+		fig, ax = plt.subplots(figsize=(8, 6))
+		for [i, isadaptive], prefix1 in zip(enumerate([True, False]), ['inexact', 'exact']):
+			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
+				l = j + i*2
+				legendname = prefix1.capitalize() + ' ' + prefix2.capitalize()
+				prefix = prefix1 + '_' + prefix2 + '_'
+				increment = np.loadtxt(subfolderfolder+prefix+'L2normDelta'+extension)
+
+				yy = increment/increment[0]; xx = np.arange(0, len(yy))
+				ylabel = 'Relative norm of increment'
+				xlabel = 'Number of outer iterations'
+
+				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
+				ax.set_xlim(right=10, left=0)
+				ax.set_ylim(top=10, bottom=1e-11)
+				ax.set_xlabel(xlabel)
+				ax.set_ylabel(ylabel)
+				ax.legend()
+				fig.tight_layout()
+				fig.savefig(folder+'L2normincrement'+'_'+str(degree)+str(cuts)+'.pdf')
 

@@ -201,7 +201,8 @@ class problem():
 			tmp2 = np.einsum('i,j,k,ijk->', parametricWeights[0], parametricWeights[1], parametricWeights[2], norm2)
 			
 		abserror = np.sqrt(tmp1)
-		relerror = np.sqrt(tmp1/tmp2)
+		relerror = np.sqrt(tmp1/tmp2) if tmp2!=0 else np.sqrt(tmp1)
+		if tmp2 == 0: print('Warning: Dividing by zero')
 
 		return abserror, relerror
 
