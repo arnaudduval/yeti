@@ -212,16 +212,13 @@ class part():
 				qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
 
 		if u_ctrlpts is not None: 
-			nr    = np.size(np.atleast_2d(u_ctrlpts), axis=0)
 			inpts = [*self.dim*[sampleSize], *indices, *basis, np.atleast_2d(u_ctrlpts)]
-
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
 			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
-			if nr == 1: uinterp = np.ravel(uinterp)
 
 		return qpPhy, Jqp, detJ, uinterp
 
-	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, name='out'): 
+	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, addDetJ=False, name='out'): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
@@ -263,7 +260,7 @@ class part():
 			else:
 				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), shape, order='F')
 
-		pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
+		if addDetJ: pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
 
 		# Export geometry
 		gridToVTK(folder + name, X[0], X[1], X[2], pointData=pointData)
