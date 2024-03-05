@@ -1,11 +1,3 @@
-"""
-.. Test of 1D transient heat transfer 
-.. Author: Joaquin Cornejo
-density: 7800 kg/m3
-capacity: 460 J/(kg.K)
-conductivity: 55 W/(m.K)
-"""
-
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve, sigmoid
 from pysrc.lib.lib_1d import heatproblem1D
