@@ -10,10 +10,9 @@ from .lib_quadrules import GaussQuadrature
 from .lib_material import mechamat
 from .lib_base import evalDersBasisFortran, array2csr_matrix
 
-class problem1D(part1D):
+class problem1D():
 	def __init__(self, part:BSpline.Curve, kwargs:dict):
-		
-		part1D.__init__(self, part, kwargs)
+		self.part = part1D(part=part, kwargs=kwargs)
 		self.addSolverConstraints(kwargs.get('solverArgs', {}))
 		return
 	
@@ -24,11 +23,11 @@ class problem1D(part1D):
 
 	def add_DirichletCondition(self, table=[0, 0]):
 		dod = np.array([], dtype=int)
-		dof = np.arange(self.nbctrlpts, dtype=int)
+		dof = np.arange(self.part.nbctrlpts, dtype=int)
 		if table[0] == 1:  
 			dof = np.delete(dof, 0); dod = np.append(dod, 0)
 		if table[-1] == 1: 
-			dof = np.delete(dof, -1); dod = np.append(dod, self.nbctrlpts-1)
+			dof = np.delete(dof, -1); dod = np.append(dod, self.part.nbctrlpts-1)
 		self.dof = dof
 		self.dod = dod
 		return 
@@ -42,22 +41,22 @@ class problem1D(part1D):
 	
 	def compute_volForce(self, volfun):
 		" Computes 'volumetric' source vector in 1D "
-		prop  = volfun(self.qpPhy)*self.detJ
-		force = self._denseweights[0] @ prop 
+		prop  = volfun(self.part.qpPhy)*self.part.detJ
+		force = self.part._denseweights[0] @ prop 
 		return force
 	
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
-		if isSample: basis = self.quadRule.getSampleBasis(sampleSize=sampleSize)[0]
-		else: 		 basis = self.quadRule.getDenseQuadRules()[0]
+		if isSample: basis = self.part.quadRule.getSampleBasis(sampleSize=sampleSize)[0]
+		else: 		 basis = self.part.quadRule.getDenseQuadRules()[0]
 		u_interp = basis[0].T @ u_ctrlpts
-		if isSample: x_interp = basis[0].T @ self.ctrlpts
-		else: 		 x_interp = self.qpPhy
+		if isSample: x_interp = basis[0].T @ self.part.ctrlpts
+		else: 		 x_interp = self.part.qpPhy
 		return u_interp, x_interp
 	
 	def L2projectionCtrlpts(self, u_atqp):
 		" Interpolate control point field (from parametric to physical space) "
-		masse = self._denseweights[0] @ np.diag(self.detJ) @ self._densebasis[0].T
-		force = self._denseweights[0] @ np.diag(self.detJ) @ u_atqp
+		masse = self.part._denseweights[0] @ np.diag(self.part.detJ) @ self.part._densebasis[0].T
+		force = self.part._denseweights[0] @ np.diag(self.part.detJ) @ u_atqp
 		massesp   = sp.csr_matrix(masse)
 		u_ctrlpts = sp.linalg.spsolve(massesp, force)
 		return u_ctrlpts
@@ -71,13 +70,13 @@ class problem1D(part1D):
 		if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
 
 		# Compute u interpolation
-		quadRule = GaussQuadrature(self.degree, self.knotvector, quadArgs={'type':'leg'})
+		quadRule = GaussQuadrature(self.part.degree, self.part.knotvector, quadArgs={'type':'leg'})
 		quadPts  = quadRule.getQuadratureRulesInfo()[0]
 		denseBasis = quadRule.getDenseQuadRules()[0]
 		parametricWeights = quadRule._parametricWeights
 		
-		qpPhy = denseBasis[0].T @ self.ctrlpts 
-		detJ  = denseBasis[1].T @ self.ctrlpts
+		qpPhy = denseBasis[0].T @ self.part.ctrlpts 
+		detJ  = denseBasis[1].T @ self.part.ctrlpts
 		u_interp = denseBasis[0].T @ u_ctrlpts
 		uders_interp = denseBasis[1].T @ u_ctrlpts / detJ
 
@@ -88,13 +87,13 @@ class problem1D(part1D):
 		if callable(exactfun): u_exact = exactfun(qpPhy)
 		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
 		
-		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
-		if isinstance(part_ref, problem1D) and isinstance(u_ref, np.ndarray):
+		problem_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
+		if isinstance(problem_ref, problem1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
-			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(part_ref.degree, part_ref.knotvector, quadPts)
+			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(problem_ref.part.degree, problem_ref.part.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
 			u_exact = denseBasisExact[0].T @ u_ref
-			invJExact = denseBasisExact[1].T @ part_ref.ctrlpts
+			invJExact = denseBasisExact[1].T @ problem_ref.part.ctrlpts
 			uders_exact = denseBasisExact[1].T @ u_ref / invJExact
 			
 		# Compute error
@@ -131,21 +130,21 @@ class heatproblem1D(problem1D):
 		return 
 	
 	def compute_mfCapacity(self, Cprop, array_in, isLumped=False):
-		Ccoefs = Cprop*self.detJ
-		matrix = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
+		Ccoefs = Cprop*self.part.detJ
+		matrix = self.part._denseweights[0] @ np.diag(Ccoefs) @ self.part._densebasis[0].T
 		if isLumped: matrix = np.diag(matrix.sum(axis=1))
 		array_out = matrix @ array_in
 		return array_out
 	
 	def compute_mfConductivity(self, Kprop, array_in):
-		Kcoefs = Kprop*self.invJ
-		matrix = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
+		Kcoefs = Kprop*self.part.invJ
+		matrix = self.part._denseweights[-1] @ np.diag(Kcoefs) @ self.part._densebasis[1].T 
 		array_out = matrix @ array_in
 		return array_out
 
 	def interpolate_temperature(self, T_ctrlpts):
 		" Interpolate temperature in 1D "
-		T_interp = self._densebasis[0].T @ T_ctrlpts
+		T_interp = self.part._densebasis[0].T @ T_ctrlpts
 		return T_interp
 
 	def compute_FourierMatrix(self, Kprop, Cprop, dt, alpha=1.0, isLumped=False):
@@ -156,22 +155,22 @@ class heatproblem1D(problem1D):
 			C = int_Omega B Cprop B dx = int [0, 1] B Cprop det J B dxi
 		"""
 
-		Kcoefs = Kprop*self.invJ
-		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
-		Ccoefs = Cprop*self.detJ
-		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
+		Kcoefs = Kprop*self.part.invJ
+		K = self.part._denseweights[-1] @ np.diag(Kcoefs) @ self.part._densebasis[1].T 
+		Ccoefs = Cprop*self.part.detJ
+		C = self.part._denseweights[0] @ np.diag(Ccoefs) @ self.part._densebasis[0].T
 		if isLumped: C = np.diag(C.sum(axis=1))
 		matrix = C + alpha*dt*K
 
 		return matrix
 
 	def compute_CattaneoMatrix(self, Kprop, Cprop, Mprop, dt, beta=0.25, gamma=0.5, isLumped=False):
-		Kcoefs = Kprop*self.invJ
-		K = self._denseweights[-1] @ np.diag(Kcoefs) @ self._densebasis[1].T 
-		Ccoefs = Cprop*self.detJ
-		C = self._denseweights[0] @ np.diag(Ccoefs) @ self._densebasis[0].T
-		Mcoefs = Mprop*self.detJ
-		M = self._denseweights[0] @ np.diag(Mcoefs) @ self._densebasis[0].T
+		Kcoefs = Kprop*self.part.invJ
+		K = self.part._denseweights[-1] @ np.diag(Kcoefs) @ self.part._densebasis[1].T 
+		Ccoefs = Cprop*self.part.detJ
+		C = self.part._denseweights[0] @ np.diag(Ccoefs) @ self.part._densebasis[0].T
+		Mcoefs = Mprop*self.part.detJ
+		M = self.part._denseweights[0] @ np.diag(Mcoefs) @ self.part._densebasis[0].T
 		if isLumped: M = np.diag(M.sum(axis=1))
 		matrix = M + gamma*dt*C + beta*dt**2*K
 
@@ -180,16 +179,17 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=1.0, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
+		nsteps = len(time_list)
 		dod  = self.dod; dof = self.dof
-		V_n0 = np.zeros(self.nbctrlpts)
+		V_n0 = np.zeros(self.part.nbctrlpts)
 
 		# Compute initial velocity using interpolation
-		if np.shape(Tinout)[1] >= 2:
-			dt1 = time_list[1] - time_list[0]
-			dt2 = time_list[2] - time_list[0]
-			factor = dt2/dt1
-			V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		else: raise Warning('We need more than 2 steps')
+		assert nsteps > 2, 'At least 2 steps'
+		dt1 = time_list[1] - time_list[0]
+		dt2 = time_list[2] - time_list[0]
+		factor = dt2/dt1
+		V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 
 		for i in range(1, np.shape(Tinout)[1]):
 			
@@ -201,7 +201,7 @@ class heatproblem1D(problem1D):
 
 			# Predict values of new step
 			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
-			Vj_n1 = np.zeros(self.nbctrlpts)
+			Vj_n1 = np.zeros(self.part.nbctrlpts)
 			
 			# Overwrite inactive control points
 			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
@@ -224,14 +224,14 @@ class heatproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				r_dj[dod] = 0.0
 
-				resNLj = np.sqrt(np.dot(Vj_n1, r_dj))
+				resNLj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
 				print('Nonlinear error %.5e' %resNLj)
 				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierMatrix(Kprop, Cprop, dt=dt, alpha=alpha, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaV = np.zeros(self.nbctrlpts); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaV = np.zeros(self.part.nbctrlpts); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 				
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
@@ -245,18 +245,20 @@ class heatproblem1D(problem1D):
 	def solveCattaneoTransientProblem(self, Tinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		" Solves transient heat problem in 1D using Cattaneo approach. "
 
+		nsteps = len(time_list)
 		dod  = self.dod; dof = self.dof
-		V_n0 = np.zeros(self.nbctrlpts)
-		A_n0 = np.zeros(self.nbctrlpts)
+		V_n0 = np.zeros(self.part.nbctrlpts)
+		A_n0 = np.zeros(self.part.nbctrlpts)
 
 		# Compute initial velocity using interpolation
-		if np.shape(Tinout)[1] >= 2:
-			dt1 = time_list[1] - time_list[0]
-			dt2 = time_list[2] - time_list[0]
-			factor = dt2/dt1
-			V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-			A_n0[dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
-		else: raise Warning('We need more than 2 steps')
+		assert nsteps > 2, 'At least 2 steps'
+		dt1 = time_list[1] - time_list[0]
+		dt2 = time_list[2] - time_list[0]
+		factor = dt2/dt1
+		V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		A_n0[dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
+
+		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 
 		for i in range(1, np.shape(Tinout)[1]):
 			
@@ -269,7 +271,7 @@ class heatproblem1D(problem1D):
 			# Predict values of new step
 			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
 			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
-			Aj_n1 = np.zeros(self.nbctrlpts) 
+			Aj_n1 = np.zeros(self.part.nbctrlpts) 
 
 			# Overwrite inactive control points
 			Aj_n1[dod] = (Tinout[dod, i] - dj_n1[dod])/(beta*dt**2)
@@ -305,7 +307,7 @@ class heatproblem1D(problem1D):
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(Kprop, Cprop, Mprop, dt=dt, 
 										beta=beta, gamma=gamma, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaA = np.zeros(self.nbctrlpts); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaA = np.zeros(self.part.nbctrlpts); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
@@ -330,7 +332,7 @@ class mechaproblem1D(problem1D):
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
-		strain = self._densebasis[1].T @ disp * self.invJ
+		strain = self.part._densebasis[1].T @ disp * self.part.invJ
 		strain = np.reshape(strain, (1, len(strain)))
 		return strain
 
@@ -339,7 +341,7 @@ class mechaproblem1D(problem1D):
 			Fint = int_Omega dB/dx sigma dx = int_[0, 1] J^-1 dB/dxi sigma detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		Fint = self._denseweights[-1] @ np.ravel(stress).T
+		Fint = self.part._denseweights[-1] @ np.ravel(stress).T
 		return Fint
 
 	def compute_tangentMatrix(self, Cep):
@@ -347,15 +349,15 @@ class mechaproblem1D(problem1D):
 			S = int_Omega dB/dx Dalg dB/dx dx = int_[0, 1] J^-1 dB/dxi Dalg J^-1 dB/dxi detJ dxi.
 			But in 1D: detJ times J^-1 get cancelled.
 		"""
-		coefs = np.ravel(Cep)*self.invJ
-		tangentM = self._denseweights[-1] @ np.diag(coefs) @ self._densebasis[1].T 
+		coefs = np.ravel(Cep)*self.part.invJ
+		tangentM = self.part._denseweights[-1] @ np.diag(coefs) @ self.part._densebasis[1].T 
 		return tangentM
 
 	def solvePlasticityProblem(self, dispinout, Fext_list):
 		" Solves elasto-plasticity problem in 1D. It considers Dirichlet boundaries equal to 0 "
 
 		nbChaboche = self.mechamat._chabocheNBparameters
-		nbqp = self.nbqp; dof = self.dof; dod = self.dod
+		nbqp = self.part.nbqp; dof = self.dof; dod = self.dod
 		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
 		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
 
@@ -403,11 +405,10 @@ class mechaproblem1D(problem1D):
 
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_tangentMatrix(Cep)[np.ix_(dof, dof)])
-				deltaD = np.zeros(self.nbctrlpts); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaD = np.zeros(self.part.nbctrlpts); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update active control points
 				dj_n1 += deltaD
-				if np.sqrt(np.dot(deltaD, deltaD)) <= 1e-12: break
 
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = np.ravel(strain)
@@ -419,3 +420,8 @@ class mechaproblem1D(problem1D):
 
 		return Allstrain, Allstress, Allplseq, AllCep
 
+class spacetimeproblem1D(problem1D):
+	def __init__(self, part, tspan, kwargs:dict):
+		problem1D.__init__(self, part, kwargs)
+		self.time = part1D(part=tspan, kwargs=kwargs)
+		return

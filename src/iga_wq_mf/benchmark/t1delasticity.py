@@ -39,7 +39,7 @@ def simulate(degree, nbel, args):
 
 if isReference:
 
-	degree, nbel = 2, 8192
+	degree, nbel = 2, 1024
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement = simulate(degree, nbel, args)
 	np.save(folder + 'dispel', displacement)

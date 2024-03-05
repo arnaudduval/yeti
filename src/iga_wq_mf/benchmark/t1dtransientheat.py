@@ -48,15 +48,15 @@ modelPhy.add_DirichletCondition(table=[1, 1])
 nbsteps   = 100
 time_list = np.linspace(0, 1, nbsteps)
 print('Time step: %3e' %(time_list.max()/nbsteps))
-Fref = np.zeros((modelPhy.nbctrlpts, 1))
+Fref = np.zeros((modelPhy.part.nbctrlpts, 1))
 Fext_list = np.kron(Fref, sigmoid(time_list))
 
 temperature = np.zeros(np.shape(Fext_list))
 temperature[-1, :] = 1
 
 # Solve
-# modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=False)
-modelPhy.solveCattaneoTransientProblem(temperature, Fext_list, time_list, isLumped=False)
+modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=False)
+# modelPhy.solveCattaneoTransientProblem(temperature, Fext_list, time_list, isLumped=False)
 temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 

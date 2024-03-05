@@ -21,7 +21,7 @@ TIME_LIST = np.linspace(0, np.pi, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e6, 'poisson_ratio':0.3,
 		'isoHardLaw': {'name':'linear', 'Eiso':YOUNG/10}}
 MECHAMATERIAL = mechamat(MATARGS)
-isReference = False
+isReference = True
 
 def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
@@ -42,7 +42,7 @@ def simulate(degree, nbel, args, step=-2):
 
 if isReference:
 
-	degree, nbel = 2, 8192
+	degree, nbel = 2, 1024
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
 	np.save(folder + 'disppl', displacement)
