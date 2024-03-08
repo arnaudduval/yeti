@@ -8,55 +8,64 @@ conductivity: 55 W/(m.K)
 
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve, sigmoid
+from pysrc.lib.lib_part import part1D
 from pysrc.lib.lib_1d import heatproblem1D
+from pysrc.lib.lib_boundary import boundaryCondition
+from pysrc.lib.lib_material import heatmat
 
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/d1transferheat/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-def conductivityProperty(T):
-	y = 55*100/(7800*460)*np.ones(len(T))
+def conductivityProperty(args:dict):
+	temperature = args.get('temperature')
+	y = 55*100/(7800*460)*np.ones(len(temperature))
 	return y
 
-def capacityProperty(T):
-	y = np.ones(len(T))
+def capacityProperty(args:dict):
+	temperature = args.get('temperature')
+	y = np.ones(len(temperature))
 	return y
 
-def relaxationProperty(T):
-	y = np.ones(len(T))
+def relaxationProperty(args:dict):
+	temperature = args.get('temperature')
+	y = np.ones(len(temperature))
 	return y
 
 # Set global variables
 length = 1.0
 degree, nbel = 6, 512 
-crv = createUniformCurve(degree, nbel, length)
-
-# Create geometry
-args     = {'quadArgs': {'quadrule': 'iga'}}
-modelPhy = heatproblem1D(crv, args)
-
-# Add material 
-matArgs = {'conductivity': conductivityProperty, 'capacity': capacityProperty, 'relaxation': relaxationProperty}
-modelPhy.activate_thermal(matArgs)
-
-# Add boundary condition
-modelPhy.add_DirichletCondition(table=[1, 1])
-
-# Define external force	
-nbsteps   = 100
+nbsteps = 100
 time_list = np.linspace(0, 1, nbsteps)
 print('Time step: %3e' %(time_list.max()/nbsteps))
-Fref = np.zeros((modelPhy.part.nbctrlpts, 1))
-Fext_list = np.kron(Fref, sigmoid(time_list))
 
-temperature = np.zeros(np.shape(Fext_list))
+# Create geometry
+geometry = createUniformCurve(degree, nbel, length)
+modelPhy = part1D(geometry, kwargs={'quadArgs': {'quadrule': 'iga'}})
+
+# Add boundary condition
+boundary = boundaryCondition(modelPhy.nbctrlpts)
+boundary.add_DirichletConstTemperature(table=np.array([[1, 1]]))
+temperature = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
 temperature[-1, :] = 1
 
+# Add material
+material = heatmat()
+material.addConductivity(conductivityProperty, isIsotropic=False)
+material.addCapacity(capacityProperty, isIsotropic=False)
+material.addRelaxation(relaxationProperty, isIsotropic=False)
+
+# Create heat problem
+problem = heatproblem1D(material, modelPhy, boundary)
+
+# Define external force	
+Fext_list = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
+
 # Solve
-modelPhy.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=False)
-# modelPhy.solveCattaneoTransientProblem(temperature, Fext_list, time_list, isLumped=False)
-temp_interp, x_interp = modelPhy.interpolateMeshgridField(temperature)
+# problem.solveFourierTransientProblem(temperature, Fext_list, time_list, isLumped=False)
+problem.solveCattaneoTransientProblem(temperature, Fext_list, time_list, isLumped=False)
+temp_interp, x_interp = problem.interpolateMeshgridField(temperature)
 print(temp_interp.min(), temp_interp.max())
 
 # ------------------

@@ -105,10 +105,10 @@ class problem1D():
 		return abserror, relerror
 
 class heatproblem1D(problem1D):
-	def __init__(self, heat_material:heatmat, part:part1D, boundary:boundaryCondition, solverArgs:dict):
+	def __init__(self, heat_material:heatmat, part:part1D, boundary:boundaryCondition, solverArgs={}):
 		problem1D.__init__(self, part, boundary, solverArgs=solverArgs)	
 		self.heatmaterial = heat_material
-		if self.heatmaterial.density is None: self.heatmaterial.density = lambda x: np.ones(self.part.nbqp_total)
+		if self.heatmaterial.density is None: self.heatmaterial.density = lambda x: np.ones(self.part.nbqp)
 		return
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False):
@@ -228,7 +228,7 @@ class heatproblem1D(problem1D):
 		" Solves transient heat problem in 1D using Cattaneo approach. "
 
 		nsteps = len(time_list)
-		dod  = self.dod; dof = self.dof
+		dod  = self.boundary.thdod; dof = self.boundary.thdof
 		V_n0 = np.zeros(self.part.nbctrlpts_total)
 		A_n0 = np.zeros(self.part.nbctrlpts_total)
 
@@ -303,6 +303,7 @@ class mechaproblem1D(problem1D):
 	def __init__(self, mechanical_material:mechamat, part:part1D, boundary:boundaryCondition, solverArgs={}):
 		problem1D.__init__(self, part, boundary, solverArgs=solverArgs)
 		self.mechamat = mechanical_material		
+		if self.mechamat.density is None: self.mechamat.density = lambda x: np.ones(self.part.nbqp)
 		return
 
 	def interpolate_strain(self, disp):

@@ -94,7 +94,7 @@ class heatmat(material):
 	
 	def addRelaxation(self, inpt, isIsotropic):
 		if isIsotropic: self._isRelaxationIsotropic = True
-		self.relaxation = self.setScalarProperty(inpt, Isotropic=isIsotropic)
+		self.relaxation = self.setScalarProperty(inpt, isIsotropic=isIsotropic)
 		return
 	
 	def addCapacityDers(self, inpt, isIsotropic):
