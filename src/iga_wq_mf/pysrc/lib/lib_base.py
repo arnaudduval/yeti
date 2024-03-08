@@ -57,40 +57,16 @@ def eraseRowsCSR(rows2er, indi_in, indj_in, data_in, isfortran=True):
 		indi_out.append(newvalue)
 	indi_out = np.array(indi_out, dtype=int)
 
-	if isfortran: indi_out += 1; indj_out += 1 
+	if isfortran: indi_out += 1
+	if isfortran: indj_out += 1 
 
 	return indi_out, indj_out, data_out
 
-def insertRowCSR(row2in, data_in, indj_in, indi, indj, data):
-	""" Returns the data and indices after inserting a new row (CSR format).
-		Indices must start at 1, like fortran style.
-	"""
-	nnz = np.size(data, axis=0); ncols = np.size(data, axis=1)
-	lenOfNewRow = np.size(data_in, axis=0) 
-	assert lenOfNewRow == len(indj_in), 'Size problem'
-	assert (row2in < len(indi)) and (row2in > 1), 'This is not a possible configuration'
-
-	data_out = np.zeros((nnz+lenOfNewRow, ncols))
-	indj_out = np.zeros(nnz+lenOfNewRow, dtype=int)
-	indi_out = np.ones(len(indi)+1, dtype=int)
-
-	left  = indi[row2in-1] - 1
-	indj_out[0:left] = indj[0:left];           data_out[0:left, :] = data[0:left, :]
-	indj_out[left:left+lenOfNewRow] = indj_in; data_out[left:left+lenOfNewRow, :] = data_in
-	indj_out[left+lenOfNewRow:] = indj[left:]; data_out[left+lenOfNewRow:, :]   = data[left:, :]
-
-	left  = row2in
-	indi_out[0:left] = indi[0:left]
-	for i in range(left, len(indi_out)): indi_out[i] = indi[i-1] + lenOfNewRow
-
-	return indi_out, indj_out, data_out
-
-def array2csr_matrix(data, indi, indj, isFortran=True):
+def array2csr_matrix(data, indi, indj, isfortran=True):
 	indjcopy = np.copy(indj)
 	indicopy = np.copy(indi)
-	if isFortran: 
-		indjcopy = indjcopy - 1
-		indicopy = indicopy - 1 
+	if isfortran: indjcopy -= 1
+	if isfortran: indicopy -= 1 
 	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy))
 	return sparse_matrix
 

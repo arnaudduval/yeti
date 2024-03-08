@@ -19,6 +19,9 @@ def block_dot_product(A, B):
 	return result
 
 class material():
+	""" WARNING: Depending on the algorithm (for heat transfer and elasticity), 
+		the functions for isotropic materials may not work.
+	"""
 
 	def __init__(self):
 		self.density = None
