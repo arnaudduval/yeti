@@ -1,8 +1,8 @@
 from .__init__ import *
 from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
+from .lib_part import part
 from .lib_quadrules import GaussQuadrature
 from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product)
-from .lib_part import part
 from .lib_boundary import boundaryCondition
 
 class problem():

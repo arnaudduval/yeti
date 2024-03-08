@@ -6,7 +6,6 @@ class boundaryCondition():
 	def __init__(self, nbctrlpts=np.array([1, 1, 1])):
 		self._nbctrlpts = nbctrlpts
 		self._dim = np.count_nonzero(nbctrlpts>1)
-		assert self._dim != 1, 'Not possible'
 		self._thndof, self._thndod = nbctrlpts, 0
 		self._mchndof, self._mchndod = self._dim*nbctrlpts, 0
 		self._nbctrlpts_total = np.product(self._nbctrlpts)

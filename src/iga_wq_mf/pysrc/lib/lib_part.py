@@ -11,12 +11,13 @@ from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part1D():
 
-	def __init__(self, part:BSpline.Curve, kwargs:dict):
+	def __init__(self, crv:BSpline.Curve, kwargs:dict):
 		
-		self.degree     = part.degree
-		self.knotvector = np.array(part.knotvector)
-		self.ctrlpts    = np.array(part.ctrlpts)[:, 0]
-		self.nbctrlpts  = len(self.ctrlpts)
+		self.degree     = crv.degree
+		self.knotvector = np.array(crv.knotvector)
+		self.ctrlpts    = np.array(crv.ctrlpts)[:, 0]
+		self.nbctrlpts  = np.array([len(self.ctrlpts), 1, 1])
+		self.nbctrlpts_total = np.product(self.nbctrlpts)
 
 		self.__setQuadratureRules(kwargs.get('quadArgs', {}))
 		self.__setJacobienPhysicalPoints()

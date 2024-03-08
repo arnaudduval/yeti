@@ -75,8 +75,10 @@ class heatmat(material):
 		material.__init__(self)
 		self.capacity     = None
 		self.conductivity = None
+		self.relaxation   = None
 		self._isCapacityIsotropic     = False
 		self._isConductivityIsotropic = False
+		self._isRelaxationIsotropic = False
 		self.refTemp = matArgs.get('ref_temp', 300)
 		return
 	
@@ -88,6 +90,11 @@ class heatmat(material):
 	def addConductivity(self, inpt, isIsotropic, shape=3):
 		if isIsotropic: self._isConductivityIsotropic = True
 		self.conductivity = self.setTensorProperty(inpt, shape=shape, isIsotropic=isIsotropic)
+		return
+	
+	def addRelaxation(self, inpt, isIsotropic):
+		if isIsotropic: self._isRelaxationIsotropic = True
+		self.relaxation = self.setScalarProperty(inpt, Isotropic=isIsotropic)
 		return
 	
 	def addCapacityDers(self, inpt, isIsotropic):
