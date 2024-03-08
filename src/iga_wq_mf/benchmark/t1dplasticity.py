@@ -6,8 +6,10 @@
 import pickle
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_part import part1D
 from pysrc.lib.lib_1d import mechaproblem1D
 from pysrc.lib.lib_material import mechamat
+from pysrc.lib.lib_boundary import boundaryCondition
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -27,17 +29,17 @@ def forceVol(P:list):
 	force = CST*(P - 1/10*P**2)
 	return force
 
-def simulate(degree, nbel, args, step=-2):
-	crv = createUniformCurve(degree, nbel, LENGTH)
-	# crv = createAsymmetricalCurve(degree, nbel, LENGTH, xasym=0.75)
-	modelPhy = mechaproblem1D(crv, args)
-	model2return = deepcopy(modelPhy)
-	modelPhy.activate_mechanical(MECHAMATERIAL)
-	modelPhy.add_DirichletCondition(table=[1, 1])
-	Fref = np.atleast_2d(modelPhy.compute_volForce(forceVol)).transpose()
+def simulate(degree, nbel, kwargs, step=-2):
+	geometry = createUniformCurve(degree, nbel, LENGTH)
+	modelPhy = part1D(geometry, kwargs)
+	boundary = boundaryCondition(modelPhy.nbctrlpts)
+	boundary.add_DirichletConstTemperature(table=np.array([[1, 1]]))
+	problem = mechaproblem1D(mechanical_material=MECHAMATERIAL, part=modelPhy, boundary=boundary)
+	model2return = deepcopy(problem)
+	Fref = np.atleast_2d(problem.compute_volForce(forceVol)).transpose()
 	Fext_list = np.kron(Fref, np.sin(TIME_LIST))
 	displacement = np.zeros(np.shape(Fext_list))
-	strain, stress, plasticeq, Cep = modelPhy.solvePlasticityProblem(displacement, Fext_list[:, :step+1])
+	strain, stress, plasticeq, Cep = problem.solvePlasticityProblem(displacement, Fext_list[:, :step+1])
 	return model2return, displacement[:, :step+1], stress, plasticeq
 
 if isReference:
