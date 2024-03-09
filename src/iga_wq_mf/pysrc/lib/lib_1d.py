@@ -40,10 +40,9 @@ class problem1D():
 	
 	def L2projectionCtrlpts(self, u_atqp):
 		" Interpolate control point field (from parametric to physical space) "
-		masse = self.part._denseweights[0] @ np.diag(self.part.detJ) @ self.part._densebasis[0].T
 		force = self.part._denseweights[0] @ np.diag(self.part.detJ) @ u_atqp
-		massesp   = sp.csr_matrix(masse)
-		u_ctrlpts = sp.linalg.spsolve(massesp, force)
+		masse = self.part._denseweights[0] @ np.diag(self.part.detJ) @ self.part._densebasis[0].T
+		u_ctrlpts = sp.linalg.spsolve(sp.csr_matrix(masse), force)
 		return u_ctrlpts
 	
 	def normOfError(self, u_ctrlpts, normArgs:dict):
@@ -170,6 +169,17 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
+		def computeVelocity(self:heatproblem1D, Fext, args=None, isLumped=False):
+			if args is None: args = {'position': self.part.qpPhy}
+			dof = self.boundary.thdof
+			prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)*self.part.detJ
+			capacity = self.part._denseweights[0] @ np.diag(prop) @ self.part._densebasis[0].T
+			capacitysp = sp.csr_matrix(capacity)[np.ix_(dof, dof)]
+			velocity = np.zeros(self.part.nbctrlpts_total)
+			if isLumped: velocity[dof] = Fext[dof]/(capacitysp @ np.ones(len(dof)))
+			else: velocity[dof] = sp.linalg.spsolve(capacitysp, Fext[dof])
+			return velocity
+
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod  = self.boundary.thdod; dof = self.boundary.thdof
 
@@ -181,6 +191,11 @@ class heatproblem1D(problem1D):
 		factor = dt2/dt1
 		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
+		temperature = self.interpolate_temperature(Tinout[:, 0])
+		args={'temperature':temperature, 'position':self.part.qpPhy}
+		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
+				- self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
 
 		for i in range(1, nsteps):
 			
