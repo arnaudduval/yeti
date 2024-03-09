@@ -183,7 +183,7 @@ if not DATAEXIST:
 				ax.set_ylim(top=1e2, bottom=1e-4)
 				ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 				fig.tight_layout()
-				fig.savefig(folder + 'steps1/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
+				fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
 				plt.close(fig)
 
 else:

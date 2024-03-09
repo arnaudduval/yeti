@@ -358,7 +358,7 @@ class heatproblem(problem):
 
 			# Predict values of new step
 			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
-			Vj_n1 = np.zeros(self.part.nbctrlpts_total)
+			Vj_n1 = np.zeros(nbctrlpts_total)
 			
 			# Overwrite inactive control points
 			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])

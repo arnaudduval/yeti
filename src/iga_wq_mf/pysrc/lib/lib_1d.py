@@ -23,9 +23,10 @@ class problem1D():
 		self._itersNL = solverArgs.get('iters_nonlinear', 20)
 		return
 
-	def compute_volForce(self, volfun):
+	def compute_volForce(self, volfun, args=None):
 		" Computes 'volumetric' source vector in 1D "
-		prop  = volfun(self.part.qpPhy)*self.part.detJ
+		if args is None: args={'position':self.part.qpPhy}
+		prop  = volfun(args)*self.part.detJ
 		force = self.part._denseweights[0] @ prop 
 		return force
 	
@@ -68,9 +69,16 @@ class problem1D():
 		u_exact, uders_exact = None, None
 		exactfun = normArgs.get('exactFunction', None)
 		exactfunders = normArgs.get('exactFunctionDers', None)
-		if callable(exactfun): u_exact = exactfun(qpPhy)
-		if callable(exactfunders): uders_exact = exactfunders(qpPhy)
-		
+		exactextraArgs = normArgs.get('exactExtraArgs', None)
+		if exactextraArgs is not None:
+			assert isinstance(exactextraArgs, dict), 'Error type of extra args'
+			if not 'position' in exactextraArgs.keys(): exactextraArgs['position'] = qpPhy
+			if callable(exactfun): u_exact = exactfun(exactextraArgs)
+			if callable(exactfunders): uders_exact = exactfunders(exactextraArgs)
+		else:
+			if callable(exactfun): u_exact = exactfun(qpPhy)
+			if callable(exactfunders): uders_exact = exactfunders(qpPhy)
+
 		problem_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(problem_ref, problem1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
@@ -162,19 +170,19 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
-		nsteps = len(time_list)
+		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod  = self.boundary.thdod; dof = self.boundary.thdof
-		V_n0 = np.zeros(self.part.nbctrlpts_total)
 
 		# Compute initial velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
+		V_n0 = np.zeros(nbctrlpts_total)
 		dt1 = time_list[1] - time_list[0]
 		dt2 = time_list[2] - time_list[0]
 		factor = dt2/dt1
-		V_n0[dod] = 1.0/(dt1*(factor-factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
+		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
 		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 
-		for i in range(1, np.shape(Tinout)[1]):
+		for i in range(1, nsteps):
 			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
@@ -184,7 +192,7 @@ class heatproblem1D(problem1D):
 
 			# Predict values of new step
 			dj_n1 = d_n0 + (1 - alpha)*dt*V_n0
-			Vj_n1 = np.zeros(self.part.nbctrlpts_total)
+			Vj_n1 = np.zeros(nbctrlpts_total)
 			
 			# Overwrite inactive control points
 			Vj_n1[dod] = 1.0/(alpha*dt)*(Tinout[dod, i] - dj_n1[dod])
@@ -213,7 +221,7 @@ class heatproblem1D(problem1D):
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierTangentMatrix(dt, alpha=alpha, args=args, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaV = np.zeros(self.part.nbctrlpts_total); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaV = np.zeros(nbctrlpts_total); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 				
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
@@ -227,13 +235,12 @@ class heatproblem1D(problem1D):
 	def solveCattaneoTransientProblem(self, Tinout, Fext_list, time_list, beta=0.25, gamma=0.5, isLumped=False):
 		" Solves transient heat problem in 1D using Cattaneo approach. "
 
-		nsteps = len(time_list)
+		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
 		dod  = self.boundary.thdod; dof = self.boundary.thdof
-		V_n0 = np.zeros(self.part.nbctrlpts_total)
-		A_n0 = np.zeros(self.part.nbctrlpts_total)
 
 		# Compute initial velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
+		V_n0 = np.zeros(nbctrlpts_total); A_n0 = np.zeros(nbctrlpts_total)
 		dt1 = time_list[1] - time_list[0]
 		dt2 = time_list[2] - time_list[0]
 		factor = dt2/dt1
@@ -241,7 +248,7 @@ class heatproblem1D(problem1D):
 		A_n0[dod] = 2.0/(dt1*dt2)*((Tinout[dod, 2] - factor*Tinout[dod, 1])/(factor - 1) + Tinout[dod, 0])
 		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY AND ACCELERATION IN DOF
 
-		for i in range(1, np.shape(Tinout)[1]):
+		for i in range(1, nsteps):
 			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
@@ -252,7 +259,7 @@ class heatproblem1D(problem1D):
 			# Predict values of new step
 			dj_n1 = d_n0 + dt*V_n0 + 0.5*dt**2*(1 - 2*beta)*A_n0
 			Vj_n1 = V_n0 + (1 - gamma)*dt*A_n0
-			Aj_n1 = np.zeros(self.part.nbctrlpts_total) 
+			Aj_n1 = np.zeros(nbctrlpts_total) 
 
 			# Overwrite inactive control points
 			Aj_n1[dod] = (Tinout[dod, i] - dj_n1[dod])/(beta*dt**2)
@@ -286,7 +293,7 @@ class heatproblem1D(problem1D):
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(dt=dt, beta=beta, gamma=gamma, 
 												args=args, isLumped=isLumped)[np.ix_(dof, dof)])
-				deltaA = np.zeros(self.part.nbctrlpts_total); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+				deltaA = np.zeros(nbctrlpts_total); deltaA[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update active control points
 				dj_n1 += beta*dt**2*deltaA
