@@ -128,8 +128,8 @@ if not DATAEXIST:
 
 	elif FIG_CASE == 3:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
-		degree_list = np.array([2, 3, 4])
-		cuts_list   = np.arange(2, 6)
+		degree_list = np.array([1, 2, 3, 4])
+		cuts_list   = np.arange(1, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			error_list = np.ones((len(degree_list), len(cuts_list), 2**np.max(cuts_list)))
@@ -153,7 +153,7 @@ if not DATAEXIST:
 								markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 				ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 				ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-				ax.set_ylim(top=1e2, bottom=1e-4)
+				ax.set_ylim(top=1e1, bottom=1e-8)
 				ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 				fig.tight_layout()
 				fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')

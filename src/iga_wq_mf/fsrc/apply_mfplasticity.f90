@@ -834,9 +834,7 @@ contains
                             array_in(i, solv%redsyst(i)%dof), tmp1)
             end if           
 
-            if (solv%withdiag) then
-                tmp1 = tmp1/solv%redsyst(i)%diageigval_sp
-            end if
+            if (solv%withdiag) tmp1 = tmp1/solv%redsyst(i)%diageigval_sp
 
             allocate(tmp2(nr_u*nr_v*nr_w))
             if (solv%globsyst%dimen.eq.2) then
