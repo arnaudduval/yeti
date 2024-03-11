@@ -9,7 +9,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/transient/'
+folder = os.path.dirname(full_path) + '/results/transientTR/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
