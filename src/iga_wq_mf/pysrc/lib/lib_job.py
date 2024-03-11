@@ -324,9 +324,11 @@ class heatproblem(problem):
 
 		def computeVelocity(problem:heatproblem, Fext, args=None, isLumped=False):
 			if args is None: args = {'position': problem.part.qpPhy}
+			dof = problem.boundary.thdof
 			prop = problem.heatmaterial.capacity(args)*problem.heatmaterial.density(args)
-			if isLumped: velocity = Fext/problem.compute_mfCapacity(np.ones(problem.part.nbctrlpts_total), args=args, isLumped=isLumped)
-			else: velocity = problem._solveL2projection(Fext, prop=prop)
+			if isLumped: tmp = Fext/problem.compute_mfCapacity(np.ones(problem.part.nbctrlpts_total), args=args, isLumped=isLumped)
+			else: tmp = problem._solveL2projection(Fext, prop=prop, table=problem.boundary.thDirichletTable)
+			velocity = np.zeros(shape=np.shape(Fext)); velocity[dof] = tmp[dof]
 			return velocity
 
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -335,10 +337,15 @@ class heatproblem(problem):
 
 		# Compute inital velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
+		V_n0 = np.zeros(nbctrlpts_total)
+		dt = time_list[1] - time_list[0]
+		V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
+
 		temperature = self.interpolate_temperature(Tinout[:, 0])
 		args={'temperature':temperature, 'position':self.part.qpPhy}
-		tmp = (Fext_list[:, 0] - self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0 = computeVelocity(self, tmp, args=args, isLumped=isLumped)
+		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped)
+				- self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
 
 		AllresLin = []
 		for i in range(1, nsteps):

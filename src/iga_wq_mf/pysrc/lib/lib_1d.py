@@ -19,9 +19,9 @@ class problem1D():
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresNL = solverArgs.get('thres_nonlinear', 1e-10)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
 		self._itersNL = solverArgs.get('iters_nonlinear', 20)
-		self._safeguard = 1e-12
+		self._safeguard = 1e-14
 		return
 
 	def compute_volForce(self, volfun, args=None):
@@ -171,10 +171,12 @@ class heatproblem1D(problem1D):
 
 		def computeVelocity(problem:heatproblem1D, Fext, args=None, isLumped=False):
 			if args is None: args = {'position': problem.part.qpPhy}
+			dof = problem.boundary.thdof
 			prop = problem.heatmaterial.capacity(args)*problem.heatmaterial.density(args)*problem.part.detJ
 			matrix = problem.part._denseweights[0] @ np.diag(prop) @ problem.part._densebasis[0].T
 			if isLumped: matrix = np.diag(matrix.sum(axis=1))
-			velocity = np.linalg.solve(matrix, Fext)
+			tmp = np.linalg.solve(matrix[np.ix_(dof, dof)], Fext[dof])
+			velocity = np.zeros(shape=np.shape(Fext)); velocity[dof] = tmp
 			return velocity
 
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -182,10 +184,15 @@ class heatproblem1D(problem1D):
 
 		# Compute initial velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
+		V_n0 = np.zeros(nbctrlpts_total)
+		dt = time_list[1] - time_list[0]
+		V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
+
 		temperature = self.interpolate_temperature(Tinout[:, 0])
-		args = {'temperature':temperature, 'position':self.part.qpPhy}
-		tmp = (Fext_list[:, 0] - self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0 = computeVelocity(self, tmp, args=args, isLumped=isLumped)
+		args={'temperature':temperature, 'position':self.part.qpPhy}
+		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped)
+				- self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
 
 		for i in range(1, nsteps):
 			

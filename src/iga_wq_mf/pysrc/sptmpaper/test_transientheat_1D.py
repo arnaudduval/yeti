@@ -98,16 +98,16 @@ def simulate(degree, cuts, cuts_time=None):
 
 if FIG_CASE == 1:
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
-	cuts_time = 6
+	cuts_time = 7
 	degree_list = np.array([1, 2, 3, 4, 5])
-	cuts_list   = np.arange(2, 7)
+	cuts_list   = np.arange(2, 9)
 
 	error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
 			problem, time_list, output = simulate(degree, cuts, cuts_time=cuts_time)
 			for k, t in enumerate(time_list[1:-1]):
-				_, error_list[i, j, k] = problem.normOfError(output[:, k+1], 
+				error_list[i, j, k], _ = problem.normOfError(output[:, k+1], 
 															normArgs={'type':'L2',
 																	'exactFunction':exactTemperature,
 																	'exactExtraArgs':{'time':t}})
@@ -120,9 +120,10 @@ if FIG_CASE == 1:
 			color = COLORLIST[i]
 			ax.loglog(2**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
 						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
-		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+		# ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-		ax.set_ylim(top=2, bottom=1e-8)
+		ax.set_ylim(top=10, bottom=1e-7)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
 		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')

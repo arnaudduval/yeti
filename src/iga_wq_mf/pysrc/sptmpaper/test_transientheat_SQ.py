@@ -128,15 +128,16 @@ if not DATAEXIST:
 
 	elif FIG_CASE == 3:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
-		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 6)
+		degree_list = np.array([1, 2, 3, 4, 5])
+		cuts_list   = np.arange(1, 7)
+		cuts_time = 6
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
-			error_list = np.ones((len(degree_list), len(cuts_list), 2**np.max(cuts_list)))
+			error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
 			for j, cuts in enumerate(cuts_list):
 				for i, degree in enumerate(degree_list):
 					nbels = 2**cuts_list
-					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=np.max(cuts_list))
+					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=cuts_time)
 					for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
 						_, error_list[i, j, k] = problem_inc.normOfError(output[:, k+1], 
 																		normArgs={'type':'L2',
