@@ -153,7 +153,7 @@ def simulate(degree, cuts, quadArgs, uguess=None, problemArgs={}):
 
 	# Block boundaries
 	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts])
+	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], timespan.nbctrlpts_total])
 	boundary = boundaryCondition(stnbctrlpts)
 	boundary.add_DirichletConstTemperature(table=dirichlet_table)
 

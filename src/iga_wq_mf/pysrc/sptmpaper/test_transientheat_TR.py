@@ -95,8 +95,8 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
 
 	if cuts_time is None: cuts_time = np.copy(cuts)
-	timespan  = 1
-	nbsteps   = 2**cuts_time
+	timespan  = 1.0
+	nbsteps   = int(2**cuts_time)
 	time_inc  = np.linspace(0, timespan, nbsteps+1) 
 	time_crv  = part1D(createUniformCurve(1, nbsteps, timespan), {'quadArgs': quadArgs})
 
@@ -110,7 +110,7 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	boundary_inc.add_DirichletConstTemperature(table=np.ones((2, 2)))
 
 	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts])
+	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts_total])
 	boundary_st = boundaryCondition(stnbctrlpts)
 	boundary_st.add_DirichletConstTemperature(table=dirichlet_table)
 

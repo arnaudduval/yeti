@@ -112,6 +112,7 @@ class GaussQuadrature(QuadratureRules):
 		self.__findQuadraturePositions()
 		self.__findParametricWeights()
 		self.evalDersBasisWeights()
+		self.getDenseQuadRules()
 		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 
 class WeightedQuadrature(QuadratureRules):
@@ -272,5 +273,6 @@ class WeightedQuadrature(QuadratureRules):
 	def getQuadratureRulesInfo(self):
 		self.__findQuadraturePositions()
 		self.evalDersBasisWeights()
+		self.getDenseQuadRules()
 		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 	

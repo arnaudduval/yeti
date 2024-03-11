@@ -19,7 +19,7 @@ class problem1D():
 		return
 	
 	def addSolverConstraints(self, solverArgs:dict):
-		self._thresNL = solverArgs.get('thres_nonlinear', 1e-6)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-10)
 		self._itersNL = solverArgs.get('iters_nonlinear', 20)
 		return
 
@@ -56,8 +56,7 @@ class problem1D():
 		# Compute u interpolation
 		quadRule = GaussQuadrature(self.part.degree, self.part.knotvector, quadArgs={'type':'leg'})
 		quadPts  = quadRule.getQuadratureRulesInfo()[0]
-		denseBasis = quadRule.getDenseQuadRules()[0]
-		parametricWeights = quadRule._parametricWeights
+		denseBasis, parametricWeights = quadRule._denseBasis, quadRule._parametricWeights
 		
 		qpPhy = denseBasis[0].T @ self.part.ctrlpts 
 		detJ  = denseBasis[1].T @ self.part.ctrlpts
@@ -169,39 +168,29 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 		" Solves transient heat problem in 1D. "
 
-		def computeVelocity(self:heatproblem1D, Fext, args=None, isLumped=False):
-			if args is None: args = {'position': self.part.qpPhy}
-			dof = self.boundary.thdof
-			prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)*self.part.detJ
-			capacity = self.part._denseweights[0] @ np.diag(prop) @ self.part._densebasis[0].T
-			capacitysp = sp.csr_matrix(capacity)[np.ix_(dof, dof)]
-			velocity = np.zeros(self.part.nbctrlpts_total)
-			if isLumped: velocity[dof] = Fext[dof]/(capacitysp @ np.ones(len(dof)))
-			else: velocity[dof] = sp.linalg.spsolve(capacitysp, Fext[dof])
+		def computeVelocity(problem:heatproblem1D, Fext, args=None, isLumped=False):
+			if args is None: args = {'position': problem.part.qpPhy}
+			prop = problem.heatmaterial.capacity(args)*problem.heatmaterial.density(args)*problem.part.detJ
+			matrix = problem.part._denseweights[0] @ np.diag(prop) @ problem.part._densebasis[0].T
+			if isLumped: matrix = np.diag(matrix.sum(axis=1))
+			velocity = np.linalg.solve(matrix, Fext)
 			return velocity
 
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
-		dod  = self.boundary.thdod; dof = self.boundary.thdof
+		dod = self.boundary.thdod; dof = self.boundary.thdof
 
 		# Compute initial velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
-		V_n0 = np.zeros(nbctrlpts_total)
-		dt1 = time_list[1] - time_list[0]
-		dt2 = time_list[2] - time_list[0]
-		factor = dt2/dt1
-		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 		temperature = self.interpolate_temperature(Tinout[:, 0])
-		args={'temperature':temperature, 'position':self.part.qpPhy}
-		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
-				- self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
+		args = {'temperature':temperature, 'position':self.part.qpPhy}
+		tmp = (Fext_list[:, 0] - self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0 = computeVelocity(self, tmp, args=args, isLumped=isLumped)
 
 		for i in range(1, nsteps):
 			
 			# Get delta time
 			dt = time_list[i] - time_list[i-1]
-
+			
 			# Get values of last step
 			d_n0 = np.copy(Tinout[:, i-1])
 
@@ -237,7 +226,7 @@ class heatproblem1D(problem1D):
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierTangentMatrix(dt, alpha=alpha, args=args, isLumped=isLumped)[np.ix_(dof, dof)])
 				deltaV = np.zeros(nbctrlpts_total); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
-				
+
 				# Update active control points
 				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV

@@ -322,11 +322,11 @@ class heatproblem(problem):
 
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 
-		def computeVelocity(self:heatproblem, Fext, args=None, isLumped=False):
-			if args is None: args = {'position': self.part.qpPhy}
-			prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
-			if isLumped: velocity = Fext/self.compute_mfCapacity(np.ones(self.part.nbctrlpts_total), args=args, isLumped=isLumped)
-			else: velocity = self._solveL2projection(Fext, table=self.boundary.thDirichletTable, prop=prop)
+		def computeVelocity(problem:heatproblem, Fext, args=None, isLumped=False):
+			if args is None: args = {'position': problem.part.qpPhy}
+			prop = problem.heatmaterial.capacity(args)*problem.heatmaterial.density(args)
+			if isLumped: velocity = Fext/problem.compute_mfCapacity(np.ones(problem.part.nbctrlpts_total), args=args, isLumped=isLumped)
+			else: velocity = problem._solveL2projection(Fext, prop=prop)
 			return velocity
 
 		nbctrlpts_total = self.part.nbctrlpts_total; nsteps = len(time_list)
@@ -335,17 +335,10 @@ class heatproblem(problem):
 
 		# Compute inital velocity using interpolation
 		assert nsteps > 2, 'At least 2 steps'
-		V_n0 = np.zeros(nbctrlpts_total)
-		dt1 = time_list[1] - time_list[0]
-		dt2 = time_list[2] - time_list[0]
-		factor = dt2/dt1
-		V_n0[dod] = 1.0/(dt1*(factor - factor**2))*(Tinout[dod, 2] - (factor**2)*Tinout[dod, 1] - (1 - factor**2)*Tinout[dod, 0])
-		# TO DO: ADD A PROCESS TO COMPUTE THE VELOCITY IN DOF
 		temperature = self.interpolate_temperature(Tinout[:, 0])
 		args={'temperature':temperature, 'position':self.part.qpPhy}
-		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped) 
-				- self.compute_mfConductivity(Tinout[:, 0], args=args))
-		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
+		tmp = (Fext_list[:, 0] - self.compute_mfConductivity(Tinout[:, 0], args=args))
+		V_n0 = computeVelocity(self, tmp, args=args, isLumped=isLumped)
 
 		AllresLin = []
 		for i in range(1, nsteps):
