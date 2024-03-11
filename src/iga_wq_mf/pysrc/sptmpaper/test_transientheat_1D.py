@@ -18,8 +18,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 extension = '.dat'
 FIG_CASE  = 1
-ISLINEAR  = True
-c = 10
+ISLINEAR  = False
+c = 100
 
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
@@ -37,7 +37,6 @@ def exactTemperature(args:dict):
 	x = args.get('position')
 	t = args.get('time')
 	u = c*np.sin(2*np.pi*x)*np.sin(np.pi/2*t)
-	# u = c*np.sin(2*np.pi*x)*t**2
 	return u
 
 def powerDensity(args:dict):
@@ -46,18 +45,13 @@ def powerDensity(args:dict):
 		f = (c*np.pi/2*np.cos(np.pi/2*t)*np.sin(2*np.pi*x) 
 			+ 4*c*np.pi**2*np.sin(np.pi/2*t)*np.sin(2*np.pi*x)
 			)
-		# f = 4*c*np.pi**2*np.sin(2*x*np.pi)*t**2 + 2*c*np.sin(2*x*np.pi)*t
 	else: 
-		# u = c*np.sin(np.pi*t)*np.sin(2*np.pi*x)
-		# f = (4*c*np.pi**2*np.sin(np.pi*t)*np.sin(2*np.pi*x)*(2*np.exp(-np.abs(u)) + 1) 
-		# 	+ c*np.pi*np.cos(np.pi*t)*np.sin(2*np.pi*x)*(np.exp(-np.abs(u)) + 1) 
-		# 	+ 8*c**2*np.pi**2*np.exp(-np.abs(u))*np.sign(u)*np.cos(2*np.pi*x)**2*np.sin(np.pi*t)**2
-		# )
-		u = -np.abs(c*np.sin(2*np.pi*x))*np.abs(t)**2
+		u = -np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
 		f = (
-			2*c*t*np.sin(2*np.pi*x)*(np.exp(u) + 1) 
-			+ 4*c*t**2*np.pi**2*np.sin(2*np.pi*x)*(2*np.exp(u) + 1) 
-			+ 8*c**2*t**2*np.pi**2*np.exp(u)*np.cos(2*np.pi*x)**2*np.sign(c*np.sin(2*np.pi*x))*np.abs(t)**2
+			4*c*np.pi**2*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)*(2*np.exp(u) + 1) 
+			+ (c*np.pi*np.cos((np.pi*t)/2)*np.sin(2*np.pi*x)*(np.exp(u) + 1))/2 
+			+ 8*c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)**2*np.sin((np.pi*t)/2)**2
+
 		)
 	return f
 
