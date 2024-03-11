@@ -12,7 +12,7 @@ from pysrc.lib.lib_material import heatmat
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/tansient1d/'
+folder = os.path.dirname(full_path) + '/results/transient1d/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
@@ -36,17 +36,16 @@ def capacityProperty(args:dict):
 def exactTemperature(args:dict):
 	x = args.get('position')
 	t = args.get('time')
-	u = c*np.sin(2*np.pi*x)*np.sin(np.pi*t)
+	u = c*np.sin(2*np.pi*x)*np.sin(np.pi/2*t)
 	# u = c*np.sin(2*np.pi*x)*t**2
 	return u
 
 def powerDensity(args:dict):
 	x = args['position']; t = args['time']
 	if ISLINEAR:
-		f = (c*np.pi*np.cos(np.pi*t)*np.sin(2*np.pi*x) 
-			+ 4*c*np.pi**2*np.sin(np.pi*t)*np.sin(2*np.pi*x)
+		f = (c*np.pi/2*np.cos(np.pi/2*t)*np.sin(2*np.pi*x) 
+			+ 4*c*np.pi**2*np.sin(np.pi/2*t)*np.sin(2*np.pi*x)
 			)
-	
 		# f = 4*c*np.pi**2*np.sin(2*x*np.pi)*t**2 + 2*c*np.sin(2*x*np.pi)*t
 	else: 
 		# u = c*np.sin(np.pi*t)*np.sin(2*np.pi*x)
@@ -91,7 +90,7 @@ def simulate(degree, cuts, cuts_time=None):
 	Fext_list = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
 	for i, t in enumerate(time_inc):
 		Fext_list[:, i] = problem_inc.compute_volForce(powerDensity, args={'position':problem_inc.part.qpPhy, 'time':t})
-
+	
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
 	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, isLumped=False, alpha=0.5)
@@ -101,7 +100,7 @@ if FIG_CASE == 1:
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	cuts_time = 6
 	degree_list = np.array([1, 2, 3, 4, 5])
-	cuts_list   = np.arange(1, 6)
+	cuts_list   = np.arange(2, 7)
 
 	error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
 	for j, cuts in enumerate(cuts_list):
@@ -123,7 +122,7 @@ if FIG_CASE == 1:
 						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 		ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-		ax.set_ylim(top=1e1, bottom=1e-6)
+		ax.set_ylim(top=2, bottom=1e-8)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
 		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')

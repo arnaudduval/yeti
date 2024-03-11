@@ -384,8 +384,8 @@ class heatproblem(problem):
 				resLinj = np.append(resLinj, resLin)
 				
 				# Update active control points
-				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
+				dj_n1 += alpha*dt*deltaV
 				AllresLin.append(resLinj)
 
 			Tinout[:, i] = np.copy(dj_n1)

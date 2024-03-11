@@ -21,6 +21,7 @@ class problem1D():
 	def addSolverConstraints(self, solverArgs:dict):
 		self._thresNL = solverArgs.get('thres_nonlinear', 1e-10)
 		self._itersNL = solverArgs.get('iters_nonlinear', 20)
+		self._safeguard = 1e-12
 		return
 
 	def compute_volForce(self, volfun, args=None):
@@ -220,16 +221,16 @@ class heatproblem1D(problem1D):
 
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
-				print('Nonlinear error %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 				
 				# Solver for active control points
 				tangentM = sp.csr_matrix(self.compute_FourierTangentMatrix(dt, alpha=alpha, args=args, isLumped=isLumped)[np.ix_(dof, dof)])
 				deltaV = np.zeros(nbctrlpts_total); deltaV[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
 
 				# Update active control points
-				dj_n1 += alpha*dt*deltaV
 				Vj_n1 += deltaV
+				dj_n1 += alpha*dt*deltaV
 
 			Tinout[:, i] = np.copy(dj_n1)
 			V_n0 = np.copy(Vj_n1)
@@ -291,8 +292,8 @@ class heatproblem1D(problem1D):
 
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
-				print('Nonlinear error %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 
 				# Solve for active control points
 				tangentM = sp.csr_matrix(self.compute_CattaneoMatrix(dt=dt, beta=beta, gamma=gamma, 
@@ -386,8 +387,8 @@ class mechaproblem1D(problem1D):
 
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
 				if j == 0: resNL0 = resNLj
-				print('Nonlinear error %.5e' %resNLj)
-				if resNLj <= max([self._thresNL*resNL0, 1e-12]): break
+				print('NonLinear error: %.5e' %resNLj)
+				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
 				if j > 0 and isElasticLoad: break
 
 				# Solver for active control points

@@ -9,18 +9,18 @@ from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/transient/'
+folder = os.path.dirname(full_path) + '/results/transientSQ/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 extension = '.dat'
 FIG_CASE  = 3
 DATAEXIST = False
-ISLINEAR  = False
-c = 0.001
+ISLINEAR  = True
+c = 10
 
 def conductivityProperty(args:dict):
 	temperature = args['temperature']
-	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
+	Kref  = np.array([[1., 0.0],[0.0, 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
@@ -38,56 +38,29 @@ def exactTemperature_inc(args:dict):
 	qpPhy = args.get('position')
 	t = args.get('time')
 	x = qpPhy[0, :]; y = qpPhy[1, :]
-	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*np.sin(np.pi*x)*np.sin(np.pi*t)
+	u = c*np.sin(2*np.pi*x)*np.sin(np.pi/2*t)
 	return u
 
 def exactTemperature_st(qpPhy):
 	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
-	u = c*(-5*x + 6*y + 45)*(5*x + 6*y - 45)*np.sin(np.pi*x)*np.sin(np.pi*t)
+	u = ...
 	return u
 
 def powerDensity(args:dict):
 	position = args['position']; t = args['time']
 	x = position[0, :]; y = position[1, :]
 	if ISLINEAR:
-		f = (4*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(5*x + 6*y - 45) 
-					- 16*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-					- 94*c*np.sin(np.pi*t)*np.sin(np.pi*x) 
-					+ c*np.pi*np.cos(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45)*(5*x + 6*y - 45) 
-					+ c*np.pi**2*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
+		f = (c*np.pi/2*np.cos(np.pi/2*t)*np.sin(2*np.pi*x) 
+			+ 4*c*np.pi**2*np.sin(np.pi/2*t)*np.sin(2*np.pi*x)
 		)
 	else: 
-		u = c*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-		f = (
-			(2*np.exp(-np.abs(u)) + 1)*(
-				50*c*np.sin(np.pi*t)*np.sin(np.pi*x) 
-				- 10*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-				+ 10*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(5*x + 6*y - 45) 
-				+ c*np.pi**2*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45)*(5*x + 6*y - 45)) 
-			- 2*(np.exp(-np.abs(u)) + 1/2)*(
-				6*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(6*y - 5*x + 45) 
-				+ 6*c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(5*x + 6*y - 45)) 
-			+ 2*np.exp(-np.abs(u))*np.sign(u)*(
-				5*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45) 
-				- 5*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(5*x + 6*y - 45) 
-				+ c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45))**2 
-			+ 4*np.exp(-np.abs(u))*np.sign(u)*(
-				6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45) 
-				+ 6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(5*x + 6*y - 45))**2 
-			+ 2*np.exp(-np.abs(u))*np.sign(u)*(
-				6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45) 
-				+ 6*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(5*x + 6*y - 45))*(
-					5*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(6*y - 5*x + 45) 
-					- 5*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(5*x + 6*y - 45) 
-					+ c*np.pi*np.cos(np.pi*x)*np.sin(np.pi*t)*(6*y - 5*x + 45)*(5*x + 6*y - 45)) 
-			- 72*c*np.sin(np.pi*t)*np.sin(np.pi*x)*(4*np.exp(-np.abs(u)) + 2) 
-			+ c*np.pi*np.cos(np.pi*t)*np.sin(np.pi*x)*(np.exp(-np.abs(u)) + 1)*(6*y - 5*x + 45)*(5*x + 6*y - 45)
-		)
+		u = ...
+		f = ...
 	return f
 
 def simulate(degree, cuts, quadArgs, cuts_time=None):
-	geoArgs = {'name': 'TP', 'degree': degree*np.ones(3, dtype=int), 
-						'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -105,10 +78,11 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	material.addCapacity(capacityProperty, isIsotropic=False) 
 
 	# Block boundaries
+	dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
 	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
-	boundary_inc.add_DirichletConstTemperature(table=np.ones((2, 2)))
+	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
 
-	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+	dirichlet_table = np.zeros((3, 2)); dirichlet_table[0, :] = 1; dirichlet_table[-1, 0] = 1
 	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts_total])
 	boundary_st = boundaryCondition(stnbctrlpts)
 	boundary_st.add_DirichletConstTemperature(table=dirichlet_table)
@@ -132,7 +106,7 @@ if not DATAEXIST:
 	if FIG_CASE == 1:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 6)
+		cuts_list   = np.arange(2, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			sufix = '_' + quadrule + '_' + quadtype + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -154,8 +128,8 @@ if not DATAEXIST:
 
 	elif FIG_CASE == 3:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
-		degree_list = np.array([1, 2, 3, 4])
-		cuts_list   = np.arange(1, 6)
+		degree_list = np.array([2, 3, 4])
+		cuts_list   = np.arange(2, 6)
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			error_list = np.ones((len(degree_list), len(cuts_list), 2**np.max(cuts_list)))
