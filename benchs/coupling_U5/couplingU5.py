@@ -99,6 +99,8 @@ print("Computed solution : ", SOL[search[0],2])
 
 error = ( SOL[search[0],2] - ref ) / ref
 
+print(f"{error = }")
+
 if abs(error) > 0.02:
     sys.exit(-1)
 else:
