@@ -100,6 +100,9 @@ subroutine cplg_matrixU5(nb_data, &
     integer, dimension(:,:), allocatable :: saveIEN
     integer, dimension(:), allocatable :: saveEL, saveEM, saveES
     double precision :: factor
+    double precision, dimension(:,:), allocatable :: dRdxi
+    double precision, dimension(mcrd, mcrd) :: dxdxi
+    double precision :: DetJac
 
     !!  Extract infos
     integer, allocatable          :: sctr(:), sctr_l(:)
@@ -187,6 +190,11 @@ subroutine cplg_matrixU5(nb_data, &
                     &   weight,nb_elem_patch)
             call extractNurbsPatchMechInfos(masterPatch,IEN,PROPS,JPROPS, &
                     &   NNODE,nb_elem_patch,ELT_TYPE,TENSOR)
+
+            !! Allocate array for shape function derivatives
+            if (allocated(dRdxi)) deallocate(dRdxi)
+            allocate(dRdxi(nnode_patch, 3))
+
             !! Check if master patch is embedded
             if (ELT_TYPE_patch .eq. 'U10') then
                 IsMasterEmbded = .true.
@@ -243,6 +251,7 @@ subroutine cplg_matrixU5(nb_data, &
             call Gauss(nbPtInt, dim_patch, GaussPdsCoords, masterFace)
 
             ielface = 1
+            write(*,*) "MCRD = ", MCRD
             do ielem = 1, nb_elem_patch(masterPatch)
                 call extractNurbsElementInfos(ielem)
                 if(IsElemOnFace(masterFace, Nijk_patch(:,ielem), Jpqr_patch, Nkv_patch, dim_patch)) then
@@ -254,6 +263,7 @@ subroutine cplg_matrixU5(nb_data, &
                                 & ((Ukv_elem(2, idim) - Ukv_elem(1,idim)) * &
                                 &   GaussPdsCoords(idim+1,igps) + &
                                 &   (Ukv_elem(2, idim) + Ukv_elem(1,idim))) * 0.5D0
+
                             !! 2D Jacobian for surface integration
                             !!    Add contribution only if we are not on the parametric direction
                             !!    corresponding to the interface
@@ -263,6 +273,7 @@ subroutine cplg_matrixU5(nb_data, &
                                     &   (Ukv_elem(2, idim) - Ukv_elem(1,idim)) * 0.5D0
                             endif
                         enddo
+                        ! write(*,*) idxGP, xi_master(:, idxGP)
                     enddo
                     ielface = ielface + 1
                 endif
@@ -326,6 +337,36 @@ subroutine cplg_matrixU5(nb_data, &
                                 &   R_master(icp,igps)*COORDS_elem(idim,icp)
                         enddo
                     enddo
+
+                    !! TEMPORARY FIX
+                    !! DetJac is needed
+                    !! derivatives of function must be computed
+                    call evalnurbs(xi_master(:, igps), R_master(:, igps), dRdxi(:,:))
+                    dxdxi = 0.0
+                    do icp = 1, nnode_patch
+                        COORDS_elem(:, icp) = COORDS3D(:mcrd, IEN_patch(icp, current_elem))
+                        do idim = 1, MCRD
+                            dxdxi(idim, :) = dxdxi(idim, :) + &
+                                &  dRdxi(icp, :)*COORDS_elem(idim, icp)
+                        enddo
+                    enddo
+                    !! Compute surface Jacobian depending on considered surface
+                    select case (masterFace + mcrd*10)
+                        case(21,22)
+                            DetJac = sqrt(dxdxi(1,2)**2.0 + dxdxi(2,2)**2.0)
+                        case(23,24)
+                            DetJac = sqrt(dxdxi(1,1)**2.0 + dxdxi(2,1)**2.0)
+                        case(31,32)               !Face 1 et 2
+                            call SurfElem(dxdxi(:,2),dxdxi(:,3),DetJac)
+                        case(33,34)               !Face 3 et 4
+                            call SurfElem(dxdxi(:,3),dxdxi(:,1),DetJac)
+                        case(35,36)               !Face 5 et 6
+                            call SurfElem(dxdxi(:,1),dxdxi(:,2),DetJac)
+                    end select
+                    weightGP(igps) = weightGP(igps)*DetJac
+
+                    !! END OF TEMPORARY FIX
+
                 endif
                 !! Manage embedded entities
                 if (IsMasterEmbded) then
