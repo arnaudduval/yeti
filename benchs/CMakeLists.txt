@@ -97,6 +97,10 @@ COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5_2D_compatible
 add_test(NAME coupling_U5
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
+# Comparison between U5 and U4 method
+add_test(NAME compare_U4_U5_2D
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/compare_u4_u5_2d.py
+         WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 
 # plate with hole with Abaqus parameters
 add_test(NAME ROM1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
@@ -229,6 +233,7 @@ set_tests_properties(
                      embeddedsolid2-NLembded
                      coupling_U5_2D_compatible
                      coupling_U5
+                     compare_U4_U5_2D
                      ROM1-plateWithHole
                      post_faces
                      centrif_U1
