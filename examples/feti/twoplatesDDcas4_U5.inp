@@ -2,12 +2,10 @@
 **Job name:PlateWithHolem.txt
 **NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
 *Part, name=Piece
-*USER ELEMENT, NODES=4, TYPE=U1,  COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+*USER ELEMENT, NODES=9, TYPE=U1,  COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
 1,2
-*USER ELEMENT, NODES=2, TYPE=U00, COORDINATES=2, INTEGRATION=4, TENSOR=NONE
-1,2
-*USER ELEMENT, NODES=1, TYPE=U4,  COORDINATES=1, INTEGRATION=4, TENSOR=NONE
-1,2
+*USER ELEMENT, NODES=1, TYPE=U5, COORDINATES=2, INTEGRATION=1, TENSOR=NONE
+1
 *Node,nset=AllNode
     1, -10.0,  0.00
     2, -5.00,  0.00
@@ -33,31 +31,20 @@
     22, 0.00,  5.00
     23, 5.00,  5.00
     24, 10.0,  5.00
-    25, 1.00,  0.00
-    26, 1.00,  1.00
-    27, 0.00,  0.00
-    28, 0.00,  1.00
-    29, 0.00,  0.00
+    25, 0.00,  0.00
 *Element,type=U1, elset=AllEls
 1,    9, 8, 7, 6, 5, 4, 3, 2, 1
 2,    12, 11, 10, 9, 8, 7, 6, 5, 4
 3,    21, 20, 19, 18, 17, 16, 15, 14, 13
 4,    24, 23, 22, 21, 20, 19, 18, 17, 16
-*Element,type=U00,elset=EmbedInterface
-5,   26,25
-6,   28,27
-*Element,type=U4, elset=Lagrange
-7,   29
+*Element,type=U5, elset=Lagrange
+5,   25
 *ELSET,ELSET=EltPAtch1,generate
 1,2, 1
 *ELSET,ELSET=EltPAtch2,generate
 3,4, 1
 *ELSET,ELSET=EltPAtch3,generate
 5,5, 1
-*ELSET,ELSET=EltPAtch4,generate
-6,6, 1
-*ELSET,ELSET=EltPAtch5,generate
-7,7, 1
 *NSET,NSET=CPatX0patch1
 1,4,7,10
 *NSET,NSET=CPatY0patch1
@@ -66,23 +53,16 @@
 12,15,18
 *NSET,NSET=CPatY0patch2
 15,18,21,24
-*NSET,NSET=CPinterface1
-25,26
-*NSET,NSET=CPinterface2
-27,28
 *NSET,NSET=CPlgrge
-29
+25
 **
 *UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
 1
 *UEL PROPERTY, ELSET=EltPAtch2, MATERIAL=MAT
 2
 *UEL PROPERTY, ELSET=EltPAtch3, MATERIAL=MATvoid
-3, 1, 5, 1
-*UEL PROPERTY, ELSET=EltPAtch4, MATERIAL=MATvoid
-4, 2, 5, 0
-*UEL PROPERTY, ELSET=EltPAtch5, MATERIAL=MATvoid
-5, 0
+3, 2, 1, 1, 2
+** Maitre = patch 2 (face 1), esclave = patch 1 (face 2)
 *End Part
 ** ASSEMBLY
 *Assembly, name=Assembly 
@@ -105,8 +85,6 @@
 ** Name: DEP Type: Displacement/Rotation
 *Boundary
 I1.CPatX0patch1,  1, 2, 0.
-I1.CPinterface1,  1, 2, 0.
-I1.CPinterface2,  1, 2, 0.
 **I1.CPatXMpatch2,  1, 1, 0.
 **I1.CPatY0patch2,  1, 2, 0.
 **I1.CPlgrge,       1, 2, 0.

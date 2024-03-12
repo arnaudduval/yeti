@@ -1,0 +1,13 @@
+ Patch 00003
+======== WARNING ========
+Gauss point nb.   61
+   >> projection exit with info = 2
+======== WARNING ========
+Gauss point nb.   62
+   >> projection exit with info = 2
+======== WARNING ========
+Gauss point nb.   63
+   >> projection exit with info = 2
+======== WARNING ========
+Gauss point nb.   64
+   >> projection exit with info = 2

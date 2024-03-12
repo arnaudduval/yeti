@@ -29,26 +29,46 @@ import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 from preprocessing.igaparametrization import IGAmanip as manip
 
-FILENAME='testU5_2D'
+FILENAME='testU5_2D_cas2'
 
 modeleIGA = IGAparametrization(filename=FILENAME)
 
 nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
+
 # additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
-additional_knots = {"patches":np.array([1]),"1":np.array([]),"2":np.array([0.4]),"3":np.array([])}
-modeleIGA.refine(nb_ref,nb_deg,additional_knots)
-additional_knots = {"patches":np.array([0]),"1":np.array([]),"2":np.array([0.5]),"3":np.array([])}
 
-nb_ref[:,0] = np.array([2,2,0])
-nb_deg[:,0] = np.array([1,0,0])
 
-nb_ref[:,1] = np.array([2,2,0])
-nb_deg[:,1] = np.array([1,0,0])
 
-nb_ref[:,2] = np.array([2,0,0])
-nb_deg[:,2] = np.array([2,0,0])
+# additional_knots = {"patches":np.array([1]),"1":np.array([]),"2":np.array([0.4]),"3":np.array([])}
 
+# modeleIGA.refine(nb_ref,nb_deg,additional_knots)
+
+# additional_knots = {"patches":np.array([0]),"1":np.array([]),"2":np.array([0.5]),"3":np.array([])}
+
+# nb_ref[:,0] = np.array([2,2,0])
+# nb_deg[:,0] = np.array([1,0,0])
+
+# nb_ref[:,1] = np.array([2,2,0])
+# nb_deg[:,1] = np.array([1,0,0])
+
+# nb_ref[:,2] = np.array([2,0,0])
+# nb_deg[:,2] = np.array([2,0,0])
+
+# modeleIGA.refine(nb_ref,nb_deg,additional_knots)
+
+
+additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
+
+p = 2
+r = 3
+# domains
+nb_deg[:2,:2] = p
+nb_ref[:2, 0] = r #r+1
+nb_ref[:2, 1] = r
+# lgrge
+nb_ref[:,2] = np.array([r,0,0])
+nb_deg[:,2] = np.array([p,0,0])
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
 
