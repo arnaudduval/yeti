@@ -1517,6 +1517,8 @@ class IGAparametrization:
                 activeElem[e[patch]: e[patch+1]] = 0
 
         ndofel = self._nnode*self._mcrd
+        print(ndofel)
+        print(self._elementsByPatch)
         ndofel_list = np.repeat(ndofel*(ndofel + 1) / 2, self._elementsByPatch)
         nb_data = np.sum(activeElem*ndofel_list)
 

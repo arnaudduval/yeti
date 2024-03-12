@@ -139,6 +139,7 @@ subroutine cplg_matrix(Cdata,Crow,Ccol,nb_data, &
             !!  - compute covariant vectors
          
             n = NBINT(numPatch)
+            write(*,*) 'n = ', n 
             nb_gps = n*nb_elem_patch(NumPatch)
             if (allocated(saveXIb)) deallocate(saveXIb)
             if (allocated(saveXI )) deallocate(saveXI )

@@ -182,6 +182,7 @@ subroutine cplg_matrixU5(nb_data, &
             if (nbPtInt .lt. order) then
                 nbPtInt = order
             endif
+            write(*,*) 'nbPtint = ', nbPtInt
             !! Integration points on master patch
             call extractNurbsPatchGeoInfos(masterPatch, Nkv,Jpqr,Nijk,Ukv,    &
                     &   weight,nb_elem_patch)
