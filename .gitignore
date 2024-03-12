@@ -29,3 +29,4 @@ examples/feti/results/*.vtu
 examples/feti/pcpg_cvrg.txt
 benchs/coupling_U5/results/*_proj_*.txt
 
+examples/feti/CsideU4.txt
