@@ -25,3 +25,4 @@ verif_proj_patch*.txt
 warnings_proj_patch*.txt
 
 src/main/m_nurbspatch.mod
+examples/feti/CsideU4.txt
