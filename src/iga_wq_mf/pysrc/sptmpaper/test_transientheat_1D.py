@@ -27,10 +27,22 @@ def conductivityProperty(args:dict):
 	else: y = (1.0 + 2.0*np.exp(-np.abs(temperature)))
 	return y
 
+def ders2conductivityProperty(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: y = np.zeros(len(temperature))
+	else: y = 2.0*np.exp(-np.abs(temperature))
+	return y
+
 def capacityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: y = np.ones(len(temperature))
 	else: y = (1.0 + np.exp(-np.abs(temperature)))
+	return y
+
+def derscapacityProperty(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: y = np.zeros(len(temperature))
+	else: y = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return y
 
 def exactTemperature(args:dict):
@@ -52,6 +64,23 @@ def powerDensity(args:dict):
 			+ (c*np.pi*np.cos((np.pi*t)/2)*np.sin(2*np.pi*x)*(np.exp(u) + 1))/2 
 			+ 8*c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)**2*np.sin((np.pi*t)/2)**2
 
+		)
+	return f
+
+def derspowerDensity(args:dict):
+	x = args['position']; t = args['time']
+	if ISLINEAR:
+		f = ((c*np.pi*np.cos((np.pi*t)/2)*np.sin(2*np.pi*x))/2 + 4*c*np.pi**2*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
+			)
+	else: 
+		u = -np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
+		f = (
+			8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*(2*np.exp(u) + 1) 
+			+ c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*(np.exp(u) + 1) 
+			#+ 32*c**3*np.pi**3*dirac(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.exp(u)*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
+			- 16*c**3*np.pi**3*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))**2*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
+			- 48*c**2*np.pi**3*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)**2*np.sin(2*np.pi*x) 
+			- c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
 		)
 	return f
 
@@ -90,7 +119,10 @@ def simulate(degree, cuts, cuts_time=None):
 	# problem_inc._itersNL = 100#; problem_inc._thresNL = 1e-5
 	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, 
 											isLumped=False, alpha=0.5, 
-											extraArgs={'stabilized': True, 'volforce': powerDensity}
+											extraArgs={'stabilized': True, 
+											'forces': {'dersvolforce':derspowerDensity, 
+														'derscapacity':derscapacityProperty, 
+														'ders2conductivity':ders2conductivityProperty}}
 											)
 	return problem_inc, time_inc, Tinout
 

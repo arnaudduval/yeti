@@ -138,9 +138,9 @@ class heatproblem1D(problem1D):
 		u_interp = self.part._densebasis[0].T @ u_ctrlpts
 		return u_interp
 	
-	def __compute_stabilizationFourierProblem(self, disp_ctrlpts, vel_ctrlpts, force_func, dt, args=None):
+	def __compute_stabilizationFourierProblem(self, disp_ctrlpts, vel_ctrlpts, dt, args=None, forces={}):
 		if args is None: args = {'position': self.part.qpPhy}
-		force_interp = force_func(args)
+		# force_interp = force_func(args)
 		conductivity = self.heatmaterial.conductivity(args)
 		capacity = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 
@@ -151,17 +151,28 @@ class heatproblem1D(problem1D):
 		tau_interp = mesh_discretization**2*eps_interp/(6*np.abs(conductivity))
 
 		# Compute residual (in strong form)
-		vel_interp = self.part._densebasis[0].T @ vel_ctrlpts
-		uders_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
-		tmp1_ctrlpts = self.L2projectionCtrlpts(conductivity*uders_interp)
-		tmp1_interp = (self.part._densebasis[1].T @ tmp1_ctrlpts)*self.part.invJ
-		strong_residual = force_interp - capacity*vel_interp #+ tmp1_interp
+		dersvolforce = forces.get('dersvolforce', None)
+		derscapacity = forces.get('derscapacity', None)
+		ders2conductivity = forces.get('ders2conductivity', None)
+		dersdisp_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
+		phi_interp = (dersvolforce(args) 
+					- derscapacity(args)*dersdisp_interp*(self.part._densebasis[0].T @ vel_ctrlpts) 
+					- capacity*(self.part._densebasis[1].T @ vel_ctrlpts*self.part.invJ)
+					+ ders2conductivity(args)*(dersdisp_interp)**2
+		)
+
+		# vel_interp = self.part._densebasis[0].T @ vel_ctrlpts
+		# uders_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
+		# tmp1_ctrlpts = self.L2projectionCtrlpts(conductivity*uders_interp)
+		# tmp1_interp = (self.part._densebasis[1].T @ tmp1_ctrlpts)*self.part.invJ
+		# strong_residual = force_interp - capacity*vel_interp #+ tmp1_interp
 
 		# Compute force due to stabilization
-		prop = tau_interp*conductivity*self.part.invJ
-		matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T
-		array_in = self.L2projectionCtrlpts(strong_residual)
-		array_out = matrix @ array_in
+		prop = tau_interp*conductivity*phi_interp*self.part.invJ
+		array_out = self.part._denseweights[-1] @ prop
+		# matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T
+		# array_in = self.L2projectionCtrlpts(strong_residual)
+		# array_out = matrix @ array_in
 		return array_out
 
 	def compute_FourierTangentMatrix(self, dt, alpha=0.5, args=None, isLumped=False):
@@ -195,9 +206,9 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False, extraArgs=None):
 		" Solves transient heat problem in 1D. "
 
-		if extraArgs is None: extraArgs = {'stabilized': False, 'volforce': None}
-		useStabilization = extraArgs.get('stabilized', False); volforce = extraArgs.get('volforce', None)
-		if useStabilization and volforce is None: raise Warning('Do not forget to set volumetric force if stabilization is needed')
+		if extraArgs is None: extraArgs = {'stabilized': False, 'forces': None}
+		useStabilization = extraArgs.get('stabilized', False); forces = extraArgs.get('forces', None)
+		if useStabilization and forces is None: raise Warning('Do not forget to set volumetric force if stabilization is needed')
 		def computeVelocity(problem:heatproblem1D, Fext, args=None, isLumped=False):
 			if args is None: args = {'position': problem.part.qpPhy}
 			dof = problem.boundary.thdof
@@ -255,7 +266,7 @@ class heatproblem1D(problem1D):
 				r_dj = Fext_n1 - Fint_dj
 				if useStabilization:
 					args['time'] = time_list[i]
-					r_dj += self.__compute_stabilizationFourierProblem(dj_n1, Vj_n1, volforce, dt, args=args)
+					r_dj += self.__compute_stabilizationFourierProblem(dj_n1, Vj_n1, dt, args=args, forces=forces)
 				r_dj[dod] = 0.0
 
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
