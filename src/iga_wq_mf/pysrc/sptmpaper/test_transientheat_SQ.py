@@ -15,8 +15,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 extension = '.dat'
 FIG_CASE  = 3
 DATAEXIST = False
-ISLINEAR  = True
-c = 10
+ISLINEAR  = False
+c = 100
 
 def conductivityProperty(args:dict):
 	temperature = args['temperature']
@@ -54,8 +54,13 @@ def powerDensity(args:dict):
 			+ 4*c*np.pi**2*np.sin(np.pi/2*t)*np.sin(2*np.pi*x)
 		)
 	else: 
-		u = ...
-		f = ...
+		u = -np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
+		f = (
+			4*c*np.pi**2*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)*(2*np.exp(u) + 1) 
+			+ (c*np.pi*np.cos((np.pi*t)/2)*np.sin(2*np.pi*x)*(np.exp(u) + 1))/2 
+			+ 8*c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)**2*np.sin((np.pi*t)/2)**2
+
+		)
 	return f
 
 def simulate(degree, cuts, quadArgs, cuts_time=None):
@@ -129,32 +134,34 @@ if not DATAEXIST:
 	elif FIG_CASE == 3:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		degree_list = np.array([1, 2, 3, 4, 5])
-		cuts_list   = np.arange(1, 7)
-		cuts_time = 6
+		cuts_list   = np.arange(1, 6)
+		cuts_time = 7
+
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
-			error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
-			for j, cuts in enumerate(cuts_list):
-				for i, degree in enumerate(degree_list):
-					nbels = 2**cuts_list
-					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=cuts_time)
-					for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
-						_, error_list[i, j, k] = problem_inc.normOfError(output[:, k+1], 
-																		normArgs={'type':'L2',
-																				'exactFunction':exactTemperature_inc,
-																				'exactExtraArgs':{'time':step}})
-			np.save(folder + 'incrementalheat', error_list)
+			
+			# error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
+			# for j, cuts in enumerate(cuts_list):
+			# 	for i, degree in enumerate(degree_list):
+			# 		nbels = 2**cuts_list
+			# 		problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=cuts_time)
+			# 		for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
+			# 			error_list[i, j, k], _ = problem_inc.normOfError(output[:, k+1], 
+			# 															normArgs={'type':'L2',
+			# 																	'exactFunction':exactTemperature_inc,
+			# 																	'exactExtraArgs':{'time':step}})
+			# np.save(folder + 'incrementalheat', error_list)
+			
 			error_list = np.load(folder + 'incrementalheat.npy')
-
 			for k in range(np.size(error_list, axis=2)):
 				fig, ax = plt.subplots(figsize=(9, 6))
 				for i, degree in enumerate(degree_list):
 					color = COLORLIST[i]
 					ax.loglog(2**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
 								markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
-				ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
+				ax.set_ylabel(r'$\displaystyle||u - u^h||_{L_2(\Omega)}$')
 				ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-				ax.set_ylim(top=1e1, bottom=1e-8)
+				ax.set_ylim(top=1e2, bottom=1e-6)
 				ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 				fig.tight_layout()
 				fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')

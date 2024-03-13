@@ -6,7 +6,7 @@
 
 # My libraries
 from .__init__ import *
-from .lib_base import evalDersBasisFortran
+from .lib_base import evalDersBasisFortran, array2csr_matrix, findInterpolationSpan
 from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part1D():
@@ -42,6 +42,21 @@ class part1D():
 		self.invJ = 1.0/self.Jqp
 		self.qpPhy = self._densebasis[0].T @ self.ctrlpts
 		return
+	
+	def _compute_discrete_mesh_parameter(self, knots):
+
+		def compute_mesh_parameter_element(part:part1D):
+			kvunique = np.unique(part.knotvector)
+			dersBasis, indi, indj = evalDersBasisFortran(part.degree, part.knotvector, kvunique)
+			B0 = array2csr_matrix(dersBasis[:, 0], indi, indj, isfortran=True)
+			nodesPhy = B0.T @ part.ctrlpts
+			return np.diff(nodesPhy)
+
+		distPhy = compute_mesh_parameter_element(self); mesh_par = []
+		for knot in knots:
+			span = findInterpolationSpan(np.unique(self.knotvector), knot)
+			mesh_par.append(distPhy[span])
+		return np.array(mesh_par)
 
 class part(): 
 
@@ -147,15 +162,19 @@ class part():
 	# ----------------
 	# POST-PROCESSING 
 	# ----------------
-	def compute_mesh_parameter(self):
-		maxval = 0
+	def __compute_mesh_parameter_element(self, meantype=None):
+		if meantype is None: meantype = 'max'
+		if meantype.lower() == 'max': func = lambda x: np.max(x)
+		elif meantype.lower() == 'arithmetic': func = lambda x: np.mean(x)
+		elif meantype.lower() == 'geometric': func = lambda x: np.exp(np.mean(np.log(x)))
+
 		nbqp, indices, basis = [], [], []
 		for i in range(self.dim):
 			knots = np.unique(self.knotvector[i])
 			dersBasis, indi, indj = evalDersBasisFortran(self.degree[i], self.knotvector[i], knots)
 			nbqp.append(len(knots)); indices.append(indi); indices.append(indj); basis.append(dersBasis)
 		
-		inpts = [*nbqp[:self.dim], *indices, *basis, self.ctrlpts]
+		inpts = [*nbqp[:self.dim], *indices, *basis, self.ctrlpts]; distmean = []
 		if self.dim == 2:
 			qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
 			for j in range(nbqp[1]-1):
@@ -166,7 +185,7 @@ class part():
 									i + 1 + (j + 1)*nbqp[0]]
 					dist1 = np.linalg.norm(qpPhy[:, parGridIndices[0]] - qpPhy[:, parGridIndices[3]])
 					dist2 = np.linalg.norm(qpPhy[:, parGridIndices[1]] - qpPhy[:, parGridIndices[2]])
-					maxval = np.max([maxval, dist1, dist2])
+					distmean.append(func([dist1, dist2]))
 
 		if self.dim == 3:
 			qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
@@ -185,9 +204,11 @@ class part():
 						dist2 = np.linalg.norm(qpPhy[:, parGridIndices[1]] - qpPhy[:, parGridIndices[6]])
 						dist3 = np.linalg.norm(qpPhy[:, parGridIndices[2]] - qpPhy[:, parGridIndices[5]])
 						dist4 = np.linalg.norm(qpPhy[:, parGridIndices[3]] - qpPhy[:, parGridIndices[4]])
-						maxval = np.max([maxval, dist1, dist2, dist3, dist4])
-		
-		return maxval
+						distmean.append(func([dist1, dist2]))
+		return np.array(distmean)
+
+	def compute_global_mesh_parameter(self):
+		return np.max(self.__compute_mesh_parameter_element(meantype='max'))
 
 	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=101, isAll=True):
 		# Initialize all outputs

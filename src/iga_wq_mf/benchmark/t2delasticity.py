@@ -61,7 +61,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	meshparam = modelPhy.compute_mesh_parameter()
+	meshparam = modelPhy.compute_global_mesh_parameter()
 
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)

@@ -17,8 +17,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 extension = '.dat'
-FIG_CASE  = 1
-ISLINEAR  = False
+FIG_CASE  = 2
+ISLINEAR  = True
 c = 100
 
 def conductivityProperty(args:dict):
@@ -122,3 +122,20 @@ if FIG_CASE == 1:
 		fig.tight_layout()
 		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
 		plt.close(fig)
+
+elif FIG_CASE == 2:
+	problem, time_list, output = simulate(6, 6, cuts_time=7)
+
+	# Post-processing
+	temp_interp, x_interp = problem.interpolateMeshgridField(output, sampleSize=201)
+	XX, TIME = np.meshgrid(x_interp, time_list)
+	fig, ax  = plt.subplots(figsize=(10, 4))
+	im   = ax.contourf(XX, TIME, temp_interp.T, cmap='viridis')
+	cbar = plt.colorbar(im)
+	cbar.set_label(r'$\displaystyle\frac{u - u_0}{u_1 - u_0}$')
+
+	ax.grid(False)
+	ax.set_ylabel(r'$\displaystyle\frac{\tau}{T_{s}}$')
+	ax.set_xlabel(r'$\displaystyle\frac{x}{L}$')
+	fig.tight_layout()
+	fig.savefig(folder + 'TransientHeat1D.png')

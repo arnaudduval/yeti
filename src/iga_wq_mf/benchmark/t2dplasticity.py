@@ -48,7 +48,7 @@ def simulate(degree, cuts, quadArgs, step=-2):
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	meshparam = modelPhy.compute_mesh_parameter()
+	meshparam = modelPhy.compute_global_mesh_parameter()
 
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
@@ -119,7 +119,7 @@ else:
 				modelGeo = Geomdl(geoArgs)
 				modelIGA = modelGeo.getIGAParametrization()
 				modelPhy = part(modelIGA, quadArgs=quadArgs)
-				meshparam = modelPhy.compute_mesh_parameter(); meshparam_list[j] = meshparam
+				meshparam = modelPhy.compute_global_mesh_parameter(); meshparam_list[j] = meshparam
 				enablePrint()
 
 			ax.loglog(meshparam_list, error_list[k, i, :], color=color, marker='o', markerfacecolor='w',

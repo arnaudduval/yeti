@@ -30,7 +30,7 @@ class problem1D():
 		prop  = volfun(args)*self.part.detJ
 		force = self.part._denseweights[0] @ prop 
 		return force
-	
+		
 	def interpolateMeshgridField(self, u_ctrlpts, sampleSize=101, isSample=True):
 		if isSample: basis = self.part.quadRule.getSampleBasis(sampleSize=sampleSize)[0]
 		else: 		 basis = self.part.quadRule.getDenseQuadRules()[0]
@@ -137,6 +137,32 @@ class heatproblem1D(problem1D):
 		" Interpolate temperature in 1D "
 		u_interp = self.part._densebasis[0].T @ u_ctrlpts
 		return u_interp
+	
+	def __compute_stabilizationFourierProblem(self, temp_ctrlpts, flux_ctrlpts, force_crtlpts, dt, args=None):
+		if args is None: args = {'position': self.part.qpPhy}
+		conductivity = self.heatmaterial.conductivity(args)
+		capacity = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+
+		# Compute stabilization coefficient
+		mesh_discretization = self.part._compute_discrete_mesh_parameter(self.part.quadRule.quadPtsPos)
+		alpha_interp = capacity/(6*dt*np.abs(conductivity))*mesh_discretization
+		eps_interp = (np.cosh(np.sqrt(6*alpha_interp)) + 2)/(np.cosh(np.sqrt(6*alpha_interp)) - 1) - 1/alpha_interp
+		tau_interp = mesh_discretization**2*eps_interp/(6*np.abs(conductivity))
+
+		# Compute residual (in strong form)
+		u_interp = self.part._densebasis[0].T @ temp_ctrlpts
+		uders_interp = (self.part._densebasis[1].T @ temp_ctrlpts)*self.part.invJ
+		v_interp = self.part._densebasis[0].T @ flux_ctrlpts
+		force_interp = self.part._densebasis[0].T @ force_crtlpts
+		tmp1_ctrlpts = self.L2projectionCtrlpts(conductivity*uders_interp)
+		tmp1_interp = (self.part._densebasis[1].T @ tmp1_ctrlpts)*self.part.invJ
+		strong_residual = force_interp - capacity*v_interp + tmp1_interp
+
+		# Compute force due to stabilization
+		prop = conductivity*tau_interp*self.part.invJ
+		matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T 
+		array_out = matrix @ self.L2projectionCtrlpts(strong_residual)
+		return array_out
 
 	def compute_FourierTangentMatrix(self, dt, alpha=0.5, args=None, isLumped=False):
 		""" Computes tangent matrix in transient heat
@@ -166,7 +192,7 @@ class heatproblem1D(problem1D):
 		matrix = M + gamma*dt*C + beta*dt**2*K
 		return matrix
 
-	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
+	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False, useStabilization=False):
 		" Solves transient heat problem in 1D. "
 
 		def computeVelocity(problem:heatproblem1D, Fext, args=None, isLumped=False):
@@ -224,6 +250,7 @@ class heatproblem1D(problem1D):
 
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
+				if useStabilization: r_dj -= self.__compute_stabilizationFourierProblem(dj_n1, Vj_n1, Fext_n1, dt, args=args)
 				r_dj[dod] = 0.0
 
 				resNLj = np.sqrt(np.dot(r_dj, r_dj))
