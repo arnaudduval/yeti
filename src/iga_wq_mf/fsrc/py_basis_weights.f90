@@ -79,6 +79,58 @@ subroutine get_genbasis_csr(degree, size_kv, knotvector, nb_knots, knots, basis,
 
 end subroutine get_genbasis_csr
 
+subroutine get_genbasis2_coo(degree, size_kv, knotvector, nb_knots, knots, basis, indices)
+    !! Gets in COO format the basis at given knots 
+    
+    use quadrature_rules
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    double precision, parameter :: span_tol = 1.d-8
+    integer, intent(in) :: degree, size_kv, nb_knots
+    double precision, intent(in) :: knotvector, knots
+    dimension :: knotvector(size_kv), knots(nb_knots)
+    
+    double precision, intent(out) :: basis
+    dimension :: basis(nb_knots*(degree+1), 3)
+    integer, intent(out) :: indices
+    dimension :: indices((degree+1)*nb_knots, 2)
+
+    call get_basis2_coo(degree, size_kv, knotvector, size_kv, knotvector, nb_knots, knots, basis, indices, span_tol)
+
+end subroutine get_genbasis2_coo
+
+subroutine get_genbasis2_csr(degree, size_kv, knotvector, nb_knots, knots, basis, indi, indj)
+    !! Gets in CSR format the basis at given knots 
+
+    implicit none
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: degree, size_kv, nb_knots
+    double precision, intent(in) :: knotvector, knots
+    dimension :: knotvector(size_kv), knots(nb_knots)
+
+    double precision, intent(out) :: basis
+    dimension :: basis(nb_knots*(degree+1), 3)
+    integer, intent(out) :: indi, indj
+    dimension :: indi(size_kv-degree), indj(nb_knots*(degree+1))
+
+    ! Local data
+    ! ----------
+    integer :: size_data
+    integer, dimension(:, :), allocatable :: indices
+    double precision, dimension(:, :), allocatable :: basis_coo
+
+    size_data = nb_knots*(degree+1)
+    allocate(basis_coo(size_data, 3), indices(size_data, 3))
+    call get_genbasis_coo(degree, size_kv, knotvector, nb_knots, knots, basis_coo, indices)
+
+    ! Convert COO to CSR format
+    call multicoo2csr(3, size_kv-degree-1, size_data, basis_coo, indices(:, 1), indices(:, 2), basis, indj, indi)
+    deallocate(basis_coo)
+
+end subroutine get_genbasis2_csr
+
 subroutine wq_getbasisweights_coo(degree, size_kv, knotvector, nbqp, quadptspos, nbctrlpts, &
                                 B0shape, B1shape, size_data, basis, weights, indices, method)
     !! Gets in COO format basis and weights in IGA-WQ approach

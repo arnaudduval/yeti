@@ -17,8 +17,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 extension = '.dat'
-FIG_CASE  = 2
-ISLINEAR  = True
+FIG_CASE  = 1
+ISLINEAR  = False
 c = 100
 
 def conductivityProperty(args:dict):
@@ -87,13 +87,18 @@ def simulate(degree, cuts, cuts_time=None):
 	
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
-	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, isLumped=False, alpha=0.5)
+	# problem_inc._itersNL = 100#; problem_inc._thresNL = 1e-5
+	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, 
+											isLumped=False, alpha=0.5, 
+											extraArgs={'stabilized': True, 'volforce': powerDensity}
+											)
 	return problem_inc, time_inc, Tinout
 
 if FIG_CASE == 1:
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	cuts_time = 7
-	degree_list = np.array([1, 2, 3, 4, 5])
+	# degree_list = np.array([1, 2, 3, 4, 5])
+	degree_list = np.array([1])
 	cuts_list   = np.arange(2, 9)
 
 	error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
@@ -124,7 +129,13 @@ if FIG_CASE == 1:
 		plt.close(fig)
 
 elif FIG_CASE == 2:
-	problem, time_list, output = simulate(6, 6, cuts_time=7)
+	problem, time_list, output = simulate(1, 6, cuts_time=7)
+	for k, t in enumerate(time_list[1:-1]):
+		error = problem.normOfError(output[:, k+1], 
+									normArgs={'type':'L2',
+											'exactFunction':exactTemperature,
+											'exactExtraArgs':{'time':t}})
+		print('Step:%d, error:%.3e' %(k, error[0]))
 
 	# Post-processing
 	temp_interp, x_interp = problem.interpolateMeshgridField(output, sampleSize=201)

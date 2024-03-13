@@ -126,7 +126,7 @@ subroutine increase_multiplicity(repeat, degree, size_kv_in, kv_in, size_kv_out,
 
 end subroutine increase_multiplicity
 
-subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, threshold)
+subroutine get_basis1_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, threshold)
     !! Finds the basis B0 and B1 for every given knot. 
     !! The algorithm computes by itself the knot-vector span of a given knot and 
     !! returns the value of the basis B0 and B1 for that knot. 
@@ -187,7 +187,70 @@ subroutine get_basis_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, k
         end do
     end do
 
-end subroutine get_basis_coo
+end subroutine get_basis1_coo
+
+subroutine get_basis2_coo(degree, size_ukv, ukv, size_kv, knotvector, nb_knots, knots, basis, indices, threshold)
+    !! Finds the basis B0 and B1 for every given knot. 
+    !! The algorithm computes by itself the knot-vector span of a given knot and 
+    !! returns the value of the basis B0 and B1 for that knot. 
+    !! Knowing that on each span, there are (degree+1) functions, it returns each time (degree+1) values.
+
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, intent(in) :: degree, size_ukv, size_kv, nb_knots
+    double precision, intent(in) :: ukv, knotvector, knots, threshold
+    dimension :: ukv(size_ukv), knotvector(size_kv), knots(nb_knots)
+
+    integer, intent(out) :: indices
+    dimension :: indices((degree+1)*nb_knots, 2)
+    double precision, intent(out) :: basis
+    dimension :: basis((degree+1)*nb_knots, 3)
+
+    ! Local data
+    ! ----------
+    integer :: i, j, k, nbctrlpts, nbel, multiplicity
+    integer :: functions_span, span
+    dimension :: functions_span(degree+1), span(2)
+    integer, allocatable, dimension(:, :) :: table_functions_span
+    double precision :: B0t, B1t, B2t
+    dimension :: B0t(degree+1), B1t(degree+1), B2t(degree+1)
+
+    nbctrlpts = size_kv - degree - 1
+    nbel      = size_ukv - 1
+
+    ! Set table of functions 
+    allocate(table_functions_span(nbel, degree+1))
+    table_functions_span = 0
+    do j = 1, degree+1
+        table_functions_span(1, j) = j 
+    end do
+
+    do i = 2, size_ukv-1
+        call find_multiplicity(size_kv, knotvector, ukv(i), multiplicity, threshold)
+        table_functions_span(i, 1) = table_functions_span(i-1, 1) + multiplicity
+        do j = 2, degree+1
+            table_functions_span(i, j) = table_functions_span(i, 1) + j - 1
+        end do
+    end do
+
+    do i = 1, nb_knots
+
+        ! Computes B0 and B1 using a YETI function
+        call find_interpolation_kvspan(size_kv, knotvector, knots(i), degree, span(1), threshold)
+        call find_interpolation_kvspan(size_ukv, ukv, knots(i), 0, span(2), threshold)
+        functions_span = table_functions_span(span(2), :)
+        call dersbasisfuns2(span(1), degree, nbctrlpts, knots(i), knotvector, B0t, B1t, B2t)
+
+        ! Save in COO format
+        do j = 1, degree+1
+            k = (i - 1)*(degree + 1) + j
+            basis(k, :)   = [B0t(j), B1t(j), B2t(j)]
+            indices(k, :) = [functions_span(j), i]                                
+        end do
+    end do
+
+end subroutine get_basis2_coo
 
 ! ---------------------------------------------------------------
 ! WQ FUNCTIONS: expected to work in weighted-quadrature approach
@@ -318,7 +381,7 @@ contains
         integer, intent(out) :: indices
         dimension :: indices((obj%degree+1)*nb_knots, 2)
 
-        call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
+        call get_basis1_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
                             nb_knots, knots, basis, indices, obj%span_threshold)
 
     end subroutine get_basis_simplified_coo
@@ -342,7 +405,7 @@ contains
         integer :: indices
         dimension :: indices((obj%degree+1)*nb_knots, 2)
 
-        call get_basis_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
+        call get_basis1_coo(obj%degree, obj%size_ukv, obj%ukv, obj%size_kv, obj%knotvector, &
                             nb_knots, knots, basis, indices, obj%span_threshold)
 
         call coo2dense(size(basis, 1), indices(:, 1), indices(:, 2), basis(:, 1), size(B0, 1), size(B0, 2), B0)
