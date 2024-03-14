@@ -153,7 +153,7 @@ if not DATAEXIST:
 			# np.save(folder + 'incrementalheat', error_list)
 			
 			error_list = np.load(folder + 'incrementalheat.npy')
-			for k in range(np.size(error_list, axis=2)):
+			for j, k in enumerate(range(0, np.size(error_list, axis=2), 4)):
 				fig, ax = plt.subplots(figsize=(9, 6))
 				for i, degree in enumerate(degree_list):
 					color = COLORLIST[i]
@@ -164,7 +164,7 @@ if not DATAEXIST:
 				ax.set_ylim(top=1e2, bottom=1e-6)
 				ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 				fig.tight_layout()
-				fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
+				fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(j+1) +  '.pdf')
 				plt.close(fig)
 
 else:

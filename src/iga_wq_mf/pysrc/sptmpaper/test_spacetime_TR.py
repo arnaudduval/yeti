@@ -215,7 +215,7 @@ else:
 
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		figname = folder + 'SPTNonLinearConvergenceL2'+lastsufix+'.pdf'
-		filenames = ['L2relerror_meshpar_iga_leg_']
+		filenames = ['L2error_meshpar_iga_leg_']
 
 		normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 		fig, ax = plt.subplots(figsize=(8, 6))
@@ -247,10 +247,11 @@ else:
 		# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
 		# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 4")
 
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
+		# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
+		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
 		ax.set_xlim(left=1, right=100)
-		ax.set_ylim(top=1e1, bottom=1e-7)
+		ax.set_ylim(top=1e2, bottom=1e-6)
 		ax.legend(loc='lower left')
 		fig.tight_layout()
 		fig.savefig(figname)

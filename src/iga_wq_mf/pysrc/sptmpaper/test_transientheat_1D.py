@@ -18,7 +18,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 extension = '.dat'
 FIG_CASE  = 1
-ISLINEAR  = False
+ISLINEAR  = True
 c = 100
 
 def conductivityProperty(args:dict):
@@ -70,18 +70,20 @@ def powerDensity(args:dict):
 def derspowerDensity(args:dict):
 	x = args['position']; t = args['time']
 	if ISLINEAR:
-		f = ((c*np.pi*np.cos((np.pi*t)/2)*np.sin(2*np.pi*x))/2 + 4*c*np.pi**2*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
+		f = (c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x) 
+			+ 8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)
 			)
 	else: 
-		u = -np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
+		u = np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
 		f = (
-			8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*(2*np.exp(u) + 1) 
-			+ c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*(np.exp(u) + 1) 
-			#+ 32*c**3*np.pi**3*dirac(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.exp(u)*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
-			- 16*c**3*np.pi**3*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))**2*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
-			- 48*c**2*np.pi**3*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)**2*np.sin(2*np.pi*x) 
-			- c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
+			8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*(2*np.exp(-u) + 1) 
+			+ c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*(np.exp(-u) + 1) 
+			# + 32*c**3*np.pi**3*dirac(ref)*np.exp(-u)*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
+			- 16*c**3*np.pi**3*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))**2*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
+			- 48*c**2*np.pi**3*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)**2*np.sin(2*np.pi*x) 
+			- c**2*np.pi**2*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
 		)
+		# f = np.where(np.abs(u)>1e-12, f, 1e14)
 	return f
 
 def simulate(degree, cuts, cuts_time=None):
@@ -116,7 +118,7 @@ def simulate(degree, cuts, cuts_time=None):
 	
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
-	# problem_inc._itersNL = 100#; problem_inc._thresNL = 1e-5
+	problem_inc._itersNL = 100; problem_inc._thresNL = 1e-7
 	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, 
 											isLumped=False, alpha=0.5, 
 											extraArgs={'stabilized': True, 
@@ -129,27 +131,31 @@ def simulate(degree, cuts, cuts_time=None):
 if FIG_CASE == 1:
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	cuts_time = 7
-	# degree_list = np.array([1, 2, 3, 4, 5])
-	degree_list = np.array([1])
+	degree_list = np.array([1, 2, 3, 4, 5])
+	# degree_list = np.array([1])
 	cuts_list   = np.arange(2, 9)
 
-	error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
-	for j, cuts in enumerate(cuts_list):
-		for i, degree in enumerate(degree_list):
-			problem, time_list, output = simulate(degree, cuts, cuts_time=cuts_time)
-			for k, t in enumerate(time_list[1:-1]):
-				error_list[i, j, k], _ = problem.normOfError(output[:, k+1], 
-															normArgs={'type':'L2',
-																	'exactFunction':exactTemperature,
-																	'exactExtraArgs':{'time':t}})
-	np.save(folder + 'incrementalheat', error_list)
+	# error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
+	# for j, cuts in enumerate(cuts_list):
+	# 	for i, degree in enumerate(degree_list):
+	# 		problem, time_list, output = simulate(degree, cuts, cuts_time=cuts_time)
+	# 		for k, t in enumerate(time_list[1:-1]):
+	# 			error_list[i, j, k], _ = problem.normOfError(output[:, k+1], 
+	# 														normArgs={'type':'L2',
+	# 																'exactFunction':exactTemperature,
+	# 																'exactExtraArgs':{'time':t}})
+	# np.save(folder + 'incrementalheat', error_list)
 
+	error_stab_list = np.load(folder + 'incrementalheat_stab.npy')
 	error_list = np.load(folder + 'incrementalheat.npy')
-	for k in range(np.size(error_list, axis=2)):
+	for j, k in enumerate(range(0, np.size(error_list, axis=2), 4)):
 		fig, ax = plt.subplots(figsize=(9, 6))
+		if not ISLINEAR: ax.loglog(2**cuts_list[:-1], error_stab_list[0, :-1, k], color='k', marker='o', markerfacecolor='w',
+					markersize=10, linestyle='-', label='Stabilized')
+	
 		for i, degree in enumerate(degree_list):
 			color = COLORLIST[i]
-			ax.loglog(2**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
+			ax.loglog(2**cuts_list[:-1], error_list[i, :-1, k], color=color, marker='o', markerfacecolor='w',
 						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 		# ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
@@ -157,7 +163,7 @@ if FIG_CASE == 1:
 		ax.set_ylim(top=10, bottom=1e-7)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
-		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(k+1) +  '.pdf')
+		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(j+1) +  '.pdf')
 		plt.close(fig)
 
 elif FIG_CASE == 2:
@@ -173,12 +179,13 @@ elif FIG_CASE == 2:
 	temp_interp, x_interp = problem.interpolateMeshgridField(output, sampleSize=201)
 	XX, TIME = np.meshgrid(x_interp, time_list)
 	fig, ax  = plt.subplots(figsize=(10, 4))
-	im   = ax.contourf(XX, TIME, temp_interp.T, cmap='viridis')
+	temp_exact = c*np.sin(2*np.pi*XX)*np.sin(np.pi/2*TIME)
+	im   = ax.contourf(XX, TIME, np.abs(temp_exact - temp_interp.T), cmap='viridis')
 	cbar = plt.colorbar(im)
-	cbar.set_label(r'$\displaystyle\frac{u - u_0}{u_1 - u_0}$')
+	cbar.set_label('Difference temperature')
 
 	ax.grid(False)
-	ax.set_ylabel(r'$\displaystyle\frac{\tau}{T_{s}}$')
-	ax.set_xlabel(r'$\displaystyle\frac{x}{L}$')
+	ax.set_ylabel('Time')
+	ax.set_xlabel('Position')
 	fig.tight_layout()
 	fig.savefig(folder + 'TransientHeat1D.png')

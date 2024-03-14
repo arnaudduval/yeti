@@ -158,9 +158,8 @@ class heatproblem1D(problem1D):
 		phi_interp = (dersvolforce(args) 
 					- derscapacity(args)*dersdisp_interp*(self.part._densebasis[0].T @ vel_ctrlpts) 
 					- capacity*(self.part._densebasis[1].T @ vel_ctrlpts*self.part.invJ)
-					+ ders2conductivity(args)*(dersdisp_interp)**2
+					+ ders2conductivity(args)*(dersdisp_interp)**3
 		)
-
 		# vel_interp = self.part._densebasis[0].T @ vel_ctrlpts
 		# uders_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
 		# tmp1_ctrlpts = self.L2projectionCtrlpts(conductivity*uders_interp)
@@ -168,12 +167,12 @@ class heatproblem1D(problem1D):
 		# strong_residual = force_interp - capacity*vel_interp #+ tmp1_interp
 
 		# Compute force due to stabilization
-		prop = tau_interp*conductivity*phi_interp*self.part.invJ
-		array_out = self.part._denseweights[-1] @ prop
+		prop = tau_interp*conductivity*phi_interp
+		array_out = self.part._denseweights[2] @ prop
 		# matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T
 		# array_in = self.L2projectionCtrlpts(strong_residual)
 		# array_out = matrix @ array_in
-		return array_out
+		return 0.05*array_out
 
 	def compute_FourierTangentMatrix(self, dt, alpha=0.5, args=None, isLumped=False):
 		""" Computes tangent matrix in transient heat
@@ -254,6 +253,8 @@ class heatproblem1D(problem1D):
 
 			print('Step: %d' %i)
 			for j in range(self._itersNL): 
+				if j==25:
+					print('problems')
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
