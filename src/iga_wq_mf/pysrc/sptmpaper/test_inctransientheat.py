@@ -6,7 +6,6 @@
 from pysrc.lib.__init__ import *
 from pysrc.sptmpaper.input_data import *
 
-
 # Select folder
 full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/inctransient/'
@@ -20,7 +19,7 @@ TODOSIMU = True
 if IS1DIM:
 	# Trace material properties
 	XX, TIME = np.meshgrid(np.linspace(0, 1, 201), np.linspace(0, 1, 129))
-	TEMPERATURE = exactTemperature(args={'position':XX, 'time':TIME})
+	TEMPERATURE = exactTemperature_inc(args={'position':XX, 'time':TIME})
 
 	CONDUCTIVITY = conductivityProperty(args={'temperature':TEMPERATURE})
 	CONDUCTIVITYDERS = conductivityDersProperty(args={'temperature':TEMPERATURE})
@@ -39,12 +38,12 @@ if IS1DIM:
 		fig.tight_layout()
 		fig.savefig(folder + 'transientheat_' + figname)
 
-	problem_inc, time_inc, temperature_inc = simulate_incremental(3, 6, 
-											powerdensity=powerDensity, is1dim=IS1DIM)
+	problem_inc, time_inc, temperature_inc = simulate_incremental(3, 7, 
+											powerdensity=powerDensity_inc, is1dim=IS1DIM)
 	for k, t in enumerate(time_inc[1:-1]):
 		error = problem_inc.normOfError(temperature_inc[:, k+1], 
 									normArgs={'type':'L2',
-											'exactFunction':exactTemperature,
+											'exactFunction':exactTemperature_inc,
 											'exactExtraArgs':{'time':t}})
 		print('Step:%d, RelError:%.3e' %(k, error[-1]))
 
@@ -72,11 +71,11 @@ if TODOSIMU:
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, 
-											powerdensity=powerDensity, is1dim=IS1DIM)
+											powerdensity=powerDensity_inc, is1dim=IS1DIM)
 			for k, t in enumerate(time_inc[1:-1]):
 				error_list[i, j, k], _ = problem_inc.normOfError(temp_inc[:, k+1], 
 															normArgs={'type':'L2',
-																	'exactFunction':exactTemperature,
+																	'exactFunction':exactTemperature_inc,
 																	'exactExtraArgs':{'time':t}})
 	np.save(filename, error_list)
 
