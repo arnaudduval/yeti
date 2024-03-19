@@ -17,14 +17,14 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 extension = '.dat'
-FIG_CASE  = 3
+FIG_CASE  = 1
 ISLINEAR  = False
 c = 100
 
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: y = np.ones(len(temperature))
-	else: y = (0.5+np.sin(np.pi*temperature)**2 + 2.0*np.exp(-np.abs(temperature)))
+	else: y = (1.0 + 2.0*np.exp(-np.abs(temperature)))
 	return y
 
 def capacityProperty(args:dict):
@@ -59,9 +59,9 @@ def simulate(degree, cuts, cuts_time=None):
 
 	# Create geometry
 	length = 1.0
-	nbel   = int(2**cuts)
+	nbel   = int(3**cuts)
 	geometry = createUniformCurve(degree, nbel, length)
-	modelPhy = part1D(geometry, kwargs={'quadArgs': {'quadrule': 'iga'}})
+	modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga', 'type':'legextra', 'extra':{'nb_qp_el': 2}}})
 
 	if cuts_time is None: cuts_time = np.copy(cuts)
 	timespan = 1.0
@@ -97,35 +97,31 @@ if FIG_CASE == 1:
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	cuts_time = 7
 	degree_list = np.array([1, 2, 3, 4, 5])
-	# degree_list = np.array([1])
-	cuts_list   = np.arange(2, 9)
+	cuts_list   = np.arange(1, 6)
 
-	# error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
-	# for j, cuts in enumerate(cuts_list):
-	# 	for i, degree in enumerate(degree_list):
-	# 		problem, time_list, output = simulate(degree, cuts, cuts_time=cuts_time)
-	# 		for k, t in enumerate(time_list[1:-1]):
-	# 			error_list[i, j, k], _ = problem.normOfError(output[:, k+1], 
-	# 														normArgs={'type':'L2',
-	# 																'exactFunction':exactTemperature,
-	# 																'exactExtraArgs':{'time':t}})
-	# np.save(folder + 'incrementalheat', error_list)
+	error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
+	for j, cuts in enumerate(cuts_list):
+		for i, degree in enumerate(degree_list):
+			problem, time_list, output = simulate(degree, cuts, cuts_time=cuts_time)
+			for k, t in enumerate(time_list[1:-1]):
+				error_list[i, j, k], _ = problem.normOfError(output[:, k+1], 
+															normArgs={'type':'L2',
+																	'exactFunction':exactTemperature,
+																	'exactExtraArgs':{'time':t}})
+	np.save(folder + 'incrementalheat', error_list)
 
-	error_stab_list = np.load(folder + 'incrementalheat_stab.npy')
 	error_list = np.load(folder + 'incrementalheat.npy')
 	for j, k in enumerate(range(0, np.size(error_list, axis=2), 4)):
 		fig, ax = plt.subplots(figsize=(9, 6))
-		if not ISLINEAR: ax.loglog(2**cuts_list[:-1], error_stab_list[0, :-1, k], color='k', marker='o', markerfacecolor='w',
-					markersize=10, linestyle='-', label='Stabilized')
 	
 		for i, degree in enumerate(degree_list):
 			color = COLORLIST[i]
-			ax.loglog(2**cuts_list[:-1], error_list[i, :-1, k], color=color, marker='o', markerfacecolor='w',
+			ax.loglog(3**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
 						markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 		# ax.set_ylabel(r'$\displaystyle\frac{||u - u^h||_{L_2(\Omega)}}{||u||_{L_2(\Omega)}}$')
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
 		ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-		ax.set_ylim(top=10, bottom=1e-7)
+		ax.set_ylim(top=1e2, bottom=1e-5)
 		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 		fig.tight_layout()
 		fig.savefig(folder + 'steps/FigConvergenceIncrHeat' + str(j+1) +  '.pdf')

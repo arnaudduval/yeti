@@ -253,8 +253,6 @@ class heatproblem1D(problem1D):
 
 			print('Step: %d' %i)
 			for j in range(self._itersNL): 
-				if j==25:
-					print('problems')
 				
 				# Interpolate temperature
 				temperature = self.interpolate_temperature(dj_n1)
