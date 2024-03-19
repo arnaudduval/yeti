@@ -65,7 +65,7 @@ def powerDensity(args:dict):
 
 def simulate(degree, cuts, quadArgs, cuts_time=None):
 	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
-				'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+				'nb_refinementByDirection': np.array([cuts, 2, 1])}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -103,6 +103,7 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
+	problem_inc._itersNL = 100; problem_inc._thresNL = 1e-7
 	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_inc, alpha=0.5)
 
 	return problem_inc, problem_st, Tinout
@@ -134,23 +135,23 @@ if not DATAEXIST:
 	elif FIG_CASE == 3:
 		lastsufix = 'linear' if ISLINEAR else 'nonlin'
 		degree_list = np.array([1, 2, 3, 4, 5])
-		cuts_list   = np.arange(1, 6)
+		cuts_list   = np.arange(2, 9)
 		cuts_time = 7
 
 		for quadrule, quadtype in zip(['iga'], ['leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			
-			# error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
-			# for j, cuts in enumerate(cuts_list):
-			# 	for i, degree in enumerate(degree_list):
-			# 		nbels = 2**cuts_list
-			# 		problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=cuts_time)
-			# 		for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
-			# 			error_list[i, j, k], _ = problem_inc.normOfError(output[:, k+1], 
-			# 															normArgs={'type':'L2',
-			# 																	'exactFunction':exactTemperature_inc,
-			# 																	'exactExtraArgs':{'time':step}})
-			# np.save(folder + 'incrementalheat', error_list)
+			error_list = np.ones((len(degree_list), len(cuts_list), 2**cuts_time))
+			for j, cuts in enumerate(cuts_list):
+				for i, degree in enumerate(degree_list):
+					nbels = 2**cuts_list
+					problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=cuts_time)
+					for k, step in enumerate(problem_st.time.ctrlpts[1:-1]):
+						error_list[i, j, k], _ = problem_inc.normOfError(output[:, k+1], 
+																		normArgs={'type':'L2',
+																				'exactFunction':exactTemperature_inc,
+																				'exactExtraArgs':{'time':step}})
+			np.save(folder + 'incrementalheat', error_list)
 			
 			error_list = np.load(folder + 'incrementalheat.npy')
 			for j, k in enumerate(range(0, np.size(error_list, axis=2), 4)):

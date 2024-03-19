@@ -17,32 +17,20 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 extension = '.dat'
-FIG_CASE  = 1
-ISLINEAR  = True
+FIG_CASE  = 3
+ISLINEAR  = False
 c = 100
 
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: y = np.ones(len(temperature))
-	else: y = (1.0 + 2.0*np.exp(-np.abs(temperature)))
-	return y
-
-def ders2conductivityProperty(args:dict):
-	temperature = args.get('temperature')
-	if ISLINEAR: y = np.zeros(len(temperature))
-	else: y = 2.0*np.exp(-np.abs(temperature))
+	else: y = (0.5+np.sin(np.pi*temperature)**2 + 2.0*np.exp(-np.abs(temperature)))
 	return y
 
 def capacityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: y = np.ones(len(temperature))
 	else: y = (1.0 + np.exp(-np.abs(temperature)))
-	return y
-
-def derscapacityProperty(args:dict):
-	temperature = args.get('temperature')
-	if ISLINEAR: y = np.zeros(len(temperature))
-	else: y = -np.sign(temperature)*np.exp(-np.abs(temperature))
 	return y
 
 def exactTemperature(args:dict):
@@ -56,7 +44,7 @@ def powerDensity(args:dict):
 	if ISLINEAR:
 		f = (c*np.pi/2*np.cos(np.pi/2*t)*np.sin(2*np.pi*x) 
 			+ 4*c*np.pi**2*np.sin(np.pi/2*t)*np.sin(2*np.pi*x)
-			)
+		)
 	else: 
 		u = -np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
 		f = (
@@ -65,25 +53,6 @@ def powerDensity(args:dict):
 			+ 8*c**2*np.pi**2*np.exp(u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)**2*np.sin((np.pi*t)/2)**2
 
 		)
-	return f
-
-def derspowerDensity(args:dict):
-	x = args['position']; t = args['time']
-	if ISLINEAR:
-		f = (c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x) 
-			+ 8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)
-			)
-	else: 
-		u = np.abs(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))
-		f = (
-			8*c*np.pi**3*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*(2*np.exp(-u) + 1) 
-			+ c*np.pi**2*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*(np.exp(-u) + 1) 
-			# + 32*c**3*np.pi**3*dirac(ref)*np.exp(-u)*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
-			- 16*c**3*np.pi**3*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))**2*np.cos(2*np.pi*x)**3*np.sin((np.pi*t)/2)**3 
-			- 48*c**2*np.pi**3*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)**2*np.sin(2*np.pi*x) 
-			- c**2*np.pi**2*np.exp(-u)*np.sign(c*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x))*np.cos((np.pi*t)/2)*np.cos(2*np.pi*x)*np.sin((np.pi*t)/2)*np.sin(2*np.pi*x)
-		)
-		# f = np.where(np.abs(u)>1e-12, f, 1e14)
 	return f
 
 def simulate(degree, cuts, cuts_time=None):
@@ -121,10 +90,6 @@ def simulate(degree, cuts, cuts_time=None):
 	problem_inc._itersNL = 100; problem_inc._thresNL = 1e-7
 	problem_inc.solveFourierTransientProblem(Tinout, Fext_list, time_inc, 
 											isLumped=False, alpha=0.5, 
-											extraArgs={'stabilized': True, 
-											'forces': {'dersvolforce':derspowerDensity, 
-														'derscapacity':derscapacityProperty, 
-														'ders2conductivity':ders2conductivityProperty}}
 											)
 	return problem_inc, time_inc, Tinout
 
@@ -189,3 +154,26 @@ elif FIG_CASE == 2:
 	ax.set_xlabel('Position')
 	fig.tight_layout()
 	fig.savefig(folder + 'TransientHeat1D.png')
+
+elif FIG_CASE == 3:
+	# Post-processing
+	XX, TIME = np.meshgrid(np.linspace(0, 1, 201), np.linspace(0, 1, 201))
+	temp_exact = c*np.sin(2*np.pi*XX)*np.sin(np.pi/2*TIME)
+	CAPACITY = capacityProperty(args={'temperature':temp_exact})
+	CONDUCTIVITY = conductivityProperty(args={'temperature':temp_exact})
+
+	# fig, ax  = plt.subplots(figsize=(10, 4))
+	# im   = ax.contourf(XX, TIME, CAPACITY, cmap='viridis')
+	# cbar = plt.colorbar(im)
+	# cbar.set_label('Capacity')
+
+	fig, ax  = plt.subplots(figsize=(10, 4))
+	im   = ax.contourf(XX, TIME, CONDUCTIVITY, cmap='viridis')
+	cbar = plt.colorbar(im)
+	cbar.set_label('Conductivity')
+
+	ax.grid(False)
+	ax.set_ylabel('Time')
+	ax.set_xlabel('Position')
+	fig.tight_layout()
+	fig.savefig(folder + 'TransientHeat1D_Conductivity2.png')

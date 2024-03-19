@@ -21,11 +21,11 @@ def run(folder=None):
 		g.addFile(filepath = folder + "out_"+str(i)+".vts", sim_time = i)
 	g.save()
 
-ISLINEAR = False
+ISLINEAR = True
 
 def conductivityProperty(args:dict):
 	temperature = args['temperature']
-	Kref  = np.array([[1., 0.5],[0.5, 2.0]])
+	Kref  = np.array([[1., 0.0],[0.0, 1.0]])
 	Kprop = np.zeros((2, 2, len(temperature)))
 	for i in range(2): 
 		for j in range(2):
@@ -75,7 +75,7 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
 
 	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts])
+	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts_total])
 	boundary_st = boundaryCondition(stnbctrlpts)
 	boundary_st.add_DirichletConstTemperature(table=dirichlet_table)
 
