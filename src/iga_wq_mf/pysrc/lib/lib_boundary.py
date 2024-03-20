@@ -13,15 +13,13 @@ class boundaryCondition():
 		return
 	
 	def __activate_DirichletThermal(self):
-		nbctrlpts_total = np.product(self._nbctrlpts)
 		if self.thDirichletBound is None:
-			self.thDirichletBound = np.zeros(nbctrlpts_total)
+			self.thDirichletBound = np.zeros(self._nbctrlpts_total)
 		return
 	
 	def __activate_DirichletMechanical(self):
-		nbctrlpts_total = np.product(self._nbctrlpts)
 		if self.mchDirichletBound is None:
-			self.mchDirichletBound = np.zeros((nbctrlpts_total, self._dim))
+			self.mchDirichletBound = np.zeros((self._nbctrlpts_total, self._dim))
 		return
 	
 	def __get_boundaryNodes(self, table, nbctrlpts, dimen=3): 
@@ -70,9 +68,8 @@ class boundaryCondition():
 	# Heat problem
 
 	def __update_thDirichletBound(self):
-		nbctrlpts_total = np.product(self._nbctrlpts)
 		dod = set(self.thdod)
-		dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
+		dof = set(np.arange(self._nbctrlpts_total, dtype=int)).difference(dod)
 		self.thdod = np.sort(np.array(list(dod), dtype=int))
 		self.thdof = np.sort(np.array(list(dof), dtype=int))
 		self._thndof = np.size(self.thdof)
@@ -102,12 +99,11 @@ class boundaryCondition():
 	# Mechanical problem
 
 	def __update_mchDirichletBound(self):
-		nbctrlpts_total = np.product(self._nbctrlpts)
 		self.mchdof = [[] for i in range(self._dim)]
 		self._mchndof, self._mchndod = 0, 0
 		for i, dod in enumerate(self.mchdod):
 			dod = set(dod)
-			dof = set(np.arange(nbctrlpts_total, dtype=int)).difference(dod)
+			dof = set(np.arange(self._nbctrlpts_total, dtype=int)).difference(dod)
 			self.mchdod[i] = np.sort(np.array(list(dod), dtype=int))
 			self.mchdof[i] = np.sort(np.array(list(dof), dtype=int))
 			self._mchndof += np.size(self.mchdof[i])

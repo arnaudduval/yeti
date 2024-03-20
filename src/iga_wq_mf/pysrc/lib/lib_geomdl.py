@@ -265,7 +265,7 @@ class Geomdl():
 		quadArgs  = {'degree': degree, 'knotvector': knotvector, 'quadrule': 'iga', 'type': 'leg'}
 		gaussQuad = GaussQuadrature(degree, knotvector, quadArgs=quadArgs)
 		gaussQuad.getQuadratureRulesInfo()
-		basis, weights = gaussQuad.getDenseQuadRules(isFortran=True)
+		basis, weights = gaussQuad.getDenseQuadRules(isfortran=True)
 		mass  = weights[0] @ basis[0].T
 		force = weights[0] @ np.cos(np.pi/2*gaussQuad.quadPtsPos) 
 		Ann = mass[1:-1, 1:-1]; And = mass[1:-1, [0, -1]]; bn = force[1:-1]

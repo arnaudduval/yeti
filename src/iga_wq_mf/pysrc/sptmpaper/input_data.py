@@ -7,7 +7,7 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_stjob import stheatproblem
-from pysrc.lib.lib_1d import heatproblem1D
+from pysrc.lib.lib_1djob import heatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign
 
 IS1DIM = False

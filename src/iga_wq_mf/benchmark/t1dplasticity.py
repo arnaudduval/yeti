@@ -7,7 +7,7 @@ import pickle
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformCurve
 from pysrc.lib.lib_part import part1D
-from pysrc.lib.lib_1d import mechaproblem1D
+from pysrc.lib.lib_1djob import mechaproblem1D
 from pysrc.lib.lib_material import mechamat
 from pysrc.lib.lib_boundary import boundaryCondition
 

@@ -2,7 +2,7 @@
 FILE DEPRECATED
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_1d import problem1D
+from pysrc.lib.lib_1djob import problem1D
 
 class Timoshenko(problem1D):
 	def __init__(self, part, kwargs:dict):

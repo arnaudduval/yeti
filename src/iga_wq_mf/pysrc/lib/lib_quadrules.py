@@ -27,15 +27,15 @@ class QuadratureRules:
 	def getQuadratureRulesInfo(self):
 		return self.quadPtsPos, self.dersIndices, self.dersBasis, self.dersWeights
 	
-	def getDenseQuadRules(self, isFortran=True):
+	def getDenseQuadRules(self, isfortran=True):
 		denseBasis, denseWeights = [], []
 		indi, indj = self.dersIndices
 		for i in range(np.size(self.dersBasis, axis=1)):
-			tmp = array2csr_matrix(self.dersBasis[:, i], indi, indj, isfortran=isFortran)
+			tmp = array2csr_matrix(self.dersBasis[:, i], indi, indj, isfortran=isfortran)
 			denseBasis.append(tmp)
 
 		for i in range(np.size(self.dersWeights, axis=1)):
-			tmp = array2csr_matrix(self.dersWeights[:, i], indi, indj, isfortran=isFortran)
+			tmp = array2csr_matrix(self.dersWeights[:, i], indi, indj, isfortran=isfortran)
 			denseWeights.append(tmp)
 		self._denseBasis, self._denseWeights = denseBasis, denseWeights
 		return denseBasis, denseWeights
@@ -253,7 +253,8 @@ class WeightedQuadrature(QuadratureRules):
 		B0shape[self.nbctrlpts-1, 1] = np.nonzero(boolean)[0][-1]
 	
 		B1shape = np.copy(B0shape) # Eventually it could be different
-		if isfortran: B0shape += 1; B1shape += 1 # change from 0 to 1 index
+		if isfortran: B0shape += 1
+		if isfortran: B1shape += 1 # change from 0 to 1 index
 		return [B0shape, B1shape]
 	
 	def evalDersBasisWeights(self):
