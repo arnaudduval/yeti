@@ -10,14 +10,14 @@ from pyevtk.vtk import VtkGroup
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/welding/'
+folder = os.path.dirname(full_path) + '/results/welding_spt/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 def run(folder=None):
 	assert folder is not None, 'Folder unknown'
 	print("Running group...")
 	g = VtkGroup(folder)
-	for i in range(65):
+	for i in range(33):
 		g.addFile(filepath = folder + "out_"+str(i)+".vts", sim_time = i)
 	g.save()
 
@@ -40,14 +40,16 @@ def capacityProperty(args:dict):
 	return Cprop
 
 def powerDensity(args:dict):
-	POWER = 20; RADIUS = 0.5; VELOCITY = 0.5
-	position = args['position']; t = args['time']
+	POWER = 20; RADIUS = 0.25; VELOCITY = 0.5
+	position = args['position']; time = args['time']
 	x = position[0, :]; y = position[1, :]
-	nc_sp = np.size(position, axis=1); f = np.zeros(nc_sp)
-	if t < 2 or t > 18: return f
-	rsquared = (x - VELOCITY*t)**2 + y**2
-	f = POWER*np.exp(-rsquared/(RADIUS**2))
-	return f
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
+	for i in range(nc_tm):
+		t = time[i]
+		if t <= 16: 
+			rsquared = (x - VELOCITY*t)**2 + y**2
+			f[:, i] = POWER*np.exp(-rsquared/(RADIUS**2))	
+	return np.ravel(f, order='F')
 
 def simulate(degree, cuts, quadArgs, cuts_time=None):
 	geoArgs = {'name': 'TP', 'degree': degree*np.ones(3, dtype=int), 
@@ -61,8 +63,7 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	if cuts_time is None: cuts_time = np.copy(cuts)
 	timespan  = 20
 	nbsteps   = 2**cuts_time
-	time_inc  = np.linspace(0, timespan, nbsteps+1) 
-	time_crv  = part1D(createUniformCurve(1, nbsteps, timespan), {'quadArgs': quadArgs})
+	time_spt  = part1D(createUniformCurve(degree, nbsteps, timespan), {'quadArgs': quadArgs})
 
 	# Add material 
 	material = heatmat()
@@ -70,35 +71,33 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	material.addCapacity(capacityProperty, isIsotropic=False) 
 
 	# Block boundaries
-	dirichlet_table = np.zeros((2, 2)); dirichlet_table[1, -1] = 1
-	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
-	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
-
-	dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-	stnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_crv.nbctrlpts_total])
-	boundary_st = boundaryCondition(stnbctrlpts)
-	boundary_st.add_DirichletConstTemperature(table=dirichlet_table)
+	tmptable = np.zeros((3, 2)); tmptable[1, -1] = 1; tmptable[-1, 0] = 1
+	sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
+	boundary_spt = boundaryCondition(sptnbctrlpts)
+	boundary_spt.add_DirichletConstTemperature(table=tmptable)
 
 	# Transient model
-	problem_inc = heatproblem(material, modelPhy, boundary_inc)
-	problem_st  = stheatproblem(material, modelPhy, time_crv, boundary_st)
+	problem_spt  = stheatproblem(material, modelPhy, time_spt, boundary_spt)
 
-	# Add external force 
-	Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
-	for i, t in enumerate(time_inc):
-		Fext_list[:, i] = problem_inc.compute_volForce(powerDensity, args={'position':problem_inc.part.qpPhy, 'time':t})
-
+	# Add external force
+	Fext = problem_spt.compute_volForce(powerDensity, 
+									{'position':problem_spt.part.qpPhy, 
+									'time':problem_spt.time.qpPhy})
+	
 	# Solve
-	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
-	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, time_list=time_inc, alpha=0.5)
+	Tinout = np.zeros(np.prod(sptnbctrlpts))
+	problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=False, isadaptive=False)
 
-	return problem_inc, problem_st, Tinout
+	return problem_spt, time_spt, Tinout
 
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-degree, cuts = 4, 5
-problem_inc, problem_st, output = simulate(degree, cuts, quadArgs, cuts_time=6)
-for i in range(np.size(output, axis=1)):
-	problem_inc.part.exportResultsCP(fields={'temp':np.atleast_2d(output[:, i])}, 
-									name='out_'+str(i), folder=folder)
+degree, cuts = 3, 6
+problem_spt, time_spt, temp_spt = simulate(degree, cuts, quadArgs, cuts_time=6)
+output = np.reshape(temp_spt, order='F', 
+		newshape=(problem_spt.part.nbctrlpts_total, time_spt.nbctrlpts_total),
+		)
+for k, i in enumerate(range(0, np.size(output, axis=1), 2)):
+	problem_spt.part.exportResultsCP(fields={'temp':np.atleast_2d(output[:, i])}, 
+									name='out_'+str(k), folder=folder)
 	
 run(folder)

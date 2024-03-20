@@ -66,8 +66,8 @@ class stproblem():
 		nbqp.append(quadRule.nbqp); quadPts.append(quadPtsByDir); indices.append(indi); indices.append(indj)
 		basis.append(basisByDir); parametricWeights.append(parweightsByDir)
 
-		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts))
-		for i in range(self.time.nbctrlpts):
+		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts_total))
+		for i in range(self.time.nbctrlpts_total):
 			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
 			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
 
@@ -189,8 +189,8 @@ class stheatproblem(stproblem):
 		inpts = [*self.part.nbqp[:self.part.dim], self.time.nbqp, *self.part.indices, 
 				*self.time.quadRule.dersIndices, *self.part.basis, self.time.quadRule.dersBasis]
 		
-		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts))
-		for i in range(self.time.nbctrlpts):
+		sptimectrlpts = np.zeros((self.part.dim+1, self.part.nbctrlpts_total*self.time.nbctrlpts_total))
+		for i in range(self.time.nbctrlpts_total):
 			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
 			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
 		

@@ -22,7 +22,8 @@ if TODOSIMU:
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
 			problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
-												powerdensity=powerDensity_inc)
+												powerdensity=powerDensity_spt,
+												degree_spt=degree)
 
 			error_list[i, j], _ = problem_spt.normOfError(temp_spt, 
 												normArgs={'type':'L2',

@@ -12,6 +12,7 @@ from numpy import pi, sin, cos, abs, exp, sign
 
 IS1DIM = False
 ISLINEAR = False
+NONLINCASE = 1
 CST = 100
 CUTS_TIME = 7
 
@@ -23,8 +24,9 @@ def capacityProperty(args:dict):
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
-	# else: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-	else: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
+	else: 
+		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
+		if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
 
 	if IS1DIM: 
 		return Kprop1d
@@ -39,8 +41,9 @@ def conductivityProperty(args:dict):
 def conductivityDersProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
-	# else: y = -2.0*sign(temperature)*exp(-abs(temperature))
-	else: y = -0.2*exp(-(sin(0.1*temperature))**2)*sin(0.2*temperature)
+	else: 
+		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
+		if NONLINCASE==2: y = -0.2*exp(-(sin(0.1*temperature))**2)*sin(0.2*temperature)
 	return y
 
 def exactTemperature_inc(args:dict):
@@ -66,27 +69,27 @@ def powerDensity_inc(args:dict):
 			+ 8*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)
 		)
 	else: 
-		# u = CST*sin((pi*t)/2)*sin(2*pi*x)
-		# f = (
-		# 	(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-		# 	+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(u)) + 1) 
-		# 	+ 8*CST**2*pi**2*sign(u)*exp(-abs(u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
-
-		# )
-
 		u = CST*sin((pi*t)/2)*sin(2*pi*x)
-		f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-		+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-sin((u)/10)**2) + 1) 
-		+ (8*CST**2*pi**2*cos((u)/10)*sin((u)/10)*exp(-sin((u)/10)**2)*cos(2*pi*x)**2*sin((pi*t)/2)**2)/5
-		)
+		if NONLINCASE==1:
+			f = (
+				(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(u)) + 1) 
+				+ 8*CST**2*pi**2*sign(u)*exp(-abs(u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
+
+			)
+		if NONLINCASE==2:
+			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+			+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-sin((u)/10)**2) + 1) 
+			+ (8*CST**2*pi**2*cos((u)/10)*sin((u)/10)*exp(-sin((u)/10)**2)*cos(2*pi*x)**2*sin((pi*t)/2)**2)/5
+			)
 	return f
 
 def powerDensity_spt(args:dict):
-	timespan = args['time']
+	time = args['time']
 	position = args['position']
-	nc_sp = np.size(position, axis=1); nc_tm = np.size(timespan); f = np.zeros((nc_sp, nc_tm))
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
-		t = timespan[i]
+		t = time[i]
 		f[:, i] = powerDensity_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
@@ -127,19 +130,20 @@ def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False):
 
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
-	problem_inc._itersNL = 100; problem_inc._thresNL = 1e-7
+	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-7
 	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, 
 											time_list=time_inc, alpha=0.5)
 	return problem_inc, time_inc, Tinout
 
-def simulate_spacetime(degree, cuts, powerdensity=None):
+def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None):
 	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': np.array([cuts, 2, 1])}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
-	time_spt = part1D(createUniformCurve(degree, int(2**CUTS_TIME), 1.0), {'quadArgs': {'quadrule': 'iga'}})
+	if degree_spt is None: degree_spt = 1
+	time_spt = part1D(createUniformCurve(degree_spt, int(2**CUTS_TIME), 1.0), {'quadArgs': {'quadrule': 'iga'}})
 
 	# Add material 
 	material = heatmat()
@@ -162,7 +166,7 @@ def simulate_spacetime(degree, cuts, powerdensity=None):
 	
 	# Solve
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
-	problem_spt._itersNL = 100; problem_spt._thresNL = 1e-7
-	problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=False, isadaptive=True)
+	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-7
+	problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=False, isadaptive=False)
 
 	return problem_spt, time_spt, Tinout
