@@ -91,8 +91,8 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	return problem_spt, time_spt, Tinout
 
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-degree, cuts = 3, 6
-problem_spt, time_spt, temp_spt = simulate(degree, cuts, quadArgs, cuts_time=6)
+degree, cuts = 4, 6
+problem_spt, time_spt, temp_spt = simulate(degree, cuts, quadArgs, cuts_time=7)
 output = np.reshape(temp_spt, order='F', 
 		newshape=(problem_spt.part.nbctrlpts_total, time_spt.nbctrlpts_total),
 		)

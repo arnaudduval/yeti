@@ -104,7 +104,7 @@ contains
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
-
+        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -115,23 +115,28 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k
+        integer :: i, j, k, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Cprop(nnz))
         
+        !$OMP PARALLEL PRIVATE(k)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Cprop(k) = prop(k)*mat%detJ(i)
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
 
     end subroutine setup_capacityprop
 
     subroutine setup_capacityDersprop(mat, nnz, prop)
-
+        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -142,17 +147,23 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k
+        integer :: i, j, k, nb_tasks
 
         if ((.not.associated(mat%detJ)).or.(.not.associated(mat%detG))) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Cdersprop(nnz))
+
+        !$OMP PARALLEL PRIVATE(k)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Cdersprop(k) = prop(k)*mat%detJ(i)*mat%detG(j)
             end do
         end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
 
     end subroutine setup_capacityDersprop
 
@@ -938,82 +949,65 @@ contains
 
 end module stheatsolver
 
-! module matrixfreestheat
-!     use structured_data
-!     implicit none
-!     type stthermomat
-!         integer :: dimen, dimen_sp, ncols_sp, ncols_tm, ncols_total
-!         ! Material properties
-!         double precision :: Cmean
-!         double precision, dimension(:), allocatable :: Kmean
-!         double precision, dimension(:), pointer :: Cprop=>null(), Cdersprop=>null(), detJ=>null(), detG=>null()
-!         double precision, dimension(:, :), pointer :: Kdersprop=>null()
-!         double precision, dimension(:, :, :), pointer :: Kprop=>null(), invJ=>null()
-!     end type stthermomat
+! subroutine mf_u_v(mat, basisdata, nr_total, array_in, array_out)
 
-! contains
+!     implicit none 
+!     ! Input / output data
+!     ! -------------------
+!     type(stthermomat) :: mat
+!     type(basis_data) :: basisdata
+!     integer, intent(in) :: nr_total
+!     double precision, intent(in) :: array_in
+!     dimension :: array_in(nr_total)
 
-!     subroutine mf_u_v(mat, basisdata, nr_total, array_in, array_out)
+!     double precision, intent(out) :: array_out
+!     dimension :: array_out(nr_total)
 
-!         implicit none 
-!         ! Input / output data
-!         ! -------------------
-!         type(stthermomat) :: mat
-!         type(basis_data) :: basisdata
-!         integer, intent(in) :: nr_total
-!         double precision, intent(in) :: array_in
-!         dimension :: array_in(nr_total)
+!     ! Local data 
+!     ! ----------
+!     integer :: pos_tm, i, j, k
+!     double precision :: tmp
+!     dimension :: tmp(basisdata%nc_total)
+!     integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
+!     double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
 
-!         double precision, intent(out) :: array_out
-!         dimension :: array_out(nr_total)
+!     if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
+!     if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
 
-!         ! Local data 
-!         ! ----------
-!         integer :: pos_tm, i, j, k
-!         double precision :: tmp
-!         dimension :: tmp(basisdata%nc_total)
-!         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t
-!         double precision, dimension(:, :, :), allocatable :: BT_u, BT_v, BT_w, BT_t, W_u, W_v, W_w, W_t
+!     pos_tm = mat%dimen
+!     nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
+!     nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
+!     nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
+!     allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
+!             BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
+!     BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
+!     BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
+!     BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
+!     if (basisdata%dimen.eq.4) then
+!         nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
+!         allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
+!         BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
+!     end if
 
-!         if (nr_total.ne.basisdata%nr_total) stop 'Size problem'
-!         if (mat%dimen.ne.basisdata%dimen) stop 'Dimension problem'
-
-!         pos_tm = mat%dimen
-!         nr_u = basisdata%nrows(1); nc_u = basisdata%ncols(1)
-!         nr_v = basisdata%nrows(2); nc_v = basisdata%ncols(2)
-!         nr_t = basisdata%nrows(pos_tm); nc_t = basisdata%ncols(pos_tm)
-!         allocate(BT_u(nc_u, nr_u, 2), W_u(nr_u, nc_u, 4), BT_v(nc_v, nr_v, 2), W_v(nr_v, nc_v, 4), &
-!                 BT_t(nc_t, nr_t, 2), W_t(nr_t, nc_t, 4))
-!         BT_u = basisdata%BTdense(1, 1:nc_u, 1:nr_u, :); W_u = basisdata%Wdense(1, 1:nr_u, 1:nc_u, :)
-!         BT_v = basisdata%BTdense(2, 1:nc_v, 1:nr_v, :); W_v = basisdata%Wdense(2, 1:nr_v, 1:nc_v, :)
-!         BT_t = basisdata%BTdense(pos_tm, 1:nc_t, 1:nr_t, :); W_t = basisdata%Wdense(pos_tm, 1:nr_t, 1:nc_t, :)
-!         if (basisdata%dimen.eq.4) then
-!             nr_w = basisdata%nrows(3); nc_w = basisdata%ncols(3)
-!             allocate(BT_w(nc_w, nr_w, 2), W_w(nr_w, nc_w, 4))
-!             BT_w = basisdata%BTdense(3, 1:nc_w, 1:nr_w, :); W_w = basisdata%Wdense(3, 1:nr_w, 1:nc_w, :)
-!         end if
-
-!         if (basisdata%dimen.eq.3) then
-!             call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
-!                                 BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
-!                                 array_in, tmp)
-!         else if (basisdata%dimen.eq.4) then
-!             call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
-!                                 BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
-!                                 array_in, tmp)
-!         end if
+!     if (basisdata%dimen.eq.3) then
+!         call sumfacto3d_dM(nc_u, nr_u, nc_v, nr_v, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_t(:, :, 1), & 
+!                             array_in, tmp)
+!     else if (basisdata%dimen.eq.4) then
+!         call sumfacto4d_dM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, nc_t, nr_t, &
+!                             BT_u(:, :, 1), BT_v(:, :, 1), BT_w(:, :, 1), BT_t(:, :, 1), & 
+!                             array_in, tmp)
+!     end if
 
 
-!         if (basisdata%dimen.eq.3) then
-!             call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
-!                             W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 1), &
-!                             tmp, array_out)
-!         else if (basisdata%dimen.eq.4) then
-!             call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
-!                             W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 1), &
-!                             tmp, array_out)
-!         end if
-        
-!     end subroutine mf_u_v
-
-! end module matrixfreestheat
+!     if (basisdata%dimen.eq.3) then
+!         call sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+!                         W_u(:, :, 1), W_v(:, :, 1), W_t(:, :, 1), &
+!                         tmp, array_out)
+!     else if (basisdata%dimen.eq.4) then
+!         call sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+!                         W_u(:, :, 1), W_v(:, :, 1), W_w(:, :, 1), W_t(:, :, 1), &
+!                         tmp, array_out)
+!     end if
+    
+! end subroutine mf_u_v
