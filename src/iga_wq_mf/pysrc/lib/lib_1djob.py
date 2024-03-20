@@ -228,7 +228,7 @@ class heatproblem1D(problem1D):
 		V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
 
 		temperature = self.interpolate_temperature(Tinout[:, 0])
-		args={'temperature':temperature, 'position':self.part.qpPhy}
+		args ={'temperature':temperature, 'position':self.part.qpPhy}
 		tmp = (Fext_list[:, 0] - self.compute_mfCapacity(V_n0, args=args, isLumped=isLumped)
 				- self.compute_mfConductivity(Tinout[:, 0], args=args))
 		V_n0[dof] = computeVelocity(self, tmp, args=args, isLumped=isLumped)[dof]
