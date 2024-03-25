@@ -11,13 +11,13 @@ if not os.path.isdir(subfolder): os.mkdir(subfolder)
 # Set global variables
 TODOSIMU = True
 
+lastsufix = 'linear' if ISLINEAR else 'nonlin'
+filename = folder + 'spacetimeheat' + lastsufix
+
+degree_list = np.array([1, 2, 3, 4, 5])
+cuts_list   = np.arange(1, 7)
+
 if TODOSIMU:
-	lastsufix = 'linear' if ISLINEAR else 'nonlin'
-	filename = folder + 'incrementalheat'+lastsufix
-
-	degree_list = np.array([1, 2, 3, 4, 5])
-	cuts_list   = np.arange(1, 7)
-
 	error_list = np.ones((len(degree_list), len(cuts_list)))
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
@@ -30,6 +30,7 @@ if TODOSIMU:
 														'exactFunction':exactTemperature_spt})
 	np.save(filename, error_list)
 
+else:
 	error_list = np.load(filename+'.npy')
 	fig, ax = plt.subplots(figsize=(9, 6))
 

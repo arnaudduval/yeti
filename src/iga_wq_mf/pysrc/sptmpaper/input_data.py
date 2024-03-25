@@ -93,15 +93,16 @@ def powerDensity_spt(args:dict):
 		f[:, i] = powerDensity_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
-def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False):
+def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=None):
 
 	# Create geometry
 	if is1dim:
 		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
-		geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': np.array([cuts, 1, 1])}
+		if geoArgs is None: 
+			geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': np.array([cuts, 1, 1])}
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
@@ -135,9 +136,11 @@ def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False):
 											time_list=time_inc, alpha=0.5)
 	return problem_inc, time_inc, Tinout
 
-def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None):
-	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
-				'nb_refinementByDirection': np.array([cuts, 2, 1])}
+def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None, 
+					isfull=False, isadaptive=False, geoArgs=None, outputArgs=None):
+	if geoArgs is None: 
+		geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': np.array([cuts, 1, 1])}
 
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -167,6 +170,6 @@ def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None):
 	# Solve
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
 	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-7
-	problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=False, isadaptive=False)
-
+	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
+	outputArgs=deepcopy(output)
 	return problem_spt, time_spt, Tinout
