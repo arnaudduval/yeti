@@ -278,6 +278,7 @@ class stheatproblem(stproblem):
 
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
 			resNLj0 = np.copy(resNLj1)
+			Allthres.append(threshold_inner)
 
 			# Solve for active control points
 			deltaD, resLinj = self._solveLinearizedSTHeatProblem(r_dj, 
@@ -288,7 +289,6 @@ class stheatproblem(stproblem):
 			# Update active control points
 			Tinout += deltaD
 			AllresLin.append(resLinj)
-			Allthres.append(threshold_inner)
 			Alldelta.append(deltaD)
 			
 		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres, 'Delta':Alldelta}

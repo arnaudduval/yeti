@@ -240,7 +240,7 @@ class part():
 
 		return qpPhy, Jqp, detJ, uinterp
 
-	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, addDetJ=False, name='out'): 
+	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, addDetJ=False, name='out', extraArgs={}): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
@@ -271,7 +271,8 @@ class part():
 				fieldvalue = np.atleast_2d(fieldvalue)
 				fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
 			if callable(fieldvalue):
-				fieldinterp = fieldvalue(qpPhy)
+				if not 'position' in extraArgs.keys(): extraArgs['position'] = qpPhy
+				fieldinterp = fieldvalue(extraArgs)
 
 			if fieldinterp is None or not isinstance(fieldinterp, np.ndarray): continue
 			nr = np.size(fieldinterp, axis=0)

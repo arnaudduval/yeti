@@ -12,9 +12,15 @@ from numpy import pi, sin, cos, abs, exp, sign
 
 IS1DIM = False
 ISLINEAR = False
-NONLINCASE = 1
-CST = 100
+NONLINCASE = 2
+CST = 10
 CUTS_TIME = 7
+
+def nonlinearfunc(args:dict):
+	temperature = args.get('temperature')
+	if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
+	if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
+	return np.atleast_2d(Kprop1d)
 
 def capacityProperty(args:dict):
 	temperature = args.get('temperature')
@@ -92,6 +98,24 @@ def powerDensity_spt(args:dict):
 		t = time[i]
 		f[:, i] = powerDensity_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
+
+def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArgs=None, folder=None):
+	assert fields is not None, 'Add material fields'
+	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': 4*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': 5*np.ones(3, dtype=int)}
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
+	
+	extraArgs = {}
+	extraArgs['position'] = modelPhy.interpolateMeshgridField()[0]
+
+	for i, tm in enumerate(time_list):
+		extraArgs['time'] = tm
+		if temperature is not None:	extraArgs['temperature'] = temperature(extraArgs)
+		modelPhy.exportResultsCP(fields=fields, extraArgs=extraArgs, 
+						folder=folder, name='out_'+str(i))
+	return
 
 def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=None):
 
