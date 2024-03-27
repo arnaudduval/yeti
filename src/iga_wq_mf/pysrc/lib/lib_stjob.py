@@ -238,13 +238,14 @@ class stheatproblem(stproblem):
 	
 	def solveFourierSTHeatProblem(self, Tinout, Fext, isfull=False, isadaptive=True, solvArgs={}):
 		eps_kr0  = solvArgs.get('initial', .5)
-		gamma_kr = solvArgs.get('coefficient', 0.9)
-		omega_kr = solvArgs.get('exponential', 1.5)
+		gamma_kr = solvArgs.get('coefficient', 1.0)
+		omega_kr = solvArgs.get('exponential', 2.0)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		AllresLin, AllresNewton, Allsol, Allthres, Alldelta = [], [], [], [], []
 		threshold_inner = None
 		for j in range(self._itersNL):
+			enablePrint()
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(Tinout)
@@ -257,28 +258,37 @@ class stheatproblem(stproblem):
 			r_dj[dod] = 0.0
 
 			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
-			if j == 0: resNL0 = resNLj1
 			print('Nonlinear error: %.3e' %resNLj1)
 
-			# Update thresholds
+			if j == 0: resNL0 = np.copy(resNLj1)
+			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
+			AllresNewton.append(resNLj1); Allsol.append(np.copy(Tinout))
+
+			# Update inner threshold
 			if isadaptive: 
 				if j == 0: 
-					threshold_ref = eps_kr0
-				else:
-					eps_kr_k = gamma_kr*np.power(resNLj1/resNLj0, omega_kr)
-					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
-					if eps_kr_r <= 0.1: threshold_ref = eps_kr_k
-					else: threshold_ref = max([eps_kr_k, eps_kr_r])
-				threshold_inner = min([eps_kr0, max([self._thresLin, threshold_ref])])
-			else: 
-				threshold_inner = self._thresLin
-				
-			AllresNewton.append(resNLj1)
-			Allsol.append(np.copy(Tinout))
+					threshold_ref = np.copy(eps_kr0)
 
-			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
-			resNLj0 = np.copy(resNLj1)
+				else:
+					ratio = resNLj1/resNLj0
+					eps_kr_k = gamma_kr*np.power(ratio, omega_kr)
+					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
+					print('Ratio:%.3e' %ratio)
+					print('%.3e, %.3e' %(eps_kr_r, eps_kr_k))
+					if eps_kr_r <= 0.1: 
+						threshold_ref = np.copy(eps_kr_k)
+						print('Method 1')
+					else: 
+						threshold_ref = max([eps_kr_k, eps_kr_r])
+						print('Method 2')
+
+				print('Thres_ref: %.3e' %threshold_ref)
+				threshold_inner = min([eps_kr0, max([self._thresLin, threshold_ref])])
+
+			else: 
+				threshold_inner = np.copy(self._thresLin)
 			Allthres.append(threshold_inner)
+			print('****')
 
 			# Solve for active control points
 			deltaD, resLinj = self._solveLinearizedSTHeatProblem(r_dj, 
@@ -288,8 +298,11 @@ class stheatproblem(stproblem):
 
 			# Update active control points
 			Tinout += deltaD
-			AllresLin.append(resLinj)
-			Alldelta.append(deltaD)
+			resNLj0 = np.copy(resNLj1)
+			AllresLin.append(resLinj); Alldelta.append(deltaD)
+
+			blockPrint()
+
 			
 		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres, 'Delta':Alldelta}
 		return output
