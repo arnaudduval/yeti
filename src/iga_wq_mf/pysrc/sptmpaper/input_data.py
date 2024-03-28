@@ -1,6 +1,6 @@
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformCurve, createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_boundary import boundaryCondition
@@ -10,10 +10,10 @@ from pysrc.lib.lib_stjob import stheatproblem
 from pysrc.lib.lib_1djob import heatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign
 
-IS1DIM = False
+IS1DIM = True
 ISLINEAR = False
-NONLINCASE = 2
-CST = 10
+NONLINCASE = 1
+CST = 100
 CUTS_TIME = 7
 
 def nonlinearfunc(args:dict):
@@ -117,11 +117,71 @@ def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArg
 						folder=folder, name='out_'+str(i))
 	return
 
+def createAsymmetricalKnotvector(level, xasym=0.1):
+
+	def discretize(array, level):
+		n = len(array) 
+		newarray = np.copy(array)
+		if level == 2:
+			for i in range(n-1): 
+				newarray = np.append(newarray, (array[i]+array[i+1])/2)
+			newarray = np.sort(newarray)
+		else:
+			for _ in range(1, level): 
+				tmp = discretize(newarray, 2)
+				newarray = np.copy(tmp)
+		return newarray
+	
+	assert level > 0, 'Not possible. Try higher level'
+	assert xasym < 0.25, 'Try lower value'
+	knotvector = np.array([0.0, xasym, 0.5-xasym/2, 0.5+xasym/2, 1.0-xasym, 1.0]) # This is level 1
+	if level > 1: 
+		tmp = discretize(knotvector, level)
+		knotvector = np.copy(tmp)
+
+	return knotvector
+
+def createAsymmetricalCurve(degree, level, length, xasym=0.05):
+	crv = BSpline.Curve()
+	crv.degree  = degree
+	crv.ctrlpts = [[i*length/degree, 0.0] for i in range(degree+1)]
+	crv.knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
+	knotList = createAsymmetricalKnotvector(level, xasym=xasym)
+	for knot in knotList[1:-1]:
+		operations.insert_knot(crv, [knot], [1])
+	return crv
+
+# def createAsymmetricalCurve(p, level, length, xasym=0.95):
+# 	crv = BSpline.Curve()
+# 	crv.degree  = p
+# 	crv.ctrlpts = [[i*length/p, 0.0] for i in range(p+1)]
+# 	crv.knotvector = createUniformKnotvector_Rmultiplicity(p, 1)
+# 	# tmp = np.unique(createAsymmetricalKnotvector_Rmultiplicity(p, int((nbel+1)/2), xasym=xasym))/2; tmp = tmp[:-1]
+# 	# knotvector1 = np.array([]); knotvector1 = np.append(knotvector1, tmp); knotvector1 = np.append(knotvector1, np.flip(1 - tmp))
+# 	# for knot in knotvector1[1:-1]:
+# 	# 	operations.insert_knot(crv, [knot], [1])
+# 	return crv
+
+# def createAsymmetricalCurve(p, nbel, length, xasym=0.9):
+# 	assert nbel%2 == 0, 'this method only works with even number of elements'
+# 	knotvector0 = createUniformKnotvector_Rmultiplicity(p, 1)
+# 	ctrlpts = [[i*length/p, 0.0] for i in range(p+1)]
+# 	crv = BSpline.Curve()
+# 	crv.degree  = p
+# 	crv.ctrlpts = ctrlpts
+# 	crv.knotvector = knotvector0
+# 	tmp = np.unique(createAsymmetricalKnotvector_Rmultiplicity(p, int(nbel/2), xasym=xasym))/2
+# 	knotvector1 = np.array([]); knotvector1 = np.append(knotvector1, tmp); knotvector1 = np.append(knotvector1, np.flip(1 - tmp[:-1]))
+# 	for knot in knotvector1[1:-1]:
+# 		operations.insert_knot(crv, [knot], [1])
+# 	return crv
+
 def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=None):
 
 	# Create geometry
 	if is1dim:
-		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
+		# geometry = createUniformCurve(degree, int(2**cuts), 1.0)
+		geometry = createAsymmetricalCurve(degree, cuts, 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
 		if geoArgs is None: 
