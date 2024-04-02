@@ -36,7 +36,7 @@ if IS1DIM:
 		fig.savefig(folder + 'transHeat_' + figname)
 
 	problem_inc, time_inc, temperature_inc = simulate_incremental(4, 6, 
-											powerdensity=powerDensity_inc, is1dim=IS1DIM)
+											powerdensity=powerDensitySquare_inc, is1dim=IS1DIM)
 	TEMPERATURE_INTERP = problem_inc.interpolateMeshgridField(temperature_inc, sampleSize=201)[0]
 	CONDUCTIVITY_INTERP = conductivityProperty(args={'temperature':TEMPERATURE_INTERP.T})
 	TEMPDIFF = np.abs(TEMPERATURE - TEMPERATURE_INTERP.T)
@@ -74,7 +74,7 @@ if TODOSIMU:
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
 			problem_inc, time_inc, TEMPERATURE_INTERP = simulate_incremental(degree, cuts, 
-											powerdensity=powerDensity_inc, is1dim=IS1DIM)
+											powerdensity=powerDensitySquare_inc, is1dim=IS1DIM)
 			for k, t in enumerate(time_inc[1:-1]):
 				error_list[i, j, k], _ = problem_inc.normOfError(TEMPERATURE_INTERP[:, k+1], 
 															normArgs={'type':'L2',

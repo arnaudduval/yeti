@@ -12,15 +12,14 @@ from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 IS1DIM = True
 ISLINEAR = False
-NONLINCASE = 3
-CST = 50
+NONLINCASE = 2
+CST = 100
 CUTS_TIME = 7
 
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
 	if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-	if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
-	if NONLINCASE==3: Kprop1d = 3.0 + 2.0*tanh(temperature/CST)
+	if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
 	return np.atleast_2d(Kprop1d)
 
 def capacityProperty(args:dict):
@@ -28,13 +27,17 @@ def capacityProperty(args:dict):
 	capacity = np.ones(shape=np.shape(temperature))
 	return capacity
 
+def capacityDersProperty(args:dict):
+	temperature = args.get('temperature')
+	capacity = np.zeros(shape=np.shape(temperature))
+	return capacity
+
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
 	else: 
 		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-		if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
-		if NONLINCASE==3: Kprop1d = 3.0 + 2.0*tanh(temperature/CST)
+		if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
 
 	if IS1DIM: 
 		return Kprop1d
@@ -51,24 +54,30 @@ def conductivityDersProperty(args:dict):
 	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
 	else: 
 		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
-		if NONLINCASE==2: y = -0.2*exp(-(sin(0.1*temperature))**2)*sin(0.2*temperature)
-		if NONLINCASE==3: y = 1.0/(np.cosh(temperature))**2
+		if NONLINCASE==2: y = (2.0/50)/(np.cosh(temperature))**2
 	return y
 
 def exactTemperatureSquare_inc(args:dict):
 	t = args['time']
 	if IS1DIM: x = args['position']
-	else: 
-		x = args['position'][0, :]
+	else: x = args['position'][0, :]
 	u = CST*sin(2*pi*x)*sin(pi/2*t)
 	return u
 
-def exactTemperatureTrapeze_inc(args:dict):
+def exactTemperatureQuad_inc(args:dict):
 	t = args['time']
 	if IS1DIM: raise Warning('Try higher dimension')
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-	u = CST*sin(y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	return u
+
+def exactTemperatureRing_inc(args:dict):
+	t = args['time']
+	if IS1DIM: raise Warning('Try higher dimension')
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
 	return u
 
 def exactTemperatureSquare_spt(qpPhy):
@@ -76,12 +85,12 @@ def exactTemperatureSquare_spt(qpPhy):
 	u = CST*sin(2*pi*x)*sin(pi/2*t)
 	return u
 
-def exactTemperatureTrapeze_spt(qpPhy):
+def exactTemperatureQuad_spt(qpPhy):
 	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
-	u = CST*y*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(2.5*pi*x)*sin(pi/2*t)
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
 	return u
 
-def powerDensity_inc(args:dict):
+def powerDensitySquare_inc(args:dict):
 	t = args['time']
 	if IS1DIM: x = args['position']
 	else: x = args['position'][0, :]
@@ -102,24 +111,19 @@ def powerDensity_inc(args:dict):
 			)
 		if NONLINCASE==2:
 			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-			+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-sin((u)/10)**2) + 1) 
-			+ (8*CST**2*pi**2*cos((u)/10)*sin((u)/10)*exp(-sin((u)/10)**2)*cos(2*pi*x)**2*sin((pi*t)/2)**2)/5
-			)
-		if NONLINCASE==3:
-			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-			+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh(sin((pi*t)/2)*sin(2*pi*x)) + 3) 
-			+ 8*CST*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh(sin((pi*t)/2)*sin(2*pi*x))**2 - 1)
+				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh((u)/50) + 3) 
+				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((u)/50)**2 - 1))/25
 			)
 
 	return f
 
-def powerDensity_spt(args:dict):
+def powerDensitySquare_spt(args:dict):
 	time = args['time']
 	position = args['position']
 	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
 		t = time[i]
-		f[:, i] = powerDensity_inc(args={'time':t, 'position':position})
+		f[:, i] = powerDensitySquare_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
 def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArgs=None, folder=None):
@@ -129,10 +133,8 @@ def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArg
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
-	
 	extraArgs = {}
 	extraArgs['position'] = modelPhy.interpolateMeshgridField()[0]
-
 	for i, tm in enumerate(time_list):
 		extraArgs['time'] = tm
 		if temperature is not None:	extraArgs['temperature'] = temperature(extraArgs)
@@ -179,7 +181,6 @@ def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=
 	# Create geometry
 	if is1dim:
 		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
-		# geometry = createAsymmetricalCurve(degree, cuts, 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
 		if geoArgs is None: 

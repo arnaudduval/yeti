@@ -3,7 +3,7 @@ from pyevtk.vtk import VtkGroup
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/TRnonlin3/'
+folder = os.path.dirname(full_path) + '/results/TRnonlin4/'
 subfolder = folder +  'steps/'
 if not os.path.isdir(folder): os.mkdir(folder)
 if not os.path.isdir(subfolder): os.mkdir(subfolder)
@@ -31,9 +31,9 @@ if FIG_CASE == 1:
 
 	if TODOSIMU:
 		exportTimeDependentMaterial(np.linspace(0, 1, 33), 
-						temperature=exactTemperatureTrapeze_inc,
-						fields={'mat':nonlinearfunc, 'temp':exactTemperatureTrapeze_inc}, 
-						geoArgs={'name': 'TP', 'degree': 4*np.ones(3, dtype=int), 
+						temperature=exactTemperatureQuad_inc,
+						fields={'mat':nonlinearfunc, 'temp':exactTemperatureQuad_inc}, 
+						geoArgs={'name': 'QA', 'degree': 5*np.ones(3, dtype=int), 
 								'nb_refinementByDirection': 5*np.ones(3, dtype=int)},
 						folder=subfolder,)
 		run(folder=subfolder)
@@ -48,20 +48,20 @@ if FIG_CASE == 1:
 
 				# Incremental problem
 				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, 
-												powerdensity=powerDensity_inc, geoArgs=geoArgs)
+												powerdensity=powerDensitySquare_inc, geoArgs=geoArgs)
 				for k, t in enumerate(time_inc[1:-1]):
 					error_list1[i, j, k], _ = problem_inc.normOfError(temp_inc[:, k+1], 
 																normArgs={'type':'L2',
-																		'exactFunction':exactTemperatureTrapeze_inc,
+																		'exactFunction':exactTemperatureQuad_inc,
 																		'exactExtraArgs':{'time':t}})
 				# Space time problem
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
-													powerdensity=powerDensity_spt,
+													powerdensity=powerDensitySquare_spt,
 													degree_spt=degree, geoArgs=geoArgs)
 
 				error_list2[i, j], _ = problem_spt.normOfError(temp_spt, 
 													normArgs={'type':'L2',
-															'exactFunction':exactTemperatureTrapeze_spt})
+															'exactFunction':exactTemperatureQuad_spt})
 		np.save(filename1, error_list1)
 		np.save(filename2, error_list2)
 
@@ -115,7 +115,7 @@ elif FIG_CASE == 2:
 				output = {}
 				blockPrint()
 				problem_spt = simulate_spacetime(degree, cuts, 
-												powerdensity=powerDensity_spt,
+												powerdensity=powerDensitySquare_spt,
 												degree_spt=degree, geoArgs=geoArgs,
 												isadaptive=isadaptive, isfull=isfull,
 												outputArgs=output)[0]

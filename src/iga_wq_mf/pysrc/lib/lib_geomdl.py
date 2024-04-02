@@ -179,7 +179,7 @@ class Geomdl():
 
 		if name == 'quarter_annulus' or name == 'qa':
 			dimen = 2
-			Rin = self._extraArgs.get('Rin', 0.5)
+			Rin = self._extraArgs.get('Rin', 0.25)
 			Rex = self._extraArgs.get('Rex', 1.0)
 			geoArgs = [Rin, Rex]
 			func    = self._create_quarterAnnulus
