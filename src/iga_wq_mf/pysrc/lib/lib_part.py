@@ -273,6 +273,7 @@ class part():
 			if callable(fieldvalue):
 				if not 'position' in extraArgs.keys(): extraArgs['position'] = qpPhy
 				fieldinterp = fieldvalue(extraArgs)
+				fieldinterp = np.atleast_2d(fieldinterp)
 
 			if fieldinterp is None or not isinstance(fieldinterp, np.ndarray): continue
 			nr = np.size(fieldinterp, axis=0)

@@ -19,14 +19,14 @@ TODOSIMU = True
 if IS1DIM:
 	# Trace material properties
 	XX, TIME = np.meshgrid(np.linspace(0, 1, 201), np.linspace(0, 1, 129))
-	TEMPERATURE = exactTemperature_inc(args={'position':XX, 'time':TIME})
+	TEMPERATURE = exactTemperatureSquare_inc(args={'position':XX, 'time':TIME})
 
 	CONDUCTIVITY = conductivityProperty(args={'temperature':TEMPERATURE})
 	for matfield, figname in zip([CONDUCTIVITY, TEMPERATURE], 
 								['conductivity', 'temperature']):
 		fig, ax = plt.subplots(figsize=(10, 4))
 		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
-		cbar = plt.colorbar(im)
+		cbar = plt.colorbar(im, format='%.1e')
 		cbar.set_label(figname.capitalize())
 
 		ax.grid(False)
@@ -35,18 +35,19 @@ if IS1DIM:
 		fig.tight_layout()
 		fig.savefig(folder + 'transHeat_' + figname)
 
-	problem_inc, time_inc, temperature_inc = simulate_incremental(2, 3, 
+	problem_inc, time_inc, temperature_inc = simulate_incremental(4, 6, 
 											powerdensity=powerDensity_inc, is1dim=IS1DIM)
 	TEMPERATURE_INTERP = problem_inc.interpolateMeshgridField(temperature_inc, sampleSize=201)[0]
 	CONDUCTIVITY_INTERP = conductivityProperty(args={'temperature':TEMPERATURE_INTERP.T})
 	TEMPDIFF = np.abs(TEMPERATURE - TEMPERATURE_INTERP.T)
-	CONDDIFF = np.abs(CONDUCTIVITY - CONDUCTIVITY_INTERP)
+	TEMPDIFF = np.where(np.abs(TEMPERATURE)<1e-10, 0.0, TEMPDIFF/np.abs(TEMPERATURE))
+	CONDDIFF = np.abs(CONDUCTIVITY - CONDUCTIVITY_INTERP)/np.abs(CONDUCTIVITY)
 
 	for matfield, figname in zip([CONDUCTIVITY_INTERP, TEMPERATURE_INTERP.T, CONDDIFF, TEMPDIFF], 
 								['conductivity', 'temperature', 'error conductivity', 'error temperature']):
 		fig, ax = plt.subplots(figsize=(10, 4))
 		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
-		cbar = plt.colorbar(im)
+		cbar = plt.colorbar(im, format='%.1e')
 		cbar.set_label(figname.capitalize())
 
 		ax.grid(False)
@@ -77,7 +78,7 @@ if TODOSIMU:
 			for k, t in enumerate(time_inc[1:-1]):
 				error_list[i, j, k], _ = problem_inc.normOfError(TEMPERATURE_INTERP[:, k+1], 
 															normArgs={'type':'L2',
-																	'exactFunction':exactTemperature_inc,
+																	'exactFunction':exactTemperatureSquare_inc,
 																	'exactExtraArgs':{'time':t}})
 	np.save(filename, error_list)
 

@@ -179,8 +179,8 @@ class Geomdl():
 
 		if name == 'quarter_annulus' or name == 'qa':
 			dimen = 2
-			Rin = self._extraArgs.get('Rin', 1.0)
-			Rex = self._extraArgs.get('Rex', 2.0)
+			Rin = self._extraArgs.get('Rin', 0.5)
+			Rex = self._extraArgs.get('Rex', 1.0)
 			geoArgs = [Rin, Rex]
 			func    = self._create_quarterAnnulus
 			if self._degree is None: self._degree = np.array([2, 3, 1])
@@ -194,7 +194,8 @@ class Geomdl():
 
 		elif name == 'trapezium' or name == 'tp':
 			dimen = 2
-			XY = self._extraArgs.get('XY', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
+			XY = self._extraArgs.get('XY', np.array([[0.0, -0.5], [0.4, -0.2], [0.4, 0.2], [0.0, 0.5]]))
+			# XY = self._extraArgs.get('xy', np.array([[0.0, -7.5], [6.0, -2.5], [6.0, 2.5], [0.0, 7.5]]))
 			geoArgs = [XY]
 			func    = self._create_quadrilateral
 			if self._degree is None: self._degree = np.array([2, 2, 1])

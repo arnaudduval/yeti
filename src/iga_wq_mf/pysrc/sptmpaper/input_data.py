@@ -8,18 +8,19 @@ from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_stjob import stheatproblem
 from pysrc.lib.lib_1djob import heatproblem1D
-from numpy import pi, sin, cos, abs, exp, sign
+from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 IS1DIM = True
 ISLINEAR = False
-NONLINCASE = 1
-CST = 100
+NONLINCASE = 3
+CST = 50
 CUTS_TIME = 7
 
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
 	if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
 	if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
+	if NONLINCASE==3: Kprop1d = 3.0 + 2.0*tanh(temperature/CST)
 	return np.atleast_2d(Kprop1d)
 
 def capacityProperty(args:dict):
@@ -33,6 +34,7 @@ def conductivityProperty(args:dict):
 	else: 
 		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
 		if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-(sin(0.1*temperature))**2)
+		if NONLINCASE==3: Kprop1d = 3.0 + 2.0*tanh(temperature/CST)
 
 	if IS1DIM: 
 		return Kprop1d
@@ -50,18 +52,33 @@ def conductivityDersProperty(args:dict):
 	else: 
 		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
 		if NONLINCASE==2: y = -0.2*exp(-(sin(0.1*temperature))**2)*sin(0.2*temperature)
+		if NONLINCASE==3: y = 1.0/(np.cosh(temperature))**2
 	return y
 
-def exactTemperature_inc(args:dict):
+def exactTemperatureSquare_inc(args:dict):
 	t = args['time']
 	if IS1DIM: x = args['position']
-	else: x = args['position'][0, :]
+	else: 
+		x = args['position'][0, :]
 	u = CST*sin(2*pi*x)*sin(pi/2*t)
 	return u
 
-def exactTemperature_spt(qpPhy):
-	x = qpPhy[0, :]; y = qpPhy[1, :]; t = qpPhy[2, :]
+def exactTemperatureTrapeze_inc(args:dict):
+	t = args['time']
+	if IS1DIM: raise Warning('Try higher dimension')
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+	u = CST*sin(y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	return u
+
+def exactTemperatureSquare_spt(qpPhy):
+	x = qpPhy[0, :]; t = qpPhy[2, :]
 	u = CST*sin(2*pi*x)*sin(pi/2*t)
+	return u
+
+def exactTemperatureTrapeze_spt(qpPhy):
+	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
+	u = CST*y*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(2.5*pi*x)*sin(pi/2*t)
 	return u
 
 def powerDensity_inc(args:dict):
@@ -88,6 +105,12 @@ def powerDensity_inc(args:dict):
 			+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-sin((u)/10)**2) + 1) 
 			+ (8*CST**2*pi**2*cos((u)/10)*sin((u)/10)*exp(-sin((u)/10)**2)*cos(2*pi*x)**2*sin((pi*t)/2)**2)/5
 			)
+		if NONLINCASE==3:
+			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+			+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh(sin((pi*t)/2)*sin(2*pi*x)) + 3) 
+			+ 8*CST*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh(sin((pi*t)/2)*sin(2*pi*x))**2 - 1)
+			)
+
 	return f
 
 def powerDensity_spt(args:dict):
@@ -151,37 +174,12 @@ def createAsymmetricalCurve(degree, level, length, xasym=0.05):
 		operations.insert_knot(crv, [knot], [1])
 	return crv
 
-# def createAsymmetricalCurve(p, level, length, xasym=0.95):
-# 	crv = BSpline.Curve()
-# 	crv.degree  = p
-# 	crv.ctrlpts = [[i*length/p, 0.0] for i in range(p+1)]
-# 	crv.knotvector = createUniformKnotvector_Rmultiplicity(p, 1)
-# 	# tmp = np.unique(createAsymmetricalKnotvector_Rmultiplicity(p, int((nbel+1)/2), xasym=xasym))/2; tmp = tmp[:-1]
-# 	# knotvector1 = np.array([]); knotvector1 = np.append(knotvector1, tmp); knotvector1 = np.append(knotvector1, np.flip(1 - tmp))
-# 	# for knot in knotvector1[1:-1]:
-# 	# 	operations.insert_knot(crv, [knot], [1])
-# 	return crv
-
-# def createAsymmetricalCurve(p, nbel, length, xasym=0.9):
-# 	assert nbel%2 == 0, 'this method only works with even number of elements'
-# 	knotvector0 = createUniformKnotvector_Rmultiplicity(p, 1)
-# 	ctrlpts = [[i*length/p, 0.0] for i in range(p+1)]
-# 	crv = BSpline.Curve()
-# 	crv.degree  = p
-# 	crv.ctrlpts = ctrlpts
-# 	crv.knotvector = knotvector0
-# 	tmp = np.unique(createAsymmetricalKnotvector_Rmultiplicity(p, int(nbel/2), xasym=xasym))/2
-# 	knotvector1 = np.array([]); knotvector1 = np.append(knotvector1, tmp); knotvector1 = np.append(knotvector1, np.flip(1 - tmp[:-1]))
-# 	for knot in knotvector1[1:-1]:
-# 		operations.insert_knot(crv, [knot], [1])
-# 	return crv
-
 def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=None):
 
 	# Create geometry
 	if is1dim:
-		# geometry = createUniformCurve(degree, int(2**cuts), 1.0)
-		geometry = createAsymmetricalCurve(degree, cuts, 1.0)
+		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
+		# geometry = createAsymmetricalCurve(degree, cuts, 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
 		if geoArgs is None: 

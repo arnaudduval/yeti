@@ -17,7 +17,7 @@ def run(folder=None):
 	g.save()
 
 # Set global variables
-TODOSIMU = False
+TODOSIMU = True
 FIG_CASE = 1
 
 if FIG_CASE == 1:
@@ -31,8 +31,8 @@ if FIG_CASE == 1:
 
 	if TODOSIMU:
 		exportTimeDependentMaterial(np.linspace(0, 1, 33), 
-						temperature=exactTemperature_inc,
-						fields={'heatmat':nonlinearfunc}, 
+						temperature=exactTemperatureTrapeze_inc,
+						fields={'mat':nonlinearfunc, 'temp':exactTemperatureTrapeze_inc}, 
 						geoArgs={'name': 'TP', 'degree': 4*np.ones(3, dtype=int), 
 								'nb_refinementByDirection': 5*np.ones(3, dtype=int)},
 						folder=subfolder,)
@@ -52,7 +52,7 @@ if FIG_CASE == 1:
 				for k, t in enumerate(time_inc[1:-1]):
 					error_list1[i, j, k], _ = problem_inc.normOfError(temp_inc[:, k+1], 
 																normArgs={'type':'L2',
-																		'exactFunction':exactTemperature_inc,
+																		'exactFunction':exactTemperatureTrapeze_inc,
 																		'exactExtraArgs':{'time':t}})
 				# Space time problem
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
@@ -61,7 +61,7 @@ if FIG_CASE == 1:
 
 				error_list2[i, j], _ = problem_spt.normOfError(temp_spt, 
 													normArgs={'type':'L2',
-															'exactFunction':exactTemperature_spt})
+															'exactFunction':exactTemperatureTrapeze_spt})
 		np.save(filename1, error_list1)
 		np.save(filename2, error_list2)
 
@@ -126,7 +126,7 @@ elif FIG_CASE == 2:
 
 				for displacement in displmnt_list:
 					err, relerr  = problem_spt.normOfError(displacement, normArgs={'type':'L2', 
-																	'exactFunction':exactTemperature_spt})
+																	'exactFunction':exactTemperatureSquare_spt})
 					L2error.append(err); L2relerror.append(relerr)
 				resKrylovclean = np.array([]); counter_list = [0]
 				for _ in resKrylov_list: 

@@ -27,7 +27,7 @@ if TODOSIMU:
 
 			error_list[i, j], _ = problem_spt.normOfError(temp_spt, 
 												normArgs={'type':'L2',
-														'exactFunction':exactTemperature_spt})
+														'exactFunction':exactTemperatureSquare_spt})
 	np.save(filename, error_list)
 
 else:
