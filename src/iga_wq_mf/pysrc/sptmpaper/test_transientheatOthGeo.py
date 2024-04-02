@@ -3,7 +3,7 @@ from pyevtk.vtk import VtkGroup
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/TRnonlin4/'
+folder = os.path.dirname(full_path) + '/results/Other/'
 subfolder = folder +  'steps/'
 if not os.path.isdir(folder): os.mkdir(folder)
 if not os.path.isdir(subfolder): os.mkdir(subfolder)

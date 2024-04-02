@@ -10,7 +10,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 from pysrc.lib.lib_1djob import heatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
-IS1DIM = True
+IS1DIM = False
 ISLINEAR = False
 NONLINCASE = 2
 CST = 100
@@ -176,7 +176,7 @@ def createAsymmetricalCurve(degree, level, length, xasym=0.05):
 		operations.insert_knot(crv, [knot], [1])
 	return crv
 
-def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=None):
+def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, is1dim=False, geoArgs=None):
 
 	# Create geometry
 	if is1dim:
@@ -198,8 +198,8 @@ def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=
 	material.addCapacity(capacityProperty, isIsotropic=False) 
 
 	# Block boundaries
-	dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
 	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
+	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
 	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
 
 	# Transient model
@@ -214,12 +214,12 @@ def simulate_incremental(degree, cuts, powerdensity=None, is1dim=False, geoArgs=
 
 	# Solve
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
-	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-7
+	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-8
 	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, 
 											time_list=time_inc, alpha=0.5)
 	return problem_inc, time_inc, Tinout
 
-def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None, 
+def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, degree_spt=None, 
 					isfull=False, isadaptive=False, geoArgs=None, outputArgs=None):
 	if geoArgs is None: 
 		geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
@@ -228,7 +228,7 @@ def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None,
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
-	if degree_spt is None: degree_spt = 1
+	if degree_spt is None: degree_spt = 2
 	time_spt = part1D(createUniformCurve(degree_spt, int(2**CUTS_TIME), 1.0), {'quadArgs': {'quadrule': 'iga'}})
 
 	# Add material 
@@ -237,10 +237,10 @@ def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None,
 	material.addCapacity(capacityProperty, isIsotropic=False) 
 
 	# Block boundaries
-	tmptable = np.zeros((3, 2)); tmptable[0, :] = 1; tmptable[-1, 0] = 1
 	sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
 	boundary_spt = boundaryCondition(sptnbctrlpts)
-	boundary_spt.add_DirichletConstTemperature(table=tmptable)
+	if dirichlet_table is None: dirichlet_table = np.zeros((3, 2)); dirichlet_table[0, :] = 1; dirichlet_table[-1, 0] = 1
+	boundary_spt.add_DirichletConstTemperature(table=dirichlet_table)
 
 	# Transient model
 	problem_spt = stheatproblem(material, modelPhy, time_spt, boundary_spt)
@@ -252,7 +252,7 @@ def simulate_spacetime(degree, cuts, powerdensity=None, degree_spt=None,
 	
 	# Solve
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
-	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-7
+	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
 	outputArgs=deepcopy(output)
 	return problem_spt, time_spt, Tinout

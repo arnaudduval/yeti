@@ -8,13 +8,16 @@ from pysrc.sptmpaper.input_data import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/inctransient/'
+folder = os.path.dirname(full_path) + '/results/Pseudo2D/nonlin2d/'
 subfolder = folder +  'steps/'
 if not os.path.isdir(folder): os.mkdir(folder)
 if not os.path.isdir(subfolder): os.mkdir(subfolder)
 
 # Set global variables
 TODOSIMU = True
+lastsufix = 'linear' if ISLINEAR else 'nonlin'
+degree_list = np.array([1, 2, 3, 4, 5])
+cuts_list   = np.arange(1, 7)
 
 if IS1DIM:
 	# Trace material properties
@@ -40,7 +43,7 @@ if IS1DIM:
 	TEMPERATURE_INTERP = problem_inc.interpolateMeshgridField(temperature_inc, sampleSize=201)[0]
 	CONDUCTIVITY_INTERP = conductivityProperty(args={'temperature':TEMPERATURE_INTERP.T})
 	TEMPDIFF = np.abs(TEMPERATURE - TEMPERATURE_INTERP.T)
-	TEMPDIFF = np.where(np.abs(TEMPERATURE)<1e-10, 0.0, TEMPDIFF/np.abs(TEMPERATURE))
+	TEMPDIFF = np.where(np.abs(TEMPERATURE)<1e-12, 0.0, TEMPDIFF/np.abs(TEMPERATURE))
 	CONDDIFF = np.abs(CONDUCTIVITY - CONDUCTIVITY_INTERP)/np.abs(CONDUCTIVITY)
 
 	for matfield, figname in zip([CONDUCTIVITY_INTERP, TEMPERATURE_INTERP.T, CONDDIFF, TEMPDIFF], 
@@ -55,20 +58,9 @@ if IS1DIM:
 		ax.set_xlabel('Position')
 		fig.tight_layout()
 		fig.savefig(folder + 'transHeatinterp_' + figname)
-	
-	# for k, t in enumerate(time_inc[1:-1]):
-	# 	error = problem_inc.normOfError(temperature_inc[:, k+1], 
-	# 								normArgs={'type':'L2',
-	# 										'exactFunction':exactTemperature_inc,
-	# 										'exactExtraArgs':{'time':t}})
-	# 	print('Step:%d, RelError:%.3e' %(k, error[-1]))
 
-lastsufix = 'linear' if ISLINEAR else 'nonlin'
+# ------------------------------------------------------------------
 filename = folder + 'incrementalheat' + lastsufix
-
-degree_list = np.array([1, 2, 3, 4, 5])
-cuts_list   = np.arange(1, 6)
-
 if TODOSIMU:
 	error_list = np.ones((len(degree_list), len(cuts_list), 2**CUTS_TIME))
 	for j, cuts in enumerate(cuts_list):
@@ -76,10 +68,11 @@ if TODOSIMU:
 			problem_inc, time_inc, TEMPERATURE_INTERP = simulate_incremental(degree, cuts, 
 											powerdensity=powerDensitySquare_inc, is1dim=IS1DIM)
 			for k, t in enumerate(time_inc[1:-1]):
-				error_list[i, j, k], _ = problem_inc.normOfError(TEMPERATURE_INTERP[:, k+1], 
+				_, error_list[i, j, k] = problem_inc.normOfError(TEMPERATURE_INTERP[:, k+1], 
 															normArgs={'type':'L2',
 																	'exactFunction':exactTemperatureSquare_inc,
 																	'exactExtraArgs':{'time':t}})
+	
 	np.save(filename, error_list)
 
 error_list = np.load(filename+'.npy')
@@ -88,13 +81,48 @@ for j, k in enumerate(range(0, np.size(error_list, axis=2), 4)):
 
 	for i, degree in enumerate(degree_list):
 		color = COLORLIST[i]
-		ax.loglog(5*2**(cuts_list-1), error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
+		ax.loglog(2**cuts_list, error_list[i, :, k], color=color, marker='o', markerfacecolor='w',
 					markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
 
-	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L_2(\Omega)}$')
-	ax.set_xlabel('Mesh discretization ' + r'$h^{-1}$')
-	ax.set_ylim(top=1e2, bottom=1e-5)
+	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}/||u||_{L^2(\Omega)}$')
+	if IS1DIM: ax.set_xlabel('Number of elements')
+	else: ax.set_xlabel('Number of elements in main dimension')
+	ax.set_ylim(top=1e1, bottom=1e-9)
+	ax.set_xlim(left=1e0, right=80)
 	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 	fig.tight_layout()
 	fig.savefig(subfolder + 'FigConvergIncrHeat' + str(j+1) +  '.pdf')
+	plt.close(fig)
+
+# ------------------------------------------------------------------
+filename = folder + 'spacetimeheat' + lastsufix
+if not IS1DIM:
+	if TODOSIMU:
+		error_list = np.ones((len(degree_list), len(cuts_list)))
+		for j, cuts in enumerate(cuts_list):
+			for i, degree in enumerate(degree_list):
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
+													powerdensity=powerDensitySquare_spt)
+
+				_, error_list[i, j] = problem_spt.normOfError(temp_spt, 
+													normArgs={'type':'L2',
+															'exactFunction':exactTemperatureSquare_spt})
+		np.save(filename, error_list)
+
+	error_list = np.load(filename+'.npy')
+	fig, ax = plt.subplots(figsize=(9, 6))
+
+	for i, degree in enumerate(degree_list):
+		color = COLORLIST[i]
+		ax.loglog(2**cuts_list, error_list[i, :], color=color, marker='o', markerfacecolor='w',
+					markersize=10, linestyle='-', label='degree ' + r'$p=\,$' + str(degree))
+		
+	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u||_{L^2(\Pi)}$')
+	if IS1DIM: ax.set_xlabel('Number of spatial elements')
+	else: ax.set_xlabel('No. of elements in main spatial dimension')
+	ax.set_ylim(top=1e1, bottom=1e-9)
+	ax.set_xlim(left=1e0, right=80)
+	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	fig.tight_layout()
+	fig.savefig(subfolder + 'FigConvergSptHeat' +  '.pdf')
 	plt.close(fig)
