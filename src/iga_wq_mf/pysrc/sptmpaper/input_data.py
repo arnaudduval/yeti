@@ -22,110 +22,6 @@ def nonlinearfunc(args:dict):
 	if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
 	return np.atleast_2d(Kprop1d)
 
-def capacityProperty(args:dict):
-	temperature = args.get('temperature')
-	capacity = np.ones(shape=np.shape(temperature))
-	return capacity
-
-def capacityDersProperty(args:dict):
-	temperature = args.get('temperature')
-	capacity = np.zeros(shape=np.shape(temperature))
-	return capacity
-
-def conductivityProperty(args:dict):
-	temperature = args.get('temperature')
-	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
-	else: 
-		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-		if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
-
-	if IS1DIM: 
-		return Kprop1d
-	else:
-		identity = np.array([[1., 0.0],[0.0, 1.0]])
-		Kprop2d  = np.zeros((2, 2, len(temperature)))
-		for i in range(2): 
-			for j in range(2):
-				Kprop2d[i, j, :] = identity[i, j]*Kprop1d
-		return Kprop2d
-
-def conductivityDersProperty(args:dict):
-	temperature = args.get('temperature')
-	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
-	else: 
-		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
-		if NONLINCASE==2: y = (2.0/50)/(np.cosh(temperature))**2
-	return y
-
-def exactTemperatureSquare_inc(args:dict):
-	t = args['time']
-	if IS1DIM: x = args['position']
-	else: x = args['position'][0, :]
-	u = CST*sin(2*pi*x)*sin(pi/2*t)
-	return u
-
-def exactTemperatureQuad_inc(args:dict):
-	t = args['time']
-	if IS1DIM: raise Warning('Try higher dimension')
-	x = args['position'][0, :]
-	y = args['position'][1, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
-	return u
-
-def exactTemperatureRing_inc(args:dict):
-	t = args['time']
-	if IS1DIM: raise Warning('Try higher dimension')
-	x = args['position'][0, :]
-	y = args['position'][1, :]
-	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
-	return u
-
-def exactTemperatureSquare_spt(qpPhy):
-	x = qpPhy[0, :]; t = qpPhy[2, :]
-	u = CST*sin(2*pi*x)*sin(pi/2*t)
-	return u
-
-def exactTemperatureQuad_spt(qpPhy):
-	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
-	return u
-
-def powerDensitySquare_inc(args:dict):
-	t = args['time']
-	if IS1DIM: x = args['position']
-	else: x = args['position'][0, :]
-
-	if ISLINEAR:
-		f = (
-			(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-			+ 8*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)
-		)
-	else: 
-		u = CST*sin((pi*t)/2)*sin(2*pi*x)
-		if NONLINCASE==1:
-			f = (
-				(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(u)) + 1) 
-				+ 8*CST**2*pi**2*sign(u)*exp(-abs(u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
-
-			)
-		if NONLINCASE==2:
-			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh((u)/50) + 3) 
-				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((u)/50)**2 - 1))/25
-			)
-
-	return f
-
-def powerDensitySquare_spt(args:dict):
-	time = args['time']
-	position = args['position']
-	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
-	for i in range(nc_tm):
-		t = time[i]
-		f[:, i] = powerDensitySquare_inc(args={'time':t, 'position':position})
-	return np.ravel(f, order='F')
-
 def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArgs=None, folder=None):
 	assert fields is not None, 'Add material fields'
 	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': 4*np.ones(3, dtype=int), 
@@ -175,6 +71,181 @@ def createAsymmetricalCurve(degree, level, length, xasym=0.05):
 	for knot in knotList[1:-1]:
 		operations.insert_knot(crv, [knot], [1])
 	return crv
+
+def capacityProperty(args:dict):
+	temperature = args.get('temperature')
+	capacity = np.ones(shape=np.shape(temperature))
+	return capacity
+
+def capacityDersProperty(args:dict):
+	temperature = args.get('temperature')
+	capacity = np.zeros(shape=np.shape(temperature))
+	return capacity
+
+def conductivityProperty(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
+	else: 
+		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
+		if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
+
+	if IS1DIM: 
+		return Kprop1d
+	else:
+		identity = np.array([[1., 0.0],[0.0, 1.0]])
+		Kprop2d  = np.zeros((2, 2, len(temperature)))
+		for i in range(2): 
+			for j in range(2):
+				Kprop2d[i, j, :] = identity[i, j]*Kprop1d
+		return Kprop2d
+
+def conductivityDersProperty(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
+	else: 
+		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
+		if NONLINCASE==2: y = (2.0/50)/(np.cosh(temperature))**2
+	return y
+
+# Square shape
+
+def exactTemperatureSquare_inc(args:dict):
+	t = args['time']
+	if IS1DIM: x = args['position']
+	else: x = args['position'][0, :]
+	u = CST*sin(2*pi*x)*sin(pi/2*t)
+	return u
+
+def exactTemperatureSquare_spt(qpPhy):
+	x = qpPhy[0, :]; t = qpPhy[2, :]
+	u = CST*sin(2*pi*x)*sin(pi/2*t)
+	return u
+
+def powerDensitySquare_inc(args:dict):
+	t = args['time']
+	if IS1DIM: x = args['position']
+	else: x = args['position'][0, :]
+
+	if ISLINEAR:
+		f = (
+			(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+			+ 8*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)
+		)
+	else: 
+		u = CST*sin((pi*t)/2)*sin(2*pi*x)
+		if NONLINCASE==1:
+			f = (
+				(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(u)) + 1) 
+				+ 8*CST**2*pi**2*sign(u)*exp(-abs(u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
+
+			)
+		if NONLINCASE==2:
+			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh((u)/50) + 3) 
+				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((u)/50)**2 - 1))/25
+			)
+
+	return f
+
+def powerDensitySquare_spt(args:dict):
+	time = args['time']
+	position = args['position']
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
+	for i in range(nc_tm):
+		t = time[i]
+		f[:, i] = powerDensitySquare_inc(args={'time':t, 'position':position})
+	return np.ravel(f, order='F')
+
+# Trapezoidal shape
+
+def exactTemperatureTrap_inc(args:dict):
+	t = args['time']
+	if IS1DIM: raise Warning('Try higher dimension')
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	return u
+
+def exactTemperatureTrap_spt(qpPhy):
+	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	return u
+
+def powerDensityTrap_inc(args:dict):
+	t = args['time']
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+
+	if ISLINEAR:
+		f = (...
+		)
+	else: 
+		u = ...
+		if NONLINCASE==1:
+			f = (
+				...
+
+			)
+		if NONLINCASE==2:
+			f = (...
+			)
+
+	return f
+
+def powerDensityTrap_spt(args:dict):
+	time = args['time']
+	position = args['position']
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
+	for i in range(nc_tm):
+		t = time[i]
+		f[:, i] = powerDensityTrap_inc(args={'time':t, 'position':position})
+	return np.ravel(f, order='F')
+
+# Ring shape
+
+def exactTemperatureRing_inc(args:dict):
+	t = args['time']
+	if IS1DIM: raise Warning('Try higher dimension')
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
+	return u
+
+def exactTemperatureRing_spt(qpPhy):
+	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
+	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
+	return u
+
+def powerDensityRing_inc(args:dict):
+	t = args['time']
+	x = args['position'][0, :]
+	y = args['position'][1, :]
+
+	if ISLINEAR:
+		f = (...
+		)
+	else: 
+		u = ...
+		if NONLINCASE==1:
+			f = (
+				...
+
+			)
+		if NONLINCASE==2:
+			f = (...
+			)
+
+	return f
+
+def powerDensityRing_spt(args:dict):
+	time = args['time']
+	position = args['position']
+	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
+	for i in range(nc_tm):
+		t = time[i]
+		f[:, i] = powerDensityRing_inc(args={'time':t, 'position':position})
+	return np.ravel(f, order='F')
 
 def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, is1dim=False, geoArgs=None):
 
