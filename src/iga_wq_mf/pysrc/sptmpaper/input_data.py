@@ -8,19 +8,32 @@ from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_stjob import stheatproblem
 from pysrc.lib.lib_1djob import heatproblem1D
-from numpy import pi, sin, cos, abs, exp, sign, tanh
+from numpy import pi, sin, cos, abs, exp, sign, tanh, sqrt
 
+GEONAME = 'QA'
 IS1DIM = False
-ISLINEAR = False
-NONLINCASE = 2
+ISLINEAR, NONLINCASE = False, 1
+ISISOTROPIC = False # Only for square
+
 CST = 100
-CUTS_TIME = 7
+CUTS_TIME = 4
 
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
-	if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-	if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
+	if ISLINEAR: 
+		Kprop1d = 2*np.ones(shape=np.shape(temperature))
+	else:
+		if NONLINCASE==1: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
+		if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
 	return np.atleast_2d(Kprop1d)
+
+def nonlineardersfunc(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
+	else: 
+		if NONLINCASE==1: y = (2.0/50)/(np.cosh(temperature/50))**2
+		if NONLINCASE==2: y = -2.0*sign(temperature)*exp(-abs(temperature))
+	return y
 
 def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArgs=None, folder=None):
 	assert fields is not None, 'Add material fields'
@@ -82,31 +95,34 @@ def capacityDersProperty(args:dict):
 	capacity = np.zeros(shape=np.shape(temperature))
 	return capacity
 
-def conductivityProperty(args:dict):
+def conductivityProperty(args:dict, isIsotropic=ISISOTROPIC):
 	temperature = args.get('temperature')
-	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
-	else: 
-		if NONLINCASE==1: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
-		if NONLINCASE==2: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
-
+	Kprop1d = np.ravel(nonlinearfunc(args), order='F')
 	if IS1DIM: 
 		return Kprop1d
 	else:
-		identity = np.array([[1., 0.0],[0.0, 1.0]])
-		Kprop2d  = np.zeros((2, 2, len(temperature)))
+		reference = np.array([[1., 0.0],[0.0, 1.0]])
+		if not isIsotropic: reference = np.array([[1., 0.5],[0.5, 2.0]])
+		Kprop2d = np.zeros((2, 2, len(temperature)))
 		for i in range(2): 
 			for j in range(2):
-				Kprop2d[i, j, :] = identity[i, j]*Kprop1d
+				Kprop2d[i, j, :] = reference[i, j]*Kprop1d
 		return Kprop2d
-
-def conductivityDersProperty(args:dict):
+	
+def conductivityDersProperty(args:dict, isIsotropic=ISISOTROPIC):
 	temperature = args.get('temperature')
-	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
-	else: 
-		if NONLINCASE==1: y = -2.0*sign(temperature)*exp(-abs(temperature))
-		if NONLINCASE==2: y = (2.0/50)/(np.cosh(temperature))**2
-	return y
-
+	Kprop1d = np.ravel(nonlineardersfunc(args), order='F')
+	if IS1DIM: 
+		return Kprop1d
+	else:
+		reference = np.array([[1., 0.0],[0.0, 1.0]])
+		if not isIsotropic: reference = np.array([[1., 0.5],[0.5, 2.0]])
+		Kprop2d = np.zeros((2, 2, len(temperature)))
+		for i in range(2): 
+			for j in range(2):
+				Kprop2d[i, j, :] = reference[i, j]*Kprop1d
+		return Kprop2d
+	
 # Square shape
 
 def exactTemperatureSquare_inc(args:dict):
@@ -126,24 +142,26 @@ def powerDensitySquare_inc(args:dict):
 	if IS1DIM: x = args['position']
 	else: x = args['position'][0, :]
 
+	if not ISISOTROPIC: raise Warning('Not possible')
+	u = sin((pi*t)/2)*sin(2*pi*x)
 	if ISLINEAR:
 		f = (
 			(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-			+ 8*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)
+			+ 8*CST*pi**2*u
 		)
 	else: 
-		u = CST*sin((pi*t)/2)*sin(2*pi*x)
 		if NONLINCASE==1:
+			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+				+ 4*CST*pi**2*u*(2*tanh((CST*u)/50) + 3) 
+				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((CST*u)/50)**2 - 1))/25
+			)	
+
+		if NONLINCASE==2:
 			f = (
 				(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(u)) + 1) 
-				+ 8*CST**2*pi**2*sign(u)*exp(-abs(u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
+				+ 4*CST*pi**2*u*(2*exp(-abs(CST*u)) + 1) 
+				+ 8*CST**2*pi**2*sign(CST*u)*exp(-abs(CST*u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
 
-			)
-		if NONLINCASE==2:
-			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*tanh((u)/50) + 3) 
-				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((u)/50)**2 - 1))/25
 			)
 
 	return f
@@ -164,32 +182,64 @@ def exactTemperatureTrap_inc(args:dict):
 	if IS1DIM: raise Warning('Try higher dimension')
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def exactTemperatureTrap_spt(qpPhy):
 	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)
+	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def powerDensityTrap_inc(args:dict):
 	t = args['time']
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-
+	if ISISOTROPIC: raise Warning('Not possible')
+	
+	u1 = pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2); u2 = sin((pi*t)/2); u3 = sin(5*pi*x)
+	u4 = ((3*cos((3*pi*t)/2))/4 + 1); u5 = pi*(y - (3*x)/4 + 1/2) + pi*((3*x)/4 + y - 1/2)
+	u6 = (3*pi*(y - (3*x)/4 + 1/2))/4 - (3*pi*((3*x)/4 + y - 1/2))/4
 	if ISLINEAR:
-		f = (...
+		f = ((23*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4)/4 
+			- (CST*pi*sin(u1)*cos((pi*t)/2)*u3*sin(pi*y)*u4)/2 
+			- 4*CST*sin(u1)*u2*u3*sin(pi*y)*(u5)**2*u4 
+			- 2*CST*sin(u1)*u2*u3*sin(pi*y)*(u6)**2*u4 
+			+ 10*CST*pi**2*sin(u1)*cos(5*pi*x)*cos(pi*y)*u2*u4 
+			+ (9*CST*pi*sin(u1)*u2*sin((3*pi*t)/2)*u3*sin(pi*y))/8 
+			- 54*CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
+			- 2*CST*sin(u1)*u2*u3*sin(pi*y)*(u5)*(u6)*u4 
+			+ 10*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u5)*u4 
+			+ 8*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u5)*u4 
+			+ 20*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u6)*u4 
+			+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4
 		)
 	else: 
-		u = ...
 		if NONLINCASE==1:
-			f = (
-				...
-
-			)
+			f = ((2*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3)*((9*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4)/8 
+						+ CST*sin(u1)*u2*u3*sin(pi*y)*(u6)**2*u4 
+						+ 25*CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
+						- 10*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u6)*u4) 
+				- (4*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 6)*(2*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4 
+						- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)**2*u4 
+						- CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
+						+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u5)*u4) 
+				- 2*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3/2)*(5*CST*pi**2*sin(u1)*cos(5*pi*x)*cos(pi*y)*u2*u4 
+						- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)*(u6)*u4 
+						+ 5*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u5)*u4 
+						+ CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4) 
+				+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
+						+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+				+ 2*(CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
+						+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+				+ 4*(CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
+						+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+						+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
+								+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+								- (CST*pi*sin(u1)*cos((pi*t)/2)*u3*sin(pi*y)*u4)/2 + (9*CST*pi*sin(u1)*u2*sin((3*pi*t)/2)*u3*sin(pi*y))/8
+		)
 		if NONLINCASE==2:
 			f = (...
-			)
+		)
 
 	return f
 
@@ -209,12 +259,12 @@ def exactTemperatureRing_inc(args:dict):
 	if IS1DIM: raise Warning('Try higher dimension')
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
+	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(pi*x*y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
 	return u
 
 def exactTemperatureRing_spt(qpPhy):
 	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
-	u = -CST*sin(0.5*pi*(x**2+y**2-1.))*sin(pi*(x**2+y**2-0.25**2))*sin(x*y)*sin(pi/2*t)
+	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(pi*x*y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
 	return u
 
 def powerDensityRing_inc(args:dict):
@@ -222,19 +272,85 @@ def powerDensityRing_inc(args:dict):
 	x = args['position'][0, :]
 	y = args['position'][1, :]
 
+	if ISISOTROPIC: raise Warning('Not possible')
+	u1 = pi*(x**2 + y**2 - 1/16); u2 = x**2 + y**2 - 1; u3 = (3*cos((3*pi*t)/2))/4 + 1; u4 = sin((pi*t)/2)
 	if ISLINEAR:
-		f = (...
-		)
+		f = (2*CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+		- 12*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 12*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+		- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
+		+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8 
+		- 4*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		- 16*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		- 4*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		- 32*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 16*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 32*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 4*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+		+ 4*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+		- 12*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+		- 18*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+		- 24*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		- 16*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 16*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+		+ 24*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+		- 10*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)
+	)
 	else: 
-		u = ...
 		if NONLINCASE==1:
-			f = (
-				...
 
-			)
+			f = ((2*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+						+ 8*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						- 8*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+						+ 4*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+						+ CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+						+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+				- 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3/2)*(CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+						- 2*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						- 2*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						+ 2*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+						+ 2*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+						- 8*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						+ 8*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+						- 5*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)) 
+				+ (4*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 6)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+								- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+								+ 8*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+								- 8*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+								+ CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+								+ 4*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+								+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+								- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+				+ 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+								- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+								+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25 
+										- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+										+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) 
+				+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+						- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+								- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+								+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25) 
+				+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25
+						- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+						+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+								- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+								+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+				+ 4*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+						- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+						+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+								- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+								+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25)
+				- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
+				+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8
+		)
+	
 		if NONLINCASE==2:
+
 			f = (...
-			)
+		)
 
 	return f
 
@@ -254,8 +370,7 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
-		if geoArgs is None: 
-			geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+		if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': np.array([cuts, 1, 1])}
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
@@ -290,22 +405,26 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 											time_list=time_inc, alpha=0.5)
 	return problem_inc, time_inc, Tinout
 
-def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, degree_spt=None, 
-					isfull=False, isadaptive=False, geoArgs=None, outputArgs=None):
-	if geoArgs is None: 
-		geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, geoArgs=None,  
+					degree_spt=None, cuts_spt=None, quadArgs=None, isfull=False, isadaptive=True, getOthers=False):
+	
+	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': np.array([cuts, 1, 1])}
 
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
-	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
 	if degree_spt is None: degree_spt = 2
-	time_spt = part1D(createUniformCurve(degree_spt, int(2**CUTS_TIME), 1.0), {'quadArgs': {'quadrule': 'iga'}})
+	if cuts_spt is None: cuts_spt=CUTS_TIME
+	time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt), 1.0), {'quadArgs':quadArgs})
 
 	# Add material 
 	material = heatmat()
 	material.addConductivity(conductivityProperty, isIsotropic=False) 
-	material.addCapacity(capacityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False)
+	if not ISISOTROPIC: material.addCapacityDers(capacityDersProperty, isIsotropic=False)
+	if not ISISOTROPIC: material.addConductivityDers(conductivityDersProperty, isIsotropic=False)
 
 	# Block boundaries
 	sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
@@ -325,5 +444,5 @@ def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, de
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
 	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
-	outputArgs=deepcopy(output)
+	if getOthers: return problem_spt, time_spt, Tinout, output
 	return problem_spt, time_spt, Tinout

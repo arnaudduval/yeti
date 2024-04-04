@@ -245,7 +245,7 @@ class stheatproblem(stproblem):
 		AllresLin, AllresNewton, Allsol, Allthres, Alldelta = [], [], [], [], []
 		threshold_inner = None
 		for j in range(self._itersNL):
-			enablePrint()
+			# enablePrint()
 
 			# Compute temperature at each quadrature point
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(Tinout)
@@ -288,7 +288,6 @@ class stheatproblem(stproblem):
 			else: 
 				threshold_inner = np.copy(self._thresLin)
 			Allthres.append(threshold_inner)
-			print('****')
 
 			# Solve for active control points
 			deltaD, resLinj = self._solveLinearizedSTHeatProblem(r_dj, 
