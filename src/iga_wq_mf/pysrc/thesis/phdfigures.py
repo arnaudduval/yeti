@@ -14,7 +14,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, evalDersBasisPy, cropImage)
+from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, evalDersBasisCSRPy, cropImage)
 from pysrc.lib.lib_quadrules import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
@@ -346,7 +346,7 @@ elif CASE == 6: # Weights W00 and W11
 			Bref = B
 		else:
 			kvref = createUniformKnotvector_Rmultiplicity(degree-1, nbel)
-			Bref = evalDersBasisPy(degree-1, kvref, knots)[0]
+			Bref = evalDersBasisCSRPy(degree-1, kvref, knots)[0]
 			Bref = Bref.toarray()
 
 		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))

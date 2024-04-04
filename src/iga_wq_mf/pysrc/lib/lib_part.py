@@ -6,7 +6,7 @@
 
 # My libraries
 from .__init__ import *
-from .lib_base import evalDersBasisFortran, array2csr_matrix, findInterpolationSpan
+from .lib_base import evalDersBasisCSRFortran, array2csr_matrix, findInterpolationSpan
 from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 class part1D():
@@ -47,7 +47,7 @@ class part1D():
 
 		def compute_mesh_parameter_element(part:part1D):
 			kvunique = np.unique(part.knotvector)
-			dersBasis, indi, indj = evalDersBasisFortran(part.degree, part.knotvector, kvunique)
+			dersBasis, indi, indj = evalDersBasisCSRFortran(part.degree, part.knotvector, kvunique)
 			B0 = array2csr_matrix(dersBasis[:, 0], indi, indj, isfortran=True)
 			nodesPhy = B0.T @ part.ctrlpts
 			return np.diff(nodesPhy)
@@ -171,7 +171,7 @@ class part():
 		nbqp, indices, basis = [], [], []
 		for i in range(self.dim):
 			knots = np.unique(self.knotvector[i])
-			dersBasis, indi, indj = evalDersBasisFortran(self.degree[i], self.knotvector[i], knots)
+			dersBasis, indi, indj = evalDersBasisCSRFortran(self.degree[i], self.knotvector[i], knots)
 			nbqp.append(len(knots)); indices.append(indi); indices.append(indj); basis.append(dersBasis)
 		
 		inpts = [*nbqp[:self.dim], *indices, *basis, self.ctrlpts]; distmean = []
@@ -218,7 +218,7 @@ class part():
 		knots = np.linspace(0, 1, sampleSize)
 		basis, indices = [], []
 		for i in range(self.dim):
-			dersb, indi, indj = evalDersBasisFortran(self.degree[i], self.knotvector[i], knots)
+			dersb, indi, indj = evalDersBasisCSRFortran(self.degree[i], self.knotvector[i], knots)
 			basis.append(dersb); indices.append(indi); indices.append(indj)
 
 		# Get position and determinant 

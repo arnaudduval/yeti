@@ -5,7 +5,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisPy
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisCSRPy
 from pysrc.lib.lib_quadrules import GaussQuadrature
 
 # Select folder

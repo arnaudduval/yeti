@@ -1,5 +1,5 @@
 from .__init__ import *
-from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
+from .lib_base import get_faceInfo, get_INCTable, evalDersBasisCSRFortran
 from .lib_part import part
 from .lib_quadrules import GaussQuadrature
 from .lib_material import (heatmat, mechamat, clean_dirichlet, block_dot_product)
@@ -159,7 +159,7 @@ class problem():
 		if isinstance(part_ref, part) and isinstance(u_ref, np.ndarray):
 			basisExact, indicesExact = [], []
 			for i in range(self.part.dim):
-				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
+				basis, indi, indj = evalDersBasisCSRFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
 				basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 			inpts = [*nbqp, *indicesExact, *basisExact]
 			if self.part.dim == 2:   

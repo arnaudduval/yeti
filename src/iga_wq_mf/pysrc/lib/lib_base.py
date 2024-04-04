@@ -70,6 +70,29 @@ def array2csr_matrix(data, indi, indj, isfortran=True):
 	sparse_matrix = sp.csr_matrix((data, indjcopy, indicopy))
 	return sparse_matrix
 
+def coo2csr(a_coo, indi_coo, indj_coo):
+	" Converts sparse COO format to CSR format. Index arrays muts be zero-formatting. "
+	nnz, nm = np.shape(a_coo)
+	assert len(indi_coo) == nnz and len(indj_coo) == nnz, 'Size problem'
+	nr = np.max(indi_coo)+1
+	a_csr, indi_csr, indj_csr = np.zeros((nnz, nm)), np.zeros(nr+1, dtype=int), np.zeros(nnz, dtype=int)
+	for k in range(nnz): indi_csr[indi_coo[k]] += 1
+	k = 0
+	for j in range(nr+1):
+		c = indi_csr[j]
+		indi_csr[j] = k
+		k += c
+	for k in range(nnz):
+		i, j, x = indi_coo[k], indj_coo[k], a_coo[k, :]
+		iad = indi_csr[i]
+		a_csr[iad, :] = x
+		indj_csr[iad] = j
+		indi_csr[i] = iad + 1
+	for j in range(nr-1, -1, -1):
+		indi_csr[j+1] = np.copy(indi_csr[j])
+	indi_csr[0] = 0
+	return a_csr, indi_csr, indj_csr
+
 def get_faceInfo(nb):
 	dir  = int(np.floor(nb/2))
 	side = 0
@@ -184,19 +207,32 @@ def findMultiplicity(knotvector, knot, threshold=1e-8):
 
 	return multiplicity
 
-def evalDersBasisPy(degree, knotvector, knots): 
-	""" Evaluates B-spline functions at given knots. 
-		Knot-vector needs to be regular.
-		THIS FUNCTION IS DEPRECATED
-	"""
+def increaseMultiplicity(repeat, degree, knotvector):
+	" Returns a open knotvector with higher multiplicity. "
+	kv_out = []
+	kv_unique = np.unique(knotvector)[1:-1]
+	c = 0
+	for _ in range(degree+1):
+		kv_out.append(0.0)
+	for knot in kv_unique:
+		m = findMultiplicity(knotvector, knot)
+		m += repeat
+		for _ in range(m):
+			kv_out.append(knot)
+	for _ in range(degree+1):
+		kv_out.append(1.0)
+	return kv_out
 
+def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True): 
+	""" Evaluates B-spline functions and its first derivative at given knots. 
+		It returns matrices in CSR format.
+	"""
 	nbknots   = len(knots)
 	nbctrlpts = len(knotvector) - degree - 1
 	uvk  = np.unique(knotvector)
 	nbel = len(uvk) - 1 
 
 	basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
-	# Set table of functions per element 
 	table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
 	table_functions_physpan[0, :] = np.arange(degree + 1) 
 
@@ -213,17 +249,24 @@ def evalDersBasisPy(degree, knotvector, knots):
 		B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
 
 		for j in range(degree + 1):
-			basis[k, :]   = [B0t[j], B1t[j]]
+			basis[k, :] = [B0t[j], B1t[j]]
 			indices[k, :] = [functions_span[j], i]
 			k += 1
+	basis_csr, indi_csr, indj_csr = coo2csr(basis, indices[:, 0], indices[:, 1])	
+	if isfortran: indi_csr += 1
+	if isfortran: indj_csr += 1
+	return basis_csr, indi_csr, indj_csr
 
-	B0 = sp.coo_matrix((basis[:, 0], (indices[:, 0], indices[:, 1])), shape=(nbctrlpts, nbknots))
-	B1 = sp.coo_matrix((basis[:, 1], (indices[:, 0], indices[:, 1])), shape=(nbctrlpts, nbknots))
-	B0, B1 = B0.tocsr(), B1.tocsr()
+def evalDersBasisDensePy(degree, knotvector, knots, isfortran=True):
+	""" Evaluates B-spline functions and its first derivative at given knots. 
+		It returns matrices as scipy CSR objects.
+	"""
+	basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(degree, knotvector, knots, isfortran=isfortran)
+	basis = []
+	for i in range(2): basis.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr, isfortran=isfortran))
+	return basis
 
-	return B0, B1
-
-def evalDersBasisFortran(degree, knotvector, knots):
+def evalDersBasisCSRFortran(degree, knotvector, knots):
 	" Evaluates B-spline functions at given knots using fortran libraries "
 	B, indi, indj = basisweights.get_genbasis_csr(degree, knotvector, knots)
 	return B, indi, indj

@@ -5,7 +5,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisPy
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisCSRPy
 from pysrc.lib.lib_quadrules import GaussQuadrature
 
 # Select folder
@@ -74,8 +74,8 @@ u[all_dof] = u_n
 # Post-treatement
 # ------------------
 qp_sp, qp_t = np.linspace(0, 1, 101), np.linspace(0, 1, 101)
-basis_sp  = evalDersBasisPy(degree_sp, knotvector_sp, qp_sp) 
-basis_t   = evalDersBasisPy(degree_t, knotvector_t, qp_t)
+basis_sp  = evalDersBasisCSRPy(degree_sp, knotvector_sp, qp_sp) 
+basis_t   = evalDersBasisCSRPy(degree_t, knotvector_t, qp_t)
 spt_basis = sp.kron(basis_t[0], basis_sp[0])
 u_interp  = spt_basis.T @ u
 UU = np.reshape(u_interp, (len(qp_sp), len(qp_t)), order='F')

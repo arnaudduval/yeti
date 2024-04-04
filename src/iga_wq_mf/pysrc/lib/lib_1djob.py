@@ -9,7 +9,7 @@ from .lib_part import part1D
 from .lib_quadrules import GaussQuadrature
 from .lib_material import heatmat, mechamat
 from .lib_boundary import boundaryCondition
-from .lib_base import evalDersBasisFortran, array2csr_matrix
+from .lib_base import evalDersBasisCSRFortran, array2csr_matrix
 
 class problem1D():
 	def __init__(self, part:part1D, boundary:boundaryCondition, solverArgs={}):
@@ -81,7 +81,7 @@ class problem1D():
 		problem_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
 		if isinstance(problem_ref, problem1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
-			basis_csr, indi_csr, indj_csr = evalDersBasisFortran(problem_ref.part.degree, problem_ref.part.knotvector, quadPts)
+			basis_csr, indi_csr, indj_csr = evalDersBasisCSRFortran(problem_ref.part.degree, problem_ref.part.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
 			u_exact = denseBasisExact[0].T @ u_ref
 			invJExact = denseBasisExact[1].T @ problem_ref.part.ctrlpts

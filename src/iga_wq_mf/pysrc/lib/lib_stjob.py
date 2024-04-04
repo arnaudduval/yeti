@@ -1,6 +1,6 @@
 "SPACE TIME GALERKIN"
 from .__init__ import *
-from .lib_base import get_faceInfo, get_INCTable, evalDersBasisFortran
+from .lib_base import get_faceInfo, get_INCTable, evalDersBasisCSRFortran
 from .lib_quadrules import GaussQuadrature
 from .lib_material import (heatmat)
 from .lib_part import part, part1D
@@ -107,9 +107,9 @@ class stproblem():
 		if isinstance(part_ref, part) and isinstance(time_ref, part1D) and isinstance(u_ref, np.ndarray):
 			basisExact, indicesExact = [], [], []
 			for i in range(self.part.dim):
-				basis, indi, indj = evalDersBasisFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
+				basis, indi, indj = evalDersBasisCSRFortran(part_ref.degree[i], part_ref.knotvector[i], quadPts[i])
 				basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
-			basis, indi, indj = evalDersBasisFortran(time_ref.degree, time_ref.knotvector, quadPts[-1])
+			basis, indi, indj = evalDersBasisCSRFortran(time_ref.degree, time_ref.knotvector, quadPts[-1])
 			basisExact.append(basis); indicesExact.append(indi); indicesExact.append(indj)
 
 			sptimectrlpts = np.zeros((part_ref.dim+1, part_ref.nbctrlpts_total*time_ref.nbctrlpts))
