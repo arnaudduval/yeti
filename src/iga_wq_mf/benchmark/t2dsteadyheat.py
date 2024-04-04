@@ -89,16 +89,22 @@ def exactDiffTemperature_quartCircle(P: list):
 
 # Set global variables
 geoName = 'QA'
-degree_list = np.array([1, 2, 3, 4, 6, 8])
-cuts_list   = np.arange(2, 9)
+degree_list = np.array([1, 2, 3, 4, 5])
+cuts_list   = np.arange(1, 8)
 
-# for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [1, 2, 'leg']):
-for quadrule, quadtype in zip(['iga'], ['leg']):
+normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+
+fig, ax = plt.subplots(figsize=(8, 7))
+figname = folder + 'FigHeatConvergenceAllL2' + '.pdf'
+
+for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	error_list = np.ones(len(cuts_list))
-	fig, ax = plt.subplots(figsize=(8, 4))
-
 	for i, degree in enumerate(degree_list):
+		meshparam = np.ones(len(cuts_list))
+		color = COLORLIST[i]
 		for j, cuts in enumerate(cuts_list):
 			geoArgs = {'name': geoName, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
@@ -110,6 +116,7 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()
 			modelPhy = part(modelIGA, quadArgs=quadArgs)
+			meshparam[j] = modelPhy.compute_global_mesh_parameter()	
 
 			# Set Dirichlet boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
@@ -122,25 +129,28 @@ for quadrule, quadtype in zip(['iga'], ['leg']):
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = np.zeros(problem.part.nbctrlpts_total)
 			problem.solveFourierSteadyProblem(temperature, Fext=Fext)
-			error_list[j], _ = problem.normOfError(temperature, normArgs={'type':'semiH1',
+			error_list[j], _ = problem.normOfError(temperature, normArgs={'type':'L2',
 												'exactFunction':exactTemperature_quartCircle,
 												'exactFunctionDers':exactDiffTemperature_quartCircle})
 
-		nbctrlpts_list = (2**cuts_list+degree)**2
-		ax.loglog(nbctrlpts_list, error_list, marker=MARKERLIST[i], label='degree '+r'$p=\,$'+str(degree))
+		if quadrule == 'iga': 
+			ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+		else: 
+			ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
+				markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+		fig.savefig(figname)
 
-		if quadrule == 'iga':
-			slope = np.polyfit(np.log10(nbctrlpts_list[1:7]),np.log10(error_list[1:7]), 1)[0]
-			slope = round(slope, 1)
-			annotation.slope_marker((nbctrlpts_list[-3], error_list[-3]), slope, 
-									poly_kwargs={'facecolor': (0.73, 0.8, 1)})
-			
-		# ax.set_ylabel(r'$||u - u^h||_{L^2(\Omega)}$')
-		ax.set_ylabel(r'$|u - u^h|_{H^1(\Omega)}$')
-		ax.set_xlabel('Total number of DOF')
-		ax.set_ylim(top=1e1, bottom=1e-15)
-		ax.set_xlim(left=10, right=1e5)
+ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
+ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
 
-		ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergenceSemiH1' +  geoName + '_' + quadrule + str(quadtype) +'.pdf')
+ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
+# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
+ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+ax.set_ylim(top=1e1, bottom=1e-10)
+ax.set_xlim(left=1e-2, right=5)
+ax.legend()
+fig.tight_layout()
+fig.savefig(figname)

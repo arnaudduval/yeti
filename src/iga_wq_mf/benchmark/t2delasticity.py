@@ -98,7 +98,7 @@ else:
 	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
-	degree_list = np.array([1, 2, 3, 4])
+	degree_list = np.array([1, 2, 3, 4, 5])
 	cuts_list   = np.arange(1, 8)
 
 	disp_ref = np.load(folder + 'dispel.npy')
@@ -106,9 +106,8 @@ else:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(8, 7))
-	figname = folder + 'FigElasLinearConvergenceAllL2_nu0' + '.pdf'
-	# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-	for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
+	figname = folder + 'FigElasLinearConvergenceAllL2' + '.pdf'
+	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
 
