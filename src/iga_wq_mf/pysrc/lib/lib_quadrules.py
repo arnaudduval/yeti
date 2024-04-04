@@ -218,8 +218,8 @@ class WeightedQuadrature(QuadratureRules):
 				if Ishape[j, i]>0:
 					Fmax = j
 					break
-			tmp = solveLinearSystem(BB[Fmin:Fmax, Pmin:Pmax], II[Fmin:Fmax, i])
-			weights[i, Pmin:Pmax] = tmp
+			tmp = solveLinearSystem(BB[Fmin:Fmax+1, Pmin:Pmax+1], II[Fmin:Fmax+1, i])
+			weights[i, Pmin:Pmax+1] = tmp
 		return weights
 	
 	def __getBShape(self, knots, isfortran=True):
@@ -342,52 +342,52 @@ class WeightedQuadrature(QuadratureRules):
 
 		return basis_csr, weights_csr, indi_csr, indj_csr
 	
-	def __getWeightsM2(self, isfortran=True):
-		" Computes the weights at quadrature points in WQ approach using trial space S^[p]_[r-1]. "
+	# def __getWeightsM2(self, isfortran=True):
+	# 	" Computes the weights at quadrature points in WQ approach using trial space S^[p]_[r-1]. "
 
-		# Space S^p_r
-		gauss_p0 = GaussQuadrature(self.degree, self.knotvector, {'type':'leg'})
-		gauss_p0.getQuadratureRulesInfo()
-		B0cgg_p0, B1cgg_p0 = gauss_p0._denseBasis
-		basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(self.degree, self.knotvector, self.quadPtsPos, isfortran=isfortran)
-		B0wq_p0 = array2csr_matrix(basis_csr[:, 0], indi_csr, indj_csr, isfortran=isfortran)
+	# 	# Space S^p_r
+	# 	gauss_p0 = GaussQuadrature(self.degree, self.knotvector, {'type':'leg'})
+	# 	gauss_p0.getQuadratureRulesInfo()
+	# 	B0cgg_p0, B1cgg_p0 = gauss_p0._denseBasis
+	# 	basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(self.degree, self.knotvector, self.quadPtsPos, isfortran=isfortran)
+	# 	B0wq_p0 = array2csr_matrix(basis_csr[:, 0], indi_csr, indj_csr, isfortran=isfortran)
 
-		# Space S^[p]_[r-1]
-		degree_p1 = self.degree
-		knotvector_p1 = increaseMultiplicity(1, degree_p1, self.knotvector)
-		gauss_p1 = QuadratureRules(degree_p1, knotvector_p1)
-		B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran)[0]
-		B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran)[0]  
+	# 	# Space S^[p]_[r-1]
+	# 	degree_p1 = self.degree
+	# 	knotvector_p1 = increaseMultiplicity(1, degree_p1, self.knotvector)
+	# 	gauss_p1 = QuadratureRules(degree_p1, knotvector_p1)
+	# 	B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran)[0]
+	# 	B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran)[0]  
 
-		# Compute Integrals
-		weights_csr = np.zeros((np.size(basis_csr, axis=0), 4))
-		Bcgg_p0_int = np.zeros((gauss_p0.nbctrlpts, gauss_p0.nbqp))
-		Bcgg_p1_int = np.zeros((gauss_p1.nbctrlpts, gauss_p0.nbqp))
-		Bcgg_p0_int[np.where(np.abs(B0cgg_p0.todense())>1e-8)] = 1
-		Bcgg_p1_int[np.where(np.abs(B0cgg_p1.todense())>1e-8)] = 1
+	# 	# Compute Integrals
+	# 	weights_csr = np.zeros((np.size(basis_csr, axis=0), 4))
+	# 	Bcgg_p0_int = np.zeros((gauss_p0.nbctrlpts, gauss_p0.nbqp))
+	# 	Bcgg_p1_int = np.zeros((gauss_p1.nbctrlpts, gauss_p0.nbqp))
+	# 	Bcgg_p0_int[np.where(np.abs(B0cgg_p0.todense())>1e-8)] = 1
+	# 	Bcgg_p1_int[np.where(np.abs(B0cgg_p1.todense())>1e-8)] = 1
 		
-		tmp = []
-		# Computation of W00
-		Ishape = Bcgg_p1_int @ Bcgg_p0_int.T 
-		II = B0cgg_p0 @ sp.diags(gauss_p0._parametricWeights) @ B0cgg_p0.T
-		tmp.append(self.__compute_weights(Ishape, self._Bshape[0]-1, II.todense(), B0wq_p0.todense()))
+	# 	tmp = []
+	# 	# Computation of W00
+	# 	Ishape = Bcgg_p1_int @ Bcgg_p0_int.T 
+	# 	II = B0cgg_p0 @ sp.diags(gauss_p0._parametricWeights) @ B0cgg_p0.T
+	# 	tmp.append(self.__compute_weights(Ishape, self._Bshape[0]-1, II.todense(), B0wq_p0.todense()))
 
-		# Computation of W11
-		Ishape = Bcgg_p1_int @ Bcgg_p0_int.T
-		II = B0cgg_p1 @ sp.diags(gauss_p0._parametricWeights) @ B1cgg_p0.T    
-		tmp.append(self.__compute_weights(Ishape, self._Bshape[1]-1, II.todense(), B0wq_p1.todense()))
+	# 	# Computation of W11
+	# 	Ishape = Bcgg_p1_int @ Bcgg_p0_int.T
+	# 	II = B0cgg_p1 @ sp.diags(gauss_p0._parametricWeights) @ B1cgg_p0.T    
+	# 	tmp.append(self.__compute_weights(Ishape, self._Bshape[1]-1, II.todense(), B0wq_p1.todense()))
 
-		c = 0
-		indi_csr_copy = np.copy(indi_csr) 
-		indj_csr_copy = np.copy(indj_csr) 
-		if isfortran: indi_csr_copy -= 1
-		if isfortran: indj_csr_copy -= 1
-		for i in range(self.nbctrlpts):
-			for j in np.array(indj_csr_copy[indi_csr_copy[i]:indi_csr_copy[i+1]]):
-				weights_csr[c, :] = [tmp[0][i, j], tmp[0][i, j], tmp[1][i, j], tmp[1][i, j]]
-				c += 1
+	# 	c = 0
+	# 	indi_csr_copy = np.copy(indi_csr) 
+	# 	indj_csr_copy = np.copy(indj_csr) 
+	# 	if isfortran: indi_csr_copy -= 1
+	# 	if isfortran: indj_csr_copy -= 1
+	# 	for i in range(self.nbctrlpts):
+	# 		for j in np.array(indj_csr_copy[indi_csr_copy[i]:indi_csr_copy[i+1]]):
+	# 			weights_csr[c, :] = [tmp[0][i, j], tmp[0][i, j], tmp[1][i, j], tmp[1][i, j]]
+	# 			c += 1
 
-		return basis_csr, weights_csr, indi_csr, indj_csr
+	# 	return basis_csr, weights_csr, indi_csr, indj_csr
 	
 	def evalDersBasisWeights(self):
 		assert self._wqType in [1, 2, 3], 'Method unknown'
@@ -396,11 +396,15 @@ class WeightedQuadrature(QuadratureRules):
 		weights = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
-		basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
+		if (self._wqType == 1 or self._wqType == 3) and self.degree == 1: 
+			basis, weights, indi, indj = self.__getWeightsM1()
+		else: 
+			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
 													self._Bshape[0], self._Bshape[1], size_data, self._wqType)
 		self.dersBasis   = basis
 		self.dersWeights = weights
 		self.dersIndices = [indi, indj]
+
 		return
 	
 	def getQuadratureRulesInfo(self):

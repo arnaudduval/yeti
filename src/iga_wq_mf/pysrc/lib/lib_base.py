@@ -227,34 +227,53 @@ def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True):
 	""" Evaluates B-spline functions and its first derivative at given knots. 
 		It returns matrices in CSR format.
 	"""
+	assert degree >=0, 'Degree must be a positive integer'
+
 	nbknots   = len(knots)
 	nbctrlpts = len(knotvector) - degree - 1
 	uvk  = np.unique(knotvector)
 	nbel = len(uvk) - 1 
 
-	basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
-	table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
-	table_functions_physpan[0, :] = np.arange(degree + 1) 
+	if degree > 0:
+		basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
+		table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
+		table_functions_physpan[0, :] = np.arange(degree + 1) 
 
-	for i in range(1, nbel):
-		multiplicity = findMultiplicity(knotvector, uvk[i])
-		table_functions_physpan[i, 0] = table_functions_physpan[i-1, 0] + multiplicity
-		table_functions_physpan[i, 1:] = table_functions_physpan[i, 0] + np.arange(1, degree + 1) 
+		for i in range(1, nbel):
+			multiplicity = findMultiplicity(knotvector, uvk[i])
+			table_functions_physpan[i, 0] = table_functions_physpan[i-1, 0] + multiplicity
+			table_functions_physpan[i, 1:] = table_functions_physpan[i, 0] + np.arange(1, degree + 1) 
 
-	k = 0
-	for i, knot in enumerate(knots):
-		knot_span = helpers.find_span_linear(degree, knotvector, nbctrlpts, knot)
-		phy_span  = findInterpolationSpan(uvk, knot)
-		functions_span = table_functions_physpan[phy_span, :]
-		B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
+		k = 0
+		for i, knot in enumerate(knots):
+			knot_span = helpers.find_span_linear(degree, knotvector, nbctrlpts, knot)
+			phy_span  = findInterpolationSpan(uvk, knot)
+			functions_span = table_functions_physpan[phy_span, :]
+			B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
 
-		for j in range(degree + 1):
-			basis[k, :] = [B0t[j], B1t[j]]
-			indices[k, :] = [functions_span[j], i]
-			k += 1
+			for j in range(degree + 1):
+				basis[k, :] = [B0t[j], B1t[j]]
+				indices[k, :] = [functions_span[j], i]
+				k += 1
+
+	elif degree == 0:
+		basis, indices = [], []
+		for j, knot in enumerate(knots):
+				if knot-knotvector[1]<0 and knot-knotvector[0]>=0:
+					basis.append([1, 0]); indices.append([0, j])
+		for i in range(1, nbctrlpts-1):
+			for j, knot in enumerate(knots):
+				if knot-knotvector[i+1]<0 and knot-knotvector[i]>0:
+					basis.append([1, 0]); indices.append([i, j])
+		for j, knot in enumerate(knots):
+				if knot-knotvector[-1]<=0 and knot-knotvector[-2]>0:
+					basis.append([1, 0]); indices.append([nbctrlpts-1, j])
+		basis = np.array(basis); indices = np.array(indices)
+
 	basis_csr, indi_csr, indj_csr = coo2csr(basis, indices[:, 0], indices[:, 1])	
 	if isfortran: indi_csr += 1
 	if isfortran: indj_csr += 1
+
 	return basis_csr, indi_csr, indj_csr
 
 def evalDersBasisDensePy(degree, knotvector, knots, isfortran=True):
