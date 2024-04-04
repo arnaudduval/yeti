@@ -84,7 +84,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 7
+CASE      = 9
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -484,29 +484,40 @@ elif CASE == 8: # 3D Geometries
 
 elif CASE == 9:
 
-	def case9(folder):		
+	def case9(folder, fieldname='temp'):		
 		# Read data
+		filename = 'out_tp'
 		fileVTK = os.path.dirname(os.path.realpath(__file__)) + '/data/'
-		fileVTK = fileVTK + 'pls48'
-		grid    = pv.read(fileVTK + '.vts')
-		filename = folder + 'pls48.png'
+		fileVTK = fileVTK + filename
+		reader = pv.get_reader(fileVTK + '.vts')
+		print(reader.point_array_names)
+		scalars = None
+		if fieldname in reader.point_array_names:
+			reader.disable_all_point_arrays()
+			reader.enable_point_array(fieldname)
+			scalars = fieldname
+		print(reader.all_point_arrays_status)
+
+		grid = reader.read() 
+		filename = folder + filename + '.png'
 		
 		sargs = dict(
-				title = 'Plastic strain field',
+				title = 'Temperature',
 				title_font_size=50,
 				label_font_size=40,
 				shadow=True,
 				n_labels=2,
-				fmt="%.2e",
+				fmt="%.1f",
 				position_x=0.2, 
-				position_y=0.1,
+				position_y=0.225,
 		)
 		pv.start_xvfb()
 		plotter = pv.Plotter(off_screen=True)
-		plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
+		plotter.add_mesh(grid, cmap='coolwarm', reset_camera=True, 
+						scalar_bar_args=sargs, scalars=scalars)
 		
-		plotter.camera_position  = 'xy'
-		plotter.camera.zoom(0.8)
+		plotter.camera_position = 'yx'
+		plotter.camera.zoom(0.9)
 
 		plotter.background_color = 'white'
 		plotter.window_size = [1600, 1600]

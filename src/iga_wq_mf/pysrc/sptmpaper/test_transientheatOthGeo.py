@@ -209,7 +209,7 @@ elif FIG_CASE == 1:
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
 													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree, 
-													quadArgs={'quadrule':'wq', 'type':2})
+													quadArgs={'quadrule':'wq', 'type':3})
 					
 				end = time.process_time()
 				time_list3[i, j] = end - start
@@ -301,9 +301,9 @@ elif FIG_CASE == 1:
 	plt.close(fig)
 
 	# -------------------
-	Elist1 = np.load(filenameR1+'.npy')
-	Elist2 = np.load(filenameR2+'.npy')
-	Elist3 = np.load(filenameR3+'.npy')
+	Elist1 = np.load(filenameA1+'.npy')
+	Elist2 = np.load(filenameA2+'.npy')
+	Elist3 = np.load(filenameA3+'.npy')
 	Tlist1 = np.load(filenameT1+'.npy')
 	Tlist2 = np.load(filenameT2+'.npy')
 	Tlist3 = np.load(filenameT3+'.npy')
@@ -326,34 +326,13 @@ elif FIG_CASE == 1:
 					markersize=4, linestyle=':', label="INC-IGA-GL")
 	
 	ax.set_xlabel('CPU time (s)')
-	# ax.set_ylabel(r'$L^2(\Omega)$'+' error')
-	ax.set_ylabel('Relative ' + r'$L^2(\Omega)$'+' error')
+	ax.set_ylabel(r'$L^2(\Omega)$'+' error')
 	ax.set_xlim(left=5e-3, right=5e2)
 	ax.set_ylim(top=1e1, bottom=1e-10)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(folder + 'FigProfitSptIncHeat' +  '.pdf')
 	plt.close(fig)
-
-	# opacityList = np.logspace(-1, 0, len(cuts_list))
-	# ErrorL = np.load(filenameA3+'.npy')
-	# TimeL = np.load(filenameT3+'.npy')
-	# fig, ax = plt.subplots(figsize=(9, 6))
-	# for i, degree in enumerate(degree_list):
-	# 	for j, cuts in enumerate(cuts_list):
-	# 		color = COLORLIST[i]
-	# 		opacity = opacityList[j]
-	# 		ax.loglog(TimeL[i, j], ErrorL[i, j], alpha=opacity,
-	# 					color=color, marker='s', markersize=10)
-
-	# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
-	# ax.set_xlabel('CPU time (s)')
-	# ax.set_xlim(left=5e-2, right=500)
-	# ax.set_ylim(top=1e1, bottom=1e-10)
-	# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	# fig.tight_layout()
-	# fig.savefig(folder + 'FigTimeErrorSptIncHeat' +  '.pdf')
-	# plt.close(fig)
 
 elif FIG_CASE == 2:
 	extension = '.dat'

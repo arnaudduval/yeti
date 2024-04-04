@@ -120,14 +120,14 @@ class WeightedQuadrature(QuadratureRules):
 		QuadratureRules.__init__(self, degree, knotvector)
 		self._wqType  = quadArgs.get('type', 1)
 		if   self._wqType == 1: 
-			self._posRule = 'internal'
-			extraArgsDefault = {'s': 2, 'r': 4}
+			self._posRule = 'midpoint'
+			extraArgsDefault = {'s': 1, 'r': 3}
 		elif self._wqType == 2: 
 			self._posRule = 'midpoint'
 			extraArgsDefault = {'s': 2, 'r': 3}
 		elif self._wqType == 3:
-			self._posRule = 'midpoint'
-			extraArgsDefault = {'s': 1, 'r': 3}
+			self._posRule = 'internal'
+			extraArgsDefault = {'s': 2, 'r': 4}
 		self._extraArgs = quadArgs.get('extra', extraArgsDefault)
 		return
 	
