@@ -58,7 +58,7 @@ contains
             mat%Kprop(:, :, i) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, i), &
                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
@@ -82,7 +82,7 @@ contains
         do i = 1, nnz
             mat%Cprop(i) = prop(i)*mat%detJ(i)
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
     end subroutine setup_capacityprop
 
@@ -105,7 +105,7 @@ contains
         do i = 1, nnz
             mat%Hprop(i) = prop(i)*mat%detJ(i)
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
     end subroutine setup_thmchcoupledprop
 
@@ -286,7 +286,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP WORKSHARE NOWAIT
+        !$OMP WORKSHARE 
         tmp = tmp*mat%Cprop
         !$OMP END WORKSHARE
         !$OMP END PARALLEL
@@ -376,7 +376,7 @@ contains
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
                 !$OMP PARALLEL
-                !$OMP WORKSHARE NOWAIT
+                !$OMP WORKSHARE 
                 tmp_1 = tmp_0*mat%Kprop(i, j, :)
                 !$OMP END WORKSHARE
                 !$OMP END PARALLEL
@@ -420,17 +420,17 @@ contains
         dimension :: array_tmp1(nr_total), array_tmp2(nr_total)
 
         !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-        !$OMP SINGLE NOWAIT
+        !$OMP SINGLE 
         call mf_u_v(mat, basisdata, nr_total, array_in, array_tmp1)
-        !$OMP END SINGLE
+        !$OMP END SINGLE NOWAIT
 
-        !$OMP SINGLE NOWAIT
+        !$OMP SINGLE 
         call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp2)
-        !$OMP END SINGLE
+        !$OMP END SINGLE NOWAIT
         !$OMP END PARALLEL
 
         !$OMP PARALLEL
-        !$OMP WORKSHARE NOWAIT
+        !$OMP WORKSHARE
         array_out = mat%scalars(1)*array_tmp1 + mat%scalars(2)*array_tmp2
         !$OMP END WORKSHARE
         !$OMP END PARALLEL
@@ -504,15 +504,16 @@ contains
             end if
 
             !$OMP PARALLEL
-            !$OMP WORKSHARE NOWAIT
+            !$OMP WORKSHARE
             t1 = t1*mat%Hprop
             !$OMP END WORKSHARE
             !$OMP END PARALLEL
             
             do k = 1, basisdata%dimen
                 alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
+
                 !$OMP PARALLEL
-                !$OMP WORKSHARE NOWAIT
+                !$OMP WORKSHARE
                 t2 = t1*mat%invJ(k, i, :)
                 !$OMP END WORKSHARE
                 !$OMP END PARALLEL
@@ -634,9 +635,9 @@ contains
 
         if (solv%withdiag) then
             !$OMP PARALLEL 
-            !$OMP WORKSHARE NOWAIT
+            !$OMP WORKSHARE
             tmp = tmp/solv%redsyst%diageigval_sp
-            !$OMP END WORKSHARE 
+            !$OMP END WORKSHARE
             !$OMP END PARALLEL
         end if
 

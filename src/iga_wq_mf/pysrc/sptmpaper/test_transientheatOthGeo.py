@@ -17,8 +17,8 @@ def run(folder=None):
 	g.save()
 
 # Set global variables
-TODOSIMU = False
-FIG_CASE = 1
+TODOSIMU = True
+FIG_CASE = 2
 
 def exactTemperature_inc(args):
 	func = None
@@ -347,7 +347,8 @@ elif FIG_CASE == 2:
 		for [i, isadaptive], prefix1 in zip(enumerate([False, True]), ['exact', 'inexact']):
 			for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
 				prefix = prefix1 + '_' + prefix2 + '_'
-				blockPrint()
+				start=time.time()
+				# blockPrint()
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, _, _, output = simulate_spacetime(degree, cuts, 
 												powerdensity=powerDensity_spt, dirichlet_table=dirichlet_table,
@@ -358,6 +359,7 @@ elif FIG_CASE == 2:
 				sol_list  = output['Solution']; resKrylov_list = output['KrylovRes']
 				resNewton_list = output['NewtonRes']; threshold_list = output['Threshold']
 				L2error, L2relerror = [], []
+				stop = time.time()
 
 				for solution in sol_list:
 					err, relerr  = problem_spt.normOfError(solution, normArgs={'type':'L2', 
@@ -368,6 +370,8 @@ elif FIG_CASE == 2:
 					resKrylovclean = np.append(resKrylovclean, _[np.nonzero(_)])
 					counter_list.append(counter_list[-1] + len(_[np.nonzero(_)]))
 				enablePrint()
+				print(err, stop-start)
+
 				np.savetxt(subfolderfolder+prefix+'CumulKrylovRes'+extension, resKrylovclean)
 				np.savetxt(subfolderfolder+prefix+'Inner_loops'+extension, counter_list)
 				np.savetxt(subfolderfolder+prefix+'NewtonRes'+extension, resNewton_list)

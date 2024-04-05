@@ -68,7 +68,7 @@ contains
                                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
@@ -98,7 +98,7 @@ contains
                 mat%Kdersprop(:, k) = matmul(mat%invJ(:, :, i), prop(:, k))*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
     end subroutine setup_conductivityDersprop
 
@@ -128,7 +128,7 @@ contains
                 mat%Cprop(k) = prop(k)*mat%detJ(i)
             end do
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
 
     end subroutine setup_capacityprop
@@ -159,7 +159,7 @@ contains
                 mat%Cdersprop(k) = prop(k)*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
 
     end subroutine setup_capacityDersprop
@@ -340,7 +340,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP WORKSHARE NOWAIT
+        !$OMP WORKSHARE
         tmp = tmp*mat%Cdersprop
         !$OMP END WORKSHARE
         !$OMP END PARALLEL
@@ -433,7 +433,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP WORKSHARE NOWAIT
+        !$OMP WORKSHARE
         tmp = tmp*mat%Cprop
         !$OMP END WORKSHARE
         !$OMP END PARALLEL
@@ -533,7 +533,7 @@ contains
             zeta  = 1 + (alpha - 1)*2
 
             !$OMP PARALLEL
-            !$OMP WORKSHARE NOWAIT
+            !$OMP WORKSHARE
             tmp_1 = tmp_0*mat%Kdersprop(i, :)
             !$OMP END WORKSHARE
             !$OMP END PARALLEL
@@ -636,7 +636,7 @@ contains
                 zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP WORKSHARE NOWAIT
+                !$OMP WORKSHARE
                 tmp_1 = tmp_0*mat%Kprop(i, j, :)
                 !$OMP END WORKSHARE
                 !$OMP END PARALLEL
@@ -695,17 +695,17 @@ contains
         double precision :: tmp1(nr_total), tmp2(nr_total)
 
         !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-        !$OMP SINGLE NOWAIT
+        !$OMP SINGLE 
         call mf_u_partialt_v(mat, solv%globsyst, nr_total, array_in, tmp1)
-        !$OMP END SINGLE
+        !$OMP END SINGLE NOWAIT
 
-        !$OMP SINGLE NOWAIT
+        !$OMP SINGLE 
         call mf_gradx_u_gradx_v(mat, solv%globsyst, nr_total, array_in, tmp2)
-        !$OMP END SINGLE
+        !$OMP END SINGLE NOWAIT
         !$OMP END PARALLEL
 
         !$OMP PARALLEL
-        !$OMP WORKSHARE NOWAIT
+        !$OMP WORKSHARE
         array_out = tmp1 + tmp2
         !$OMP END WORKSHARE
         !$OMP END PARALLEL
@@ -713,17 +713,17 @@ contains
         if (solv%matrixfreetype.eq.1) return 
         if (solv%matrixfreetype.eq.2) then
             !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-            !$OMP SINGLE NOWAIT
+            !$OMP SINGLE 
             call mf_u_v(mat, solv%globsyst, nr_total, array_in, tmp1)
-            !$OMP END SINGLE
+            !$OMP END SINGLE NOWAIT
 
-            !$OMP SINGLE NOWAIT
+            !$OMP SINGLE
             call mf_gradx_u_v(mat, solv%globsyst, nr_total, array_in, tmp2)
-            !$OMP END SINGLE
+            !$OMP END SINGLE NOWAIT
             !$OMP END PARALLEL
 
             !$OMP PARALLEL
-            !$OMP WORKSHARE NOWAIT
+            !$OMP WORKSHARE
             array_out = array_out + tmp1 + tmp2
             !$OMP END WORKSHARE
             !$OMP END PARALLEL
@@ -840,7 +840,7 @@ contains
                 end do
             end do
         end do  
-        !$OMP END DO NOWAIT
+        !$OMP END DO
         !$OMP END PARALLEL
         deallocate(stmp, btmp)
         allocate(tmp1(nr_u*nr_v*nr_w*nr_t))

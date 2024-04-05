@@ -1,6 +1,6 @@
 ! ==============================================
-! In this module, one could find functions to compute thermal properties and jacobian given the data at control points
-! For mechanical properties, we suggest to go to plasticity module
+! In this module, parallelization is only possible 
+! if we compile functions as a static library
 ! ==============================================
 
 subroutine stiffmass_eigendecomposition_dense(nr, A, B, eigval, eigvec)
@@ -92,7 +92,7 @@ end subroutine eval_normal
 
 subroutine eval_inverse_det(nr, nnz, M, detM, invM)
     !! Computes the inverse and determinant of a matrix in a format (:, :, nnz)
-    use omp_lib
+
     implicit none 
     ! Input / output data
     ! ------------------- 
@@ -105,16 +105,11 @@ subroutine eval_inverse_det(nr, nnz, M, detM, invM)
 
     ! Local data
     !-----------
-    integer :: i, nb_tasks
+    integer :: i
 
-    !$OMP PARALLEL
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, size(detM)/nb_tasks) 
     do i = 1, size(detM)
         call MatrixInv(invM(:, :, i), M(:, :, i), detM(i), nr)
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine eval_inverse_det
 
@@ -124,7 +119,6 @@ subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, 
     !! Computes jacobien matrix, its determinant and its inverse in 3D
     !! IN CSR FORMAT
     
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------  
@@ -145,7 +139,7 @@ subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, 
 
     ! Local data
     !-----------
-    integer :: i, j, nb_tasks, beta(dimen)
+    integer :: i, j, beta(dimen)
     integer :: indi_T_u, indi_T_v, indi_T_w, indi_T_t
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1), indi_T_t(nc_t+1)
     integer :: indj_T_u, indj_T_v, indj_T_w, indj_T_t
@@ -159,9 +153,6 @@ subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, 
     call multicsr2csc(2, nr_t, nc_t, nnz_t, data_B_t, indj_t, indi_t, data_BT_t, indj_T_t, indi_T_t)
 
     ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
     do j = 1, dimen
         do i = 1, nm
             beta = 1; beta(j) = 2
@@ -173,8 +164,6 @@ subroutine eval_jacobien_4d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, 
                             u_ctrlpts(i, :), JJ(i, j, :))
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine eval_jacobien_4d
 
@@ -184,7 +173,6 @@ subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v
     !! Computes jacobien matrix, its determinant and its inverse in 3D
     !! IN CSR FORMAT
     
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------  
@@ -204,7 +192,7 @@ subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v
 
     ! Local data
     !-----------
-    integer :: i, j, nb_tasks, beta(dimen)
+    integer :: i, j, beta(dimen)
     integer :: indi_T_u, indi_T_v, indi_T_w
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1), indi_T_w(nc_w+1)
     integer :: indj_T_u, indj_T_v, indj_T_w
@@ -216,10 +204,6 @@ subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v
     call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
     call multicsr2csc(2, nr_w, nc_w, nnz_w, data_B_w, indj_w, indi_w, data_BT_w, indj_T_w, indi_T_w)
 
-    ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO COLLAPSE(2) SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
     do j = 1, dimen
         do i = 1, nm
             beta = 1; beta(j) = 2
@@ -230,8 +214,6 @@ subroutine eval_jacobien_3d(nm, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v
                             u_ctrlpts(i, :), JJ(i, j, :))
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
 
 end subroutine eval_jacobien_3d
 
@@ -260,32 +242,30 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
 
     ! Local data
     !-----------
-    integer :: i, j, nb_tasks, beta(2)
+    integer :: i, j, beta(2)
     integer :: indi_T_u, indi_T_v
     dimension :: indi_T_u(nc_u+1), indi_T_v(nc_v+1)
     integer ::  indj_T_u, indj_T_v
     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+    double precision :: tmp(size(JJ, dim=3))
 
     call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
-    
-    ! Compute jacobien matrix
-    !$OMP PARALLEL PRIVATE(beta)
-    nb_tasks = omp_get_num_threads()
-    !$OMP DO SCHEDULE(STATIC, dimen*dimen/nb_tasks) 
+        
     do j = 1, dimen
         do i = 1, nm
+            print*, i, j, omp_get_level()
             beta = 1; beta(j) = 2
             call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-                            u_ctrlpts(i, :), JJ(i, j, :))
+                            u_ctrlpts(i, :), tmp)
+            JJ(i, j, :) = tmp
         end do
     end do
-    !$OMP END DO NOWAIT
-    !$OMP END PARALLEL 
+    print*, 'End computation'
 
 end subroutine eval_jacobien_2d
 
@@ -451,6 +431,7 @@ subroutine interpolate_meshgrid_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
+    double precision :: tmp(size(u_interp, dim=2))
 
     call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
@@ -459,7 +440,8 @@ subroutine interpolate_meshgrid_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
         call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, 1), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, 1), &
-                            u_ctrlpts(i, :), u_interp(i, :))
+                            u_ctrlpts(i, :), tmp)
+        u_interp(i, :) = tmp
     end do
 
 end subroutine interpolate_meshgrid_2d
