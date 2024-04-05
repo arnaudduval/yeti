@@ -45,21 +45,21 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i!, nb_tasks
+        integer :: i, nb_tasks
 
         if ((.not.associated(mat%invJ)).or.(.not.associated(mat%detJ))) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Kprop(mat%dimen, mat%dimen, nnz))
 
-        !!!$OMP PARALLEL
-        !!nb_tasks = omp_get_num_threads()
-        !!!$OMP DO SCHEDULE(STATIC, mat%ncols_sp/nb_tasks) 
-        do i = 1, mat%ncols_sp
+        !$OMP PARALLEL
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks) 
+        do i = 1, nnz
             mat%Kprop(:, :, i) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, i), &
                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
-        !!!$OMP END DO
-        !!!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -70,20 +70,20 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        integer :: i!, nb_tasks
+        integer :: i, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Cprop(nnz))
 
-        !!!$OMP PARALLEL
-        !!nb_tasks = omp_get_num_threads()
-        !!!$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        !$OMP PARALLEL
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
         do i = 1, nnz
             mat%Cprop(i) = prop(i)*mat%detJ(i)
         end do
-        !!!$OMP END DO
-        !!!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_capacityprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -94,19 +94,19 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        integer :: i!, nb_tasks
+        integer :: i, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
-        !!!$OMP PARALLEL
-        !nb_tasks = omp_get_num_threads()
-        !!!$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        !$OMP PARALLEL
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
         do i = 1, nnz
             mat%Hprop(i) = prop(i)*mat%detJ(i)
         end do
-        !!!$OMP END DO
-        !!!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_thmchcoupledprop
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)

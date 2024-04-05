@@ -231,6 +231,7 @@ class heatproblem(problem):
 	
 	def compute_mfConductivity(self, array_in, args=None):
 		if args is None: args = {'position': self.part.qpPhy}
+		if self.heatmaterial._isConductivityIsotropic: args = self.part.qpPhy
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
@@ -239,6 +240,7 @@ class heatproblem(problem):
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
 		if args is None: args = {'position': self.part.qpPhy}
+		if self.heatmaterial._isCapacityIsotropic: args = self.part.qpPhy
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_capacity_2d(*inpts, array_in)
@@ -260,7 +262,11 @@ class heatproblem(problem):
 	
 	def solveEigenProblem(self, ishigher=False, args=None):
 		if args is None: args = {'position': self.part.qpPhy}
+		if self.heatmaterial._isCapacityIsotropic: args = self.part.qpPhy
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
+
+		if args is None: args = {'position': self.part.qpPhy}
+		if self.heatmaterial._isConductivityIsotropic: args = self.part.qpPhy
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				Cprop, Kprop, ishigher, self._itersLin, self._thresLin]

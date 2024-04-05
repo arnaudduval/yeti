@@ -65,6 +65,8 @@ if not dataExist:
 		# ------------------
 		# Compute MF product
 		# ------------------
+		enablePrint()
+
 		print('******')
 		start = time.time()
 		problem.compute_mfCapacity(v_in)
@@ -79,8 +81,6 @@ if not dataExist:
 		print('Time Conductivity:%.2e' %(stop-start))
 		# timeMF_Stiff_matrix[i, 1] = stop - start
 		# # np.savetxt(folder_data+'matvec_MF_Stiff_'+'.dat', timeMF_Stiff_matrix)
-
-		enablePrint()
 
 
 else:
