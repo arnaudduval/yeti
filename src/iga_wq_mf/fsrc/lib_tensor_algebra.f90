@@ -3,6 +3,7 @@
 ! ---------------
 module sumfactorization
     use omp_lib
+    implicit none
     contains
 
     subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
@@ -27,107 +28,111 @@ module sumfactorization
         ! Local data
         ! ----------
         double precision, allocatable, dimension(:, :) :: Rt, Xt
-        integer :: ju, jv, jw, jt!, nb_tasks
+        integer :: ju, jv, jw, jt, offset1, offset2
 
         R = 0.d0
         if (mode.eq.1) then 
 
             allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
+                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w
                     do jv = 1, nc_v
                         do ju = 1, nc_u
-                            Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(ju, jv) = X(ju+(jv-1)*nc_u+offset1)
                         end do
                     end do
                     Rt = matmul(U, Xt)
                     do jv = 1, nc_v
                         do ju = 1, nr
-                            R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
+                            R(ju+(jv-1)*nr+offset2) = Rt(ju, jv)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.2) then 
 
             allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
+                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w
                     do ju = 1, nc_u
                         do jv = 1, nc_v
-                            Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jv, ju) = X(ju+(jv-1)*nc_u+offset1)
                         end do
                     end do
                     Rt = matmul(U, Xt)
                     do ju = 1, nc_u
                         do jv = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
+                            R(ju+(jv-1)*nc_u+offset2) = Rt(jv, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
             
         else if (mode.eq.3) then 
 
             allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jw)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_v/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jv = 1, nc_v
+                    offset1 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nr
                     do ju = 1, nc_u
                         do jw = 1, nc_w
-                            Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jw, ju) = X(ju+(jw-1)*nc_u*nc_v+offset1)
                         end do
                     end do
                     Rt = matmul(U, Xt)
                     do ju = 1, nc_u
                         do jw = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
+                            R(ju+(jw-1)*nc_u*nc_v+offset2) = Rt(jw, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.4) then 
             
             allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jt)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
+                    offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
+                    offset2 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
                     do ju = 1, nc_u
                         do jt = 1, nc_t
-                            Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jt, ju) = X(ju+(jt-1)*nc_u*nc_v*nc_w+offset1)
                         end do
                     end do
                     Rt = matmul(U, Xt)
                     do ju = 1, nc_u
                         do jt = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
+                            R(ju+(jt-1)*nc_u*nc_v*nc_w+offset2) = Rt(jt, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         end if
@@ -157,107 +162,111 @@ module sumfactorization
 
         ! Local data
         ! ----------
-        integer :: ju, jv, jw, jt!, nb_tasks
         double precision, allocatable, dimension(:, :) :: Xt, Rt
+        integer :: ju, jv, jw, jt, offset1, offset2
 
         if (mode.eq.1) then 
 
             allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, jv, ju)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
+                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w
                     do jv = 1, nc_v
                         do ju = 1, nc_u
-                            Xt(ju, jv) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(ju, jv) = X(ju+(jv-1)*nc_u+offset1)
                         end do
                     end do
                     call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_u, nc_v, Xt, Rt)
                     do jv = 1, nc_v
                         do ju = 1, nr
-                            R(ju+(jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w) = Rt(ju, jv)
+                            R(ju+(jv-1)*nr+offset2) = Rt(ju, jv)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.2) then 
 
             allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_w/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
+                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w
                     do ju = 1, nc_u
                         do jv = 1, nc_v
-                            Xt(jv, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jv, ju) = X(ju+(jv-1)*nc_u+offset1)
                         end do
                     end do
                     call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_v, nc_u, Xt, Rt)
                     do ju = 1, nc_u
                         do jv = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w) = Rt(jv, ju)
+                            R(ju+(jv-1)*nc_u+offset2) = Rt(jv, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.3) then 
 
             allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jw)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_t*nc_v/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jv = 1, nc_v
+                    offset1 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
+                    offset2 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nr
                     do ju = 1, nc_u
                         do jw = 1, nc_w
-                            Xt(jw, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jw, ju) = X(ju+(jw-1)*nc_u*nc_v+offset1)
                         end do
                     end do
                     call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_w, nc_u, Xt, Rt)
                     do ju = 1, nc_u
                         do jw = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nr) = Rt(jw, ju)
+                            R(ju+(jw-1)*nc_u*nc_v+offset2) = Rt(jw, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.4) then 
             
             allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
-            !!!$OMP PARALLEL PRIVATE(Xt, Rt, ju, jt)
-            !nb_tasks = omp_get_num_threads()
-            !!!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, nc_w*nc_v/nb_tasks) 
+            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
+                    offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
+                    offset2 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
                     do ju = 1, nc_u
                         do jt = 1, nc_t
-                            Xt(jt, ju) = X(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w)
+                            Xt(jt, ju) = X(ju+(jt-1)*nc_u*nc_v*nc_w+offset1)
                         end do
                     end do
                     call spmat_dot_dmat(nr, nnz, indi, indj, dat, nc_t, nc_u, Xt, Rt)
                     do ju = 1, nc_u
                         do jt = 1, nr
-                            R(ju+(jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w) = Rt(jt, ju)
+                            R(ju+(jt-1)*nc_u*nc_v*nc_w+offset2) = Rt(jt, ju)
                         end do
                     end do
                 end do
             end do
-            !!!$OMP END DO 
-            !!!$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         end if
