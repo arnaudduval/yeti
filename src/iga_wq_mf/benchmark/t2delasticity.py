@@ -131,8 +131,8 @@ else:
 
 ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
-# ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-# 		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
 
 ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
 # ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')

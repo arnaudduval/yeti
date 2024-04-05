@@ -229,12 +229,35 @@ def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True):
 	"""
 	assert degree >=0, 'Degree must be a positive integer'
 
+	def evalBasisDegreeZero(knotvector, i, knot):
+		nbctrlpts = len(knotvector) - 1; basis = 0
+		if i == 0:
+			if knot-knotvector[1]<0 and knot-knotvector[0]>=0: basis = 1
+		elif i == nbctrlpts-1:
+			if knot-knotvector[-1]<=0 and knot-knotvector[-2]>0: basis = 1
+		else:
+			if knot-knotvector[i+1]<0 and knot-knotvector[i]>0: basis = 1
+		return basis
+
+	def evalAllBasisDegreeZero(knotvector, knots):
+		nbctrlpts = len(knotvector) - 1
+		basis, indices = [], []
+		for i in range(nbctrlpts):
+			for j, knot in enumerate(knots):
+				tmp = evalBasisDegreeZero(knotvector, i, knot)
+				if tmp != 0: basis.append([1, 0]); indices.append([i, j])
+		basis = np.array(basis); indices = np.array(indices)
+		return basis, indices
+
 	nbknots   = len(knots)
 	nbctrlpts = len(knotvector) - degree - 1
 	uvk  = np.unique(knotvector)
 	nbel = len(uvk) - 1 
 
-	if degree > 0:
+	if degree == 0: 
+		basis, indices = evalAllBasisDegreeZero(knotvector, knots)
+
+	else:
 		basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
 		table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
 		table_functions_physpan[0, :] = np.arange(degree + 1) 
@@ -250,25 +273,12 @@ def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True):
 			phy_span  = findInterpolationSpan(uvk, knot)
 			functions_span = table_functions_physpan[phy_span, :]
 			B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
+			# if (knot>0 and knot<1) and (knot in uvk) and (degree==1): B1t = [0.0, 0.0]
 
 			for j in range(degree + 1):
 				basis[k, :] = [B0t[j], B1t[j]]
 				indices[k, :] = [functions_span[j], i]
 				k += 1
-
-	elif degree == 0:
-		basis, indices = [], []
-		for j, knot in enumerate(knots):
-				if knot-knotvector[1]<0 and knot-knotvector[0]>=0:
-					basis.append([1, 0]); indices.append([0, j])
-		for i in range(1, nbctrlpts-1):
-			for j, knot in enumerate(knots):
-				if knot-knotvector[i+1]<0 and knot-knotvector[i]>0:
-					basis.append([1, 0]); indices.append([i, j])
-		for j, knot in enumerate(knots):
-				if knot-knotvector[-1]<=0 and knot-knotvector[-2]>0:
-					basis.append([1, 0]); indices.append([nbctrlpts-1, j])
-		basis = np.array(basis); indices = np.array(indices)
 
 	basis_csr, indi_csr, indj_csr = coo2csr(basis, indices[:, 0], indices[:, 1])	
 	if isfortran: indi_csr += 1

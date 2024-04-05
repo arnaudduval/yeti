@@ -54,7 +54,7 @@ if FIG_CASE == 0:
 	if TODOSIMU:
 		degree_list = np.array([1, 2, 3, 4, 5])
 		cuts_list   = np.arange(1, 6)
-		for quadrule, quadtype in zip(['iga', 'wq'], ['leg', 2]):
+		for quadrule, quadtype in zip(['iga', 'wq'], ['leg', 1]):
 			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			L2errorTable = np.zeros((len(degree_list)+1, len(cuts_list)+1))
@@ -90,7 +90,7 @@ if FIG_CASE == 0:
 
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	figname = folder + 'SPTNonLinearConvergenceL2'+lastsufix+'.pdf'
-	filenames = ['L2error_meshpar_iga_leg_', 'L2error_meshpar_wq_2_']
+	filenames = ['L2error_meshpar_iga_leg_', 'L2error_meshpar_wq_1_']
 
 	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 	fig, ax = plt.subplots(figsize=(8, 6))
@@ -209,7 +209,7 @@ elif FIG_CASE == 1:
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
 													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree, 
-													quadArgs={'quadrule':'wq', 'type':3})
+													quadArgs={'quadrule':'wq', 'type':1})
 					
 				end = time.process_time()
 				time_list3[i, j] = end - start
