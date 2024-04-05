@@ -1,7 +1,7 @@
 ! ---------------
 ! Tensor algebra 
 ! ---------------
-module sumfactorization
+module tensormode
     use omp_lib
     implicit none
     contains
@@ -273,7 +273,7 @@ module sumfactorization
 
     end subroutine tensor_n_mode_product_spM
 
-end module sumfactorization
+end module tensormode
 
 subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     !! Evaluates a dot product between a tensor 2D and a vector using sum factorization
@@ -282,7 +282,7 @@ subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     !! Matrix Mu = (nb_rows_u, nb_cols_u)
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data
     ! -------------------
@@ -315,7 +315,7 @@ subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_i
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data 
     ! -------------------
@@ -352,7 +352,7 @@ subroutine sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv,
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data 
     ! -------------------
@@ -393,7 +393,7 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
     !! Matrix Mu = (nb_rows_u, nb_cols_u)
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Vector_in = (nb_cols_u * nb_cols_v)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data
     ! -------------------
@@ -430,7 +430,7 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data
     ! -------------------
@@ -472,7 +472,7 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
     !! Matrix Mv = (nb_rows_v, nb_cols_v)
     !! Matrix Mw = (nb_rows_w, nb_cols_w)
     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
-    use sumfactorization
+    use tensormode
     implicit none 
     ! Input / output data
     ! -------------------
