@@ -45,21 +45,21 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, nb_tasks
+        integer :: i!, nb_tasks
 
         if ((.not.associated(mat%invJ)).or.(.not.associated(mat%detJ))) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Kprop(mat%dimen, mat%dimen, nnz))
 
-        !$OMP PARALLEL
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, mat%ncols_sp/nb_tasks) 
+        !!!$OMP PARALLEL
+        !!nb_tasks = omp_get_num_threads()
+        !!!$OMP DO SCHEDULE(STATIC, mat%ncols_sp/nb_tasks) 
         do i = 1, mat%ncols_sp
             mat%Kprop(:, :, i) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, i), &
                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)
         end do
-        !$OMP END DO
-        !$OMP END PARALLEL
+        !!!$OMP END DO
+        !!!$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -70,20 +70,20 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        integer :: i, nb_tasks
+        integer :: i!, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Cprop(nnz))
 
-        !$OMP PARALLEL
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        !!!$OMP PARALLEL
+        !!nb_tasks = omp_get_num_threads()
+        !!!$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
         do i = 1, nnz
             mat%Cprop(i) = prop(i)*mat%detJ(i)
         end do
-        !$OMP END DO
-        !$OMP END PARALLEL
+        !!!$OMP END DO
+        !!!$OMP END PARALLEL
     end subroutine setup_capacityprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -94,19 +94,19 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
-        integer :: i, nb_tasks
+        integer :: i!, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
-        !$OMP PARALLEL
-        nb_tasks = omp_get_num_threads()
-        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        !!!$OMP PARALLEL
+        !nb_tasks = omp_get_num_threads()
+        !!!$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
         do i = 1, nnz
             mat%Hprop(i) = prop(i)*mat%detJ(i)
         end do
-        !$OMP END DO
-        !$OMP END PARALLEL
+        !!!$OMP END DO
+        !!!$OMP END PARALLEL
     end subroutine setup_thmchcoupledprop
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
@@ -285,11 +285,11 @@ contains
                                 tmp_in, tmp)
         end if
 
-        !$OMP PARALLEL
-        !$OMP WORKSHARE 
+        !!!$OMP PARALLEL
+        !!!$OMP WORKSHARE 
         tmp = tmp*mat%Cprop
-        !$OMP END WORKSHARE
-        !$OMP END PARALLEL
+        !!!$OMP END WORKSHARE
+        !!!$OMP END PARALLEL
 
         if (basisdata%dimen.eq.2) then
             call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
@@ -374,11 +374,11 @@ contains
             do i = 1, basisdata%dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
-                !$OMP PARALLEL
-                !$OMP WORKSHARE 
+                !!!$OMP PARALLEL
+                !!!$OMP WORKSHARE 
                 tmp_1 = tmp_0*mat%Kprop(i, j, :)
-                !$OMP END WORKSHARE
-                !$OMP END PARALLEL
+                !!!$OMP END WORKSHARE
+                !!!$OMP END PARALLEL
                 
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
@@ -418,21 +418,21 @@ contains
         double precision :: array_tmp1, array_tmp2
         dimension :: array_tmp1(nr_total), array_tmp2(nr_total)
 
-        !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-        !$OMP SINGLE 
+        !!!$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
+        !!!$OMP SINGLE 
         call mf_u_v(mat, basisdata, nr_total, array_in, array_tmp1)
-        !$OMP END SINGLE NOWAIT
+        !!!$OMP END SINGLE NOWAIT
 
-        !$OMP SINGLE 
+        !!!$OMP SINGLE 
         call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp2)
-        !$OMP END SINGLE NOWAIT
-        !$OMP END PARALLEL
+        !!!$OMP END SINGLE NOWAIT
+        !!!$OMP END PARALLEL
 
-        !$OMP PARALLEL
-        !$OMP WORKSHARE
+        !!!$OMP PARALLEL
+        !!!$OMP WORKSHARE
         array_out = mat%scalars(1)*array_tmp1 + mat%scalars(2)*array_tmp2
-        !$OMP END WORKSHARE
-        !$OMP END PARALLEL
+        !!!$OMP END WORKSHARE
+        !!!$OMP END PARALLEL
 
     end subroutine mf_uv_gradugradv
 
@@ -502,20 +502,20 @@ contains
                                     array_in(i, :), t1)  
             end if
 
-            !$OMP PARALLEL
-            !$OMP WORKSHARE
+            !!!$OMP PARALLEL
+            !!!$OMP WORKSHARE
             t1 = t1*mat%Hprop
-            !$OMP END WORKSHARE
-            !$OMP END PARALLEL
+            !!!$OMP END WORKSHARE
+            !!!$OMP END PARALLEL
             
             do k = 1, basisdata%dimen
                 alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
 
-                !$OMP PARALLEL
-                !$OMP WORKSHARE
+                !!!$OMP PARALLEL
+                !!!$OMP WORKSHARE
                 t2 = t1*mat%invJ(k, i, :)
-                !$OMP END WORKSHARE
-                !$OMP END PARALLEL
+                !!!$OMP END WORKSHARE
+                !!!$OMP END PARALLEL
                 
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
@@ -633,11 +633,11 @@ contains
         end if
 
         if (solv%withdiag) then
-            !$OMP PARALLEL 
-            !$OMP WORKSHARE
+            !!!$OMP PARALLEL 
+            !!!$OMP WORKSHARE
             tmp = tmp/solv%redsyst%diageigval_sp
-            !$OMP END WORKSHARE
-            !$OMP END PARALLEL
+            !!!$OMP END WORKSHARE
+            !!!$OMP END PARALLEL
         end if
 
         allocate(tmp2(nr_u*nr_v*nr_w))
