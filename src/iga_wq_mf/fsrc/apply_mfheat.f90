@@ -1,4 +1,5 @@
 module matrixfreeheat
+    use omp_lib
     use structured_data
     implicit none
     type thermomat
@@ -34,7 +35,6 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -70,11 +70,20 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
+        integer :: i, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Cprop(nnz))
-        mat%Cprop = prop*mat%detJ
+
+        !$OMP PARALLEL
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        do i = 1, nnz
+            mat%Cprop(i) = prop(i)*mat%detJ(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
     end subroutine setup_capacityprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -85,11 +94,19 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
+        integer :: i, nb_tasks
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
-        mat%Hprop = prop*mat%detJ
+        !$OMP PARALLEL
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO SCHEDULE(STATIC, nnz/nb_tasks)
+        do i = 1, nnz
+            mat%Hprop(i) = prop(i)*mat%detJ(i)
+        end do
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
     end subroutine setup_thmchcoupledprop
 
     subroutine compute_separationvariables(mat, nc_list, univMcoefs, univKcoefs)
@@ -268,7 +285,11 @@ contains
                                 tmp_in, tmp)
         end if
 
+        !$OMP PARALLEL
+        !$OMP WORKSHARE NOWAIT
         tmp = tmp*mat%Cprop
+        !$OMP END WORKSHARE
+        !$OMP END PARALLEL
 
         if (basisdata%dimen.eq.2) then
             call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
@@ -354,8 +375,12 @@ contains
             do i = 1, basisdata%dimen
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
+                !$OMP PARALLEL
+                !$OMP WORKSHARE NOWAIT
                 tmp_1 = tmp_0*mat%Kprop(i, j, :)
-
+                !$OMP END WORKSHARE
+                !$OMP END PARALLEL
+                
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -391,15 +416,25 @@ contains
 
         ! Local data
         ! ---------------
-        double precision :: array_tmp
-        dimension :: array_tmp(nr_total)
+        double precision :: array_tmp1, array_tmp2
+        dimension :: array_tmp1(nr_total), array_tmp2(nr_total)
 
-        call mf_u_v(mat, basisdata, nr_total, array_in, array_out)
-        array_out = mat%scalars(1)*array_out
+        !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
+        !$OMP SINGLE NOWAIT
+        call mf_u_v(mat, basisdata, nr_total, array_in, array_tmp1)
+        !$OMP END SINGLE
 
-        call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp)
-        array_out = array_out + mat%scalars(2)*array_tmp
-        
+        !$OMP SINGLE NOWAIT
+        call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp2)
+        !$OMP END SINGLE
+        !$OMP END PARALLEL
+
+        !$OMP PARALLEL
+        !$OMP WORKSHARE NOWAIT
+        array_out = mat%scalars(1)*array_tmp1 + mat%scalars(2)*array_tmp2
+        !$OMP END WORKSHARE
+        !$OMP END PARALLEL
+
     end subroutine mf_uv_gradugradv
 
     subroutine mf_gradu_tv(mat, basisdata, nr_total, array_in, array_out)
@@ -468,10 +503,20 @@ contains
                                     array_in(i, :), t1)  
             end if
 
+            !$OMP PARALLEL
+            !$OMP WORKSHARE NOWAIT
             t1 = t1*mat%Hprop
+            !$OMP END WORKSHARE
+            !$OMP END PARALLEL
+            
             do k = 1, basisdata%dimen
                 alpha = 1; alpha(k) = 2; zeta = beta + (alpha - 1)*2
+                !$OMP PARALLEL
+                !$OMP WORKSHARE NOWAIT
                 t2 = t1*mat%invJ(k, i, :)
+                !$OMP END WORKSHARE
+                !$OMP END PARALLEL
+                
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -493,7 +538,7 @@ contains
 end module matrixfreeheat
 
 module heatsolver
-
+    use omp_lib
     use matrixfreeheat
     use structured_data
     type cgsolver
@@ -587,7 +632,13 @@ contains
                         array_in(solv%redsyst%dof), tmp)
         end if
 
-        if (solv%withdiag) tmp = tmp/solv%redsyst%diageigval_sp
+        if (solv%withdiag) then
+            !$OMP PARALLEL 
+            !$OMP WORKSHARE NOWAIT
+            tmp = tmp/solv%redsyst%diageigval_sp
+            !$OMP END WORKSHARE 
+            !$OMP END PARALLEL
+        end if
 
         allocate(tmp2(nr_u*nr_v*nr_w))
         if (solv%globsyst%dimen.eq.2) then

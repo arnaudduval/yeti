@@ -1,4 +1,5 @@
 module matrixfreestheat
+    use omp_lib
     use structured_data
     implicit none
     type stthermomat
@@ -41,7 +42,6 @@ contains
     end subroutine setup_geometry
 
     subroutine setup_conductivityprop(mat, nnz, prop)
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -73,7 +73,6 @@ contains
     end subroutine setup_conductivityprop
 
     subroutine setup_conductivityDersprop(mat, nnz, prop)
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -104,7 +103,6 @@ contains
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -136,7 +134,6 @@ contains
     end subroutine setup_capacityprop
 
     subroutine setup_capacityDersprop(mat, nnz, prop)
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -342,8 +339,12 @@ contains
                                 array_in, tmp)
         end if
 
+        !$OMP PARALLEL
+        !$OMP WORKSHARE NOWAIT
         tmp = tmp*mat%Cdersprop
-
+        !$OMP END WORKSHARE
+        !$OMP END PARALLEL
+        
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
                                 nnz_u, indi_u, indj_u, data_W_u(:, 1), &
@@ -431,7 +432,11 @@ contains
                                 array_in, tmp)
         end if
 
+        !$OMP PARALLEL
+        !$OMP WORKSHARE NOWAIT
         tmp = tmp*mat%Cprop
+        !$OMP END WORKSHARE
+        !$OMP END PARALLEL
 
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -526,7 +531,13 @@ contains
         do i = 1, mat%dimen_sp
             alpha = 1; alpha(i) = 2
             zeta  = 1 + (alpha - 1)*2
+
+            !$OMP PARALLEL
+            !$OMP WORKSHARE NOWAIT
             tmp_1 = tmp_0*mat%Kdersprop(i, :)
+            !$OMP END WORKSHARE
+            !$OMP END PARALLEL
+            
             if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                     nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -623,7 +634,13 @@ contains
             do i = 1, mat%dimen_sp
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
+
+                !$OMP PARALLEL
+                !$OMP WORKSHARE NOWAIT
                 tmp_1 = tmp_0*mat%Kprop(i, j, :)
+                !$OMP END WORKSHARE
+                !$OMP END PARALLEL
+                
                 if (basisdata%dimen.eq.3) then
                     call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -646,7 +663,7 @@ contains
 end module matrixfreestheat
 
 module stheatsolver
-
+    use omp_lib
     use matrixfreestheat
     use structured_data
     type stcgsolver
@@ -675,18 +692,42 @@ contains
         
         ! Local data
         ! ----------
-        double precision :: tmp(nr_total)
+        double precision :: tmp1(nr_total), tmp2(nr_total)
 
-        call mf_u_partialt_v(mat, solv%globsyst, nr_total, array_in, array_out)
-        call mf_gradx_u_gradx_v(mat, solv%globsyst, nr_total, array_in, tmp)
-        array_out = array_out + tmp
+        !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
+        !$OMP SINGLE NOWAIT
+        call mf_u_partialt_v(mat, solv%globsyst, nr_total, array_in, tmp1)
+        !$OMP END SINGLE
 
+        !$OMP SINGLE NOWAIT
+        call mf_gradx_u_gradx_v(mat, solv%globsyst, nr_total, array_in, tmp2)
+        !$OMP END SINGLE
+        !$OMP END PARALLEL
+
+        !$OMP PARALLEL
+        !$OMP WORKSHARE NOWAIT
+        array_out = tmp1 + tmp2
+        !$OMP END WORKSHARE
+        !$OMP END PARALLEL
+        
         if (solv%matrixfreetype.eq.1) return 
         if (solv%matrixfreetype.eq.2) then
-            call mf_u_v(mat, solv%globsyst, nr_total, array_in, tmp)
-            array_out = array_out + tmp
-            call mf_gradx_u_v(mat, solv%globsyst, nr_total, array_in, tmp)
-            array_out = array_out + tmp
+            !$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
+            !$OMP SINGLE NOWAIT
+            call mf_u_v(mat, solv%globsyst, nr_total, array_in, tmp1)
+            !$OMP END SINGLE
+
+            !$OMP SINGLE NOWAIT
+            call mf_gradx_u_v(mat, solv%globsyst, nr_total, array_in, tmp2)
+            !$OMP END SINGLE
+            !$OMP END PARALLEL
+
+            !$OMP PARALLEL
+            !$OMP WORKSHARE NOWAIT
+            array_out = array_out + tmp1 + tmp2
+            !$OMP END WORKSHARE
+            !$OMP END PARALLEL
+            
         else
             stop 'Not coded'
         end if
@@ -742,7 +783,7 @@ contains
     
         ! Local data
         ! ----------
-        integer :: pos_tm, i, j, k, l
+        integer :: pos_tm, i, j, k, l, nb_tasks
         integer :: nr_u, nr_v, nr_w, nr_t
         double precision, allocatable, dimension(:, :) :: identity
         double precision, allocatable, dimension(:) :: tmp1, tmp3, btmp, stmp
@@ -784,6 +825,10 @@ contains
         tmp2 = reshape(tmp1, shape=(/nr_u, nr_v, nr_w, nr_t/))
         deallocate(tmp1)
         allocate(btmp(nr_t), stmp(nr_t))
+
+        !$OMP PARALLEL PRIVATE(l, eigval, btmp, stmp)
+        nb_tasks = omp_get_num_threads()
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr_w*nr_v*nr_u/nb_tasks) 
         do k = 1, nr_w
             do j = 1, nr_v
                 do i = 1, nr_u
@@ -795,6 +840,8 @@ contains
                 end do
             end do
         end do  
+        !$OMP END DO NOWAIT
+        !$OMP END PARALLEL
         deallocate(stmp, btmp)
         allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
         tmp1 = pack(tmp2, .true.)
