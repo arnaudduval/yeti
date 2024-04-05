@@ -368,9 +368,9 @@ class WeightedQuadrature(QuadratureRules):
 		
 		tmp = []
 		# Computation of W00
-		Ishape = Bcgg_p0_int @ Bcgg_p0_int.T 
-		II = B0cgg_p0 @ sp.diags(gauss_p0._parametricWeights) @ B0cgg_p0.T
-		tmp.append(self.__compute_weights(Ishape, self._Bshape[0]-1, II.todense(), B0wq_p0.todense()))
+		Ishape = Bcgg_p1_int @ Bcgg_p0_int.T 
+		II = B0cgg_p1 @ sp.diags(gauss_p0._parametricWeights) @ B0cgg_p0.T
+		tmp.append(self.__compute_weights(Ishape, self._Bshape[0]-1, II.todense(), B0wq_p1.todense()))
 
 		# Computation of W11
 		Ishape = Bcgg_p1_int @ Bcgg_p0_int.T
@@ -399,9 +399,9 @@ class WeightedQuadrature(QuadratureRules):
 		if (self._wqType == 1 or self._wqType == 3) and self.degree == 1: 
 			basis, weights, indi, indj = self.__getWeightsM1()
 		else: 
-			basis, weights, indi, indj = self.__getWeightsM2()
-			# basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
-			# 										self._Bshape[0], self._Bshape[1], size_data, self._wqType)
+			# basis, weights, indi, indj = self.__getWeightsM2() # Activate when using only python
+			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
+													self._Bshape[0], self._Bshape[1], size_data, self._wqType)
 		self.dersBasis   = basis
 		self.dersWeights = weights
 		self.dersIndices = [indi, indj]
