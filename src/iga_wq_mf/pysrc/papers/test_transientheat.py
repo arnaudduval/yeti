@@ -33,20 +33,21 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 dataExist   = False
 geo_list    = ['cb', 'vb']
-IterMethods = ['C', 'JMC', 'TDC', 'WP']
+# IterMethods = ['C', 'JMC', 'TDC', 'WP']
+IterMethods = ['TDC']
 example     = 2
 if   example == 1: nbsteps = 41
 elif example == 2: nbsteps = 6
 
 if not dataExist:
 
-	degree, cuts = 4, 5
+	degree, cuts = 6, 6
 	time_list    = np.linspace(0, 0.25, nbsteps)  
 
 	for PCGmethod in IterMethods:
 		for geo in geo_list:
 			filename = folder + 'ResPCG_' + geo + '_' + PCGmethod + str(example) + '.dat'        
-
+			blockPrint()
 			# Create model 
 			geoArgs = {'name': geo, 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
@@ -82,10 +83,17 @@ if not dataExist:
 			Fext = np.kron(Fend, sigmoid(time_list))
 
 			# Solve
-			lastStep = 3
+			lastStep = 2
+			start = time.time()
 			resPCG = problem.solveFourierTransientProblem(Tinout=Tinout[:, :lastStep], Fext_list=Fext[:, :lastStep], 
 														time_list=time_list[:lastStep], alpha=1.0)
-			np.savetxt(filename, resPCG)
+			stop = time.time()
+			enablePrint()
+			print('*****')
+			print('time:%.2e'%(stop-start))
+			print('*****')
+			
+			# np.savetxt(filename, resPCG)
 
 else:
 

@@ -342,7 +342,7 @@ class heatproblem(problem):
 		dof = self.boundary.getThermalBoundaryConditionInfo()[-1]
 
 		# Compute inital velocity using interpolation
-		assert nsteps > 2, 'At least 2 steps'
+		assert nsteps >= 2, 'At least 2 steps'
 		V_n0 = np.zeros(nbctrlpts_total)
 		dt = time_list[1] - time_list[0]
 		V_n0[dod] = 1.0/dt*(Tinout[dod, 1] - Tinout[dod, 0])
