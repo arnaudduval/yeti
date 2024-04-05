@@ -70,14 +70,21 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 	output = problem.solveFourierSTHeatProblem(u_guess, Fext, isfull=False, isadaptive=True)
 	return problem, output
 
-degree, cuts = 2, 3
+degree, cuts = 6, 5
 quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
 start = time.time()
-for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
+# for j, pcgmethod in enumerate(['C', 'JMC', 'TDC']):
+for j, pcgmethod in enumerate(['JMC']):
+	blockPrint()
 	problemArgs = {'linearsolver':'GMRES', 'preconditioner':pcgmethod, 'thres_linear':1e-12}
+	start = time.time()
 	problem, output = simulate(degree, cuts, quadArgs, problemArgs=problemArgs)
+	stop = time.time()
 	resPCG = output['KrylovRes']
+	enablePrint()
+	print('time:%.2e'%(stop-start))
+
 	if pcgmethod == 'WP': pcgname = 'w.o. preconditioner'
 	elif pcgmethod == 'C' : pcgname = 'Classic FD method'
 	elif pcgmethod == 'TDC': pcgname = 'Literature'

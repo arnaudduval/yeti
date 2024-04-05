@@ -52,7 +52,7 @@ contains
         allocate(mat%Kprop(mat%dimen, mat%dimen, nnz))
 
         !$OMP PARALLEL 
-        !$OMP DO SCHEDULE(STATIC, nnz/omp_get_num_threads()) 
+        !$OMP DO SCHEDULE(STATIC) 
         do i = 1, nnz
             mat%Kprop(:, :, i) = matmul(mat%invJ(:, :, i), matmul(prop(:, :, i), &
                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)
@@ -98,7 +98,7 @@ contains
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC, nnz/omp_get_num_threads())
+        !$OMP DO SCHEDULE(STATIC)
         do i = 1, nnz
             mat%Hprop(i) = prop(i)*mat%detJ(i)
         end do
@@ -284,7 +284,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC, size(tmp)/omp_get_num_threads()) 
+        !$OMP DO SCHEDULE(STATIC) 
         do i = 1, size(tmp)
             tmp(i) = tmp(i)*mat%Cprop(i)
         end do
@@ -376,7 +376,7 @@ contains
                 zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP DO SCHEDULE(STATIC, size(tmp_1)/omp_get_num_threads()) 
+                !$OMP DO SCHEDULE(STATIC) 
                 do k = 1, size(tmp_1)
                     tmp_1(k) = tmp_0(k)*mat%Kprop(i, j, k)
                 end do
@@ -426,7 +426,7 @@ contains
         call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp2)
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC, nr_total/omp_get_num_threads()) 
+        !$OMP DO SCHEDULE(STATIC) 
         do i = 1, nr_total
             array_out(i) = mat%scalars(1)*array_tmp1(i) + mat%scalars(2)*array_tmp2(i)
         end do
@@ -502,7 +502,7 @@ contains
             end if
 
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC, size(t1)/omp_get_num_threads()) 
+            !$OMP DO SCHEDULE(STATIC) 
             do k = 1, size(t1)
                 t1(k) = t1(k)*mat%Hprop(k)
             end do
@@ -513,7 +513,7 @@ contains
                 alpha = 1; alpha(j) = 2; zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP DO SCHEDULE(STATIC, size(t1)/omp_get_num_threads()) 
+                !$OMP DO SCHEDULE(STATIC) 
                 do k = 1, size(t1)
                     t2(k) = t1(k)*mat%invJ(j, i, k)
                 end do
@@ -637,7 +637,7 @@ contains
 
         if (solv%withdiag) then           
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC, size(tmp)/omp_get_num_threads()) 
+            !$OMP DO SCHEDULE(STATIC) 
             do i = 1, size(tmp)
                 tmp(i) = tmp(i)/solv%redsyst%diageigval_sp(i)
             end do

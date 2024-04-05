@@ -52,15 +52,14 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k!, nb_tasks
+        integer :: i, j, k
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Kprop(mat%dimen_sp, mat%dimen_sp, nnz))
 
-        !!$OMP PARALLEL PRIVATE(k)
-        !nb_tasks = omp_get_num_threads()
-        !!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
+        !$OMP PARALLEL PRIVATE(k)
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC)
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
@@ -68,8 +67,8 @@ contains
                                     transpose(mat%invJ(:, :, i))))*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !!$OMP END DO
-        !!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_conductivityprop
 
     subroutine setup_conductivityDersprop(mat, nnz, prop)
@@ -83,23 +82,22 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k!, nb_tasks
+        integer :: i, j, k
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Kdersprop(mat%dimen_sp, nnz))
 
-        !!$OMP PARALLEL PRIVATE(k)
-        !nb_tasks = omp_get_num_threads()
-        !!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
+        !$OMP PARALLEL PRIVATE(k)
+        !$OMP DO COLLAPSE(2)  SCHEDULE(STATIC)
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Kdersprop(:, k) = matmul(mat%invJ(:, :, i), prop(:, k))*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !!$OMP END DO
-        !!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_conductivityDersprop
 
     subroutine setup_capacityprop(mat, nnz, prop)
@@ -113,23 +111,22 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k!, nb_tasks
+        integer :: i, j, k
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Cprop(nnz))
         
-        !!$OMP PARALLEL PRIVATE(k)
-        !nb_tasks = omp_get_num_threads()
-        !!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
+        !$OMP PARALLEL PRIVATE(k)
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC)
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Cprop(k) = prop(k)*mat%detJ(i)
             end do
         end do
-        !!$OMP END DO
-        !!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
 
     end subroutine setup_capacityprop
 
@@ -144,23 +141,22 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, j, k!, nb_tasks
+        integer :: i, j, k
 
         if ((.not.associated(mat%detJ)).or.(.not.associated(mat%detG))) stop 'Define geometry'
         if (nnz.ne.mat%ncols_total) stop 'Size problem'
         allocate(mat%Cdersprop(nnz))
 
-        !!$OMP PARALLEL PRIVATE(k)
-        !nb_tasks = omp_get_num_threads()
-        !!$OMP DO COLLAPSE(2) SCHEDULE(STATIC, mat%ncols_total/nb_tasks) 
+        !$OMP PARALLEL PRIVATE(k)
+        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC)
         do j = 1, mat%ncols_tm
             do i = 1, mat%ncols_sp
                 k = i + (j-1)*mat%ncols_sp
                 mat%Cdersprop(k) = prop(k)*mat%detJ(i)*mat%detG(j)
             end do
         end do
-        !!$OMP END DO
-        !!$OMP END PARALLEL
+        !$OMP END DO
+        !$OMP END PARALLEL
 
     end subroutine setup_capacityDersprop
 
@@ -285,7 +281,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm
+        integer :: pos_tm, i
         double precision :: tmp
         dimension :: tmp(basisdata%nc_total)
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
@@ -339,11 +335,13 @@ contains
                                 array_in, tmp)
         end if
 
-        !!$OMP PARALLEL
-        !!$OMP WORKSHARE
-        tmp = tmp*mat%Cdersprop
-        !!$OMP END WORKSHARE
-        !!$OMP END PARALLEL
+        !$OMP PARALLEL
+        !$OMP DO SCHEDULE(STATIC) 
+        do i = 1, size(tmp)
+            tmp(i) = tmp(i)*mat%Cdersprop(i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
         
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -378,7 +376,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: pos_tm
+        integer :: pos_tm, i
         double precision :: tmp
         dimension :: tmp(basisdata%nc_total)        
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
@@ -432,11 +430,13 @@ contains
                                 array_in, tmp)
         end if
 
-        !!$OMP PARALLEL
-        !!$OMP WORKSHARE
-        tmp = tmp*mat%Cprop
-        !!$OMP END WORKSHARE
-        !!$OMP END PARALLEL
+        !$OMP PARALLEL
+        !$OMP DO SCHEDULE(STATIC) 
+        do i = 1, size(tmp)
+            tmp(i) = tmp(i)*mat%Cprop(i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
 
         if (basisdata%dimen.eq.3) then
             call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
@@ -471,7 +471,7 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, i, alpha, zeta 
+        integer :: pos_tm, i, k, alpha, zeta 
         dimension :: alpha(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: tmp_0, tmp_1, tmp_2
         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(basisdata%nr_total)
@@ -532,11 +532,13 @@ contains
             alpha = 1; alpha(i) = 2
             zeta  = 1 + (alpha - 1)*2
 
-            !!$OMP PARALLEL
-            !!$OMP WORKSHARE
-            tmp_1 = tmp_0*mat%Kdersprop(i, :)
-            !!$OMP END WORKSHARE
-            !!$OMP END PARALLEL
+            !$OMP PARALLEL
+            !$OMP DO SCHEDULE(STATIC) 
+            do k = 1, size(tmp_1)
+                tmp_1(k) = tmp_0(k)*mat%Kdersprop(i, k)
+            end do
+            !$OMP END DO
+            !$OMP END PARALLEL
             
             if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
@@ -573,7 +575,7 @@ contains
 
         ! Local data 
         ! -----------
-        integer :: pos_tm, i, j, alpha, beta, zeta
+        integer :: pos_tm, i, j, k, alpha, beta, zeta
         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: tmp_0, tmp_1, tmp_2
         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(basisdata%nr_total)
@@ -635,11 +637,13 @@ contains
                 alpha = 1; alpha(i) = 2
                 zeta = beta + (alpha - 1)*2
 
-                !!$OMP PARALLEL
-                !!$OMP WORKSHARE
-                tmp_1 = tmp_0*mat%Kprop(i, j, :)
-                !!$OMP END WORKSHARE
-                !!$OMP END PARALLEL
+                !$OMP PARALLEL
+                !$OMP DO SCHEDULE(STATIC) 
+                do k = 1, size(tmp_1)
+                    tmp_1(k) = tmp_0(k)*mat%Kprop(i, j, k)
+                end do
+                !$OMP END DO
+                !$OMP END PARALLEL
                 
                 if (basisdata%dimen.eq.3) then
                     call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
@@ -692,42 +696,34 @@ contains
         
         ! Local data
         ! ----------
+        integer :: i
         double precision :: tmp1(nr_total), tmp2(nr_total)
 
-        !!$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-        !!$OMP SINGLE 
         call mf_u_partialt_v(mat, solv%globsyst, nr_total, array_in, tmp1)
-        !!$OMP END SINGLE NOWAIT
-
-        !!$OMP SINGLE 
         call mf_gradx_u_gradx_v(mat, solv%globsyst, nr_total, array_in, tmp2)
-        !!$OMP END SINGLE NOWAIT
-        !!$OMP END PARALLEL
 
-        !!$OMP PARALLEL
-        !!$OMP WORKSHARE
-        array_out = tmp1 + tmp2
-        !!$OMP END WORKSHARE
-        !!$OMP END PARALLEL
+        !$OMP PARALLEL
+        !$OMP DO SCHEDULE(STATIC) 
+        do i = 1, nr_total
+            array_out(i) = tmp1(i) + tmp2(i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
         
         if (solv%matrixfreetype.eq.1) return 
         if (solv%matrixfreetype.eq.2) then
-            !!$OMP PARALLEL NUM_THREADS(omp_get_num_threads())
-            !!$OMP SINGLE 
+
             call mf_u_v(mat, solv%globsyst, nr_total, array_in, tmp1)
-            !!$OMP END SINGLE NOWAIT
-
-            !!$OMP SINGLE
             call mf_gradx_u_v(mat, solv%globsyst, nr_total, array_in, tmp2)
-            !!$OMP END SINGLE NOWAIT
-            !!$OMP END PARALLEL
 
-            !!$OMP PARALLEL
-            !!$OMP WORKSHARE
-            array_out = array_out + tmp1 + tmp2
-            !!$OMP END WORKSHARE
-            !!$OMP END PARALLEL
-            
+            !$OMP PARALLEL
+            !$OMP DO SCHEDULE(STATIC) 
+            do i = 1, nr_total
+                array_out(i) = array_out(i) + tmp1(i) + tmp2(i)
+            end do
+            !$OMP END DO
+            !$OMP END PARALLEL
+
         else
             stop 'Not coded'
         end if
@@ -786,10 +782,9 @@ contains
         integer :: pos_tm, i, j, k, l!, nb_tasks
         integer :: nr_u, nr_v, nr_w, nr_t
         double precision, allocatable, dimension(:, :) :: identity
-        double precision, allocatable, dimension(:) :: tmp1, tmp3, btmp, stmp
+        double precision, allocatable, dimension(:) :: tmp1, tmp3, stmp
         double precision, allocatable, dimension(:, :, :, :) :: tmp2
         integer, allocatable, dimension(:, :, :, :) :: dof
-        double precision :: eigval
         
         if (.not.solv%applyfd) then
             array_out = array_in
@@ -824,25 +819,23 @@ contains
         allocate(tmp2(nr_u, nr_v, nr_w, nr_t))
         tmp2 = reshape(tmp1, shape=(/nr_u, nr_v, nr_w, nr_t/))
         deallocate(tmp1)
-        allocate(btmp(nr_t), stmp(nr_t))
+        allocate(stmp(nr_t))
 
-        !!$OMP PARALLEL PRIVATE(l, eigval, btmp, stmp)
-        !nb_tasks = omp_get_num_threads()
-        !!$OMP DO COLLAPSE(3) SCHEDULE(STATIC, nr_w*nr_v*nr_u/nb_tasks) 
+        !$OMP PARALLEL PRIVATE(i, j, k, l, stmp)
+        !$OMP DO COLLAPSE(3) SCHEDULE(STATIC)
         do k = 1, nr_w
             do j = 1, nr_v
                 do i = 1, nr_u
                     l = i + (j - 1)*nr_u + (k - 1)*nr_u*nr_v
-                    eigval = solv%redsyst%diageigval_sp(l)
-                    btmp = tmp2(i, j, k, :)
-                    call solve_schurtriangular__(solv, nr_t, (/solv%scalarleft, eigval/), btmp, stmp)
+                    call solve_schurtriangular__(solv, nr_t, (/solv%scalarleft, solv%redsyst%diageigval_sp(l)/), &
+                                                tmp2(i, j, k, :), stmp)
                     tmp2(i, j, k, :) = stmp
                 end do
             end do
         end do  
-        !!$OMP END DO
-        !!$OMP END PARALLEL
-        deallocate(stmp, btmp)
+        !$OMP END DO
+        !$OMP END PARALLEL
+        deallocate(stmp)
         allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
         tmp1 = pack(tmp2, .true.)
         deallocate(tmp2)
