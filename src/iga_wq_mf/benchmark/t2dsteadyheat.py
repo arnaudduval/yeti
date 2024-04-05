@@ -90,7 +90,7 @@ def exactDiffTemperature_quartCircle(P: list):
 # Set global variables
 geoName = 'QA'
 degree_list = np.array([1, 2, 3, 4, 5])
-cuts_list   = np.arange(8, 9)
+cuts_list   = np.arange(1, 9)
 
 normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
