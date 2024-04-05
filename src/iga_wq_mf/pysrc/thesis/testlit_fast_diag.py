@@ -40,14 +40,14 @@ if not dataExist:
 			inpts = [nbqp, nbqp, nbqp, *indices, *indices, *indices, 
 					dersbasis, dersbasis, dersbasis, dersweights, dersweights, dersweights]
 			
-			start = time.process_time()
+			start = time.time()
 			eigensolver.fastdiagonalization_3d(*inpts, V)
-			stop  = time.process_time()
+			stop  = time.time()
 			time_t = stop - start
 
 			print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, time_t))
 			time_matrix[i, j+1] = time_t
-			np.savetxt(folder2find + 'FD_time.dat', time_matrix)
+			# np.savetxt(folder2find + 'FD_time.dat', time_matrix)
 
 else:
 

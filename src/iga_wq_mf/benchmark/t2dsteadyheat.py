@@ -90,7 +90,7 @@ def exactDiffTemperature_quartCircle(P: list):
 # Set global variables
 geoName = 'QA'
 degree_list = np.array([1, 2, 3, 4, 5])
-cuts_list   = np.arange(1, 8)
+cuts_list   = np.arange(8, 9)
 
 normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
@@ -129,6 +129,7 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [nor
 			Fext = problem.compute_volForce(powerDensity_quartCircle)
 			temperature = np.zeros(problem.part.nbctrlpts_total)
 			problem.solveFourierSteadyProblem(temperature, Fext=Fext)
+			stop = time.time()
 			error_list[j], _ = problem.normOfError(temperature, normArgs={'type':'L2',
 												'exactFunction':exactTemperature_quartCircle,
 												'exactFunctionDers':exactDiffTemperature_quartCircle})
