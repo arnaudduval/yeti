@@ -24,7 +24,6 @@ add_library(iga_wq_mf
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_basis_weights.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_tensor_algebra.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/lib_separationvariables.f90"
-                "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/apply_geophy.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/apply_mfheat.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/apply_mfplasticity.f90"
                 "${CMAKE_CURRENT_SOURCE_DIR}/fsrc/apply_mfstheat.f90"

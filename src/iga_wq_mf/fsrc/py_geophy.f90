@@ -223,7 +223,6 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     !! Computes jacobien matrix, its determinant and its inverse in 2D
     !! IN CSR FORMAT
     
-    use omp_lib
     implicit none 
     ! Input / output data
     ! -------------------
@@ -256,7 +255,6 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
         
     do j = 1, dimen
         do i = 1, nm
-            print*, i, j, omp_get_level()
             beta = 1; beta(j) = 2
             call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
@@ -265,7 +263,6 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             JJ(i, j, :) = tmp
         end do
     end do
-    print*, 'End computation'
 
 end subroutine eval_jacobien_2d
 

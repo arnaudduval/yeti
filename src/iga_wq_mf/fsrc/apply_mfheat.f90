@@ -308,7 +308,6 @@ contains
     end subroutine mf_u_v
 
     subroutine mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_out)
-
         implicit none 
         ! Input / output data
         ! -------------------
