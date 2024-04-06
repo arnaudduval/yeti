@@ -265,7 +265,7 @@ module tensormode
                     end do
                 end do
             end do
-            !$OMP END DO
+            !$OMP END DO 
             !$OMP END PARALLEL
             deallocate(Xt, Rt)
 

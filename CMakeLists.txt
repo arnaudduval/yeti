@@ -36,7 +36,7 @@ find_package(Python3
 find_package(F2PY REQUIRED)
 
 # Fortran compilation flags
-SET(CMAKE_Fortran_FLAGS "-O3 -fPIC -fopenmp")
+SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -fPIC")
                     
 # Define location of Fortran module files
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)

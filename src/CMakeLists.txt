@@ -44,13 +44,12 @@ macro(CreateF2PYModule)
         OUTPUT ${generated_module_file}
         COMMAND ${F2PY_EXECUTABLE} 
         -m ${MODULE_NAME} #--quiet
-        -c --opt=-O3 
+        -c --opt=-O3 --f90flags='-fopenmp'
         -I${CMAKE_Fortran_MODULE_DIRECTORY}
         -L${LIBRARY_OUTPUT_PATH}
         ${link_string}
-        -llapack -lblas 
+        -llapack -lblas -lgomp
         ${FCOMPILER}
-        --f90flags='-fopenmp' -lgomp 
         ${MODULE_FILES}
         DEPENDS ${MODULE_FILES}
         DEPENDS ${MODULE_LINK_LIBRARIES}
