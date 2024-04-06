@@ -168,8 +168,8 @@ module tensormode
         if (mode.eq.1) then 
 
             allocate(Xt(nc_u, nc_v), Rt(nr, nc_v))
-            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            !*$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !*$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
                     offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
@@ -187,15 +187,15 @@ module tensormode
                     end do
                 end do
             end do
-            !$OMP END DO
-            !$OMP END PARALLEL
+            !*$OMP END DO
+            !*$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.2) then 
 
             allocate(Xt(nc_v, nc_u), Rt(nr, nc_u))
-            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            !*$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !*$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jw = 1, nc_w
                     offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
@@ -213,15 +213,15 @@ module tensormode
                     end do
                 end do
             end do
-            !$OMP END DO
-            !$OMP END PARALLEL
+            !*$OMP END DO
+            !*$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.3) then 
 
             allocate(Xt(nc_w, nc_u), Rt(nr, nc_u))
-            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            !*$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !*$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jt = 1, nc_t
                 do jv = 1, nc_v
                     offset1 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
@@ -239,15 +239,15 @@ module tensormode
                     end do
                 end do
             end do
-            !$OMP END DO
-            !$OMP END PARALLEL
+            !*$OMP END DO
+            !*$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         else if (mode.eq.4) then 
             
             allocate(Xt(nc_t, nc_u), Rt(nr, nc_u))
-            !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            !*$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+            !*$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
             do jw = 1, nc_w
                 do jv = 1, nc_v
                     offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
@@ -265,8 +265,8 @@ module tensormode
                     end do
                 end do
             end do
-            !$OMP END DO 
-            !$OMP END PARALLEL
+            !*$OMP END DO 
+            !*$OMP END PARALLEL
             deallocate(Xt, Rt)
 
         end if
