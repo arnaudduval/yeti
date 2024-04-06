@@ -14,7 +14,7 @@ folder2find = os.path.dirname(full_path) + '/data/'
 dataExist     = False
 # withReference = True
 degree_list   = range(1, 6)
-cuts          = 6
+cuts          = 9
 
 if not dataExist:
 
@@ -29,7 +29,7 @@ if not dataExist:
 
 	for i, degree in enumerate(degree_list):
 		
-		geoArgs = {'name': 'CB', 'degree': degree*np.ones(3, dtype=int), 
+		geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
 		}
 		blockPrint()			
@@ -39,7 +39,7 @@ if not dataExist:
 
 		heatmaterial = heatmat()
 		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
-		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=3)
+		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=2)
 	
 		# Set Dirichlet boundaries
 		boundary = boundaryCondition(modelPhy.nbctrlpts)
