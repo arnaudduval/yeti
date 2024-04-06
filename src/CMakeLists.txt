@@ -17,11 +17,7 @@
 # CMakeLists.txt file for /src directory
 
 # Grab Lapack and openMP 
-find_package(
-    LAPACK 
-    REQUIRED
-) 
-
+find_package(LAPACK REQUIRED) 
 find_package(OpenMP REQUIRED)
 
 # define a macro to build f2py module

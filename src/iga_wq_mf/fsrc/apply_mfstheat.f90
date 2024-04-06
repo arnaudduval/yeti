@@ -336,7 +336,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
+        !$OMP DO SCHEDULE(DYNAMIC) 
         do i = 1, size(tmp)
             tmp(i) = tmp(i)*mat%Cdersprop(i)
         end do
@@ -431,7 +431,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
+        !$OMP DO SCHEDULE(DYNAMIC) 
         do i = 1, size(tmp)
             tmp(i) = tmp(i)*mat%Cprop(i)
         end do
@@ -533,7 +533,7 @@ contains
             zeta  = 1 + (alpha - 1)*2
 
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC) 
+            !$OMP DO SCHEDULE(DYNAMIC) 
             do k = 1, size(tmp_1)
                 tmp_1(k) = tmp_0(k)*mat%Kdersprop(i, k)
             end do
@@ -638,7 +638,7 @@ contains
                 zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP DO SCHEDULE(STATIC) 
+                !$OMP DO SCHEDULE(DYNAMIC) 
                 do k = 1, size(tmp_1)
                     tmp_1(k) = tmp_0(k)*mat%Kprop(i, j, k)
                 end do
@@ -703,7 +703,7 @@ contains
         call mf_gradx_u_gradx_v(mat, solv%globsyst, nr_total, array_in, tmp2)
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
+        !$OMP DO SCHEDULE(DYNAMIC) 
         do i = 1, nr_total
             array_out(i) = tmp1(i) + tmp2(i)
         end do
@@ -717,7 +717,7 @@ contains
             call mf_gradx_u_v(mat, solv%globsyst, nr_total, array_in, tmp2)
 
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC) 
+            !$OMP DO SCHEDULE(DYNAMIC) 
             do i = 1, nr_total
                 array_out(i) = array_out(i) + tmp1(i) + tmp2(i)
             end do

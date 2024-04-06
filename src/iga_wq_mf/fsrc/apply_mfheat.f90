@@ -76,7 +76,7 @@ contains
         allocate(mat%Cprop(nnz))
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC, nnz/omp_get_num_threads())
+        !$OMP DO SCHEDULE(DYNAMIC, nnz/omp_get_num_threads())
         do i = 1, nnz
             mat%Cprop(i) = prop(i)*mat%detJ(i)
         end do
@@ -98,7 +98,7 @@ contains
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC)
+        !$OMP DO SCHEDULE(DYNAMIC)
         do i = 1, nnz
             mat%Hprop(i) = prop(i)*mat%detJ(i)
         end do
@@ -284,7 +284,7 @@ contains
         end if
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
+        !$OMP DO SCHEDULE(DYNAMIC) 
         do i = 1, size(tmp)
             tmp(i) = tmp(i)*mat%Cprop(i)
         end do
@@ -376,7 +376,7 @@ contains
                 zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP DO SCHEDULE(STATIC) 
+                !$OMP DO SCHEDULE(DYNAMIC) 
                 do k = 1, size(tmp_1)
                     tmp_1(k) = tmp_0(k)*mat%Kprop(i, j, k)
                 end do
@@ -426,7 +426,7 @@ contains
         call mf_gradu_gradv(mat, basisdata, nr_total, array_in, array_tmp2)
 
         !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
+        !$OMP DO SCHEDULE(DYNAMIC) 
         do i = 1, nr_total
             array_out(i) = mat%scalars(1)*array_tmp1(i) + mat%scalars(2)*array_tmp2(i)
         end do
@@ -486,36 +486,36 @@ contains
         end if
 
         array_out = 0.d0
-        do i = 1, basisdata%dimen
+        do j = 1, basisdata%dimen
             beta = 1
             if (basisdata%dimen.eq.2) then
                 call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                                     nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
                                     nnz_v, indiT_v, indjT_v, data_BT_v(:, beta(2)), &
-                                    array_in(i, :), t1)  
+                                    array_in(j, :), t1)  
             else if (basisdata%dimen.eq.3) then
                 call sumfacto3d_spM(nc_u, nr_u, nc_v, nr_v, nc_w, nr_w, &
                                     nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
                                     nnz_v, indiT_v, indjT_v, data_BT_v(:, beta(2)), &
                                     nnz_w, indiT_w, indjT_w, data_BT_w(:, beta(3)), &
-                                    array_in(i, :), t1)  
+                                    array_in(j, :), t1)  
             end if
 
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC) 
+            !$OMP DO SCHEDULE(DYNAMIC) 
             do k = 1, size(t1)
                 t1(k) = t1(k)*mat%Hprop(k)
             end do
             !$OMP END DO
             !$OMP END PARALLEL
             
-            do j = 1, basisdata%dimen
-                alpha = 1; alpha(j) = 2; zeta = beta + (alpha - 1)*2
+            do i = 1, basisdata%dimen
+                alpha = 1; alpha(i) = 2; zeta = beta + (alpha - 1)*2
 
                 !$OMP PARALLEL
-                !$OMP DO SCHEDULE(STATIC) 
+                !$OMP DO SCHEDULE(DYNAMIC) 
                 do k = 1, size(t1)
-                    t2(k) = t1(k)*mat%invJ(j, i, k)
+                    t2(k) = t1(k)*mat%invJ(i, j, k)
                 end do
                 !$OMP END DO
                 !$OMP END PARALLEL
@@ -637,7 +637,7 @@ contains
 
         if (solv%withdiag) then           
             !$OMP PARALLEL
-            !$OMP DO SCHEDULE(STATIC) 
+            !$OMP DO SCHEDULE(DYNAMIC) 
             do i = 1, size(tmp)
                 tmp(i) = tmp(i)/solv%redsyst%diageigval_sp(i)
             end do
@@ -748,7 +748,7 @@ contains
 
         ! Local data
         ! ----------
-        integer :: k, j, ii
+        integer :: i, j, k
         double precision, dimension(sizemat) :: ll
         double precision, dimension(sizemat, nr_total) :: RM1, RM2, RM3
         double precision, dimension(sizemat, sizemat) :: AA1, BB1, qq
@@ -803,12 +803,12 @@ contains
             end do
             
             if (ishigher) then 
-                eigenval = maxval(ll); ii = maxloc(ll, dim=1)
+                eigenval = maxval(ll); i = maxloc(ll, dim=1)
             else
-                eigenval = minval(ll); ii = minloc(ll, dim=1)
+                eigenval = minval(ll); i = minloc(ll, dim=1)
             end if
 
-            if (abs(qq(1, ii)).gt.1.d-8) delta = qq(2, ii)/qq(1, ii)
+            if (abs(qq(1, i)).gt.1.d-8) delta = qq(2, i)/qq(1, i)
     
             eigenvec = eigenvec + delta*p
             call mf_u_v(mat, solv%globsyst, nr_total, eigenvec, u)

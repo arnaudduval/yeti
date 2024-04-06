@@ -1,4 +1,5 @@
 module matrixfreeplasticity
+    use omp_lib
     use structured_data
     implicit none
     type :: mecamat
@@ -52,10 +53,20 @@ contains
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
 
+        ! Local data 
+        ! ----------
+        integer :: i
+
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Mprop(nnz))
-        mat%Mprop = prop*mat%detJ
+        !$OMP PARALLEL 
+        !$OMP DO SCHEDULE(STATIC) 
+        do i = 1, nnz
+            mat%Mprop(i) = prop(i)*mat%detJ(i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_massprop
 
     subroutine setup_thmchcoupledprop(mat, nnz, prop)
@@ -66,11 +77,20 @@ contains
         integer, intent(in) :: nnz
         double precision, target, intent(in) ::  prop
         dimension :: prop(nnz)
+        ! Local data 
+        ! ----------
+        integer :: i
 
         if (.not.associated(mat%detJ)) stop 'Define geometry'
         if (nnz.ne.mat%ncols_sp) stop 'Size problem'
         allocate(mat%Hprop(nnz))
-        mat%Hprop = prop*mat%detJ
+        !$OMP PARALLEL 
+        !$OMP DO SCHEDULE(STATIC) 
+        do i = 1, nnz
+            mat%Hprop(i) = prop(i)*mat%detJ(i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
     end subroutine setup_thmchcoupledprop
 
     subroutine setup_mechanicalArguments(mat, nbrows, mechArgs)
@@ -350,7 +370,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i
+        integer :: i, k
         double precision :: tmp_in, array_tmp, array_tmp2
         dimension :: tmp_in(nr_total), array_tmp(basisdata%nc_total), array_tmp2(nr_total)
         integer :: nr_u, nr_v, nr_w, nc_u, nc_v, nc_w, nnz_u, nnz_v, nnz_w
@@ -399,7 +419,13 @@ contains
                                     tmp_in, array_tmp)
             end if
             
-            array_tmp = array_tmp*mat%Mprop
+            !$OMP PARALLEL
+            !$OMP DO SCHEDULE(DYNAMIC) 
+            do k = 1, size(array_tmp)
+                array_tmp(k) = array_tmp(k)*mat%Mprop(k)
+            end do
+            !$OMP END DO
+            !$OMP END PARALLEL
 
             if (basisdata%dimen.eq.2) then
                 call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, &
@@ -561,13 +587,20 @@ contains
 
         ! Local data
         ! ---------------
-        double precision :: array_tmp
-        dimension :: array_tmp(basisdata%dimen, nr_total)
+        integer :: i
+        double precision :: array_tmp1, array_tmp2
+        dimension :: array_tmp1(basisdata%dimen, nr_total), array_tmp2(basisdata%dimen, nr_total)
 
-        call mf_tu_tv(mat, basisdata, nr_total, array_in, array_out)
-        array_out = mat%scalars(1)*array_out
-        call mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_tmp)
-        array_out = array_out + mat%scalars(2)*array_tmp
+        call mf_tu_tv(mat, basisdata, nr_total, array_in, array_tmp1)
+        call mf_gradtu_gradtv(mat, basisdata, nr_total, array_in, array_tmp2)
+
+        !$OMP PARALLEL
+        !$OMP DO SCHEDULE(DYNAMIC) 
+        do i = 1, nr_total
+            array_out(:, i) =  mat%scalars(1)*array_out(:, i) + mat%scalars(2)*array_tmp2(:, i)
+        end do
+        !$OMP END DO
+        !$OMP END PARALLEL
 
     end subroutine mf_tutv_gradtugradtv
 
@@ -586,7 +619,7 @@ contains
 
         ! Local data 
         ! ----------
-        integer :: i, l, alpha, beta, zeta
+        integer :: i, j, k, alpha, beta, zeta
         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: t1, t2, t3
         dimension :: t1(basisdata%nc_total), t2(basisdata%nc_total), t3(basisdata%nr_total)
@@ -621,8 +654,8 @@ contains
         end if
 
         array_out = 0.d0
-        do l = 1, basisdata%dimen
-            beta = 1; beta(l) = 2
+        do j = 1, basisdata%dimen
+            beta = 1; beta(j) = 2
             if (basisdata%dimen.eq.2) then
                 call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                                     nnz_u, indiT_u, indjT_u, data_BT_u(:, beta(1)), &
@@ -635,12 +668,26 @@ contains
                                     nnz_w, indiT_w, indjT_w, data_BT_w(:, beta(3)), &
                                     array_in, t1) 
             end if
+
+            !$OMP PARALLEL
+            !$OMP DO SCHEDULE(DYNAMIC) 
+            do k = 1, size(t1)
+                t1(k) = t1(k)*mat%Hprop(k)
+            end do
+            !$OMP END DO
+            !$OMP END PARALLEL
             
-            t1 = t1*mat%Hprop
             do i = 1, basisdata%dimen
                 alpha = 1; zeta = beta + (alpha - 1)*2
-                t2 = t1*mat%invJ(l, i, :)
 
+                !$OMP PARALLEL
+                !$OMP DO SCHEDULE(DYNAMIC) 
+                do k = 1, size(t1)
+                    t2(k) = t1(k)*mat%invJ(j, i, k)
+                end do
+                !$OMP END DO
+                !$OMP END PARALLEL
+                
                 if (basisdata%dimen.eq.2) then
                     call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
@@ -736,7 +783,7 @@ contains
 end module matrixfreeplasticity
 
 module plasticitysolver
-
+    use omp_lib
     use matrixfreeplasticity
     use structured_data
 
@@ -804,7 +851,7 @@ contains
 
         ! Local data
         ! ----------
-        integer :: nr_u, nr_v, nr_w, i
+        integer :: nr_u, nr_v, nr_w, i, k
         double precision, allocatable, dimension(:) :: tmp1, tmp2
 
         if (.not.solv%applyfd) then
@@ -834,7 +881,15 @@ contains
                             array_in(i, solv%redsyst(i)%dof), tmp1)
             end if           
 
-            if (solv%withdiag) tmp1 = tmp1/solv%redsyst(i)%diageigval_sp
+            if (solv%withdiag) then
+                !$OMP PARALLEL
+                !$OMP DO SCHEDULE(DYNAMIC) 
+                do k = 1, size(tmp1)
+                    tmp1(k) = tmp1(k)/solv%redsyst(i)%diageigval_sp(k)
+                end do
+                !$OMP END DO
+                !$OMP END PARALLEL
+            end if
 
             allocate(tmp2(nr_u*nr_v*nr_w))
             if (solv%globsyst%dimen.eq.2) then
