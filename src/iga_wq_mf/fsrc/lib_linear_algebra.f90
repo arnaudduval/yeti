@@ -629,12 +629,11 @@ subroutine spmat_dot_dmat(nr, nnz, indi, indj, A, nr_in, nc_in, matrix_in, matri
     ! Local data
     ! ----------
     integer :: i, indl, indr
-    matrix_out = 0.d0
 
     do i = 1, nr
         indl = indi(i)
         indr = indi(i+1) - 1
-        matrix_out(i, :) = matrix_out(i, :) + matmul(A(indl:indr), matrix_in(indj(indl:indr), :))
+        matrix_out(i, :) = matmul(A(indl:indr), matrix_in(indj(indl:indr), :))
     end do
 
 end subroutine spmat_dot_dmat
