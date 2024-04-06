@@ -139,6 +139,129 @@ module tensormode
 
     end subroutine tensor_n_mode_product_dM
 
+    ! subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, indi, indj, mode, nrR, R)
+    !     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+    !     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+    !     !! Tensor X = X(nc_u, nc_v, nc_w)
+    !     !! Matrix U = U(nr, nc). Since U is in CSR format, nc is not necessary to be declared
+    !     !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+    !     !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
+    
+    !     use omp_lib
+    !     implicit none
+    !     ! Input / output data 
+    !     ! -------------------
+    !     integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nnz, mode, nrR
+    !     integer, intent(in) :: indi, indj
+    !     dimension :: indi(nr+1), indj(nnz)
+    !     double precision, intent(in) :: X, dat
+    !     dimension :: X(nc_u*nc_v*nc_w*nc_t), dat(nnz)
+    
+    !     double precision, intent(out) :: R
+    !     dimension :: R(nrR)
+    
+    !     ! Local data
+    !     ! ----------
+    !     integer :: ju, jv, jw, jt, offset1, offset2
+    !     double precision :: Rt(nr)
+    !     double precision, allocatable, dimension(:) :: Xt
+    
+    !     if (mode.eq.1) then 
+            
+    !         allocate(Xt(nc_u))
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
+    !         do jt = 1, nc_t
+    !             do jw = 1, nc_w
+    !                 do jv = 1, nc_v
+    !                     offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+    !                     offset2 = (jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w
+    !                     do ju = 1, nc_u
+    !                         Xt(ju) = X(ju+offset1)
+    !                     end do
+    !                     call spmat_dot_dvec(nr, nc_u, nnz, indi, indj, dat, Xt, Rt)
+    !                     do ju = 1, nr
+    !                         R(ju+offset2) = Rt(ju)
+    !                     end do
+    !                 end do
+    !             end do
+    !         end do
+    !         !$OMP END DO
+    !         !$OMP END PARALLEL
+    
+    !     else if (mode.eq.2) then 
+    
+    !         allocate(Xt(nc_v))
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
+    !         do jt = 1, nc_t
+    !             do jw = 1, nc_w
+    !                 do ju = 1, nc_u
+    !                     offset1 = ju+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+    !                     offset2 = ju+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w
+    !                     do jv = 1, nc_v
+    !                         Xt(jv) = X((jv-1)*nc_u+offset1)
+    !                     end do
+    !                     call spmat_dot_dvec(nr, nc_v, nnz, indi, indj, dat, Xt, Rt)
+    !                     do jv = 1, nr
+    !                         R((jv-1)*nc_u+offset2) = Rt(jv)
+    !                     end do
+    !                 end do
+    !             end do
+    !         end do
+    !         !$OMP END DO
+    !         !$OMP END PARALLEL
+    
+    !     else if (mode.eq.3) then 
+    
+    !         allocate(Xt(nc_w))
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
+    !         do jt = 1, nc_t
+    !             do jv = 1, nc_v
+    !                 do ju = 1, nc_u
+    !                     offset1 = ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
+    !                     offset2 = ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v*nr
+    !                     do jw = 1, nc_w
+    !                         Xt(jw) = X((jw-1)*nc_u*nc_v+offset1)
+    !                     end do
+    !                     call spmat_dot_dvec(nr, nc_w, nnz, indi, indj, dat, Xt, Rt)
+    !                     do jw = 1, nr
+    !                         R((jw-1)*nc_u*nc_v+offset2) = Rt(jw)
+    !                     end do
+    !                 end do
+    !             end do
+    !         end do
+    !         !$OMP END DO
+    !         !$OMP END PARALLEL
+    
+    !     else if (mode.eq.4) then 
+    
+    !         allocate(Xt(nc_t))
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
+    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
+    !         do jw = 1, nc_w
+    !             do jv = 1, nc_v
+    !                 do ju = 1, nc_u
+    !                     offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+    !                     offset2 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
+    !                     do jt = 1, nc_t
+    !                         Xt(jt) = X(ju+offset1)
+    !                     end do
+    !                     call spmat_dot_dvec(nr, nc_t, nnz, indi, indj, dat, Xt, Rt)
+    !                     do jt = 1, nr
+    !                         R(ju+offset2) = Rt(jt)
+    !                     end do
+    !                 end do
+    !             end do
+    !         end do
+    !         !$OMP END DO
+    !         !$OMP END PARALLEL
+            
+    !     end if
+    
+    ! end subroutine tensor_n_mode_product_spM
+
     subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, indi, indj, mode, nrR, R)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
