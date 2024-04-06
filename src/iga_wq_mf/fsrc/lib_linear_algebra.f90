@@ -749,6 +749,34 @@ subroutine trapezoidal_rule_4d(nru, nrv, nrw, nrt, tensor, result)
 
 end subroutine trapezoidal_rule_4d
 
+subroutine get_indexes_kron_product(nc_A, nnz_A, indj_A, &
+                                nnz_B, indj_B, indj_C)
+    !! Returns indexes of A x B = C (x : kronecker product)
+    !! Where A and B are sparse matrices in CSR format
+
+    use omp_lib
+    implicit none 
+    ! Input / output data
+    ! ----------------------
+    integer, intent(in) ::  nc_A, nnz_A, nnz_B
+    integer, intent(in) :: indj_A, indj_B
+    dimension :: indj_A(nnz_A), indj_B(nnz_B)
+
+    integer, intent(out) :: indj_C
+    dimension :: indj_C(nnz_A*nnz_B)
+
+    ! Loca data
+    ! -----------
+    integer :: i, j
+
+    do i = 1, nnz_A
+        do j = 1, nnz_B
+            indj_C(i+(j-1)*nnz_A) = indj_A(i) + (indj_B(j)-1)*nc_A
+        end do
+    end do
+
+end subroutine get_indexes_kron_product
+
 subroutine symtensor2array(dimen, nvoigt, matrix, array)
     !! Returns the upper triangular part of a matrix
 
