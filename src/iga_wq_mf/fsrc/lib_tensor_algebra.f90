@@ -54,7 +54,7 @@ module tensormode
 
         ! Local data
         ! ----------
-        double precision, allocatable, dimension(:, :, :, :) :: newtensor, tmptensor
+        double precision, allocatable, dimension(:) :: newtensor
         double precision, allocatable, dimension(:, :) :: Rt, Xt
         integer :: ii, jj, kk, ll, genpos, nclist(obj%sizelist)
 
@@ -63,12 +63,11 @@ module tensormode
         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
         if (any(newnclist.le.0)) stop 'Only positive integers'
         if (nr.ne.newnclist(4)) stop 'Size problem'
-        allocate(tmptensor(newnclist(4), newnclist(1), newnclist(2), newnclist(3)))
-        allocate(newtensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
+        allocate(newtensor(product(newnclist)))
         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
         nclist = obj%nclist
 
-        !$OMP PARALLEL PRIVATE(Xt, Rt)
+        !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
         do jj = 1, obj%nclist(4)
             do ii = 1, obj%nclist(3)
@@ -79,25 +78,23 @@ module tensormode
                     end do
                 end do
                 Rt = matmul(U, Xt)
-                tmptensor(:, :, ii, jj) = Rt
+                do kk = 1, nr
+                    do ll = 1, obj%nclist(2)
+                        genpos = ll + (ii-1)*nclist(2) + (jj-1)*nclist(2)*nclist(3) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
+                        newtensor(genpos) = Rt(kk, ll)
+                    end do
+                end do
+                
             end do
         end do
         !$OMP END DO 
         !$OMP END PARALLEL
 
-        !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
-        do ii = 1, newnclist(4)
-            newtensor(:, :, :, ii) = tmptensor(ii, :, :, :)
-        end do
-        !$OMP END DO 
-        !$OMP END PARALLEL
-
-        deallocate(tmptensor, Xt, Rt, obj%tensor, obj%nclist)
+        deallocate(Xt, Rt, obj%tensor, obj%nclist)
         allocate(obj%nclist(obj%sizelist))
         obj%nclist = newnclist(1:obj%sizelist)
         allocate(obj%tensor(product(newnclist)))
-        obj%tensor = pack(newtensor, .true.)
+        obj%tensor = newtensor
 
     end subroutine tensor_n_mode_product_dM2
 
@@ -269,7 +266,7 @@ module tensormode
         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
         nclist = obj%nclist
 
-        !$OMP PARALLEL PRIVATE(Xt, Rt)
+        !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
         do jj = 1, obj%nclist(4)
             do ii = 1, obj%nclist(3)
