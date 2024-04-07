@@ -830,126 +830,352 @@ subroutine find_parametric_diag_3d(nr_u, nr_v, nr_w, Mu, Mv, Mw, Ku, Kv, Kw, coe
     
 end subroutine find_parametric_diag_3d
 
-
-    ! subroutine tensor_n_mode_product_spM(nc_u, nc_v, nc_w, nc_t, X, nr, nnz, dat, indi, indj, mode, nrR, R)
-    !     !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
-    !     !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-    !     !! Tensor X = X(nc_u, nc_v, nc_w)
-    !     !! Matrix U = U(nr, nc). Since U is in CSR format, nc is not necessary to be declared
-    !     !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
-    !     !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
-    
+! module tensormode
     !     use omp_lib
     !     implicit none
+    
+    !     type tensoroperator
+    !     integer :: sizelist=4
+    !     integer, dimension(:), allocatable :: nclist
+    !     double precision, allocatable, dimension(:, :, :, :) :: tensor
+    !     end type tensoroperator
+    
+    !     contains
+    
+    !     subroutine initialize_operator(obj, sizelist, nclist, nnz, array)
+    !         implicit none
+    !         ! Input /  output data
+    !         ! --------------------
+    !         type(tensoroperator) :: obj
+    !         integer, intent(in) :: sizelist, nnz
+    !         integer, intent(in) :: nclist
+    !         dimension :: nclist(sizelist)
+    !         double precision, intent(in) :: array
+    !         dimension :: array(nnz)
+    
+    !         if (sizelist.ne.obj%sizelist) stop 'Only forth-rank tensors'
+    !         if (.not.allocated(obj%nclist)) allocate(obj%nclist(sizelist))
+    !         if (any(nclist.le.0)) stop 'Only positive integers'
+    !         if (nnz.ne.product(nclist)) stop 'Size problem'
+    !         if (.not.allocated(obj%nclist)) allocate(obj%tensor(nclist(1), nclist(2), nclist(3), nclist(4)))
+    !         obj%nclist = nclist
+    !         obj%tensor = reshape(array, shape=(/nclist(1), nclist(2), nclist(3), nclist(4)/))
+    
+    !     end subroutine initialize_operator
+    
+    !     subroutine tensor_n_mode_product_dM(obj, nr, nc, U, mode, sizelist, newnclist)
+    !         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+    !         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+    !         !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
+    !         !! Matrix U = U(nr, nc)
+    !         !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+    !         !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
+    
+    !         implicit none
+    !         ! Input / output data
+    !         ! -------------------
+    !         type(tensoroperator) :: obj
+    !         integer, intent(in) :: nr, nc, mode, sizelist 
+    !         integer, intent(in) :: newnclist
+    !         dimension :: newnclist(sizelist)
+    !         double precision, intent(in) :: U
+    !         dimension :: U(nr, nc)
+    
+    !         ! Local data
+    !         ! ----------
+    !         double precision, allocatable, dimension(:, :, :, :) :: newtensor
+    !         double precision, allocatable, dimension(:, :) :: Rt, Xt
+    !         integer :: ii, jj
+    
+    !         if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
+    !         if (.not.allocated(obj%nclist)) stop 'Unknown object'
+    !         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
+    !         if (any(newnclist.le.0)) stop 'Only positive integers'
+    !         if (nr.ne.newnclist(4)) stop 'Size problem'
+    !         allocate(newtensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
+    !         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
+    
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt)
+    !         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+    !         do jj = 1, obj%nclist(4)
+    !             do ii = 1, obj%nclist(3)
+    !                 Xt = obj%tensor(:, :, ii, jj)
+    !                 Rt = matmul(U, Xt)
+    !                 newtensor(:, ii, jj, :) = transpose(Rt)
+    !             end do
+    !         end do
+    !         !$OMP END DO 
+    !         !$OMP END PARALLEL
+    
+    !         deallocate(Xt, Rt, obj%tensor, obj%nclist)
+    !         allocate(obj%nclist(obj%sizelist))
+    !         obj%nclist = newnclist(1:obj%sizelist)
+    !         allocate(obj%tensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
+    !         obj%tensor = newtensor
+    
+    !     end subroutine tensor_n_mode_product_dM
+    
+    !     subroutine tensor_n_mode_product_spM(obj, nr, nnz, dat, indi, indj, mode, sizelist, newnclist)
+    !         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
+    !         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
+    !         !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
+    !         !! Matrix U = U(nr, nc)
+    !         !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
+    !         !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
+    
+    !         implicit none
+    !         ! Input / output data
+    !         ! -------------------
+    !         type(tensoroperator) :: obj
+    !         integer, intent(in) :: nr, nnz, mode, sizelist 
+    !         integer, intent(in) :: newnclist
+    !         dimension :: newnclist(sizelist)
+    !         integer, intent(in) :: indi, indj
+    !         dimension :: indi(nr+1), indj(nnz)
+    !         double precision, intent(in) :: dat
+    !         dimension :: dat(nnz)
+    
+    !         ! Local data
+    !         ! ----------
+    !         double precision, allocatable, dimension(:, :, :, :) :: newtensor
+    !         double precision, allocatable, dimension(:, :) :: Rt, Xt
+    !         integer :: ii, jj
+    
+    !         if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
+    !         if (.not.allocated(obj%nclist)) stop 'object not defined'
+    !         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
+    !         if (any(newnclist.le.0)) stop 'Only positive integers'
+    !         if (nr.ne.newnclist(4)) stop 'Size problem'
+    !         allocate(newtensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
+    !         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
+    
+    !         !$OMP PARALLEL PRIVATE(Xt, Rt)
+    !         !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+    !         do jj = 1, obj%nclist(4)
+    !             do ii = 1, obj%nclist(3)
+    !                 Xt = obj%tensor(:, :, ii, jj)
+    !                 call spmat_dot_dmat(nr, nnz, indi, indj, dat, size(Xt, dim=1), size(Xt, dim=2), Xt, Rt)
+    !                 newtensor(:, ii, jj, :) = transpose(Rt)
+    !             end do
+    !         end do
+    !         !$OMP END DO 
+    !         !$OMP END PARALLEL
+    
+    !         deallocate(Xt, Rt, obj%tensor, obj%nclist)
+    !         allocate(obj%nclist(obj%sizelist))
+    !         obj%nclist = newnclist(1:obj%sizelist)
+    !         allocate(obj%tensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
+    !         obj%tensor = newtensor
+    
+    !     end subroutine tensor_n_mode_product_spM
+    
+    ! end module tensormode
+    
+    ! subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 2D and a vector using sum factorization
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+    !     use tensormode
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v
+    !     double precision, intent(in) :: Mu, Mv
+    !     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v)
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v)
+    
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v)
+    
+    !     ! Local data 
+    !     ! ----------
+    !     type(tensoroperator) :: obj
+    
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, 1, 1/), size(array_in), array_in)
+    !     call tensor_n_mode_product_dM(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, 1, 1, nr_u/))
+    !     call tensor_n_mode_product_dM(obj, nr_v, nc_v, Mv, 2, 4, (/1, 1, nr_u, nr_v/))
+    !     array_out = pack(obj%tensor, .true.)
+    
+    ! end subroutine sumfacto2d_dM
+    
+    ! subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+    !     use tensormode
+    !     implicit none 
     !     ! Input / output data 
     !     ! -------------------
-    !     integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nr, nnz, mode, nrR
-    !     integer, intent(in) :: indi, indj
-    !     dimension :: indi(nr+1), indj(nnz)
-    !     double precision, intent(in) :: X, dat
-    !     dimension :: X(nc_u*nc_v*nc_w*nc_t), dat(nnz)
+    !     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v,nr_w, nc_w
+    !     double precision, intent(in) :: Mu, Mv, Mw
+    !     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w)
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v*nc_w)
     
-    !     double precision, intent(out) :: R
-    !     dimension :: R(nrR)
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v*nr_w)
+    
+    !     ! Local data 
+    !     ! ----------
+    !     type(tensoroperator) :: obj
+    
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, 1/), size(array_in), array_in)
+    !     call tensor_n_mode_product_dM(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, nc_w, 1, nr_u/))
+    !     call tensor_n_mode_product_dM(obj, nr_v, nc_v, Mv, 2, 4, (/nc_w, 1, nr_u, nr_v/))
+    !     call tensor_n_mode_product_dM(obj, nr_w, nc_w, Mw, 3, 4, (/1, nr_u, nr_v, nr_w/))
+    !     array_out = pack(obj%tensor, .true.)
+    
+    ! end subroutine sumfacto3d_dM
+    
+    ! subroutine sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv, Mw, Mt, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+    !     use tensormode
+    !     implicit none 
+    !     ! Input / output data 
+    !     ! -------------------
+    !     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nr_t, nc_t
+    !     double precision, intent(in) :: Mu, Mv, Mw, Mt
+    !     dimension :: Mu(nr_u, nc_u), Mv(nr_v, nc_v), Mw(nr_w, nc_w), Mt(nr_t, nc_t)
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
+    
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
+    
+    !     ! Local data 
+    !     ! ----------
+    !     type(tensoroperator) :: obj
+    
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, nc_t/), size(array_in), array_in)
+    !     call tensor_n_mode_product_dM(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, nc_w, nc_t, nr_u/))
+    !     call tensor_n_mode_product_dM(obj, nr_v, nc_v, Mv, 2, 4, (/nc_w, nc_t, nr_u, nr_v/))
+    !     call tensor_n_mode_product_dM(obj, nr_w, nc_w, Mw, 3, 4, (/nc_t, nr_u, nr_v, nr_w/))
+    !     call tensor_n_mode_product_dM(obj, nr_t, nc_t, Mt, 4, 4, (/nr_u, nr_v, nr_w, nr_t/))
+    !     array_out = pack(obj%tensor, .true.)
+    
+    ! end subroutine sumfacto4d_dM
+    
+    ! subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u, &
+    !                             nnz_v, indi_v, indj_v, data_v, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 3D and a vector using sum factorization
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v)
+    !     use tensormode
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, intent(in) :: nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v)
+    !     double precision, intent(in) :: data_u, data_v
+    !     dimension :: data_u(nnz_u), data_v(nnz_v)
+    !     integer, intent(in) :: indi_u, indi_v, indj_u, indj_v
+    !     dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), &
+    !                     indj_u(nnz_u), indj_v(nnz_v)
+    
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v)
     
     !     ! Local data
+    !     ! __________
+    !     type(tensoroperator) :: obj
+    
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, 1, 1/), size(array_in), array_in)
+    !     call tensor_n_mode_product_spM(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, 1, 1, nr_u/))
+    !     call tensor_n_mode_product_spM(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/1, 1, nr_u, nr_v/))    
+    !     array_out = pack(obj%tensor, .true.)
+    
+    ! end subroutine sumfacto2d_spM
+    
+    ! subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, indj_u, data_u, &
+    !                         nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 3D and a vector 
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+    !     use tensormode
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nnz_u, nnz_v, nnz_w
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v*nc_w)
+    !     double precision, intent(in) :: data_u, data_v, data_w
+    !     dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w)
+    !     integer, intent(in) :: indi_u, indi_v, indi_w, indj_u, indj_v, indj_w
+    !     dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), &
+    !                     indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w)
+    
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v*nr_w)
+    
+    !     ! Local data 
     !     ! ----------
-    !     integer :: ju, jv, jw, jt, offset1, offset2
-    !     double precision :: Rt(nr)
-    !     double precision, allocatable, dimension(:) :: Xt
+    !     type(tensoroperator) :: obj
     
-    !     if (mode.eq.1) then 
-            
-    !         allocate(Xt(nc_u))
-    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
-    !         do jt = 1, nc_t
-    !             do jw = 1, nc_w
-    !                 do jv = 1, nc_v
-    !                     offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-    !                     offset2 = (jv-1)*nr+(jw-1)*nr*nc_v+(jt-1)*nr*nc_v*nc_w
-    !                     do ju = 1, nc_u
-    !                         Xt(ju) = X(ju+offset1)
-    !                     end do
-    !                     call spmat_dot_dvec(nr, nc_u, nnz, indi, indj, dat, Xt, Rt)
-    !                     do ju = 1, nr
-    !                         R(ju+offset2) = Rt(ju)
-    !                     end do
-    !                 end do
-    !             end do
-    !         end do
-    !         !$OMP END DO
-    !         !$OMP END PARALLEL
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, 1/), size(array_in), array_in)
+    !     call tensor_n_mode_product_spM(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, nc_w, 1, nr_u/))
+    !     call tensor_n_mode_product_spM(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/nc_w, 1, nr_u, nr_v/))
+    !     call tensor_n_mode_product_spM(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 3, 4, (/1, nr_u, nr_v, nr_w/))
+    !     array_out = pack(obj%tensor, .true.)
     
-    !     else if (mode.eq.2) then 
+    ! end subroutine sumfacto3d_spM
     
-    !         allocate(Xt(nc_v))
-    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
-    !         do jt = 1, nc_t
-    !             do jw = 1, nc_w
-    !                 do ju = 1, nc_u
-    !                     offset1 = ju+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-    !                     offset2 = ju+(jw-1)*nc_u*nr+(jt-1)*nc_u*nr*nc_w
-    !                     do jv = 1, nc_v
-    !                         Xt(jv) = X((jv-1)*nc_u+offset1)
-    !                     end do
-    !                     call spmat_dot_dvec(nr, nc_v, nnz, indi, indj, dat, Xt, Rt)
-    !                     do jv = 1, nr
-    !                         R((jv-1)*nc_u+offset2) = Rt(jv)
-    !                     end do
-    !                 end do
-    !             end do
-    !         end do
-    !         !$OMP END DO
-    !         !$OMP END PARALLEL
+    ! subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u, indi_u, indj_u, data_u, &
+    !                         nnz_v, indi_v, indj_v, data_v, nnz_w, indi_w, indj_w, data_w, &
+    !                         nnz_t, indi_t, indj_t, data_t, array_in, array_out)
+    !     !! Evaluates a dot product between a tensor 3D and a vector 
+    !     !! Based on "Preconditioners for IGA" by Montardini
+    !     !! Vector_out = (Mw x Mv x Mu) . Vector_in (x = tensor prod, . = dot product)
+    !     !! Matrix Mu = (nb_rows_u, nb_cols_u)
+    !     !! Matrix Mv = (nb_rows_v, nb_cols_v)
+    !     !! Matrix Mw = (nb_rows_w, nb_cols_w)
+    !     !! Vector_in = (nb_cols_u * nb_cols_v * nb_cols_w)
+    !     use tensormode
+    !     implicit none 
+    !     ! Input / output data
+    !     ! -------------------
+    !     integer, intent(in) ::  nr_u, nc_u, nr_v, nc_v,nr_w, nc_w, nr_t, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
+    !     double precision, intent(in) :: array_in
+    !     dimension :: array_in(nc_u*nc_v*nc_w*nc_t)
+    !     double precision, intent(in) :: data_u, data_v, data_w, data_t
+    !     dimension :: data_u(nnz_u), data_v(nnz_v), data_w(nnz_w), data_t(nnz_t)
+    !     integer, intent(in) :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
+    !     dimension ::    indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1), &
+    !                     indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
     
-    !     else if (mode.eq.3) then 
+    !     double precision, intent(out) :: array_out
+    !     dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
     
-    !         allocate(Xt(nc_w))
-    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
-    !         do jt = 1, nc_t
-    !             do jv = 1, nc_v
-    !                 do ju = 1, nc_u
-    !                     offset1 = ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
-    !                     offset2 = ju+(jv-1)*nc_u+(jt-1)*nc_u*nc_v*nr
-    !                     do jw = 1, nc_w
-    !                         Xt(jw) = X((jw-1)*nc_u*nc_v+offset1)
-    !                     end do
-    !                     call spmat_dot_dvec(nr, nc_w, nnz, indi, indj, dat, Xt, Rt)
-    !                     do jw = 1, nr
-    !                         R((jw-1)*nc_u*nc_v+offset2) = Rt(jw)
-    !                     end do
-    !                 end do
-    !             end do
-    !         end do
-    !         !$OMP END DO
-    !         !$OMP END PARALLEL
+    !     ! Local data 
+    !     ! ----------
+    !     type(tensoroperator) :: obj
     
-    !     else if (mode.eq.4) then 
+    !     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, nc_t/), size(array_in), array_in)
+    !     call tensor_n_mode_product_spM(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, nc_w, nc_t, nr_u/))
+    !     call tensor_n_mode_product_spM(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/nc_w, nc_t, nr_u, nr_v/))
+    !     call tensor_n_mode_product_spM(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 3, 4, (/nc_t, nr_u, nr_v, nr_w/))
+    !     call tensor_n_mode_product_spM(obj, nr_t, nnz_t, data_t, indi_t, indj_t, 4, 4, (/nr_u, nr_v, nr_w, nr_t/))
+    !     array_out = pack(obj%tensor, .true.)
     
-    !         allocate(Xt(nc_t))
-    !         !$OMP PARALLEL PRIVATE(Xt, Rt, ju, jv, jw, jt, offset1, offset2)
-    !         !$OMP DO COLLAPSE(3) SCHEDULE(STATIC) 
-    !         do jw = 1, nc_w
-    !             do jv = 1, nc_v
-    !                 do ju = 1, nc_u
-    !                     offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-    !                     offset2 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-    !                     do jt = 1, nc_t
-    !                         Xt(jt) = X(ju+offset1)
-    !                     end do
-    !                     call spmat_dot_dvec(nr, nc_t, nnz, indi, indj, dat, Xt, Rt)
-    !                     do jt = 1, nr
-    !                         R(ju+offset2) = Rt(jt)
-    !                     end do
-    !                 end do
-    !             end do
-    !         end do
-    !         !$OMP END DO
-    !         !$OMP END PARALLEL
-            
-    !     end if
-    
-    ! end subroutine tensor_n_mode_product_spM
+    ! end subroutine sumfacto4d_spM
