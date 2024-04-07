@@ -4,117 +4,8 @@
 module tensormode
     use omp_lib
     implicit none
+
     contains
-
-    subroutine tensor_n_mode_product_dV(nc_u, nc_v, nc_w, nc_t, X, nc, U, mode, nrR, R)
-        !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
-        !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
-        !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
-        !! Matrix U = U(nr, nc)
-        !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
-        !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
-
-        use omp_lib
-        implicit none
-        ! Input / output data
-        ! -------------------
-        integer, intent(in) :: nc_u, nc_v, nc_w, nc_t, nc, mode, nrR
-        double precision, intent(in) :: X, U
-        dimension :: X(nc_u*nc_v*nc_w*nc_t), U(nc)
-
-        double precision, intent(out) :: R
-        dimension :: R(nrR)
-
-        ! Local data
-        ! ----------
-        double precision, allocatable, dimension(:) :: Rt
-        double precision, allocatable, dimension(:, :) :: Xt
-        integer :: ju, jv, jw, jt, offset1, offset2
-
-        R = 0.d0
-        if (mode.eq.1) then 
-
-            allocate(Xt(nc_u, nc_v), Rt(nc_v))
-            do jt = 1, nc_t
-                do jw = 1, nc_w
-                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-                    offset2 = (jw-1)*nc_v+(jt-1)*nc_v*nc_w
-                    do jv = 1, nc_v
-                        do ju = 1, nc_u
-                            Xt(ju, jv) = X(ju+(jv-1)*nc_u+offset1)
-                        end do
-                    end do
-                    Rt = matmul(U, Xt)
-                    do jv = 1, nc_v
-                        R(jv+offset2) = Rt(jv)
-                    end do
-                end do
-            end do
-            deallocate(Xt, Rt)
-
-        else if (mode.eq.2) then 
-
-            allocate(Xt(nc_v, nc_u), Rt(nc_u))
-            do jt = 1, nc_t
-                do jw = 1, nc_w
-                    offset1 = (jw-1)*nc_u*nc_v+(jt-1)*nc_u*nc_v*nc_w
-                    offset2 = (jw-1)*nc_u+(jt-1)*nc_u*nc_w
-                    do ju = 1, nc_u
-                        do jv = 1, nc_v
-                            Xt(jv, ju) = X(ju+(jv-1)*nc_u+offset1)
-                        end do
-                    end do
-                    Rt = matmul(U, Xt)
-                    do ju = 1, nc_u
-                        R(ju+offset2) = Rt(ju)
-                    end do
-                end do
-            end do
-            deallocate(Xt, Rt)
-            
-        else if (mode.eq.3) then 
-
-            allocate(Xt(nc_w, nc_u), Rt(nc_u))
-            do jt = 1, nc_t
-                do jv = 1, nc_v
-                    offset1 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v*nc_w
-                    offset2 = (jv-1)*nc_u+(jt-1)*nc_u*nc_v
-                    do ju = 1, nc_u
-                        do jw = 1, nc_w
-                            Xt(jw, ju) = X(ju+(jw-1)*nc_u*nc_v+offset1)
-                        end do
-                    end do
-                    Rt = matmul(U, Xt)
-                    do ju = 1, nc_u
-                        R(ju+offset2) = Rt(ju)
-                    end do
-                end do
-            end do
-            deallocate(Xt, Rt)
-
-        else if (mode.eq.4) then 
-            
-            allocate(Xt(nc_t, nc_u), Rt(nc_u))
-            do jw = 1, nc_w
-                do jv = 1, nc_v
-                    offset1 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
-                    offset2 = (jv-1)*nc_u+(jw-1)*nc_u*nc_v
-                    do ju = 1, nc_u
-                        do jt = 1, nc_t
-                            Xt(jt, ju) = X(ju+(jt-1)*nc_u*nc_v*nc_w+offset1)
-                        end do
-                    end do
-                    Rt = matmul(U, Xt)
-                    do ju = 1, nc_u
-                        R(ju+offset2) = Rt(ju)
-                    end do
-                end do
-            end do
-            deallocate(Xt, Rt)
-
-        end if
-
-    end subroutine tensor_n_mode_product_dV
 
     subroutine tensor_n_mode_product_dM(nc_u, nc_v, nc_w, nc_t, X, nr, nc, U, mode, nrR, R)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
@@ -124,7 +15,6 @@ module tensormode
         !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
         !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
 
-        use omp_lib
         implicit none
         ! Input / output data
         ! -------------------
@@ -257,7 +147,6 @@ module tensormode
         !! Tensor R = R(nu, nv, nw, nt) (It depends on 'mode'). It is mandatory that nrR = nu*nv*nw*nt
         !! Ex: if n=1, then nc = nc_u and dim(R) = [nr, nc_v, nc_w, nc_t]
 
-        use omp_lib
         implicit none
         ! Input / output data 
         ! -------------------
@@ -528,35 +417,6 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
 
     call tensor_n_mode_product_spM(nr_u, nc_v, 1, 1, R1, nr_v, nnz_v, data_v, indi_v, indj_v, 2, size(array_out), array_out)
     deallocate(R1)
-
-    ! integer :: i, j, m, n, nnz_u_i, nnz_v_j, indj_u_i(nnz_u), indj_v_j(nnz_v), nnz_1
-    ! double precision :: data_u_i(nnz_u), data_v_j(nnz_v), R1(nc_v), tmp(1)
-    ! double precision :: array_1(nc_u*nc_v)
-    
-    ! do j = 1, nr_v
-    !     nnz_v_j = indi_v(j+1)-indi_v(j)
-    !     indj_v_j(1:nnz_v_j) = indj_v(indi_v(j):indi_v(j+1)-1)
-    !     data_v_j(1:nnz_v_j) = data_v(indi_v(j):indi_v(j+1)-1)
-
-    !     do i = 1, nr_u
-    !         nnz_u_i = indi_u(i+1)-indi_u(i)
-    !         indj_u_i(1:nnz_u_i) = indj_u(indi_u(i):indi_u(i+1)-1)
-    !         data_u_i(1:nnz_u_i) = data_u(indi_u(i):indi_u(i+1)-1)
-
-    !         nnz_1 = nnz_u_i*nnz_v_j
-    !         do n = 1, nnz_v_j
-    !             do m = 1, nnz_u_i
-    !                 array_1(m+(n-1)*nnz_u_i) = array_in(indj_u_i(m) + (indj_v_j(n)-1)*nc_u)
-    !             end do
-    !         end do
-
-    !         call tensor_n_mode_product_dV(nnz_u_i, nnz_v_j, 1, 1, array_1(1:nnz_1), &
-    !                         nnz_u_i, data_u_i(1:nnz_u_i), 1, size(R1), R1)
-    !         call tensor_n_mode_product_dV(1, nnz_v_j, 1, 1, R1, &
-    !                         nnz_v_j, data_v_j(1:nnz_v_j), 2, size(tmp), tmp)
-    !         array_out(i+(j-1)*nr_u) = tmp(1)
-    !     end do
-    ! end do
 
 end subroutine sumfacto2d_spM
 
