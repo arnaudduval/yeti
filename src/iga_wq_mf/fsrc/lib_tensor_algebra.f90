@@ -56,7 +56,7 @@ module tensormode
         ! ----------
         double precision, allocatable, dimension(:) :: newtensor
         double precision, allocatable, dimension(:, :) :: Rt, Xt
-        integer :: ii, jj, kk, ll, genpos, nclist(obj%sizelist)
+        integer :: jj, kk, ll, genpos, nclist(obj%sizelist)
 
         if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
         if (.not.allocated(obj%nclist)) stop 'Unknown object'
@@ -68,23 +68,20 @@ module tensormode
         nclist = obj%nclist
 
         !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
-        do jj = 1, obj%nclist(4)
-            do ii = 1, obj%nclist(3)
+        !$OMP DO SCHEDULE(STATIC) 
+        do jj = 1, obj%nclist(3)*obj%nclist(4)
+            do ll = 1, obj%nclist(2)
+                do kk = 1, obj%nclist(1)
+                    genpos = kk + (ll-1)*nclist(1) + (jj-1)*nclist(1)*nclist(2)
+                    Xt(kk, ll) = obj%tensor(genpos)
+                end do
+            end do
+            Rt = matmul(U, Xt)
+            do kk = 1, nr
                 do ll = 1, obj%nclist(2)
-                    do kk = 1, obj%nclist(1)
-                        genpos = kk + (ll-1)*nclist(1) + (ii-1)*nclist(1)*nclist(2) + (jj-1)*nclist(1)*nclist(2)*nclist(3)
-                        Xt(kk, ll) = obj%tensor(genpos)
-                    end do
+                    genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
+                    newtensor(genpos) = Rt(kk, ll)
                 end do
-                Rt = matmul(U, Xt)
-                do kk = 1, nr
-                    do ll = 1, obj%nclist(2)
-                        genpos = ll + (ii-1)*nclist(2) + (jj-1)*nclist(2)*nclist(3) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
-                        newtensor(genpos) = Rt(kk, ll)
-                    end do
-                end do
-                
             end do
         end do
         !$OMP END DO 
@@ -252,50 +249,44 @@ module tensormode
 
         ! Local data
         ! ----------
-        double precision, allocatable, dimension(:, :, :, :) :: newtensor, tmptensor
+        double precision, allocatable, dimension(:) :: newtensor
         double precision, allocatable, dimension(:, :) :: Rt, Xt
-        integer :: ii, jj, kk, ll, genpos, nclist(obj%sizelist)
+        integer :: jj, kk, ll, genpos, nclist(obj%sizelist)
 
         if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
-        if (.not.allocated(obj%nclist)) stop 'object not defined'
+        if (.not.allocated(obj%nclist)) stop 'Unknown object'
         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
         if (any(newnclist.le.0)) stop 'Only positive integers'
         if (nr.ne.newnclist(4)) stop 'Size problem'
-        allocate(newtensor(newnclist(1), newnclist(2), newnclist(3), newnclist(4)))
-        allocate(tmptensor(newnclist(4), newnclist(1), newnclist(2), newnclist(3)))
+        allocate(newtensor(product(newnclist)))
         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
         nclist = obj%nclist
 
         !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
-        !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
-        do jj = 1, obj%nclist(4)
-            do ii = 1, obj%nclist(3)
-                do ll = 1, obj%nclist(2)
-                    do kk = 1, obj%nclist(1)
-                        genpos = kk + (ll-1)*nclist(1) + (ii-1)*nclist(1)*nclist(2) + (jj-1)*nclist(1)*nclist(2)*nclist(3)
-                        Xt(kk, ll) = obj%tensor(genpos)
-                    end do
+        !$OMP DO SCHEDULE(STATIC) 
+        do jj = 1, obj%nclist(3)*obj%nclist(4)
+            do ll = 1, obj%nclist(2)
+                do kk = 1, obj%nclist(1)
+                    genpos = kk + (ll-1)*nclist(1) + (jj-1)*nclist(1)*nclist(2)
+                    Xt(kk, ll) = obj%tensor(genpos)
                 end do
-                call spmat_dot_dmat(nr, nnz, indi, indj, dat, size(Xt, dim=1), size(Xt, dim=2), Xt, Rt)
-                tmptensor(:, :, ii, jj) = Rt
+            end do
+            call spmat_dot_dmat(nr, nnz, indi, indj, dat, size(Xt, dim=1), size(Xt, dim=2), Xt, Rt)
+            do kk = 1, nr
+                do ll = 1, obj%nclist(2)
+                    genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
+                    newtensor(genpos) = Rt(kk, ll)
+                end do
             end do
         end do
         !$OMP END DO 
         !$OMP END PARALLEL
 
-        !$OMP PARALLEL
-        !$OMP DO SCHEDULE(STATIC) 
-        do ii = 1, newnclist(4)
-            newtensor(:, :, :, ii) = tmptensor(ii, :, :, :)
-        end do
-        !$OMP END DO 
-        !$OMP END PARALLEL
-
-        deallocate(tmptensor, Xt, Rt, obj%tensor, obj%nclist)
+        deallocate(Xt, Rt, obj%tensor, obj%nclist)
         allocate(obj%nclist(obj%sizelist))
         obj%nclist = newnclist(1:obj%sizelist)
         allocate(obj%tensor(product(newnclist)))
-        obj%tensor = pack(newtensor, .true.)
+        obj%tensor = newtensor
 
     end subroutine tensor_n_mode_product_spM2
 

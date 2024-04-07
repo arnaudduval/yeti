@@ -178,10 +178,10 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path) + '/results/heattransfer/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
-dataExist   = False
+dataExist   = True
 degree_list = np.arange(4, 5)
 cuts_list   = np.arange(5, 6)
-name_list   = ['qa']
+name_list   = ['vb']
 IterMethods = ['WP', 'C', 'JMC']
 
 for cuts in cuts_list:
