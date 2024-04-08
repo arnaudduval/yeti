@@ -46,7 +46,7 @@ modeleIGA = deepcopy(iga_model_ini)
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_deg[:, 0] = np.array([2, 2, 2])
-nb_ref[:, 0] = np.array([5, 5, 5])
+nb_ref[:, 0] = np.array([5, 5, 4])
 modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
@@ -55,12 +55,12 @@ idof = modeleIGA._ind_dof_free[:ndof]-1
 
 # Sequential
 t0 = time.time()
-# data, row, col, Fb = build_stiffmatrix(
-#                     *modeleIGA.get_inputs4system_elemStorage())
+data, row, col, Fb = build_stiffmatrix(
+                    *modeleIGA.get_inputs4system_elemStorage())
 t1 = time.time()
-# Kside = sp.coo_matrix((data, (row, col)),
-#                 shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
-#                 dtype='float64').tocsc()
+Kside = sp.coo_matrix((data, (row, col)),
+                shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
+                dtype='float64').tocsc()
 
 t2 = time.time()
 # Multithreaded
@@ -72,7 +72,7 @@ dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
 #                      *modeleIGA2.get_inputs4system_elemStorage())
 t4 = time.time()
 
-exit()
+# exit()
 
 KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
                 shape=(modeleIGA2._nb_dof_tot, modeleIGA2._nb_dof_tot),
