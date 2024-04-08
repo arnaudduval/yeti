@@ -230,7 +230,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                         i   = i + 1
                         do ll = 1,MCRD
                             do kk = 1,MCRD
-                                write(*,*) idx+loccount
+                                ! write(*,*) idx+loccount
                                 Kdata(idx + loccount) = AMATRX(kk,ll,i)
                                 Krow(idx + loccount) = idof + kk - 1
                                 Kcol(idx + loccount) = jdof + ll - 1
@@ -244,7 +244,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                     do ll = 1,MCRD
                         AMATRX(ll,ll,i) = AMATRX(ll,ll,i)*0.5d0
                         do kk = 1,ll
-                            write(*,*) idx+loccount
+                            ! write(*,*) idx+loccount
                             Kdata(idx + loccount) = AMATRX(kk,ll,i)
                             Krow(idx + loccount) = jdof + kk - 1
                             Kcol(idx + loccount) = jdof + ll - 1
