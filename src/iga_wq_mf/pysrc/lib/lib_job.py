@@ -230,8 +230,8 @@ class heatproblem(problem):
 		return
 	
 	def compute_mfConductivity(self, array_in, args=None):
-		if args is None: args = {'position': self.part.qpPhy}
-		if self.heatmaterial._isConductivityIsotropic: args = self.part.qpPhy
+		if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
+		if self.heatmaterial._isConductivityIsotropic: args = np.ones(self.part.nbqp_total)
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_conductivity_2d(*inpts, array_in)
@@ -239,8 +239,8 @@ class heatproblem(problem):
 		return array_out
 	
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False): 
-		if args is None: args = {'position': self.part.qpPhy}
-		if self.heatmaterial._isCapacityIsotropic: args = self.part.qpPhy
+		if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
+		if self.heatmaterial._isCapacityIsotropic: args = np.ones(self.part.nbqp_total)
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = heatsolver.mf_capacity_2d(*inpts, array_in)
@@ -261,12 +261,12 @@ class heatproblem(problem):
 		return intForce
 	
 	def solveEigenProblem(self, ishigher=False, args=None):
-		if args is None: args = {'position': self.part.qpPhy}
-		if self.heatmaterial._isCapacityIsotropic: args = self.part.qpPhy
+		if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
+		if self.heatmaterial._isCapacityIsotropic: args = np.ones(self.part.nbqp_total)
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 
-		if args is None: args = {'position': self.part.qpPhy}
-		if self.heatmaterial._isConductivityIsotropic: args = self.part.qpPhy
+		if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
+		if self.heatmaterial._isConductivityIsotropic: args = np.ones(self.part.nbqp_total)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
 				Cprop, Kprop, ishigher, self._itersLin, self._thresLin]
@@ -329,7 +329,8 @@ class heatproblem(problem):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False):
 
 		def computeVelocity(problem:heatproblem, Fext, args=None, isLumped=False):
-			if args is None: args = {'position': problem.part.qpPhy}
+			if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
+			if problem.heatmaterial._isCapacityIsotropic: args = np.ones(self.part.nbqp_total)
 			dof = problem.boundary.thdof
 			prop = problem.heatmaterial.capacity(args)*problem.heatmaterial.density(args)
 			if isLumped: tmp = Fext/problem.compute_mfCapacity(np.ones(problem.part.nbctrlpts_total), args=args, isLumped=isLumped)
@@ -414,7 +415,7 @@ class mechaproblem(problem):
 		return
 	
 	def compute_mfMass(self, array_in, args=None, isLumped=False):
-		if args is None: args = {'position': self.part.qpPhy}
+		if args is None: args = {'temperature': np.ones(self.part.nbqp_total)}
 		prop = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.part.invJ, self.part.detJ, prop]
 		if self.part.dim == 2: array_out = plasticitysolver.mf_mass_2d(*inpts, array_in)
@@ -455,7 +456,7 @@ class mechaproblem(problem):
 			mechArgs = np.zeros((2, self.part.nbqp_total))
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
-		if args is None: args = {'position': self.part.qpPhy}
+		if args is None: args = {'temperature': self.part.qpPhy}
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
 				mechArgs, massProp, ishigher, self._itersLin, self._thresLin]

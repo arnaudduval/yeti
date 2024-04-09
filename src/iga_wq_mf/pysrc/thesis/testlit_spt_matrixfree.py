@@ -1,9 +1,10 @@
 from pysrc.lib.__init__ import *
+from pysrc.lib.lib_base import createUniformCurve
 from pysrc.lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
+from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
-from pysrc.lib.lib_job import heatproblem
+from pysrc.lib.lib_stjob import stheatproblem
 
 # Select folder
 full_path = os.path.realpath(__file__)
@@ -13,8 +14,8 @@ folder2find = os.path.dirname(full_path) + '/data/'
 # Set global variables
 dataExist     = False
 # withReference = True
-degree_list   = range(1, 6)
-cuts          = 7
+degree_list   = range(1, 2)
+cuts          = 5
 
 if not dataExist:
 
@@ -36,19 +37,21 @@ if not dataExist:
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs={'quadrule':'iga', 'type':'leg'})
+		time_spt = part1D(createUniformCurve(degree, int(2**cuts), 1.0), {'quadArgs':{'quadrule':'iga', 'type':'leg'}})
 
 		heatmaterial = heatmat()
 		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
 		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=3)
 	
-		# Set Dirichlet boundaries
-		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletConstTemperature(table=np.ones((3, 2), dtype=int))
+		# Set Dirichlet boundaries	
+		sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
+		boundary = boundaryCondition(sptnbctrlpts)
+		dirichlet_table = np.ones((4, 2)); dirichlet_table[-1, -1] = 0
+		boundary.add_DirichletConstTemperature(table=dirichlet_table)
 		enablePrint()
 
 		# Solve elastic problem
-		problem = heatproblem(heatmaterial, modelPhy, boundary)
-
+		problem = stheatproblem(heatmaterial, modelPhy, time_spt, boundary)
 		v_in = np.random.random(boundary._nbctrlpts_total)
 
 		# ------------------
@@ -58,14 +61,14 @@ if not dataExist:
 
 		print('******')
 		start = time.time()
-		problem.compute_mfCapacity(v_in)
+		problem.compute_mfSTCapacity(v_in)
 		stop = time.time()
 		print('Time Capacity:%.2e' %(stop-start))
 		# timeMF_Mass_matrix[i, 1] = stop - start
 		# np.savetxt(folder_data+'matvec_MF_Mass_'+'.dat', timeMF_Mass_matrix)
 
 		start = time.time()
-		problem.compute_mfConductivity(v_in)
+		problem.compute_mfSTConductivity(v_in)
 		stop = time.time()
 		print('Time Conductivity:%.2e' %(stop-start))
 		# timeMF_Stiff_matrix[i, 1] = stop - start

@@ -342,8 +342,8 @@ subroutine fastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, &
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
-    call space_eigendecomposition(redsyst)
     call getcsrc2dense(globsyst)
+    call space_eigendecomposition(redsyst)
 
     if (nr_total.ne.nr_u*nr_v) stop 'Size problem'
     call initialize_solver(solv, globsyst, redsyst)
@@ -395,11 +395,132 @@ subroutine fastdiagonalization_3d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, 
     call copybasisdata(globsyst, redsyst%basisdata)
     call update_reducedsystem(redsyst, dimen, table)
     call getcsrc2dense(redsyst%basisdata)
-    call space_eigendecomposition(redsyst)
     call getcsrc2dense(globsyst)
+    call space_eigendecomposition(redsyst)
 
     if (nr_total.ne.nr_u*nr_v*nr_w) stop 'Size problem'
     call initialize_solver(solv, globsyst, redsyst)
     call applyfastdiag(solv, nr_total, array_in, array_out)
 
 end subroutine fastdiagonalization_3d
+
+subroutine sptfastdiagonalization_2d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+        nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+        indi_t, indj_t, data_B_u, data_B_v, data_B_t, data_W_u, data_W_v, &
+        data_W_t, array_in, array_out)
+    !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
+    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
+    !! bn is compute beforehand (In python).
+    !! IN CSR FORMAT
+
+    use stheatsolver
+    use structured_data
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 3
+    integer, intent(in) :: nr_total, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_t    
+    integer, intent(in) :: indi_u, indi_v, indi_t
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_t(nr_t+1)
+    integer, intent(in) ::  indj_u, indj_v, indj_t
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_t, data_W_t
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
+
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_total)
+
+    ! Local data
+    ! ----------
+    type(stcgsolver) :: solv
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    logical :: table(dimen_sp+1, 2) = .true.
+    integer :: dimen
+
+    dimen = dimen_sp + 1; table(dimen, 2) = .false.
+    call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_t, indj_t, data_B_u, data_B_v, data_B_t, &
+                        data_W_u, data_W_v, data_W_t)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
+    redsyst%isspacetime = .true.
+    
+    call space_eigendecomposition(redsyst)
+    call time_schurdecomposition(redsyst)
+
+    if (nr_total.ne.nr_u*nr_v*nr_t) stop 'Size problem'
+    call initialize_solver(solv, globsyst, redsyst)
+    call applyfastdiag(solv, nr_total, array_in, array_out)
+
+end subroutine sptfastdiagonalization_2d
+
+subroutine sptfastdiagonalization_3d(nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+        nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
+        indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, data_W_u, data_W_v, &
+        data_W_w, data_W_t, array_in, array_out)
+    !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
+    !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
+    !! bn is compute beforehand (In python).
+    !! IN CSR FORMAT
+
+    use stheatsolver
+    use structured_data
+    implicit none 
+    ! Input / output data
+    ! -------------------
+    integer, parameter :: dimen_sp = 3
+    integer, intent(in) :: nr_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                            nnz_u, nnz_v, nnz_w, nnz_t    
+    integer, intent(in) :: indi_u, indi_v, indi_w, indi_t
+    dimension :: indi_u(nr_u+1), indi_v(nr_v+1), indi_w(nr_w+1), indi_t(nr_t+1)
+    integer, intent(in) ::  indj_u, indj_v, indj_w, indj_t
+    dimension :: indj_u(nnz_u), indj_v(nnz_v), indj_w(nnz_w), indj_t(nnz_t)
+    double precision, intent(in) :: data_B_u, data_W_u, data_B_v, data_W_v, data_B_w, data_W_w, data_B_t, data_W_t
+    dimension ::    data_B_u(nnz_u, 2), data_W_u(nnz_u, 4), &
+                    data_B_v(nnz_v, 2), data_W_v(nnz_v, 4), &
+                    data_B_w(nnz_w, 2), data_W_w(nnz_w, 4), &
+                    data_B_t(nnz_t, 2), data_W_t(nnz_t, 4)
+
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_total)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_total)
+
+    ! Local data
+    ! ----------
+    type(stcgsolver) :: solv
+    type(basis_data), target :: globsyst
+    type(reduced_system), target :: redsyst
+    logical :: table(dimen_sp+1, 2) = .true.
+    integer :: dimen
+
+    dimen = dimen_sp + 1; table(dimen, 2) = .false.
+    call init_4basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, &
+                        nnz_u, nnz_v, nnz_w, nnz_t, indi_u, indj_u, indi_v, indj_v, &
+                        indi_w, indj_w, indi_t, indj_t, data_B_u, data_B_v, data_B_w, data_B_t, &
+                        data_W_u, data_W_v, data_W_w, data_W_t)
+    call copybasisdata(globsyst, redsyst%basisdata)
+    call update_reducedsystem(redsyst, dimen, table)
+    call getcsrc2dense(redsyst%basisdata)
+    call getcsrc2dense(globsyst)
+    redsyst%isspacetime = .true.
+
+    call space_eigendecomposition(redsyst)
+    call time_schurdecomposition(redsyst)
+
+    if (nr_total.ne.nr_u*nr_v*nr_w*nr_t) stop 'Size problem'
+    call initialize_solver(solv, globsyst, redsyst)
+    call applyfastdiag(solv, nr_total, array_in, array_out)
+
+end subroutine sptfastdiagonalization_3d

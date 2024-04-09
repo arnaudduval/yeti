@@ -34,7 +34,7 @@ module tensormode
 
     end subroutine initialize_operator
 
-    subroutine tensor_n_mode_product_dM2(obj, nr, nc, U, mode, sizelist, newnclist)
+    subroutine tensor_n_mode_product_dM2(obj, nr, nc, U, sizelist, newnclist, method)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
         !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
@@ -46,7 +46,7 @@ module tensormode
         ! Input / output data
         ! -------------------
         type(tensoroperator) :: obj
-        integer, intent(in) :: nr, nc, mode, sizelist 
+        integer, intent(in) :: nr, nc, sizelist, method
         integer, intent(in) :: newnclist
         dimension :: newnclist(sizelist)
         double precision, intent(in) :: U
@@ -58,34 +58,68 @@ module tensormode
         double precision, allocatable, dimension(:, :) :: Rt, Xt
         integer :: jj, kk, ll, genpos, nclist(obj%sizelist)
 
-        if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
         if (.not.allocated(obj%nclist)) stop 'Unknown object'
         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
         if (any(newnclist.le.0)) stop 'Only positive integers'
         if (nr.ne.newnclist(4)) stop 'Size problem'
-        allocate(newtensor(product(newnclist)))
-        allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
         nclist = obj%nclist
+        allocate(newtensor(product(newnclist)))
+        
+        if (method.eq.1) then
 
-        !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
-        !$OMP DO SCHEDULE(STATIC) 
-        do jj = 1, obj%nclist(3)*obj%nclist(4)
-            do ll = 1, obj%nclist(2)
-                do kk = 1, obj%nclist(1)
-                    genpos = kk + (ll-1)*nclist(1) + (jj-1)*nclist(1)*nclist(2)
-                    Xt(kk, ll) = obj%tensor(genpos)
-                end do
-            end do
-            Rt = matmul(U, Xt)
-            do kk = 1, nr
+            allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
+            !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
+            !$OMP DO SCHEDULE(STATIC) 
+            do jj = 1, obj%nclist(3)*obj%nclist(4)
                 do ll = 1, obj%nclist(2)
-                    genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
-                    newtensor(genpos) = Rt(kk, ll)
+                    do kk = 1, obj%nclist(1)
+                        genpos = kk + (ll-1)*nclist(1) + (jj-1)*nclist(1)*nclist(2)
+                        Xt(kk, ll) = obj%tensor(genpos)
+                    end do
+                end do
+                Rt = matmul(U, Xt)
+                do ll = 1, obj%nclist(2)
+                    do kk = 1, nr
+                        genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
+                        newtensor(genpos) = Rt(kk, ll)
+                    end do
                 end do
             end do
-        end do
-        !$OMP END DO 
-        !$OMP END PARALLEL
+            !$OMP END DO 
+            !$OMP END PARALLEL
+
+        else
+
+            allocate(Xt(obj%nclist(1), product(obj%nclist(2:))), Rt(nr, product(obj%nclist(2:))))
+            !$OMP PARALLEL PRIVATE(kk, genpos)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            do jj = 1, obj%nclist(3)*obj%nclist(4)
+                do ll = 1, obj%nclist(2)
+                    do kk = 1, obj%nclist(1)
+                        genpos = kk + (ll-1)*nclist(1) + (jj-1)*nclist(1)*nclist(2)
+                        Xt(kk, ll+(jj-1)*obj%nclist(2)) = obj%tensor(genpos)
+                    end do
+                end do
+            end do
+            !$OMP END DO 
+            !$OMP END PARALLEL
+
+            Rt = matmul(U, Xt)
+            
+            !$OMP PARALLEL PRIVATE(kk, genpos)
+            !$OMP DO COLLAPSE(2) SCHEDULE(STATIC) 
+            do jj = 1, obj%nclist(3)*obj%nclist(4)
+                do ll = 1, obj%nclist(2)
+                    do kk = 1, nr
+                        genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
+                        newtensor(genpos) = Rt(kk, ll+(jj-1)*obj%nclist(2))
+                    end do
+                end do
+            end do
+            !$OMP END DO 
+            !$OMP END PARALLEL
+
+        end if
 
         deallocate(Xt, Rt, obj%tensor, obj%nclist)
         allocate(obj%nclist(obj%sizelist))
@@ -227,7 +261,7 @@ module tensormode
 
     end subroutine tensor_n_mode_product_dM
 
-    subroutine tensor_n_mode_product_spM2(obj, nr, nnz, dat, indi, indj, mode, sizelist, newnclist)
+    subroutine tensor_n_mode_product_spM2(obj, nr, nnz, dat, indi, indj, sizelist, newnclist)
         !! Evaluates tensor n-mode product with a matrix (R = X x_n U) (x_n: tensor n-mode product) 
         !! Based on "Tensor Decompositions and Applications" by Tamara Kolda and Brett Bader
         !! Tensor X = X(nc_u, nc_v, nc_w, nc_t)
@@ -239,7 +273,7 @@ module tensormode
         ! Input / output data
         ! -------------------
         type(tensoroperator) :: obj
-        integer, intent(in) :: nr, nnz, mode, sizelist 
+        integer, intent(in) :: nr, nnz, sizelist 
         integer, intent(in) :: newnclist
         dimension :: newnclist(sizelist)
         integer, intent(in) :: indi, indj
@@ -253,14 +287,14 @@ module tensormode
         double precision, allocatable, dimension(:, :) :: Rt, Xt
         integer :: jj, kk, ll, genpos, nclist(obj%sizelist)
 
-        if ((mode.lt.1).or.(mode.gt.4)) stop 'Only 1, 2, 3, 4 modes for tensor-matrix operations'
         if (.not.allocated(obj%nclist)) stop 'Unknown object'
         if (sizelist.lt.obj%sizelist) stop 'Size problem' 
         if (any(newnclist.le.0)) stop 'Only positive integers'
         if (nr.ne.newnclist(4)) stop 'Size problem'
+        nclist = obj%nclist
+
         allocate(newtensor(product(newnclist)))
         allocate(Xt(obj%nclist(1), obj%nclist(2)), Rt(nr, obj%nclist(2)))
-        nclist = obj%nclist
 
         !$OMP PARALLEL PRIVATE(Xt, Rt, kk, ll, genpos)
         !$OMP DO SCHEDULE(STATIC) 
@@ -272,8 +306,8 @@ module tensormode
                 end do
             end do
             call spmat_dot_dmat(nr, nnz, indi, indj, dat, size(Xt, dim=1), size(Xt, dim=2), Xt, Rt)
-            do kk = 1, nr
-                do ll = 1, obj%nclist(2)
+            do ll = 1, obj%nclist(2)
+                do kk = 1, nr
                     genpos = ll + (jj-1)*nclist(2) + (kk-1)*nclist(2)*nclist(3)*nclist(4)
                     newtensor(genpos) = Rt(kk, ll)
                 end do
@@ -450,8 +484,8 @@ subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)
     type(tensoroperator) :: obj
 
     call initialize_operator(obj, 4, (/nc_u, nc_v, 1, 1/), size(array_in), array_in)
-    call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, 1, 1, nr_u/))
-    call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 2, 4, (/1, 1, nr_u, nr_v/))
+    call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 4, (/nc_v, 1, 1, nr_u/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 4, (/1, 1, nr_u, nr_v/), 2)
     array_out = obj%tensor
 
     ! ! Local data 
@@ -487,29 +521,29 @@ subroutine sumfacto3d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, Mu, Mv, Mw, array_i
     double precision, intent(out) :: array_out
     dimension :: array_out(nr_u*nr_v*nr_w)
 
-    ! ! Local data 
-    ! ! ----------
-    ! type(tensoroperator) :: obj
-
-    ! call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, 1/), size(array_in), array_in)
-    ! call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, nc_w, 1, nr_u/))
-    ! call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 2, 4, (/nc_w, 1, nr_u, nr_v/))
-    ! call tensor_n_mode_product_dM2(obj, nr_w, nc_w, Mw, 3, 4, (/1, nr_u, nr_v, nr_w/))
-    ! array_out = obj%tensor
-
     ! Local data 
     ! ----------
-    double precision, allocatable, dimension(:) :: R1, R2
+    type(tensoroperator) :: obj
 
-    allocate(R1(nr_u*nc_v*nc_w))
-    call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+    call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, 1/), size(array_in), array_in)
+    call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 4, (/nc_v, nc_w, 1, nr_u/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 4, (/nc_w, 1, nr_u, nr_v/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_w, nc_w, Mw, 4, (/1, nr_u, nr_v, nr_w/), 2)
+    array_out = obj%tensor
 
-    allocate(R2(nr_u*nr_v*nc_w))
-    call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, 1, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
-    deallocate(R1)
+    ! ! Local data 
+    ! ! ----------
+    ! double precision, allocatable, dimension(:) :: R1, R2
 
-    call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, 1, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
-    deallocate(R2)  
+    ! allocate(R1(nr_u*nc_v*nc_w))
+    ! call tensor_n_mode_product_dM(nc_u, nc_v, nc_w, 1, array_in, nr_u, nc_u, Mu, 1, size(R1), R1)
+
+    ! allocate(R2(nr_u*nr_v*nc_w))
+    ! call tensor_n_mode_product_dM(nr_u, nc_v, nc_w, 1, R1, nr_v, nc_v, Mv, 2, size(R2), R2)
+    ! deallocate(R1)
+
+    ! call tensor_n_mode_product_dM(nr_u, nr_v, nc_w, 1, R2, nr_w, nc_w, Mw, 3, size(array_out), array_out)
+    ! deallocate(R2)  
 
 end subroutine sumfacto3d_dM
 
@@ -539,10 +573,10 @@ subroutine sumfacto4d_dM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, Mu, Mv,
     type(tensoroperator) :: obj
 
     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, nc_t/), size(array_in), array_in)
-    call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 1, 4, (/nc_v, nc_w, nc_t, nr_u/))
-    call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 2, 4, (/nc_w, nc_t, nr_u, nr_v/))
-    call tensor_n_mode_product_dM2(obj, nr_w, nc_w, Mw, 3, 4, (/nc_t, nr_u, nr_v, nr_w/))
-    call tensor_n_mode_product_dM2(obj, nr_t, nc_t, Mt, 4, 4, (/nr_u, nr_v, nr_w, nr_t/))
+    call tensor_n_mode_product_dM2(obj, nr_u, nc_u, Mu, 4, (/nc_v, nc_w, nc_t, nr_u/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_v, nc_v, Mv, 4, (/nc_w, nc_t, nr_u, nr_v/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_w, nc_w, Mw, 4, (/nc_t, nr_u, nr_v, nr_w/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_t, nc_t, Mt, 4, (/nr_u, nr_v, nr_w, nr_t/), 1)
     array_out = obj%tensor
 
     ! ! Local data 
@@ -594,8 +628,8 @@ subroutine sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, nnz_u, indi_u, indj_u, data_u,
     type(tensoroperator) :: obj
 
     call initialize_operator(obj, 4, (/nc_u, nc_v, 1, 1/), size(array_in), array_in)
-    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, 1, 1, nr_u/))
-    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/1, 1, nr_u, nr_v/))    
+    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 4, (/nc_v, 1, 1, nr_u/))
+    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 4, (/1, 1, nr_u, nr_v/))    
     array_out = obj%tensor
 
     ! ! Local data
@@ -640,9 +674,9 @@ subroutine sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, indi_u, ind
     type(tensoroperator) :: obj
 
     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, 1/), size(array_in), array_in)
-    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, nc_w, 1, nr_u/))
-    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/nc_w, 1, nr_u, nr_v/))
-    call tensor_n_mode_product_spM2(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 3, 4, (/1, nr_u, nr_v, nr_w/))
+    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 4, (/nc_v, nc_w, 1, nr_u/))
+    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 4, (/nc_w, 1, nr_u, nr_v/))
+    call tensor_n_mode_product_spM2(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 4, (/1, nr_u, nr_v, nr_w/))
     array_out = obj%tensor
 
     ! ! Local data 
@@ -692,10 +726,10 @@ subroutine sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, nnz_u,
     type(tensoroperator) :: obj
 
     call initialize_operator(obj, 4, (/nc_u, nc_v, nc_w, nc_t/), size(array_in), array_in)
-    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 1, 4, (/nc_v, nc_w, nc_t, nr_u/))
-    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 2, 4, (/nc_w, nc_t, nr_u, nr_v/))
-    call tensor_n_mode_product_spM2(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 3, 4, (/nc_t, nr_u, nr_v, nr_w/))
-    call tensor_n_mode_product_spM2(obj, nr_t, nnz_t, data_t, indi_t, indj_t, 4, 4, (/nr_u, nr_v, nr_w, nr_t/))
+    call tensor_n_mode_product_spM2(obj, nr_u, nnz_u, data_u, indi_u, indj_u, 4, (/nc_v, nc_w, nc_t, nr_u/))
+    call tensor_n_mode_product_spM2(obj, nr_v, nnz_v, data_v, indi_v, indj_v, 4, (/nc_w, nc_t, nr_u, nr_v/))
+    call tensor_n_mode_product_spM2(obj, nr_w, nnz_w, data_w, indi_w, indj_w, 4, (/nc_t, nr_u, nr_v, nr_w/))
+    call tensor_n_mode_product_spM2(obj, nr_t, nnz_t, data_t, indi_t, indj_t, 4, (/nr_u, nr_v, nr_w, nr_t/))
     array_out = obj%tensor
 
     ! ! Local data 

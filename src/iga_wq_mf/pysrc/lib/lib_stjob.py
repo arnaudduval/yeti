@@ -161,6 +161,14 @@ class stproblem():
 		if tmp2 == 0: print('Warning: Dividing by zero')
 
 		return abserror, relerror
+	
+	def fastDiagonalization(self, array_in, fdtype='sptheat'):
+		if fdtype == 'sptheat':
+			inpts = [*self._getInputs(), array_in]
+			if self.part.dim == 2: array_out = eigensolver.sptfastdiagonalization_2d(*inpts)
+			if self.part.dim == 3: array_out = eigensolver.sptfastdiagonalization_3d(*inpts)
+		else: raise Warning('Not coded')
+		return array_out
 
 class stheatproblem(stproblem):
 	def __init__(self, heat_material:heatmat, part:part, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
@@ -170,7 +178,10 @@ class stheatproblem(stproblem):
 		return
 	
 	def compute_mfSTConductivity(self, array_in, args=None):
-		if args is None: args = {'position': self.part.qpPhy}
+		if args is None: 
+			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
+			if self.heatmaterial._isConductivityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stconductivity_2d(*inpts, array_in)
@@ -178,7 +189,10 @@ class stheatproblem(stproblem):
 		return array_out
 	
 	def compute_mfSTCapacity(self, array_in, args=None):
-		if args is None: args = {'position': self.part.qpPhy}
+		if args is None: 
+			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
 		prop = self.heatmaterial.capacity(args)
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacity_2d(*inpts, array_in)

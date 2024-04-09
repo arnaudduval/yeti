@@ -31,7 +31,7 @@ class material():
 		if isIsotropic:
 			# Isotropic material 
 			assert np.isscalar(inpt), 'Not possible'
-			prop = lambda x: inpt*np.ones(np.max(np.shape(x)))
+			prop = lambda x: inpt*np.ones(len(x))
 
 		elif callable(inpt):
 			# Anisotropic material using a continuous function
@@ -43,8 +43,7 @@ class material():
 	def setTensorProperty(self, inpt, shape=3, isIsotropic=False):
 
 		def create3ArrayFrom2Array(inpt, x):
-			lenx = np.max(np.shape(x))
-			y = np.zeros((*np.shape(inpt), lenx))
+			y = np.zeros((*np.shape(inpt), len(x)))
 			for i in range(np.shape(inpt)[0]):
 				for j in range(np.shape(inpt)[1]):
 					y[i, j, :] = inpt[i, j]
