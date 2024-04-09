@@ -97,24 +97,6 @@ subroutine find_unique_array(nnz_in, array_in, array_out)
 
 end subroutine find_unique_array
 
-subroutine create_identity(nr, A)
-    implicit none
-    ! Input / output data
-    ! -------------------
-    integer, intent(in) :: nr
-    double precision, intent(inout) :: A
-    dimension :: A(nr, nr)
-    ! Local data
-    ! ----------
-    integer :: i
-
-    A = 0.d0
-    do i = 1, nr
-        A(i, i) = 1.d0
-    end do
-    
-end subroutine create_identity
-
 subroutine indices2list(size_nclist, nbPts, ptsPos, nclist, sample)
     implicit none
     ! Input / output data

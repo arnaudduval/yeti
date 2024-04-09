@@ -3,7 +3,7 @@ from pyevtk.vtk import VtkGroup
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/Other/' + GEONAME + '/'
+folder = os.path.dirname(full_path) + '/results/Other2/' + GEONAME + '/'
 subfolder = folder +  'steps/'
 if not os.path.isdir(folder): os.mkdir(folder)
 if not os.path.isdir(subfolder): os.mkdir(subfolder)
@@ -18,7 +18,7 @@ def run(folder=None):
 
 # Set global variables
 TODOSIMU = True
-FIG_CASE = 2
+FIG_CASE = 1
 
 def exactTemperature_inc(args):
 	func = None
@@ -146,7 +146,7 @@ elif FIG_CASE == 1:
 	filenameT3 = folder + 'sptheatTim2'+lastsufix
 
 	degree_list = np.array([1, 2, 3, 4, 5])
-	cuts_list   = np.arange(1, 7)
+	cuts_list   = np.arange(1, 6)
 
 	if TODOSIMU:
 		exportTimeDependentMaterial(np.linspace(0, 1, 33), 

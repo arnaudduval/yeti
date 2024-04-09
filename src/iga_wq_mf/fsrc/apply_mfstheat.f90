@@ -1,3 +1,59 @@
+subroutine sptsumfacto2d_dM(nr_u, nr_v, nr_t, Mu, Mv, array_in, array_out)
+
+    use tensormode
+    implicit none 
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nr_u, nr_v, nr_t
+    double precision, intent(in) :: Mu, Mv
+    dimension :: Mu(nr_u, nr_u), Mv(nr_v, nr_v)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_u*nr_v*nr_t)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_t)
+
+    ! Local data 
+    ! ----------
+    type(tensoroperator) :: obj
+
+    call initialize_operator(obj, 4, (/nr_u, nr_v, nr_t, 1/), size(array_in), array_in)
+    call tensor_n_mode_product_dM2(obj, nr_u, nr_u, Mu, 4, (/nr_v, nr_t, 1, nr_u/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_v, nr_v, Mv, 4, (/nr_t, 1, nr_u, nr_v/), 1)
+    call reorder(obj)
+    array_out = obj%tensor
+    
+end subroutine sptsumfacto2d_dM
+
+subroutine sptsumfacto3d_dM(nr_u, nr_v, nr_w, nr_t, Mu, Mv, Mw, array_in, array_out)
+
+    use tensormode
+    implicit none 
+    ! Input / output data 
+    ! -------------------
+    integer, intent(in) :: nr_u, nr_v, nr_w, nr_t
+    double precision, intent(in) :: Mu, Mv, Mw
+    dimension :: Mu(nr_u, nr_u), Mv(nr_v, nr_v), Mw(nr_w, nr_w)
+    double precision, intent(in) :: array_in
+    dimension :: array_in(nr_u*nr_v*nr_w*nr_t)
+
+    double precision, intent(out) :: array_out
+    dimension :: array_out(nr_u*nr_v*nr_w*nr_t)
+
+    ! Local data 
+    ! ----------
+    type(tensoroperator) :: obj
+
+    call initialize_operator(obj, 4, (/nr_u, nr_v, nr_w, nr_t/), size(array_in), array_in)
+    call tensor_n_mode_product_dM2(obj, nr_u, nr_u, Mu, 4, (/nr_v, nr_w, nr_t, nr_u/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_v, nr_v, Mv, 4, (/nr_w, nr_t, nr_u, nr_v/), 1)
+    call tensor_n_mode_product_dM2(obj, nr_w, nr_w, Mw, 4, (/nr_t, nr_u, nr_v, nr_w/), 1)
+    call reorder(obj)
+    array_out = obj%tensor
+    
+end subroutine sptsumfacto3d_dM
+
+
 module matrixfreestheat
     use omp_lib
     use structured_data
@@ -779,9 +835,8 @@ contains
     
         ! Local data
         ! ----------
-        integer :: pos_tm, i, j, k, l!, nb_tasks
+        integer :: pos_tm, i, j, k, l
         integer :: nr_u, nr_v, nr_w, nr_t
-        double precision, allocatable, dimension(:, :) :: identity
         double precision, allocatable, dimension(:) :: tmp1, tmp3, stmp
         double precision, allocatable, dimension(:, :, :, :) :: tmp2
         integer, allocatable, dimension(:, :, :, :) :: dof
@@ -796,24 +851,22 @@ contains
         nr_t = solv%redsyst%basisdata%nrows(pos_tm)
         nr_w = 1; if (solv%globsyst%dimen.eq.4) nr_w = solv%redsyst%basisdata%nrows(3)
 
-        allocate(identity(nr_t, nr_t))
-        call create_identity(nr_t, identity)
         allocate(dof(nr_u, nr_v, nr_w, nr_t))
         dof = reshape(solv%redsyst%dof, shape=(/nr_u, nr_v, nr_w, nr_t/))
 
         array_out = 0.d0
         allocate(tmp1(nr_u*nr_v*nr_w*nr_t))
         if (solv%globsyst%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
+            call sptsumfacto2d_dM(nr_u, nr_v, nr_t, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
-                        identity, array_in(solv%redsyst%dof), tmp1)
+                        array_in(solv%redsyst%dof), tmp1)
         else if (solv%globsyst%dimen.eq.4) then
-            call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+            call sptsumfacto3d_dM(nr_u, nr_v, nr_w, nr_t, &
                         transpose(solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u)), &
                         transpose(solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v)), &
                         transpose(solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w)), &
-                        identity, array_in(solv%redsyst%dof), tmp1)
+                        array_in(solv%redsyst%dof), tmp1)
         end if 
 
         allocate(tmp2(nr_u, nr_v, nr_w, nr_t))
@@ -842,16 +895,16 @@ contains
 
         allocate(tmp3(nr_u*nr_v*nr_w*nr_t))
         if (solv%globsyst%dimen.eq.3) then
-            call sumfacto3d_dM(nr_u, nr_u, nr_v, nr_v, nr_t, nr_t, &
+            call sptsumfacto2d_dM(nr_u, nr_v, nr_t, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
-                        identity, tmp1, tmp3)
+                        tmp1, tmp3)
         else if (solv%globsyst%dimen.eq.4) then
-            call sumfacto4d_dM(nr_u, nr_u, nr_v, nr_v, nr_w, nr_w, nr_t, nr_t, &
+            call sptsumfacto3d_dM(nr_u, nr_v, nr_w, nr_t, &
                         solv%redsyst%eigvec_sp_dir(1, 1:nr_u, 1:nr_u), &
                         solv%redsyst%eigvec_sp_dir(2, 1:nr_v, 1:nr_v), &
                         solv%redsyst%eigvec_sp_dir(3, 1:nr_w, 1:nr_w), &
-                        identity, tmp1, tmp3)
+                        tmp1, tmp3)
         end if 
         array_out(solv%redsyst%dof) = tmp3
         deallocate(tmp1, tmp3)

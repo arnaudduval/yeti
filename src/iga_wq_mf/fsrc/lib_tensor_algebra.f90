@@ -457,6 +457,26 @@ module tensormode
 
     end subroutine tensor_n_mode_product_spM
 
+    subroutine reorder(obj)
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(tensoroperator) :: obj
+        double precision :: tmp(size(obj%tensor))
+        integer :: ii1, ii2, jj, kk, ll
+        
+        tmp = obj%tensor
+        do jj = 1, obj%nclist(3)*obj%nclist(4)
+            do ll = 1, obj%nclist(2)
+                do kk = 1, obj%nclist(1)
+                    ii1 = kk + (ll-1)*obj%nclist(1) + (jj-1)*obj%nclist(1)*obj%nclist(2)
+                    ii2 = ll + (jj-1)*obj%nclist(2) + (kk-1)*obj%nclist(2)*obj%nclist(3)*obj%nclist(4)
+                    obj%tensor(ii2) = tmp(ii1)
+                end do
+            end do
+        end do
+    end subroutine reorder
+
 end module tensormode
     
 subroutine sumfacto2d_dM(nr_u, nc_u, nr_v, nc_v, Mu, Mv, array_in, array_out)

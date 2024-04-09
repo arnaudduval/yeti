@@ -16,7 +16,7 @@ ISLINEAR, NONLINCASE = False, 1
 ISISOTROPIC = False # Only for square
 
 CST = 100
-CUTS_TIME = 4
+CUTS_TIME = 6
 
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
@@ -376,7 +376,7 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
 
-	time_inc = np.linspace(0, 1.0, int(2**CUTS_TIME)+1) 
+	time_inc = np.linspace(0, 1.0, int(2**CUTS_TIME)+1) # +2 if comparing with space-time deg 2
 
 	# Add material 
 	material = heatmat()
@@ -418,6 +418,7 @@ def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, ge
 	if degree_spt is None: degree_spt = 2
 	if cuts_spt is None: cuts_spt=CUTS_TIME
 	time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt), 1.0), {'quadArgs':quadArgs})
+	# time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt)+2-degree, 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 
 	material = heatmat()
