@@ -146,28 +146,6 @@ def createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=1):
 	
 	return knotvector
 
-def createAsymmetricalKnotvector_Rmultiplicity(degree, nbel, xasym=0.25, multiplicity=1):
-	assert nbel > 1, 'Not possible. Try higher number of elements'
-	if nbel == 2: knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)
-	else:
-		nbel1 = int(np.floor((nbel+1)/2))
-		kv_unique = np.array([])
-		kv_unique = np.append(kv_unique, np.linspace(0.0, xasym, nbel1 + 1)[1:]) 
-		kv_unique = np.append(kv_unique, np.linspace(xasym, 1.0, nbel - nbel1 + 1)[1:-1]) 
-		knotvector = []
-		for _ in range(degree+1): 
-			knotvector.append(0.0)
-
-		for knot in kv_unique: 
-			for _ in range(multiplicity): 
-				knotvector.append(knot)
-
-		for _ in range(degree+1): 
-			knotvector.append(1.0)
-
-		knotvector = np.array(knotvector)
-	return knotvector
-
 def createUniformCurve(degree, nbel, length):
 	knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
 	ctrlpts    = [[i*length/degree, 0.0] for i in range(degree+1)]
@@ -176,16 +154,6 @@ def createUniformCurve(degree, nbel, length):
 	crv.ctrlpts = ctrlpts
 	crv.knotvector = knotvector
 	for knot in np.linspace(0, 1, nbel+1)[1:-1]:
-		operations.insert_knot(crv, [knot], [1])
-	return crv
-
-def createAsymmetricalCurve(degree, nbel, length, xasym=0.25):
-	crv = BSpline.Curve()
-	crv.degree = degree
-	crv.ctrlpts = [[i*length/degree, 0.0] for i in range(degree+1)]
-	crv.knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
-	knotlist = np.unique(createAsymmetricalKnotvector_Rmultiplicity(degree, nbel, xasym=xasym))
-	for knot in knotlist[1:-1]:
 		operations.insert_knot(crv, [knot], [1])
 	return crv
 
@@ -223,62 +191,39 @@ def increaseMultiplicity(repeat, degree, knotvector):
 		kv_out.append(1.0)
 	return kv_out
 
-def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True): 
+def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True, order=1): 
 	""" Evaluates B-spline functions and its first derivative at given knots. 
 		It returns matrices in CSR format.
 	"""
 	assert degree >=0, 'Degree must be a positive integer'
 
-	def evalBasisDegreeZero(knotvector, i, knot):
-		nbctrlpts = len(knotvector) - 1; basis = 0
-		if i == 0:
-			if knot-knotvector[1]<0 and knot-knotvector[0]>=0: basis = 1
-		elif i == nbctrlpts-1:
-			if knot-knotvector[-1]<=0 and knot-knotvector[-2]>0: basis = 1
-		else:
-			if knot-knotvector[i+1]<0 and knot-knotvector[i]>0: basis = 1
-		return basis
-
-	def evalAllBasisDegreeZero(knotvector, knots):
-		nbctrlpts = len(knotvector) - 1
-		basis, indices = [], []
-		for i in range(nbctrlpts):
-			for j, knot in enumerate(knots):
-				tmp = evalBasisDegreeZero(knotvector, i, knot)
-				if tmp != 0: basis.append([1, 0]); indices.append([i, j])
-		basis = np.array(basis); indices = np.array(indices)
-		return basis, indices
-
-	nbknots   = len(knots)
+	nbknots = len(knots)
 	nbctrlpts = len(knotvector) - degree - 1
 	uvk  = np.unique(knotvector)
 	nbel = len(uvk) - 1 
 
-	if degree == 0: 
-		basis, indices = evalAllBasisDegreeZero(knotvector, knots)
+	basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
+	table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
+	table_functions_physpan[0, :] = np.arange(degree + 1) 
 
-	else:
-		basis, indices = np.zeros(((degree+1)*nbknots, 2)), np.zeros(((degree+1)*nbknots, 2), dtype=int)
-		table_functions_physpan = np.zeros((nbel, degree + 1), dtype=int); 
-		table_functions_physpan[0, :] = np.arange(degree + 1) 
+	for i in range(1, nbel):
+		multiplicity = findMultiplicity(knotvector, uvk[i])
+		table_functions_physpan[i, 0] = table_functions_physpan[i-1, 0] + multiplicity
+		table_functions_physpan[i, 1:] = table_functions_physpan[i, 0] + np.arange(1, degree + 1) 
 
-		for i in range(1, nbel):
-			multiplicity = findMultiplicity(knotvector, uvk[i])
-			table_functions_physpan[i, 0] = table_functions_physpan[i-1, 0] + multiplicity
-			table_functions_physpan[i, 1:] = table_functions_physpan[i, 0] + np.arange(1, degree + 1) 
+	k = 0
+	for i, knot in enumerate(knots):
+		knot_span = helpers.find_span_linear(degree, knotvector, nbctrlpts, knot)
+		phy_span  = findInterpolationSpan(uvk, knot)
+		functions_span = table_functions_physpan[phy_span, :]
+		B0t, B1t = np.zeros(degree+1), np.zeros(degree+1)
+		if order==0: B0t = helpers.basis_function(degree, knotvector, knot_span, knot)
+		if order==1: B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
 
-		k = 0
-		for i, knot in enumerate(knots):
-			knot_span = helpers.find_span_linear(degree, knotvector, nbctrlpts, knot)
-			phy_span  = findInterpolationSpan(uvk, knot)
-			functions_span = table_functions_physpan[phy_span, :]
-			B0t, B1t = helpers.basis_function_ders(degree, knotvector, knot_span, knot, 1)
-			# if (knot>0 and knot<1) and (knot in uvk) and (degree==1): B1t = [0.0, 0.0]
-
-			for j in range(degree + 1):
-				basis[k, :] = [B0t[j], B1t[j]]
-				indices[k, :] = [functions_span[j], i]
-				k += 1
+		for j in range(degree+1):
+			basis[k, :] = [B0t[j], B1t[j]]
+			indices[k, :] = [functions_span[j], i]
+			k += 1
 
 	basis_csr, indi_csr, indj_csr = coo2csr(basis, indices[:, 0], indices[:, 1])	
 	if isfortran: indi_csr += 1
@@ -286,12 +231,12 @@ def evalDersBasisCSRPy(degree, knotvector, knots, isfortran=True):
 
 	return basis_csr, indi_csr, indj_csr
 
-def evalDersBasisDensePy(degree, knotvector, knots, isfortran=True):
+def evalDersBasisDensePy(degree, knotvector, knots, isfortran=True, order=1):
 	""" Evaluates B-spline functions and its first derivative at given knots. 
 		It returns matrices as scipy CSR objects.
 	"""
-	basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(degree, knotvector, knots, isfortran=isfortran)
 	basis = []
+	basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(degree, knotvector, knots, isfortran=isfortran, order=order)
 	for i in range(2): basis.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr, isfortran=isfortran))
 	return basis
 

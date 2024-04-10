@@ -4,7 +4,7 @@
 .. Joaquin Cornejo 
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, evalDersBasisCSRPy
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 def relativeError(array_interp, array_th, relType='inf'):
@@ -20,10 +20,48 @@ full_path = os.path.realpath(__file__)
 folder = os.path.dirname(full_path)
 if not os.path.isdir(folder): os.mkdir(folder)
 
-# evalDersBasisCSRPy(0, [0, 0.2, 0.4, 0.6, 0.8, 1.0], [0, 0.1, 0.2, 1.0], isfortran=True)
-
 fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 nbel_list = [2**i for i in np.arange(1, 6)]
+
+nbel = 2
+for degree in [1, 2]:
+	knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
+	nb_ctrlpts = len(knotvector) - degree - 1
+
+	# WQ
+	weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
+	weightedQuad.getQuadratureRulesInfo()
+	basis, weights = weightedQuad.getDenseQuadRules()
+	quadPos = weightedQuad.quadPtsPos
+
+	fig, ax = plt.subplots(figsize=(8, 5))
+	ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
+	weightsmatrix = weights[0].todense()
+	for i in range(weightedQuad.nbctrlpts):
+		ax.plot(quadPos, np.ravel(weightsmatrix[i, :]))
+	fig.savefig(folder+'/weights'+'W0_'+str(degree)+'.png')
+
+	fig, ax = plt.subplots(figsize=(8, 5))
+	ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
+	weightsmatrix = weights[-1].todense()
+	for i in range(weightedQuad.nbctrlpts):
+		ax.plot(quadPos, np.ravel(weightsmatrix[i, :]))
+	fig.savefig(folder+'/weights'+'W1_'+str(degree)+'.png')
+
+	fig, ax = plt.subplots(figsize=(8, 5))
+	ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
+	basismatrix = basis[0].todense()
+	for i in range(weightedQuad.nbctrlpts):
+		ax.plot(quadPos, np.ravel(basismatrix[i, :]))
+	fig.savefig(folder+'/basis'+'B0_'+str(degree)+'.png')
+
+	fig, ax = plt.subplots(figsize=(8, 5))
+	ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
+	basismatrix = basis[-1].todense()
+	for i in range(weightedQuad.nbctrlpts):
+		ax.plot(quadPos, np.ravel(basismatrix[i, :]))
+	fig.savefig(folder+'/basis'+'B1_'+str(degree)+'.png')
+
 
 for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 	for degree in range(1, 5):
@@ -35,41 +73,13 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# WQ
-			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			quadPos = weightedQuad.quadPtsPos
 			[B0f, B1f] = basis; [W00f, W01f, W10f, W11f] = weights
 			I00f = W00f @ B0f.T; I01f = W01f @ B1f.T
 			I10f = W10f @ B0f.T; I11f = W11f @ B1f.T
-
-			fig, ax = plt.subplots(figsize=(8, 5))
-			ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
-			weightsmatrix = weights[0].todense()
-			for i in range(weightedQuad.nbctrlpts):
-				ax.plot(quadPos, np.ravel(weightsmatrix[i, :]))
-			fig.savefig(folder+'/weights'+'W00'+'.png')
-
-			fig, ax = plt.subplots(figsize=(8, 5))
-			ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
-			weightsmatrix = weights[-1].todense()
-			for i in range(weightedQuad.nbctrlpts):
-				ax.plot(quadPos, np.ravel(weightsmatrix[i, :]))
-			fig.savefig(folder+'/weights'+'W11'+'.png')
-
-			fig, ax = plt.subplots(figsize=(8, 5))
-			ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
-			basismatrix = basis[0].todense()
-			for i in range(weightedQuad.nbctrlpts):
-				ax.plot(quadPos, np.ravel(basismatrix[i, :]))
-			fig.savefig(folder+'/basis'+'B0'+'.png')
-			
-			fig, ax = plt.subplots(figsize=(8, 5))
-			ax.plot(weightedQuad._uniqueKV, np.zeros(len(weightedQuad._uniqueKV)), marker='s', color='k')
-			basismatrix = basis[-1].todense()
-			for i in range(weightedQuad.nbctrlpts):
-				ax.plot(quadPos, np.ravel(basismatrix[i, :]))
-			fig.savefig(folder+'/basis'+'B1'+'.png')
 
 			# IGA
 			gaussQuad = GaussQuadrature(degree, knotvector, {})

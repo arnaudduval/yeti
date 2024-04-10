@@ -287,20 +287,20 @@ class WeightedQuadrature(QuadratureRules):
 		## FOR B0
 		B1shape = np.copy(B0shape) # It should be normally equal
 
-		# # Except for the second and next-to-last (where the derivativa in 0 and 1 are differnet from 0)
-		# # For the second function
-		# minFuncSpan, maxFuncSpan = tableFunctionSpans[1, :]
-		# minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
-		# maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
-		# boolean = (knots>=minKnotOverFuncSpan)*(knots<maxKnotOverFuncSpan)
-		# B1shape[1, 0] = np.nonzero(boolean)[0][0] # Just the left
+		# Except for the second and next-to-last (where the derivativa in 0 and 1 are differnet from 0)
+		# For the second function
+		minFuncSpan, maxFuncSpan = tableFunctionSpans[1, :]
+		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		boolean = (knots>=minKnotOverFuncSpan)*(knots<maxKnotOverFuncSpan)
+		B1shape[1, 0] = np.nonzero(boolean)[0][0] # Just the left
 
-		# # For the next-to-last function
-		# minFuncSpan, maxFuncSpan = tableFunctionSpans[self.nbctrlpts-2, :]
-		# minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
-		# maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
-		# boolean = (knots>minKnotOverFuncSpan)*(knots<=maxKnotOverFuncSpan)
-		# B1shape[self.nbctrlpts-2, 1] = np.nonzero(boolean)[0][-1] # Just the right
+		# For the next-to-last function
+		minFuncSpan, maxFuncSpan = tableFunctionSpans[self.nbctrlpts-2, :]
+		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		boolean = (knots>minKnotOverFuncSpan)*(knots<=maxKnotOverFuncSpan)
+		B1shape[self.nbctrlpts-2, 1] = np.nonzero(boolean)[0][-1] # Just the right
 
 		if isfortran: B0shape += 1
 		if isfortran: B1shape += 1 # change from 0 to 1 index
@@ -320,8 +320,8 @@ class WeightedQuadrature(QuadratureRules):
 		degree_p1 = self.degree - 1
 		knotvector_p1 = self.knotvector[1:-1]
 		gauss_p1 = QuadratureRules(degree_p1, knotvector_p1)
-		B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran)[0]
-		B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran)[0]  
+		B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran, order=0)[0]
+		B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran, order=0)[0]  
 
 		# Compute Integrals
 		weights_csr = np.zeros((np.size(basis_csr, axis=0), 4))
@@ -371,14 +371,13 @@ class WeightedQuadrature(QuadratureRules):
 		gauss_p0.getQuadratureRulesInfo()
 		B0cgg_p0, B1cgg_p0 = gauss_p0._denseBasis
 		basis_csr, indi_csr, indj_csr = evalDersBasisCSRPy(self.degree, self.knotvector, self.quadPtsPos, isfortran=isfortran)
-		B0wq_p0 = array2csr_matrix(basis_csr[:, 0], indi_csr, indj_csr, isfortran=isfortran)
 
 		# Space S^[p]_[r-1]
 		degree_p1 = self.degree
 		knotvector_p1 = increaseMultiplicity(1, degree_p1, self.knotvector)
 		gauss_p1 = QuadratureRules(degree_p1, knotvector_p1)
-		B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran)[0]
-		B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran)[0]  
+		B0cgg_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, gauss_p0.quadPtsPos, isfortran=isfortran, order=0)[0]
+		B0wq_p1 = evalDersBasisDensePy(degree_p1, knotvector_p1, self.quadPtsPos, isfortran=isfortran, order=0)[0]  
 
 		# Compute Integrals
 		weights_csr = np.zeros((np.size(basis_csr, axis=0), 4))
