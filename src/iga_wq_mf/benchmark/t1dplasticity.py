@@ -5,7 +5,7 @@
 
 import pickle
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_part import part1D
 from pysrc.lib.lib_1djob import mechaproblem1D
 from pysrc.lib.lib_material import mechamat
@@ -30,7 +30,7 @@ def forceVol(P:list):
 	return force
 
 def simulate(degree, nbel, kwargs, step=-2):
-	geometry = createUniformCurve(degree, nbel, LENGTH)
+	geometry = createUniformOpenCurve(degree, nbel, LENGTH)
 	modelPhy = part1D(geometry, kwargs)
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
 	boundary.add_DirichletConstTemperature(table=np.array([[1, 1]]))

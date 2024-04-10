@@ -4,7 +4,7 @@
 .. Joaquin Cornejo 
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, createUniformCurve
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, createUniformOpenCurve
 from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 def relativeError(array_interp, array_th, relType='inf'):
@@ -25,7 +25,7 @@ nbel_list = [2**i for i in np.arange(2, 6)]
 
 nbel = 8
 for degree in [1, 2]:
-	crv = createUniformCurve(degree, nbel, 1.0)
+	crv = createUniformOpenCurve(degree, nbel, 1.0)
 	knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 	nb_ctrlpts = len(knotvector) - degree - 1
 

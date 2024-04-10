@@ -1,5 +1,5 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
@@ -62,7 +62,7 @@ def simulate(degree, cuts, quadArgs, cuts_time=None):
 	if cuts_time is None: cuts_time = np.copy(cuts)
 	timespan  = 20
 	nbsteps   = 2**cuts_time
-	time_spt  = part1D(createUniformCurve(degree, nbsteps, timespan), {'quadArgs': quadArgs})
+	time_spt  = part1D(createUniformOpenCurve(degree, nbsteps, timespan), {'quadArgs': quadArgs})
 
 	# Add material 
 	material = heatmat()

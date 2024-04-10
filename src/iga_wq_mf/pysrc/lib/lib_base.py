@@ -146,7 +146,7 @@ def createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=1):
 	
 	return knotvector
 
-def createUniformCurve(degree, nbel, length):
+def createUniformOpenCurve(degree, nbel, length):
 	knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
 	ctrlpts    = [[i*length/degree, 0.0] for i in range(degree+1)]
 	crv = BSpline.Curve()

@@ -1,5 +1,5 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
@@ -114,7 +114,7 @@ def simulate(degree, cuts, quadArgs, problemArgs={}):
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	timeGeo  = part1D(createUniformCurve(degree, 2**cuts, 1.), {'quadArgs': quadArgs})
+	timeGeo  = part1D(createUniformOpenCurve(degree, 2**cuts, 1.), {'quadArgs': quadArgs})
 
 	# Add material 
 	material = heatmat()

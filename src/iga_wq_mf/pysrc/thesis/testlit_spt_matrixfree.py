@@ -1,5 +1,5 @@
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
@@ -37,7 +37,7 @@ if not dataExist:
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
-		time_spt = part1D(createUniformCurve(degree, int(2**cuts), 1.0), {'quadArgs':{'quadrule':'iga'}})
+		time_spt = part1D(createUniformOpenCurve(degree, int(2**cuts), 1.0), {'quadArgs':{'quadrule':'iga'}})
 
 		heatmaterial = heatmat()
 		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)

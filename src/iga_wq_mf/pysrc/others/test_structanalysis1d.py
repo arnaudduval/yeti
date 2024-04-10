@@ -4,7 +4,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve
+from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_part import part1D
 from pysrc.others.lib_structanalysis import Timoshenko
 
@@ -16,7 +16,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 # Set global variables
 length       = 1.0
 degree, nbel = 4, 10 
-geometry = createUniformCurve(degree, nbel, length)
+geometry = createUniformOpenCurve(degree, nbel, length)
 modelPhy = part1D(geometry, kwargs={'quadArgs': {'quadrule': 'wq'}})
 
 # Create Timoshenko beam

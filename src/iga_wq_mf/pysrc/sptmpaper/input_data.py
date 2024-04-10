@@ -1,6 +1,6 @@
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve, createUniformKnotvector_Rmultiplicity
+from pysrc.lib.lib_base import createUniformOpenCurve, createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_boundary import boundaryCondition
@@ -367,7 +367,7 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 
 	# Create geometry
 	if is1dim:
-		geometry = createUniformCurve(degree, int(2**cuts), 1.0)
+		geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
 		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
 	else:
 		if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
@@ -417,7 +417,7 @@ def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, ge
 	modelPhy = part(modelIGA, quadArgs=quadArgs)
 	if degree_spt is None: degree_spt = 2
 	if cuts_spt is None: cuts_spt=CUTS_TIME
-	time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt), 1.0), {'quadArgs':quadArgs})
+	time_spt = part1D(createUniformOpenCurve(degree_spt, int(2**cuts_spt), 1.0), {'quadArgs':quadArgs})
 	# time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt)+2-degree, 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 

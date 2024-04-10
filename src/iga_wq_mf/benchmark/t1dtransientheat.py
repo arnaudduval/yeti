@@ -7,7 +7,7 @@ conductivity: 55 W/(m.K)
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformCurve, sigmoid
+from pysrc.lib.lib_base import createUniformOpenCurve, sigmoid
 from pysrc.lib.lib_part import part1D
 from pysrc.lib.lib_1djob import heatproblem1D
 from pysrc.lib.lib_boundary import boundaryCondition
@@ -45,7 +45,7 @@ cuts_time = 5
 # Create geometry
 length = 1.0
 nbel   = int(2**cuts)
-geometry = createUniformCurve(degree, nbel, length)
+geometry = createUniformOpenCurve(degree, nbel, length)
 modelPhy = part1D(geometry, kwargs={'quadArgs': {'quadrule': 'iga'}})
 
 if cuts_time is None: cuts_time = np.copy(cuts)
