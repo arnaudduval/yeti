@@ -258,6 +258,8 @@ class WeightedQuadrature(QuadratureRules):
 					maxFuncSpan = j; break
 			tableFunctionSpans[i, :] = [minFuncSpan, maxFuncSpan]
 
+		## FOR B0
+		# For the first function
 		minFuncSpan, maxFuncSpan = tableFunctionSpans[0, :]
 		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
 		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
@@ -265,6 +267,7 @@ class WeightedQuadrature(QuadratureRules):
 		B0shape[0, 0] = np.nonzero(boolean)[0][0]
 		B0shape[0, 1] = np.nonzero(boolean)[0][-1]
 
+		# For the inner functions
 		for i in range(1, self.nbctrlpts-1):
 			minFuncSpan, maxFuncSpan = tableFunctionSpans[i, :]
 			minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
@@ -273,14 +276,32 @@ class WeightedQuadrature(QuadratureRules):
 			B0shape[i, 0] = np.nonzero(boolean)[0][0]
 			B0shape[i, 1] = np.nonzero(boolean)[0][-1]
 
+		# For the last function
 		minFuncSpan, maxFuncSpan = tableFunctionSpans[self.nbctrlpts-1, :]
 		minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
 		maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
 		boolean = (knots>minKnotOverFuncSpan)*(knots<=maxKnotOverFuncSpan)
 		B0shape[self.nbctrlpts-1, 0] = np.nonzero(boolean)[0][0]
 		B0shape[self.nbctrlpts-1, 1] = np.nonzero(boolean)[0][-1]
-	
-		B1shape = np.copy(B0shape) # Eventually it could be different
+
+		## FOR B0
+		B1shape = np.copy(B0shape) # It should be normally equal
+
+		# # Except for the second and next-to-last (where the derivativa in 0 and 1 are differnet from 0)
+		# # For the second function
+		# minFuncSpan, maxFuncSpan = tableFunctionSpans[1, :]
+		# minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		# maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		# boolean = (knots>=minKnotOverFuncSpan)*(knots<maxKnotOverFuncSpan)
+		# B1shape[1, 0] = np.nonzero(boolean)[0][0] # Just the left
+
+		# # For the next-to-last function
+		# minFuncSpan, maxFuncSpan = tableFunctionSpans[self.nbctrlpts-2, :]
+		# minKnotOverFuncSpan = tableKVSpan[minFuncSpan, 0]
+		# maxKnotOverFuncSpan = tableKVSpan[maxFuncSpan, 1]
+		# boolean = (knots>minKnotOverFuncSpan)*(knots<=maxKnotOverFuncSpan)
+		# B1shape[self.nbctrlpts-2, 1] = np.nonzero(boolean)[0][-1] # Just the right
+
 		if isfortran: B0shape += 1
 		if isfortran: B1shape += 1 # change from 0 to 1 index
 		return [B0shape, B1shape]
@@ -396,12 +417,15 @@ class WeightedQuadrature(QuadratureRules):
 		weights = np.zeros((size_data, 4))
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
+
 		if (self._wqType == 1 or self._wqType == 3) and self.degree == 1: 
 			basis, weights, indi, indj = self.__getWeightsM1()
 		else: 
-			# basis, weights, indi, indj = self.__getWeightsM2() # Activate when using only python
-			basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
-													self._Bshape[0], self._Bshape[1], size_data, self._wqType)
+			basis, weights, indi, indj = self.__getWeightsM2()
+
+		# basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
+		# 							self._Bshape[0], self._Bshape[1], size_data, self._wqType)
+		
 		self.dersBasis   = basis
 		self.dersWeights = weights
 		self.dersIndices = [indi, indj]
