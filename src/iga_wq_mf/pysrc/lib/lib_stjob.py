@@ -188,6 +188,19 @@ class stheatproblem(stproblem):
 		if self.part.dim == 3: array_out = stheatsolver.mf_stconductivity_3d(*inpts, array_in)
 		return array_out
 	
+	def compute_mfSTConductivityDers(self, array_in, args=None):
+		if args is None: 
+			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+			gradTemperature = np.ones((self.part.dim+1, self.part.nbqp_total*self.time.nbqp))
+		else: gradTemperature = args['gradients']
+		prop =  np.einsum('ijk,jk->ik', self.heatmaterial.conductivityDers(args), gradTemperature[:self.part.dim, :])
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
+		if self.part.dim == 2: array_out = stheatsolver.mf_stconductivityders_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = stheatsolver.mf_stconductivityders_3d(*inpts, array_in)
+		return array_out
+		
 	def compute_mfSTCapacity(self, array_in, args=None):
 		if args is None: 
 			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
@@ -197,6 +210,19 @@ class stheatproblem(stproblem):
 		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
 		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacity_2d(*inpts, array_in)
 		if self.part.dim == 3: array_out = stheatsolver.mf_stcapacity_3d(*inpts, array_in)
+		return array_out
+	
+	def compute_mfSTCapacityDers(self, array_in, args=None):
+		if args is None: 
+			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+			gradTemperature = np.ones((self.part.dim+1, self.part.nbqp_total*self.time.nbqp))
+		else: gradTemperature = args['gradients']
+		prop = self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]
+		inpts = [*self._getInputs(), self.part.invJ, self.part.detJ, self.time.detJ, prop]
+		if self.part.dim == 2: array_out = stheatsolver.mf_stcapacityders_2d(*inpts, array_in)
+		if self.part.dim == 3: array_out = stheatsolver.mf_stcapacityders_3d(*inpts, array_in)
 		return array_out
 
 	def interpolate_STtemperature_gradients(self, u_ctrlpts):

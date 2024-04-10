@@ -635,6 +635,7 @@ contains
         dimension :: alpha(basisdata%dimen), beta(basisdata%dimen), zeta(basisdata%dimen)
         double precision :: tmp_0, tmp_1, tmp_2
         dimension :: tmp_0(basisdata%nc_total), tmp_1(basisdata%nc_total), tmp_2(basisdata%nr_total)
+
         integer :: nr_u, nr_v, nr_w, nr_t, nc_u, nc_v, nc_w, nc_t, nnz_u, nnz_v, nnz_w, nnz_t
         integer, dimension(:), allocatable :: indi_u, indi_v, indi_w, indi_t, indj_u, indj_v, indj_w, indj_t
         double precision, dimension(:, :), allocatable :: data_W_u, data_W_v, data_W_w, data_W_t
@@ -705,14 +706,14 @@ contains
                     call sumfacto3d_spM(nr_u, nc_u, nr_v, nc_v, nr_t, nc_t, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                         nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
-                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), &  
+                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), &
                                         tmp_1, tmp_2)
                 else if (basisdata%dimen.eq.4) then
                     call sumfacto4d_spM(nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nr_t, nc_t, & 
                                         nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
                                         nnz_v, indi_v, indj_v, data_W_v(:, zeta(2)), &
                                         nnz_w, indi_w, indj_w, data_W_w(:, zeta(3)), &
-                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), & 
+                                        nnz_t, indi_t, indj_t, data_W_t(:, 1), &
                                         tmp_1, tmp_2)
                 end if
                 array_out = array_out + tmp_2

@@ -11,10 +11,9 @@ folder2save = os.path.dirname(full_path) + '/results/biblio/'
 folder2find = os.path.dirname(full_path) + '/data/'
 
 # Set global variables
-dataExist     = False
-# withReference = True
-degree_list   = range(1, 6)
-cuts          = 7
+dataExist     = True
+degree_list   = range(2, 6)
+cuts          = 6
 
 if not dataExist:
 
@@ -35,7 +34,7 @@ if not dataExist:
 		blockPrint()			
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs={'quadrule':'iga', 'type':'leg'})
+		modelPhy = part(modelIGA, quadArgs={'quadrule':'wq'})
 
 		heatmaterial = heatmat()
 		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
@@ -80,7 +79,7 @@ else:
 	file_P = pd.read_table(folder2find + 'matvec_Python'   + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
 	file_M = pd.read_table(folder2find + 'matvec_MF_Mass'  + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
 	file_K = pd.read_table(folder2find + 'matvec_MF_Stiff' + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
-	# file_A = pd.read_table(folder2find + 'matvec_MF_SM'    + '.dat', sep=' ', names=['degree', 'P1', 'P2']) 
+
 	degree = file_M.degree
 	values = [file_M.P1, file_K.P1]
 	labels = [  r'$\mathsf{C}x$' + ', ' + r'$h^{-1}=$ ' + str(2**cuts), 
