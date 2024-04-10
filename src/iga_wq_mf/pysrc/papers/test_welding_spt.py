@@ -4,7 +4,6 @@ from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
-from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_stjob import stheatproblem
 from pyevtk.vtk import VtkGroup
 

@@ -4,7 +4,7 @@
 .. Joaquin Cornejo 
 """
 from pysrc.lib.__init__ import *
-from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity, createUniformCurve
 from pysrc.lib.lib_quadrules import GaussQuadrature, WeightedQuadrature
 
 def relativeError(array_interp, array_th, relType='inf'):
@@ -21,15 +21,16 @@ folder = os.path.dirname(full_path)
 if not os.path.isdir(folder): os.mkdir(folder)
 
 fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
-nbel_list = [2**i for i in np.arange(1, 6)]
+nbel_list = [2**i for i in np.arange(2, 6)]
 
-nbel = 2
+nbel = 8
 for degree in [1, 2]:
+	crv = createUniformCurve(degree, nbel, 1.0)
 	knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel)
 	nb_ctrlpts = len(knotvector) - degree - 1
 
 	# WQ
-	weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
+	weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1})
 	weightedQuad.getQuadratureRulesInfo()
 	basis, weights = weightedQuad.getDenseQuadRules()
 	quadPos = weightedQuad.quadPtsPos
@@ -62,9 +63,9 @@ for degree in [1, 2]:
 		ax.plot(quadPos, np.ravel(basismatrix[i, :]))
 	fig.savefig(folder+'/basis'+'B1_'+str(degree)+'.png')
 
-
+fig, axs  = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
 for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
-	for degree in range(1, 5):
+	for degree in range(2, 5):
 
 		error_list = []
 
@@ -73,7 +74,7 @@ for ax, varName in zip(np.ravel(axs), ['I00', 'I01', 'I10', 'I11']):
 			nb_ctrlpts = len(knotvector) - degree - 1
 
 			# WQ
-			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 2})
+			weightedQuad = WeightedQuadrature(degree, knotvector, {'type': 1})
 			weightedQuad.getQuadratureRulesInfo()
 			basis, weights = weightedQuad.getDenseQuadRules()
 			quadPos = weightedQuad.quadPtsPos

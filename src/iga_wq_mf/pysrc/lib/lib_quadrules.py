@@ -417,9 +417,9 @@ class WeightedQuadrature(QuadratureRules):
 		indj = np.zeros(size_data, dtype=int)
 		indi = np.zeros(self.nbctrlpts+1, dtype=int)
 
-		if (self._wqType == 1 or self._wqType == 3) and self.degree == 1: 
+		if (self._wqType in [1, 3]) and self.degree > 1: 
 			basis, weights, indi, indj = self.__getWeightsM1()
-		else: 
+		else:  
 			basis, weights, indi, indj = self.__getWeightsM2()
 
 		# basis, weights, indi, indj = basisweights.wq_getbasisweights_csr(self.degree, self.knotvector, self.quadPtsPos, 
