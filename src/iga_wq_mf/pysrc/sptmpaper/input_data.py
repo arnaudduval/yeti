@@ -363,7 +363,7 @@ def powerDensityRing_spt(args:dict):
 		f[:, i] = powerDensityRing_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
-def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, is1dim=False, geoArgs=None):
+def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, is1dim=False, geoArgs=None, solver=True):
 
 	# Create geometry
 	if is1dim:
@@ -391,6 +391,9 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 	# Transient model
 	if is1dim: problem_inc = heatproblem1D(material, modelPhy, boundary_inc)
 	else: problem_inc = heatproblem(material, modelPhy, boundary_inc)
+	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
+
+	if not solver: return problem_inc, time_inc, Tinout
 
 	# Add external force 
 	Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
@@ -399,7 +402,6 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 							args={'position':problem_inc.part.qpPhy, 'time':t})
 
 	# Solve
-	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
 	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-8
 	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, 
 											time_list=time_inc, alpha=0.5)

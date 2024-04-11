@@ -72,6 +72,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
+	problem._thresLin = 1.e-12
 	if useElastoAlgo:
 		Fext_list = np.zeros((2, modelPhy.nbctrlpts_total, 2))
 		Fext_list[:, :, 1] = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
@@ -106,7 +107,7 @@ else:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(8, 7))
-	figname = folder + 'FigElasLinearConvergenceAllL2' + '.pdf'
+	figname = folder + 'FigElasLinearConvergenceAllH1' + '.pdf'
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		error_list = np.ones(len(cuts_list))
@@ -116,10 +117,10 @@ else:
 			color = COLORLIST[i]
 			for j, cuts in enumerate(cuts_list):
 				problem, displacement, meshparam[j] = simulate(degree, cuts, quadArgs, useElastoAlgo=False)
-				# error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'H1', 
-				#										'part_ref':part_ref, 'u_ref':disp_ref})
-				error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'L2', 
-														'exactFunction':exactDisplacement_infPlate})
+				error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'H1', 
+														'part_ref':part_ref, 'u_ref':disp_ref})
+				# error_list[j], _ = problem.normOfError(displacement, normArgs={'type':'L2', 
+				# 										'exactFunction':exactDisplacement_infPlate})
 			if quadrule == 'iga': 
 				ax.loglog(meshparam, error_list, label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
@@ -129,16 +130,16 @@ else:
 			
 			fig.savefig(figname)
 
-ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
-ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-		markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+	ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+					markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
+	ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+			markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
 
-ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
-# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
-ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-ax.set_ylim(top=1e-2, bottom=1e-14)
-ax.set_xlim(left=1e-2, right=5)
-ax.legend()
-fig.tight_layout()
-fig.savefig(figname)
+	# ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
+	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
+	ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+	ax.set_ylim(top=1e-2, bottom=1e-14)
+	ax.set_xlim(left=1e-2, right=5)
+	ax.legend()
+	fig.tight_layout()
+	fig.savefig(figname)

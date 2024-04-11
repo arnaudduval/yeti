@@ -17,8 +17,8 @@ def run(folder=None):
 	g.save()
 
 # Set global variables
-TODOSIMU = True
-FIG_CASE = 1
+TODOSIMU = False
+FIG_CASE = 3
 
 def exactTemperature_inc(args):
 	func = None
@@ -242,7 +242,7 @@ elif FIG_CASE == 1:
 	list3 = np.load(filenameA3+'.npy')
 	fig, ax = plt.subplots(figsize=(8, 6))
 	for i, degree in enumerate(degree_list):
-		if degree%2==0: continue
+		# if degree%2==0: continue
 		color = COLORLIST[i]
 		ax.loglog(2**cuts_list, list2[i, :], color=color, marker='s', markerfacecolor='w',
 					markersize=10, linestyle='-', label='ST-IGA-GL deg. ' + str(degree))
@@ -452,3 +452,75 @@ elif FIG_CASE == 2:
 			fig.tight_layout()
 			fig.savefig(folder+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
 
+elif FIG_CASE == 3:
+
+	filenameA3 = folder + 'Fig3sptheatAbs'+lastsufix
+	filenameR3 = folder + 'Fig3sptheatRel'+lastsufix
+	filenameT3 = folder + 'Fig3sptheatTim'+lastsufix
+
+	degree_list = np.array([1, 2, 3, 4, 5, 6])
+	cuts_list   = np.arange(4, 7)
+
+	if TODOSIMU:
+
+		Aerror_list3 = np.ones((len(degree_list), len(cuts_list)))
+		Rerror_list3 = np.ones((len(degree_list), len(cuts_list)))
+		time_list3 = np.ones((len(degree_list), len(cuts_list)))
+		
+		for j, cuts in enumerate(cuts_list):
+			for i, degree in enumerate(degree_list):
+				geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+				# Incremental problem
+				blockPrint()
+				dirichlet_table = np.ones((2, 2))
+				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, dirichlet_table=dirichlet_table,
+												powerdensity=powerDensity_inc, geoArgs=geoArgs, solver=False)
+				
+				# Space time problem
+				start = time.process_time()
+				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
+													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree, 
+													quadArgs={'quadrule':'wq', 'type':1})
+					
+				end = time.process_time()
+				time_list3[i, j] = end - start
+
+				# Error of last "step"
+				newtemp_spt = np.reshape(temp_spt, newshape=(problem_spt.part.nbctrlpts_total, problem_spt.time.nbctrlpts_total), order='F')
+				Aerror_list3[i, j], Rerror_list3[i, j] = problem_inc.normOfError(newtemp_spt[:, -1], 
+														normArgs={'type':'L2',
+																	'exactFunction':exactTemperature_inc,
+																	'exactExtraArgs':{'time':time_inc[-1]}})
+
+				enablePrint()
+				print(degree, cuts, time_list3[i, j])
+
+			np.save(filenameA3, Aerror_list3)
+			np.save(filenameR3, Rerror_list3)
+			np.save(filenameT3, time_list3)
+
+	Elist3 = np.load(filenameA3+'.npy')
+	Tlist3 = np.load(filenameT3+'.npy')
+	fig, ax = plt.subplots(figsize=(7, 4))
+	for i, degree in enumerate(degree_list):
+		color = COLORLIST[i]
+		ax.loglog(Tlist3[i, :len(cuts_list)], Elist3[i, :len(cuts_list)], color=color, marker='s', 
+					markersize=10, linestyle='', label='WQ deg. '+str(degree))
+		
+	for j, cuts in enumerate(cuts_list):
+		ax.loglog(Tlist3[:len(degree_list), j], Elist3[:len(degree_list), j], color='k', alpha=0.5, 
+					marker='', linestyle='-')
+		ax.text(1.1*Tlist3[2, j], Elist3[2, j], str(int(2**cuts))+r'$^2$'+' el.')
+	
+	ax.set_xlabel('CPU time (s)')
+	ax.set_ylabel(r'$L^2(\Omega)$'+' error')
+	ax.set_xlim(left=2, right=2e2)
+	ax.set_ylim(top=1e0, bottom=1e-9)
+	# ax.legend(loc='lower left')
+	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	fig.tight_layout()
+	fig.savefig(folder + 'Fig3CPUError' +  '.pdf')
+	plt.close(fig)
