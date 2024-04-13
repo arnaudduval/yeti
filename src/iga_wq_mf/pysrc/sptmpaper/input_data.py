@@ -11,9 +11,9 @@ from pysrc.lib.lib_1djob import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
-IS1DIM = False
+IS1DIM = True
 ISLINEAR, NONLINCASE = False, 1
-ISISOTROPIC = False # Only for square
+ISISOTROPIC = True # Only for square
 
 CST = 100
 CUTS_TIME = 6
@@ -432,7 +432,7 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
 	
-	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time)+1, 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
+	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time), 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 
 	material = heatmat()
@@ -442,7 +442,8 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 	if not ISISOTROPIC: material.addConductivityDers(conductivityDersProperty, isIsotropic=False)
 
 	# Block boundaries
-	sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
+	if is1dim: sptnbctrlpts = np.array([modelPhy.nbctrlpts_total, time_spt.nbctrlpts_total, 1])
+	else: sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
 	boundary_spt = boundaryCondition(sptnbctrlpts)
 	boundary_spt.add_DirichletConstTemperature(table=dirichlet_table)
 
