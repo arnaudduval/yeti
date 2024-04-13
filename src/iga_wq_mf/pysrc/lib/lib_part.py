@@ -12,7 +12,7 @@ from .lib_quadrules import WeightedQuadrature, GaussQuadrature
 class part1D():
 
 	def __init__(self, crv:BSpline.Curve, kwargs:dict):
-		
+		self.dim 	    = 1
 		self.degree     = crv.degree
 		self.knotvector = np.array(crv.knotvector)
 		self.ctrlpts    = np.array(crv.ctrlpts)[:, 0]

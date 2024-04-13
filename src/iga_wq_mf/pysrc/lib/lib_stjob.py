@@ -191,7 +191,7 @@ class stheatproblem(stproblem):
 	def compute_mfSTConductivityDers(self, array_in, args=None):
 		if args is None: 
 			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
-			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			if self.heatmaterial._isConductivityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
 			gradTemperature = np.ones((self.part.dim+1, self.part.nbqp_total*self.time.nbqp))
 		else: gradTemperature = args['gradients']
@@ -250,11 +250,6 @@ class stheatproblem(stproblem):
 		uders_interp = np.atleast_3d(np.einsum('ijl,jkl->ikl', derstemp, invJ)); uders_interp = uders_interp[0, :, :]
 		return u_interp, uders_interp
 
-	def _compute_STHeatIntForce(self, array_in, args=None):
-		assert args is not None, 'Please enter a valid argument'
-		intForce = self.compute_mfSTCapacity(array_in, args) + self.compute_mfSTConductivity(array_in, args)
-		return intForce
-	
 	def _solveLinearizedSTHeatProblem(self, Fext, args=None, isfull=False, threshold=None):
 		assert args is not None, 'Please enter a valid argument'
 		if threshold is None: threshold = self._thresLin
@@ -291,7 +286,8 @@ class stheatproblem(stproblem):
 			temperature, gradtemperature = self.interpolate_STtemperature_gradients(Tinout)
 
 			# Compute internal force
-			Fint_dj = self._compute_STHeatIntForce(Tinout, args={'temperature':temperature})
+			Fint_dj = (self.compute_mfSTCapacity(Tinout, args={'temperature':temperature}) 
+						+ self.compute_mfSTConductivity(Tinout, args={'temperature':temperature}))
 
 			# Compute residue
 			r_dj = Fext - Fint_dj

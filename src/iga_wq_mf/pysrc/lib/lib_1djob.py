@@ -78,13 +78,13 @@ class problem1D():
 			if callable(exactfun): u_exact = exactfun(qpPhy)
 			if callable(exactfunders): uders_exact = exactfunders(qpPhy)
 
-		problem_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
-		if isinstance(problem_ref, problem1D) and isinstance(u_ref, np.ndarray):
+		part_ref = normArgs.get('part_ref', None); u_ref = normArgs.get('u_ref', None)
+		if isinstance(part_ref, problem1D) and isinstance(u_ref, np.ndarray):
 			denseBasisExact = []
-			basis_csr, indi_csr, indj_csr = evalDersBasisCSRFortran(problem_ref.part.degree, problem_ref.part.knotvector, quadPts)
+			basis_csr, indi_csr, indj_csr = evalDersBasisCSRFortran(part_ref.part.degree, part_ref.part.knotvector, quadPts)
 			for i in range(2): denseBasisExact.append(array2csr_matrix(basis_csr[:, i], indi_csr, indj_csr))
 			u_exact = denseBasisExact[0].T @ u_ref
-			invJExact = denseBasisExact[1].T @ problem_ref.part.ctrlpts
+			invJExact = denseBasisExact[1].T @ part_ref.part.ctrlpts
 			uders_exact = denseBasisExact[1].T @ u_ref / invJExact
 			
 		# Compute error
@@ -137,42 +137,6 @@ class heatproblem1D(problem1D):
 		" Interpolate temperature in 1D "
 		u_interp = self.part._densebasis[0].T @ u_ctrlpts
 		return u_interp
-	
-	# def __compute_stabilizationFourierProblem(self, disp_ctrlpts, vel_ctrlpts, dt, args=None, forces={}):
-	# 	if args is None: args = {'position': self.part.qpPhy}
-	# 	# force_interp = force_func(args)
-	# 	conductivity = self.heatmaterial.conductivity(args)
-	# 	capacity = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
-
-	# 	# Compute stabilization coefficient
-	# 	mesh_discretization = self.part._compute_discrete_mesh_parameter(self.part.quadRule.quadPtsPos)
-	# 	alpha_interp = capacity*mesh_discretization**2/(6*dt*np.abs(conductivity))
-	# 	eps_interp = (np.cosh(np.sqrt(6*alpha_interp)) + 2)/(np.cosh(np.sqrt(6*alpha_interp)) - 1) - 1/alpha_interp
-	# 	tau_interp = mesh_discretization**2*eps_interp/(6*np.abs(conductivity))
-
-	# 	# Compute residual (in strong form)
-	# 	dersvolforce = forces.get('dersvolforce', None)
-	# 	derscapacity = forces.get('derscapacity', None)
-	# 	ders2conductivity = forces.get('ders2conductivity', None)
-	# 	dersdisp_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
-	# 	phi_interp = (dersvolforce(args) 
-	# 				- derscapacity(args)*dersdisp_interp*(self.part._densebasis[0].T @ vel_ctrlpts) 
-	# 				- capacity*(self.part._densebasis[1].T @ vel_ctrlpts*self.part.invJ)
-	# 				+ ders2conductivity(args)*(dersdisp_interp)**3
-	# 	)
-	# 	# vel_interp = self.part._densebasis[0].T @ vel_ctrlpts
-	# 	# uders_interp = (self.part._densebasis[1].T @ disp_ctrlpts)*self.part.invJ
-	# 	# tmp1_ctrlpts = self.L2projectionCtrlpts(conductivity*uders_interp)
-	# 	# tmp1_interp = (self.part._densebasis[1].T @ tmp1_ctrlpts)*self.part.invJ
-	# 	# strong_residual = force_interp - capacity*vel_interp #+ tmp1_interp
-
-	# 	# Compute force due to stabilization
-	# 	prop = tau_interp*conductivity*phi_interp
-	# 	array_out = self.part._denseweights[2] @ prop
-	# 	# matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T
-	# 	# array_in = self.L2projectionCtrlpts(strong_residual)
-	# 	# array_out = matrix @ array_in
-	# 	return array_out
 
 	def compute_FourierTangentMatrix(self, dt, alpha=0.5, args=None, isLumped=False):
 		""" Computes tangent matrix in transient heat
@@ -453,3 +417,266 @@ class mechaproblem1D(problem1D):
 			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
 
 		return Allstrain, Allstress, Allplseq, AllCep
+
+class stproblem1D():
+
+	def __init__(self, part:part1D, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
+		self.part = part
+		self.time = tspan
+		self.boundary = boundary
+		self.addSolverConstraints(solverArgs=solverArgs)
+		return
+	
+	def addSolverConstraints(self, solverArgs:dict):
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
+		self._itersNL = solverArgs.get('iters_nonlinear', 20)
+		self._safeguard = 1e-14
+		return
+
+	def compute_volForce(self, volfun, args=None):
+		" Computes 'volumetric' source vector in 1D "
+		if args is None: args={'position':self.part.qpPhy}
+		prop  = np.kron(self.part.detJ, self.time.detJ)*volfun(args)
+		force = (self.part._denseweights[0], self.time._denseweights[0]) @ prop
+		return force
+	
+	def normOfError(self, u_ctrlpts, normArgs:dict):
+		""" Computes the norm L2 or H1 of the error. The exactfun is the function of the exact solution. 
+			and u_ctrlpts is the field at the control points. We compute the integral using Gauss Quadrature
+			whether the default quadrature is weighted quadrature. 
+		"""	
+		typeNorm = normArgs.get('type', 'l2').lower()
+		if all(norm != typeNorm  for norm in ['l2', 'h1', 'semih1']): raise Warning('Unknown norm')
+
+		# Compute u interpolation
+		quadRulePart = GaussQuadrature(self.part.degree, self.part.knotvector, quadArgs={'type':'leg'})
+		quadRulePart.getQuadratureRulesInfo()
+
+		quadRuleTime = GaussQuadrature(self.time.degree, self.time.knotvector, quadArgs={'type':'leg'})
+		quadRuleTime.getQuadratureRulesInfo()
+		parametricWeights = np.kron(quadRulePart._parametricWeights, quadRuleTime._parametricWeights)
+
+		sptimectrlpts = np.zeros((2, self.part.nbctrlpts_total*self.time.nbctrlpts_total))
+		for i in range(self.time.nbctrlpts_total):
+			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
+			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
+		
+		qpPhy = np.zeros((2, quadRulePart.nbqp*quadRuleTime.nbqp))
+		for i in range(2): qpPhy[i, :] = np.kron(quadRulePart._denseBasis[0], quadRuleTime._denseBasis[0]).T @ sptimectrlpts
+
+		Jqp = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+		for j in range(2):
+			for i in range(2):
+				beta = np.zeros(2); beta[j] = 1
+				Jqp[i, j, :] = np.kron(quadRulePart._densebasis[beta[1]], quadRuleTime._densebasis[beta[2]]).T @ sptimectrlpts[i]
+
+		detJ = Jqp[0, 0, :]*Jqp[1, 1, :] - Jqp[0, 1, :]*Jqp[1, 0, :]
+		invJ = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+		invJ[0, 0, :] = Jqp[1, 1, :]/detJ; invJ[1, 1, :] = Jqp[0, 0, :]/detJ
+		invJ[0, 1, :] = -Jqp[0, 1, :]/detJ; invJ[1, 0, :] = -Jqp[1, 0, :]/detJ 
+
+		u_interp = np.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+		derstemp = np.zeros((1, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+		derstemp[0, 0, :] = np.kron(quadRulePart._densebasis[1], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+		derstemp[0, 1, :] = np.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[1]).T @ u_ctrlpts
+		uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ); uders_interp = uders_interp[0, :, :]
+
+		# Compute u exact
+		u_exact, uders_exact = None, None
+		exactfun = normArgs.get('exactFunction', None)
+		exactfunders = normArgs.get('exactFunctionDers', None)
+		exactextraArgs = normArgs.get('exactExtraArgs', None)
+		if exactextraArgs is not None:
+			assert isinstance(exactextraArgs, dict), 'Error type of extra args'
+			if not 'position' in exactextraArgs.keys(): exactextraArgs['position'] = qpPhy
+			if callable(exactfun): u_exact = exactfun(exactextraArgs)
+			if callable(exactfunders): uders_exact = exactfunders(exactextraArgs)
+		else:
+			if callable(exactfun): u_exact = exactfun(qpPhy)
+			if callable(exactfunders): uders_exact = exactfunders(qpPhy)
+
+		part_ref = normArgs.get('part_ref', None); time_ref = normArgs.get('time_ref', None); u_ref = normArgs.get('u_ref', None)
+		if isinstance(part_ref, part1D) and isinstance(time_ref, part1D) and isinstance(u_ref, np.ndarray):
+			# Compute u exact
+			quadRulePart = GaussQuadrature(part_ref.degree, part_ref.knotvector, quadArgs={'type':'leg'})
+			quadRulePart.getQuadratureRulesInfo()
+
+			quadRuleTime = GaussQuadrature(time_ref.degree, time_ref.knotvector, quadArgs={'type':'leg'})
+			quadRuleTime.getQuadratureRulesInfo()
+
+			sptimectrlpts = np.zeros((2, part_ref.nbctrlpts_total*time_ref.nbctrlpts_total))
+			for i in range(time_ref.nbctrlpts_total):
+				iold = i*part_ref.nbctrlpts_total; inew = (i + 1)*part_ref.nbctrlpts_total
+				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
+			
+			qpPhyExact = np.zeros((2, quadRulePart.nbqp*quadRuleTime.nbqp))
+			for i in range(2): qpPhyExact[i, :] = np.kron(quadRulePart._denseBasis[0], quadRuleTime._denseBasis[0]).T @ sptimectrlpts
+
+			JqpExact = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+			for j in range(2):
+				for i in range(2):
+					beta = np.zeros(2); beta[j] = 1
+					JqpExact[i, j, :] = np.kron(quadRulePart._densebasis[beta[1]], quadRuleTime._densebasis[beta[2]]).T @ sptimectrlpts[i]
+
+			detJExact = JqpExact[0, 0, :]*JqpExact[1, 1, :] - JqpExact[0, 1, :]*JqpExact[1, 0, :]
+			invJExact = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+			invJExact[0, 0, :] = JqpExact[1, 1, :]/detJExact; invJExact[1, 1, :] = JqpExact[0, 0, :]/detJExact
+			invJExact[0, 1, :] = -JqpExact[0, 1, :]/detJExact; invJExact[1, 0, :] = -JqpExact[1, 0, :]/detJExact 
+
+			u_exact = np.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+			derstemp = np.zeros((1, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
+			derstemp[0, 0, :] = np.kron(quadRulePart._densebasis[1], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+			derstemp[0, 1, :] = np.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[1]).T @ u_ctrlpts
+			uders_exact = np.einsum('ijl,jkl->ikl', derstemp, invJExact); uders_exact = uders_exact[0, :, :]
+			
+		# Compute error
+		uedfuf2_l2, uedfuf2_sh1 = 0., 0.
+		ue2_l2, ue2_sh1 = 0., 0.
+
+		if typeNorm == 'l2' or typeNorm == 'h1':
+			uedfuf2_l2 += (u_exact - u_interp)**2
+			ue2_l2     += u_exact**2
+
+		if typeNorm == 'h1' or typeNorm == 'semih1':
+			uedfuf2_sh1 += np.einsum('il->l', (uders_exact - uders_interp)**2)
+			ue2_sh1     += np.einsum('il->l', uders_exact**2)
+
+		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ, 
+		norm2 = (ue2_l2 + ue2_sh1)*detJ
+
+		tmp1 = np.einsum('i,i->', parametricWeights, norm1)
+		tmp2 = np.einsum('i,i->', parametricWeights, norm2)
+		
+		abserror = np.sqrt(tmp1)
+		relerror = np.sqrt(tmp1/tmp2) if tmp2!=0 else np.sqrt(tmp1)
+		if tmp2 == 0: print('Warning: Dividing by zero')
+
+		return abserror, relerror
+	
+class stheatproblem1D(stproblem1D):
+	def __init__(self, heat_material:heatmat, part:part1D, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
+		stproblem1D.__init__(self, part, tspan, boundary, solverArgs)
+		self.heatmaterial = heat_material
+		if self.heatmaterial.density is None: self.heatmaterial.density = lambda x: np.ones(self.part.nbqp_total)
+		return
+	
+	def compute_mfSTConductivity(self, array_in, args=None):
+		if args is None: 
+			temperature = np.ones(self.part.nbqp*self.time.nbqp) 
+			if self.heatmaterial._isConductivityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+		tmp1 = np.kron(self.part._densebasis[1], self.time._densebasis[0]).T @ array_in
+		tmp2 = (self.heatmaterial.conductivity(args)*np.kron(self.part.invJ, self.time.detJ))*tmp1
+		array_out = np.kron(self.part._denseweights[-1], self.time._denseweights[0]) @ tmp2
+		return array_out
+		
+	def compute_mfSTCapacity(self, array_in, args=None):
+		if args is None: 
+			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+		tmp1 = np.kron(self.part._densebasis[0], self.time._densebasis[1]).T @ array_in
+		tmp2 = self.heatmaterial.capacity(args)*np.kron(self.part.detJ, np.ones(self.time.nbqp))*tmp1
+		array_out = np.kron(self.part._denseweights[0], self.time._denseweights[1]) @ tmp2
+		return array_out
+
+	def interpolate_STtemperature_gradients(self, u_ctrlpts):
+		sptimectrlpts = np.zeros((2, self.part.nbctrlpts_total*self.time.nbctrlpts_total))
+		for i in range(self.time.nbctrlpts_total):
+			iold = i*self.part.nbctrlpts_total; inew = (i + 1)*self.part.nbctrlpts_total
+			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
+		
+		Jqp = np.zeros((2, 2, self.part.nbqp*self.time.nbqp))
+		for j in range(2):
+			for i in range(2):
+				beta = np.zeros(2); beta[j] = 1
+				Jqp[i, j, :] = np.kron(self.part._densebasis[beta[1]], self.time._densebasis[beta[2]]).T @ sptimectrlpts[i]
+
+		detJ = Jqp[0, 0, :]*Jqp[1, 1, :] - Jqp[0, 1, :]*Jqp[1, 0, :]
+		invJ = np.zeros((2, 2, self.part.nbqp*self.time.nbqp))
+		invJ[0, 0, :] = Jqp[1, 1, :]/detJ; invJ[1, 1, :] = Jqp[0, 0, :]/detJ
+		invJ[0, 1, :] = -Jqp[0, 1, :]/detJ; invJ[1, 0, :] = -Jqp[1, 0, :]/detJ 
+
+		u_interp = np.kron(self.part._densebasis[0], self.time._densebasis[0]).T @ u_ctrlpts
+		derstemp = np.zeros((1, 2, self.part.nbqp*self.time.nbqp))
+		derstemp[0, 0, :] = np.kron(self.part._densebasis[1], self.time._densebasis[0]).T @ u_ctrlpts
+		derstemp[0, 1, :] = np.kron(self.part._densebasis[0], self.time._densebasis[1]).T @ u_ctrlpts
+		uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ); uders_interp = uders_interp[0, :, :]
+		return u_interp, uders_interp
+	
+	def compute_TangentMatrix(self, args=None, isfull=False):
+		assert args is not None, 'Please enter a valid argument'
+		if args is None: temperature = np.ones(self.part.nbqp*self.time.nbqp) 
+		if args is None: 
+			if self.heatmaterial._isConductivityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+		tmp1 = np.kron(self.part._densebasis[1], self.time._densebasis[0]).T
+		tmp2 = np.diag(self.heatmaterial.conductivity(args)*np.kron(self.part.invJ, self.time.detJ)) @ tmp1
+		matrix = np.kron(self.part._denseweights[-1], self.time._denseweights[0]) @ tmp2
+
+		if args is None: 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+		tmp1 = np.kron(self.part._densebasis[0], self.time._densebasis[1]).T
+		tmp2 = np.diag(self.heatmaterial.capacity(args)*np.kron(self.part.detJ, np.ones(self.time.nbqp))) @ tmp1
+		matrix += np.kron(self.part._denseweights[0], self.time._denseweights[1]) @ tmp2
+
+		if not isfull: return matrix
+
+		if args is None: 
+			if self.heatmaterial._isConductivityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+			gradTemperature = np.ones((2, self.part.nbqp_total*self.time.nbqp))
+		else: gradTemperature = args['gradients']
+		tmp1 = np.kron(self.part._densebasis[0], self.time._densebasis[0]).T
+		tmp2 = np.diag(self.heatmaterial.conductivityDers(args)*gradTemperature[0, :]*np.kron(np.ones(self.part.nbqp), self.time.detJ)) @ tmp1
+		matrix += np.kron(self.part._denseweights[2], self.time._denseweights[0]) @ tmp2
+
+		if args is None: 
+			if self.heatmaterial._isCapacityIsotropic: args = temperature
+			else: args = {'temperature': temperature}
+			gradTemperature = np.ones((2, self.part.nbqp_total*self.time.nbqp))
+		else: gradTemperature = args['gradients']
+		tmp1 = np.kron(self.part._densebasis[0], self.time._densebasis[0]).T
+		tmp2 = np.diag((self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]*np.kron(self.part.detJ, self.time.detJ))) @ tmp1
+		matrix += np.kron(self.part._denseweights[0], self.time._denseweights[0]) @ tmp2
+		return matrix
+	
+	def solveFourierSTHeatProblem(self, Tinout, Fext, isfull=False, isadaptive=False):
+
+		dod = self.boundary.thdod; dof = self.boundary.thdof
+		nbctrlpts_total = self.part.nbctrlpts_total*self.time.nbctrlpts_total
+		AllresNewton, Allsol, Alldelta = [], [], []
+		for j in range(self._itersNL):
+
+			# Compute temperature at each quadrature point
+			temperature, gradtemperature = self.interpolate_STtemperature_gradients(Tinout)
+
+			# Compute internal force
+			Fint_dj = (self.compute_mfSTCapacity(Tinout, args={'temperature':temperature}) 
+						+ self.compute_mfSTConductivity(Tinout, args={'temperature':temperature}))
+
+			# Compute residue
+			r_dj = Fext - Fint_dj
+			r_dj[dod] = 0.0
+
+			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
+			print('Nonlinear error: %.3e' %resNLj1)
+
+			if j == 0: resNL0 = np.copy(resNLj1)
+			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
+			AllresNewton.append(resNLj1); Allsol.append(np.copy(Tinout))
+
+			# Solve for active control points
+			tangentM = sp.csr_matrix(self.compute_TangentMatrix(
+										args={'temperature':temperature, 
+											'gradients':gradtemperature}, 
+										isfull=isfull)[np.ix_(dof, dof)])
+			deltaD = np.zeros(nbctrlpts_total); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+		
+			# Update active control points
+			Tinout += deltaD
+			Alldelta.append(deltaD)
+			
+		output = {'NewtonRes':AllresNewton, 'Solution':Allsol, 'Delta':Alldelta}
+		return output

@@ -7,8 +7,8 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_job import heatproblem
 from pysrc.lib.lib_stjob import stheatproblem
-from pysrc.lib.lib_1djob import heatproblem1D
-from numpy import pi, sin, cos, abs, exp, sign, tanh, sqrt
+from pysrc.lib.lib_1djob import heatproblem1D, stheatproblem1D
+from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
 IS1DIM = False
@@ -133,7 +133,7 @@ def exactTemperatureSquare_inc(args:dict):
 	return u
 
 def exactTemperatureSquare_spt(qpPhy):
-	x = qpPhy[0, :]; t = qpPhy[2, :]
+	x = qpPhy[0, :]; t = qpPhy[-1, :]
 	u = CST*sin(2*pi*x)*sin(pi/2*t)
 	return u
 
@@ -169,7 +169,9 @@ def powerDensitySquare_inc(args:dict):
 def powerDensitySquare_spt(args:dict):
 	time = args['time']
 	position = args['position']
-	nc_sp = np.size(position, axis=1); nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
+	if IS1DIM: nc_sp = len(position)
+	else: nc_sp = np.size(position, axis=1)
+	nc_tm = np.size(time); f = np.zeros((nc_sp, nc_tm))
 	for i in range(nc_tm):
 		t = time[i]
 		f[:, i] = powerDensitySquare_inc(args={'time':t, 'position':position})
@@ -186,7 +188,7 @@ def exactTemperatureTrap_inc(args:dict):
 	return u
 
 def exactTemperatureTrap_spt(qpPhy):
-	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
+	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[-1, :]
 	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
@@ -263,7 +265,7 @@ def exactTemperatureRing_inc(args:dict):
 	return u
 
 def exactTemperatureRing_spt(qpPhy):
-	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[2, :]
+	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[-1, :]
 	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(pi*x*y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
 	return u
 
@@ -363,20 +365,25 @@ def powerDensityRing_spt(args:dict):
 		f[:, i] = powerDensityRing_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
-def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, is1dim=False, geoArgs=None, solver=True):
+def simulate_incremental(degree, cuts, powerdensity, geoArgs=None, dirichlet_table=None, cuts_time=None, 
+						quadArgs=None, solveSystem=True, is1dim=False):
 
 	# Create geometry
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
+	if cuts_time is None: cuts_time = CUTS_TIME
+	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
+
 	if is1dim:
 		geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
-		modelPhy = part1D(geometry, kwargs={'quadArgs':{'quadrule': 'iga'}})
+		modelPhy = part1D(geometry, kwargs={'quadArgs':quadArgs})
 	else:
 		if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': np.array([cuts, 1, 1])}
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
+		modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-	time_inc = np.linspace(0, 1.0, int(2**CUTS_TIME)+1) # +2 if comparing with space-time deg 2
+	time_inc = np.linspace(0, 1.0, int(2**cuts_time)+1)
 
 	# Add material 
 	material = heatmat()
@@ -385,7 +392,6 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 
 	# Block boundaries
 	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
-	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
 	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
 
 	# Transient model
@@ -393,7 +399,7 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 	else: problem_inc = heatproblem(material, modelPhy, boundary_inc)
 	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
 
-	if not solver: return problem_inc, time_inc, Tinout
+	if not solveSystem: return problem_inc, time_inc, Tinout
 
 	# Add external force 
 	Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
@@ -407,20 +413,26 @@ def simulate_incremental(degree, cuts, dirichlet_table=None, powerdensity=None, 
 											time_list=time_inc, alpha=0.5)
 	return problem_inc, time_inc, Tinout
 
-def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, geoArgs=None,  
-					degree_spt=None, cuts_spt=None, quadArgs=None, isfull=False, isadaptive=True, getOthers=False):
+def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs=None,  
+					degree_time=None, cuts_time=None, quadArgs=None, 
+					isfull=False, isadaptive=True, getOthers=False, is1dim=False):
 	
-	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': np.array([cuts, 1, 1])}
-
 	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
-	modelGeo = Geomdl(geoArgs)
-	modelIGA = modelGeo.getIGAParametrization()
-	modelPhy = part(modelIGA, quadArgs=quadArgs)
-	if degree_spt is None: degree_spt = 2
-	if cuts_spt is None: cuts_spt=CUTS_TIME
-	time_spt = part1D(createUniformOpenCurve(degree_spt, int(2**cuts_spt), 1.0), {'quadArgs':quadArgs})
-	# time_spt = part1D(createUniformCurve(degree_spt, int(2**cuts_spt)+2-degree, 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
+	if cuts_time is None: cuts_time=CUTS_TIME
+	if degree_time is None: degree_time = 2
+	if dirichlet_table is None: dirichlet_table = np.zeros((3, 2)); dirichlet_table[0, :] = 1; dirichlet_table[-1, 0] = 1
+
+	if is1dim:
+		geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
+		modelPhy = part1D(geometry, kwargs={'quadArgs':quadArgs})
+	else:
+		if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+						'nb_refinementByDirection': np.array([cuts, 1, 1])}
+		modelGeo = Geomdl(geoArgs)
+		modelIGA = modelGeo.getIGAParametrization()
+		modelPhy = part(modelIGA, quadArgs=quadArgs)
+	
+	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time)+1, 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 
 	material = heatmat()
@@ -432,12 +444,12 @@ def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, ge
 	# Block boundaries
 	sptnbctrlpts = np.array([*modelPhy.nbctrlpts[:modelPhy.dim], time_spt.nbctrlpts_total])
 	boundary_spt = boundaryCondition(sptnbctrlpts)
-	if dirichlet_table is None: dirichlet_table = np.zeros((3, 2)); dirichlet_table[0, :] = 1; dirichlet_table[-1, 0] = 1
 	boundary_spt.add_DirichletConstTemperature(table=dirichlet_table)
 
 	# Transient model
-	problem_spt = stheatproblem(material, modelPhy, time_spt, boundary_spt)
-
+	if is1dim: problem_spt = stheatproblem1D(material, modelPhy, time_spt, boundary_spt)
+	else: problem_spt = stheatproblem(material, modelPhy, time_spt, boundary_spt)
+	
 	# Add external force
 	Fext = problem_spt.compute_volForce(powerdensity, 
 									{'position':problem_spt.part.qpPhy, 
@@ -445,7 +457,7 @@ def simulate_spacetime(degree, cuts, dirichlet_table=None, powerdensity=None, ge
 	
 	# Solve
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
-	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8
+	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8; 
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
 	if getOthers: return problem_spt, time_spt, Tinout, output
 	return problem_spt, time_spt, Tinout

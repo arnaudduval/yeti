@@ -70,10 +70,9 @@ if FIG_CASE == 0:
 							'nb_refinementByDirection': np.array([cuts, cuts, 1])}
 					blockPrint()
 					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
-													powerdensity=powerDensity_spt, 
+					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
 													dirichlet_table=dirichlet_table,
-													quadArgs=quadArgs, degree_spt=degree, cuts_spt=cuts, geoArgs=geoArgs)
+													quadArgs=quadArgs, degree_time=degree, cuts_time=cuts, geoArgs=geoArgs)
 					
 					enablePrint()
 					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 
@@ -178,8 +177,8 @@ elif FIG_CASE == 1:
 				blockPrint()
 				start = time.process_time()
 				dirichlet_table = np.ones((2, 2))
-				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, dirichlet_table=dirichlet_table,
-												powerdensity=powerDensity_inc, geoArgs=geoArgs)
+				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs)
 				end = time.process_time()
 				time_list1[i, j] = end - start
 				
@@ -191,8 +190,8 @@ elif FIG_CASE == 1:
 				# Space time problem
 				start = time.process_time()
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
-													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree,)
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, degree_time=degree,)
 					
 				end = time.process_time()
 				time_list2[i, j] = end - start
@@ -207,9 +206,8 @@ elif FIG_CASE == 1:
 				# Space time problem
 				start = time.process_time()
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
-													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree, 
-													quadArgs={'quadrule':'wq', 'type':1})
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, dirichlet_table=dirichlet_table,
+													geoArgs=geoArgs, degree_time=degree, quadArgs={'quadrule':'wq', 'type':1})
 					
 				end = time.process_time()
 				time_list3[i, j] = end - start
@@ -350,9 +348,9 @@ elif FIG_CASE == 2:
 				start=time.time()
 				# blockPrint()
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-				problem_spt, _, _, output = simulate_spacetime(degree, cuts, 
-												powerdensity=powerDensity_spt, dirichlet_table=dirichlet_table,
-												degree_spt=degree, geoArgs=geoArgs,
+				problem_spt, _, _, output = simulate_spacetime(degree, cuts, powerDensity_spt, 
+												dirichlet_table=dirichlet_table,
+												degree_time=degree, geoArgs=geoArgs,
 												isadaptive=isadaptive, isfull=isfull,
 												getOthers=True)
 				
@@ -475,14 +473,14 @@ elif FIG_CASE == 3:
 				# Incremental problem
 				blockPrint()
 				dirichlet_table = np.ones((2, 2))
-				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, dirichlet_table=dirichlet_table,
-												powerdensity=powerDensity_inc, geoArgs=geoArgs, solver=False)
+				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, dirichlet_table=dirichlet_table,
+												geoArgs=geoArgs, solveSystem=False)
 				
 				# Space time problem
 				start = time.process_time()
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
-				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, dirichlet_table=dirichlet_table,
-													powerdensity=powerDensity_spt, geoArgs=geoArgs, degree_spt=degree, 
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, dirichlet_table=dirichlet_table,
+													geoArgs=geoArgs, degree_time=degree, 
 													quadArgs={'quadrule':'wq', 'type':1})
 					
 				end = time.process_time()
