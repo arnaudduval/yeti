@@ -19,45 +19,45 @@ lastsufix = 'linear' if ISLINEAR else 'nonlin'
 degree_list = np.array([1, 2, 3, 4, 5])
 cuts_list   = np.arange(1, 7)
 
-# if IS1DIM:
-# 	# Trace material properties
-# 	XX, TIME = np.meshgrid(np.linspace(0, 1, 201), np.linspace(0, 1, 129))
-# 	TEMPERATURE = exactTemperatureSquare_inc(args={'position':XX, 'time':TIME})
+if IS1DIM:
+	# Trace material properties
+	XX, TIME = np.meshgrid(np.linspace(0, 1, 201), np.linspace(0, 1, 129))
+	TEMPERATURE = exactTemperatureSquare_inc(args={'position':XX, 'time':TIME})
 
-# 	CONDUCTIVITY = nonlinearfunc(args={'temperature':TEMPERATURE})
-# 	for matfield, figname in zip([CONDUCTIVITY, TEMPERATURE], 
-# 								['conductivity', 'temperature']):
-# 		fig, ax = plt.subplots(figsize=(10, 4))
-# 		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
-# 		cbar = plt.colorbar(im, format='%.1e')
-# 		cbar.set_label(figname.capitalize())
+	CONDUCTIVITY = nonlinearfunc(args={'temperature':TEMPERATURE})
+	for matfield, figname in zip([CONDUCTIVITY, TEMPERATURE], 
+								['conductivity', 'temperature']):
+		fig, ax = plt.subplots(figsize=(10, 4))
+		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
+		cbar = plt.colorbar(im, format='%.1e')
+		cbar.set_label(figname.capitalize())
 
-# 		ax.grid(False)
-# 		ax.set_ylabel('Time')
-# 		ax.set_xlabel('Position')
-# 		fig.tight_layout()
-# 		fig.savefig(folder + 'transHeat_' + figname)
+		ax.grid(False)
+		ax.set_ylabel('Time')
+		ax.set_xlabel('Position')
+		fig.tight_layout()
+		fig.savefig(folder + 'transHeat_' + figname)
 
-# 	problem_inc, time_inc, temperature_inc = simulate_incremental(4, 6, 
-# 											powerdensity=powerDensitySquare_inc, is1dim=IS1DIM)
-# 	TEMPERATURE_INTERP = problem_inc.interpolateMeshgridField(temperature_inc, sampleSize=201)[0]
-# 	CONDUCTIVITY_INTERP = nonlinearfunc(args={'temperature':TEMPERATURE_INTERP.T})
-# 	TEMPDIFF = np.abs(TEMPERATURE - TEMPERATURE_INTERP.T)
-# 	TEMPDIFF = np.where(np.abs(TEMPERATURE)<1e-12, 0.0, TEMPDIFF/np.abs(TEMPERATURE))
-# 	CONDDIFF = np.abs(CONDUCTIVITY - CONDUCTIVITY_INTERP)/np.abs(CONDUCTIVITY)
+	problem_inc, time_inc, temperature_inc = simulate_incremental(4, 6, 
+											powerDensitySquare_inc, is1dim=IS1DIM)
+	TEMPERATURE_INTERP = problem_inc.interpolateMeshgridField(temperature_inc, sampleSize=201)[0]
+	CONDUCTIVITY_INTERP = nonlinearfunc(args={'temperature':TEMPERATURE_INTERP.T})
+	TEMPDIFF = np.abs(TEMPERATURE - TEMPERATURE_INTERP.T)
+	TEMPDIFF = np.where(np.abs(TEMPERATURE)<1e-12, 0.0, TEMPDIFF/np.abs(TEMPERATURE))
+	CONDDIFF = np.abs(CONDUCTIVITY - CONDUCTIVITY_INTERP)/np.abs(CONDUCTIVITY)
 
-# 	for matfield, figname in zip([CONDUCTIVITY_INTERP, TEMPERATURE_INTERP.T, CONDDIFF, TEMPDIFF], 
-# 								['conductivity', 'temperature', 'error conductivity', 'error temperature']):
-# 		fig, ax = plt.subplots(figsize=(10, 4))
-# 		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
-# 		cbar = plt.colorbar(im, format='%.1e')
-# 		cbar.set_label(figname.capitalize())
+	for matfield, figname in zip([CONDUCTIVITY_INTERP, TEMPERATURE_INTERP.T, CONDDIFF, TEMPDIFF], 
+								['conductivity', 'temperature', 'error conductivity', 'error temperature']):
+		fig, ax = plt.subplots(figsize=(10, 4))
+		im = ax.contourf(XX, TIME, matfield, 21, cmap='viridis')
+		cbar = plt.colorbar(im, format='%.1e')
+		cbar.set_label(figname.capitalize())
 
-# 		ax.grid(False)
-# 		ax.set_ylabel('Time')
-# 		ax.set_xlabel('Position')
-# 		fig.tight_layout()
-# 		fig.savefig(folder + 'transHeatinterp_' + figname)
+		ax.grid(False)
+		ax.set_ylabel('Time')
+		ax.set_xlabel('Position')
+		fig.tight_layout()
+		fig.savefig(folder + 'transHeatinterp_' + figname)
 
 # ------------------------------------------------------------------
 filename = folder + 'incrementalheat' + lastsufix
@@ -66,7 +66,7 @@ if TODOSIMU:
 	for j, cuts in enumerate(cuts_list):
 		for i, degree in enumerate(degree_list):
 			problem_inc, time_inc, TEMPERATURE_INTERP = simulate_incremental(degree, cuts, 
-											powerdensity=powerDensitySquare_inc, is1dim=IS1DIM)
+											powerDensitySquare_inc, is1dim=IS1DIM)
 			for k, t in enumerate(time_inc[1:-1]):
 				_, error_list[i, j, k] = problem_inc.normOfError(TEMPERATURE_INTERP[:, k+1], 
 															normArgs={'type':'L2',
@@ -103,7 +103,7 @@ if not IS1DIM:
 		for j, cuts in enumerate(cuts_list):
 			for i, degree in enumerate(degree_list):
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, 
-													powerdensity=powerDensitySquare_spt)
+													powerDensitySquare_spt)
 
 				_, error_list[i, j] = problem_spt.normOfError(temp_spt, 
 													normArgs={'type':'L2',

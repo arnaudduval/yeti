@@ -7,7 +7,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 TODOSIMU = True
-FIG_CASE = 1
+FIG_CASE = 2
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
