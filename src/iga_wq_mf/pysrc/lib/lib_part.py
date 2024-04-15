@@ -21,6 +21,7 @@ class part1D():
 
 		self.__setQuadratureRules(kwargs.get('quadArgs', {}))
 		self.__setJacobienPhysicalPoints()
+		assert np.all(self.detJ>0.0), 'Geometry problem. See control points positions'
 		return
 	
 	def __setQuadratureRules(self, quadArgs:dict):
@@ -38,7 +39,7 @@ class part1D():
 	
 	def __setJacobienPhysicalPoints(self):
 		self.Jqp  = self._densebasis[1].T @ self.ctrlpts
-		self.detJ = np.abs(self.Jqp)
+		self.detJ = self.Jqp
 		self.invJ = 1.0/self.Jqp
 		self.qpPhy = self._densebasis[0].T @ self.ctrlpts
 		return

@@ -436,8 +436,8 @@ class stproblem1D():
 	def compute_volForce(self, volfun, args=None):
 		" Computes 'volumetric' source vector in 1D "
 		if args is None: args={'position':self.part.qpPhy}
-		prop  = np.kron(self.part.detJ, self.time.detJ)*volfun(args)
-		force = sp.kron(self.part._denseweights[0], self.time._denseweights[0]) @ prop
+		prop  = np.kron(self.time.detJ, self.part.detJ)*volfun(args)
+		force = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ prop
 		return force
 	
 	def normOfError(self, u_ctrlpts, normArgs:dict):
@@ -454,7 +454,7 @@ class stproblem1D():
 
 		quadRuleTime = GaussQuadrature(self.time.degree, self.time.knotvector, quadArgs={'type':'leg'})
 		quadRuleTime.getQuadratureRulesInfo()
-		parametricWeights = sp.kron(quadRulePart._parametricWeights, quadRuleTime._parametricWeights)
+		parametricWeights = np.kron(quadRuleTime._parametricWeights, quadRulePart._parametricWeights)
 
 		sptimectrlpts = np.zeros((2, self.part.nbctrlpts_total*self.time.nbctrlpts_total))
 		for i in range(self.time.nbctrlpts_total):
@@ -462,23 +462,23 @@ class stproblem1D():
 			sptimectrlpts[:, iold:inew] = np.vstack([self.part.ctrlpts, self.time.ctrlpts[i]*np.ones(self.part.nbctrlpts_total)])
 		
 		qpPhy = np.zeros((2, quadRulePart.nbqp*quadRuleTime.nbqp))
-		for i in range(2): qpPhy[i, :] = sp.kron(quadRulePart._denseBasis[0], quadRuleTime._denseBasis[0]).T @ sptimectrlpts[i, :]
+		for i in range(2): qpPhy[i, :] = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[0]).T @ sptimectrlpts[i, :]
 
 		Jqp = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
 		for j in range(2):
 			for i in range(2):
-				beta = np.zeros(2); beta[j] = 1
-				Jqp[i, j, :] = sp.kron(quadRulePart._densebasis[beta[0]], quadRuleTime._densebasis[beta[1]]).T @ sptimectrlpts[i, :]
+				beta = np.zeros(2, dtype=int); beta[j] = 1
+				Jqp[i, j, :] = sp.kron(quadRuleTime._denseBasis[beta[1]], quadRulePart._denseBasis[beta[0]]).T @ sptimectrlpts[i, :]
 
 		detJ = Jqp[0, 0, :]*Jqp[1, 1, :] - Jqp[0, 1, :]*Jqp[1, 0, :]
 		invJ = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
 		invJ[0, 0, :] = Jqp[1, 1, :]/detJ; invJ[1, 1, :] = Jqp[0, 0, :]/detJ
 		invJ[0, 1, :] = -Jqp[0, 1, :]/detJ; invJ[1, 0, :] = -Jqp[1, 0, :]/detJ 
 
-		u_interp = sp.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+		u_interp = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[0]).T @ u_ctrlpts
 		derstemp = np.zeros((1, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
-		derstemp[0, 0, :] = sp.kron(quadRulePart._densebasis[1], quadRuleTime._densebasis[0]).T @ u_ctrlpts
-		derstemp[0, 1, :] = sp.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[1]).T @ u_ctrlpts
+		derstemp[0, 0, :] = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[1]).T @ u_ctrlpts
+		derstemp[0, 1, :] = sp.kron(quadRuleTime._denseBasis[1], quadRulePart._denseBasis[0]).T @ u_ctrlpts
 		uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ); uders_interp = uders_interp[0, :, :]
 
 		# Compute u exact
@@ -510,23 +510,23 @@ class stproblem1D():
 				sptimectrlpts[:, iold:inew] = np.vstack([part_ref.ctrlpts, time_ref.ctrlpts[i]*np.ones(part_ref.nbctrlpts_total)])
 			
 			qpPhyExact = np.zeros((2, quadRulePart.nbqp*quadRuleTime.nbqp))
-			for i in range(2): qpPhyExact[i, :] = sp.kron(quadRulePart._denseBasis[0], quadRuleTime._denseBasis[0]).T @ sptimectrlpts
+			for i in range(2): qpPhyExact[i, :] = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[0]).T @ sptimectrlpts
 
 			JqpExact = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
 			for j in range(2):
 				for i in range(2):
 					beta = np.zeros(2, dtype=int); beta[j] = 1
-					JqpExact[i, j, :] = sp.kron(quadRulePart._densebasis[beta[0]], quadRuleTime._densebasis[beta[1]]).T @ sptimectrlpts[i]
+					JqpExact[i, j, :] = sp.kron(quadRuleTime._denseBasis[beta[1]], quadRulePart._denseBasis[beta[0]]).T @ sptimectrlpts[i]
 
 			detJExact = JqpExact[0, 0, :]*JqpExact[1, 1, :] - JqpExact[0, 1, :]*JqpExact[1, 0, :]
 			invJExact = np.zeros((2, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
 			invJExact[0, 0, :] = JqpExact[1, 1, :]/detJExact; invJExact[1, 1, :] = JqpExact[0, 0, :]/detJExact
 			invJExact[0, 1, :] = -JqpExact[0, 1, :]/detJExact; invJExact[1, 0, :] = -JqpExact[1, 0, :]/detJExact 
 
-			u_exact = sp.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[0]).T @ u_ctrlpts
+			u_exact = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[0]).T @ u_ctrlpts
 			derstemp = np.zeros((1, 2, quadRulePart.nbqp*quadRuleTime.nbqp))
-			derstemp[0, 0, :] = sp.kron(quadRulePart._densebasis[1], quadRuleTime._densebasis[0]).T @ u_ctrlpts
-			derstemp[0, 1, :] = sp.kron(quadRulePart._densebasis[0], quadRuleTime._densebasis[1]).T @ u_ctrlpts
+			derstemp[0, 0, :] = sp.kron(quadRuleTime._denseBasis[0], quadRulePart._denseBasis[1]).T @ u_ctrlpts
+			derstemp[0, 1, :] = sp.kron(quadRuleTime._denseBasis[1], quadRulePart._denseBasis[0]).T @ u_ctrlpts
 			uders_exact = np.einsum('ijl,jkl->ikl', derstemp, invJExact); uders_exact = uders_exact[0, :, :]
 			
 		# Compute error
@@ -541,7 +541,7 @@ class stproblem1D():
 			uedfuf2_sh1 += np.einsum('il->l', (uders_exact - uders_interp)**2)
 			ue2_sh1     += np.einsum('il->l', uders_exact**2)
 
-		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ, 
+		norm1 = (uedfuf2_l2 + uedfuf2_sh1)*detJ
 		norm2 = (ue2_l2 + ue2_sh1)*detJ
 
 		tmp1 = np.einsum('i,i->', parametricWeights, norm1)
@@ -565,9 +565,9 @@ class stheatproblem1D(stproblem1D):
 			temperature = np.ones(self.part.nbqp*self.time.nbqp) 
 			if self.heatmaterial._isConductivityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
-		tmp1 = sp.kron(self.part._densebasis[1], self.time._densebasis[0]).T @ array_in
-		tmp2 = (self.heatmaterial.conductivity(args)*np.kron(self.part.invJ, self.time.detJ))*tmp1
-		array_out = sp.kron(self.part._denseweights[-1], self.time._denseweights[0]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T @ array_in
+		tmp2 = (self.heatmaterial.conductivity(args)*np.kron(self.time.detJ, self.part.invJ))*tmp1
+		array_out = sp.kron(self.time._denseweights[0], self.part._denseweights[-1]) @ tmp2
 		return array_out
 		
 	def compute_mfSTCapacity(self, array_in, args=None):
@@ -575,9 +575,9 @@ class stheatproblem1D(stproblem1D):
 			temperature = np.ones(self.part.nbqp_total*self.time.nbqp) 
 			if self.heatmaterial._isCapacityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
-		tmp1 = sp.kron(self.part._densebasis[0], self.time._densebasis[1]).T @ array_in
-		tmp2 = self.heatmaterial.capacity(args)*np.kron(self.part.detJ, np.ones(self.time.nbqp))*tmp1
-		array_out = sp.kron(self.part._denseweights[0], self.time._denseweights[1]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ array_in
+		tmp2 = self.heatmaterial.capacity(args)*np.kron(np.ones(self.time.nbqp), self.part.detJ)*tmp1
+		array_out = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
 		return array_out
 
 	def interpolate_STtemperature_gradients(self, u_ctrlpts):
@@ -590,36 +590,37 @@ class stheatproblem1D(stproblem1D):
 		for j in range(2):
 			for i in range(2):
 				beta = np.zeros(2, dtype=int); beta[j] = 1
-				Jqp[i, j, :] = sp.kron(self.part._densebasis[beta[0]], self.time._densebasis[beta[1]]).T @ sptimectrlpts[i]
+				Jqp[i, j, :] = sp.kron(self.time._densebasis[beta[1]], self.part._densebasis[beta[0]]).T @ sptimectrlpts[i]
 
 		detJ = Jqp[0, 0, :]*Jqp[1, 1, :] - Jqp[0, 1, :]*Jqp[1, 0, :]
 		invJ = np.zeros((2, 2, self.part.nbqp*self.time.nbqp))
 		invJ[0, 0, :] = Jqp[1, 1, :]/detJ; invJ[1, 1, :] = Jqp[0, 0, :]/detJ
 		invJ[0, 1, :] = -Jqp[0, 1, :]/detJ; invJ[1, 0, :] = -Jqp[1, 0, :]/detJ 
 
-		u_interp = sp.kron(self.part._densebasis[0], self.time._densebasis[0]).T @ u_ctrlpts
+		u_interp = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ u_ctrlpts
 		derstemp = np.zeros((1, 2, self.part.nbqp*self.time.nbqp))
-		derstemp[0, 0, :] = sp.kron(self.part._densebasis[1], self.time._densebasis[0]).T @ u_ctrlpts
-		derstemp[0, 1, :] = sp.kron(self.part._densebasis[0], self.time._densebasis[1]).T @ u_ctrlpts
+		derstemp[0, 0, :] = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T @ u_ctrlpts
+		derstemp[0, 1, :] = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ u_ctrlpts
 		uders_interp = np.einsum('ijl,jkl->ikl', derstemp, invJ); uders_interp = uders_interp[0, :, :]
 		return u_interp, uders_interp
 	
 	def compute_TangentMatrix(self, args=None, isfull=False):
 		assert args is not None, 'Please enter a valid argument'
 		if args is None: temperature = np.ones(self.part.nbqp*self.time.nbqp) 
+		
 		if args is None: 
 			if self.heatmaterial._isConductivityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
-		tmp1 = sp.kron(self.part._densebasis[1], self.time._densebasis[0]).T
-		tmp2 = np.diag(self.heatmaterial.conductivity(args)*np.kron(self.part.invJ, self.time.detJ)) @ tmp1
-		matrix = sp.kron(self.part._denseweights[-1], self.time._denseweights[0]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
+		tmp2 = sp.diags(self.heatmaterial.conductivity(args)*np.kron(self.time.detJ, self.part.invJ)) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[-1]) @ tmp2
 
 		if args is None: 
 			if self.heatmaterial._isCapacityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
-		tmp1 = sp.kron(self.part._densebasis[0], self.time._densebasis[1]).T
-		tmp2 = np.diag(self.heatmaterial.capacity(args)*np.kron(self.part.detJ, np.ones(self.time.nbqp))) @ tmp1
-		matrix += sp.kron(self.part._denseweights[0], self.time._denseweights[1]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
+		tmp2 = sp.diags(self.heatmaterial.capacity(args)*np.kron(np.ones(self.time.nbqp), self.part.detJ)) @ tmp1
+		matrix += sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
 
 		if not isfull: return matrix
 
@@ -628,18 +629,18 @@ class stheatproblem1D(stproblem1D):
 			else: args = {'temperature': temperature}
 			gradTemperature = np.ones((2, self.part.nbqp_total*self.time.nbqp))
 		else: gradTemperature = args['gradients']
-		tmp1 = sp.kron(self.part._densebasis[0], self.time._densebasis[0]).T
-		tmp2 = np.diag(self.heatmaterial.conductivityDers(args)*gradTemperature[0, :]*np.kron(np.ones(self.part.nbqp), self.time.detJ)) @ tmp1
-		matrix += sp.kron(self.part._denseweights[2], self.time._denseweights[0]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(self.heatmaterial.conductivityDers(args)*gradTemperature[0, :]*np.kron(self.time.detJ, np.ones(self.part.nbqp))) @ tmp1
+		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ tmp2
 
 		if args is None: 
 			if self.heatmaterial._isCapacityIsotropic: args = temperature
 			else: args = {'temperature': temperature}
 			gradTemperature = np.ones((2, self.part.nbqp_total*self.time.nbqp))
 		else: gradTemperature = args['gradients']
-		tmp1 = sp.kron(self.part._densebasis[0], self.time._densebasis[0]).T
-		tmp2 = np.diag((self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]*np.kron(self.part.detJ, self.time.detJ))) @ tmp1
-		matrix += sp.kron(self.part._denseweights[0], self.time._denseweights[0]) @ tmp2
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags((self.heatmaterial.capacityDers(args)*gradTemperature[-1, :]*np.kron(self.time.detJ, self.part.detJ))) @ tmp1
+		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
 		return matrix
 	
 	def solveFourierSTHeatProblem(self, Tinout, Fext, isfull=False, isadaptive=False):
@@ -668,11 +669,11 @@ class stheatproblem1D(stproblem1D):
 			AllresNewton.append(resNLj1); Allsol.append(np.copy(Tinout))
 
 			# Solve for active control points
-			tangentM = sp.csr_matrix(self.compute_TangentMatrix(
+			tangentM = self.compute_TangentMatrix(
 										args={'temperature':temperature, 
 											'gradients':gradtemperature}, 
-										isfull=isfull)[np.ix_(dof, dof)])
-			deltaD = np.zeros(nbctrlpts_total); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+										isfull=isfull).todense()[np.ix_(dof, dof)]
+			deltaD = np.zeros(nbctrlpts_total); deltaD[dof] = np.linalg.solve(tangentM, r_dj[dof])
 		
 			# Update active control points
 			Tinout += deltaD

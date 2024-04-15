@@ -21,9 +21,10 @@ YOUNG, CST, LENGTH = 2e11, 4.e7, 1
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':0.3,
 		'isoHardLaw': {'name':'none'}}
 MECHAMATERIAL = mechamat(MATARGS)
-isReference = True
+isReference = False
 
-def forceVol(P:list):
+def forceVol(args:list):
+	P = args['position']
 	force = CST*(P - 1/10*P**2)
 	return force
 
@@ -57,9 +58,9 @@ else:
 	def exactDisplacementDers(P:list):
 		return CST/YOUNG*(-P**2/2 + P**3/30 + (LENGTH**2/6 - LENGTH**3/120))
 
-	disp_ref = np.load(folder + 'dispel.npy')
-	with open(folder + 'refpartel.pkl', 'rb') as inp:
-		part_ref = pickle.load(inp)
+	# disp_ref = np.load(folder + 'dispel.npy')
+	# with open(folder + 'refpartel.pkl', 'rb') as inp:
+	# 	part_ref = pickle.load(inp)
 
 	degree_list = np.arange(1, 4)
 	cuts_list   = np.arange(1, 9)
@@ -69,14 +70,15 @@ else:
 	for degree in degree_list:
 		for j, cuts in enumerate(cuts_list):
 			nbel = 2**cuts
-			args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
+			# args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
+			args = {'quadArgs': {'quadrule': 'wq', 'type': 1}}
 			modelPhy, displacement = simulate(degree, nbel, args)
-			# error_list[j], _ = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 
-			# 														'exactFunction': exactDisplacement, 
-			# 														'exactFunctionDers': exactDisplacementDers})
 			error_list[j], _ = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 
-																	'part_ref': part_ref, 
-																	'u_ref': disp_ref[:, -1]})		
+																	'exactFunction': exactDisplacement, 
+																	'exactFunctionDers': exactDisplacementDers})
+			# error_list[j], _ = modelPhy.normOfError(displacement[:, -1], normArgs={'type':'H1', 
+			# 														'part_ref': part_ref, 
+			# 														'u_ref': disp_ref[:, -1]})		
 
 		ax.loglog(2**cuts_list, error_list, marker='s', markerfacecolor='w',
 					markersize=10, linestyle='-', label='IGA-GL deg. ' + str(degree))

@@ -432,7 +432,8 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
 	
-	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time), 1.0), {'quadArgs':quadArgs}) # To keep same number of control points
+	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time), 1.0), 
+					{'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 
 	material = heatmat()

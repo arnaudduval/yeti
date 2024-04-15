@@ -6,8 +6,8 @@ folder = os.path.dirname(full_path) + '/results/1D/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = True
-FIG_CASE = 0
+TODOSIMU = False
+FIG_CASE = 2
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
@@ -19,7 +19,7 @@ lastsufix = 'linear' if ISLINEAR else 'nonlin'
 if FIG_CASE == 0:
 	if TODOSIMU:
 		degList = np.array([1, 2, 3, 4, 5])
-		cutList = np.arange(1, 6)
+		cutList = np.arange(1, 5)	
 		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -36,8 +36,7 @@ if FIG_CASE == 0:
 					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
 													dirichlet_table=dirichlet_table, quadArgs=quadArgs, 
 													degree_time=degree, cuts_time=cuts, is1dim=IS1DIM)
-					
-					enablePrint()
+					enablePrint()					
 					AbserrorTable[i+1, j+1], relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 
 																	normArgs={'type':'L2', 
 																	'exactFunction':exactTemperatureSquare_spt},)
@@ -75,8 +74,8 @@ if FIG_CASE == 0:
 
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
 	ax.set_xlabel('Number of elements by space-time direction')
-	ax.set_xlim(left=1, right=100)
-	ax.set_ylim(top=1e1, bottom=1e-10)
+	ax.set_xlim(left=1, right=50)
+	ax.set_ylim(top=1e2, bottom=1e-6)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(figname)
@@ -123,10 +122,10 @@ elif FIG_CASE == 1:
 				
 
 				start = time.process_time()
-				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
 													dirichlet_table=dirichlet_table, 
-													quadArgs={'quadrule':'wq', 'type':2},
+													quadArgs={'quadrule':'iga', 'type':'leg'},
 													degree_time=2, cuts_time=3, is1dim=IS1DIM)
 					
 				finish = time.process_time()
@@ -166,7 +165,7 @@ elif FIG_CASE == 1:
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
 	ax.set_xlabel('Number of elements by spatial direction')
 	ax.set_xlim(left=1, right=100)
-	ax.set_ylim(top=2e1, bottom=1e-4)
+	ax.set_ylim(top=2e2, bottom=1e-5)
 	ax.legend(loc='upper right')
 	fig.tight_layout()
 	fig.savefig(folder + 'INCNLL2Convergence' +  '.pdf')
@@ -174,11 +173,8 @@ elif FIG_CASE == 1:
 
 elif FIG_CASE == 2:
 
-	filenameA1 = folder + 'incheatAbs'+lastsufix
-	filenameR1 = folder + 'incheatRel'+lastsufix
-	filenameT1 = folder + 'incheatTim'+lastsufix
 	degree, cuts = 8, 6
-	quadArgs = {'quadrule':'wq', 'type':2}
+	quadArgs = {'quadrule':'iga', 'type':'leg'}
 	cutsincList = np.arange(4, 7)
 	degsptList = np.arange(1, 5)
 	abserrorInc, relerrorInc = np.ones(len(cutsincList)), np.ones(len(cutsincList))
@@ -203,7 +199,7 @@ elif FIG_CASE == 2:
 
 			# Space time
 			for j, degspt in enumerate(degsptList):
-				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, dirichlet_table=dirichlet_table,
 													degree_time=degspt, cuts_time=cutsinc, quadArgs=quadArgs, is1dim=IS1DIM)
 					

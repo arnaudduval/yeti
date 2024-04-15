@@ -6,8 +6,8 @@ folder = os.path.dirname(full_path) + '/results/' + GEONAME + '/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = False
-FIG_CASE = 2
+TODOSIMU = True
+FIG_CASE = 0
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
@@ -207,9 +207,6 @@ elif FIG_CASE == 1:
 
 elif FIG_CASE == 2:
 
-	filenameA1 = folder + 'incheatAbs'+lastsufix
-	filenameR1 = folder + 'incheatRel'+lastsufix
-	filenameT1 = folder + 'incheatTim'+lastsufix
 	degree, cuts = 8, 6
 	quadArgs = {'quadrule':'wq', 'type':2}
 	cutsincList = np.arange(4, 7)

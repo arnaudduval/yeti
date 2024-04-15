@@ -248,7 +248,6 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
     dimension :: indj_T_u(nnz_u), indj_T_v(nnz_v)
     double precision :: data_BT_u, data_BT_v
     dimension :: data_BT_u(nnz_u, 2), data_BT_v(nnz_v, 2)
-    double precision :: tmp(size(JJ, dim=3))
 
     call multicsr2csc(2, nr_u, nc_u, nnz_u, data_B_u, indj_u, indi_u, data_BT_u, indj_T_u, indi_T_u)
     call multicsr2csc(2, nr_v, nc_v, nnz_v, data_B_v, indj_v, indi_v, data_BT_v, indj_T_v, indi_T_v)
@@ -259,8 +258,7 @@ subroutine eval_jacobien_2d(nm, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
             call sumfacto2d_spM(nc_u, nr_u, nc_v, nr_v, &
                             nnz_u, indi_T_u, indj_T_u, data_BT_u(:, beta(1)), &
                             nnz_v, indi_T_v, indj_T_v, data_BT_v(:, beta(2)), &
-                            u_ctrlpts(i, :), tmp)
-            JJ(i, j, :) = tmp
+                            u_ctrlpts(i, :), JJ(i, j, :))
         end do
     end do
 
