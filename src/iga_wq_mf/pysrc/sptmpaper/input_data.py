@@ -15,7 +15,7 @@ IS1DIM = True
 ISLINEAR, NONLINCASE = False, 1
 ISISOTROPIC = True # Only for square
 
-CST = 100
+CST = 100 # Or 10 when using square case
 CUTS_TIME = 6
 
 def nonlinearfunc(args:dict):

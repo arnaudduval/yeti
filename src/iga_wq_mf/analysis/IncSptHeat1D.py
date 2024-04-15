@@ -6,8 +6,8 @@ folder = os.path.dirname(full_path) + '/results/1D/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = False
-FIG_CASE = 2
+TODOSIMU = True
+FIG_CASE = 1
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
@@ -125,7 +125,7 @@ elif FIG_CASE == 1:
 				dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
 													dirichlet_table=dirichlet_table, 
-													quadArgs={'quadrule':'iga', 'type':'leg'},
+													quadArgs={'quadrule':'wq', 'type':2},
 													degree_time=2, cuts_time=3, is1dim=IS1DIM)
 					
 				finish = time.process_time()
@@ -174,7 +174,7 @@ elif FIG_CASE == 1:
 elif FIG_CASE == 2:
 
 	degree, cuts = 8, 6
-	quadArgs = {'quadrule':'iga', 'type':'leg'}
+	quadArgs = {'quadrule':'wq', 'type':2}
 	cutsincList = np.arange(4, 7)
 	degsptList = np.arange(1, 5)
 	abserrorInc, relerrorInc = np.ones(len(cutsincList)), np.ones(len(cutsincList))
