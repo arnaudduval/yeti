@@ -47,9 +47,9 @@ if TODOSIMU:
 file = np.loadtxt(filename+'.dat')
 degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5, 4))
 for i, degree in enumerate(degList): 
-	ax.loglog(nbelList**4, timeElapsed[:, i], label='degree ' + str(int(degree)), marker='s', color='k', alpha=(i+1)/len(degList))
+	ax.loglog(nbelList**4, timeElapsed[:, i], label=r'$p_s=p_t=$' + str(int(degree)), marker='s', color='k', alpha=(i+1)/len(degList))
 
 ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
