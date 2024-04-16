@@ -6,7 +6,7 @@ folder = os.path.dirname(full_path) + '/results/1D/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = True
+TODOSIMU = False
 FIG_CASE = 2
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
@@ -19,7 +19,7 @@ lastsufix = 'linear' if ISLINEAR else 'nonlin'
 if FIG_CASE == 0:
 	if TODOSIMU:
 		degList = np.array([1, 2, 3, 4, 5])
-		cutList = np.arange(1, 5)	
+		cutList = np.arange(1, 6)	
 		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -35,7 +35,7 @@ if FIG_CASE == 0:
 					dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
 					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
 													dirichlet_table=dirichlet_table, quadArgs=quadArgs, 
-													degree_time=degree, cuts_time=cuts, is1dim=IS1DIM)
+													degree_time=degree, nbel_time=2**cuts, is1dim=IS1DIM)
 					enablePrint()					
 					AbserrorTable[i+1, j+1], relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 
 																	normArgs={'type':'L2', 
@@ -75,7 +75,7 @@ if FIG_CASE == 0:
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
 	ax.set_xlabel('Number of elements by space-time direction')
 	ax.set_xlim(left=1, right=50)
-	ax.set_ylim(top=1e2, bottom=1e-6)
+	ax.set_ylim(top=1e1, bottom=1e-10)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(figname)
@@ -91,7 +91,7 @@ elif FIG_CASE == 1:
 	filenameT2 = folder + '1sptheatTim'+lastsufix
 
 	degList = np.array([1, 2, 3, 4])
-	cutList = np.arange(1, 6)
+	cutList = np.arange(1, 8)
 
 	if TODOSIMU:
 
@@ -110,7 +110,7 @@ elif FIG_CASE == 1:
 				start = time.process_time()
 				dirichlet_table = np.ones((2, 2))
 				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensitySquare_inc, 
-													dirichlet_table=dirichlet_table, cuts_time=3, is1dim=IS1DIM)
+													dirichlet_table=dirichlet_table, nbel_time=2**4, is1dim=IS1DIM)
 				finish = time.process_time()
 				T1timeList[i, j] = finish - start
 				
@@ -126,7 +126,7 @@ elif FIG_CASE == 1:
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
 													dirichlet_table=dirichlet_table, 
 													quadArgs={'quadrule':'wq', 'type':2},
-													degree_time=2, cuts_time=3, is1dim=IS1DIM)
+													degree_time=degree, nbel_time=2**4+1-degree, is1dim=IS1DIM)
 					
 				finish = time.process_time()
 				T2timeList[i, j] = finish - start
@@ -164,8 +164,8 @@ elif FIG_CASE == 1:
 	
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
 	ax.set_xlabel('Number of elements by spatial direction')
-	ax.set_xlim(left=1, right=100)
-	ax.set_ylim(top=2e2, bottom=1e-5)
+	ax.set_xlim(left=1, right=200)
+	ax.set_ylim(top=1e1, bottom=1e-6)
 	ax.legend(loc='upper right')
 	fig.tight_layout()
 	fig.savefig(folder + 'INCNLL2Convergence' +  '.pdf')
@@ -173,21 +173,23 @@ elif FIG_CASE == 1:
 
 elif FIG_CASE == 2:
 
-	degree, cuts = 8, 6
+	degree, cuts = 8, 7
 	quadArgs = {'quadrule':'wq', 'type':2}
-	cutsincList = np.arange(4, 7)
+	nbelincList = np.arange(5, 65, 5)
 	degsptList = np.arange(1, 5)
-	abserrorInc, relerrorInc = np.ones(len(cutsincList)), np.ones(len(cutsincList))
-	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(cutsincList))), np.ones((len(degsptList), len(cutsincList)))
+	abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
+	abserrorInc2, relerrorInc2 = np.ones(len(nbelincList)), np.ones(len(nbelincList))
+	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(nbelincList))), np.ones((len(degsptList), len(nbelincList)))
 
 	if TODOSIMU:
-		for i, cutsinc in enumerate(cutsincList):
+		for i, nbelsinc in enumerate(nbelincList):
 
 			blockPrint()
 			# Incremental
 			dirichlet_table = np.ones((2, 2))
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensitySquare_inc, dirichlet_table=dirichlet_table,
-														cuts_time=cutsinc, quadArgs=quadArgs, is1dim=IS1DIM)
+														nbel_time=nbelsinc, quadArgs={'quadrule':'iga'}, 
+														is1dim=IS1DIM)
 			
 			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
 										normArgs={'type':'L2',
@@ -201,7 +203,7 @@ elif FIG_CASE == 2:
 			for j, degspt in enumerate(degsptList):
 				dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, dirichlet_table=dirichlet_table,
-													degree_time=degspt, cuts_time=cutsinc, quadArgs=quadArgs, is1dim=IS1DIM)
+													degree_time=degspt, nbel_time=nbelsinc+1-degspt, quadArgs=quadArgs, is1dim=IS1DIM)
 					
 				newtemp_spt = np.reshape(temp_spt, newshape=(problem_spt.part.nbctrlpts_total, problem_spt.time.nbctrlpts_total), order='F')
 				abserrorSpt[j, i], relerrorSpt[j, i] = problem_inc.normOfError(newtemp_spt[:, -1], 
@@ -211,23 +213,23 @@ elif FIG_CASE == 2:
 
 				np.savetxt(folder+'2abserrorstag_spt'+'.dat', abserrorSpt)
 				np.savetxt(folder+'2relerrorstag_spt'+'.dat', relerrorSpt)
+			
 			enablePrint()
 
 	fig, ax = plt.subplots(figsize=(8, 6))
 	errorList1 = np.loadtxt(folder+'2abserrorstag_spt'+'.dat')
 	for i, deg in enumerate(degsptList):
-		ax.loglog(2**cutsincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
+		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
 					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
-
+		
 	errorList1 = np.loadtxt(folder+'2abserrorstag_inc'+'.dat')
-	ax.loglog(2**cutsincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
+	ax.loglog(nbelincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
 					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA')
-	
 
 	ax.set_ylabel('Stagnation error')
 	ax.set_xlabel('Number of control points on time')
-	# ax.set_xlim(left=1, right=100)
-	# ax.set_ylim(top=1e1, bottom=1e-10)
+	ax.set_xlim(left=4, right=100)
+	ax.set_ylim(top=1e-1, bottom=1e-9)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
-	fig.savefig(folder+'stagnationError'+'.pdf')
+	fig.savefig(folder+'StagnationError'+'.pdf')

@@ -6,14 +6,13 @@ folder = os.path.dirname(full_path) + '/results/' + GEONAME + '/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = True
-FIG_CASE = 0
+TODOSIMU = False
+FIG_CASE = 3
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 WQ2Plot = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 IncPlot = {'marker': 'd', 'linestyle': '-.', 'markersize': 6}
-
 
 def exactTemperature_inc(args):
 	func = None
@@ -66,7 +65,7 @@ if FIG_CASE == 0:
 					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
 													dirichlet_table=dirichlet_table, quadArgs=quadArgs, 
-													degree_time=degree, cuts_time=cuts, geoArgs=geoArgs)
+													degree_time=degree, nbel_time=2**cuts, geoArgs=geoArgs)
 					
 					enablePrint()
 					AbserrorTable[i+1, j+1], relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 
@@ -106,8 +105,8 @@ if FIG_CASE == 0:
 
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
 	ax.set_xlabel('Number of elements by space-time direction')
-	ax.set_xlim(left=1, right=100)
-	ax.set_ylim(top=1e1, bottom=1e-10)
+	ax.set_xlim(left=1, right=50)
+	ax.set_ylim(top=1e1, bottom=1e-8)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(figname)
@@ -123,7 +122,7 @@ elif FIG_CASE == 1:
 	filenameT2 = folder + '1sptheatTim'+lastsufix
 
 	degList = np.array([1, 2, 3, 4])
-	cutList = np.arange(1, 6)
+	cutList = np.arange(1, 8)
 
 	if TODOSIMU:
 
@@ -144,7 +143,7 @@ elif FIG_CASE == 1:
 				start = time.process_time()
 				dirichlet_table = np.ones((2, 2))
 				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
-													dirichlet_table=dirichlet_table, geoArgs=geoArgs, cuts_time=3)
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, nbel_time=2**4)
 				finish = time.process_time()
 				T1timeList[i, j] = finish - start
 				
@@ -160,7 +159,7 @@ elif FIG_CASE == 1:
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
 													dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
 													quadArgs={'quadrule':'wq', 'type':2},
-													degree_time=2, cuts_time=3)
+													degree_time=degree, nbel_time=2**4+1-degree)
 					
 				finish = time.process_time()
 				T2timeList[i, j] = finish - start
@@ -195,11 +194,10 @@ elif FIG_CASE == 1:
 	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w', 
 					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
 
-	
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
 	ax.set_xlabel('Number of elements by spatial direction')
-	ax.set_xlim(left=1, right=100)
-	ax.set_ylim(top=2e1, bottom=1e-4)
+	ax.set_xlim(left=1, right=200)
+	ax.set_ylim(top=1e1, bottom=1e-6)
 	ax.legend(loc='upper right')
 	fig.tight_layout()
 	fig.savefig(folder + 'INCNLL2Convergence' +  '.pdf')
@@ -209,13 +207,13 @@ elif FIG_CASE == 2:
 
 	degree, cuts = 8, 6
 	quadArgs = {'quadrule':'wq', 'type':2}
-	cutsincList = np.arange(4, 7)
+	nbelincList = np.arange(5, 45, 5)
 	degsptList = np.arange(1, 5)
-	abserrorInc, relerrorInc = np.ones(len(cutsincList)), np.ones(len(cutsincList))
-	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(cutsincList))), np.ones((len(degsptList), len(cutsincList)))
+	abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
+	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(nbelincList))), np.ones((len(degsptList), len(nbelincList)))
 
 	if TODOSIMU:
-		for i, cutsinc in enumerate(cutsincList):
+		for i, nbelinc in enumerate(nbelincList):
 			geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': np.array([cuts, cuts, 1])}
 
@@ -223,7 +221,7 @@ elif FIG_CASE == 2:
 			# Incremental
 			dirichlet_table = np.ones((2, 2))
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, dirichlet_table=dirichlet_table,
-														geoArgs=geoArgs, cuts_time=cutsinc, quadArgs=quadArgs)
+														geoArgs=geoArgs, nbel_time=nbelinc, quadArgs={'quadrule':'iga'})
 			
 			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
 										normArgs={'type':'L2',
@@ -237,7 +235,7 @@ elif FIG_CASE == 2:
 			for j, degspt in enumerate(degsptList):
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, dirichlet_table=dirichlet_table,
-													geoArgs=geoArgs, degree_time=degspt, cuts_time=cutsinc, quadArgs=quadArgs)
+													geoArgs=geoArgs, degree_time=degspt, nbel_time=nbelinc+1-degspt, quadArgs=quadArgs)
 					
 				newtemp_spt = np.reshape(temp_spt, newshape=(problem_spt.part.nbctrlpts_total, problem_spt.time.nbctrlpts_total), order='F')
 				abserrorSpt[j, i], relerrorSpt[j, i] = problem_inc.normOfError(newtemp_spt[:, -1], 
@@ -252,18 +250,165 @@ elif FIG_CASE == 2:
 	fig, ax = plt.subplots(figsize=(8, 6))
 	errorList1 = np.loadtxt(folder+'2abserrorstag_spt'+'.dat')
 	for i, deg in enumerate(degsptList):
-		ax.loglog(2**cutsincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
+		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
 					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
 
 	errorList1 = np.loadtxt(folder+'2abserrorstag_inc'+'.dat')
-	ax.loglog(2**cutsincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
+	ax.loglog(nbelincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
 					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA')
 	
 
 	ax.set_ylabel('Stagnation error')
 	ax.set_xlabel('Number of control points on time')
-	# ax.set_xlim(left=1, right=100)
+	ax.set_xlim(left=5, right=50)
 	# ax.set_ylim(top=1e1, bottom=1e-10)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
-	fig.savefig(folder+'stagnationError'+'.pdf')
+	fig.savefig(folder+'StagnationError'+'.pdf')
+
+elif FIG_CASE == 3:
+
+	filenameA2 = folder + '3incheatAbs'
+	filenameR2 = folder + '3incheatRel'
+	filenameT2 = folder + '3incheatTim'
+
+	filenameA3 = folder + '3sptheatAbs'
+	filenameR3 = folder + '3sptheatRel'
+	filenameT3 = folder + '3sptheatTim'
+
+	degList = np.array([1, 2, 3, 4, 5, 6])
+	cutList = np.arange(4, 7)
+
+	if TODOSIMU:
+		A2errorList = np.ones((len(degList), len(cutList)))
+		R2errorList = np.ones((len(degList), len(cutList)))
+		T2timeList = np.ones((len(degList), len(cutList)))
+		
+		quadArgs = {'quadrule': 'wq', 'type': 2}
+		sufix = '_wq_2_' + lastsufix + '.dat'
+		for j, cuts in enumerate(cutList):
+			for i, degree in enumerate(degList):
+				geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+				# Incremental problem
+				blockPrint()
+				
+				# Space time problem
+				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
+													degree_time=1, nbel_time=2**cuts, quadArgs=quadArgs,
+													isadaptive=False, solveSystem=False)
+
+				start = time.process_time()
+				dirichlet_table = np.ones((2, 2))
+				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, nbel_time=2**cuts)
+				finish = time.process_time()
+				T2timeList[i, j] = finish - start
+				
+				# Error of last "step"
+				A2errorList[i, j], R2errorList[i, j] = problem_spt.normOfError(np.ravel(temp_inc, order='F'), 
+														normArgs={'type':'L2',
+																	'exactFunction':exactTemperature_spt,})
+
+				# abserror, relerror = problem_inc.normOfError(temp_inc[:, -1], 
+				# 							normArgs={'type':'L2',
+				# 										'exactFunction':exactTemperature_inc,
+				# 										'exactExtraArgs':{'time':time_inc[-1]}})
+
+				enablePrint()
+
+				np.savetxt(filenameA2+sufix, A2errorList)
+				np.savetxt(filenameR2+sufix, R2errorList)
+				np.savetxt(filenameT2+sufix, T2timeList)
+
+		A3errorList = np.ones((len(degList), len(cutList)))
+		R3errorList = np.ones((len(degList), len(cutList)))
+		T3timeList = np.ones((len(degList), len(cutList)))
+		
+		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+			quadArgs = {'quadrule': quadrule, 'type': quadtype}
+			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + '.dat'
+			for j, cuts in enumerate(cutList):
+				for i, degree in enumerate(degList):
+					geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+					# Incremental problem
+					blockPrint()
+					
+					# Space time problem
+					start = time.process_time()
+					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+														dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
+														degree_time=degree, nbel_time=2**cuts, quadArgs=quadArgs,
+														isadaptive=False)
+						
+					end = time.process_time()
+					T3timeList[i, j] = end - start
+
+					# Error of last "step"
+					A3errorList[i, j], R3errorList[i, j] = problem_spt.normOfError(temp_spt, 
+															normArgs={'type':'L2',
+																		'exactFunction':exactTemperature_spt, })
+
+					enablePrint()
+					print(A3errorList[i, j], R3errorList[i, j], T3timeList[i, j])
+
+					np.savetxt(filenameA3+sufix, A3errorList)
+					np.savetxt(filenameR3+sufix, R3errorList)
+					np.savetxt(filenameT3+sufix, T3timeList)
+
+	fig, ax = plt.subplots(figsize=(7, 4))
+	Elist = np.loadtxt(filenameA2+'_wq_2_'+lastsufix+'.dat')
+	Tlist = np.loadtxt(filenameT2+'_wq_2_'+lastsufix+'.dat')
+	for i, degree in enumerate(degList):
+		color = COLORLIST[i]
+		ax.loglog(Tlist[i, 1], Elist[i, 1], color=color, marker=IncPlot['marker'], 
+					markersize=IncPlot['markersize'], linestyle='', )
+			
+	for j, cuts in enumerate(cutList):
+		ax.loglog(Tlist[:len(degList), 1], Elist[:len(degList), 1], 
+					color='tab:red', alpha=0.5, marker='', linestyle='--')
+
+	for quadrule, quadtype, plotvars in zip(['iga', 'wq'], ['leg', 2], [IgaPlot, WQ2Plot]):
+		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + '.dat'
+		Elist = np.loadtxt(filenameA3+sufix)
+		Tlist = np.loadtxt(filenameT3+sufix)
+		for i, degree in enumerate(degList):
+			color = COLORLIST[i]
+			if quadrule == 'iga':
+				ax.loglog(Tlist[i, 1], Elist[i, 1], color=color, marker=plotvars['marker'], markerfacecolor='w',
+							markersize=plotvars['markersize'], linestyle='')
+				ax.loglog([], [], color=color, marker='8', 
+					markersize=8, linestyle='', label='Degree '+str(degree))
+			else:
+				ax.loglog(Tlist[i, 1], Elist[i, 1], color=color, marker=plotvars['marker'], markerfacecolor='w',
+							markersize=plotvars['markersize'], linestyle='')
+								
+		for j, cuts in enumerate(cutList):
+			ax.loglog(Tlist[:len(degList), 1], Elist[:len(degList), 1], 
+						color='k', alpha=0.2, marker='', linestyle='--')
+		
+		fig.tight_layout()
+		fig.savefig(folder + 'SPTINC_CPUError' +  '.pdf')	
+
+	ax.loglog([], [], color='k', marker=IncPlot['marker'], 
+		markersize=IncPlot['markersize'], linestyle='--', label='INC-IGA')
+	
+	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w',
+		markersize=IgaPlot['markersize'], linestyle='--', label='ST-IGA-GL')
+		
+	ax.loglog([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
+		markersize=WQ2Plot['markersize'], linestyle='--', label='ST-IGA-WQ 2')
+
+	ax.set_xlabel('CPU time (s)')
+	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
+	ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+	ax.set_xlim(left=2e0, right=2e3)
+	ax.set_ylim(top=1e-1, bottom=1e-9)
+	fig.tight_layout()
+	fig.savefig(folder + 'SPTINC_CPUError' +  '.pdf')

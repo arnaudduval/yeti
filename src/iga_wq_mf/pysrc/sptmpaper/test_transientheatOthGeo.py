@@ -72,7 +72,7 @@ if FIG_CASE == 0:
 					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
 													dirichlet_table=dirichlet_table,
-													quadArgs=quadArgs, degree_time=degree, cuts_time=cuts, geoArgs=geoArgs)
+													quadArgs=quadArgs, degree_time=degree, nbel_time=2**cuts, geoArgs=geoArgs)
 					
 					enablePrint()
 					L2errorTable[i+1, j+1], L2relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 

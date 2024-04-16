@@ -11,12 +11,15 @@ from pysrc.lib.lib_1djob import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
-IS1DIM = True
+IS1DIM = False
 ISLINEAR, NONLINCASE = False, 1
-ISISOTROPIC = True # Only for square
-
-CST = 100 # Or 10 when using square case
 CUTS_TIME = 6
+
+if GEONAME == 'SQ' or IS1DIM: ISISOTROPIC = True
+else: ISISOTROPIC = False
+
+if GEONAME == 'SQ' or IS1DIM: CST = 10
+else: CST = 100
 
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
@@ -129,12 +132,12 @@ def exactTemperatureSquare_inc(args:dict):
 	t = args['time']
 	if IS1DIM: x = args['position']
 	else: x = args['position'][0, :]
-	u = CST*sin(2*pi*x)*sin(pi/2*t)
+	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def exactTemperatureSquare_spt(qpPhy):
 	x = qpPhy[0, :]; t = qpPhy[-1, :]
-	u = CST*sin(2*pi*x)*sin(pi/2*t)
+	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def powerDensitySquare_inc(args:dict):
@@ -143,25 +146,27 @@ def powerDensitySquare_inc(args:dict):
 	else: x = args['position'][0, :]
 
 	if not ISISOTROPIC: raise Warning('Not possible')
-	u = sin((pi*t)/2)*sin(2*pi*x)
+	u = sin((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1) 
 	if ISLINEAR:
 		f = (
-			(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+			(CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+			- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
 			+ 8*CST*pi**2*u
 		)
 	else: 
 		if NONLINCASE==1:
-			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
+			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+				- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
 				+ 4*CST*pi**2*u*(2*tanh((CST*u)/50) + 3) 
-				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*(tanh((CST*u)/50)**2 - 1))/25
+				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2*(tanh((CST*u)/50)**2 - 1))/25
 			)	
 
 		if NONLINCASE==2:
 			f = (
-				(CST*pi*cos((pi*t)/2)*sin(2*pi*x))/2 
-				+ 4*CST*pi**2*u*(2*exp(-abs(CST*u)) + 1) 
-				+ 8*CST**2*pi**2*sign(CST*u)*exp(-abs(CST*u))*cos(2*pi*x)**2*sin((pi*t)/2)**2
-
+				(CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+				- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
+				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(CST*u)) + 1)*((3*cos((3*pi*t)/2))/4 + 1) 
+				+ 8*CST**2*pi**2*exp(-abs(CST*u))*cos(2*pi*x)**2*sign(CST*u)*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2
 			)
 
 	return f
@@ -365,12 +370,12 @@ def powerDensityRing_spt(args:dict):
 		f[:, i] = powerDensityRing_inc(args={'time':t, 'position':position})
 	return np.ravel(f, order='F')
 
-def simulate_incremental(degree, cuts, powerdensity, geoArgs=None, dirichlet_table=None, cuts_time=None, 
-						quadArgs=None, solveSystem=True, is1dim=False):
+def simulate_incremental(degree, cuts, powerdensity, geoArgs=None, dirichlet_table=None, nbel_time=None, 
+						quadArgs=None, solveSystem=True, is1dim=False, alpha=0.5):
 
 	# Create geometry
 	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
-	if cuts_time is None: cuts_time = CUTS_TIME
+	if nbel_time is None: nbel_time = 2**CUTS_TIME
 	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
 
 	if is1dim:
@@ -383,7 +388,7 @@ def simulate_incremental(degree, cuts, powerdensity, geoArgs=None, dirichlet_tab
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
 
-	time_inc = np.linspace(0, 1.0, int(2**cuts_time)+1)
+	time_inc = np.linspace(0, 1.0, nbel_time+1)
 
 	# Add material 
 	material = heatmat()
@@ -410,15 +415,15 @@ def simulate_incremental(degree, cuts, powerdensity, geoArgs=None, dirichlet_tab
 	# Solve
 	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-8
 	problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, 
-											time_list=time_inc, alpha=0.5)
+											time_list=time_inc, alpha=alpha)
 	return problem_inc, time_inc, Tinout
 
 def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs=None,  
-					degree_time=None, cuts_time=None, quadArgs=None, 
+					degree_time=None, nbel_time=None, quadArgs=None, solveSystem=True,
 					isfull=False, isadaptive=True, getOthers=False, is1dim=False):
 	
 	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
-	if cuts_time is None: cuts_time=CUTS_TIME
+	if nbel_time is None: nbel_time=2**CUTS_TIME
 	if degree_time is None: degree_time = 2
 	if dirichlet_table is None: dirichlet_table = np.zeros((3, 2)); dirichlet_table[0, :] = 1; dirichlet_table[-1, 0] = 1
 
@@ -432,7 +437,7 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
 	
-	time_spt = part1D(createUniformOpenCurve(degree_time, int(2**cuts_time), 1.0), 
+	time_spt = part1D(createUniformOpenCurve(degree_time, nbel_time, 1.0), 
 					{'quadArgs':quadArgs}) # To keep same number of control points
 
 	# Add material 
@@ -457,8 +462,9 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 									{'position':problem_spt.part.qpPhy, 
 									'time':problem_spt.time.qpPhy})
 	
-	# Solve
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
+	if not solveSystem: return problem_spt, time_spt, Tinout
+
 	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8; 
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
 	if getOthers: return problem_spt, time_spt, Tinout, output
