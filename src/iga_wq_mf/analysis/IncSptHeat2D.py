@@ -80,7 +80,7 @@ if FIG_CASE == 0:
 	figname = folder + 'SPTNLL2Convergence'+lastsufix+'.pdf'
 	filenames = ['L2abserror_meshpar_iga_leg_', 'L2abserror_meshpar_wq_1_', 'L2abserror_meshpar_wq_2_']
 
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots(figsize=(7, 6))
 	for filename, plotops in zip(filenames, plotoptions):
 		quadrule = filename.split('_')[2]
 		table = np.loadtxt(folder+filename+lastsufix+'.dat')	
@@ -90,8 +90,13 @@ if FIG_CASE == 0:
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]
 			if quadrule == 'iga': 
-				ax.loglog(nbels, errList[i, :], label='IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
+				ax.loglog(nbels, errList[i, :], label='ST-IGA-GL deg. '+str(int(degree)), color=color, marker=plotops['marker'],
 							markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])		
+				slope = np.polyfit(np.log10(nbels[2:]),np.log10(errList[i, 2:]), 1)[0]
+				slope = round(slope, 1)
+				annotation.slope_marker((nbels[-2], errList[i, -2]), slope, 
+								poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+			
 			else: 
 				ax.loglog(nbels, errList[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
 						markersize=plotops['markersize'], linestyle=plotops['linestyle'])
@@ -99,9 +104,9 @@ if FIG_CASE == 0:
 			fig.savefig(figname)
 
 	ax.loglog([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-					markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 4')
+					markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='ST-IGA-WQ 4')
 	ax.loglog([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-			markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
+			markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ 2')
 
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
 	ax.set_xlabel('Number of elements by space-time direction')
@@ -182,23 +187,23 @@ elif FIG_CASE == 1:
 
 	errorList1 = np.loadtxt(filenameA1+'.dat')
 	errorList2 = np.loadtxt(filenameA2+'.dat')
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots(figsize=(7, 6))
 	for i, degree in enumerate(degList):
 		color = COLORLIST[i]
-		ax.loglog(2**cutList, errorList2[i, :], color=color, marker=IgaPlot['marker'], markerfacecolor='w',
+		ax.loglog(2**cutList, errorList2[i, :], color=color, marker=IgaPlot['marker'], markerfacecolor='w', alpha=0.8,
 					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], )
 		
 		ax.loglog(2**cutList, errorList1[i, :], color=color, marker=IncPlot['marker'], markerfacecolor='w',
-					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA deg. '+str(degree))
+					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-GL deg. '+str(degree))
 		
-	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w', 
+	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w', alpha=0.8,
 					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
 
 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
 	ax.set_xlabel('Number of elements by spatial direction')
 	ax.set_xlim(left=1, right=200)
 	ax.set_ylim(top=1e1, bottom=1e-6)
-	ax.legend(loc='upper right')
+	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(folder + 'INCNLL2Convergence' +  '.pdf')
 	plt.close(fig)
@@ -247,21 +252,21 @@ elif FIG_CASE == 2:
 				np.savetxt(folder+'2relerrorstag_spt'+'.dat', relerrorSpt)
 			enablePrint()
 
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots(figsize=(7, 6))
 	errorList1 = np.loadtxt(folder+'2abserrorstag_spt'+'.dat')
 	for i, deg in enumerate(degsptList):
 		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
-					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
+					alpha=0.8, markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL deg. '+str(int(deg)))
 
 	errorList1 = np.loadtxt(folder+'2abserrorstag_inc'+'.dat')
 	ax.loglog(nbelincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
-					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA')
+					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-GL')
 	
 
 	ax.set_ylabel('Stagnation error')
 	ax.set_xlabel('Number of control points on time')
 	ax.set_xlim(left=5, right=50)
-	# ax.set_ylim(top=1e1, bottom=1e-10)
+	ax.set_ylim(top=1e0, bottom=1e-8)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(folder+'StagnationError'+'.pdf')
@@ -276,7 +281,7 @@ elif FIG_CASE == 3:
 	filenameR3 = folder + '3sptheatRel'
 	filenameT3 = folder + '3sptheatTim'
 
-	degList = np.array([1, 2, 3, 4, 5, 6])
+	degList = np.array([1, 2, 3, 4, 5])
 	cutList = np.arange(4, 7)
 
 	if TODOSIMU:
@@ -372,7 +377,7 @@ elif FIG_CASE == 3:
 			
 	for j, cuts in enumerate(cutList):
 		ax.loglog(Tlist[:len(degList), 1], Elist[:len(degList), 1], 
-					color='tab:red', alpha=0.5, marker='', linestyle='--')
+					color='tab:red', alpha=0.8, marker='', linestyle='--')
 
 	for quadrule, quadtype, plotvars in zip(['iga', 'wq'], ['leg', 2], [IgaPlot, WQ2Plot]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + '.dat'
@@ -396,8 +401,8 @@ elif FIG_CASE == 3:
 		fig.tight_layout()
 		fig.savefig(folder + 'SPTINC_CPUError' +  '.pdf')	
 
-	ax.loglog([], [], color='k', marker=IncPlot['marker'], 
-		markersize=IncPlot['markersize'], linestyle='--', label='INC-IGA')
+	ax.loglog([], [], color='tab:red', marker=IncPlot['marker'], alpha=0.8,
+		markersize=IncPlot['markersize'], linestyle='--', label='INC-IGA-WQ 2')
 	
 	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w',
 		markersize=IgaPlot['markersize'], linestyle='--', label='ST-IGA-GL')
