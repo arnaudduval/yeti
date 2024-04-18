@@ -273,8 +273,8 @@ class stheatproblem(stproblem):
 	
 	def solveFourierSTHeatProblem(self, Tinout, Fext, isfull=False, isadaptive=True, solvArgs={}):
 		eps_kr0  = solvArgs.get('initial', .5)
-		gamma_kr = solvArgs.get('coefficient', 1.0)
-		omega_kr = solvArgs.get('exponential', 2.0)
+		gamma_kr = solvArgs.get('coefficient', 0.9)
+		omega_kr = solvArgs.get('exponential', 1.5)
 
 		dod = self.boundary.getThermalBoundaryConditionInfo()[0]
 		AllresLin, AllresNewton, Allsol, Allthres, Alldelta = [], [], [], [], []
