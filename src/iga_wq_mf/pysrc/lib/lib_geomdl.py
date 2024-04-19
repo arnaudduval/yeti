@@ -238,7 +238,7 @@ class Geomdl():
 		else: raise Warning('Not developped in this library')
 
 		nbel = [int(2**self._cuts[i]) for i in range(dimen)]
-		part = func(*geoArgs, *self._degree[:dimen], *nbel)
+		part = func(*self._degree[:dimen], *nbel, geoArgs=geoArgs)
 		self._dim  = dimen
 		self._degree = self._degree[:self._dim]
 		self._part = part
@@ -290,8 +290,10 @@ class Geomdl():
 		return knotvector, ctrlpts
 
 	# 2D
-	def _create_quarterAnnulus(self, Rin, Rex, degree_u, degree_v, nbel_u, nbel_v):
+	def _create_quarterAnnulus(self, degree_u, degree_v, nbel_u, nbel_v, geoArgs=None):
 		" Creates a quarter of a ring (or annulus) "
+
+		Rin, Rex = geoArgs[0], geoArgs[1]
 
 		# First part : construction of the arc
 		nb_ctrlpts_v = degree_v + nbel_v
@@ -321,8 +323,10 @@ class Geomdl():
 
 		return obj
 
-	def _create_quadrilateral(self, XY, degree_u, degree_v, nbel_u, nbel_v):
+	def _create_quadrilateral(self, degree_u, degree_v, nbel_u, nbel_v, geoArgs=None):
 		" Creates a quadrilateral given coordinates in counterclockwise direction "
+
+		XY = geoArgs[0]
 
 		# Set reference position and real position
 		x0 = [0.0, 1.0, 1.0, 0.0]; y0 = [0.0, 0.0, 1.0, 1.0]
@@ -362,8 +366,10 @@ class Geomdl():
 		return obj
 
 	# 3D
-	def _create_parallelepiped(self, Lx, Ly, Lz, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w):
+	def _create_parallelepiped(self, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w, geoArgs=None):
 		" Creates a brick (or parallelepiped) "
+
+		Lx, Ly, Lz = geoArgs[0], geoArgs[1], geoArgs[2]
 
 		# Set number of control points
 		nb_ctrlpts_u = degree_u + nbel_u
@@ -393,8 +399,10 @@ class Geomdl():
 
 		return obj
 
-	def _create_thickRing(self, Rin, Rex, height, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w):
+	def _create_thickRing(self, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w, geoArgs=None):
 		" Creates a thick ring (quarter of annulus extruded) "
+
+		Rin, Rex, height = geoArgs[0], geoArgs[1], geoArgs[2]
 
 		# First part : construction of the arc
 		nb_ctrlpts_v = degree_v + nbel_v
@@ -429,8 +437,10 @@ class Geomdl():
 
 		return obj
 
-	def _create_rotatedQuarterAnnulus(self, Rin, Rex, exc, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w):
+	def _create_rotatedQuarterAnnulus(self, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w, geoArgs=None):
 		" Creates a quarter of a ring rotated (or revolted) "
+
+		Rin, Rex, exc = geoArgs[0], geoArgs[1], geoArgs[2]
 
 		# First part : construction of the arc 1
 		nb_ctrlpts_v = degree_v + nbel_v
@@ -469,9 +479,11 @@ class Geomdl():
 
 		return obj
 
-	def _create_prism(self, XY, height, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w):
+	def _create_prism(self, degree_u, degree_v, degree_w, nbel_u, nbel_v, nbel_w, geoArgs=None):
 		""" Creates a prism using a quadrilateral as a base.
 		The quadrilateral coordinates are given in counterclockwise direction """
+
+		XY, height = geoArgs[0], geoArgs[1]
 
 		# Set reference position and real position
 		x0 = [0.0, 1.0, 1.0, 0.0]; y0 = [0.0, 0.0, 1.0, 1.0]

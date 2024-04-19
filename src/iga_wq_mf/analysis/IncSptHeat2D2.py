@@ -7,8 +7,8 @@ if not os.path.isdir(folder): os.mkdir(folder)
 blockPrint()
 
 # Set global variables
-TODOSIMU = False
-FIG_CASE = 2
+TODOSIMU = True
+FIG_CASE = 4
 extension = '.dat'
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
@@ -436,7 +436,7 @@ elif FIG_CASE == 3:
 
 elif FIG_CASE == 4:
 
-	degree, cuts = 4, 4
+	degree, cuts = 3, 4
 	subfolderfolder = folder + str(degree) + '_' + str(cuts) + '/' 
 	if not os.path.isdir(subfolderfolder): os.mkdir(subfolderfolder)
 
@@ -451,7 +451,7 @@ elif FIG_CASE == 4:
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, _, _, output = simulate_spacetime(degree, cuts, powerDensity_spt, 
 												dirichlet_table=dirichlet_table,
-												degree_time=degree, geoArgs=geoArgs,
+												degree_time=degree, nbel_time=2**cuts, geoArgs=geoArgs,
 												isadaptive=isadaptive, isfull=isfull,
 												getOthers=True)
 				

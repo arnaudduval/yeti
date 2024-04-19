@@ -43,7 +43,7 @@ class QuadratureRules:
 	
 	def getSampleBasis(self, sampleSize=101):
 		basis = []
-		knots = np.linspace(0, 1, sampleSize)
+		knots = np.linspace(0., 1., sampleSize)
 		dersBasis, indi, indj = evalDersBasisCSRFortran(self.degree, self.knotvector, knots)
 		for i in range(np.size(dersBasis, axis=1)):
 			tmp = sp.csr_matrix((dersBasis[:, i], indj-1, indi-1)) # -1 because indj is in fortran notation

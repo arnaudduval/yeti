@@ -84,8 +84,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 9
-extension = '.png'
+CASE      = 1
+extension = '.pdf'
 
 if CASE == 0: # B-spline curve
 
@@ -94,29 +94,37 @@ if CASE == 0: # B-spline curve
 		filename = folder + 'BsplineCurve' + extension
 
 		# Create the curve 
-		degree, nbel = 2, 4
-		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
 		crv            = BSpline.Curve()
-		crv.degree     = degree
-		crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], 
+		crv.degree     = 3
+		crv.ctrlpts    = [[-1, 1, 0], [-0.5, 0.25, 0], [0, 2, 0], [0.5, 1., 0.],
 							[0.75, -0.5, 0], [1.5, 1, 0], [2, 0, 0]]
-		crv.knotvector = knotvector
-		crv.delta      = 0.01
+		crv.knotvector = np.array([0., 0., 0., 0., 0.25, 0.75, 0.75, 1., 1., 1., 1.])
 
+		# # Knot insertion
+		# uniqueKV = np.unique(crv.knotvector)
+		# newknots = [(uniqueKV[i]+uniqueKV[i+1])/2 for i in range(0, len(uniqueKV)-1)]
+		# for knot in newknots: crv.insert_knot(knot)
+
+		# Degree elevation
+		del crv
+		crv = BSpline.Curve()
+		crv.degree = 4
+		crv.ctrlpts = [[-1, 1], [-0.625, 0.4375], [-0.4167, 0.5417], [-0.0417, 1.625], [0.3333, 1.3333], 
+				[0.5417,0.75], [0.7292, -0.375], [1.125, 0.25], [1.625, 0.75], [2, 0]]
+		crv.knotvector = np.array([0., 0., 0., 0., 0., 0.25, 0.25, 0.75, 0.75, 0.75, 1., 1., 1., 1., 1.])
+		
 		# Get data
-		evalpts = np.asarray(crv.evalpts)
-		ctrlpts = np.asarray(crv.ctrlpts)
-		x = evalpts[:, 0]; y = evalpts[:, 1]
+		evalpts = np.asarray(crv.evalpts); ctrlpts = np.asarray(crv.ctrlpts)
+		basisKnots = evalDersBasisDensePy(crv.degree, crv.knotvector, np.unique(crv.knotvector))
+		knotsPhy = basisKnots[0].T @ np.array(crv.ctrlpts)
+		evalpts = np.asarray(crv.evalpts); ctrlpts = np.asarray(crv.ctrlpts)
 		
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
-		ax.plot(x, y, label='B-Spline curve')
-		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control Points')
-		
+		fig, ax = plt.subplots()
+		ax.plot(evalpts[:, 0], evalpts[:, 1], label='B-Spline curve')
+		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points net')
+		ax.plot(knotsPhy[:, 0], knotsPhy[:, 1], color='k', marker='s', linestyle='', label='Knots')
+		ax.set_xlim([-1.5, 2.5]); ax.set_ylim([-1., 2.5])
 		ax.legend()
-		ax.set_xlabel(r'$x_1$')
-		ax.set_ylabel(r'$x_2$')
-		
-		# ax.axis('equal')
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 		return
@@ -127,36 +135,44 @@ elif CASE == 1: # Univariate functions
 
 	def case1(folder, extension): 
 		# Set filename
-		filename = folder + 'UnivariateFunctions' + extension
+		filename = folder + 'BSknin' + extension
 
 		# B-spline properties 
-		degree, nbel = 2, 4
+		degree, nbel = 4, 4
 		multiplicity = 1
 		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)
-		quadRule     = QuadratureRules(degree, knotvector)
-		basis, knots = quadRule.getSampleBasis()
+
+		# knotvector = np.array([0., 0., 0., 0., 0.25, 0.75, 0.75, 1., 1., 1., 1.])
+		# knotvector = np.array([0., 0., 0., 0., 0.125, 0.25, 0.5, 0.75, 0.75, 0.875, 1., 1., 1., 1.])
+		# knotvector = np.array([0., 0., 0., 0., 0., 0.25, 0.25, 0.75, 0.75, 0.75, 1., 1., 1., 1., 1.])
+		# knotvector = np.array([0., 0., 0., 0., 0., 0.125, 0.25, 0.5, 0.75, 0.75, 0.875, 1., 1., 1., 1., 1.])
+		# knotvector = np.array([0., 0., 0., 0., 0., 0.125, 0.125, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 0.75, 0.875, 0.875, 1., 1., 1., 1., 1.])
+		quadRule   = QuadratureRules(degree, knotvector)
+		basis, knots = quadRule.getSampleBasis(sampleSize=201)
 		B0 = basis[0].toarray(); B1 = basis[1].toarray()
 
-		fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
-		for i in range(np.shape(B0)[0]): 
-			ax1.plot(knots, B0[i, :], linewidth=2)
-			ax2.plot(knots, B1[i, :], linewidth=2)
-
-		for ax in [ax1, ax2]:
-			ax.set_xlabel(r'$\xi$')
-			ax.set_xticks(np.linspace(0, 1, nbel+1))
-		ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
-		ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
-
-		# fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(5, 3))
+		# fig, [ax1, ax2] = plt.subplots(nrows=1, ncols=2, figsize=(10, 4))
 		# for i in range(np.shape(B0)[0]): 
 		# 	ax1.plot(knots, B0[i, :], linewidth=2)
+		# 	ax2.plot(knots, B1[i, :], linewidth=2)
 
-		# ax1.set_xlabel(r'$\xi$')
-		# ax1.set_xticks(np.linspace(0, 1, nbel+1))
-		# ax1.set_yticks([0, 0.5, 1])
+		# for ax in [ax1, ax2]:
+		# 	ax.set_xlabel(r'$\xi$')
+		# 	ax.set_xticks(np.linspace(0, 1, nbel+1))
 		# ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
+		# ax2.set_ylabel(r"${\hat{b}'}_{A,\,p}(\xi)$")
 
+		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
+		for i in range(np.shape(B0)[0]): 
+			ax1.plot(knots, B0[i, :], linewidth=1, color='k')
+		ax1.plot([], [], linewidth=1, color='k', label='B-Spline basis')
+		ax1.plot(quadRule._uniqueKV, np.zeros(len(quadRule._uniqueKV)), color='k', marker='s', linestyle='', label='Knots')
+
+		ax1.set_xlabel(r'$\xi$')
+		ax1.set_xticks(np.linspace(0, 1, 5))
+		ax1.set_yticks([0, 0.5, 1])
+		ax1.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
+		ax1.legend()
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 		return
