@@ -10,7 +10,7 @@ from pysrc.lib.lib_stjob import stheatproblem
 from pysrc.lib.lib_1djob import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
-GEONAME = 'TP'
+GEONAME = 'QA'
 IS1DIM = False
 ISLINEAR, NONLINCASE = False, 1
 CUTS_TIME = 6
@@ -18,7 +18,7 @@ CUTS_TIME = 6
 if GEONAME == 'SQ' or IS1DIM: ISISOTROPIC = True
 else: ISISOTROPIC = False
 
-if GEONAME == 'SQ' or IS1DIM: CST = 10
+if GEONAME == 'SQ' or IS1DIM: CST = 100
 else: CST = 50
 
 def nonlinearfunc(args:dict):

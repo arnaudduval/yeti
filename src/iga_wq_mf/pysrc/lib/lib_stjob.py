@@ -295,10 +295,10 @@ class stheatproblem(stproblem):
 
 			resNLj1 = np.sqrt(np.dot(r_dj, r_dj))
 			print('Nonlinear error: %.3e' %resNLj1)
+			AllresNewton.append(resNLj1); Allsol.append(np.copy(Tinout))
 
 			if j == 0: resNL0 = np.copy(resNLj1)
 			if resNLj1 <= max([self._safeguard, self._thresNL*resNL0]): break
-			AllresNewton.append(resNLj1); Allsol.append(np.copy(Tinout))
 
 			# Update inner threshold
 			if isadaptive: 

@@ -12,10 +12,10 @@ folder = os.path.dirname(full_path) + '/results/solver/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = False
+TODOSIMU = True
 degList = range(1, 10)
 cuts = 4
-quadArgs = {'quadrule':'wq', 'type':1}
+quadArgs = {'quadrule':'wq', 'type':2}
 # quadArgs = {'quadrule':'iga', 'type':'leg'}
 
 if TODOSIMU:
@@ -32,7 +32,7 @@ if TODOSIMU:
 
 	for i, degList in enumerate(degList):
 		
-		geoArgs = {'name': 'CB', 'degree': degList*np.ones(3, dtype=int), 
+		geoArgs = {'name': 'VB', 'degree': degList*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
 		}
 		blockPrint()			

@@ -43,17 +43,28 @@ def plot2DGeo(model:part, sampleSize=101):
 		# In the first direction
 		for _ in range(shape[1]): 
 			x = pts2D[_, :, 0]; y = pts2D[_, :, 1]
-			ax.plot(x, y, 'k--')
+			ax.plot(x, y, color=COLORLIST[1], linestyle='--')
 
 		# In the second direction
 		for _ in range(shape[0]):
 			x = pts2D[:, _, 0]; y = pts2D[:, _, 1]
-			ax.plot(x, y, 'k--')
+			ax.plot(x, y, color=COLORLIST[1], linestyle='--')
 
 		return
 
 	ctrlpts = model.ctrlpts
 	evalpts = model.interpolateMeshgridField()[0]
+
+	# Get basis using fortran
+	basis, indices = [], []
+	for i in range(model.dim):
+		dersb, indi, indj = evalDersBasisCSRFortran(model.degree[i], model.knotvector[i], np.unique(model.knotvector[i]))
+		basis.append(dersb); indices.append(indi); indices.append(indj)
+
+	# Get position and determinant 
+	nbknots = [len(np.unique(model.knotvector[i])) for i in range(model.dim)]
+	inpts = [*nbknots, *indices, *basis, model.ctrlpts]
+	knotsPhy = geophy.interpolate_meshgrid_2d(*inpts)
 
 	X = np.asarray(evalpts[0, :].reshape((sampleSize, sampleSize)).tolist())
 	Y = np.asarray(evalpts[1, :].reshape((sampleSize, sampleSize)).tolist())
@@ -62,15 +73,18 @@ def plot2DGeo(model:part, sampleSize=101):
 	fig, ax = plt.subplots(figsize=(5, 5))
 	ax.grid(None)
 	plot_mesh(ctrlpts, model.nbctrlpts, ax)
-	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Pastel1, shading='gouraud')
-	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control\n Points')
+	ax.pcolormesh(X, Y, Z, cmap=plt.cm.Paired, shading='gouraud')
+	ax.plot([], [], label='B-Spline surface')
+	ax.plot(ctrlpts[0, :], ctrlpts[1, :], 'o', label='Control points net')
+	ax.plot(knotsPhy[0, :], knotsPhy[1, :], color='k', marker='s', linestyle='', label='Knots')
 	
-	ax.set_xticks(np.arange(0, np.ceil(max(evalpts[:, 0]))+2, 1.0))
-	ax.set_yticks(np.arange(0, np.ceil(max(evalpts[:, 1]))+1, 1.0))
-	ax.set_xlim(left=-0.25, right=2.25)
-	ax.set_ylim(bottom=-0.25, top=2.25)
+	ax.set_xticks(np.arange(0, np.ceil(max(evalpts[:, 0]))+2, .5))
+	ax.set_yticks(np.arange(0, np.ceil(max(evalpts[:, 1]))+1, .5))
+	ax.set_xlim(left=-0.1, right=1.25)
+	ax.set_ylim(bottom=-0.1, top=1.25)
 
-	ax.legend(loc='lower left')
+	# ax.legend(loc='lower left')
+	ax.legend()
 	ax.set_aspect('equal', adjustable='box')
 	ax.set_xlabel(r'$x_1$')
 	ax.set_ylabel(r'$x_2$')
@@ -84,7 +98,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 1
+CASE      = 2
 extension = '.pdf'
 
 if CASE == 0: # B-spline curve
@@ -100,18 +114,18 @@ if CASE == 0: # B-spline curve
 							[0.75, -0.5, 0], [1.5, 1, 0], [2, 0, 0]]
 		crv.knotvector = np.array([0., 0., 0., 0., 0.25, 0.75, 0.75, 1., 1., 1., 1.])
 
-		# # Knot insertion
-		# uniqueKV = np.unique(crv.knotvector)
-		# newknots = [(uniqueKV[i]+uniqueKV[i+1])/2 for i in range(0, len(uniqueKV)-1)]
-		# for knot in newknots: crv.insert_knot(knot)
+		# Knot insertion
+		uniqueKV = np.unique(crv.knotvector)
+		newknots = [(uniqueKV[i]+uniqueKV[i+1])/2 for i in range(0, len(uniqueKV)-1)]
+		for knot in newknots: crv.insert_knot(knot)
 
-		# Degree elevation
-		del crv
-		crv = BSpline.Curve()
-		crv.degree = 4
-		crv.ctrlpts = [[-1, 1], [-0.625, 0.4375], [-0.4167, 0.5417], [-0.0417, 1.625], [0.3333, 1.3333], 
-				[0.5417,0.75], [0.7292, -0.375], [1.125, 0.25], [1.625, 0.75], [2, 0]]
-		crv.knotvector = np.array([0., 0., 0., 0., 0., 0.25, 0.25, 0.75, 0.75, 0.75, 1., 1., 1., 1., 1.])
+		# # Degree elevation
+		# del crv
+		# crv = BSpline.Curve()
+		# crv.degree = 4
+		# crv.ctrlpts = [[-1, 1], [-0.625, 0.4375], [-0.4167, 0.5417], [-0.0417, 1.625], [0.3333, 1.3333], 
+		# 		[0.5417,0.75], [0.7292, -0.375], [1.125, 0.25], [1.625, 0.75], [2, 0]]
+		# crv.knotvector = np.array([0., 0., 0., 0., 0., 0.25, 0.25, 0.75, 0.75, 0.75, 1., 1., 1., 1., 1.])
 		
 		# Get data
 		evalpts = np.asarray(crv.evalpts); ctrlpts = np.asarray(crv.ctrlpts)
@@ -124,6 +138,7 @@ if CASE == 0: # B-spline curve
 		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points net')
 		ax.plot(knotsPhy[:, 0], knotsPhy[:, 1], color='k', marker='s', linestyle='', label='Knots')
 		ax.set_xlim([-1.5, 2.5]); ax.set_ylim([-1., 2.5])
+		ax.set_xlabel(r'$x_1$'); ax.set_ylabel(r'$x_2$') 
 		ax.legend()
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
@@ -180,79 +195,133 @@ elif CASE == 1: # Univariate functions
 	case1(folder, extension)
 
 elif CASE == 2: # Bivariate functions
-
-	def case2(folder, extension, is2D=False):
+	
+	def case2(folder, extension):
 		# Set filename
-		filename = folder + 'BivariateFunctions2' + extension
+		filename = folder + 'BivariateFunctions3' + extension
 
 		# B-Spline properties
-		degree, nbel = 2, 4
-		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
-		quadRule     = QuadratureRules(degree, knotvector)
-		basis, knots = quadRule.getSampleBasis()
-		B0 = basis[0].toarray()
-		B02plot = B0[2, :]
-
+		degree1, degree2, nbel = 1, 3, 2
+		knotvector1   = createUniformKnotvector_Rmultiplicity(degree1, nbel)
+		knotvector2   = createUniformKnotvector_Rmultiplicity(degree2, nbel)
+		quadRule1     = QuadratureRules(degree1, knotvector1)
+		quadRule2     = QuadratureRules(degree2, knotvector2)
+		basis1, knots1 = quadRule1.getSampleBasis()
+		basis2, knots2 = quadRule2.getSampleBasis()
+		
 		# B-Spline 2D
-		X, Y = np.meshgrid(knots, knots)
-		Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
+		X, Y = np.meshgrid(np.unique(quadRule1.knotvector), np.unique(quadRule2.knotvector))
 
-		if is2D:
-			from mpl_toolkits.axes_grid1 import make_axes_locatable
-			fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
-									gridspec_kw=dict(height_ratios=[1, 3.2],
-													width_ratios=[3.2, 1]), figsize=(5, 5))
+		from mpl_toolkits.axes_grid1 import make_axes_locatable
+		fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
+								gridspec_kw=dict(height_ratios=[1, 3.2],
+												width_ratios=[3.2, 1]), figsize=(5, 5))
 
-			axs[0,1].set_visible(False)
-			axs[0,0].set_box_aspect(1/3)
-			axs[1,0].set_box_aspect(1)
-			axs[1,1].set_box_aspect(3/1)
-			axs[1,0].grid(None)
-			im = axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
-			divider = make_axes_locatable(axs[1, 0])
-			fig.colorbar(im, cax=axs[1, 0].inset_axes((0.8, 0.55, 0.025, 0.4)))
+		axs[0,1].set_visible(False)
+		axs[0,0].set_box_aspect(1/3)
+		axs[1,0].set_box_aspect(1)
+		axs[1,1].set_box_aspect(3/1)
+		axs[1,0].grid(None)
+		axs[1,0].plot(X, Y, color='k', marker='s', linestyle='--')
+		axs[1,0].plot(X.T, Y.T, color='k', marker='s', linestyle='--')
 
-			axs[1,0].set_yticks([0, 0.5, 1])
-			axs[1,0].set_xticks([0, 0.5, 1])
+		axs[1,0].set_yticks([0, 0.5, 1])
+		axs[1,0].set_xticks([0, 0.5, 1])
 
-			for i in range(degree+nbel): 
-				axs[0, 0].plot(knots, B0[i, :], color="0.8")
-				axs[1, 1].plot(B0[i, :], knots, color="0.8")
+		for i in range(degree1+nbel): 
+			axs[0, 0].plot(knots1, np.ravel(basis1[0].todense()[i, :]), linewidth=1, color='k', alpha=0.8)
+		uvk = np.unique(quadRule1.knotvector)
+		axs[0, 0].plot(uvk, np.zeros(len(uvk)), color='k', marker='s', linestyle='')
 
-			axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
-			axs[0,0].set_xlabel(r'$\xi_1$')
-			axs[0,0].set_ylabel(r'$\hat{b}_{A_1,\,p_1}$')
-			axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
-			axs[1,1].set_ylabel(r'$\xi_2$')
-			axs[1,1].set_xlabel(r'$\hat{b}_{A_2,\,p_2}$')
-			axs[1,1].set_xticks([0, 1])
-			axs[0,0].set_yticks([0, 1])
-			fig.tight_layout()
-			fig.savefig(filename, dpi=300) 
+		for i in range(degree2+nbel): 
+			axs[1, 1].plot(np.ravel(basis2[0].todense()[i, :]), knots2, linewidth=1, color='k', alpha=0.8)
+		uvk = np.unique(quadRule2.knotvector)
+		axs[1, 1].plot(np.zeros(len(uvk)), uvk, color='k', marker='s', linestyle='')
 
-		else:
-			fig = plt.figure(figsize=(5, 4))
-			ax = fig.add_subplot(111, projection='3d')
-			ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='GnBu', edgecolor='k', lw=0.02, rasterized=True)
-			for i in range(degree+nbel): 
-				ax.plot3D(knots, 1.1*np.ones(len(knots)), B0[i, :], color="0.8")
-				ax.plot3D(1.1*np.ones(len(knots)), knots, B0[i, :], color="0.8")
-
-			ax.grid(False)
-			ax.plot3D(knots, 1.1*np.ones(len(knots)), B02plot, color=COLORLIST[0])
-			ax.plot3D(1.1*np.ones(len(knots)), knots, B02plot, color=COLORLIST[0])
-			ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-			ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-			ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-			ax.set_xticks([0, 0.5, 1])
-			ax.set_yticks([0, 0.5, 1])
-			ax.set_zticks([0, 0.5, 1])
-			ax.set_xlabel(r'$\xi_1$')
-			ax.set_ylabel(r'$\xi_2$')
-			ax.invert_xaxis()
-			fig.tight_layout()
-			fig.savefig(filename, dpi=300, bbox_inches='tight') 
+		axs[0, 0].axis(ymin=0, ymax=1)
+		axs[0,0].set_xlabel(r'$\xi_1$')
+		axs[0,0].set_ylabel(r'$\hat{b}_{A_1,\,p_1}$')
+		axs[1, 1].axis(xmin=0, xmax=1)
+		axs[1,1].set_ylabel(r'$\xi_2$')
+		axs[1,1].set_xlabel(r'$\hat{b}_{A_2,\,p_2}$')
+		axs[1,1].set_xticks([0, 1])
+		axs[0,0].set_yticks([0, 1])
+		fig.tight_layout()
+		fig.savefig(filename, dpi=300) 
 		return
+	
+	# def case2(folder, extension, is2D=False):
+	# 	# Set filename
+	# 	filename = folder + 'BivariateFunctions2' + extension
+
+	# 	# B-Spline properties
+	# 	degree, nbel = 2, 4
+	# 	knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
+	# 	quadRule     = QuadratureRules(degree, knotvector)
+	# 	basis, knots = quadRule.getSampleBasis()
+	# 	B0 = basis[0].toarray()
+	# 	B02plot = B0[2, :]
+
+	# 	# B-Spline 2D
+	# 	X, Y = np.meshgrid(knots, knots)
+	# 	Z = np.kron(B02plot, B02plot).reshape((len(knots), len(knots)))
+
+	# 	if is2D:
+	# 		from mpl_toolkits.axes_grid1 import make_axes_locatable
+	# 		fig, axs = plt.subplots(2, 2, sharex="col", sharey="row", 
+	# 								gridspec_kw=dict(height_ratios=[1, 3.2],
+	# 												width_ratios=[3.2, 1]), figsize=(5, 5))
+
+	# 		axs[0,1].set_visible(False)
+	# 		axs[0,0].set_box_aspect(1/3)
+	# 		axs[1,0].set_box_aspect(1)
+	# 		axs[1,1].set_box_aspect(3/1)
+	# 		axs[1,0].grid(None)
+	# 		im = axs[1,0].pcolormesh(X, Y, Z, cmap='GnBu', shading='gouraud', rasterized=True)
+	# 		divider = make_axes_locatable(axs[1, 0])
+	# 		fig.colorbar(im, cax=axs[1, 0].inset_axes((0.8, 0.55, 0.025, 0.4)))
+
+	# 		axs[1,0].set_yticks([0, 0.5, 1])
+	# 		axs[1,0].set_xticks([0, 0.5, 1])
+
+	# 		for i in range(degree+nbel): 
+	# 			axs[0, 0].plot(knots, B0[i, :], color="0.8")
+	# 			axs[1, 1].plot(B0[i, :], knots, color="0.8")
+
+	# 		axs[0,0].plot(knots, B02plot); axs[0, 0].axis(ymin=0, ymax=1)
+	# 		axs[0,0].set_xlabel(r'$\xi_1$')
+	# 		axs[0,0].set_ylabel(r'$\hat{b}_{A_1,\,p_1}$')
+	# 		axs[1,1].plot(B02plot, knots); axs[1, 1].axis(xmin=0, xmax=1)
+	# 		axs[1,1].set_ylabel(r'$\xi_2$')
+	# 		axs[1,1].set_xlabel(r'$\hat{b}_{A_2,\,p_2}$')
+	# 		axs[1,1].set_xticks([0, 1])
+	# 		axs[0,0].set_yticks([0, 1])
+	# 		fig.tight_layout()
+	# 		fig.savefig(filename, dpi=300) 
+
+	# 	else:
+	# 		fig = plt.figure(figsize=(5, 4))
+	# 		ax = fig.add_subplot(111, projection='3d')
+	# 		ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='GnBu', edgecolor='k', lw=0.02, rasterized=True)
+	# 		for i in range(degree+nbel): 
+	# 			ax.plot3D(knots, 1.1*np.ones(len(knots)), B0[i, :], color="0.8")
+	# 			ax.plot3D(1.1*np.ones(len(knots)), knots, B0[i, :], color="0.8")
+
+	# 		ax.grid(False)
+	# 		ax.plot3D(knots, 1.1*np.ones(len(knots)), B02plot, color=COLORLIST[0])
+	# 		ax.plot3D(1.1*np.ones(len(knots)), knots, B02plot, color=COLORLIST[0])
+	# 		ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+	# 		ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+	# 		ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+	# 		ax.set_xticks([0, 0.5, 1])
+	# 		ax.set_yticks([0, 0.5, 1])
+	# 		ax.set_zticks([0, 0.5, 1])
+	# 		ax.set_xlabel(r'$\xi_1$')
+	# 		ax.set_ylabel(r'$\xi_2$')
+	# 		ax.invert_xaxis()
+	# 		fig.tight_layout()
+	# 		fig.savefig(filename, dpi=300, bbox_inches='tight') 
+	# 	return
 	
 	case2(folder, extension)
 
@@ -326,8 +395,8 @@ elif CASE == 5: # B-spline surface
 	filename = folder + 'BsplineSurface3' + extension
 
 	# Surface properties
-	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': 2*np.ones(3, dtype=int), 
-				'nb_refinementByDirection': 2*np.ones(3, dtype=int)})
+	modelGeo = Geomdl(geoArgs={'name':'quarter_annulus', 'degree': np.array([1, 3, 1]), 
+				'nb_refinementByDirection': np.array([1, 1, 1])})
 	modelIGA = modelGeo.getIGAParametrization()
 	modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
 	fig = plot2DGeo(modelPhy)
