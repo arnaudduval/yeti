@@ -40,7 +40,7 @@ if __name__ == "__main__":
     MIN_THICKNESS = 2.
     MAX_THICKNESS = 25.
 
-    modeleIGA = IGAparametrization(filename='tube')
+    modeleIGA = IGAparametrization(filename='inputFiles/tube')
 
     # Refinement to create optimization model
     nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=int)
