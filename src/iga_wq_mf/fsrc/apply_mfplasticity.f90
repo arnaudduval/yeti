@@ -989,6 +989,69 @@ contains
 
     end subroutine PBiCGSTAB
 
+    subroutine PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, b, x, residual)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver) :: solv
+        type(mecamat) :: mat
+        integer, intent(in) :: nr_total
+        integer, intent(in) :: nbRestarts, iterations
+        double precision, intent(in) :: threshold, b
+        dimension :: b(solv%globsyst%dimen, nr_total)
+        
+        double precision, intent(out) :: x, residual
+        dimension :: x(solv%globsyst%dimen, nr_total), residual(nbRestarts*(iterations+1))
+
+        ! Local data
+        ! -----------
+        double precision :: H, V, Z, beta, e1, y
+        dimension :: H(iterations+1, iterations), V(iterations+1, solv%globsyst%dimen, nr_total), &
+                    Z(iterations+1, solv%globsyst%dimen, nr_total), beta(nbRestarts+1), e1(iterations+1), y(iterations)
+        double precision, dimension(solv%globsyst%dimen, nr_total) :: r, w, Ax, Pv
+        integer :: i, j, k, c
+
+        e1 = 0.d0; beta = 0.d0; x = 0.d0; residual = 0.d0; c = 1
+        do k = 1, nbRestarts
+            H = 0.d0; V = 0.d0; Z = 0.d0; y = 0.d0
+            call matrixfree_matvec(solv, mat, nr_total, x, Ax)
+            r = b - Ax
+            call clear_dirichlet(solv, nr_total, r)
+            beta(k) = norm2(r)
+            if ((k.eq.1).and.(beta(1).le.1.d-14)) return
+            residual(c) = beta(k)/beta(1); c = c + 1
+            if (beta(k).le.max(threshold*beta(1), 1.d-14)) exit
+            V(1, :, :) = r/beta(1)
+            e1(1) = beta(k)
+
+            do j = 1, iterations
+                call applyfastdiag(solv, nr_total, V(j, :, :), Pv)
+                call clear_dirichlet(solv, nr_total, Pv)
+                Z(j, :, :) = Pv
+                call matrixfree_matvec(solv, mat, nr_total, Pv, w)
+                call clear_dirichlet(solv, nr_total, w)
+                do i = 1, j
+                    call block_dot_product(solv%globsyst%dimen, nr_total, w, V(i, :, :), H(i, j))
+                    w = w - H(i, j)*V(i, :, :)
+                end do
+                H(j+1, j) = norm2(w)
+                if (abs(H(j+1, j)).gt.1e-12) then
+                    V(j+1, :, :) = w/H(j+1, j)
+                end if
+                call solve_linear_system(j+1, j, H(:j+1, :j), e1(:j+1), y(:j))
+                beta(k+1) = norm2(matmul(H(:j+1, :j), y(:j)) - e1(:j+1))
+                if (beta(k+1).le.max(threshold*beta(1), 1.d-14)) exit
+                residual(c) = beta(k+1)/beta(1); c = c + 1
+            end do
+            
+            do i = 1, j
+                x = x + y(i)*Z(i, :, :)
+            end do
+        end do
+
+    end subroutine PGMRES
+
     subroutine RQMIN(solv, mat, nr_total, ishigher, iterations, threshold, eigenvec, eigenval)
         !! Using RQMIN algorithm to compute the stability of the transient heat problem
         

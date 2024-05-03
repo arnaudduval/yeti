@@ -17,11 +17,12 @@ class problem():
 		return inpts
 
 	def addSolverConstraints(self, solverArgs:dict):
-		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
-		self._itersNL = solverArgs.get('iters_nonlinear', 20)
-		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
+		self._linSolv = solverArgs.get('linearsolver', 'GMRES')
 		self._itersLin = solverArgs.get('iters_linear', 100)
 		self._thresLin = solverArgs.get('thres_linear', 1e-8)
+		self._linPreCond = solverArgs.get('preconditioner', 'JMC')
+		self._itersNL = solverArgs.get('iters_nonlinear', 15)
+		self._thresNL = solverArgs.get('thres_nonlinear', 1e-8)
 		self._safeguard = 1e-14
 		return
 	
@@ -278,7 +279,7 @@ class heatproblem(problem):
 		assert args is not None, 'Please enter a valid argument'
 		prop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), self.boundary.thDirichletTable, self.part.invJ, self.part.detJ, 
-				prop, Fext,  self._itersLin, self._thresLin, self._linPreCond]
+				prop, Fext,  self._itersLin, self._thresLin, self._linPreCond, self._linSolv]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_linearsteady_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_linearsteady_heat_3d(*inpts)
 		return temperature, residue
@@ -321,7 +322,7 @@ class heatproblem(problem):
 		Cprop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)
 		Kprop = self.heatmaterial.conductivity(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.thDirichletTable, self.part.invJ, self.part.detJ,
-				Cprop, Kprop, tsfactor, Fext, self._itersLin, self._thresLin, self._linPreCond]
+				Cprop, Kprop, tsfactor, Fext, self._itersLin, self._thresLin, self._linPreCond, self._linSolv]
 		if self.part.dim == 2: temperature, residue = heatsolver.solver_lineartransient_heat_2d(*inpts)
 		if self.part.dim == 3: temperature, residue = heatsolver.solver_lineartransient_heat_3d(*inpts)
 		return temperature, residue
@@ -470,7 +471,7 @@ class mechaproblem(problem):
 			mechArgs[0, :] = self.mechamaterial.lame_lambda
 			mechArgs[1, :] = self.mechamaterial.lame_mu
 		inpts = [*self._getInputs(), self.boundary.mchDirichletTable, self.part.invJ, self.part.detJ, 
-				mechArgs, Fext, self._itersLin, self._thresLin, self._linPreCond]
+				mechArgs, Fext, self._itersLin, self._thresLin, self._linPreCond, self._linSolv]
 		if   self.part.dim == 2: displacement, residual = plasticitysolver.solver_linearelasticity_2d(*inpts)
 		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_linearelasticity_3d(*inpts)
 		return displacement, residual
@@ -563,7 +564,7 @@ class mechaproblem(problem):
 		massProp = self.mechamaterial.density(args)
 		inpts = [*self._getInputs(), isLumped, self.boundary.mchDirichletTable, 
 				self.part.invJ, self.part.detJ, mechArgs, massProp, tsfactor,
-				Fext, self._itersLin, self._thresLin, self._linPreCond]
+				Fext, self._itersLin, self._thresLin, self._linPreCond, self._linSolv]
 		if   self.part.dim == 2: displacement, residual = plasticitysolver.solver_lineardynamics_2d(*inpts)
 		elif self.part.dim == 3: displacement, residual = plasticitysolver.solver_lineardynamics_3d(*inpts)
 		return displacement, residual

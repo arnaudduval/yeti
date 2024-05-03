@@ -281,7 +281,7 @@ end subroutine mf_thmchcoupled_3d
 subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, table, &
-                            invJ, detJ, prop, Fext, iterations, threshold, linprecond, x, residual)
+                            invJ, detJ, prop, Fext, iterations, threshold, linprecond, linsolver, x, residual)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python).
@@ -307,7 +307,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     double precision, intent(in) :: invJ, detJ, prop
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(dimen, dimen, nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold
 
@@ -323,7 +323,7 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     type(cgsolver) :: solv    
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen)
+    integer :: nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v,  &
@@ -358,7 +358,13 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
     else 
         stop 'Unknown method'  
     end if
@@ -368,7 +374,7 @@ end subroutine solver_linearsteady_heat_2d
 subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, invJ, detJ, prop, Fext, iterations, threshold, linprecond, x, residual)
+                            table, invJ, detJ, prop, Fext, iterations, threshold, linprecond, linsolver, x, residual)
     !! (Preconditioned) Conjugate gradient algorithm to solver linear heat problems 
     !! It solves Ann xn = bn, where Ann is Knn (steady heat problem) and bn = Fn - And xd
     !! bn is compute beforehand (In python).
@@ -396,7 +402,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
     double precision, intent(in) :: invJ, detJ, prop
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), prop(dimen, dimen, nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold
 
@@ -412,7 +418,7 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
     type(cgsolver) :: solv    
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen)
+    integer :: nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
@@ -448,7 +454,13 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
 
     else 
         stop 'Unknown method' 
@@ -459,7 +471,8 @@ end subroutine solver_linearsteady_heat_3d
 subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, &
                                 nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                                 data_B_u, data_B_v, data_W_u, data_W_v, isLumped, table, &
-                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, iterations, threshold, linprecond, x, residual)
+                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, iterations, threshold, &
+                                linprecond, linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -486,7 +499,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     double precision, intent(in) :: invJ, detJ, Cprop, Kprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Cprop(nc_total), Kprop(dimen, dimen, nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
@@ -502,7 +515,7 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     type(cgsolver) :: solv    
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen)
+    integer :: nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
                         indi_u, indj_u, indi_v, indj_v, data_B_u, data_B_v, &
@@ -542,7 +555,13 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
         if (solv%applyfd) redsyst%diageigval_sp = mat%Cmean + tsfactor*redsyst%diageigval_sp
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
     else 
         stop 'Unknown method' 
     end if
@@ -552,7 +571,8 @@ end subroutine solver_lineartransient_heat_2d
 subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, isLumped, table, &
-                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, iterations, threshold, linprecond, x, residual)
+                                invJ, detJ, Cprop, Kprop, tsfactor, Fext, iterations, threshold, &
+                                linprecond, linsolver, x, residual)
     !! Precontionned bi-conjugate gradient to solve transient heat problems
     !! It solves Ann un = bn, where Ann is (thetadt*Knn + Cnn) and bn = Fn - And ud
     !! bn is compute beforehand (In python or fortran).
@@ -581,7 +601,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
 
     double precision, intent(in) :: invJ, detJ, Cprop, Kprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), Cprop(nc_total), Kprop(dimen, dimen, nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations    
     double precision, intent(in) :: threshold
 
@@ -597,7 +617,7 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
     type(cgsolver) :: solv    
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst
-    integer :: nc_list(dimen)
+    integer :: nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :) :: univMcoefs, univKcoefs
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w,&
                         indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, data_B_u, data_B_v, data_B_w, &
@@ -637,7 +657,13 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
         if (solv%applyfd) call space_eigendecomposition(redsyst)
         if (solv%applyfd) redsyst%diageigval_sp = mat%Cmean + tsfactor*redsyst%diageigval_sp
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
     else 
         stop 'Unknown method' 
     end if

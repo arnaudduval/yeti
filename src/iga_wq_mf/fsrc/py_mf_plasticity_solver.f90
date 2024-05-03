@@ -503,7 +503,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
                             nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, &
                             table, invJ, detJ, nbmechArgs, mechArgs, &
-                            Fext, iterations, threshold, linprecond, x, residual)
+                            Fext, iterations, threshold, linprecond, linsolver, x, residual)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -531,7 +531,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     double precision, intent(in) :: invJ, detJ, mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
@@ -547,7 +547,7 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen)
+    integer :: i, nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
 
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v,&
@@ -595,7 +595,13 @@ subroutine solver_linearelasticity_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)    
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if 
     else 
         stop 'Unknown method'                    
     end if
@@ -605,7 +611,8 @@ end subroutine solver_linearelasticity_2d
 subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, &
                             nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                             data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, &
-                            table, invJ, detJ, nbmechArgs, mechArgs, Fext, iterations, threshold, linprecond, x, residual)
+                            table, invJ, detJ, nbmechArgs, mechArgs, Fext, iterations, threshold, &
+                            linprecond, linsolver, x, residual)
 
     !! Solves elasticity problems using (Preconditioned) Bi-Conjugate gradient method
     !! This algorithm solve S x = F, where S is the stiffness matrix
@@ -635,7 +642,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
 
     double precision, intent(in) :: invJ, detJ, mechArgs
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total) 
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
@@ -651,7 +658,7 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen)
+    integer :: i, nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
     
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -699,7 +706,13 @@ subroutine solver_linearelasticity_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
     else 
         stop 'Unknown method'                   
     end if
@@ -709,7 +722,7 @@ end subroutine solver_linearelasticity_3d
 subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, indi_u, indj_u, indi_v, indj_v, &
                             data_B_u, data_B_v, data_W_u, data_W_v, isLumped, table, &
                             invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, Fext, iterations, &
-                            threshold, linprecond, x, residual)
+                            threshold, linprecond, linsolver, x, residual)
 
     use matrixfreeplasticity
     use plasticitysolver
@@ -732,7 +745,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
@@ -748,7 +761,7 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen)
+    integer :: i, nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
     
     call init_2basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nnz_u, nnz_v, &
@@ -801,8 +814,13 @@ subroutine solver_lineardynamics_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
-
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
     else 
         stop 'Unknown method' 
     end if
@@ -813,7 +831,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
                                 nnz_u, nnz_v, nnz_w, indi_u, indj_u, indi_v, indj_v, indi_w, indj_w, &
                                 data_B_u, data_B_v, data_B_w, data_W_u, data_W_v, data_W_w, islumped, &
                                 table, invJ, detJ, nbmechArgs, mechArgs, Mprop, tsfactor, &
-                                Fext, iterations, threshold, linprecond, x, residual)
+                                Fext, iterations, threshold, linprecond, linsolver, x, residual)
 
     use matrixfreeplasticity
     use plasticitysolver
@@ -838,7 +856,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
 
     double precision, intent(in) :: invJ, detJ, mechArgs, Mprop, tsfactor
     dimension :: invJ(dimen, dimen, nc_total), detJ(nc_total), mechArgs(nbmechArgs, nc_total), Mprop(nc_total)
-    character(len=10), intent(in) :: linprecond
+    character(len=10), intent(in) :: linprecond, linsolver
     integer, intent(in) :: iterations
     double precision, intent(in) :: threshold 
 
@@ -854,7 +872,7 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
     type(cgsolver) :: solv
     type(basis_data), target :: globsyst
     type(reduced_system), target :: redsyst(dimen)
-    integer :: i, nc_list(dimen)
+    integer :: i, nc_list(dimen), nbRestarts=1
     double precision, allocatable, dimension(:, :, :) :: univMcoefs, univKcoefs
     
     call init_3basisdata(globsyst, nr_u, nc_u, nr_v, nc_v, nr_w, nc_w, nnz_u, nnz_v, nnz_w, &
@@ -907,7 +925,13 @@ subroutine solver_lineardynamics_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_v, 
             end do
         end if
         call initialize_solver(solv, globsyst, redsyst)
-        call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        if (linsolver.eq.'BICG') then
+            call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'GMRES') then
+            call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else
+            stop 'Unknown method'
+        end if
 
     else 
         stop 'Unknown method' 
