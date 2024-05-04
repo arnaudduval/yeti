@@ -9,8 +9,8 @@ from pysrc.papers.lib_simulation import decoder, simulate
 def conductivityProperty(args:dict):
 	P = args.get('position')
 	dimen = np.size(P, axis=0)
-	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-	# Kref  = np.array([[1, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 3]])
+	# Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	Kref  = np.array([[2, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 1]])
 	Kprop = np.zeros((dimen, dimen, np.size(P, axis=1)))
 	for i in range(dimen): 
 		for j in range(dimen):
@@ -139,7 +139,7 @@ class heatsimulate(simulate):
 		geoArgs  = {'name':self._name, 
 					'nb_refinementByDirection': self._nbcuts*np.ones(3, dtype=int),
 					'degree': self._degree*np.ones(3, dtype=int), 
-					'extra':{'Rin':1.0, 'Rex':2.0}}
+					'extra':{'Rin':0.5, 'Rex':1.0}}
 		modelgeo = Geomdl(geoArgs)
 		modelIGA = modelgeo.getIGAParametrization()
 		if self._isGaussQuad: quadArgs = {'quadrule': 'iga'}
@@ -181,7 +181,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 dataExist   = True
 degree_list = np.arange(4, 5)
 cuts_list   = np.arange(5, 6)
-name_list   = ['vb']
+name_list   = ['qa']
 IterMethods = ['WP', 'C', 'JMC']
 
 for cuts in cuts_list:
