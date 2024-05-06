@@ -140,6 +140,9 @@ class part():
 		# Update number of quadrature points
 		self.nbqp_total = np.prod(self.nbqp)
 
+		# Save quadrature rules	
+		self._quadraturerules = quadRuleByDirection
+
 		return
 	
 	def __setJacobienPhysicalPoints(self):
