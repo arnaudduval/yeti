@@ -127,7 +127,7 @@ optPB._fineParametrization._NBPINT[
 # x0 = np.ones(nb_varS)*0.0   # 25
 x0 = np.array([0., 0.7, 0., 0., 0.7, 0.])
 
-# Set list of patches to be taken into account in volume comptation
+# Set list of patches to be taken into account in volume computation
 listpatch = np.zeros(optPB._coarseParametrization._nb_patch, dtype=np.intp)
 listpatch[1] = 1
 
