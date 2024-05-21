@@ -1152,8 +1152,8 @@ def bezier_decomposition_patch(igapara,numpatch=0,return_ien=False,
     M = []
     ukv = igapara._Ukv[numpatch]
     jpqr= igapara._Jpqr[:,numpatch]
-    ncpF= np.ones(3,dtype=np.int)
-    nelF= np.ones(3,dtype=np.int)
+    ncpF= np.ones(3,dtype=int)
+    nelF= np.ones(3,dtype=int)
     for d in range(len(ukv)):
         p = igapara._Jpqr[d,numpatch]
         u = ukv[d]
