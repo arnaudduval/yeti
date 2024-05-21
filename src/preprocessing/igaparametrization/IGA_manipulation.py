@@ -353,17 +353,17 @@ def find_boundNumber(listCP,num_patch,Nkv,Jpqr,indCPbyPatch):
     '''
     indices = np.where(np.in1d(indCPbyPatch[num_patch], listCP))[0]
     bound = None
-    if np.all(indices == get_boundCPindice(Nkv, Jpqr, 3, num_patch)):
+    if np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 3, num_patch)):
         bound = 3
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 4, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 4, num_patch)):
         bound = 4
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 1, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 1, num_patch)):
         bound = 1
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 2, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 2, num_patch)):
         bound = 2
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 5, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 5, num_patch)):
         bound = 5
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 6, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 6, num_patch)):
         bound = 6
     # else:
     #     print ' Warning: no bound has been found'
