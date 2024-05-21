@@ -56,7 +56,7 @@ subroutine compute_svars_Q1_HO_1stG(COORDS,sol,svars,nsvint,Output_FLAG, &
     NDOFEL = NNODE*MCRD  
 
     !! Get material behaviour tensor
-    !! TODO : ajuster pour avoir le comportement matériau d'un élément HO
+    !! TODO : ajuster pour avoir le comportement materiau d'un element HO
     call material_lib(MATERIAL_PROPERTIES,TENSOR,MCRD,ddsdde) 
 
     !! Defining element bounds : coords in parent space
