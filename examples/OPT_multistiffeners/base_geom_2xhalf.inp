@@ -1,0 +1,200 @@
+*HEADING
+** Copyright 2024 Arnaud Duval
+** TODO: complete case description
+*Part, name=Ariane
+*USER ELEMENT, NODES=6, TYPE=U3, COORDINATES=3,  INTEGRATION=6, TENSOR=PSTRESS
+1,2,3
+*USER ELEMENT, NODES=2, TYPE=U00, COORDINATES=3, INTEGRATION=4, TENSOR=NONE
+1, 2, 3
+*USER ELEMENT, NODES=1, TYPE=U4, COORDINATES=3, INTEGRATION=4, TENSOR=NONE
+1, 2, 3
+*Node,nset=AllNodes
+    1, 318.0,    0.0,    0.0
+    2, 318.0,    318.0,  0.0
+    3, -318.0,   318.0,  0.0
+    4, -318.0,   0.0,    0.0
+    5, 318.0,    0.0,    600.0
+    6, 318.0,    318.0,  600.0
+    7, -318.0,   318.0,  600.0
+    8, -318.0,   0.0,    600.0
+
+    9, -318.0,   0.0,    0.0
+    10, -318.0,  -318.0, 0.0
+    11, 318.0,   -318.0, 0.0
+    12, 318.0,   0.0,    0.0
+    13, -318.0,  0.0,    600.0
+    14, -318.0,  -318.0, 600.0
+    15,  318.0,  -318.0, 600.0
+    16, 318.0,   0.0,    600.0
+
+    17, 0.0, 0.0, 0.0
+    18, 0.0, 1.0, 0.0
+    19, 1.0, 0.0, 0.0
+    20, 1.0, 1.0, 0.0
+    21, 0.0, 0.0, 0.0
+    22, 0.0, 1.0, 0.0
+    23, 1.0, 0.0, 0.0
+    24, 1.0, 1.0, 0.0
+
+    25, 1.0, 0.0, 0.0
+    26, 1.0, 1.0, 0.0
+    27, 0.0, 0.0, 0.0
+    28, 0.0, 1.0, 0.0
+    29, 1.0, 0.0, 0.0
+    30, 1.0, 1.0, 0.0
+    31, 0.0, 0.0, 0.0
+    32, 0.0, 1.0, 0.0
+
+    33, 0.0, 0.0, 0.0
+    34, 0.0, 0.0, 0.0
+    35, 0.0, 0.0, 0.0
+    36, 0.0, 0.0, 0.0
+
+
+*Element, type=U3, elset=ShellElts
+1, 7, 6, 5, 3, 2, 1
+2, 8, 7, 6, 4, 3, 2
+3, 15, 14, 13, 11, 10, 9
+4, 16, 15, 14, 12, 11, 10
+*Element, type=U00, elset=CurveElts
+5, 18, 17
+6, 20, 19
+7, 22, 21
+8, 24, 23
+9, 26, 25
+10, 28, 27
+11, 30, 29
+12, 32, 31
+*Element, type=U4, elset=LagrangeElts
+13, 33
+14, 34
+15, 35
+16, 36
+*ELSET,ELSET=EltPatch1
+1, 2
+*ELSET,ELSET=EltPatch2
+3, 4
+*ELSET,ELSET=EltPatch3
+5
+*ELSET,ELSET=EltPatch4
+6
+*ELSET,ELSET=EltPatch5
+7
+*ELSET,ELSET=EltPatch6
+8
+*ELSET,ELSET=EltPatch7
+9
+*ELSET,ELSET=EltPatch8
+10
+*ELSET,ELSET=EltPatch9
+11
+*ELSET,ELSET=EltPatch10
+12
+*ELSET,ELSET=EltPatch11
+13
+*ELSET,ELSET=EltPatch12
+14
+*ELSET,ELSET=EltPatch13
+15
+*ELSET,ELSET=EltPatch14
+16
+*NSET,NSET=CPonTopEdgeP1
+5, 6, 7, 8
+*NSET,NSET=CPonTopEdgeP2
+13, 14, 15, 16
+*NSET,NSET=CPcurveP3
+17, 18
+*NSET,NSET=CPcurveP4
+19, 20
+*NSET,NSET=CPcurveP5
+21, 22
+*NSET,NSET=CPcurveP6
+23, 24
+*NSET,NSET=CPcurveP7
+25, 26
+*NSET,NSET=CPcurveP8
+27, 28
+*NSET,NSET=CPcurveP9
+29, 30
+*NSET,NSET=CPcurveP10
+31, 32
+*NSET,NSET=CPlgrgeP11
+33
+*NSET,NSET=CPlgrgeP12
+34
+*NSET,NSET=CPlgrgeP13
+35
+*NSET,NSET=CPlgrgeP14
+36
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=Aluminium
+1, 1.7
+*UEL PROPERTY, ELSET=EltPatch2, MATERIAL=Aluminium
+2, 1.7
+*UEL PROPERTY, ELSET=EltPatch3, MATERIAL=Void
+3, 1, 11, 0
+*UEL PROPERTY, ELSET=EltPatch4, MATERIAL=Void
+4, 2, 11, 1
+*UEL PROPERTY, ELSET=EltPatch5, MATERIAL=Void
+5, 1, 12, 0
+*UEL PROPERTY, ELSET=EltPatch6, MATERIAL=Void
+6, 2, 12, 1
+*UEL PROPERTY, ELSET=EltPatch7, MATERIAL=Void
+7, 1, 13, 0
+*UEL PROPERTY, ELSET=EltPatch8, MATERIAL=Void
+8, 2, 13, 1
+*UEL PROPERTY, ELSET=EltPatch9, MATERIAL=Void
+9, 1, 14, 0
+*UEL PROPERTY, ELSET=EltPatch10, MATERIAL=Void
+10, 2, 14, 1
+*UEL PROPERTY, ELSET=EltPatch11, MATERIAL=Void
+11, 0
+*UEL PROPERTY, ELSET=EltPatch12, MATERIAL=Void
+12, 1
+*UEL PROPERTY, ELSET=EltPatch13, MATERIAL=Void
+13, 0
+*UEL PROPERTY, ELSET=EltPatch14, MATERIAL=Void
+14, 1
+*End Part
+** Assembly
+*Assembly, name=Assembly
+*Instance, name=I1, part=Ariane
+*End Instance
+*End Assembly
+** MATERIAL
+*MATERIAL,NAME=Aluminium
+*Elastic
+70810.0, 0.33
+*MATERIAL,NAME=Void
+*Elastic
+0.0, 0.0
+**
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPonTopEdgeP1, 1, 3, 0.
+I1.CPonTopEdgeP2, 1, 3, 0.
+I1.CPcurveP3, 1, 3, 0.
+I1.CPcurveP4, 1, 3, 0.
+I1.CPcurveP5, 1, 3, 0.
+I1.CPcurveP6, 1, 3, 0.
+I1.CPcurveP7, 1, 3, 0.
+I1.CPcurveP8, 1, 3, 0.
+I1.CPcurveP9, 1, 3, 0.
+I1.CPcurveP10, 1, 3, 0.
+I1.CPlgrgeP11, 2, 3, 0.
+I1.CPlgrgeP12, 2, 3, 0.
+I1.CPlgrgeP13, 2, 3, 0.
+I1.CPlgrgeP14, 2, 3, 0.
+** I1.CPsymYpos, 2, 2, 0.
+** I1.CPsymYneg, 2, 2, 0.
+*DLOAD
+I1.EltPatch1, U60, 1
+I1.EltPatch2, U60, 1
+** Note : les 2 chargements ci-dessus ne seront pas utilisés
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
