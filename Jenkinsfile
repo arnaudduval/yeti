@@ -7,6 +7,8 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building...'
+                which python
+                which cmake
             }
         }
     }
