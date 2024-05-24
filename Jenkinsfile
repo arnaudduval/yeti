@@ -7,8 +7,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building...'
-                sh 'which python'
-                sh 'which cmake'
+                sh 'ls'
             }
         }
     }
