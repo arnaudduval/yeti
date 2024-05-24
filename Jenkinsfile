@@ -6,8 +6,8 @@ pipeline {
     stages{
         stage('Build') {
             steps {
-                echo 'Building...'
-                sh 'ls'
+                dir('build')
+                deleteDir()
             }
         }
     }
