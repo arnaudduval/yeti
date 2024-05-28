@@ -13,6 +13,7 @@ pipeline {
                     deleteDir()
                     sh 'python3 -m venv .venv'
                     sh '. .venv/bin/activate && pip install numpy scipy matplotlib nlopt'
+                    sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex'
                 }
             }
         }
@@ -40,7 +41,6 @@ pipeline {
         stage('doc') {
             steps {
                 dir('build') {
-                    sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex'
                     sh '. .venv/bin/activate && make yeti-user-manual'
                 }
             }
