@@ -1,3 +1,4 @@
+build
 venv
 .vscode/settings.json
 src/*.mod
