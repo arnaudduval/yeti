@@ -41,6 +41,7 @@ pipeline {
             steps {
                 dir('build') {
                     sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex'
+                    sh '. .venv/bin/activate && make yeti-user-manual'
                 }
             }
         }
