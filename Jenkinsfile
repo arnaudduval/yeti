@@ -11,13 +11,8 @@ pipeline {
                 }
                 dir('build'){
                     deleteDir()
-                }
-            }
-        }
-        stage('Stage2') {
-            steps {
-                dir('.'){
-                    sh 'mkdir plop'
+                    sh 'cmake ..'
+                    sh 'make'
                 }
             }
         }
