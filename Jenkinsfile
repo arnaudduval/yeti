@@ -11,6 +11,13 @@ pipeline {
                 }
             }
         }
+        stage('Stage2') {
+            steps {
+                dir('.'){
+                    sh 'mkdir plop'
+                }
+            }
+        }
     }
 
 
