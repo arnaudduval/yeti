@@ -6,8 +6,9 @@ pipeline {
     stages{
         stage('Build') {
             steps {
-                dir('build')
-                deleteDir()
+                dir('build'){
+                    deleteDir()
+                }
             }
         }
     }
