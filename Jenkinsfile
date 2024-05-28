@@ -6,6 +6,9 @@ pipeline {
     stages{
         stage('Build') {
             steps {
+                dir('.') {
+                    sh 'mkdir build'
+                }
                 dir('build'){
                     deleteDir()
                 }
