@@ -18,13 +18,13 @@
 !! First try to inverse point with projection, then use dichotomy search
 
 !! Parameters
-!!  point : physical coordinates of point
-!!  iface : index of face
-!!  coords3D : control points coordinates
-!!  nb_cp : number of control points
-!!  isHull : boolean indicating if projection is made on a hull
-!!  xi : evaluated parametric coordinates
-!!  info : return code :    0 = standard exit
+!! point : physical coordinates of point
+!! iface : index of face
+!! coords3D : control points coordinates
+!! nb_cp : number of control points
+!! isHull : boolean indicating if projection is made on a hull
+!! xi : evaluated parametric coordinates
+!! info : return code :    0 = standard exit
 subroutine point_inversion_surface(point, iface, coords3D, nb_cp, is_hull, xi, info)
     use parameters
     use nurbspatch
@@ -73,64 +73,64 @@ subroutine point_inversion_surface(point, iface, coords3D, nb_cp, is_hull, xi, i
     u0 = 0.5
     v0 = 0.5
     call projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
-                        &  u0, v0, xi, projection_info)
+        &  u0, v0, xi, projection_info)
 
-    if (projection_info .ne. 0) then
+    if (projection_info /= 0) then
         !! 2. Use sampling to define starting parameters values
-        lim_u = (/0.0d0, 1.0d0/)
-        lim_v = (/0.0d0, 1.0d0/)
+        lim_u = (/ 0.0d0, 1.0d0 /)
+        lim_v = (/ 0.0d0, 1.0d0 /)
         call compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u, num_v, &
-                                &   lim_u, lim_v, u0, v0)
+            &   lim_u, lim_v, u0, v0)
         call projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
-                            &  u0, v0, xi, projection_info)
+            &  u0, v0, xi, projection_info)
 
-        if (projection_info .ne. 0) then
+        if (projection_info /= 0) then
             !! 3. Use sampling to define starting parameters values, with more sampling points
-            lim_u = (/0.0d0, 1.0d0/)
-            lim_v = (/0.0d0, 1.0d0/)
+            lim_u = (/ 0.0d0, 1.0d0 /)
+            lim_v = (/ 0.0d0, 1.0d0 /)
             num_u = num_u * 2
             num_v = num_v * 2
             call compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u, num_v, &
-                                    &   lim_u, lim_v, u0, v0)
+                &   lim_u, lim_v, u0, v0)
             call projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
-                                &  u0, v0, xi, projection_info)
+                &  u0, v0, xi, projection_info)
 
-            if (projection_info .ne. 0) then
+            if (projection_info /= 0) then
                 !! 4. Use sampling again, centering on previously computed parameters values
                 ! Compute previous step value
                 step_u = (lim_u(2) - lim_u(1)) / (1.0d0 * num_u)
                 step_v = (lim_v(2) - lim_v(1)) / (1.0d0 * num_v)
                 ! Update limits & ensure it stays between 0 and 1
                 lim_u(1) = u0 - step_u
-                if (lim_u(1) .lt. 0.0d0) lim_u(1) = 0.0d0
+                if (lim_u(1) < 0.0d0) lim_u(1) = 0.0d0
                 lim_u(2) = u0 + step_u
-                if (lim_u(2) .gt. 1.0d0) lim_u(2) = 1.0d0
+                if (lim_u(2) > 1.0d0) lim_u(2) = 1.0d0
                 lim_v(1) = v0 - step_v
-                if (lim_v(1) .lt. 0.0d0) lim_v(1) = 0.0d0
+                if (lim_v(1) < 0.0d0) lim_v(1) = 0.0d0
                 lim_v(2) = v0 + step_v
-                if (lim_v(2) .gt. 1.0d0) lim_v(2) = 1.0d0
+                if (lim_v(2) > 1.0d0) lim_v(2) = 1.0d0
                 ! Compute params. & run proj.
                 call compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u, num_v, &
-                                    &   lim_u, lim_v, u0, v0)
+                    &   lim_u, lim_v, u0, v0)
                 call projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
-                                    &  u0, v0, xi, projection_info)
-                if (projection_info .ne. 0) then
+                    &  u0, v0, xi, projection_info)
+                if (projection_info /= 0) then
                     !! 5. Reduce step & increase max. nb. of iterations
                     do
                         call projection_surface(point, iface, coords3D, nb_cp, is_hull, &
                             &   maxstep, maxiter, u0, v0, xi, projection_info)
-                        if (projection_info .eq. 0) return
+                        if (projection_info == 0) return
                         maxstep = maxstep / 10.D0
                         maxiter = maxiter * 10
-                        if (maxiter .gt. 10000) then
+                        if (maxiter > 10000) then
                             !! Just giving up
                             exit
-                        endif
-                    enddo
-                endif
-            endif
-        endif
-    endif
+                        end if
+                    end do
+                end if
+            end if
+        end if
+    end if
 
     info = projection_info
 
@@ -139,7 +139,7 @@ end subroutine point_inversion_surface
 
 !! Compute starting parameter values
 subroutine compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u, num_v, &
-                                &   lim_u, lim_v, u, v)
+        &   lim_u, lim_v, u, v)
     use parameters
     use nurbspatch
 
@@ -166,7 +166,7 @@ subroutine compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u,
     double precision :: param_u, param_v, uvw, N, eval_pt, coords, &
         &   diff, dist, idx, step_u, step_v
     dimension uvw(3), N(nnode_patch), eval_pt(3), coords(3, nnode_patch), &
-        &   diff(3), dist(num_u+2, num_v+2), idx(2)
+        &   diff(3), dist(num_u + 2, num_v + 2), idx(2)
 
 
     !! Initialisations
@@ -181,17 +181,17 @@ subroutine compute_starting_point(point, iface, coords3D, nb_cp, is_hull, num_u,
             param_u = lim_u(1) + (i_u - 1) * 1.0d0 * step_u
             if (is_hull) then    !! Hull object
                 call evaluate_surf_and_compute_diff_hull(point, iface, coords3D, &
-                                                     &   nb_cp, param_u, param_v, &
-                                                     &   diff)
+                    &   nb_cp, param_u, param_v, &
+                    &   diff)
             else    !! Embedded entity or classical solid
                 call evaluate_surf_and_compute_diff(point, iface, coords3D, &
-                                                &   nb_cp, param_u, param_v, &
-                                                &   diff)
-            endif
+                    &   nb_cp, param_u, param_v, &
+                    &   diff)
+            end if
             !! Compute distance & add to list
             dist(i_u, i_v) = sqrt(dot_product(diff, diff))
-        enddo
-    enddo
+        end do
+    end do
 
     !! Locate minimal distance
     idx = minloc(dist)
@@ -205,7 +205,7 @@ end subroutine compute_starting_point
 
 !! Evaluate equally spaced values & compute distance to point
 subroutine evaluate_surf_and_compute_diff(point, iface, coords3D, nb_cp, param_u, param_v, &
-                                        &   diff)
+        &   diff)
     use parameters
     use nurbspatch
 
@@ -241,15 +241,15 @@ subroutine evaluate_surf_and_compute_diff(point, iface, coords3D, nb_cp, param_u
     !! Get knot span and CP coordinates
     call updateElementNumber(uvw)
     do icp = 1, nnode_patch
-        coords(:,icp) = COORDS3D(:3,IEN_patch(icp,current_elem))
-    enddo
+        coords(:, icp) = COORDS3D(:3, IEN_patch(icp, current_elem))
+    end do
     !! Evaluate functions
     call evalnurbs_noder(uvw, R)
     !! Evaluate surface
     eval_pt(:) = zero
     do icp = 1, nnode_patch
-        eval_pt(:) = eval_pt(:) + R(icp)*coords(:, icp)
-    enddo
+        eval_pt(:) = eval_pt(:) + R(icp) * coords(:, icp)
+    end do
     !! Compute distance to point
     diff = eval_pt(:) - point(:)
 
@@ -257,7 +257,7 @@ end subroutine
 
 !! Evaluate equally spaced values & compute distance to point (hull)
 subroutine evaluate_surf_and_compute_diff_hull(point, iface, coords3D, nb_cp, param_u, param_v, &
-                                           &   diff)
+        &   diff)
     use parameters
     use nurbspatch
     use embeddedmapping
@@ -294,15 +294,15 @@ subroutine evaluate_surf_and_compute_diff_hull(point, iface, coords3D, nb_cp, pa
     !! Get knot span and CP coordinates
     call updateMapElementNumber(uvw)
     do icp = 1, nnode_map
-        coords(:,icp) = COORDS3D(:3,IEN_map(icp,current_map_elem))
-    enddo
+        coords(:, icp) = COORDS3D(:3, IEN_map(icp, current_map_elem))
+    end do
     !! Evaluate functions
     call evalnurbs_mapping_noder(uvw, R)
     !! Evaluate surface
     eval_pt(:) = zero
     do icp = 1, nnode_map
-        eval_pt(:) = eval_pt(:) + R(icp)*coords(:, icp)
-    enddo
+        eval_pt(:) = eval_pt(:) + R(icp) * coords(:, icp)
+    end do
     !! Compute distance to point
     diff = eval_pt(:) - point(:)
 
@@ -311,13 +311,13 @@ end subroutine
 
 !! Point inversion on a plane curve
 !! Parameters
-!!  point : physical coordinates of point
-!!  iface : index of face
-!!  coords3D : control points coordinates
-!!  nb_cp : number of control points
-!!  isHull : boolean indicating if projection is made on a hull
-!!  xi : evaluated parametric coordinates
-!!  info : return code :    0 = standard exit
+!! point : physical coordinates of point
+!! iface : index of face
+!! coords3D : control points coordinates
+!! nb_cp : number of control points
+!! isHull : boolean indicating if projection is made on a hull
+!! xi : evaluated parametric coordinates
+!! info : return code :    0 = standard exit
 subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, xi, info)
     use parameters
     use nurbspatch
@@ -351,7 +351,7 @@ subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, x
     u0 = 0.5
 
     call projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
-                        &  u0, xi, projection_info)
+        &  u0, xi, projection_info)
 
     info = projection_info
 

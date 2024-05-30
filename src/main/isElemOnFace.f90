@@ -24,14 +24,14 @@ function IsElemOnFace(face, Nijk, Jpqr, Nkv, dim)
     logical :: IsElemOnFace
 
     IsElemOnFace = .false.
-    if ((face .eq. 1) .and. (Nijk(1) .eq. (Jpqr(1)+1))) IsElemOnFace = .true.
-    if ((face .eq. 2) .and. (Nijk(1) .eq. (Nkv(1)-Jpqr(1)-1))) IsElemOnFace = .true.
-    if ((face .eq. 3) .and. (Nijk(2) .eq. (Jpqr(2)+1))) IsElemOnFace = .true.
-    if ((face .eq. 4) .and. (Nijk(2) .eq. (Nkv(2)-Jpqr(2)-1))) IsElemOnFace = .true.
-    if (dim .gt. 2) then
-        if ((face .eq. 5) .and. (Nijk(3) .eq. (Jpqr(3)+1))) IsElemOnFace = .true.
-        if ((face .eq. 6) .and. (Nijk(3) .eq. (Nkv(3)-Jpqr(3)-1))) IsElemOnFace = .true.
-    endif
+    if ((face == 1) .and. (Nijk(1) == (Jpqr(1) + 1))) IsElemOnFace = .true.
+    if ((face == 2) .and. (Nijk(1) == (Nkv(1) - Jpqr(1) - 1))) IsElemOnFace = .true.
+    if ((face == 3) .and. (Nijk(2) == (Jpqr(2) + 1))) IsElemOnFace = .true.
+    if ((face == 4) .and. (Nijk(2) == (Nkv(2) - Jpqr(2) - 1))) IsElemOnFace = .true.
+    if (dim > 2) then
+        if ((face == 5) .and. (Nijk(3) == (Jpqr(3) + 1))) IsElemOnFace = .true.
+        if ((face == 6) .and. (Nijk(3) == (Nkv(3) - Jpqr(3) - 1))) IsElemOnFace = .true.
+    end if
 end function IsElemOnFace
 
 !! Return the number of elements on the given face of a patch
@@ -42,13 +42,13 @@ function NbElemOnFace(face, Jpqr, Nkv)
     dimension Jpqr(3), Nkv(3)
     integer :: NbElemOnFace
 
-    select case(face)
-        case(1,2)
-            NbElemOnFace = (Nkv(2) - 2*Jpqr(2) - 1)*(Nkv(3) - 2*Jpqr(3) - 1)
-        case(3,4)
-            NbElemOnFace = (Nkv(1) - 2*Jpqr(1) - 1)*(Nkv(3) - 2*Jpqr(3) - 1)
-        case(5,6)
-            NbElemOnFace = (Nkv(1) - 2*Jpqr(1) - 1)*(Nkv(2) - 2*Jpqr(2) - 1)
+    select case (face)
+        case (1, 2)
+        NbElemOnFace = (Nkv(2) - 2 * Jpqr(2) - 1) * (Nkv(3) - 2 * Jpqr(3) - 1)
+        case (3, 4)
+        NbElemOnFace = (Nkv(1) - 2 * Jpqr(1) - 1) * (Nkv(3) - 2 * Jpqr(3) - 1)
+        case (5, 6)
+        NbElemOnFace = (Nkv(1) - 2 * Jpqr(1) - 1) * (Nkv(2) - 2 * Jpqr(2) - 1)
     end select
 
 end function NbElemOnFace
