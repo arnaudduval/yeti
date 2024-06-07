@@ -21,7 +21,7 @@ if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
 TRACTION, RINT, REXT = 1.0, 1.0, 2.0
-YOUNG, POISSON = 1e3, 0.0
+YOUNG, POISSON = 1e3, 0.3
 GEONAME = 'QA'
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'name':'none'}}
@@ -85,7 +85,7 @@ def simulate(degree, cuts, quadArgs, useElastoAlgo=False):
 	return problem, displacement, meshparam
 
 if isReference:
-	degree, cuts = 7, 8
+	degree, cuts = 8, 8
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _ = simulate(degree, cuts, quadArgs)
 	np.save(folder + 'dispel', displacement)
@@ -107,7 +107,7 @@ else:
 		part_ref = pickle.load(inp)
 
 	fig, ax = plt.subplots(figsize=(7, 5))
-	figname = folder + 'FigElasLinearConvergenceAllH1' + '.pdf'
+	figname = folder + 'FigElasLinearConvergenceAllH1'
 	# for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 	for quadrule, quadtype, plotpars in zip(['iga'], ['leg'], [normalPlot]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
@@ -129,9 +129,13 @@ else:
 				ax.loglog(meshparam, error_list, color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			
+			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
+			ax.set_xlabel('Number of elements by dimension')
 			ax.set_ylim(top=1e-2, bottom=1e-14)
 			ax.set_xlim(left=1, right=200)
-			fig.savefig(figname)
+			ax.legend(loc='lower left')
+			fig.tight_layout()
+			fig.savefig(figname+str(degree)+'.pdf')
 
 	# ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 	# 				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
@@ -144,6 +148,6 @@ else:
 	ax.set_xlabel('Number of elements by dimension')
 	ax.set_ylim(top=1e-2, bottom=1e-14)
 	ax.set_xlim(left=1, right=200)
-	ax.legend()
+	ax.legend(loc='lower left')
 	fig.tight_layout()
-	fig.savefig(figname)
+	fig.savefig(figname+'.pdf')

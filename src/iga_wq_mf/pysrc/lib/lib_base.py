@@ -146,7 +146,7 @@ def createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=1):
 	
 	return knotvector
 
-def createUniformOpenCurve(degree, nbel, length):
+def createUniformOpenCurve(degree, nbel, length, multiplicity=1):
 	knotvector = createUniformKnotvector_Rmultiplicity(degree, 1)
 	ctrlpts    = [[i*length/degree, 0.0] for i in range(degree+1)]
 	crv = BSpline.Curve()
@@ -154,7 +154,7 @@ def createUniformOpenCurve(degree, nbel, length):
 	crv.ctrlpts = ctrlpts
 	crv.knotvector = knotvector
 	for knot in np.linspace(0, 1, nbel+1)[1:-1]:
-		operations.insert_knot(crv, [knot], [1])
+		for mult in range(multiplicity): operations.insert_knot(crv, [knot], [1])
 	return crv
 
 def findInterpolationSpan(array, x, threshold=1e-8):

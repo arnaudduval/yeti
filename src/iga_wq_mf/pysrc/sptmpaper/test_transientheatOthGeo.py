@@ -18,7 +18,7 @@ def run(folder=None):
 
 # Set global variables
 TODOSIMU = False
-FIG_CASE = 3
+FIG_CASE = 0
 
 def exactTemperature_inc(args):
 	func = None

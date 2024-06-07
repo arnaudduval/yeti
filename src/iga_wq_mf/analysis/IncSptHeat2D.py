@@ -9,7 +9,7 @@ blockPrint()
 # Set global variables
 PLOTRELATIVE = True
 TODOSIMU = False
-FIG_CASE = 4
+FIG_CASE = 3
 extension = '.dat'
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
@@ -76,11 +76,11 @@ if FIG_CASE == 0:
 					np.savetxt(filenameA1, AbserrorTable)
 					np.savetxt(filenameR1, relerrorTable)
 
-	plotoptions = [IgaPlot, WQ1Plot, WQ2Plot]
+	plotoptions = [IgaPlot, WQ2Plot]
 	lastsufix = 'linear' if ISLINEAR else 'nonlin'
 	figname = folder + 'Convergence'+lastsufix+'.pdf'
-	if PLOTRELATIVE: filenames = ['0L2relerror_iga_leg_', '0L2relerror_wq_1_', '0L2relerror_wq_2_']
-	else: filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_1_', '0L2abserror_wq_2_']
+	if PLOTRELATIVE: filenames = ['0L2relerror_iga_leg_', '0L2relerror_wq_2_']
+	else: filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_2_']
 
 	fig, ax = plt.subplots(figsize=(7, 6))
 	for filename, plotops in zip(filenames, plotoptions):
@@ -106,10 +106,10 @@ if FIG_CASE == 0:
 			fig.savefig(figname)
 
 	ax.loglog([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-			markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ 2')
+			markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ')
 
-	ax.loglog([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-					markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='ST-IGA-WQ 4')
+	# ax.loglog([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
+	# 				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='ST-IGA-WQ 4')
 	
 	if PLOTRELATIVE:
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/|| u ||_{L^2(\Pi)}$')
@@ -431,18 +431,18 @@ elif FIG_CASE == 3:
 		filenameA2 = folder + '3incheatRel'
 		filenameA3 = folder + '3sptheatRel'
 
-	Elist = np.loadtxt(filenameA2+'_wq_2_'+lastsufix+extension)
-	Tlist = np.loadtxt(filenameT2+'_wq_2_'+lastsufix+extension)
-	im = ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
-			cmap=cmap, marker=IncPlot['marker'], s=10*IncPlot['markersize'])
-	ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
-			color='k', marker='', linestyle=IncPlot['linestyle'])
+	# Elist = np.loadtxt(filenameA2+'_wq_2_'+lastsufix+extension)
+	# Tlist = np.loadtxt(filenameT2+'_wq_2_'+lastsufix+extension)
+	# im = ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
+	# 		cmap=cmap, marker=IncPlot['marker'], s=10*IncPlot['markersize'])
+	# ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
+	# 		color='k', marker='', linestyle=IncPlot['linestyle'])
 	
-	if position==1:
-		cbar = fig.colorbar(im); cbar.set_label('Degree')
-		tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-		cbar.set_ticks(tick_locs)
-		cbar.set_ticklabels(degList)
+	# if position==1:
+	# 	cbar = fig.colorbar(im); cbar.set_label('Degree')
+	# 	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+	# 	cbar.set_ticks(tick_locs)
+	# 	cbar.set_ticklabels(degList)
 
 	for quadrule, quadtype, plotvars in zip(['iga', 'wq'], ['leg', 2], [IgaPlot, WQ2Plot]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + extension
@@ -454,14 +454,14 @@ elif FIG_CASE == 3:
 		ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
 				color='k', marker='', linestyle=plotvars['linestyle'])
 
-	ax.loglog([], [], color='k', marker=IncPlot['marker'], alpha=0.5,
-			markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-WQ 2')
+	# ax.loglog([], [], color='k', marker=IncPlot['marker'], alpha=0.5,
+	# 		markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-WQ')
 	
 	ax.loglog([], [], color='k', marker=IgaPlot['marker'], alpha=0.5,
 		markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
 		
 	ax.loglog([], [], color='k', marker=WQ2Plot['marker'], alpha=0.5,
-		markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ 2')
+		markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ')
 
 	if PLOTRELATIVE: 
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u ||_{L^2(\Pi)}$')
@@ -475,7 +475,7 @@ elif FIG_CASE == 3:
 	if position==1: ax.set_xlim(left=1e0, right=1e3)
 	if position==2: ax.set_xlim(left=1e1, right=1e4)
 	fig.tight_layout()
-	fig.savefig(folder + 'SPTINC_CPUError' + str(position) +  '.pdf')
+	fig.savefig(folder + 'SPTINC_CPUError0' + str(position) +  '.pdf')
 
 elif FIG_CASE == 4:
 

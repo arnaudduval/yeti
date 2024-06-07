@@ -12,7 +12,7 @@ folder = os.path.dirname(full_path) + '/results/solver/'
 if not os.path.isdir(folder): os.mkdir(folder)
 
 # Set global variables
-TODOSIMU = True
+TODOSIMU = False
 degList = range(1, 10)
 cuts = 4
 quadArgs = {'quadrule':'wq', 'type':2}
@@ -96,8 +96,8 @@ fig, ax = plt.subplots(figsize=(5, 4))
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'x', 'linestyle': '--', 'markersize': 6}
 WQ2Plot = {'marker': 'o', 'linestyle': ':', 'markersize': 6}
-plotoptions = [IgaPlot, WQ1Plot, WQ2Plot]
-sufixList = ['iga_leg', 'wq_1', 'wq_2']
+plotoptions = [IgaPlot, WQ2Plot]
+sufixList = ['iga_leg', 'wq_2']
 labels = [r'$\mathsf{A}v_{in}$', r'$\mathsf{B}v_{in}$']
 
 # Load data
@@ -124,10 +124,10 @@ for sufix, plotops in zip(sufixList, plotoptions):
 # nbelpos = np.where(timeFD[:, 0]==2**cuts)
 # ax.semilogy(degList, np.max(timeFD[nbelpos,1:])*np.ones(len(degList)), color='tab:red', linestyle=':', label='FD '+r'$16^3$'+' el.')
 
-ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 4')
+# ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
+# 				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 4')
 ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
+				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ')
 
 ax.minorticks_off()
 ax.legend(ncol=2, loc='upper center')
