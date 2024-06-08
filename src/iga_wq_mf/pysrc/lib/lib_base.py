@@ -432,7 +432,7 @@ class solver():
 		if dotfun is None: dotfun = lambda x, y: np.dot(x, y)
 		if cleanfun is None: cleanfun = lambda x, y: x
     
-		x = np.zeros(*np.shape(b))
+		x = np.zeros(np.shape(b))
 		H = np.zeros((self._itersLin + 1, self._itersLin))
 		V = np.zeros((self._itersLin + 1, *np.shape(b)))
 		Z = np.zeros((self._itersLin + 1, *np.shape(b)))
@@ -463,4 +463,4 @@ class solver():
 			for j in range(k+1): x = x + Z[j]*y[j]
 			AllresLin.append(resLin)
 		output = {'sol':x, 'res':resLin}
-		return x, output
+		return output
