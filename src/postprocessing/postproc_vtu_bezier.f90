@@ -322,7 +322,7 @@ subroutine ComputeBezierVTUConnectivity(conn_vtk, conn_yeti, p, q, r)
 end subroutine ComputeBezierVTUConnectivity
 
 function ConnConvert(i, j, k, p, q, r) result(idx)
-    !! Compute index of a control point in Yeti convention form i, j, k indices of CP
+    !! Compute index of a control point in Yeti convention from i, j, k indices of CP
     integer, intent(in) :: i, j, k, p, q, r
     integer :: idx
 

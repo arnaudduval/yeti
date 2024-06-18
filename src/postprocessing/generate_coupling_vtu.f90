@@ -185,7 +185,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
             !! On balaie sur la discretisation de l'esclave
             do i_elem = 1, nb_elem_patch(interfaces(1))
                 do i_vertice=1, nb_vertice
-                    !! On recherche l'élement auquel correspond xibar (= i_elem si esclave)
+                    !! On recherche l'element auquel correspond xibar (= i_elem si esclave)
                     if (i_side .eq. 1) then
                         j_elem = i_elem
                     else
@@ -233,7 +233,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
 
                     !! Get x and u
                     do j=1, nnode_patch
-                        !! TODO : pas vraiment nécessaire de calculer x sur les deux faces vu qu'elle sont géométriquement identiques
+                        !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
                         x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
                                                 &       R(j)*coords_elem(:,j)
                         u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &

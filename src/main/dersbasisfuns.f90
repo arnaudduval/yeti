@@ -345,7 +345,7 @@ end subroutine dersbasisfuns3
 subroutine gen_dersbasisfuns(ni,Jp,NKv,u,u_knotl,nders,ders)
     !! Generic function for computation basis function and derivatives up
     !! to a given order
-    !!!! TODO : réécrire les autres fonctions spécifiques pour appeler la fonction générique
+    !!!! TODO : reecrire les autres fonctions specifiques pour appeler la fonction generique
     implicit none
 
     !! Input variables

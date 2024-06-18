@@ -355,17 +355,17 @@ def find_boundNumber(listCP,num_patch,Nkv,Jpqr,indCPbyPatch):
     '''
     indices = np.where(np.in1d(indCPbyPatch[num_patch], listCP))[0]
     bound = None
-    if np.all(indices == get_boundCPindice(Nkv, Jpqr, 3, num_patch)):
+    if np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 3, num_patch)):
         bound = 3
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 4, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 4, num_patch)):
         bound = 4
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 1, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 1, num_patch)):
         bound = 1
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 2, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 2, num_patch)):
         bound = 2
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 5, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 5, num_patch)):
         bound = 5
-    elif np.all(indices == get_boundCPindice(Nkv, Jpqr, 6, num_patch)):
+    elif np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 6, num_patch)):
         bound = 6
     # else:
     #     print ' Warning: no bound has been found'
@@ -1154,8 +1154,8 @@ def bezier_decomposition_patch(igapara,numpatch=0,return_ien=False,
     M = []
     ukv = igapara._Ukv[numpatch]
     jpqr= igapara._Jpqr[:,numpatch]
-    ncpF= np.ones(3,dtype=np.int)
-    nelF= np.ones(3,dtype=np.int)
+    ncpF= np.ones(3,dtype=int)
+    nelF= np.ones(3,dtype=int)
     for d in range(len(ukv)):
         p = igapara._Jpqr[d,numpatch]
         u = ukv[d]

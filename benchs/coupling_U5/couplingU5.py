@@ -43,8 +43,8 @@ nb_deg[:,0] = np.array([1,1,1])
 nb_ref[:,1] = np.array([3,4,4])
 nb_deg[:,1] = np.array([1,1,1])
 
-nb_ref[:,2] = np.array([3,3,3])
-nb_deg[:,2] = np.array([1,1,1])
+nb_ref[:,2] = np.array([3,3,0])
+nb_deg[:,2] = np.array([1,1,0])
 
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
@@ -98,6 +98,8 @@ print("Reference solution : ", ref)
 print("Computed solution : ", SOL[search[0],2])
 
 error = ( SOL[search[0],2] - ref ) / ref
+
+print(f"{error = }")
 
 if abs(error) > 0.02:
     sys.exit(-1)

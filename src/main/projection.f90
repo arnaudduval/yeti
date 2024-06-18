@@ -2,18 +2,18 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
-!! The algorithm is taken from Piegl, Les. "The NURBS Book". Springer-Verlag: 
+!! The algorithm is taken from Piegl, Les. "The NURBS Book". Springer-Verlag:
 !! Berlin 1995; p. 232-234.
 
 
@@ -74,15 +74,15 @@ subroutine projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, m
 
     !! max correction value
     double precision :: step
-    
+
     info = 3
     u = u0
     v = v0
-    
+
     !! TODO : revoir les affectations pour etre plus rapide
-    
+
     do i = 1, maxiter
-        
+
         !! Evaluation at u,v
         if (is_hull) then
             call derivative_surface_mapping(u, v, iface, coords3D, nb_cp, S, Su, Sv, Suu, Suv, Svv)
@@ -120,14 +120,14 @@ subroutine projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, m
 
         du = Jinv(1,1)*Kvec(1) + Jinv(1,2)*Kvec(2)
         dv = Jinv(2,1)*Kvec(1) + Jinv(2,2)*Kvec(2)
-        
+
         !! Correction damping
         step = sqrt(du*du+dv*dv)
         if (step .ge. maxStep) then
             du = du * maxStep/step
             dv = dv * maxStep/step
         endif
-        
+
         u = u + du
         v = v + dv
 
@@ -153,14 +153,14 @@ subroutine projection_surface(point, iface, coords3D, nb_cp, is_hull, maxstep, m
             info = 2
             exit
         endif
-        
+
     enddo
-    
+
     if (i .eq. maxiter) then
         write(*,*) "Warning : max number of iterations reached during point to surface projection"
         info = 1
     endif
-    
+
     if (is_hull) then
         call point_on_solid_face_map(u,v,iface,xi)
     else
@@ -292,9 +292,9 @@ subroutine derivative_surface(u, v, iface, coords3D, nb_cp, S, Su, Sv, Suu, Suv,
     double precision :: R, dRdxi, ddRddxi
     dimension R(nnode_patch), dRdxi(nnode_patch, 3), ddRddxi(nnode_patch, 6)
 
-    
+
     call point_on_solid_face(u,v,iface,xi)
-    
+
     !! Get knot span and CP coordinates
     call updateElementNumber(xi)
     do icp = 1, nnode_patch
@@ -313,7 +313,7 @@ subroutine derivative_surface(u, v, iface, coords3D, nb_cp, S, Su, Sv, Suu, Suv,
     do icp = 1, nnode_patch
         S(:) = S(:) + R(icp)*coords(:, icp)
         select case(iface)
-            !! TODO, on peut fair une table de correspondance avec les 2ème indices 
+            !! TODO, on peut fair une table de correspondance avec les 2ème indices
             !!     de dRdxi et ddRddxi
             case(1,2)   !! xi(1) const
                 Su(:) = Su(:) + dRdxi(icp, 2)*coords(:, icp)
@@ -371,7 +371,7 @@ subroutine derivative_surface_mapping(u, v, iface, coords3D, nb_cp, S, Su, Sv, S
 
 
     call point_on_solid_face_map(u,v,iface,xi)
-    
+
     !! Get knot span and CP coordinates
     call updateMapElementNumber(xi)
     do icp = 1, nnode_map
@@ -414,3 +414,198 @@ subroutine derivative_surface_mapping(u, v, iface, coords3D, nb_cp, S, Su, Sv, S
     enddo
 
 end subroutine derivative_surface_mapping
+
+
+!! Project a point at the limit of a 2D solid
+!! Parameters
+!!  point : coordinates of point to be projected
+!!  iface : index of solid face (yeti convention) on which projection is performed
+!!  coords3D : coordinates of control points (1st index : direction, 2nd index : pt index)
+!!  nb_cp : number of control points
+!!  is_hull : logical indicating if solid is a hulle of not
+!!  maxstep : max step allowed for parametric coordinates at each Newton iteration
+!!  maxiter : max number of iterations for Newton methode
+!!  u0 : initial value for 1st parametric coordinate
+!!  xi : return value : parametric coordinates of the projected point
+!!  info : return code :    0 = standard exit (point coincidence or zero cosine)
+!!                          1 = maximum number of iterations reached
+!!                          2 = exit because parameters do not change significantly
+!!                          3 = exit for any other reason
+subroutine projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter, u0, &
+    &   xi, info)
+
+    use parameters
+    use nurbspatch
+
+    implicit none
+
+        !! Input variables
+    double precision, intent(in) :: point
+    dimension point(3)
+    integer, intent(in) :: iface
+    double precision, intent(in) :: coords3D
+    dimension coords3D(3,nb_cp)
+    integer, intent(in) :: nb_cp
+    logical :: is_hull
+    double precision, intent(in) :: maxstep
+    integer, intent(in) :: maxiter
+    double precision, intent(in) :: u0
+
+    !! Output variable
+    double precision, intent(out) :: xi
+    dimension xi(2)
+    integer, intent(out) :: info
+
+    !! Local variables
+    !  Tolerance for point coincidence condition
+    double precision, parameter :: tol1 = 1.D-8
+    !  Tolerance for zero cosine condition
+    double precision, parameter :: tol2 = 1.D-12
+    double precision :: u, uprev
+    double precision, dimension(3) :: C
+    double precision, dimension(3) :: Cu
+    double precision, dimension(3) :: Cuu
+    double precision, dimension(3) :: r
+    double precision :: err
+    integer :: i
+
+    info = 3
+    u = u0
+
+    do i = 1, maxiter
+        !! Evaluation at u
+        call derivative_curve(u, iface, coords3D, nb_cp, C, Cu, Cuu)
+
+        !! Check condition
+        ! 1. Point coincidence
+        r(:) = C(:) - point(:)
+        if(sqrt(dot_product(r,r)) .le. tol1) then
+            info = 0
+            exit
+        endif
+        ! 2. Zero cosine
+        err = abs(dot_product(Cu, r))/sqrt(dot_product(Cu,Cu)*dot_product(r,r))
+        if ((err .le. tol2).and.(i .ne. 1)) then
+            info = 4
+            exit
+        endif
+
+        uprev = u
+        u = u - dot_product(Cu, r)/(dot_product(Cuu, r)+dot_product(Cu, Cu))
+
+        select case(iface)
+        case(1,2)
+            if ( u .lt. minval(Ukv2_patch)) u = minval(Ukv2_patch)
+            if ( u .gt. maxval(Ukv2_patch)) u = maxval(Ukv2_patch)
+        case(3,4)
+            if ( u .lt. minval(Ukv1_patch)) u = minval(Ukv1_patch)
+            if ( u .gt. maxval(Ukv1_patch)) u = maxval(Ukv1_patch)
+        end select
+
+        if (norm2((u-uprev)*Cu) .le. tol1) then
+            info = 2
+            exit
+        endif
+    enddo
+
+    if (i .eq. maxiter) then
+        write(*,*) "Warning : max number of iterations reached during point to surface projection"
+        info = 1
+    endif
+
+    call point_on_2D_solid_curve(u, iface, xi)
+
+end subroutine projection_curve
+
+!! Compute derivative curve of a 2D solid
+!! Parameters
+!!  u : 1st parametric coordinate at which derivatives are computed
+!!  iface : index of solid face (yeti convention) on which projection is performed
+!!  coords3D : coordinates of control points (1st index : direction, 2nd index : pt index)
+!!  nb_cp : number of control points
+!!  C : return value : curve
+!!  Cu : return value : derivative of curve w.r.t u
+!!  Cuu : return value : 2nd derivative of curve w.r.t u
+subroutine derivative_curve(u, iface, coords3D, nb_cp, C, Cu, Cuu)
+    use parameters
+    use nurbspatch
+
+    implicit none
+
+    !! Input variables
+    double precision, intent(in) :: u
+    integer, intent(in) :: iface
+    double precision, intent(in) :: coords3D
+    dimension coords3D(3,nb_cp)
+    integer, intent(in) :: nb_cp
+
+    !! Output variables
+    double precision, intent(out) :: C, Cu, Cuu
+    dimension C(3), Cu(3), Cuu(3)
+
+    !! Local variables
+    integer :: icp
+    double precision, dimension(3) :: xi
+    double precision, dimension(3, nnode_patch) :: coords
+    double precision, dimension(nnode_patch) :: R
+    double precision, dimension(nnode_patch, 3) :: dRdxi
+    double precision, dimension(nnode_patch, 6) :: ddRddxi
+
+    call point_on_2D_solid_curve(u, iface, xi)
+
+    !! Get knot span and CP coordinates
+    call updateElementNumber(xi)
+    do icp = 1, nnode_patch
+        coords(:,icp) = COORDS3D(:3,IEN_patch(icp,current_elem))
+    enddo
+
+    call evalnurbs_w2ndDerv(xi, R, dRdxi, ddRddxi)
+
+    C(:) = zero
+    Cu(:) = zero
+    Cuu(:) = zero
+
+    do icp = 1, nnode_patch
+        C(:) = C(:) + R(icp)*coords(:, icp)
+        select case(iface)
+            !! TODO, on peut fair une table de correspondance avec les 2ème indices
+            !!     de dRdxi et ddRddxi
+            case(1,2)   !! xi(1) const
+                Cu(:) = Cu(:) + dRdxi(icp, 2)*coords(:, icp)
+                Cuu(:) = Cuu(:) + ddRddxi(icp, 2)*coords(:, icp)
+            case(3,4)   !! xi(2) const
+                Cu(:) = Cu(:) + dRdxi(icp, 1)*coords(:, icp)
+                Cuu(:) = Cuu(:) + ddRddxi(icp, 1)*coords(:, icp)
+        end select
+    enddo
+
+end subroutine derivative_curve
+
+!! Compute 2D parameters of a point on a given edge of a 2D solid
+subroutine point_on_2D_solid_curve(u, iface, xi)
+    use nurbspatch
+
+    implicit none
+
+    double precision, intent(in) :: u
+    integer, intent(in) :: iface
+    double precision, intent(out) :: xi
+    dimension xi(2)
+
+    select case(iface)
+        case(1)
+            xi(1) = minval(ukv1_patch)
+            xi(2) = u
+        case(2)
+            xi(1) = maxval(ukv1_patch)
+            xi(2) = u
+        case(3)
+            xi(1) = u
+            xi(2) = minval(ukv2_patch)
+        case(4)
+            xi(1) = u
+            xi(2) = maxval(ukv2_patch)
+    end select
+
+end subroutine point_on_2D_solid_curve
+

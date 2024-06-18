@@ -2,21 +2,24 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 !! Returns true if given element Nijk is on given face
-function IsElemOnFace(face, Nijk, Jpqr, Nkv)
+function IsElemOnFace(face, Nijk, Jpqr, Nkv, dim)
     implicit none
     integer :: face, Nijk, Jpqr, Nkv
+    integer :: dim
+    !! TODO adapt array dimension to problem dimension
+    ! dimension Nijk(dim), Jpqr(dim), Nkv(dim)
     dimension Nijk(3), Jpqr(3), Nkv(3)
     logical :: IsElemOnFace
 
@@ -25,8 +28,10 @@ function IsElemOnFace(face, Nijk, Jpqr, Nkv)
     if ((face .eq. 2) .and. (Nijk(1) .eq. (Nkv(1)-Jpqr(1)-1))) IsElemOnFace = .true.
     if ((face .eq. 3) .and. (Nijk(2) .eq. (Jpqr(2)+1))) IsElemOnFace = .true.
     if ((face .eq. 4) .and. (Nijk(2) .eq. (Nkv(2)-Jpqr(2)-1))) IsElemOnFace = .true.
-    if ((face .eq. 5) .and. (Nijk(3) .eq. (Jpqr(3)+1))) IsElemOnFace = .true.
-    if ((face .eq. 6) .and. (Nijk(3) .eq. (Nkv(3)-Jpqr(3)-1))) IsElemOnFace = .true.
+    if (dim .gt. 2) then
+        if ((face .eq. 5) .and. (Nijk(3) .eq. (Jpqr(3)+1))) IsElemOnFace = .true.
+        if ((face .eq. 6) .and. (Nijk(3) .eq. (Nkv(3)-Jpqr(3)-1))) IsElemOnFace = .true.
+    endif
 end function IsElemOnFace
 
 !! Return the number of elements on the given face of a patch
@@ -36,7 +41,7 @@ function NbElemOnFace(face, Jpqr, Nkv)
     integer :: face, Jpqr, Nkv
     dimension Jpqr(3), Nkv(3)
     integer :: NbElemOnFace
-    
+
     select case(face)
         case(1,2)
             NbElemOnFace = (Nkv(2) - 2*Jpqr(2) - 1)*(Nkv(3) - 2*Jpqr(3) - 1)
