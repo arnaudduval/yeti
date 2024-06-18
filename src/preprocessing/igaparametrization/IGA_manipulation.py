@@ -25,12 +25,14 @@ Utility functions to apply boundary conditions and for multi-patch coupling.
 
 import sys
 
+# from .IGA_parametrization import IGAparametrization
 import numpy as np
 import scipy.sparse as sp
+from scipy.linalg import blas
 
 from fitting.interpolate import buildgrevinterpolmat
 from fitting.evaluate import getgrevabscphysicalcoords
-from .bsplineDegreeElevation import decomposition
+from .bsplineDegreeElevation import decomposition,decomposition_sparse,localExtraction1Dunique
 
 
 def get_boundCPindice(Nkv, Jpqr, num_bound, num_patch=0, offset=0):
@@ -1238,7 +1240,7 @@ def bezier_decomposition_patch_discontinuous(igapara,numpatch=0,return_ien=False
         p = igapara._Jpqr[d,numpatch]
         u = ukv[d]
         n = u.size - (p+1)
-        M.append(sp.csc_matrix(decomposition(u,n,p+1)))
+        M.append(decomposition_sparse(u,n,p+1))
 
         nelF[d] = np.unique(u).size-1
         ncpF[d] = nelF[d]*(p+1)
@@ -1274,7 +1276,6 @@ def bezier_decomposition_patch_discontinuous(igapara,numpatch=0,return_ien=False
     ien = np.tile(np.arange(nnode[0]),(np.prod(nelF),np.prod(nnode[1:]))) \
         + np.tile(np.repeat(np.arange(nnode[1]),nnode[0]),(np.prod(nelF),nnode[2]))*ncpF[0]\
         + np.repeat(np.arange(nnode[2]),np.prod(nnode[:2]))*np.prod(ncpF[:2])
-    ien_tmp = ien.copy()
 
     offset = nijk[:,0]*nnode[0] \
         + nijk[:,1]*(ncpF[0]*nnode[1]) \
@@ -1286,7 +1287,7 @@ def bezier_decomposition_patch_discontinuous(igapara,numpatch=0,return_ien=False
     toreturn = [cp_decomp,jpqr_decomp]
     if return_ien==True:
         toreturn.append(ien)
-    Mtot = M2*M1*M0
+    Mtot = M2 @ M1 @ M0
     if return_mat==True:
         toreturn.append(Mtot.tocsr())
     if return_invmat==True:
@@ -1320,3 +1321,137 @@ def bezier_decomposition_elem(igapara,jelem):
     numelem  = testiel[numpatch]
     cp_decomp,jpqr_decomp = bezier_decomposition_patch(igapara,numpatch)
     return cp_decomp[numelem],jpqr_decomp[numelem]
+
+
+class localExtractionPatch:
+    '''This class is made for the function `bezier_decomposition`. It provides 
+    basis algorithms for the bezier decomposition of spline patches.
+    '''
+    def __init__(self, Ukv:list[np.ndarray], Jpqr:np.ndarray, dim:int) -> None:
+        self._dim = dim
+        self._Jpqr = Jpqr.copy()
+        self._Ukv = Ukv.copy()
+
+        uniqueC1D = []
+        self._alltouniqueC1D = []
+        for idim in range(dim):
+            uniqueCi, alltouniqueCi = localExtraction1Dunique(Ukv[idim], Jpqr[idim])
+            uniqueC1D.append(uniqueCi)
+            self._alltouniqueC1D.append(alltouniqueCi)
+        
+        self._uniqueC = {}
+        if dim == 1:
+            for i0 in range(len(uniqueC1D[0])):
+                C0 = uniqueC1D[0][i0]
+                key = '%i'%i0
+                self._uniqueC[key] = np.asfortranarray(C0)
+        elif dim == 2:
+            for i1 in range(len(uniqueC1D[1])):
+                C1 = uniqueC1D[1][i1]
+                for i0 in range(len(uniqueC1D[0])):
+                    C0 = uniqueC1D[0][i0]
+                    key = '%i,%i'%(i0,i1)
+                    self._uniqueC[key] = np.kron(C1,C0).T
+        elif dim == 3:
+            for i2 in range(len(uniqueC1D[2])):
+                C2 = uniqueC1D[2][i2]
+                for i1 in range(len(uniqueC1D[1])):
+                    C1 = uniqueC1D[1][i1]
+                    C2C1 = np.kron(C2,C1)
+                    for i0 in range(len(uniqueC1D[0])):
+                        C0 = uniqueC1D[0][i0]
+                        key = '%i,%i,%i'%(i0,i1,i2)
+                        self._uniqueC[key] = np.kron(C2C1,C0).T
+        
+    def getC(self, Nijk:np.ndarray[int]):
+        key = '%i' % self._alltouniqueC1D[0][Nijk[0]]
+        for i in range(1,self._dim):
+            key += ',%i' % self._alltouniqueC1D[i][Nijk[i]]
+        return self._uniqueC[key]
+    
+    def setSparseMats(self, ncp:int):
+        self._uniqueCsparse = {}
+        for key,value in self._uniqueC.items():
+            data = np.ravel(value,order='C')
+            ien = np.arange(value.shape[1])
+            indices = np.tile(ien,ien.size)
+            indptr  = np.arange(ien.size+1)*ien.size
+            self._uniqueCsparse[key] = sp.csr_matrix((data,indices,indptr),shape=(ien.size,ncp))
+
+    def getCsparse(self, Nijk:np.ndarray[int]):
+        if not hasattr(self, '_uniqueCsparse'):
+            raise AttributeError("First one needs to set the unique sparse operators by calling `setSparseMats`.")
+        key = '%i' % self._alltouniqueC1D[0][Nijk[0]]
+        for i in range(1,self._dim):
+            key += ',%i' % self._alltouniqueC1D[i][Nijk[i]]
+        return self._uniqueCsparse[key]
+
+def bezier_decomposition(igapara, listelem:None|np.ndarray=None, return_mat=False):
+    '''Bezier decomposition of elements of a IGA parameterization.
+
+    Parameters
+    ----------
+    igapara : IGAparametrization
+        A IGA model, can be multipatch.
+    listelem : None or Array of floats, optional
+        An array containing the indices of the elements for which a Bezier expression
+        is required. If None (default value), all the elements are decomposed.
+    return_mat : bool, optional.
+        If True, all the sparse extraction operators are outputed.
+
+    Returns
+    -------
+    bezierDecomp : dict
+        Dictionary that provides the Bezier representation of the elements. 
+        Keys are the element indices. Values are a list of two arrays: 
+        - First array gives the Bezier control point coordinates and weights,
+        - Second array gives the element degrees per direction.
+    bezierDecomp_mat : dict
+        Returned if `return_mat is True`. 
+        Keys are the element indices. Values are a sparse matrices.
+    '''
+    if listelem is None:
+        listelemsort = np.arange(igapara._nb_elem)
+    else:
+        listelemsort = np.sort(listelem)
+    
+    CPspline = np.block([[igapara._COORDS],[igapara._vectWeight]])
+    CPspline[:-1] *= CPspline[-1]
+    CPspline = np.asfortranarray(CPspline.T)
+
+    localExtractionByPatches = {}
+    bezierDecomp_mat = {}
+    bezierDecomp = {}
+    elemoffset = np.cumsum(np.block([0,igapara._elementsByPatch]))
+    ipatch = 0
+    for iel in listelemsort:
+        while iel >= elemoffset[ipatch+1]:
+            ipatch += 1
+        if ipatch not in localExtractionByPatches.keys():
+            localExtractionByPatches[ipatch] = localExtractionPatch(
+                igapara._Ukv[ipatch], igapara._Jpqr[:,ipatch], igapara._dim[ipatch])
+            if return_mat:
+                localExtractionByPatches[ipatch].setSparseMats(igapara._nb_cp)
+
+        nijk = igapara._Nijk[:,iel]
+        ien = igapara._IEN[ipatch][iel-elemoffset[ipatch]][::-1]-1
+        
+
+        Cel = localExtractionByPatches[ipatch].getC(nijk)
+        CPsplineEl = CPspline[ien,:]
+        wSplineEl = CPsplineEl[:,-1]
+        CPbezier = Cel @ CPsplineEl
+        wBezierInv = 1/CPbezier[:,-1]
+        CPbezier[:,:-1] *= np.vstack(wBezierInv)
+        bezierDecomp[iel] = [CPbezier,igapara._Jpqr[:,ipatch]]
+
+        if return_mat:
+            bezierDecomp_mat[iel] = localExtractionByPatches[ipatch].getCsparse(nijk).copy()
+            bezierDecomp_mat[iel].indices[:] = np.tile(ien,ien.size)
+            data = np.ravel(Cel * blas.dger(1.0, wBezierInv, wSplineEl), order='C')
+            bezierDecomp_mat[iel].data[:] = data[:]
+
+    if return_mat:
+        return bezierDecomp, bezierDecomp_mat
+    else:
+        return bezierDecomp
