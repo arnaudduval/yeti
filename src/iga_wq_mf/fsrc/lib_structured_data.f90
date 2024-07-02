@@ -645,7 +645,6 @@ contains
         else
             stop 'Try 2 or 3 dimensions'
         end if
-
     end subroutine space_eigendecomposition
 
     subroutine time_schurdecomposition(redsyst)

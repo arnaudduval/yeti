@@ -14,20 +14,20 @@ from pysrc.lib.lib_job import mechaproblem
 
 # Set global variables
 sampleSize   = 2500
-degree, cuts = 1, 8
+degree, cuts = 2, 1
 
 # Create model 
 geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-			'extra':{'XY':np.array([[0.0, 0.0], [1.e3, 0.0], [1.e3, 1.e3], [0.0, 1.e3]])}}
-quadArgs  = {'quadrule': 'wq'}
+			'extra':{'XY':np.array([[0.0, 0.0], [1., 0.0], [1., 1.], [0.0, 1.]])}}
+quadArgs  = {'quadrule': 'iga'}
 
 modelGeo = Geomdl(geoArgs)
 modelIGA = modelGeo.getIGAParametrization()
 model    = part(modelIGA, quadArgs=quadArgs)
 
 # Add material 
-matArgs  = {'elastic_modulus':2e5, 'elastic_limit':100, 'poisson_ratio': 0.3}
+matArgs  = {'elastic_modulus':1e2, 'elastic_limit':100, 'poisson_ratio': 0.3}
 material = mechamat(matArgs)
 
 # Set Dirichlet boundaries
@@ -52,15 +52,17 @@ problem = mechaproblem(material, model, boundary)
 # TRACTION FOLLOWING Y
 # --------------------
 def forceSurfFun(P:list):
-	ref  = np.array([0.0, 4e1])
+	ref  = np.array([0.0, 1e1])
 	prop = np.zeros((2, np.size(P, axis=1)))
 	for i in range(2): prop[i, :] = ref[i] 
 	return prop
 Fext = problem.compute_surfForce(forceSurfFun, nbFacePosition=3)[0]
 
 # Solve in fortran 
+problem._linPreCond = 'C'; problem._linSolv = 'BICG'
 start = time.time()
-disp_cp = problem._solveLinearizedElasticityProblem(Fext=Fext)[0]
+disp_cp, residual = problem._solveLinearizedElasticityProblem(Fext=Fext)
+print(len(residual[residual>0]))
 stop = time.time()
 print('CPU time: %5e' %(stop-start))
 
