@@ -356,8 +356,8 @@ class mechaproblem1D(problem1D):
 
 		nbChaboche = self.mechamat._chabocheNBparameters
 		nbqp = self.part.nbqp; dof = self.boundary.thdof; dod = self.boundary.thdod
-		pls_n0, a_n0, b_n0 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
-		pls_n1, a_n1, b_n1 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
+		plasticstrain_n0, plseq_n0, back_n0 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
+		plasticstrain_n1, plseq_n1, back_n1 = np.zeros((1, nbqp)), np.zeros((1, nbqp)), np.zeros((nbChaboche, 1, nbqp))
 
 		Allstrain  = np.zeros((nbqp, np.shape(Fext_list)[1]))
 		Allplseq = np.zeros((nbqp, np.shape(Fext_list)[1]))
@@ -384,9 +384,9 @@ class mechaproblem1D(problem1D):
 				strain = self.interpolate_strain(dj_n1)
 
 				# Find closest point projection 
-				output, isElasticLoad = self.mechamat.J2returnMappingAlgorithm1D(strain, pls_n0, a_n0, b_n0)
-				stress = output['stress']; pls_n1 = output['pls']; a_n1 = output['alpha']
-				b_n1 = output['beta']; Cep = output['mechArgs']
+				output, isElasticLoad = self.mechamat.J2returnMappingAlgorithm1D(strain, plasticstrain_n0, plseq_n0, back_n0)
+				stress = output['stress']; plasticstrain_n1 = output['plastic']; plseq_n1 = output['plseq']
+				back_n1 = output['back']; Cep = output['mechArgs']
 
 				# Compute internal force 
 				Fint_dj = self.compute_MechStaticIntForce(stress)
@@ -411,10 +411,10 @@ class mechaproblem1D(problem1D):
 			dispinout[:, i] = dj_n1
 			Allstrain[:, i] = np.ravel(strain)
 			Allstress[:, i] = np.ravel(stress)
-			Allplseq[:, i]  = a_n1
+			Allplseq[:, i]  = plseq_n1
 			AllCep[:, i]    = np.ravel(Cep)
 
-			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
+			plasticstrain_n0, plseq_n0, back_n0 = np.copy(plasticstrain_n1), np.copy(plseq_n1), np.copy(back_n1)
 
 		return Allstrain, Allstress, Allplseq, AllCep
 

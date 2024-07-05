@@ -33,10 +33,10 @@ YOUNG, POISSON = 2500, 0.25
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi/2, NBSTEPS)
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':5, 'poisson_ratio': POISSON, 
-			'isoHardLaw': {'name':'linear', 'Eiso':0.0}, 
-			'kineHardLaw':{'parameters':np.array([[500, 0]])}
+			'isoHardLaw': {'name':'linear', 'Eiso':500.0}, 
+			# 'kineHardLaw':{'parameters':np.array([[500, 0]])}
 			}
-isReference = False
+isReference = True
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -74,28 +74,28 @@ def simulate(degree, cuts, quadArgs):
 	return problem, displacement, meshparam, internalVars
 
 if isReference:
-	degree, cuts = 2, 8
+	degree, cuts = 2, 5
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs)
 	# np.save(folder + 'disppl', displacement)
 	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
 	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 
-	stress_qp = internalVars.get('stress', None)
-	alpha_qp = internalVars.get('hardening', None)
-	plastic_qp = np.where(np.abs(alpha_qp)<1e-6, 0.0, 1.0)
-	for j, i in enumerate(range(0, NBSTEPS, 4)):
-		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i], dim=2)
-		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp, dim=2)
-		vonMises_cp = problem.L2projectionCtrlpts(vonMises_qp)
-		alpha_cp = problem.L2projectionCtrlpts(alpha_qp[0, :, i])
-		plastic_cp = problem.L2projectionCtrlpts(plastic_qp[0, :, i])
-		problem.part.exportResultsCP(fields={'stress': vonMises_cp, 'straineq': alpha_cp, 'plastic':plastic_cp}, 
-									name='pls'+str(j), folder=folder, sampleSize=401)
-	run(folder=folder)
+	# stress_qp = internalVars.get('stress', None)
+	# alpha_qp = internalVars.get('hardening', None)
+	# plastic_qp = np.where(np.abs(alpha_qp)<1e-6, 0.0, 1.0)
+	# for j, i in enumerate(range(0, NBSTEPS, 4)):
+	# 	devstress_qp = computeDeviatoric4All(stress_qp[:, :, i], dim=2)
+	# 	vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp, dim=2)
+	# 	vonMises_cp = problem.L2projectionCtrlpts(vonMises_qp)
+	# 	alpha_cp = problem.L2projectionCtrlpts(alpha_qp[0, :, i])
+	# 	plastic_cp = problem.L2projectionCtrlpts(plastic_qp[0, :, i])
+	# 	problem.part.exportResultsCP(fields={'stress': vonMises_cp, 'straineq': alpha_cp, 'plastic':plastic_cp}, 
+	# 								name='pls'+str(j), folder=folder, sampleSize=401)
+	# run(folder=folder)
 	
 else:
-	
+
 	with open(folder + 'refpartpl.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 	disp_ref = np.load(folder + 'disppl.npy')
@@ -107,24 +107,24 @@ else:
 	cuts_list  = np.arange(2, 7)
 	step_list  = range(1, NBSTEPS, 3)
 
-	# # quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	# quadArgs = {'quadrule': 'wq', 'type': 1}
-	# error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
-	# mesh_list  = np.ones((len(degree_list), len(cuts_list)))
-	# for i, degree in enumerate(degree_list):
-	# 	for j, cuts in enumerate(cuts_list):
-	# 		problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
-	# 		mesh_list[i, j] = meshparam
+	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	quadArgs = {'quadrule': 'wq', 'type': 1}
+	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
+	mesh_list  = np.ones((len(degree_list), len(cuts_list)))
+	for i, degree in enumerate(degree_list):
+		for j, cuts in enumerate(cuts_list):
+			problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
+			mesh_list[i, j] = meshparam
 
-	# 		for k, step in enumerate(step_list):
-	# 			error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
-	# 													normArgs={'type':'H1', 
-	# 													'part_ref':part_ref, 
-	# 													'u_ref': disp_ref[:, :, step]})
+			for k, step in enumerate(step_list):
+				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
+														normArgs={'type':'H1', 
+														'part_ref':part_ref, 
+														'u_ref': disp_ref[:, :, step]})
 
-	# quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
-	# np.save(folder + 'plasticity2D'+quadrule+str(quadtype), error_list)
-	# np.save(folder + 'meshpar2D'+quadrule+str(quadtype), mesh_list)
+	quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
+	np.save(folder + 'plasticity2D'+quadrule+str(quadtype), error_list)
+	np.save(folder + 'meshpar2D'+quadrule+str(quadtype), mesh_list)
 
 	for k, step in enumerate(step_list):
 		fig, ax = plt.subplots(figsize=(6, 5))

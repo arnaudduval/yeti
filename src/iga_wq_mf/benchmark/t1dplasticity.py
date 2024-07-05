@@ -25,8 +25,9 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e6, 'poisson_ratio':0.3,
 MECHAMATERIAL = mechamat(MATARGS)
 isReference = True
 
-def forceVol(P:list):
-	force = CST*(P - 1/10*P**2)
+def forceVol(P:dict):
+	x = P['position']
+	force = CST*(x - 1/10*x**2)
 	return force
 
 def simulate(degree, nbel, kwargs, step=-2):
@@ -44,21 +45,21 @@ def simulate(degree, nbel, kwargs, step=-2):
 
 if isReference:
 
-	degree, nbel = 2, 1024
+	degree, nbel = 2, 128
 	args = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
 	modelPhy, displacement, stress, plasticeq = simulate(degree, nbel, args)
-	np.save(folder + 'disppl', displacement)
-	with open(folder + 'refpartpl.pkl', 'wb') as outp:
-		pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
+	# np.save(folder + 'disppl', displacement)
+	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
+	# 	pickle.dump(modelPhy, outp, pickle.HIGHEST_PROTOCOL)
 
 	plasticeq_cp = modelPhy.L2projectionCtrlpts(plasticeq)
 	stress_cp  = modelPhy.L2projectionCtrlpts(stress)
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
-	basis = modelPhy.quadRule.getSampleBasis(sampleSize=101)[0]
+	basis = modelPhy.part.quadRule.getSampleBasis(sampleSize=101)[0]
 	displacement_interp = basis[0].T @ displacement
 	plasticeq_interp = basis[0].T @ plasticeq_cp
 	stress_interp  = basis[0].T @ stress_cp
-	qpPhy_interp   = basis[0].T @ modelPhy.ctrlpts
+	qpPhy_interp   = basis[0].T @ modelPhy.part.ctrlpts
 
 	# Plot fields
 	XX, STEPS = np.meshgrid(qpPhy_interp, np.arange(1, NBSTEPS))

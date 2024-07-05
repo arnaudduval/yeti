@@ -485,12 +485,12 @@ class mechaproblem(problem):
 		nsteps = np.shape(Fext_list)[2]
 
 		# Internal variables
-		pls_n0 = np.zeros((nvoigt, nbqp_total))
-		a_n0   = np.zeros((1, nbqp_total))
-		b_n0   = np.zeros((nbChaboche, nvoigt, nbqp_total))
-		pls_n1 = np.zeros((nvoigt, nbqp_total))
-		a_n1   = np.zeros((1, nbqp_total))
-		b_n1   = np.zeros((nbChaboche, nvoigt, nbqp_total))
+		plasticstrain_n0 = np.zeros((nvoigt, nbqp_total))
+		plseq_n0 = np.zeros((1, nbqp_total))
+		back_n0 = np.zeros((nbChaboche, nvoigt, nbqp_total))
+		plasticstrain_n1 = np.zeros((nvoigt, nbqp_total))
+		plseq_n1 = np.zeros((1, nbqp_total))
+		back_n1 = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		
 		# Output variables
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
@@ -520,9 +520,9 @@ class mechaproblem(problem):
 				strain = self.interpolate_strain(dj_n1)
 	
 				# Closest point projection in perfect plasticity
-				output, isElasticLoad = self.mechamaterial.J2returnMappingAlgorithm3D(strain, pls_n0, a_n0, b_n0)
-				stress = output['stress']; pls_n1 = output['pls']; a_n1 = output['alpha']
-				b_n1 = output['beta']; mechArgs = output['mechArgs']
+				output, isElasticLoad = self.mechamaterial.J2returnMappingAlgorithm3D(strain, plasticstrain_n0, plseq_n0, back_n0)
+				stress = output['stress']; plasticstrain_n1 = output['plastic']; plseq_n1 = output['plseq']
+				back_n1 = output['back']; mechArgs = output['mechArgs']
 
 				# Compute internal force 
 				Fint_dj = self.compute_MechStaticIntForce(stress)
@@ -549,9 +549,9 @@ class mechaproblem(problem):
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress	
 			Allstrain[:, :, i] = strain
-			Allhardening[0, :, i] = a_n1[0, :]
+			Allhardening[0, :, i] = plseq_n1[0, :]
 
-			pls_n0, a_n0, b_n0 = np.copy(pls_n1), np.copy(a_n1), np.copy(b_n1)
+			plasticstrain_n0, plseq_n0, back_n0 = np.copy(plasticstrain_n1), np.copy(plseq_n1), np.copy(back_n1)
 
 		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
 

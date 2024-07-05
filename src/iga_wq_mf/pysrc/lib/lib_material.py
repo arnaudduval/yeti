@@ -124,23 +124,23 @@ class mechamat(material):
 		kineLaw = matArgs.get('kineHardLaw', {})
 		chabocheTable = kineLaw.get('parameters', np.array([[0, 0]]))
 		# By default if only one parameter we consider a linear kinematic hardening
-		# Armstrong Frederick hardening is only considering a single row [[b, c]]
+		# Armstrong Frederick hardening is only considering a single row [[c, d]]
 		self._chabocheTable = np.atleast_2d(chabocheTable)
 		self._chabocheNBparameters = np.size(self._chabocheTable, axis=0)
 
 		if self._chabocheNBparameters == 1 and self._chabocheTable[0, 1] == 0:
 			# Linear
 			self.parametersPreCalc3D = self.__parametersPreCalc3D_m2
-			self.consistentTangentAlgorithm3D = self.__consistentTangentAlgorithm3D_m2
 			self.parametersPreCalc1D = self.__parametersPreCalc1D_m2
-			self.consistentTangentAlgorithm1D = self.__consistentTangentAlgorithm1D_m2
 		else:
 			# Armstrong or Chaboche
 			self.parametersPreCalc3D = self.__parametersPreCalc3D_m1
-			self.consistentTangentAlgorithm3D = self.__consistentTangentAlgorithm3D_m1
 			self.parametersPreCalc1D = self.__parametersPreCalc1D_m1
-			self.consistentTangentAlgorithm1D = self.__consistentTangentAlgorithm1D_m1
+
+		self.consistentTangentAlgorithm3D = self.__consistentTangentAlgorithm3D
+		self.consistentTangentAlgorithm1D = self.__consistentTangentAlgorithm1D		
 		return
+	
 		
 	def __setExtraMechanicalProperties(self):
 		E  = self.elasticModulus
@@ -199,97 +199,87 @@ class mechamat(material):
 	
 	# 3D (or 2D even if within their name one could find '3D')
 	
-	def __sumOverChabocheTable(self, dgamma, beta):
-		avrbeta = np.zeros(np.shape(beta[0, :, :])); hatbeta = np.zeros(np.shape(beta[0, :, :]))
+	def __sumOverChabocheTable(self, dgamma, back):
+		meanback = np.zeros(np.shape(back[0, :, :])); hatback = np.zeros(np.shape(back[0, :, :]))
 		const1, const2 = np.zeros(shape=np.shape(dgamma)), np.zeros(shape=np.shape(dgamma))
 		for i in range(self._chabocheNBparameters):
-			[bi, ci] = self._chabocheTable[i, :]
-			avrbeta += beta[i, :, :]/(1 + bi*dgamma)
-			hatbeta += bi*beta[i, :, :]/(1 + bi*dgamma)**2
-			const1 += ci/(1 + bi*dgamma)
-			const2 += ci/(1 + bi*dgamma)**2
-		return avrbeta, hatbeta, const1, const2
+			[ci, di] = self._chabocheTable[i, :]
+			meanback += back[i, :, :]/(1 + di*dgamma)
+			hatback += di*back[i, :, :]/(1 + di*dgamma)**2
+			const1 += ci/(1 + di*dgamma)
+			const2 += ci/(1 + di*dgamma)**2
+		return meanback, hatback, const1, const2
 
-	def __parametersPreCalc3D_m1(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
+	def __parametersPreCalc3D_m1(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 
 		nvoigt, nnz = np.shape(stress_trial)
 		if nvoigt   == 3: dim = 2
 		elif nvoigt == 6: dim = 3
-		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0)
-		theta = np.zeros(shape=np.shape(alpha_n0)); thetatilde = np.zeros(shape=np.shape(alpha_n0))
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
+		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
-			avrbeta, hatbeta, const1, const2 = self.__sumOverChabocheTable(dgamma, beta_n0)
-			hateta = computeDeviatoric4All(stress_trial - avrbeta, dim=dim)
-			normhateta = computeSymTensorNorm4All(hateta, dim=dim)
-			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
+			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
+			hatshifted = computeDeviatoric4All(stress_trial - meanback, dim=dim)
+			normhatshifted = computeSymTensorNorm4All(hatshifted, dim=dim)
+			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
+						- self._isoHardening._isohardfun(straineq_n1)
+			)
+			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
 			if k == 0: resNL0 = resNLj
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = hateta/normhateta
-			normhatetaders = computeSymDoubleContraction4All(normal, hatbeta, dim=dim)
-			df = np.sqrt(3.0/2.0)*normhatetaders - 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(alpha_n1)			
-			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
-			thetatilde = -3*self.lame_mu/df
-			theta = 2*self.lame_mu*dgamma/(normhateta)*np.sqrt(3.0/2.0)
+			normal = hatshifted/normhatshifted
+			dersfunyield = (np.sqrt(3.0/2.0)*computeSymDoubleContraction4All(normal, hatback, dim=dim) 
+				- 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(straineq_n1)
+			)	
+			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
+			thetatilde = -3*self.lame_mu/dersfunyield
+			theta = 2*self.lame_mu*dgamma/(normhatshifted)*np.sqrt(3.0/2.0)
 
-		return dgamma, hatbeta, normal, theta, thetatilde
+		return dgamma, hatback, normal, theta, thetatilde
 
-	def __consistentTangentAlgorithm3D_m1(self, nnz, isElastic, plsVars={}):
+	def __parametersPreCalc3D_m2(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
+
+		nvoigt, nnz = np.shape(stress_trial)
+		if nvoigt   == 3: dim = 2
+		elif nvoigt == 6: dim = 3
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
+		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
+		for k in range(nbIter):
+			_, hatback, const1, _ = self.__sumOverChabocheTable(dgamma, back_n0)
+			hatshifted = computeDeviatoric4All(stress_trial - back_n0[0, :, :], dim=dim)
+			normhatshifted = computeSymTensorNorm4All(hatshifted, dim=dim)
+			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
+						- self._isoHardening._isohardfun(straineq_n1)
+			)
+			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
+			if k == 0: resNL0 = resNLj
+			if resNLj <= max([threshold*resNL0, 1e-12]): break
+			normal = hatshifted/normhatshifted
+			dersfunyield = - 3.0/2.0*(2*self.lame_mu + const1) - self._isoHardening._isohardfunders(straineq_n1)			
+			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
+			thetatilde = -3*self.lame_mu/dersfunyield
+			theta = 2*self.lame_mu*dgamma/(normhatshifted)*np.sqrt(3.0/2.0)
+
+		return dgamma, hatback, normal, theta, thetatilde
+	
+	def __consistentTangentAlgorithm3D(self, nnz, isElastic, plsVars={}):
 		if isElastic:
 			mechArgs = np.zeros((2, nnz))
 			mechArgs[0, :] = self.lame_lambda; mechArgs[1, :] = self.lame_mu
 		else:
-			plsInd = plsVars['plsInd']; normal = plsVars['normal']; hatbeta = plsVars['hatbeta']
+			plsInd = plsVars['plsInd']; normal = plsVars['normal']; hatback = plsVars['hatback']
 			theta  = np.ravel(plsVars['theta']); thetatilde = np.ravel(plsVars['thetatilde'])
-			nvoigt = np.size(hatbeta, axis=0)
+			nvoigt = np.size(hatback, axis=0)
 			mechArgs = np.zeros((4+2*nvoigt, nnz))
 			mechArgs[0, :] = self.lame_lambda; mechArgs[0, plsInd] += 2.0/3.0*self.lame_mu*theta 
 			mechArgs[1, :] = self.lame_mu; mechArgs[1, plsInd] = self.lame_mu*(1 - theta)
 			mechArgs[2, plsInd] = -2*self.lame_mu*(thetatilde - theta)
 			mechArgs[3, plsInd] = -np.sqrt(2.0/3.0)*theta*thetatilde
 			mechArgs[4:4+nvoigt, plsInd] = normal
-			mechArgs[4+nvoigt:, plsInd]  = hatbeta
+			mechArgs[4+nvoigt:, plsInd]  = hatback
 		return mechArgs
 
-	def __parametersPreCalc3D_m2(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
-
-		nvoigt, nnz = np.shape(stress_trial)
-		if nvoigt   == 3: dim = 2
-		elif nvoigt == 6: dim = 3
-		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0)
-		theta = np.zeros(shape=np.shape(alpha_n0)); thetatilde = np.zeros(shape=np.shape(alpha_n0))
-		const1 = self._chabocheTable[0, 0]; hatbeta = np.zeros(np.shape(beta_n0[0, :, :]))
-		for k in range(nbIter):
-			hateta = computeDeviatoric4All(stress_trial - beta_n0[0, :, :], dim=dim)
-			normhateta = computeSymTensorNorm4All(hateta, dim=dim)
-			f = np.sqrt(3.0/2.0)*normhateta - 3.0/2.0*(2*self.lame_mu + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
-			if k == 0: resNL0 = resNLj
-			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = hateta/normhateta
-			df = - 3.0/2.0*(2*self.lame_mu + const1) - self._isoHardening._isohardfunders(alpha_n1)			
-			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
-			thetatilde = -3*self.lame_mu/df
-			theta = 2*self.lame_mu*dgamma/(normhateta)*np.sqrt(3.0/2.0)
-
-		return dgamma, hatbeta, normal, theta, thetatilde
-
-	def __consistentTangentAlgorithm3D_m2(self, nnz, isElastic, plsVars={}):
-		if isElastic:
-			mechArgs = np.zeros((2, nnz))
-			mechArgs[0, :] = self.lame_lambda; mechArgs[1, :] = self.lame_mu
-		else:
-			plsInd = plsVars['plsInd']; normal = plsVars['normal']; hatbeta = plsVars['hatbeta']
-			theta  = np.ravel(plsVars['theta']); thetatilde = np.ravel(plsVars['thetatilde'])
-			nvoigt = np.size(hatbeta, axis=0)
-			mechArgs = np.zeros((4+2*nvoigt, nnz))
-			mechArgs[0, :] = self.lame_lambda; mechArgs[0, plsInd] += 2.0/3.0*self.lame_mu*theta 
-			mechArgs[1, :] = self.lame_mu; mechArgs[1, plsInd] = self.lame_mu*(1 - theta)
-			mechArgs[2, plsInd] = -2*self.lame_mu*(thetatilde - theta)
-			mechArgs[4:4+nvoigt, plsInd] = normal
-		return mechArgs
-
-	def J2returnMappingAlgorithm3D(self, strain_n1, pls_n0, alpha_n0, beta_n0, isElasticMatrix=False, threshold=1e-8):
+	def J2returnMappingAlgorithm3D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
 		nvoigt, nnz = np.shape(strain_n1)
@@ -298,69 +288,83 @@ class mechamat(material):
 		isElasticLoad = True; output = {}
 
 		# Compute trial stress
-		strain_trial = strain_n1 - pls_n0
+		strain_trial = strain_n1 - plasticstrain_n0
 		stress_trial = self.evalElasticStress(strain_trial, dim=dim)
 
 		# Compute shifted stress
-		eta_trial = computeDeviatoric4All(stress_trial - np.sum(beta_n0, axis=0), dim=dim)
+		shifted_trial = computeDeviatoric4All(stress_trial - np.sum(back_n0, axis=0), dim=dim)
 
 		# Check yield status
-		norm_eta_trial = computeSymTensorNorm4All(eta_trial, dim)
-		f_trial = np.sqrt(3.0/2.0)*norm_eta_trial - self._isoHardening._isohardfun(alpha_n0)
-		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
-		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
+		norm_shifted_trial = computeSymTensorNorm4All(shifted_trial, dim)
+		yield_trial = np.sqrt(3.0/2.0)*norm_shifted_trial - self._isoHardening._isohardfun(plseq_n0)
+		stress_n1 = np.copy(stress_trial); plasticstrain_n1= np.copy(plasticstrain_n0); 
+		plseq_n1 = np.copy(plseq_n0); back_n1 = np.copy(back_n0); plsVars = {}
 
-		plsInd = np.nonzero(np.ravel(f_trial)>threshold*self.elasticLimit)[0]
+		plsInd = np.nonzero(np.ravel(yield_trial)>threshold*self.elasticLimit)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
 
 			# Compute plastic-strain increment
-			dgamma, hatbeta, normal, theta, thetatilde = self.parametersPreCalc3D(stress_trial[:, plsInd], 
-															beta_n0[:, :, plsInd], alpha_n0[:, plsInd])
+			dgamma, hatback, normal, theta, thetatilde = self.parametersPreCalc3D(stress_trial[:, plsInd], 
+															back_n0[:, :, plsInd], plseq_n0[:, plsInd])
 
 			# Update internal hardening variable
-			alpha_n1[:, plsInd] += dgamma
+			plseq_n1[:, plsInd] += dgamma
 
 			# Update stress
 			stress_n1[:, plsInd] -= 2*self.lame_mu*np.sqrt(3.0/2.0)*dgamma*normal
 			
 			# Update plastic strain
-			pls_n1[:, plsInd] += np.sqrt(3.0/2.0)*dgamma*normal
+			plasticstrain_n1[:, plsInd] += np.sqrt(3.0/2.0)*dgamma*normal
 
 			# Update backstress
 			for i in range(self._chabocheNBparameters):
-				[bi, ci] = self._chabocheTable[i, :]
+				[ci, di] = self._chabocheTable[i, :]
 				for j, ind in enumerate(plsInd):
-					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + np.sqrt(3.0/2.0)*ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
+					back_n1[i, :, ind] = (back_n0[i, :, ind] + np.sqrt(3.0/2.0)*ci*dgamma[:, j]*normal[:, j])/(1. + di*dgamma[:, j])
 					
-			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatbeta': hatbeta, 'theta': theta, 'thetatilde': thetatilde}
+			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatback': hatback, 'theta': theta, 'thetatilde': thetatilde}
 
 		mechArgs = self.consistentTangentAlgorithm3D(nnz, isElasticMatrix+isElasticLoad, plsVars)
-		output = {'stress': stress_n1, 'pls': pls_n1, 'alpha': alpha_n1, 'beta': beta_n1, 'mechArgs': mechArgs}
+		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 'back': back_n1, 'mechArgs': mechArgs}
 
 		return output, isElasticLoad
 	
 	# 1D
-	def __parametersPreCalc1D_m1(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
+	def __parametersPreCalc1D_m1(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 		
-		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0); theta = np.zeros(shape=np.shape(alpha_n0))
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
-			avrbeta, hatbeta, const1, const2 = self.__sumOverChabocheTable(dgamma, beta_n0)
-			hateta = stress_trial - avrbeta
-			normhateta = np.abs(hateta)
-			f = normhateta - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
+			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
+			hatshifted = stress_trial - meanback
+			funyield = np.abs(hatshifted) - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(plseq_n1)
+			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
 			if k == 0: resNL0 = resNLj
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = np.sign(hateta)
-			normhatetaders = normal*hatbeta
-			df = normhatetaders - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(alpha_n1)			
-			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
-			theta = -self.elasticModulus/df
-		return dgamma, hatbeta, normal, theta
+			normal = np.sign(hatshifted)
+			dersfunyield = normal*hatback - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(plseq_n1)			
+			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
+			theta = -self.elasticModulus/dersfunyield
+		return dgamma, hatback, normal, theta
 	
-	def __consistentTangentAlgorithm1D_m1(self, nnz, isElastic, plsVars={}):
+	def __parametersPreCalc1D_m2(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
+		
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
+		for k in range(nbIter):
+			_, hatback, const1, _ = self.__sumOverChabocheTable(dgamma, back_n0)
+			hatshifted = stress_trial - back_n0[0, :]
+			funyield = np.abs(hatshifted) - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(plseq_n1)
+			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
+			if k == 0: resNL0 = resNLj
+			if resNLj <= max([threshold*resNL0, 1e-12]): break
+			normal = np.sign(hatshifted)
+			dersfunyield = - (self.elasticModulus + const1) - self._isoHardening._isohardfunders(plseq_n1)			
+			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
+			theta = -self.elasticModulus/dersfunyield
+		return dgamma, hatback, normal, theta
+	
+	def __consistentTangentAlgorithm1D(self, nnz, isElastic, plsVars={}):
 		mechArgs = np.zeros((1, nnz))
 		mechArgs[0, :] = self.elasticModulus
 		if not isElastic:
@@ -368,77 +372,52 @@ class mechamat(material):
 			mechArgs[0, plsInd] = self.elasticModulus*(1 - theta)
 		return mechArgs
 	
-	def __parametersPreCalc1D_m2(self, stress_trial, beta_n0, alpha_n0, nbIter=50, threshold=1e-8):
-		
-		dgamma = np.zeros(shape=np.shape(alpha_n0)); alpha_n1 = np.copy(alpha_n0); theta = np.zeros(shape=np.shape(alpha_n0))
-		const1 = self._chabocheTable[0, 0]; hatbeta = np.zeros(np.shape(beta_n0[0, :]))
-		for k in range(nbIter):
-			hateta = stress_trial - beta_n0[0, :]
-			normhateta = np.abs(hateta)
-			f = normhateta - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(alpha_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(f), np.ravel(f)))
-			if k == 0: resNL0 = resNLj
-			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = np.sign(hateta)
-			df = - (self.elasticModulus + const1) - self._isoHardening._isohardfunders(alpha_n1)			
-			dgamma -= f/df; alpha_n1 = alpha_n0 + dgamma
-			theta = -self.elasticModulus/df
-		return dgamma, hatbeta, normal, theta
-	
-	def __consistentTangentAlgorithm1D_m2(self, nnz, isElastic, plsVars={}):
-		mechArgs = np.zeros((1, nnz))
-		mechArgs[0, :] = self.elasticModulus
-		if not isElastic:
-			plsInd = plsVars['plsInd']; theta = plsVars['theta']
-			mechArgs[0, plsInd] = self.elasticModulus*(1 - theta)
-		return mechArgs
-	
-	def J2returnMappingAlgorithm1D(self, strain_n1, pls_n0, alpha_n0, beta_n0, isElasticMatrix=False, threshold=1e-8):
+	def J2returnMappingAlgorithm1D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
 		isElasticLoad = True; output = {}
 
 		# Compute trial stress
-		strain_trial = strain_n1 - pls_n0
+		strain_trial = strain_n1 - plasticstrain_n0
 		stress_trial = self.elasticModulus*strain_trial
 
 		# Compute shifted stress
-		eta_trial = stress_trial - np.sum(beta_n0, axis=0)
+		shifted_trial = stress_trial - np.sum(back_n0, axis=0)
 
 		# Check yield status
-		norm_eta_trial = np.abs(eta_trial)
-		f_trial = norm_eta_trial - self._isoHardening._isohardfun(alpha_n0)
-		stress_n1 = np.copy(stress_trial); pls_n1= np.copy(pls_n0); 
-		alpha_n1 = np.copy(alpha_n0); beta_n1 = np.copy(beta_n0); plsVars = {}
+		norm_shifted_trial = np.abs(shifted_trial)
+		yield_trial = norm_shifted_trial - self._isoHardening._isohardfun(plseq_n0)
+		stress_n1 = np.copy(stress_trial); plasticstrain_n1= np.copy(plasticstrain_n0)
+		plseq_n1 = np.copy(plseq_n0); back_n1 = np.copy(back_n0); plsVars = {}
 
-		plsInd = np.nonzero(np.ravel(f_trial)/self.elasticLimit>threshold)[0]
+		plsInd = np.nonzero(np.ravel(yield_trial)>threshold*self.elasticLimit)[0]
 		if np.size(plsInd) > 0:
 
 			isElasticLoad = False
 
 			# Compute plastic-strain increment
-			dgamma, hatbeta, normal, theta = self.parametersPreCalc1D(stress_trial[:, plsInd], 
-															beta_n0[:, :, plsInd], alpha_n0[:, plsInd])
+			dgamma, hatback, normal, theta = self.parametersPreCalc1D(stress_trial[:, plsInd], 
+															back_n0[:, :, plsInd], plseq_n0[:, plsInd])
 
 			# Update internal hardening variable
-			alpha_n1[:, plsInd] += dgamma
+			plseq_n1[:, plsInd] += dgamma
 
 			# Update stress
 			stress_n1[:, plsInd] -= self.elasticModulus*dgamma*normal
 			
 			# Update plastic strain
-			pls_n1[:, plsInd] += dgamma*normal
+			plasticstrain_n1[:, plsInd] += dgamma*normal
 
 			# Update backstress
 			for i in range(self._chabocheNBparameters):
-				[bi, ci] = self._chabocheTable[i, :]
+				[ci, di] = self._chabocheTable[i, :]
 				for j, ind in enumerate(plsInd):
-					beta_n1[i, :, ind] = (beta_n0[i, :, ind] + ci*dgamma[:, j]*normal[:, j])/(1. + bi*dgamma[:, j])
+					back_n1[i, :, ind] = (back_n0[i, :, ind] + ci*dgamma[:, j]*normal[:, j])/(1. + di*dgamma[:, j])
 
-			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatbeta': hatbeta, 'theta': theta}
+			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatback': hatback, 'theta': theta}
 
-		mechArgs = self.consistentTangentAlgorithm1D(np.size(alpha_n0, axis=1), isElasticMatrix+isElasticLoad, plsVars)
-		output = {'stress': stress_n1, 'pls': pls_n1, 'alpha': alpha_n1, 'beta': beta_n1, 'mechArgs': mechArgs}
+		mechArgs = self.consistentTangentAlgorithm1D(np.size(plseq_n0, axis=1), isElasticMatrix+isElasticLoad, plsVars)
+		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 'back': back_n1, 'mechArgs': mechArgs}
 
 		return output, isElasticLoad
 
