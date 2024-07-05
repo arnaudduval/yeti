@@ -21,7 +21,7 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':5, 'poisson_ratio': POISSON,
 			'kineHardLaw':{'parameters':np.array([[500, 0]])}
 			}
 ITERMETHODS = ['C', 'JMC', 'TDC']
-runSimu = True
+runSimu = False
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -110,7 +110,6 @@ else:
 		axs[0].plot([], [], marker='s', color=COLORLIST[i+1], label=labelmethod, linewidth=0.5)
 		axs[1].plot([], [], marker='s', color=COLORLIST[i+1], label=labelmethod, linewidth=0.5)
 
-
 	# fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 	# for i, PCGmethod in enumerate(ITERMETHODS):
 	# 	filename = folder + 'ResPCGpls_' + GEONAME + '_' + PCGmethod + '.dat'
@@ -149,6 +148,6 @@ else:
 		# ax.set_ybound(lower=1e-8, upper=10)
 
 	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	filename = folder + 'PlasticityNL_' + '.pdf'
+	filename = folder + 'PlasticityNL_' + '.png'
 	fig.tight_layout()
 	fig.savefig(filename)

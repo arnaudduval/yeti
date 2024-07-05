@@ -429,6 +429,7 @@ def computeTrace4All(arrays, dim):
 	return trace
 
 def computeDeviatoric4All(arrays, dim):
+	assert dim > 1, 'Try multidimensional'
 	devarray = np.copy(arrays)
 	trace = computeTrace4All(arrays, dim)/3.0
 	for i in range(dim): devarray[i, :] -= trace

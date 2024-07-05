@@ -15,7 +15,7 @@ module matrixfreeplasticity
         double precision, dimension(:), allocatable :: Mprop, Hprop
         double precision, dimension(:, :), allocatable :: CepArgs
         double precision, dimension(:, :), pointer :: NN=>null(), BB=>null()
-        double precision, dimension(:, :, :), allocatable :: JJjj, JJnn, JJbb
+        double precision, dimension(:, :, :), allocatable :: JJJJ, NNJJ, BBJJ
     
     end type mecamat
 
@@ -120,21 +120,21 @@ contains
             mat%NN      => mechArgs(5:4+mat%nvoigt, :)
             mat%BB      => mechArgs(5+mat%nvoigt:4+2*mat%nvoigt, :)
 
-            if (.not.allocated(mat%JJnn)) allocate(mat%JJnn(mat%dimen, mat%dimen, mat%ncols_sp))
-            if (.not.allocated(mat%JJbb)) allocate(mat%JJbb(mat%dimen, mat%dimen, mat%ncols_sp))
-            mat%JJnn = 0.d0; mat%JJbb = 0.d0
+            if (.not.allocated(mat%NNJJ)) allocate(mat%NNJJ(mat%dimen, mat%dimen, mat%ncols_sp))
+            if (.not.allocated(mat%BBJJ)) allocate(mat%BBJJ(mat%dimen, mat%dimen, mat%ncols_sp))
+            mat%NNJJ = 0.d0; mat%BBJJ = 0.d0
             if (any(abs(mat%NN).gt.threshold)) then
                 mat%withNN = .true.
                 do i = 1, mat%ncols_sp
                     call array2symtensor(mat%dimen, mat%nvoigt, mat%NN(:, i), tensor)
-                    mat%JJnn(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+                    mat%NNJJ(:, :, i) = matmul(tensor, transpose(mat%invJ(:, :, i)))
                 end do
             end if
             if (any(abs(mat%BB).gt.threshold)) then
                 mat%withBB = .true.
                 do i = 1, mat%ncols_sp
                     call array2symtensor(mat%dimen, mat%nvoigt, mat%BB(:, i), tensor)
-                    mat%JJbb(:, :, i) = matmul(mat%invJ(:, :, i), tensor)
+                    mat%BBJJ(:, :, i) = matmul(tensor, transpose(mat%invJ(:, :, i)))
                 end do
             end if
         end if
@@ -155,10 +155,10 @@ contains
         ! ----------
         integer :: i
         
-        if (.not.allocated(mat%JJjj)) allocate(mat%JJjj(mat%dimen, mat%dimen, mat%ncols_sp))
-        mat%JJjj = 0.d0
+        if (.not.allocated(mat%JJJJ)) allocate(mat%JJJJ(mat%dimen, mat%dimen, mat%ncols_sp))
+        mat%JJJJ = 0.d0
         do i = 1, mat%ncols_sp
-            mat%JJjj(:, :, i) = matmul(mat%invJ(:, :, i), transpose(mat%invJ(:, :, i)))
+            mat%JJJJ(:, :, i) = matmul(mat%invJ(:, :, i), transpose(mat%invJ(:, :, i)))
         end do
     end subroutine setup_jacobienjacobien
 
@@ -502,7 +502,7 @@ contains
             allocate(t4(basisdata%nc_total), t5(basisdata%nc_total), t6(basisdata%nc_total))
         end if
         allocate(kt1(nbCepArgs, basisdata%nc_total))
-
+        
         array_out = 0.d0
         do j = 1, mat%dimen
             do m = 1, mat%dimen
@@ -527,9 +527,9 @@ contains
                 t2 = kt1(1, :)*mat%invJ(m, j, :)
                 if (.not.mat%isElastic) then
                     t4 = 0.d0; t5 = 0.d0; t6 = 0.d0
-                    if (mat%withNN) t4 = kt1(3, :)*mat%JJnn(m, j, :)
-                    if (mat%withBB) t5 = kt1(4, :)*mat%JJbb(m, j, :)
-                    if (mat%withNN) t6 = kt1(4, :)*mat%JJnn(m, j, :)
+                    if (mat%withNN) t4 = kt1(3, :)*mat%NNJJ(j, m, :)
+                    if (mat%withNN) t5 = kt1(4, :)*mat%NNJJ(j, m, :)
+                    if (mat%withBB) t6 = kt1(4, :)*mat%BBJJ(j, m, :)
                 end if
 
                 do i = 1, mat%dimen
@@ -542,11 +542,11 @@ contains
                         
                         t7 = t2*mat%invJ(l, i, :) + t3*mat%invJ(l, j, :)
                         if (.not.mat%isElastic) then
-                            if (mat%withNN) t7 = t7 + t4*mat%JJnn(l, i, :) - t5*mat%JJnn(l, i, :)  
-                            if (mat%withBB) t7 = t7 + t6*mat%JJbb(l, i, :)
+                            if (mat%withNN) t7 = t7 + t4*mat%NNJJ(i, l, :) - t6*mat%NNJJ(i, l, :)  
+                            if (mat%withBB) t7 = t7 + t5*mat%BBJJ(i, l, :)
                         end if
 
-                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJjj(l, m, :)
+                        if (i.eq.j) t7 = t7 + kt1(2, :)*mat%JJJJ(l, m, :)
                         if (basisdata%dimen.eq.2) then
                             call sumfacto2d_spM(nr_u, nc_u, nr_v, nc_v, & 
                                                 nnz_u, indi_u, indj_u, data_W_u(:, zeta(1)), &
