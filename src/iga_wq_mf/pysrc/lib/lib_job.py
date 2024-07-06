@@ -477,9 +477,8 @@ class mechaproblem(problem):
 		return displacement, residual
 	
 	def solveElastoPlasticityProblem(self, dispinout, Fext_list): 
-
-		dimen  = self.part.dim
-		nvoigt = int(dimen*(dimen+1)/2)
+		dim = self.part.dim
+		nvoigtreal, nvoigt = int(dim*(dim+1)/2), 6
 		nbChaboche = self.mechamaterial._chabocheNBparameters
 		nbqp_total = self.part.nbqp_total
 		nsteps = np.shape(Fext_list)[2]
@@ -494,7 +493,7 @@ class mechaproblem(problem):
 		
 		# Output variables
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
-		Allstrain 	 = np.zeros((nvoigt, nbqp_total, nsteps))
+		Allstrain 	 = np.zeros((nvoigtreal, nbqp_total, nsteps))
 		Allhardening = np.zeros((1, nbqp_total, nsteps))
 		AllresLin 	 = []
 
@@ -518,14 +517,22 @@ class mechaproblem(problem):
 
 				# Compute strain at each quadrature point
 				strain = self.interpolate_strain(dj_n1)
-	
+				straintmp = np.copy(strain)
+				if self.part.dim == 2:
+					straintmp = np.zeros((nvoigt, nbqp_total))
+					straintmp[0:2, :] = strain[0:2, :]; straintmp[3, :] = strain[-1, :]
+
 				# Closest point projection in perfect plasticity
-				output, isElasticLoad = self.mechamaterial.J2returnMappingAlgorithm3D(strain, plasticstrain_n0, plseq_n0, back_n0)
+				output, isElasticLoad = self.mechamaterial.J2returnMappingAlgorithm3D(straintmp, plasticstrain_n0, plseq_n0, back_n0, nvoigtreal=nvoigtreal)
 				stress = output['stress']; plasticstrain_n1 = output['plastic']; plseq_n1 = output['plseq']
 				back_n1 = output['back']; mechArgs = output['mechArgs']
 
-				# Compute internal force 
-				Fint_dj = self.compute_MechStaticIntForce(stress)
+				# Compute internal force
+				stresstmp = np.copy(stress)
+				if self.part.dim == 2:
+					stresstmp = np.zeros((3, nbqp_total))
+					stresstmp[0:2, :] = stress[0:2, :]; stresstmp[-1, :] = stress[3, :]
+				Fint_dj = self.compute_MechStaticIntForce(stresstmp)
 				
 				# Compute residue
 				r_dj = Fext_n1 - Fint_dj
@@ -547,7 +554,7 @@ class mechaproblem(problem):
 				AllresLin.append(resLinj)
 
 			dispinout[:, :, i] = dj_n1
-			Allstress[:, :, i] = stress	
+			Allstress[:, :, i] = stress
 			Allstrain[:, :, i] = strain
 			Allhardening[0, :, i] = plseq_n1[0, :]
 

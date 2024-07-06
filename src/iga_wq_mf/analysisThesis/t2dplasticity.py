@@ -32,9 +32,9 @@ TRACTION = 400.0
 YOUNG, POISSON = 2500, 0.25
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi/2, NBSTEPS)
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e8, 'poisson_ratio': POISSON, 
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':5, 'poisson_ratio': POISSON, 
 			'isoHardLaw': {'name':'linear', 'Eiso':500.0}, 
-			# 'kineHardLaw':{'parameters':np.array([[500, 0]])}
+			'kineHardLaw':{'parameters':np.array([[500, 0]])}
 			}
 isReference = True
 
@@ -85,8 +85,8 @@ if isReference:
 	alpha_qp = internalVars.get('hardening', None)
 	plastic_qp = np.where(np.abs(alpha_qp)<1e-6, 0.0, 1.0)
 	for j, i in enumerate(range(0, NBSTEPS, 4)):
-		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i], dim=2)
-		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp, dim=2)
+		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i])
+		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp)
 		vonMises_cp = problem.L2projectionCtrlpts(vonMises_qp)
 		alpha_cp = problem.L2projectionCtrlpts(alpha_qp[0, :, i])
 		plastic_cp = problem.L2projectionCtrlpts(plastic_qp[0, :, i])

@@ -155,10 +155,12 @@ class mechamat(material):
 			self.lame_bulk = bulk
 		return
 	
-	def evalElasticStress(self, strain, dim):
-		traceStrain = computeTrace4All(strain, dim)
+	def evalElasticStress(self, strain):
+		nvoigt = np.size(strain, axis=0)
+		assert nvoigt == 6, 'Try another method'
+		traceStrain = computeTrace4All(strain)
 		stress = 2*self.lame_mu*strain
-		for i in range(dim): stress[i, :] += self.lame_lambda*traceStrain
+		for i in range(3): stress[i, :] += self.lame_lambda*traceStrain
 		return stress
 	
 	class isotropicHardening():
@@ -212,15 +214,12 @@ class mechamat(material):
 
 	def __parametersPreCalc3D_m1(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 
-		nvoigt, nnz = np.shape(stress_trial)
-		if nvoigt   == 3: dim = 2
-		elif nvoigt == 6: dim = 3
 		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
 		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
 			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
-			hatshifted = computeDeviatoric4All(stress_trial - meanback, dim=dim)
-			normhatshifted = computeSymTensorNorm4All(hatshifted, dim=dim)
+			hatshifted = computeDeviatoric4All(stress_trial - meanback)
+			normhatshifted = computeSymTensorNorm4All(hatshifted)
 			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
 						- self._isoHardening._isohardfun(straineq_n1)
 			)
@@ -228,7 +227,7 @@ class mechamat(material):
 			if k == 0: resNL0 = resNLj
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = hatshifted/normhatshifted
-			dersfunyield = (np.sqrt(3.0/2.0)*computeSymDoubleContraction4All(normal, hatback, dim=dim) 
+			dersfunyield = (np.sqrt(3.0/2.0)*computeSymDoubleContraction4All(normal, hatback) 
 				- 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(straineq_n1)
 			)	
 			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
@@ -239,15 +238,12 @@ class mechamat(material):
 
 	def __parametersPreCalc3D_m2(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 
-		nvoigt, nnz = np.shape(stress_trial)
-		if nvoigt   == 3: dim = 2
-		elif nvoigt == 6: dim = 3
 		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
 		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
 			_, hatback, const1, _ = self.__sumOverChabocheTable(dgamma, back_n0)
-			hatshifted = computeDeviatoric4All(stress_trial - back_n0[0, :, :], dim=dim)
-			normhatshifted = computeSymTensorNorm4All(hatshifted, dim=dim)
+			hatshifted = computeDeviatoric4All(stress_trial - back_n0[0, :, :])
+			normhatshifted = computeSymTensorNorm4All(hatshifted)
 			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
 						- self._isoHardening._isohardfun(straineq_n1)
 			)
@@ -279,23 +275,21 @@ class mechamat(material):
 			mechArgs[4+nvoigt:, plsInd]  = hatback
 		return mechArgs
 
-	def J2returnMappingAlgorithm3D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8):
+	def J2returnMappingAlgorithm3D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8, nvoigtreal=6):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
 		"""		
-		nvoigt, nnz = np.shape(strain_n1)
-		if nvoigt   == 3: dim = 2
-		elif nvoigt == 6: dim = 3
+		nnz = np.shape(strain_n1)[1]
 		isElasticLoad = True; output = {}
 
 		# Compute trial stress
 		strain_trial = strain_n1 - plasticstrain_n0
-		stress_trial = self.evalElasticStress(strain_trial, dim=dim)
+		stress_trial = self.evalElasticStress(strain_trial)
 
 		# Compute shifted stress
-		shifted_trial = computeDeviatoric4All(stress_trial - np.sum(back_n0, axis=0), dim=dim)
+		shifted_trial = computeDeviatoric4All(stress_trial - np.sum(back_n0, axis=0))
 
 		# Check yield status
-		norm_shifted_trial = computeSymTensorNorm4All(shifted_trial, dim)
+		norm_shifted_trial = computeSymTensorNorm4All(shifted_trial)
 		yield_trial = np.sqrt(3.0/2.0)*norm_shifted_trial - self._isoHardening._isohardfun(plseq_n0)
 		stress_n1 = np.copy(stress_trial); plasticstrain_n1= np.copy(plasticstrain_n0); 
 		plseq_n1 = np.copy(plseq_n0); back_n1 = np.copy(back_n0); plsVars = {}
@@ -323,8 +317,13 @@ class mechamat(material):
 				[ci, di] = self._chabocheTable[i, :]
 				for j, ind in enumerate(plsInd):
 					back_n1[i, :, ind] = (back_n0[i, :, ind] + np.sqrt(3.0/2.0)*ci*dgamma[:, j]*normal[:, j])/(1. + di*dgamma[:, j])
-					
-			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatback': hatback, 'theta': theta, 'thetatilde': thetatilde}
+			
+			normaltmp = np.copy(normal); hatbacktmp = np.copy(hatback)
+			if nvoigtreal == 3:
+				normaltmp = np.zeros((nvoigtreal, len(plsInd))); hatbacktmp = np.zeros((nvoigtreal, len(plsInd)))
+				normaltmp[0:2, :] = normal[0:2, :]; normaltmp[-1, :] = normal[3, :]
+				hatbacktmp[0:2, :] = hatback[0:2, :]; hatbacktmp[-1, :] = hatback[3, :]
+			plsVars = {'plsInd': plsInd, 'normal': normaltmp, 'hatback': hatbacktmp, 'theta': theta, 'thetatilde': thetatilde}
 
 		mechArgs = self.consistentTangentAlgorithm3D(nnz, isElasticMatrix+isElasticLoad, plsVars)
 		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 'back': back_n1, 'mechArgs': mechArgs}
@@ -421,31 +420,33 @@ class mechamat(material):
 
 		return output, isElasticLoad
 
-def computeTrace4All(arrays, dim):
-	nnz = np.size(arrays, axis=1)
+def computeTrace4All(arrays):
+	dim = 3
+	nvoigt, nnz = np.shape(arrays)
+	assert nvoigt == 6, 'Try another method'
 	trace = np.zeros(nnz)
 	for i in range(dim):
 		trace += arrays[i, :]
 	return trace
 
-def computeDeviatoric4All(arrays, dim):
-	assert dim > 1, 'Try multidimensional'
+def computeDeviatoric4All(arrays):
+	dim = 3
 	devarray = np.copy(arrays)
-	trace = computeTrace4All(arrays, dim)/3.0
+	trace = computeTrace4All(arrays)/3.0
 	for i in range(dim): devarray[i, :] -= trace
 	return devarray
 
-def computeSymDoubleContraction4All(arrays1, arrays2, dim):
+def computeSymDoubleContraction4All(arrays1, arrays2):
+	dim, nvoigt = 3, 6
 	nnz = np.size(arrays1, axis=1) # or arrays2
-	nvgt  = int(dim*(dim+1)/2)
 	s = np.zeros(nnz)
 	for i in range(dim):
 		s += arrays1[i, :]*arrays2[i, :]
-	for i in range(dim, nvgt):
+	for i in range(dim, nvoigt):
 		s += 2*arrays1[i, :]*arrays2[i, :]
 	return s
 
-def computeSymTensorNorm4All(arrays, dim):
-	s = computeSymDoubleContraction4All(arrays, arrays, dim)
+def computeSymTensorNorm4All(arrays):
+	s = computeSymDoubleContraction4All(arrays, arrays)
 	return np.sqrt(s)
 
