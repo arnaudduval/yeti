@@ -32,7 +32,7 @@ TRACTION = 400.0
 YOUNG, POISSON = 2500, 0.25
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, np.pi/2, NBSTEPS)
-MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':5, 'poisson_ratio': POISSON, 
+MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e8, 'poisson_ratio': POISSON, 
 			'isoHardLaw': {'name':'linear', 'Eiso':500.0}, 
 			# 'kineHardLaw':{'parameters':np.array([[500, 0]])}
 			}
@@ -48,7 +48,6 @@ def forceSurf_infPlate(P:list):
 def simulate(degree, cuts, quadArgs):
 	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
-				'extra':{'XY':np.array([[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]])}
 			}
 	blockPrint()
 	material = mechamat(MATARGS)
@@ -59,7 +58,8 @@ def simulate(degree, cuts, quadArgs):
 
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
-	table = np.zeros((2, 2, 2), dtype=int); table[1, 0, :] = 1
+	table = np.zeros((2, 2, 2), dtype=int)
+	table[0, 0, 0] = 1; table[1, 0, 1] = 1
 	boundary.add_DirichletDisplacement(table=table)
 	enablePrint()
 
@@ -74,25 +74,25 @@ def simulate(degree, cuts, quadArgs):
 	return problem, displacement, meshparam, internalVars
 
 if isReference:
-	degree, cuts = 2, 5
+	degree, cuts = 2, 3
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs)
 	# np.save(folder + 'disppl', displacement)
 	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
 	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 
-	# stress_qp = internalVars.get('stress', None)
-	# alpha_qp = internalVars.get('hardening', None)
-	# plastic_qp = np.where(np.abs(alpha_qp)<1e-6, 0.0, 1.0)
-	# for j, i in enumerate(range(0, NBSTEPS, 4)):
-	# 	devstress_qp = computeDeviatoric4All(stress_qp[:, :, i], dim=2)
-	# 	vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp, dim=2)
-	# 	vonMises_cp = problem.L2projectionCtrlpts(vonMises_qp)
-	# 	alpha_cp = problem.L2projectionCtrlpts(alpha_qp[0, :, i])
-	# 	plastic_cp = problem.L2projectionCtrlpts(plastic_qp[0, :, i])
-	# 	problem.part.exportResultsCP(fields={'stress': vonMises_cp, 'straineq': alpha_cp, 'plastic':plastic_cp}, 
-	# 								name='pls'+str(j), folder=folder, sampleSize=401)
-	# run(folder=folder)
+	stress_qp = internalVars.get('stress', None)
+	alpha_qp = internalVars.get('hardening', None)
+	plastic_qp = np.where(np.abs(alpha_qp)<1e-6, 0.0, 1.0)
+	for j, i in enumerate(range(0, NBSTEPS, 4)):
+		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i], dim=2)
+		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp, dim=2)
+		vonMises_cp = problem.L2projectionCtrlpts(vonMises_qp)
+		alpha_cp = problem.L2projectionCtrlpts(alpha_qp[0, :, i])
+		plastic_cp = problem.L2projectionCtrlpts(plastic_qp[0, :, i])
+		problem.part.exportResultsCP(fields={'stress': vonMises_cp, 'straineq': alpha_cp, 'plastic':plastic_cp}, 
+									name='pls'+str(j), folder=folder, sampleSize=51)
+	run(folder=folder)
 	
 else:
 
