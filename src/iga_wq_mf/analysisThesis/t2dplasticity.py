@@ -36,7 +36,7 @@ MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':5, 'poisson_ratio': POISSON,
 			'isoHardLaw': {'name':'linear', 'Eiso':0.0}, 
 			'kineHardLaw':{'parameters':np.array([[500, 0]])}
 			}
-isReference = True
+isReference = False
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; nnz = np.size(P, axis=1)
@@ -75,24 +75,24 @@ def simulate(degree, cuts, quadArgs):
 
 if isReference:
 	degree, cuts = 2, 8
-	quadArgs = {'quadrule': 'iga', 'type': 'lob'}
+	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	problem, displacement, _, internalVars = simulate(degree, cuts, quadArgs)
-	np.save(folder + 'disppl', displacement)
-	with open(folder + 'refpartpl.pkl', 'wb') as outp:
-		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	# np.save(folder + 'disppl', displacement)
+	# with open(folder + 'refpartpl.pkl', 'wb') as outp:
+	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 
-	stress_qp = internalVars.get('stress', None)
-	straineq_qp = internalVars.get('hardening', None)
-	plastic_qp = np.where(np.abs(straineq_qp)<1e-8, 0.0, 1.0)
+	# stress_qp = internalVars.get('stress', None)
+	# straineq_qp = internalVars.get('hardening', None)
+	# plastic_qp = np.where(np.abs(straineq_qp)<1e-8, 0.0, 1.0)
 
-	for j, i in enumerate(range(0, NBSTEPS, 4)):
-		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i])
-		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp)
-		problem.part.postProcessingDual(name='pls'+str(j), folder=folder, 
-									fields={'stress': vonMises_qp, 		
-											'straineq': straineq_qp[0, :, i], 
-											'plastic': plastic_qp[0, :, i]})
-	run(folder=folder)
+	# for j, i in enumerate(range(0, NBSTEPS, 4)):
+	# 	devstress_qp = computeDeviatoric4All(stress_qp[:, :, i])
+	# 	vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp)
+	# 	problem.part.postProcessingDual(name='pls'+str(j), folder=folder, 
+	# 								fields={'stress': vonMises_qp, 		
+	# 										'straineq': straineq_qp[0, :, i], 
+	# 										'plastic': plastic_qp[0, :, i]})
+	# run(folder=folder)
 	
 else:
 
@@ -102,33 +102,35 @@ else:
 
 	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
 	degree_list = np.array([1, 2, 3, 4])
-	cuts_list  = np.arange(2, 7)
+	cuts_list  = np.arange(2, 6)
 	step_list  = range(1, NBSTEPS, 3)
 
-	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	quadArgs = {'quadrule': 'wq', 'type': 1}
-	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
-	mesh_list  = np.ones((len(degree_list), len(cuts_list)))
-	for i, degree in enumerate(degree_list):
-		for j, cuts in enumerate(cuts_list):
-			problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
-			mesh_list[i, j] = meshparam
+	# for quadArgs in [{'quadrule': 'iga', 'type': 'leg'}, 
+	# 				{'quadrule': 'wq', 'type': 1}, 
+	# 				{'quadrule': 'wq', 'type': 2},]:
+	# 	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
+	# 	mesh_list  = np.ones((len(degree_list), len(cuts_list)))
+	# 	for i, degree in enumerate(degree_list):
+	# 		for j, cuts in enumerate(cuts_list):
+	# 			problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
+	# 			mesh_list[i, j] = meshparam
 
-			for k, step in enumerate(step_list):
-				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
-														normArgs={'type':'H1', 
-														'part_ref':part_ref, 
-														'u_ref': disp_ref[:, :, step]})
+	# 			for k, step in enumerate(step_list):
+	# 				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
+	# 														normArgs={'type':'H1', 
+	# 														'part_ref':part_ref, 
+	# 														'u_ref': disp_ref[:, :, step]})
 
-	quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
-	np.save(folder + 'plasticity2D'+quadrule+str(quadtype), error_list)
-	np.save(folder + 'meshpar2D'+quadrule+str(quadtype), mesh_list)
+	# 	quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
+	# 	np.save(folder + 'plasticity2D'+quadrule+str(quadtype), error_list)
+	# 	np.save(folder + 'meshpar2D'+quadrule+str(quadtype), mesh_list)
 
 	for k, step in enumerate(step_list):
 		fig, ax = plt.subplots(figsize=(6, 5))
-		for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 1], [normalPlot, onlyMarker1]):
+		for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 			error_list = np.ones(len(cuts_list))
 			error_list = np.load(folder + 'plasticity2D'+quadrule+str(quadtype)+'.npy')
 			mesh_list = np.load(folder+'meshpar2D'+quadrule+str(quadtype)+'.npy')
@@ -151,7 +153,7 @@ else:
 		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
 		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
 		ax.set_ylim(top=1, bottom=1e-8)
-		ax.set_xlim(left=2e-2, right=1e0)
+		ax.set_xlim(left=5e-1, right=1e0)
 		ax.legend(loc='lower right')
 		fig.tight_layout()
 		fig.savefig(folder + 'FigConvergencePlasticity' + str(step) +  GEONAME + '.pdf')
