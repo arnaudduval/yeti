@@ -76,7 +76,7 @@ if isReference:
 	hardening_qp = internalVars.get('hardening', None)
 	for i in range(30, 50, 3):
 		hardening_cp = problem.L2projectionCtrlpts(hardening_qp[:, :, i])
-		problem.part.exportResultsCP(fields={'hardening': hardening_cp}, name='pls'+str(i))
+		problem.part.postProcessingPrimal(fields={'hardening': hardening_cp}, name='pls'+str(i))
 
 else:
 

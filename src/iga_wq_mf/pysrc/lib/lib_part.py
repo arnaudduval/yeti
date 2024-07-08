@@ -214,41 +214,91 @@ class part():
 	def compute_global_mesh_parameter(self):
 		return np.max(self.__compute_mesh_parameter_element(meantype='max'))
 
-	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=101, isAll=True):
+	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=None, isAll=True):
+		
+		if sampleSize is None: sampleSize = np.max(self.nbqp)*np.ones(self.dim, dtype=int)
+
 		# Initialize all outputs
-		qpPhy, Jqp, detJ, uinterp = None, None, None, None
+		pts, Jpts, detJ, uinterp = None, None, None, None
 
 		# Get basis using fortran
-		knots = np.linspace(0, 1, sampleSize)
 		basis, indices = [], []
 		for i in range(self.dim):
+			knots = np.linspace(0, 1, sampleSize[i])
 			dersb, indi, indj = evalDersBasisCSRFortran(self.degree[i], self.knotvector[i], knots)
 			basis.append(dersb); indices.append(indi); indices.append(indj)
 
 		# Get position and determinant 
 		if isAll:
-			inpts = [*self.dim*[sampleSize], *indices, *basis, self.ctrlpts]
+			inpts = [*sampleSize[:self.dim], *indices, *basis, self.ctrlpts]
 			if self.dim == 2:
-				Jqp   = geophy.eval_jacobien_2d(*inpts)
-				detJ  = geophy.eval_inverse_det(Jqp)[0]
-				qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+				Jpts   = geophy.eval_jacobien_2d(*inpts)
+				detJ  = geophy.eval_inverse_det(Jpts)[0]
+				pts = geophy.interpolate_meshgrid_2d(*inpts)
 			elif self.dim == 3: 
-				Jqp   = geophy.eval_jacobien_3d(*inpts)
-				detJ  = geophy.eval_inverse_det(Jqp)[0]
-				qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
+				Jpts   = geophy.eval_jacobien_3d(*inpts)
+				detJ  = geophy.eval_inverse_det(Jpts)[0]
+				pts = geophy.interpolate_meshgrid_3d(*inpts)
 
 		if u_ctrlpts is not None: 
-			inpts = [*self.dim*[sampleSize], *indices, *basis, np.atleast_2d(u_ctrlpts)]
+			inpts = [sampleSize[:self.dim], *indices, *basis, np.atleast_2d(u_ctrlpts)]
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
 			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
 
-		return qpPhy, Jqp, detJ, uinterp
+		return pts, Jpts, detJ, uinterp
 
-	def exportResultsCP(self, fields={}, folder=None, sampleSize=101, addDetJ=False, name='out', extraArgs={}): 
+	def postProcessingPrimal(self, fields={}, folder=None, sampleSize=None, addDetJ=False, name='primal', extraArgs={}): 
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
 
+		if folder is None: 
+			full_path = os.path.realpath(__file__)
+			dirname = os.path.dirname
+			folder = dirname(dirname(full_path)) + '/results/'
+		if not os.path.isdir(folder): os.mkdir(folder)
+		print("File saved in %s" %folder)
+
+		if sampleSize is None: sampleSize = np.max(self.nbqp)*np.ones(self.dim, dtype=int)
+
+		# Only interpolate meshgrid
+		pts, _, detJ = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
+
+		ptsshape = [1, 1, 1]
+		for dim in range(self.dim): ptsshape[dim] = sampleSize
+		ptsshape = tuple(ptsshape)
+		X = [np.zeros(ptsshape) for i in range(3)]
+		for i in range(2): X[i] = np.reshape(np.ravel(pts[i, :]), ptsshape, order='F')
+		if self.dim == 3:  X[2] = np.reshape(np.ravel(pts[-1, :]), ptsshape, order='F')
+		
+		# Create point data 
+		pointData = {}
+		for fieldname, fieldvalue in fields.items():
+			if fieldvalue is None or not isinstance(fieldvalue, np.ndarray): continue
+			if isinstance(fieldvalue, np.ndarray):
+				fieldvalue = np.atleast_2d(fieldvalue)
+				fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
+			if callable(fieldvalue):
+				if not 'position' in extraArgs.keys(): extraArgs['position'] = pts
+				fieldinterp = fieldvalue(extraArgs)
+				fieldinterp = np.atleast_2d(fieldinterp)
+
+			nr = np.size(fieldinterp, axis=0)
+			if nr>1:
+				for l in range(nr):
+					newfieldname = fieldname + str(l+1)
+					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), ptsshape, order='F')
+			else:
+				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), ptsshape, order='F')
+
+		if addDetJ: pointData['detJ'] = np.reshape(np.ravel(detJ), ptsshape, order='F')
+
+		gridToVTK(folder + name, X[0], X[1], X[2], pointData=pointData)
+
+		return
+
+	def postProcessingDual(self, fields={}, folder=None, addDetJ=False, name='dual'):
+		
 		if folder == None: 
 			full_path = os.path.realpath(__file__)
 			dirname = os.path.dirname
@@ -256,39 +306,25 @@ class part():
 		if not os.path.isdir(folder): os.mkdir(folder)
 		print("File saved in %s" %folder)
 
-		# Only interpolate meshgrid
-		qpPhy, _, detJ = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
-		detJ /= statistics.mean(detJ)
+		ptsshape = tuple(self.nbqp)
+		X = [np.zeros(ptsshape) for i in range(3)]
+		for i in range(2): X[i] = np.reshape(np.ravel(self.qpPhy[i, :]), ptsshape, order='F')
+		if self.dim == 3:  X[2] = np.reshape(np.ravel(self.qpPhy[-1, :]), ptsshape, order='F')
 
-		shape = [1, 1, 1]
-		for dim in range(self.dim): shape[dim] = sampleSize
-		shape = tuple(shape)
-		X = [np.zeros(shape) for i in range(3)]
-		for i in range(2): X[i] = np.reshape(np.ravel(qpPhy[i, :]), shape, order='F')
-		if self.dim == 3:  X[2] = np.reshape(np.ravel(qpPhy[-1, :]), shape, order='F')
-		
 		# Create point data 
 		pointData = {}
 		for fieldname, fieldvalue in fields.items():
-			fieldinterp = None
-			if isinstance(fieldvalue, np.ndarray):
-				fieldvalue = np.atleast_2d(fieldvalue)
-				fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
-			if callable(fieldvalue):
-				if not 'position' in extraArgs.keys(): extraArgs['position'] = qpPhy
-				fieldinterp = fieldvalue(extraArgs)
-				fieldinterp = np.atleast_2d(fieldinterp)
-
-			if fieldinterp is None or not isinstance(fieldinterp, np.ndarray): continue
+			if fieldvalue is None or not isinstance(fieldvalue, np.ndarray): continue
+			fieldinterp = np.atleast_2d(fieldvalue)
 			nr = np.size(fieldinterp, axis=0)
 			if nr>1:
 				for l in range(nr):
 					newfieldname = fieldname + str(l+1)
-					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), shape, order='F')
+					pointData[newfieldname] = np.reshape(np.ravel(fieldinterp[l, :]), ptsshape, order='F')
 			else:
-				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), shape, order='F')
+				pointData[fieldname] = np.reshape(np.ravel(fieldinterp), ptsshape, order='F')
 
-		if addDetJ: pointData['detJ'] = np.reshape(np.ravel(detJ), shape, order='F')
+		if addDetJ: pointData['detJ'] = np.reshape(np.ravel(self.detJ), ptsshape, order='F')
 
 		# Export geometry
 		gridToVTK(folder + name, X[0], X[1], X[2], pointData=pointData)

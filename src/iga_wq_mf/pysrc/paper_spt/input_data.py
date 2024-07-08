@@ -50,7 +50,7 @@ def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArg
 	for i, tm in enumerate(time_list):
 		extraArgs['time'] = tm
 		if temperature is not None:	extraArgs['temperature'] = temperature(extraArgs)
-		modelPhy.exportResultsCP(fields=fields, extraArgs=extraArgs, 
+		modelPhy.postProcessingPrimal(fields=fields, extraArgs=extraArgs, 
 						folder=folder, name='out_'+str(i))
 	return
 

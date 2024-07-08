@@ -4,7 +4,7 @@
 """
 
 from pysrc.lib.__init__ import *
-from pysrc.sptmpaper.input_data import *
+from pysrc.paper_spt.input_data import *
 
 # Select folder
 full_path = os.path.realpath(__file__)

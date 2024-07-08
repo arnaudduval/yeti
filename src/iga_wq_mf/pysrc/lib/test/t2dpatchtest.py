@@ -66,8 +66,10 @@ print(len(residual[residual>0]))
 stop = time.time()
 print('CPU time: %5e' %(stop-start))
 
-strain = problem.interpolate_strain(disp_cp)
-stress = problem.mechamaterial.evalElasticStress(strain, problem.part.dim)
-stress_vm = computeSymTensorNorm4All(stress, problem.part.dim)
+straintmp = problem.interpolate_strain(disp_cp)
+strain = np.zeros((6, problem.part.nbqp_total))
+strain[0:2, :] = straintmp[0:2, :]; strain[3, :] = straintmp[-1, :]
+stress = problem.mechamaterial.evalElasticStress(strain)
+stress_vm = computeSymTensorNorm4All(stress)
 print('Von misses max:%.4e, min:%.4e' %(stress_vm.max(), stress_vm.min()))
 print('Difference: %.4e' %(abs(stress_vm.max()-stress_vm.min())))

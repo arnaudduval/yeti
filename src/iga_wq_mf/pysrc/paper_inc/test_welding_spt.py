@@ -96,7 +96,7 @@ output = np.reshape(temp_spt, order='F',
 		newshape=(problem_spt.part.nbctrlpts_total, time_spt.nbctrlpts_total),
 		)
 for k, i in enumerate(range(0, np.size(output, axis=1), 2)):
-	problem_spt.part.exportResultsCP(fields={'temp':np.atleast_2d(output[:, i])}, 
+	problem_spt.part.postProcessingPrimal(fields={'temp':np.atleast_2d(output[:, i])}, 
 									name='out_'+str(k), folder=folder)
 	
 run(folder)

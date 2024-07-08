@@ -128,19 +128,12 @@ class mechamat(material):
 		self._chabocheTable = np.atleast_2d(chabocheTable)
 		self._chabocheNBparameters = np.size(self._chabocheTable, axis=0)
 
-		if self._chabocheNBparameters == 1 and self._chabocheTable[0, 1] == 0:
-			# Linear
-			self.parametersPreCalc3D = self.__parametersPreCalc3D_m2
-			self.parametersPreCalc1D = self.__parametersPreCalc1D_m2
-		else:
-			# Armstrong or Chaboche
-			self.parametersPreCalc3D = self.__parametersPreCalc3D_m1
-			self.parametersPreCalc1D = self.__parametersPreCalc1D_m1
-
+		self.parametersPreCalc1D = self.__parametersPreCalc1D
+		self.parametersPreCalc3D = self.__parametersPreCalc3D
 		self.consistentTangentAlgorithm3D = self.__consistentTangentAlgorithm3D
 		self.consistentTangentAlgorithm1D = self.__consistentTangentAlgorithm1D		
+
 		return
-	
 		
 	def __setExtraMechanicalProperties(self):
 		E  = self.elasticModulus
@@ -212,7 +205,7 @@ class mechamat(material):
 			const2 += ci/(1 + di*dgamma)**2
 		return meanback, hatback, const1, const2
 
-	def __parametersPreCalc3D_m1(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
+	def __parametersPreCalc3D(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 
 		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
 		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
@@ -230,28 +223,6 @@ class mechamat(material):
 			dersfunyield = (np.sqrt(3.0/2.0)*computeSymDoubleContraction4All(normal, hatback) 
 				- 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(straineq_n1)
 			)	
-			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
-			thetatilde = -3*self.lame_mu/dersfunyield
-			theta = 2*self.lame_mu*dgamma/(normhatshifted)*np.sqrt(3.0/2.0)
-
-		return dgamma, hatback, normal, theta, thetatilde
-
-	def __parametersPreCalc3D_m2(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
-
-		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
-		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
-		for k in range(nbIter):
-			_, hatback, const1, _ = self.__sumOverChabocheTable(dgamma, back_n0)
-			hatshifted = computeDeviatoric4All(stress_trial - back_n0[0, :, :])
-			normhatshifted = computeSymTensorNorm4All(hatshifted)
-			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
-						- self._isoHardening._isohardfun(straineq_n1)
-			)
-			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
-			if k == 0: resNL0 = resNLj
-			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = hatshifted/normhatshifted
-			dersfunyield = - 3.0/2.0*(2*self.lame_mu + const1) - self._isoHardening._isohardfunders(straineq_n1)			
 			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
 			thetatilde = -3*self.lame_mu/dersfunyield
 			theta = 2*self.lame_mu*dgamma/(normhatshifted)*np.sqrt(3.0/2.0)
@@ -331,7 +302,7 @@ class mechamat(material):
 		return output, isElasticLoad
 	
 	# 1D
-	def __parametersPreCalc1D_m1(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
+	def __parametersPreCalc1D(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 		
 		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
@@ -343,22 +314,6 @@ class mechamat(material):
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = np.sign(hatshifted)
 			dersfunyield = normal*hatback - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(plseq_n1)			
-			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
-			theta = -self.elasticModulus/dersfunyield
-		return dgamma, hatback, normal, theta
-	
-	def __parametersPreCalc1D_m2(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
-		
-		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
-		for k in range(nbIter):
-			_, hatback, const1, _ = self.__sumOverChabocheTable(dgamma, back_n0)
-			hatshifted = stress_trial - back_n0[0, :]
-			funyield = np.abs(hatshifted) - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(plseq_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
-			if k == 0: resNL0 = resNLj
-			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = np.sign(hatshifted)
-			dersfunyield = - (self.elasticModulus + const1) - self._isoHardening._isohardfunders(plseq_n1)			
 			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
 			theta = -self.elasticModulus/dersfunyield
 		return dgamma, hatback, normal, theta

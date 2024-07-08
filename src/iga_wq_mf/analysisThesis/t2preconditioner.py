@@ -24,7 +24,7 @@ ITERMETHODS = ['C', 'JMC', 'TDC']
 runSimu = False
 
 def forceSurf_infPlate(P:list):
-	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
+	x = P[0, :]; nnz = np.size(P, axis=1)
 	tmp = np.zeros((2, nnz)); tmp[1, :] = x**2-1/4
 	F = np.zeros((2, nnz))
 	F[1, :] = -TRACTION*(np.min(tmp, axis=0))**2
@@ -138,7 +138,6 @@ else:
 	# 	newresidue = AllresLin[np.max(ind), 2:]; newresidue = newresidue[newresidue>0]
 	# 	axs[1].semilogy(np.arange(len(newresidue)), newresidue, marker='s', color=COLORLIST[i+1], label=labelmethod, linewidth=0.5)
 
-
 	axs[0].set_title('First NR iterations')
 	axs[1].set_title('Last NR iterations')
 	for ax in axs:
@@ -148,6 +147,6 @@ else:
 		# ax.set_ybound(lower=1e-8, upper=10)
 
 	axs[1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-	filename = folder + 'PlasticityNL_' + '.png'
+	filename = folder + 'PlasticityPreconditioner' + '.png'
 	fig.tight_layout()
 	fig.savefig(filename)

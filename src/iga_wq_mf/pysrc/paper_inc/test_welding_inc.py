@@ -85,7 +85,7 @@ quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 degree, cuts = 4, 6
 problem_inc, time_inc, output = simulate(degree, cuts, quadArgs, cuts_time=7)
 for k, i in enumerate(range(0, np.size(output, axis=1), 4)):
-	problem_inc.part.exportResultsCP(fields={'temp':np.atleast_2d(output[:, i])}, 
+	problem_inc.part.postProcessingPrimal(fields={'temp':np.atleast_2d(output[:, i])}, 
 									name='out_'+str(k), folder=folder)
 	
 run(folder)

@@ -476,7 +476,7 @@ elif CASE == 7: # 2D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
-		modelPhy.exportResultsCP(folder=folder)
+		modelPhy.postProcessingPrimal(folder=folder)
 		
 		# Read data
 		fileVTK   = folder + 'out'
@@ -525,7 +525,7 @@ elif CASE == 8: # 3D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
-		modelPhy.exportResultsCP(folder=folder)
+		modelPhy.postProcessingPrimal(folder=folder)
 
 		# Read data
 		fileVTK   = folder + 'IGAparametrization'
