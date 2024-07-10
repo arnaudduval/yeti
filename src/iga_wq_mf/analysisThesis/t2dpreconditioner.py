@@ -95,7 +95,7 @@ else:
 		nbstepssimu = int(np.max(AllresLin[:, 0]))
 		enum_ax1, enum_ax2 = [], []
 		points_ax1, points_ax2 = [], []
-		for j in range(2, nbstepssimu):
+		for j in range(20, nbstepssimu):
 			indices = np.where(AllresLin[:, 0]==j)
 			newresidue = AllresLin[np.min(indices), 2:]; newresidue = newresidue[newresidue>0]
 			enum_ax1.extend(np.arange(len(newresidue))); points_ax1.extend(newresidue)
@@ -104,8 +104,10 @@ else:
 		
 		poly = frompoints2hull(enum_ax1, np.log10(points_ax1), COLORLIST[i+1])
 		axs[0].add_patch(poly)
+		axs[0].scatter(enum_ax1, np.log10(points_ax1), s=1.5, c=COLORLIST[i+1], alpha=0.2)
 		poly = frompoints2hull(enum_ax2, np.log10(points_ax2), COLORLIST[i+1])
 		axs[1].add_patch(poly)
+		axs[1].scatter(enum_ax2, np.log10(points_ax2), s=1, c=COLORLIST[i+1], alpha=0.2)
 
 		axs[0].plot([], [], marker='s', color=COLORLIST[i+1], label=labelmethod, linewidth=0.5)
 		axs[1].plot([], [], marker='s', color=COLORLIST[i+1], label=labelmethod, linewidth=0.5)

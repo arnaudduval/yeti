@@ -104,57 +104,62 @@ else:
 	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 
-	degree_list = np.array([1, 2, 3, 4])
-	cuts_list  = np.arange(2, 6)
+	# degree_list = np.array([1, 2, 3, 4])
+	# cuts_list  = np.arange(2, 6)
+	degree_list = np.array([2])
+	cuts_list  = np.arange(4, 5)
 	step_list  = range(1, NBSTEPS, 3)
 
-	# for quadArgs in [{'quadrule': 'iga', 'type': 'leg'}, 
-	# 				{'quadrule': 'wq', 'type': 1}, 
-	# 				{'quadrule': 'wq', 'type': 2},]:
-	# 	error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
-	# 	mesh_list  = np.ones((len(degree_list), len(cuts_list)))
-	# 	for i, degree in enumerate(degree_list):
-	# 		for j, cuts in enumerate(cuts_list):
-	# 			problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
-	# 			mesh_list[i, j] = meshparam
+	for quadArgs in [{'quadrule': 'iga', 'type': 'leg'}, 
+					{'quadrule': 'wq', 'type': 1}, 
+					{'quadrule': 'wq', 'type': 2},]:
+		error_list = np.ones((len(step_list), len(degree_list), len(cuts_list)))
+		mesh_list  = np.ones((len(degree_list), len(cuts_list)))
+		for i, degree in enumerate(degree_list):
+			for j, cuts in enumerate(cuts_list):
+				problem, displacement, meshparam, _= simulate(degree, cuts, quadArgs)
+				mesh_list[i, j] = meshparam
 
-	# 			for k, step in enumerate(step_list):
-	# 				error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
-	# 														normArgs={'type':'H1', 
-	# 														'part_ref':part_ref, 
-	# 														'u_ref': disp_ref[:, :, step]})
+				for k, step in enumerate(step_list):
+					error_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
+															normArgs={'type':'H1', 
+															'part_ref':part_ref, 
+															'u_ref': disp_ref[:, :, step]})
 
 	# 	quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
 	# 	np.save(folder + 'plasticity2D'+quadrule+str(quadtype), error_list)
 	# 	np.save(folder + 'meshpar2D'+quadrule+str(quadtype), mesh_list)
 
-	for k, step in enumerate(step_list):
-		fig, ax = plt.subplots(figsize=(6, 5))
-		for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
-			error_list = np.ones(len(cuts_list))
-			error_list = np.load(folder + 'plasticity2D'+quadrule+str(quadtype)+'.npy')
-			mesh_list = np.load(folder+'meshpar2D'+quadrule+str(quadtype)+'.npy')
+	# for k, step in enumerate(step_list):
+	# 	fig, ax = plt.subplots(figsize=(6, 5))
+	# 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	# 		error_list = np.ones(len(cuts_list))
+	# 		error_list = np.load(folder+'plasticity2D'+quadrule+str(quadtype)+'.npy')
+	# 		mesh_list = np.load(folder+'meshpar2D'+quadrule+str(quadtype)+'.npy')
 		
-			for i, degree in enumerate(degree_list):
-				color = COLORLIST[i]
-				if quadrule == 'iga': 
-					ax.loglog(mesh_list[i, :], error_list[k, i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
-							markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-					# slope = round(np.polyfit(np.log(mesh_list[i, 2:]), np.log(error_list[k, i, 2:]), 1)[0], 1)
-					# annotation.slope_marker((mesh_list[i, -1],  error_list[k, i, -1]), slope, 
-					# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-				else: 
-					ax.loglog(mesh_list[i, :], error_list[k, i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
-						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+	# 		for i, degree in enumerate(degree_list):
+	# 			color = COLORLIST[i]
+	# 			if quadrule == 'iga': 
+	# 				ax.loglog(mesh_list[i, :], error_list[k, i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+	# 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+	# 				# slope = round(np.polyfit(np.log(mesh_list[i, 2:]), np.log(error_list[k, i, 2:]), 1)[0], 1)
+	# 				# annotation.slope_marker((mesh_list[i, -1],  error_list[k, i, -1]), slope, 
+	# 				# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+	# 			else: 
+	# 				ax.loglog(mesh_list[i, :], error_list[k, i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
+	# 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 
-		ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
+	# 	ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+	# 			markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 4")
 
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
-		ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
-		ax.set_ylim(top=1, bottom=1e-8)
-		ax.set_xlim(left=5e-1, right=1e0)
-		ax.legend(loc='lower right')
-		fig.tight_layout()
-		fig.savefig(folder + 'FigConvergencePlasticity' + str(step) +  GEONAME + '.pdf')
-		plt.close(fig=fig)
+	# 	ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+	# 			markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+
+	# 	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
+	# 	ax.set_xlabel('Mesh parameter ' + r'$h_{max}$')
+	# 	ax.set_ylim(top=1, bottom=1e-8)
+	# 	ax.set_xlim(left=2e-2, right=1e0)
+	# 	ax.legend(loc='lower right')
+	# 	fig.tight_layout()
+	# 	fig.savefig(folder + 'FigConvergencePlasticity' + str(step) +  GEONAME + '.pdf')
+	# 	plt.close(fig=fig)
