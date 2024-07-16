@@ -9,7 +9,7 @@ blockPrint()
 # Set global variables
 PLOTRELATIVE = True
 TODOSIMU = False
-FIG_CASE = 3
+FIG_CASE = 5
 extension = '.dat'
 
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
@@ -592,3 +592,133 @@ elif FIG_CASE == 4:
 			ax.legend()
 			fig.tight_layout()
 			fig.savefig(folder+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
+
+elif FIG_CASE == 5:
+	
+	filenameA2 = folder + '3incheatAbs'
+	filenameR2 = folder + '3incheatRel'
+	filenameT2 = folder + '3incheatTim'
+
+	filenameA3 = folder + '3sptheatAbs'
+	filenameR3 = folder + '3sptheatRel'
+	filenameT3 = folder + '3sptheatTim'
+
+	degList = np.array([1, 2, 3, 4, 5])
+	cutList = np.arange(4, 7)
+
+	if TODOSIMU:
+		A2errorList = np.ones((len(degList), len(cutList)))
+		R2errorList = np.ones((len(degList), len(cutList)))
+		T2timeList = np.ones((len(degList), len(cutList)))
+		
+		quadArgs = {'quadrule': 'wq', 'type': 2}
+		sufix = '_wq_2_' + lastsufix + extension
+		for j, cuts in enumerate(cutList):
+			for i, degree in enumerate(degList):
+				geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
+													degree_time=1, nbel_time=2**cuts, quadArgs=quadArgs,
+													isadaptive=False, solveSystem=False)
+
+				start = time.process_time()
+				dirichlet_table = np.ones((2, 2))
+				problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
+													dirichlet_table=dirichlet_table, geoArgs=geoArgs, nbel_time=2**cuts)
+				finish = time.process_time()
+				T2timeList[i, j] = finish - start
+				
+				A2errorList[i, j], R2errorList[i, j] = problem_spt.normOfError(np.ravel(temp_inc, order='F'), 
+														normArgs={'type':'L2',
+																'exactFunction':exactTemperature_spt,})
+
+				np.savetxt(filenameA2+sufix, A2errorList)
+				np.savetxt(filenameR2+sufix, R2errorList)
+				np.savetxt(filenameT2+sufix, T2timeList)
+
+		A3errorList = np.ones((len(degList), len(cutList)))
+		R3errorList = np.ones((len(degList), len(cutList)))
+		T3timeList = np.ones((len(degList), len(cutList)))
+		
+		for quadrule, quadtype in zip(['wq'], [2]):
+			quadArgs = {'quadrule': quadrule, 'type': quadtype}
+			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + extension
+			for j, cuts in enumerate(cutList):
+				for i, degree in enumerate(degList):
+					geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+					start = time.process_time()
+					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+														dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
+														degree_time=degree, nbel_time=2**cuts, quadArgs=quadArgs,
+														isadaptive=False)
+						
+					end = time.process_time()
+					T3timeList[i, j] = end - start
+
+					A3errorList[i, j], R3errorList[i, j] = problem_spt.normOfError(temp_spt, 
+															normArgs={'type':'L2',
+																	'exactFunction':exactTemperature_spt, })
+
+					np.savetxt(filenameA3+sufix, A3errorList)
+					np.savetxt(filenameR3+sufix, R3errorList)
+					np.savetxt(filenameT3+sufix, T3timeList)
+
+	fig, axs = plt.subplots(1, 2, figsize=(8, 3.5))
+	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
+	filenameA3 = folder + '3sptheatRel'
+
+	for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [IgaPlot, WQ2Plot], [axs[0], axs[1]]):
+		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix + extension
+		Elist = np.loadtxt(filenameA3+sufix)
+		Tlist = np.loadtxt(filenameT3+sufix)
+		for pos in range(np.size(Elist, axis=1)):
+			im = ax.scatter(Tlist[:len(degList), pos], Elist[:len(degList), pos], c=degList,
+							cmap=cmap, marker=plotvars['marker'], s=10*plotvars['markersize'])
+				
+			ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
+					color='k', marker='', linestyle=plotvars['linestyle'])
+			ax.text(Tlist[-1, pos], Elist[-1, pos], str(int(2**(pos+4)))+r'$^3$')
+
+
+	# ax.loglog([], [], color='k', marker=IncPlot['marker'], alpha=0.5,
+	# 		markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-WQ')
+	
+	# ax.loglog([], [], color='k', marker=IgaPlot['marker'], alpha=0.5,
+	# 	markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
+		
+	# ax.loglog([], [], color='k', marker=WQ2Plot['marker'], alpha=0.5,
+	# 	markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ')
+
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	divider1 = make_axes_locatable(axs[0])
+	cax1 = divider1.append_axes("right", size="5%", pad=0.1)
+	divider2 = make_axes_locatable(axs[1])
+	cax2 = divider2.append_axes("right", size="5%", pad=0.1)
+
+	cbar = plt.colorbar(im, cax=cax1)
+	fig.delaxes(fig.axes[2])
+
+	cbar = plt.colorbar(im, cax=cax2)
+	cbar.set_label('Degree')
+	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+	cbar.set_ticks(tick_locs)
+	cbar.set_ticklabels(degList)
+
+	axs[0].set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u ||_{L^2(\Pi)}$')
+	axs[0].set_ylim(top=1e-1, bottom=1e-10)
+	axs[1].set_ylim(top=1e-1, bottom=1e-10)
+	axs[0].set_xlim(left=5e-1, right=5e4)
+	axs[1].set_xlim(left=5e-1, right=5e4)
+	axs[0].title.set_text('Gauss-Legendre')
+	axs[1].title.set_text('Weighted quadrature')
+
+	axs[0].set_xlabel('Wall time (s)')
+	axs[1].set_xlabel('Wall time (s)')
+	plt.tight_layout()
+	fig.savefig(folder + 'SPTINC_CPUError' +  '.pdf')

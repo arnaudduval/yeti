@@ -98,8 +98,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-CASE      = 2
-extension = '.pdf'
+CASE      = 9
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -569,9 +569,9 @@ elif CASE == 8: # 3D Geometries
 
 elif CASE == 9:
 
-	def case9(folder, fieldname='temp'):		
+	def case9(folder, fieldname='temp', filename=None):		
 		# Read data
-		filename = 'out_tp'
+		if filename is None: filename = 'out_'
 		fileVTK = os.path.dirname(os.path.realpath(__file__)) + '/data/'
 		fileVTK = fileVTK + filename
 		reader = pv.get_reader(fileVTK + '.vts')
@@ -594,15 +594,15 @@ elif CASE == 9:
 				n_labels=2,
 				fmt="%.1f",
 				position_x=0.2, 
-				position_y=0.225,
+				position_y=0.15,
 		)
 		pv.start_xvfb()
 		plotter = pv.Plotter(off_screen=True)
 		plotter.add_mesh(grid, cmap='coolwarm', reset_camera=True, 
-						scalar_bar_args=sargs, scalars=scalars)
+						scalar_bar_args=sargs, scalars=scalars, clim=[-6.5, 6.5])
 		
 		plotter.camera_position = 'yx'
-		plotter.camera.zoom(0.9)
+		plotter.camera.zoom(0.7)
 
 		plotter.background_color = 'white'
 		plotter.window_size = [1600, 1600]
@@ -611,7 +611,8 @@ elif CASE == 9:
 
 		return
 	
-	case9(folder)
+	for i in range(66):
+		case9(folder, filename='out2_'+str(i))
 
 
 else: raise Warning('Case unkwnon')

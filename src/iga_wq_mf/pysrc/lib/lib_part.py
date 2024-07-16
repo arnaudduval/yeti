@@ -241,7 +241,7 @@ class part():
 				pts = geophy.interpolate_meshgrid_3d(*inpts)
 
 		if u_ctrlpts is not None: 
-			inpts = [sampleSize[:self.dim], *indices, *basis, np.atleast_2d(u_ctrlpts)]
+			inpts = [*sampleSize[:self.dim], *indices, *basis, np.atleast_2d(u_ctrlpts)]
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
 			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
 
@@ -265,7 +265,7 @@ class part():
 		pts, _, detJ = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]
 
 		ptsshape = [1, 1, 1]
-		for dim in range(self.dim): ptsshape[dim] = sampleSize
+		for dim in range(self.dim): ptsshape[dim] = sampleSize[dim]
 		ptsshape = tuple(ptsshape)
 		X = [np.zeros(ptsshape) for i in range(3)]
 		for i in range(2): X[i] = np.reshape(np.ravel(pts[i, :]), ptsshape, order='F')

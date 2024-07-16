@@ -309,16 +309,11 @@ class stheatproblem(stproblem):
 					ratio = resNLj1/resNLj0
 					eps_kr_k = gamma_kr*np.power(ratio, omega_kr)
 					eps_kr_r = gamma_kr*np.power(threshold_inner, omega_kr)
-					print('Ratio:%.3e' %ratio)
-					print('%.3e, %.3e' %(eps_kr_r, eps_kr_k))
 					if eps_kr_r <= 0.1: 
 						threshold_ref = np.copy(eps_kr_k)
-						print('Method 1')
 					else: 
 						threshold_ref = max([eps_kr_k, eps_kr_r])
-						print('Method 2')
 
-				print('Thres_ref: %.3e' %threshold_ref)
 				threshold_inner = min([eps_kr0, max([self._thresLin, threshold_ref])])
 
 			else: 
@@ -336,7 +331,7 @@ class stheatproblem(stproblem):
 			resNLj0 = np.copy(resNLj1)
 			AllresLin.append(resLinj); Alldelta.append(deltaD)
 
-			blockPrint()
+			# blockPrint()
 
 			
 		output = {'KrylovRes': AllresLin, 'NewtonRes':AllresNewton, 'Solution':Allsol, 'Threshold':Allthres, 'Delta':Alldelta}
