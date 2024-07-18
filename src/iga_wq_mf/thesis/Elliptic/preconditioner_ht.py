@@ -176,7 +176,6 @@ def simulate(degree, cuts, preconditioner='JMC'):
 # ax.set_xlim([0, 100])
 # fig.savefig(folder+'preconditioner_ht'+'.pdf')
 
-
 for degree in range(4, 7):
 	for cuts in range(6, 9):
 		start = time.process_time()

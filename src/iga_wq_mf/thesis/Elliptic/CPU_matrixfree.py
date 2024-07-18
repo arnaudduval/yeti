@@ -9,7 +9,7 @@ from pysrc.lib.lib_job3d import heatproblem, mechaproblem
 RUNSIMU = True
 degList = range(1, 10)
 cuts = 6
-quadArgs = {'quadrule':'wq', 'type':1}
+quadArgs = {'quadrule':'wq', 'type':2}
 
 if RUNSIMU:
 
