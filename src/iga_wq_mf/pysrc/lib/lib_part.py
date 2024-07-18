@@ -251,7 +251,7 @@ class part():
 		""" Export solution in VTK format. 
 			It is possible to use Paraview to visualize data
 		"""
-
+		from pyevtk.hl import gridToVTK
 		if folder is None: 
 			full_path = os.path.realpath(__file__)
 			dirname = os.path.dirname
@@ -298,7 +298,7 @@ class part():
 		return
 
 	def postProcessingDual(self, fields={}, folder=None, addDetJ=False, name='dual'):
-		
+		from pyevtk.hl import gridToVTK
 		if folder == None: 
 			full_path = os.path.realpath(__file__)
 			dirname = os.path.dirname
