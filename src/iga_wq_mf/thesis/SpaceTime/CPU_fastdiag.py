@@ -1,15 +1,15 @@
-from thesis.SpaceTimeHeat.__init__ import *
+from thesis.SpaceTime.__init__ import *
 from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Set global variables
-TODOSIMU = False
+RUNSIMU = False
 degList = np.arange(1, 6)
 cutList = np.arange(4, 8)
 NDIM = 4
 filename = FOLDER2SAVE + 'sptFD_time'
 
-if TODOSIMU:
+if RUNSIMU:
 
 	timeMatrix = np.zeros((len(cutList)+1, len(degList)+1))
 	timeMatrix[1:, 0] = np.array([2**i for i in cutList])
@@ -62,7 +62,7 @@ if NDIM == 4:
 ax.minorticks_off()
 ax.legend(loc='best')
 ax.set_xlabel('Total number of elements')
-ax.set_ylabel('Wall time (s)')
+ax.set_ylabel('CPU time (s)')
 ax.set_ylim([1e-2, 1e3])
 ax.set_xlim([1e4, 1e9])
 fig.tight_layout()

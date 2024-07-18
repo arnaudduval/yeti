@@ -1,4 +1,4 @@
-from thesis.SpaceTimeHeat.__init__ import *
+from thesis.SpaceTime.__init__ import *
 from pysrc.lib.lib_base import createUniformOpenCurve
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
@@ -124,7 +124,7 @@ ax.legend(ncol=2, loc='upper center')
 # ax.legend(loc='upper left')
 # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 ax.set_xlabel('Degree ' + r'$p$')
-ax.set_ylabel('Wall time (s)')
+ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])
 ax.set_ylim([1e-1, 1e4])
 fig.tight_layout()
