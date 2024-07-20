@@ -6,10 +6,10 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_job3d import heatproblem, mechaproblem
 
 # Set global variables
-RUNSIMU = True
+RUNSIMU = False
 degList = range(1, 10)
-cuts = 6
-quadArgs = {'quadrule':'wq', 'type':2}
+cuts = 5
+quadArgs = {'quadrule':'iga', 'type':'leg'}
 
 if RUNSIMU:
 
@@ -66,7 +66,7 @@ if RUNSIMU:
 		np.savetxt(FOLDER2SAVE+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
 		np.savetxt(FOLDER2SAVE+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
 
-fig, ax = plt.subplots(figsize=(5, 4))
+fig, ax = plt.subplots(figsize=(6, 4))
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'x', 'linestyle': '--', 'markersize': 6}
 WQ2Plot = {'marker': 'o', 'linestyle': ':', 'markersize': 6}
@@ -89,21 +89,19 @@ for sufix, plotops in zip(sufixList, plotoptions):
 			ax.semilogy(degList, timeElapsed, label='IGA-GL '+label, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 		else:
-			ax.semilogy(degList, timeElapsed, label='IGA-MF '+label, color=color, marker=plotops['marker'],
+			ax.semilogy(degList, timeElapsed, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-# ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-# 				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-MF')
-# ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-# 				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
+ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
+				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 1')
+ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
+				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
 
 ax.minorticks_off()
-# ax.legend(ncol=2, loc='upper center')
-ax.legend(loc='upper left')
-# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+ax.legend(ncol=2, loc='upper center')
 ax.set_xlabel('Degree ' + r'$p$')
-ax.set_ylabel('Wall time (s)')
+ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])
-ax.set_ylim([1e-1, 2e2])
+ax.set_ylim([1e-1, 1e4])
 fig.tight_layout()
 fig.savefig(FOLDER2SAVE + 'MF_time' + '.pdf')

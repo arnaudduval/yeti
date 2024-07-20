@@ -53,6 +53,9 @@ degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
 for i, degree in enumerate(degList): 
 	ax.loglog(nbelList**3, timeElapsed[:, i], marker='s', color=COLORLIST[0], alpha=(i+1)/len(degList))
 ax.loglog([], [], marker='s', color=COLORLIST[0], label='Steady heat')
+slope = round(np.polyfit(np.log(nbelList**3), np.log(timeElapsed[:, 2]), 1)[0], 1)
+annotation.slope_marker((nbelList[-2]**3,  timeElapsed[-2, 2]), slope, 
+				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
 file = np.loadtxt(filename+'meca'+'.dat')
 degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]

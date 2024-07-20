@@ -121,8 +121,6 @@ ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
 
 ax.minorticks_off()
 ax.legend(ncol=2, loc='upper center')
-# ax.legend(loc='upper left')
-# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 ax.set_xlabel('Degree ' + r'$p$')
 ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])

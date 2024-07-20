@@ -46,8 +46,7 @@ fig, ax = plt.subplots(figsize=(5, 4))
 for i, degree in enumerate(degList): 
 	ax.loglog(nbelList**4, timeElapsed[:, i], label=r'$p_s=p_t=$' + str(int(degree)), marker='s', color='k', alpha=(i+1)/len(degList))
 
-slope = np.polyfit(np.log(nbelList**4), np.log(timeElapsed[:, 2]), 1)[0]
-slope = round(slope, 1)
+slope = round(np.polyfit(np.log(nbelList**4), np.log(timeElapsed[:, 2]), 1)[0], 1)
 annotation.slope_marker((nbelList[-2]**4,  timeElapsed[-2, 2]), slope, 
 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
