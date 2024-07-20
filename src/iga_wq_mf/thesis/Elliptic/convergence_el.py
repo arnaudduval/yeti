@@ -1,0 +1,92 @@
+"""
+.. Test of elasticity 2D
+.. Infinite plate with a hole under uniaxial traction. 
+.. The analytical solution of this problem is given by Timoshenko
+.. The convergence curves are traced for IGA-Legendre and IGA-WQ
+.. Joaquin Cornejo 
+"""
+
+from thesis.Elliptic.__init__ import *
+import pickle
+
+RUNSIMU = False
+degList = np.arange(1, 5)
+cutList = np.arange(1, 8)
+
+if RUNSIMU:
+	
+	# degree, cuts = 8, 8
+	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	# problem, displacement = simulate_el(degree, cuts, quadArgs)[:2]
+	# np.save(FOLDER2SAVE + 'dispel', displacement)
+	# with open(FOLDER2SAVE + 'refpartel.pkl', 'wb') as outp:
+	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	
+	disp_ref = np.load(FOLDER2SAVE + 'dispel.npy')
+	with open(FOLDER2SAVE + 'refpartel.pkl', 'rb') as inp:
+		part_ref = pickle.load(inp)
+
+	AbserrorList = np.ones((len(degList), len(cutList)))
+	RelerrorList = np.copy(AbserrorList)
+
+	for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
+		quadArgs = {'quadrule': quadrule, 'type': quadtype}
+		
+		for i, degree in enumerate(degList):
+			for j, cuts in enumerate(cutList):
+				problem, displacement, _ = simulate_el(degree, cuts, quadArgs)
+				AbserrorList[i, j], RelerrorList[i, j] = problem.normOfError(displacement, 
+														normArgs={'type':'H1', 
+																'part_ref':part_ref, 
+																'u_ref':disp_ref})
+			np.savetxt(FOLDER2SAVE+'AbsError_el_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
+			np.savetxt(FOLDER2SAVE+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
+
+else:	
+
+	# Plot results
+	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+
+	fig, ax = plt.subplots(figsize=(6, 5))
+	figname = FOLDER2SAVE + 'ConvergenceH1_el'
+	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+		quadArgs = {'quadrule': quadrule, 'type': quadtype}
+		errorList = np.loadtxt(FOLDER2SAVE+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat')
+
+		for i, degree in enumerate(degList):
+			color = COLORLIST[i]
+			nbelList = 2**cutList
+
+			if quadrule == 'iga': 
+				ax.loglog(nbelList, errorList[i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+				slope = round(np.polyfit(np.log(nbelList), np.log(errorList[i, :]), 1)[0], 1)
+				annotation.slope_marker((nbelList[-2],  errorList[i, -2]), slope, 
+								poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+						
+			else: 
+				ax.loglog(2**cutList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+			
+			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
+			ax.set_xlabel('Number of elements by dimension')
+			ax.set_ylim(top=1e-2, bottom=1e-14)
+			ax.set_xlim(left=1, right=200)
+			ax.legend(loc='lower left')
+			fig.tight_layout()
+			fig.savefig(figname+'.pdf')
+
+	ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+					markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 1")
+	ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+			markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+
+	ax.set_ylabel('Relative '+r'$H^1$'+' error')
+	ax.set_xlabel('Number of elements by dimension')
+	ax.set_ylim(top=1e0, bottom=1e-10)
+	ax.set_xlim(left=1, right=200)
+	ax.legend(loc='lower left')
+	fig.tight_layout()
+	fig.savefig(figname+'.pdf')

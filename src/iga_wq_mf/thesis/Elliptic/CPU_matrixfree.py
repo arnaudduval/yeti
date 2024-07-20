@@ -10,6 +10,7 @@ RUNSIMU = False
 degList = range(1, 10)
 cuts = 5
 quadArgs = {'quadrule':'iga', 'type':'leg'}
+filename = FOLDER2SAVE + 'MF_time' 
 
 if RUNSIMU:
 
@@ -104,4 +105,4 @@ ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])
 ax.set_ylim([1e-1, 1e4])
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE + 'MF_time' + '.pdf')
+fig.savefig(filename+'.pdf')
