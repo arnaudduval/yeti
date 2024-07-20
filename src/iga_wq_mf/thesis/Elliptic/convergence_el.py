@@ -14,7 +14,7 @@ degList = np.arange(1, 5)
 cutList = np.arange(1, 8)
 
 if RUNSIMU:
-	
+
 	# degree, cuts = 8, 8
 	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 	# problem, displacement = simulate_el(degree, cuts, quadArgs)[:2]
@@ -44,11 +44,6 @@ if RUNSIMU:
 
 else:	
 
-	# Plot results
-	normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-	onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
-	onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
-
 	fig, ax = plt.subplots(figsize=(6, 5))
 	figname = FOLDER2SAVE + 'ConvergenceH1_el'
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
@@ -69,14 +64,6 @@ else:
 			else: 
 				ax.loglog(2**cutList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-			
-			ax.set_ylabel(r'$\displaystyle ||u - u^h||_{H^1(\Omega)}$')
-			ax.set_xlabel('Number of elements by dimension')
-			ax.set_ylim(top=1e-2, bottom=1e-14)
-			ax.set_xlim(left=1, right=200)
-			ax.legend(loc='lower left')
-			fig.tight_layout()
-			fig.savefig(figname+'.pdf')
 
 	ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
 					markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 1")

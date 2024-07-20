@@ -63,6 +63,10 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
+normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
+onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
+onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+
 import pyvista as pv
 pv.rcParams['transparent_background'] = True
 pv.global_theme.font.family = 'times'
