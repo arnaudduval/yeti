@@ -1,11 +1,3 @@
-"""
-.. Test of 1D transient heat transfer 
-.. Author: Joaquin Cornejo
-density: 7800 kg/m3
-capacity: 460 J/(kg.K)
-conductivity: 55 W/(m.K)
-"""
-
 from pysrc.lib.__init__ import *
 from pysrc.lib.lib_base import createUniformOpenCurve, sigmoid
 from pysrc.lib.lib_part import part1D
@@ -35,11 +27,10 @@ def powerDensity(args:dict):
 	return f
 
 # Create geometry
-LENGTH = 1.0
-nbel   = int(2**cuts)
-geometry = createUniformOpenCurve(degree, nbel, LENGTH)
+geometry = createUniformOpenCurve(degree, int(2**cuts), LENGTH)
 modelPhy = part1D(geometry, kwargs={'quadArgs': {'quadrule': 'iga'}})
 
+# Create time span
 timespan, cuts_time = 1.0, np.copy(cuts)
 time_list = np.linspace(0, timespan, int(2**cuts_time)+1)
 
