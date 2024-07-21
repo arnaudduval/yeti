@@ -74,3 +74,4 @@ for k, i in enumerate(range(0, np.size(output, axis=1), 4)):
 									name='out_'+str(k), folder=folder)
 	
 run(folder=folder, filename='out_', nbFiles=k)
+for i in range(k): vtk2png(folder, filename='out_'+str(i))

@@ -8,6 +8,7 @@ from pysrc.lib.lib_material import mechamat, heatmat
 from pysrc.lib.lib_boundary import boundaryCondition
 import pickle
 from pyevtk.vtk import VtkGroup
+from pysrc.lib.lib_base import cropImage
 
 FOLDER2SAVE = os.path.dirname(os.path.realpath(__file__)) + '/results/'
 if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
@@ -23,6 +24,43 @@ def run(filename=None, folder=None, nbFiles=1):
 	for i in range(nbFiles):
 		g.addFile(filepath = folder + filename + str(i) + '.vts', sim_time = i)
 	g.save()
+	return
+
+def vtk2png(folder, filename=None, fieldname='temp'):		
+
+	assert filename is not None, "add filename" 
+	fileVTK = folder + filename
+	reader = pv.get_reader(fileVTK + '.vts')
+	scalars = None
+	if fieldname in reader.point_array_names:
+		reader.disable_all_point_arrays()
+		reader.enable_point_array(fieldname)
+		scalars = fieldname
+
+	grid = reader.read() 
+	filename = folder + filename + '.png'
+	
+	sargs = dict(
+			title = 'Normalized temperature',
+			title_font_size=50,
+			label_font_size=40,
+			shadow=True,
+			n_labels=2,
+			fmt="%.1f",
+			position_x=0.2, 
+			position_y=0.2,
+	)
+	pv.start_xvfb()
+	plotter = pv.Plotter(off_screen=True)
+	plotter.add_mesh(grid, cmap='hot', clim=[0, 1], reset_camera=True, 
+					scalar_bar_args=sargs, scalars=scalars)
+	
+	plotter.camera_position = 'xy'
+	plotter.camera.zoom(0.9)
+	plotter.background_color = 'white'
+	plotter.window_size = [1600, 1600]
+	plotter.screenshot(filename)
+	cropImage(filename)
 	return
 
 TRACTION = 400.0
