@@ -1,5 +1,4 @@
 from thesis.Incremental.__init__ import *
-from thesis.Incremental.convergence_incPls2d import simulate_2d
 from scipy.spatial import ConvexHull
 from matplotlib.patches import Polygon
 

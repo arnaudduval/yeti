@@ -89,10 +89,7 @@ if not dataExist:
 														time_list=time_list[:lastStep], alpha=1.0)
 			stop = time.process_time()
 			enablePrint()
-			print('*****')
-			print('time:%.2e'%(stop-start))
-			print('*****')
-			
+		
 			# np.savetxt(filename, resPCG)
 
 else:

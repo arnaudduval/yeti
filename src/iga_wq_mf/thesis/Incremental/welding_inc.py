@@ -1,23 +1,8 @@
-from pysrc.lib.__init__ import *
-from pysrc.lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import heatmat
-from pysrc.lib.lib_boundary import boundaryCondition
-from pysrc.lib.lib_job3d import heatproblem
-from pyevtk.vtk import VtkGroup
+from thesis.Incremental.__init__ import *
 
 # Select folder
-full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/welding/'
+folder = FOLDER2SAVE + '/welding/'
 if not os.path.isdir(folder): os.mkdir(folder)
-
-def run(folder=None):
-	assert folder is not None, 'Folder unknown'
-	print("Running group...")
-	g = VtkGroup(folder)
-	for i in range(33):
-		g.addFile(filepath = folder + "out_"+str(i)+".vts", sim_time = i)
-	g.save()
 
 def conductivityProperty(args:dict):
 	temperature = args['temperature']
@@ -88,4 +73,4 @@ for k, i in enumerate(range(0, np.size(output, axis=1), 4)):
 	problem_inc.part.postProcessingPrimal(fields={'temp':np.atleast_2d(output[:, i])}, 
 									name='out_'+str(k), folder=folder)
 	
-run(folder)
+run(folder=folder, filename='out_', nbFiles=k)

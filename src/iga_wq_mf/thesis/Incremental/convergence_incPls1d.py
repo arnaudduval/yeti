@@ -31,7 +31,7 @@ def simulate_1d(degree, nbel, quadArgs={}):
 	_, stress, plseq, _ = problem.solvePlasticityProblem(displacement, FextList)
 	return problem2return, displacement, stress, plseq
 
-RUNSIMU = False
+RUNSIMU = True
 degList = np.arange(1, 4)
 cutList = np.arange(1, 10)
 stepMax = np.max([201, NBSTEPS])

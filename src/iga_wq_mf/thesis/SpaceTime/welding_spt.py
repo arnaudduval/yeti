@@ -101,6 +101,7 @@ for k, i in enumerate(range(0, np.size(output, axis=1), 2)):
 	
 run(folder)
 
+# ===============ANOTHER EXAMPLE=================
 # from pysrc.lib.__init__ import *
 # from pysrc.lib.lib_base import createUniformOpenCurve
 # from pysrc.lib.lib_geomdl import Geomdl
