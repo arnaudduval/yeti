@@ -66,6 +66,7 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 normalPlot  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 onlyMarker1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 onlyMarker2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
+IncPlot = {'marker': 'd', 'linestyle': '-.', 'markersize': 6}
 
 import pyvista as pv
 pv.rcParams['transparent_background'] = True

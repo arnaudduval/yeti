@@ -68,10 +68,7 @@ if RUNSIMU:
 		np.savetxt(FOLDER2SAVE+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
 
 fig, ax = plt.subplots(figsize=(6, 4))
-IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-WQ1Plot = {'marker': 'x', 'linestyle': '--', 'markersize': 6}
-WQ2Plot = {'marker': 'o', 'linestyle': ':', 'markersize': 6}
-plotoptions = [IgaPlot, WQ1Plot, WQ2Plot]
+plotoptions = [normalPlot, onlyMarker1, onlyMarker2]
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
 labels = ['Steady heat', 'Elasticity']
 
@@ -93,10 +90,10 @@ for sufix, plotops in zip(sufixList, plotoptions):
 			ax.semilogy(degList, timeElapsed, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 1')
-ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
+ax.semilogy([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
+				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label='IGA-WQ 1')
+ax.semilogy([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
+				markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label='IGA-WQ 2')
 
 ax.minorticks_off()
 ax.legend(ncol=2, loc='upper center')

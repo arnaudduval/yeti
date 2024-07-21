@@ -494,7 +494,7 @@ class mechaproblem(problem):
 		# Output variables
 		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
 		Allstrain 	 = np.zeros((nvoigtreal, nbqp_total, nsteps))
-		Allhardening = np.zeros((1, nbqp_total, nsteps))
+		Allplseq = np.zeros((1, nbqp_total, nsteps))
 		AllresLin 	 = []
 
 		for i in range(1, nsteps):
@@ -556,11 +556,11 @@ class mechaproblem(problem):
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress
 			Allstrain[:, :, i] = strain
-			Allhardening[0, :, i] = plseq_n1[0, :]
+			Allplseq[0, :, i] = plseq_n1[0, :]
 
 			plasticstrain_n0, plseq_n0, back_n0 = np.copy(plasticstrain_n1), np.copy(plseq_n1), np.copy(back_n1)
 
-		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'hardening':Allhardening}
+		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'plseq':Allplseq}
 
 	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, args=None, isLumped=False):
 		if mechArgs is None:
