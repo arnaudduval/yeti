@@ -12,6 +12,9 @@ from pyevtk.vtk import VtkGroup
 FOLDER2SAVE = os.path.dirname(os.path.realpath(__file__)) + '/results/'
 if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
 
+FOLDER2DATA = FOLDER2SAVE + '/datafromsimu/'
+if not os.path.isdir(FOLDER2DATA): os.mkdir(FOLDER2DATA)
+
 def run(filename=None, folder=None, nbFiles=1):
 	assert folder is not None, 'Folder unknown'
 	if filename is None: filename = 'out'

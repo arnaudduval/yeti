@@ -59,8 +59,8 @@ if RUNSIMU:
 	degree, cuts = 6, 8
 	quadArgs = {'quadrule': 'wq', 'type': 2}
 	problem, displacement, _, internalVars = simulate_2d(degree, cuts, quadArgs)
-	np.save(FOLDER2SAVE + 'disppl2d', displacement)
-	with open(FOLDER2SAVE + 'refpartpl2d.pkl', 'wb') as outp:
+	np.save(FOLDER2DATA + 'disppl2d', displacement)
+	with open(FOLDER2DATA + 'refpartpl2d.pkl', 'wb') as outp:
 		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 
 	stress_qp = internalVars.get('stress', None)
@@ -70,15 +70,15 @@ if RUNSIMU:
 	for j, i in enumerate(stepList):
 		devstress_qp = computeDeviatoric4All(stress_qp[:, :, i])
 		vonMises_qp = np.sqrt(3/2)*computeSymTensorNorm4All(devstress_qp)
-		problem.part.postProcessingDual(name=filename+str(j), folder=FOLDER2SAVE, 
+		problem.part.postProcessingDual(name=filename+str(j), folder=FOLDER2DATA, 
 										fields={'stress': vonMises_qp, 		
 												'straineq': plseq_qp[0, :, i], 
 												'plastic': plastic_qp[0, :, i]})
-	run(folder=FOLDER2SAVE, filename=filename, nbFiles=len(stepList))
+	run(folder=FOLDER2DATA, filename=filename, nbFiles=len(stepList))
 
-	with open(FOLDER2SAVE + 'refpartpl2d.pkl', 'rb') as inp:
+	with open(FOLDER2DATA + 'refpartpl2d.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
-	disp_ref = np.load(FOLDER2SAVE + 'disppl2d.npy')
+	disp_ref = np.load(FOLDER2DATA + 'disppl2d.npy')
 
 	for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 		quadArgs = {'quadrule':quadrule, 'type': quadtype}
@@ -101,8 +101,8 @@ if RUNSIMU:
 															'u_ref': disp_ref[:, :, step]})
 
 		quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
-		np.save(FOLDER2SAVE + 'Abserror_pls2d_L2_'+quadrule+str(quadtype), errorL2_list)
-		np.save(FOLDER2SAVE + 'Abserror_pls2d_H1_'+quadrule+str(quadtype), errorH1_list)
+		np.save(FOLDER2DATA + 'Abserror_pls2d_L2_'+quadrule+str(quadtype), errorL2_list)
+		np.save(FOLDER2DATA + 'Abserror_pls2d_H1_'+quadrule+str(quadtype), errorH1_list)
 	
 else:
 
@@ -116,7 +116,7 @@ else:
 
 			for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 
-				error_list = np.load(FOLDER2SAVE + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
+				error_list = np.load(FOLDER2DATA + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
 
 				for i, degree in enumerate(degList):
 					color = COLORLIST[i]

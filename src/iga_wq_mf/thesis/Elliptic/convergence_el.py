@@ -15,15 +15,15 @@ cutList = np.arange(1, 8)
 
 if RUNSIMU:
 
-	# degree, cuts = 8, 8
-	# quadArgs = {'quadrule': 'iga', 'type': 'leg'}
-	# problem, displacement = simulate_el(degree, cuts, quadArgs)[:2]
-	# np.save(FOLDER2SAVE + 'dispel', displacement)
-	# with open(FOLDER2SAVE + 'refpartel.pkl', 'wb') as outp:
-	# 	pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+	degree, cuts = 8, 8
+	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
+	problem, displacement = simulate_el(degree, cuts, quadArgs)[:2]
+	np.save(FOLDER2DATA + 'dispel', displacement)
+	with open(FOLDER2DATA + 'refpartel.pkl', 'wb') as outp:
+		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
 	
-	disp_ref = np.load(FOLDER2SAVE + 'dispel.npy')
-	with open(FOLDER2SAVE + 'refpartel.pkl', 'rb') as inp:
+	disp_ref = np.load(FOLDER2DATA + 'dispel.npy')
+	with open(FOLDER2DATA + 'refpartel.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
 	AbserrorList = np.ones((len(degList), len(cutList)))
@@ -39,8 +39,8 @@ if RUNSIMU:
 														normArgs={'type':'H1', 
 																'part_ref':part_ref, 
 																'u_ref':disp_ref})
-			np.savetxt(FOLDER2SAVE+'AbsError_el_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
-			np.savetxt(FOLDER2SAVE+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
+			np.savetxt(FOLDER2DATA+'AbsError_el_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
+			np.savetxt(FOLDER2DATA+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
 
 else:	
 
@@ -48,7 +48,7 @@ else:
 	figname = FOLDER2SAVE + 'ConvergenceH1_el'
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
-		errorList = np.loadtxt(FOLDER2SAVE+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat')
+		errorList = np.loadtxt(FOLDER2DATA+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat')
 
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]

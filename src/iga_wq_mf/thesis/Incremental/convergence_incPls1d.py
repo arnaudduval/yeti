@@ -39,15 +39,15 @@ stepList = range(1, stepMax, 10)
 
 if RUNSIMU:
 
-	# degree, nbel = 2, 2048
-	# quadArgs = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-	# problem, displacement_cp, stress_qp, plseq_qp = simulate_1d(degree, nbel, quadArgs)
-	# np.save(FOLDER2SAVE + 'disppl1d', displacement_cp)
-	# with open(FOLDER2SAVE + 'refpartpl1d.pkl', 'wb') as outp:
-	# 	pickle.dump(problem, outp, pickle.HIGHEST_PROTOCOL)
+	degree, nbel = 2, 2048
+	quadArgs = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
+	problem, displacement_cp, stress_qp, plseq_qp = simulate_1d(degree, nbel, quadArgs)
+	np.save(FOLDER2DATA + 'disppl1d', displacement_cp)
+	with open(FOLDER2DATA + 'refpartpl1d.pkl', 'wb') as outp:
+		pickle.dump(problem, outp, pickle.HIGHEST_PROTOCOL)
 
-	disp_ref = np.load(FOLDER2SAVE + 'disppl1d.npy')
-	with open(FOLDER2SAVE + 'refpartpl1d.pkl', 'rb') as inp:
+	disp_ref = np.load(FOLDER2DATA + 'disppl1d.npy')
+	with open(FOLDER2DATA + 'refpartpl1d.pkl', 'rb') as inp:
 		part_ref = pickle.load(inp)
 
 	errorL2_list = np.ones((len(stepList), len(degList), len(cutList)))
@@ -69,8 +69,8 @@ if RUNSIMU:
 																		'part_ref':part_ref, 
 																		'u_ref': disp_ref[:, step]})	
 
-	np.save(FOLDER2SAVE + 'Abserror_pls1d_L2', errorL2_list)
-	np.save(FOLDER2SAVE + 'Abserror_pls1d_H1', errorH1_list)
+	np.save(FOLDER2DATA + 'Abserror_pls1d_L2', errorL2_list)
+	np.save(FOLDER2DATA + 'Abserror_pls1d_H1', errorH1_list)
 
 	plasticeq_cp = problem.L2projectionCtrlpts(plseq_qp)
 	stress_cp = problem.L2projectionCtrlpts(stress_qp)
@@ -105,7 +105,7 @@ else:
 
 		for error_name, ax in zip(['H1', 'L2'], axs):
 
-			error_list = np.load(FOLDER2SAVE + 'Abserror_pls1d_' + error_name + '.npy')
+			error_list = np.load(FOLDER2DATA + 'Abserror_pls1d_' + error_name + '.npy')
 
 			for i, degree in enumerate(degList):
 				color = COLORLIST[i]

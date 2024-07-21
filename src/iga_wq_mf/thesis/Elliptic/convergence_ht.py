@@ -30,8 +30,8 @@ if RUNSIMU:
 														normArgs={'type':'L2',
 														'exactFunction':exactTemperature_quartCircle,
 														'exactFunctionDers':exactDiffTemperature_quartCircle})
-			np.savetxt(FOLDER2SAVE+'AbsError_ht_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
-			np.savetxt(FOLDER2SAVE+'RelError_ht_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
+			np.savetxt(FOLDER2DATA+'AbsError_ht_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
+			np.savetxt(FOLDER2DATA+'RelError_ht_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
 
 else:	
 
@@ -39,7 +39,7 @@ else:
 	figname = FOLDER2SAVE + 'ConvergenceL2_ht'
 	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
-		errorList = np.loadtxt(FOLDER2SAVE+'RelError_ht_'+quadrule+'_'+str(quadtype)+'.dat')
+		errorList = np.loadtxt(FOLDER2DATA+'RelError_ht_'+quadrule+'_'+str(quadtype)+'.dat')
 
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]

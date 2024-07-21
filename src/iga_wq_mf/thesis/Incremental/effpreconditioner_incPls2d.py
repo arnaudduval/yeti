@@ -23,7 +23,7 @@ if RUNSIMU:
 	quadArgs = {'quadrule': 'iga', 'type': 'leg'}
 
 	for precond in ITERMETHODS:
-		filename = FOLDER2SAVE + 'Residualpls_' + precond + '.dat'        
+		filename = FOLDER2DATA + 'Residualpls_' + precond + '.dat'        
 		AllresLin = simulate_2d(DEGREE, CUTS, quadArgs, precond=precond)[2]
 		np.savetxt(filename, AllresLin)
 
@@ -31,7 +31,7 @@ else:
 
 	fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
 	for i, precond in enumerate(ITERMETHODS):
-		filename = FOLDER2SAVE + 'Residualpls_' + precond + '.dat' 
+		filename = FOLDER2DATA + 'Residualpls_' + precond + '.dat' 
 		AllresLin = np.loadtxt(filename)
 		color = COLORLIST[i+1]
 
