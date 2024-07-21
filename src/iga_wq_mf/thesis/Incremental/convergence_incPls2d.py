@@ -29,7 +29,7 @@ def forceSurf(P:list):
 	F[1, :] = -TRACTION*(np.min(tmp, axis=0))**2
 	return F
 
-def simulate(degree, cuts, quadArgs):
+def simulate_2d(degree, cuts, quadArgs, precond='JMC'):
 	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 			}
@@ -47,18 +47,18 @@ def simulate(degree, cuts, quadArgs):
 	enablePrint()
 
 	# Solve elastic problem
-	problem = mechaproblem(material, modelPhy, boundary)
+	problem = mechaproblem(material, modelPhy, boundary); problem._linPreCond = precond
 	Fref = problem.compute_surfForce(forceSurf, nbFacePosition=3)[0]
 	FextList = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
 	for k in range(len(TIME_LIST)): FextList[:, :, k] = np.sin(TIME_LIST[k])*Fref
 	displacement = np.zeros(np.shape(FextList))
-	_, internalVars = problem.solveElastoPlasticityProblem(displacement, FextList)
-	return problem, displacement, internalVars
+	resLin, internalVars = problem.solveElastoPlasticityProblem(displacement, FextList)
+	return problem, displacement, resLin, internalVars
 
 if RUNSIMU:
 	degree, cuts = 6, 8
 	quadArgs = {'quadrule': 'wq', 'type': 2}
-	problem, displacement, internalVars = simulate(degree, cuts, quadArgs)
+	problem, displacement, _, internalVars = simulate_2d(degree, cuts, quadArgs)
 	np.save(FOLDER2SAVE + 'disppl2d', displacement)
 	with open(FOLDER2SAVE + 'refpartpl2d.pkl', 'wb') as outp:
 		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
@@ -87,7 +87,7 @@ if RUNSIMU:
 
 		for i, degree in enumerate(degList):
 			for j, cuts in enumerate(cutList):
-				problem, displacement, _= simulate(degree, cuts, quadArgs)
+				problem, displacement, _, _= simulate_2d(degree, cuts, quadArgs)
 
 				for k, step in enumerate(stepList):
 					errorL2_list[k, i, j], _ = problem.normOfError(displacement[:, :, step], 
