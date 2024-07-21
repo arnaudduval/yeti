@@ -2,7 +2,8 @@ from thesis.Elliptic.__init__ import *
 
 degree, cuts = 6, 6
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
-for j, preconditioner in enumerate(['WP', 'ilu', 'C', 'JMC']):
+colors = [COLORLIST[0], COLORLIST[1], COLORLIST[4], COLORLIST[3]]
+for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], colors)):
 	start = time.process_time()
 	problem, _, residue = simulate_el(degree, cuts, preconditioner=preconditioner)
 	stop = time.process_time()
@@ -12,7 +13,7 @@ for j, preconditioner in enumerate(['WP', 'ilu', 'C', 'JMC']):
 	elif preconditioner == 'ilu': labelfig = 'Incomplete LU'
 	elif preconditioner == 'C' : labelfig = 'Classic FD'
 	elif preconditioner == 'JMC' : labelfig = 'This work'
-	ax.semilogy(residue, marker=MARKERLIST[j], label=labelfig)
+	ax.semilogy(residue, marker=MARKERLIST[j], label=labelfig, color=color)
 
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 ax.set_ylabel('Relative residue')

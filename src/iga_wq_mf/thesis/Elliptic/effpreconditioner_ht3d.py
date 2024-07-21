@@ -168,11 +168,11 @@ class heatsimulate(simulate):
 		return un
 
 # Select folder
-RUNSIMU = True
+RUNSIMU = False
 degList = np.arange(4, 5)
 cutList = np.arange(5, 6)
 geonameList = ['cb', 'vb', 'tr']
-IterMethods = ['WP', 'C', 'JMC']
+IterMethods = ['WP', 'C', 'TDC', 'JMC']
 
 for cuts in cutList:
 	for degree in degList:

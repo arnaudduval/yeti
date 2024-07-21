@@ -186,13 +186,11 @@ class decoder():
 		new_method_list = []
 		for pcgmethod in method_list:
 			if pcgmethod   == 'WP' : new_method_list.append('w.o. preconditioner')
-			elif pcgmethod == 'C'  : new_method_list.append('Classic FD method')
-			elif pcgmethod == 'TDS': new_method_list.append('Literature + scaling') 
+			elif pcgmethod == 'C'  : new_method_list.append('Classic FD')
 			elif pcgmethod == 'TDC': new_method_list.append('Literature') 
 			elif pcgmethod == 'JMC': new_method_list.append('This work') 
-			elif pcgmethod == 'JMS': new_method_list.append('This work + scaling')
 		
-		markers = ['o', 'v', 's', 'X', '+', 'p']
+		markers = ['o', 'v', 's', 'X', '+', 'p', '*']
 
 		# Set figure parameters
 		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
@@ -204,8 +202,8 @@ class decoder():
 
 		ax.set_xlim(right=100, left=0)
 		ax.set_ylim(top=10.0, bottom=threshold)
-		ax.set_xlabel('Number of iterations of BiCGSTAB solver')
-		ax.set_ylabel('Relative residue ' + r'$\displaystyle\frac{||r||_2}{||b||_2}$')
+		ax.set_xlabel('Number of iterations (GMRES)')
+		ax.set_ylabel('Relative residue')
 
 		if plotLegend:
 			# if plotLegend: ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
