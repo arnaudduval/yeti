@@ -990,10 +990,9 @@ class stmechaproblem1D(stproblem1D):
 			K32 = self.compute_TangentStiffness32(args=args)[np.ix_(dof_intvar, dof_intvar)]
 			K33 = self.compute_TangentStiffness33(args=args)[np.ix_(dof_intvar, dof_intvar)]
 
-			K = -np.block([
-						[K11, K12, K13], 
-						[K21, K22, K23], 
-						[K31, K32, K33]])
+			K = -np.block([	[K11, K12, K13], 
+							[K21, K22, K23], 
+							[K31, K32, K33]])
 			F = np.hstack([res1[dof], res2[dof_intvar], res3[dof_intvar]])
 			# sol = sp.linalg.spsolve(sp.csr_matrix(K), F)
 			sol = sp.linalg.gmres(sp.csr_matrix(K), F)[0]
