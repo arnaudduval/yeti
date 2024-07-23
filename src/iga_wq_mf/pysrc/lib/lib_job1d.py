@@ -768,7 +768,9 @@ class stheatproblem1D(stproblem1D):
 											'gradients':gradtemperature}, 
 										isfull=isfull).todense()
 			tangentM = sp.csr_matrix(tangentM[np.ix_(dof, dof)])
-			deltaD = np.zeros(nbctrlpts_total); deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+			deltaD = np.zeros(nbctrlpts_total)
+			# deltaD[dof] = sp.linalg.spsolve(tangentM, r_dj[dof])
+			deltaD[dof] = np.linalg.solve(tangentM.todense(), r_dj[dof])
 		
 			# Update active control points
 			Tinout += deltaD
