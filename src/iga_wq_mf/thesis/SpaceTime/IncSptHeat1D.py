@@ -20,8 +20,8 @@ if FIG_CASE == 0:
 			relerror = np.zeros((len(degList)+1, len(cutList)+1))
 			Abserror[0, 1:] = cutList; relerror[0, 1:] = cutList
 			Abserror[1:, 0] = degList; relerror[1:, 0] = degList
-			filenameA1 = FOLDER2DATA+'L2abserror'+sufix+EXTENSION
-			filenameR1 = FOLDER2DATA+'L2relerror'+sufix+EXTENSION
+			filenameA1 = FOLDER2DATA+'0L2abserror'+sufix+EXTENSION
+			filenameR1 = FOLDER2DATA+'0L2relerror'+sufix+EXTENSION
 			for j, cuts in enumerate(cutList):
 				for i, degree in enumerate(degList):
 					blockPrint()
@@ -39,7 +39,7 @@ if FIG_CASE == 0:
 
 	plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
 	figname = FOLDER2SAVE + 'L2Convergence' + SUFIX + '.pdf'
-	filenames = ['L2abserror_iga_leg_', 'L2abserror_wq_1_', 'L2abserror_wq_2_']
+	filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_1_', '0L2abserror_wq_2_']
 
 	fig, ax = plt.subplots(figsize=(8, 6))
 	for filename, plotops in zip(filenames, plotoptions):

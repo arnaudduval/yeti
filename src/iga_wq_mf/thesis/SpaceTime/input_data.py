@@ -10,8 +10,8 @@ from pysrc.lib.lib_job1d import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
-IS1DIM = True
-ISLINEAR = True
+IS1DIM = False
+ISLINEAR = False
 CUTS_TIME = 6
 
 if GEONAME == 'SQ' or IS1DIM: ISISOTROPIC = True
