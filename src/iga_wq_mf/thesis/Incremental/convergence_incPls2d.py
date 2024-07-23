@@ -72,7 +72,7 @@ else:
 
 		for error_name, ax in zip(['H1', 'L2'], axs):
 
-			for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+			for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
 
 				error_list = np.load(FOLDER2DATA + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
 
@@ -98,10 +98,10 @@ else:
 			ax.set_xlabel('Number of elements')
 			ax.set_xlim(left=1, right=10**2)
 
-		ax.semilogy([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-				markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label='IGA-WQ 1')
-		ax.semilogy([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-				markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label='IGA-WQ 2')
+		ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='IGA-WQ 1')
+		ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='IGA-WQ 2')
 
 		ax.legend()
 		fig.tight_layout()
