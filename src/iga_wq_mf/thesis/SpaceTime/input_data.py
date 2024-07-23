@@ -10,8 +10,8 @@ from pysrc.lib.lib_job1d import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
-IS1DIM = False
-ISLINEAR, NONLINCASE = False, 1
+IS1DIM = True
+ISLINEAR = True
 CUTS_TIME = 6
 
 if GEONAME == 'SQ' or IS1DIM: ISISOTROPIC = True
@@ -25,33 +25,14 @@ def nonlinearfunc(args:dict):
 	if ISLINEAR: 
 		Kprop1d = 2*np.ones(shape=np.shape(temperature))
 	else:
-		if NONLINCASE==1: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
-		if NONLINCASE==2: Kprop1d = 1.0 + 2.0*exp(-abs(temperature))
+		Kprop1d = 3.0 + 2.0*tanh(temperature/50)
 	return np.atleast_2d(Kprop1d)
 
 def nonlineardersfunc(args:dict):
 	temperature = args.get('temperature')
-	if ISLINEAR: y = np.zeros(shape=np.shape(temperature))
-	else: 
-		if NONLINCASE==1: y = (2.0/50)/(np.cosh(temperature/50))**2
-		if NONLINCASE==2: y = -2.0*sign(temperature)*exp(-abs(temperature))
-	return y
-
-def exportTimeDependentMaterial(time_list, temperature=None, fields=None, geoArgs=None, folder=None):
-	assert fields is not None, 'Add material fields'
-	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': 4*np.ones(3, dtype=int), 
-						'nb_refinementByDirection': 5*np.ones(3, dtype=int)}
-	modelGeo = Geomdl(geoArgs)
-	modelIGA = modelGeo.getIGAParametrization()
-	modelPhy = part(modelIGA, quadArgs={'quadrule': 'iga'})
-	extraArgs = {}
-	extraArgs['position'] = modelPhy.interpolateMeshgridField()[0]
-	for i, tm in enumerate(time_list):
-		extraArgs['time'] = tm
-		if temperature is not None:	extraArgs['temperature'] = temperature(extraArgs)
-		modelPhy.postProcessingPrimal(fields=fields, extraArgs=extraArgs, 
-						folder=folder, name='out_'+str(i))
-	return
+	if ISLINEAR: Kprop = np.zeros(shape=np.shape(temperature))
+	else: Kprop = (2.0/50)/(np.cosh(temperature/50))**2
+	return Kprop
 
 def createAsymmetricalKnotvector(level, xasym=0.1):
 
@@ -153,20 +134,11 @@ def powerDensitySquare_inc(args:dict):
 			+ 8*CST*pi**2*u
 		)
 	else: 
-		if NONLINCASE==1:
-			f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
-				- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
-				+ 4*CST*pi**2*u*(2*tanh((CST*u)/50) + 3) 
-				+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2*(tanh((CST*u)/50)**2 - 1))/25
-			)	
-
-		if NONLINCASE==2:
-			f = (
-				(CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
-				- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
-				+ 4*CST*pi**2*sin((pi*t)/2)*sin(2*pi*x)*(2*exp(-abs(CST*u)) + 1)*((3*cos((3*pi*t)/2))/4 + 1) 
-				+ 8*CST**2*pi**2*exp(-abs(CST*u))*cos(2*pi*x)**2*sign(CST*u)*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2
-			)
+		f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+			- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
+			+ 4*CST*pi**2*u*(2*tanh((CST*u)/50) + 3) 
+			+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2*(tanh((CST*u)/50)**2 - 1))/25
+		)	
 
 	return f
 
@@ -220,31 +192,27 @@ def powerDensityTrap_inc(args:dict):
 			+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4
 		)
 	else: 
-		if NONLINCASE==1:
-			f = ((2*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3)*((9*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4)/8 
-						+ CST*sin(u1)*u2*u3*sin(pi*y)*(u6)**2*u4 
-						+ 25*CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
-						- 10*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u6)*u4) 
-				- (4*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 6)*(2*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4 
-						- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)**2*u4 
-						- CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
-						+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u5)*u4) 
-				- 2*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3/2)*(5*CST*pi**2*sin(u1)*cos(5*pi*x)*cos(pi*y)*u2*u4 
-						- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)*(u6)*u4 
-						+ 5*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u5)*u4 
-						+ CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4) 
-				+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
-						+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-				+ 2*(CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
-						+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-				+ 4*(CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
-						+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-						+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
-								+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-								- (CST*pi*sin(u1)*cos((pi*t)/2)*u3*sin(pi*y)*u4)/2 + (9*CST*pi*sin(u1)*u2*sin((3*pi*t)/2)*u3*sin(pi*y))/8
-		)
-		if NONLINCASE==2:
-			f = (...
+		f = ((2*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3)*((9*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4)/8 
+					+ CST*sin(u1)*u2*u3*sin(pi*y)*(u6)**2*u4 
+					+ 25*CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
+					- 10*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u6)*u4) 
+			- (4*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 6)*(2*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4 
+					- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)**2*u4 
+					- CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
+					+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u5)*u4) 
+			- 2*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3/2)*(5*CST*pi**2*sin(u1)*cos(5*pi*x)*cos(pi*y)*u2*u4 
+					- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)*(u6)*u4 
+					+ 5*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u5)*u4 
+					+ CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4) 
+			+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
+					+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+			+ 2*(CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
+					+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+			+ 4*(CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
+					+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+					+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
+							+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
+							- (CST*pi*sin(u1)*cos((pi*t)/2)*u3*sin(pi*y)*u4)/2 + (9*CST*pi*sin(u1)*u2*sin((3*pi*t)/2)*u3*sin(pi*y))/8
 		)
 
 	return f
@@ -303,61 +271,55 @@ def powerDensityRing_inc(args:dict):
 		- 10*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)
 	)
 	else: 
-		if NONLINCASE==1:
 
-			f = ((2*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-						+ 8*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						- 8*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-						+ 4*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-						+ CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-						+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-				- 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3/2)*(CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-						- 2*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						- 2*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						+ 2*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-						+ 2*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-						- 8*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						+ 8*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-						- 5*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)) 
-				+ (4*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 6)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-								- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-								+ 8*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-								- 8*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-								+ CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-								+ 4*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-								+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-								- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-				+ 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-								- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-								+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25 
-										- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-										+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) 
-				+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-						- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
-								- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-								+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25) 
-				+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25
-						- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-						+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-								- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-								+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-				+ 4*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-						- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-						+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
-								- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-								+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25)
-				- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
-				+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8
-		)
+		f = ((2*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+					+ 8*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					- 8*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+					+ 4*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+					+ CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+					+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+			- 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3/2)*(CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+					- 2*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					- 2*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					+ 2*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+					+ 2*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+					- 8*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					+ 8*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+					- 5*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)) 
+			+ (4*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 6)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+							- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+							+ 8*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+							- 8*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+							+ CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+							+ 4*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+							+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+							- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+			+ 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+							- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+							+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25 
+									- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+									+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) 
+			+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+					- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+							- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+							+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25) 
+			+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25
+					- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+					+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+							- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+							+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+			+ 4*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+					- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+					+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+							- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+							+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25)
+			- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
+			+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8
+	)
 	
-		if NONLINCASE==2:
-
-			f = (...
-		)
-
 	return f
 
 def powerDensityRing_spt(args:dict):

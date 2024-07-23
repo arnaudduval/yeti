@@ -1,35 +1,27 @@
 from thesis.SpaceTime.__init__ import *
 from thesis.SpaceTime.input_data import *
 
-# Select folder
-full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/1D/'
-if not os.path.isdir(folder): os.mkdir(folder)
-
 # Set global variables
-TODOSIMU = False
+SUFIX = ('lin' if ISLINEAR else 'nonlin') + '1d'
+RUNSIMU = False
 FIG_CASE = 2
+EXTENSION = '.dat'
 
-IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-WQ1Plot = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
-WQ2Plot = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
-IncPlot = {'marker': 'd', 'linestyle': '-.', 'markersize': 6}
-
-lastsufix = 'linear' if ISLINEAR else 'nonlin'
+if RUNSIMU: assert IS1DIM, 'Try 1D methods'
 
 if FIG_CASE == 0:
-	if TODOSIMU:
+	if RUNSIMU:
 		degList = np.array([1, 2, 3, 4, 5])
 		cutList = np.arange(1, 6)	
 		for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
-			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + lastsufix
+			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
-			AbserrorTable = np.zeros((len(degList)+1, len(cutList)+1))
-			relerrorTable = np.zeros((len(degList)+1, len(cutList)+1))
-			AbserrorTable[0, 1:] = cutList; relerrorTable[0, 1:] = cutList
-			AbserrorTable[1:, 0] = degList; relerrorTable[1:, 0] = degList
-			filenameA1 = folder+'L2abserror_meshpar'+sufix+'.dat'
-			filenameR1 = folder+'L2relerror_meshpar'+sufix+'.dat'
+			Abserror = np.zeros((len(degList)+1, len(cutList)+1))
+			relerror = np.zeros((len(degList)+1, len(cutList)+1))
+			Abserror[0, 1:] = cutList; relerror[0, 1:] = cutList
+			Abserror[1:, 0] = degList; relerror[1:, 0] = degList
+			filenameA1 = FOLDER2DATA+'L2abserror'+sufix+EXTENSION
+			filenameR1 = FOLDER2DATA+'L2relerror'+sufix+EXTENSION
 			for j, cuts in enumerate(cutList):
 				for i, degree in enumerate(degList):
 					blockPrint()
@@ -38,25 +30,24 @@ if FIG_CASE == 0:
 													dirichlet_table=dirichlet_table, quadArgs=quadArgs, 
 													degree_time=degree, nbel_time=2**cuts, is1dim=IS1DIM)
 					enablePrint()					
-					AbserrorTable[i+1, j+1], relerrorTable[i+1, j+1] = problem_spt.normOfError(temp_spt, 
+					Abserror[i+1, j+1], relerror[i+1, j+1] = problem_spt.normOfError(temp_spt, 
 																	normArgs={'type':'L2', 
-																	'exactFunction':exactTemperatureSquare_spt},)
+																			'exactFunction':exactTemperatureSquare_spt},)
 
-					np.savetxt(filenameA1, AbserrorTable)
-					np.savetxt(filenameR1, relerrorTable)
+					np.savetxt(filenameA1, Abserror)
+					np.savetxt(filenameR1, relerror)
 
-	plotoptions = [IgaPlot, WQ1Plot, WQ2Plot]
-	lastsufix = 'linear' if ISLINEAR else 'nonlin'
-	figname = folder + 'SPTNLL2Convergence'+lastsufix+'.pdf'
-	filenames = ['L2abserror_meshpar_iga_leg_', 'L2abserror_meshpar_wq_1_', 'L2abserror_meshpar_wq_2_']
+	plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
+	figname = FOLDER2SAVE + 'L2Convergence' + SUFIX + '.pdf'
+	filenames = ['L2abserror_iga_leg_', 'L2abserror_wq_1_', 'L2abserror_wq_2_']
 
 	fig, ax = plt.subplots(figsize=(8, 6))
 	for filename, plotops in zip(filenames, plotoptions):
-		quadrule = filename.split('_')[2]
-		table = np.loadtxt(folder+filename+lastsufix+'.dat')	
+		quadrule = filename.split('_')[1]
+		table = np.loadtxt(FOLDER2DATA + filename + SUFIX + EXTENSION)	
 		nbels = 2**(table[0, 1:])
 		degList = table[1:, 0]
-		errList  = table[1:, 1:]
+		errList = table[1:, 1:]
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]
 			if quadrule == 'iga': 
@@ -66,35 +57,33 @@ if FIG_CASE == 0:
 				ax.loglog(nbels, errList[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
 						markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 					
-			fig.savefig(figname)
+	ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+					markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='IGA-WQ 1')
+	ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+			markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='IGA-WQ 2')
 
-	ax.loglog([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-					markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 4')
-	ax.loglog([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-			markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
-
-	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
+	ax.set_ylabel(r'$L^2$' + ' error')
 	ax.set_xlabel('Number of elements by space-time direction')
 	ax.set_xlim(left=1, right=50)
-	ax.set_ylim(top=1e1, bottom=1e-10)
+	ax.set_ylim(top=1e2, bottom=1e-8)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(figname)
 
 elif FIG_CASE == 1:
 
-	filenameA1 = folder + '1incheatAbs'+lastsufix
-	filenameR1 = folder + '1incheatRel'+lastsufix
-	filenameT1 = folder + '1incheatTim'+lastsufix
+	filenameA1 = FOLDER2DATA + '1incheatAbs'+SUFIX
+	filenameR1 = FOLDER2DATA + '1incheatRel'+SUFIX
+	filenameT1 = FOLDER2DATA + '1incheatTim'+SUFIX
 
-	filenameA2 = folder + '1sptheatAbs'+lastsufix
-	filenameR2 = folder + '1sptheatRel'+lastsufix
-	filenameT2 = folder + '1sptheatTim'+lastsufix
+	filenameA2 = FOLDER2DATA + '1sptheatAbs'+SUFIX
+	filenameR2 = FOLDER2DATA + '1sptheatRel'+SUFIX
+	filenameT2 = FOLDER2DATA + '1sptheatTim'+SUFIX
 
 	degList = np.array([1, 2, 3, 4])
 	cutList = np.arange(1, 8)
 
-	if TODOSIMU:
+	if RUNSIMU:
 
 		A1errorList = np.ones((len(degList), len(cutList)))
 		R1errorList = np.ones((len(degList), len(cutList)))
@@ -141,70 +130,74 @@ elif FIG_CASE == 1:
 
 				enablePrint()
 
-			np.savetxt(filenameA1+'.dat', A1errorList)
-			np.savetxt(filenameR1+'.dat', R1errorList)
-			np.savetxt(filenameT1+'.dat', T1timeList)
-			np.savetxt(filenameA2+'.dat', A2errorList)
-			np.savetxt(filenameR2+'.dat', R2errorList)
-			np.savetxt(filenameT2+'.dat', T2timeList)
+			np.savetxt(filenameA1+EXTENSION, A1errorList)
+			np.savetxt(filenameR1+EXTENSION, R1errorList)
+			np.savetxt(filenameT1+EXTENSION, T1timeList)
+			np.savetxt(filenameA2+EXTENSION, A2errorList)
+			np.savetxt(filenameR2+EXTENSION, R2errorList)
+			np.savetxt(filenameT2+EXTENSION, T2timeList)
 
-	errorList1 = np.loadtxt(filenameA1+'.dat')
-	errorList2 = np.loadtxt(filenameA2+'.dat')
+	errorList1 = np.loadtxt(filenameA1+EXTENSION)
+	errorList2 = np.loadtxt(filenameA2+EXTENSION)
 	fig, ax = plt.subplots(figsize=(8, 6))
 	for i, degree in enumerate(degList):
 		color = COLORLIST[i]
-		ax.loglog(2**cutList, errorList2[i, :], color=color, marker=IgaPlot['marker'], markerfacecolor='w',
-					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], )
+		ax.loglog(2**cutList, errorList2[i, :], color=color, marker=CONFIGLINE0['marker'], markerfacecolor='w',
+					markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], )
 		
-		ax.loglog(2**cutList, errorList1[i, :], color=color, marker=IncPlot['marker'], markerfacecolor='w',
-					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA deg. '+str(degree))
+		ax.loglog(2**cutList, errorList1[i, :], color=color, marker=CONFIGLINE4['marker'], markerfacecolor='w',
+					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA deg. '+str(degree))
 		
-	ax.loglog([], [], color='k', marker=IgaPlot['marker'], markerfacecolor='w', 
-					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
+	ax.loglog([], [], color='k', marker=CONFIGLINE0['marker'], markerfacecolor='w', 
+					markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL')
 
-	
-	ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Omega)}$')
+	ax.set_ylabel(r'$L^2$' + ' error')
 	ax.set_xlabel('Number of elements by spatial direction')
 	ax.set_xlim(left=1, right=200)
-	ax.set_ylim(top=1e1, bottom=1e-6)
+	ax.set_ylim(top=1e2, bottom=1e-6)
 	ax.legend(loc='upper right')
 	fig.tight_layout()
-	fig.savefig(folder + 'INCNLL2Convergence' +  '.pdf')
+	fig.savefig(FOLDER2SAVE + 'INCL2Convergence' + SUFIX +  '.pdf')
 	plt.close(fig)
 
 elif FIG_CASE == 2:
 
-	degree, cuts = 8, 7
-	quadArgs = {'quadrule':'wq', 'type':2}
+	degree, cuts = 9, 6
+	quadArgs = {'quadrule':'iga', 'type':'leg'}
 	nbelincList = np.arange(5, 65, 5)
-	degsptList = np.arange(1, 5)
+	degsptList  = np.arange(1, 5)
 	abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
 	abserrorInc2, relerrorInc2 = np.ones(len(nbelincList)), np.ones(len(nbelincList))
 	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(nbelincList))), np.ones((len(degsptList), len(nbelincList)))
 
-	if TODOSIMU:
+	if RUNSIMU:
 		for i, nbelsinc in enumerate(nbelincList):
 
 			blockPrint()
 			# Incremental
 			dirichlet_table = np.ones((2, 2))
-			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensitySquare_inc, dirichlet_table=dirichlet_table,
-														nbel_time=nbelsinc, quadArgs={'quadrule':'iga'}, 
+			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensitySquare_inc, 
+														dirichlet_table=dirichlet_table,
+														nbel_time=nbelsinc, 
+														quadArgs={'quadrule':'iga'}, 
 														is1dim=IS1DIM)
 			
 			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
-										normArgs={'type':'L2',
-													'exactFunction':exactTemperatureSquare_inc,
-													'exactExtraArgs':{'time':time_inc[-1]}})
+														normArgs={'type':'L2',
+																'exactFunction':exactTemperatureSquare_inc,
+																'exactExtraArgs':{'time':time_inc[-1]}})
 			
-			np.savetxt(folder+'2abserrorstag_inc'+'.dat', abserrorInc)
-			np.savetxt(folder+'2relerrorstag_inc'+'.dat', relerrorInc)
+			np.savetxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION, abserrorInc)
+			np.savetxt(FOLDER2DATA+'2relerrorstag_inc'+SUFIX+EXTENSION, relerrorInc)
 
 			# Space time
 			for j, degspt in enumerate(degsptList):
 				dirichlet_table = np.ones((2, 2)); dirichlet_table[-1, 1] = 0
-				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, dirichlet_table=dirichlet_table,
-													degree_time=degspt, nbel_time=nbelsinc+1-degspt, quadArgs=quadArgs, is1dim=IS1DIM)
+				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
+														dirichlet_table=dirichlet_table,
+														degree_time=degspt, 
+														nbel_time=nbelsinc+1-degspt, 
+														quadArgs=quadArgs, is1dim=IS1DIM)
 					
 				newtemp_spt = np.reshape(temp_spt, newshape=(problem_spt.part.nbctrlpts_total, problem_spt.time.nbctrlpts_total), order='F')
 				abserrorSpt[j, i], relerrorSpt[j, i] = problem_inc.normOfError(newtemp_spt[:, -1], 
@@ -212,25 +205,25 @@ elif FIG_CASE == 2:
 																	'exactFunction':exactTemperatureSquare_inc,
 																	'exactExtraArgs':{'time':time_inc[-1]}})
 
-				np.savetxt(folder+'2abserrorstag_spt'+'.dat', abserrorSpt)
-				np.savetxt(folder+'2relerrorstag_spt'+'.dat', relerrorSpt)
+				np.savetxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION, abserrorSpt)
+				np.savetxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION, relerrorSpt)
 			
 			enablePrint()
 
 	fig, ax = plt.subplots(figsize=(8, 6))
-	errorList1 = np.loadtxt(folder+'2abserrorstag_spt'+'.dat')
+	errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION)
 	for i, deg in enumerate(degsptList):
-		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=IgaPlot['marker'], markerfacecolor='w',
-					markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
+		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=CONFIGLINE0['marker'], markerfacecolor='w',
+					markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
 		
-	errorList1 = np.loadtxt(folder+'2abserrorstag_inc'+'.dat')
-	ax.loglog(nbelincList+1, errorList1, marker=IncPlot['marker'], markerfacecolor='w', color='k',
-					markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA')
+	errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION)
+	ax.loglog(nbelincList+1, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w', color='k',
+					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA')
 
 	ax.set_ylabel('Stagnation error')
 	ax.set_xlabel('Number of control points on time')
 	ax.set_xlim(left=4, right=100)
-	ax.set_ylim(top=1e-1, bottom=1e-9)
+	ax.set_ylim(top=1e1, bottom=1e-9)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
-	fig.savefig(folder+'StagnationError'+'.pdf')
+	fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')
