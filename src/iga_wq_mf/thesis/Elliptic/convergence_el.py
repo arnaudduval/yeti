@@ -46,7 +46,7 @@ else:
 
 	fig, ax = plt.subplots(figsize=(6, 5))
 	figname = FOLDER2SAVE + 'ConvergenceH1_el'
-	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [normalPlot, onlyMarker1, onlyMarker2]):
+	for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
 		quadArgs = {'quadrule': quadrule, 'type': quadtype}
 		errorList = np.loadtxt(FOLDER2DATA+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat')
 
@@ -65,10 +65,10 @@ else:
 				ax.loglog(2**cutList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 
-	ax.loglog([], [], color='k', marker=onlyMarker1['marker'], markerfacecolor='w',
-					markersize=onlyMarker1['markersize'], linestyle=onlyMarker1['linestyle'], label="IGA-WQ 1")
-	ax.loglog([], [], color='k', marker=onlyMarker2['marker'], markerfacecolor='w',
-			markersize=onlyMarker2['markersize'], linestyle=onlyMarker2['linestyle'], label="IGA-WQ 2")
+	ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+					markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label="IGA-WQ 1")
+	ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+			markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label="IGA-WQ 2")
 
 	ax.set_ylabel('Relative '+r'$H^1$'+' error')
 	ax.set_xlabel('Number of elements by dimension')
