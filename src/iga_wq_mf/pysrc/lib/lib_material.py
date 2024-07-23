@@ -116,6 +116,7 @@ class mechamat(material):
 		self.elasticModulus = matArgs.get('elastic_modulus', None)
 		self.poissonRatio   = matArgs.get('poisson_ratio', None)
 		self.elasticLimit   = matArgs.get('elastic_limit', 1e15)
+		self.viscoparameter = matArgs.get('viscoparameter', None)
 		if any(prop is None for prop in [self.elasticModulus, self.elasticLimit, self.poissonRatio]): raise Warning('Mechanics not well defined')
 		self.__setExtraMechanicalProperties()
 
@@ -160,6 +161,7 @@ class mechamat(material):
 		def __init__(self, elasticlimit, isohardArgs:dict):
 			self.__elasticlimit = elasticlimit
 			isoname = isohardArgs.get('name', 'none').lower()
+			self._isoname = isoname
 			if   isoname == 'linear': self.__setIsoLinearModel(isohardArgs)
 			elif isoname == 'swift' : self.__setIsoSwiftModel(isohardArgs)
 			elif isoname == 'voce'  : self.__setIsoVoceModel(isohardArgs)
@@ -207,23 +209,23 @@ class mechamat(material):
 
 	def __parametersPreCalc3D(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
 
-		dgamma = np.zeros(shape=np.shape(plseq_n0)); straineq_n1 = np.copy(plseq_n0)
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0)
 		theta = np.zeros(shape=np.shape(plseq_n0)); thetatilde = np.zeros(shape=np.shape(plseq_n0))
 		for k in range(nbIter):
 			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
 			hatshifted = computeDeviatoric4All(stress_trial - meanback)
 			normhatshifted = computeSymTensorNorm4All(hatshifted)
 			funyield = (np.sqrt(3.0/2.0)*normhatshifted - 3.0/2.0*(2*self.lame_mu + const1)*dgamma 
-						- self._isoHardening._isohardfun(straineq_n1)
+						- self._isoHardening._isohardfun(plseq_n1)
 			)
 			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
 			if k == 0: resNL0 = resNLj
 			if resNLj <= max([threshold*resNL0, 1e-12]): break
 			normal = hatshifted/normhatshifted
 			dersfunyield = (np.sqrt(3.0/2.0)*computeSymDoubleContraction4All(normal, hatback) 
-				- 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(straineq_n1)
+				- 3.0/2.0*(2*self.lame_mu + const2) - self._isoHardening._isohardfunders(plseq_n1)
 			)	
-			dgamma -= funyield/dersfunyield; straineq_n1 = plseq_n0 + dgamma
+			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
 			thetatilde = -3*self.lame_mu/dersfunyield
 			theta = 2*self.lame_mu*dgamma/(normhatshifted)*np.sqrt(3.0/2.0)
 
@@ -244,6 +246,31 @@ class mechamat(material):
 			mechArgs[3, plsInd] = -np.sqrt(2.0/3.0)*theta*thetatilde
 			mechArgs[4:4+nvoigt, plsInd] = normal
 			mechArgs[4+nvoigt:, plsInd]  = hatback
+		return mechArgs
+	
+	# 1D
+	def __parametersPreCalc1D(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
+		
+		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
+		for k in range(nbIter):
+			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
+			hatshifted = stress_trial - meanback
+			funyield = np.abs(hatshifted) - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(plseq_n1)
+			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
+			if k == 0: resNL0 = resNLj
+			if resNLj <= max([threshold*resNL0, 1e-12]): break
+			normal = np.sign(hatshifted)
+			dersfunyield = normal*hatback - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(plseq_n1)			
+			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
+			theta = -self.elasticModulus/dersfunyield
+		return dgamma, hatback, normal, theta
+	
+	def __consistentTangentAlgorithm1D(self, nnz, isElastic, plsVars={}):
+		mechArgs = np.zeros((1, nnz))
+		mechArgs[0, :] = self.elasticModulus
+		if not isElastic:
+			plsInd = plsVars['plsInd']; theta = plsVars['theta']
+			mechArgs[0, plsInd] = self.elasticModulus*(1 - theta)
 		return mechArgs
 
 	def J2returnMappingAlgorithm3D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8, nvoigtreal=6):
@@ -297,34 +324,10 @@ class mechamat(material):
 			plsVars = {'plsInd': plsInd, 'normal': normaltmp, 'hatback': hatbacktmp, 'theta': theta, 'thetatilde': thetatilde}
 
 		mechArgs = self.consistentTangentAlgorithm3D(nnz, isElasticMatrix+isElasticLoad, plsVars)
-		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 'back': back_n1, 'mechArgs': mechArgs}
+		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 
+					'back': back_n1, 'mechArgs': mechArgs, 'plsInd': plsInd,}
 
 		return output, isElasticLoad
-	
-	# 1D
-	def __parametersPreCalc1D(self, stress_trial, back_n0, plseq_n0, nbIter=50, threshold=1e-8):
-		
-		dgamma = np.zeros(shape=np.shape(plseq_n0)); plseq_n1 = np.copy(plseq_n0); theta = np.zeros(shape=np.shape(plseq_n0))
-		for k in range(nbIter):
-			meanback, hatback, const1, const2 = self.__sumOverChabocheTable(dgamma, back_n0)
-			hatshifted = stress_trial - meanback
-			funyield = np.abs(hatshifted) - (self.elasticModulus + const1)*dgamma - self._isoHardening._isohardfun(plseq_n1)
-			resNLj = np.sqrt(np.dot(np.ravel(funyield), np.ravel(funyield)))
-			if k == 0: resNL0 = resNLj
-			if resNLj <= max([threshold*resNL0, 1e-12]): break
-			normal = np.sign(hatshifted)
-			dersfunyield = normal*hatback - (self.elasticModulus + const2) - self._isoHardening._isohardfunders(plseq_n1)			
-			dgamma -= funyield/dersfunyield; plseq_n1 = plseq_n0 + dgamma
-			theta = -self.elasticModulus/dersfunyield
-		return dgamma, hatback, normal, theta
-	
-	def __consistentTangentAlgorithm1D(self, nnz, isElastic, plsVars={}):
-		mechArgs = np.zeros((1, nnz))
-		mechArgs[0, :] = self.elasticModulus
-		if not isElastic:
-			plsInd = plsVars['plsInd']; theta = plsVars['theta']
-			mechArgs[0, plsInd] = self.elasticModulus*(1 - theta)
-		return mechArgs
 	
 	def J2returnMappingAlgorithm1D(self, strain_n1, plasticstrain_n0, plseq_n0, back_n0, isElasticMatrix=False, threshold=1e-8):
 		""" Return mapping algorithm for multidimensional rate-independent plasticity. 
@@ -371,7 +374,8 @@ class mechamat(material):
 			plsVars = {'plsInd': plsInd, 'normal': normal, 'hatback': hatback, 'theta': theta}
 
 		mechArgs = self.consistentTangentAlgorithm1D(np.size(plseq_n0, axis=1), isElasticMatrix+isElasticLoad, plsVars)
-		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 'back': back_n1, 'mechArgs': mechArgs}
+		output = {'stress': stress_n1, 'plastic': plasticstrain_n1, 'plseq': plseq_n1, 
+					'back': back_n1, 'mechArgs': mechArgs, 'plsInd': plsInd}
 
 		return output, isElasticLoad
 

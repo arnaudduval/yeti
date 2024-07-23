@@ -5,6 +5,7 @@
 """
 
 from .__init__ import *
+from scipy.special import erf
 
 # ==========================
 # GENERAL FUNCTIONS
@@ -12,6 +13,10 @@ from .__init__ import *
 def sigmoid(x, c1=1, c2=0):
 	f = 1.0/(1.0 + np.exp(-c1*(x - c2)))
 	return f
+
+def macaulayfunc(x):
+	return (x + np.abs(x))/2.0
+
 
 def cropImage(filename):
 	from PIL import Image

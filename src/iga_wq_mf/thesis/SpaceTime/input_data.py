@@ -5,8 +5,7 @@ from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part, part1D
 from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_material import heatmat
-from pysrc.lib.lib_job3d import heatproblem
-from pysrc.lib.lib_stjob import stheatproblem
+from pysrc.lib.lib_job3d import heatproblem, stheatproblem
 from pysrc.lib.lib_job1d import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 

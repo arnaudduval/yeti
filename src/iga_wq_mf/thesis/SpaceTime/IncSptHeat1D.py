@@ -1,4 +1,5 @@
-from pysrc.paper_spt.input_data import *
+from thesis.SpaceTime.__init__ import *
+from thesis.SpaceTime.input_data import *
 
 # Select folder
 full_path = os.path.realpath(__file__)
