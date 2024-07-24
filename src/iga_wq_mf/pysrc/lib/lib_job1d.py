@@ -814,9 +814,9 @@ class stmechaproblem1D(stproblem1D):
 		fluxstrain = sp.kron(self.time._densebasis[1], self.part._densebasis[1]).T @ disp_cp*np.kron(self.time.invJ, self.part.invJ)
 		fluxplastic = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plastic_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
 		fluxplseq = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plseq_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
-		gamma = 1/eta*macaulayfunc(fyield)
-		Elocal = E/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
-		Klocal = K/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
+		gamma = 1e-5/eta*macaulayfunc(fyield)
+		Elocal = 1e-5*E/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
+		Klocal = 1e-5*K/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
 		args = {'stress': stress, 'strain': strain, 'fluxstrain': fluxstrain,
 				'plastic': plastic, 'fluxplastic': fluxplastic,
 				'plseq': plseq, 'fluxplseq': fluxplseq,

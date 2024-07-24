@@ -185,6 +185,14 @@ class Geomdl():
 			func    = self._create_quarterAnnulus
 			if self._degree is None: self._degree = np.array([2, 3, 1])
 
+		elif name == 'abaqus' or name == 'abq':
+			dimen = 2
+			geoArgs = []
+			func = self._create_abaqus
+			print('By default oly reference geometry is available')
+			self._degree = np.array([2, 1, 1])
+			self._cuts = np.array([0 for i in range(3)])
+
 		elif name == 'square' or name == 'sq':
 			dimen = 2
 			XY = self._extraArgs.get('XY', np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]))
@@ -321,6 +329,23 @@ class Geomdl():
 		obj.knotvector_u = knotvector_u
 		obj.knotvector_v = knotvector_v
 
+		return obj
+
+	def _create_abaqus(self, degree_u, degree_v, nbel_u, nbel_v, geoArgs=None):
+		assert degree_u >= 2 and degree_v >= 1, 'Try another method'
+
+		ctrlpts = [ [0,0,0], [0,10,0], 
+					[25,0,0], [25,10,0], 
+					[50,0,0], [50,20,0]]
+
+		# Reference
+		obj = BSpline.Surface()
+		obj.degree_u = 2
+		obj.degree_v = 1
+		obj.ctrlpts_size_u, obj.ctrlpts_size_v = 2, 3
+		obj.set_ctrlpts(ctrlpts, 3, 2)
+		obj.knotvector_u = [0,0,0,1,1,1] 
+		obj.knotvector_v = [0,0,1,1]
 		return obj
 
 	def _create_quadrilateral(self, degree_u, degree_v, nbel_u, nbel_v, geoArgs=None):

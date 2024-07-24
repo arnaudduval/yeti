@@ -494,21 +494,22 @@ elif FIGCASE == 7: # 2D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
-		modelPhy.postProcessingPrimal(folder=folder)
+		modelPhy.postProcessingPrimal(folder=folder, name='out', 
+									addDetJ=True, sampleSize=np.array([201, 201]))
 		
 		# Read data
-		fileVTK   = folder + 'out'
-		grid      = pv.read(fileVTK + '.vts')
+		fileVTK  = folder + 'out'
+		grid     = pv.read(fileVTK + '.vts')
 		
 		sargs = dict(
-				title = 'normalized det J',
+				title = 'det J',
 				title_font_size=50,
 				label_font_size=40,
 				shadow=True,
 				n_labels=2,
 				fmt="%.1f",
 				position_x=0.2, 
-				position_y=0.1,
+				position_y=0.35,
 		)
 		pv.start_xvfb()
 		plotter = pv.Plotter(off_screen=True)
@@ -518,7 +519,7 @@ elif FIGCASE == 7: # 2D Geometries
 		else:
 			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
 		
-		plotter.camera_position  = 'xy'
+		plotter.camera_position  = 'yx' # 'xy
 		plotter.camera.zoom(0.8)
 
 		plotter.background_color = 'white'

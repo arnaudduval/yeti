@@ -9,8 +9,10 @@
 *.png
 *.gz
 *.npy
+*.pkl
 
 # Folders
 __pycache__/
 results
 *.text
+*.pvd
