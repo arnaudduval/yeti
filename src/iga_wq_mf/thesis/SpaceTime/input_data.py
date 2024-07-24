@@ -426,7 +426,7 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 	Tinout = np.zeros(np.prod(sptnbctrlpts))
 	if not solveSystem: return problem_spt, time_spt, Tinout
 
-	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-8; 
+	problem_spt._itersNL = 50; problem_spt._thresNL = 1e-10;  problem_spt._thresLin = 1e-10
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)
 	if getOthers: return problem_spt, time_spt, Tinout, output
 	return problem_spt, time_spt, Tinout

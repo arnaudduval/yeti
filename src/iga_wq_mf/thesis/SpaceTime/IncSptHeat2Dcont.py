@@ -1,5 +1,6 @@
 from thesis.SpaceTime.__init__ import *
 from thesis.SpaceTime.input_data import *
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def exactTemperature_inc(args):
 	func = None
@@ -32,8 +33,8 @@ def powerDensity_spt(args):
 # Set global variables
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
-RUNSIMU = True
-FIG_CASE = 2
+RUNSIMU = False
+FIG_CASE = 5
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -48,7 +49,7 @@ if FIG_CASE == 3:
 	filenameR3 = FOLDER2DATA + '3sptheatRel'
 	filenameT3 = FOLDER2DATA + '3sptheatTim'
 
-	degList = np.array([1, 2, 3, 4, 5])
+	degList = np.array([1, 2, 3, 4, 5, 6])
 	cutList = np.arange(4, 7)
 
 	if RUNSIMU:
@@ -65,8 +66,11 @@ if FIG_CASE == 3:
 
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
-													dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
-													degree_time=1, nbel_time=2**cuts, quadArgs=quadArgs,
+													dirichlet_table=dirichlet_table, 
+													geoArgs=geoArgs, 
+													degree_time=1, 
+													nbel_time=2**cuts, 
+													quadArgs=quadArgs,
 													isadaptive=False, solveSystem=False)
 
 				start = time.process_time()
@@ -88,7 +92,7 @@ if FIG_CASE == 3:
 		R3errorList = np.ones((len(degList), len(cutList)))
 		T3timeList = np.ones((len(degList), len(cutList)))
 		
-		for quadrule, quadtype in zip(['wq'], [2]):
+		for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [2, 1, 'leg']):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
 			for j, cuts in enumerate(cutList):
@@ -124,18 +128,18 @@ if FIG_CASE == 3:
 		filenameA2 = FOLDER2DATA + '3incheatRel'
 		filenameA3 = FOLDER2DATA + '3sptheatRel'
 
-	# Elist = np.loadtxt(filenameA2+'_wq_2_'+SUFIX+EXTENSION)
-	# Tlist = np.loadtxt(filenameT2+'_wq_2_'+SUFIX+EXTENSION)
-	# im = ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
-	# 		cmap=cmap, marker=IncPlot['marker'], s=10*IncPlot['markersize'])
-	# ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
-	# 		color='k', marker='', linestyle=IncPlot['linestyle'])
+	Elist = np.loadtxt(filenameA2+'_wq_2_'+SUFIX+EXTENSION)
+	Tlist = np.loadtxt(filenameT2+'_wq_2_'+SUFIX+EXTENSION)
+	im = ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
+			cmap=cmap, marker=CONFIGLINE4['marker'], s=10*CONFIGLINE4['markersize'])
+	ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
+			color='k', marker='', linestyle=CONFIGLINE4['linestyle'])
 	
-	# if position==1:
-	# 	cbar = fig.colorbar(im); cbar.set_label('Degree')
-	# 	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-	# 	cbar.set_ticks(tick_locs)
-	# 	cbar.set_ticklabels(degList)
+	if position==1:
+		cbar = fig.colorbar(im); cbar.set_label('Degree')
+		tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+		cbar.set_ticks(tick_locs)
+		cbar.set_ticklabels(degList)
 
 	for quadrule, quadtype, plotvars in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
@@ -147,8 +151,8 @@ if FIG_CASE == 3:
 		ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
 				color='k', marker='', linestyle=plotvars['linestyle'])
 
-	# ax.loglog([], [], color='k', marker=IncPlot['marker'], alpha=0.5,
-	# 		markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-WQ')
+	ax.loglog([], [], color='k', marker=CONFIGLINE4['marker'], alpha=0.5,
+			markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-WQ')
 	
 	ax.loglog([], [], color='k', marker=CONFIGLINE0['marker'], alpha=0.5,
 		markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL')
@@ -157,13 +161,13 @@ if FIG_CASE == 3:
 		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-IGA-WQ 2')
 
 	if PLOTRELATIVE: 
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u ||_{L^2(\Pi)}$')
-		ax.set_ylim(top=1e-2, bottom=1e-10)
+		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
+		ax.set_ylim(top=1e-2, bottom=1e-12)
 	else:
-		ax.set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}$')
-		ax.set_ylim(top=1e-1, bottom=1e-9)
+		ax.set_ylabel(r'$L^2$' + ' error')
+		ax.set_ylim(top=1e-1, bottom=1e-11)
 
-	ax.set_xlabel('Wall time (s)')
+	ax.set_xlabel('CPU time (s)')
 	if position==1: ax.legend(loc='lower left')
 	if position==1: ax.set_xlim(left=1e0, right=1e3)
 	if position==2: ax.set_xlim(left=1e1, right=1e4)
@@ -288,7 +292,7 @@ elif FIG_CASE == 4:
 
 elif FIG_CASE == 5:
 	
-	degList = np.array([1, 2, 3, 4, 5])
+	degList = np.array([1, 2, 3, 4, 5, 6])
 	cutList = np.arange(4, 7)
 
 	fig, axs = plt.subplots(1, 2, figsize=(8, 3.5))
@@ -306,19 +310,8 @@ elif FIG_CASE == 5:
 				
 			ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
 					color='k', marker='', linestyle=plotvars['linestyle'])
-			ax.text(Tlist[-1, pos], Elist[-1, pos], str(int(2**(pos+4)))+r'$^3$')
+			ax.text(Tlist[-1, pos]*1.2, Elist[-1, pos]/5, str(int(2**(pos+4)))+r'$^3$')
 
-
-	# ax.loglog([], [], color='k', marker=IncPlot['marker'], alpha=0.5,
-	# 		markersize=IncPlot['markersize'], linestyle=IncPlot['linestyle'], label='INC-IGA-WQ')
-	
-	# ax.loglog([], [], color='k', marker=IgaPlot['marker'], alpha=0.5,
-	# 	markersize=IgaPlot['markersize'], linestyle=IgaPlot['linestyle'], label='ST-IGA-GL')
-		
-	# ax.loglog([], [], color='k', marker=WQ2Plot['marker'], alpha=0.5,
-	# 	markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='ST-IGA-WQ')
-
-	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	divider1 = make_axes_locatable(axs[0])
 	cax1 = divider1.append_axes("right", size="5%", pad=0.1)
 	divider2 = make_axes_locatable(axs[1])
@@ -333,15 +326,15 @@ elif FIG_CASE == 5:
 	cbar.set_ticks(tick_locs)
 	cbar.set_ticklabels(degList)
 
-	axs[0].set_ylabel(r'$\displaystyle ||u - u^h||_{L^2(\Pi)}/||u ||_{L^2(\Pi)}$')
-	axs[0].set_ylim(top=1e-1, bottom=1e-10)
-	axs[1].set_ylim(top=1e-1, bottom=1e-10)
+	axs[0].set_ylabel('Relative ' + r'$L^2$' + ' error')
+	axs[0].set_ylim(top=1e-1, bottom=1e-12)
+	axs[1].set_ylim(top=1e-1, bottom=1e-12)
 	axs[0].set_xlim(left=5e-1, right=5e4)
 	axs[1].set_xlim(left=5e-1, right=5e4)
 	axs[0].title.set_text('Gauss-Legendre')
-	axs[1].title.set_text('Weighted quadrature')
+	axs[1].title.set_text('Weighted quadrature 2')
 
-	axs[0].set_xlabel('Wall time (s)')
-	axs[1].set_xlabel('Wall time (s)')
+	axs[0].set_xlabel('CPU time (s)')
+	axs[1].set_xlabel('CPU time (s)')
 	plt.tight_layout()
 	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' +  '.pdf')
