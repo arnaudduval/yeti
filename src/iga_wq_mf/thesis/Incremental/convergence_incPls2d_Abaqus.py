@@ -13,18 +13,35 @@ if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
 FOLDER2DATA = FOLDER2SAVE + '/datafromsimu/'
 if not os.path.isdir(FOLDER2DATA): os.mkdir(FOLDER2DATA)
 
+modelGeo = Geomdl({'name': 'abaqus'})
+modelIGA = modelGeo.getIGAParametrization()
+modelIGA.refine(nb_degreeElevationByDirection=np.array([4, 4, 0]),
+				nb_refinementByDirection=4*np.ones(3, dtype=int),)
+quadArgs = {'quadrule': 'wq', 'type': 2}
+modelPhy = part(modelIGA, quadArgs=quadArgs)
+COORSIGA = modelPhy.interpolateMeshgridField(sampleSize=51)[0]
+
+filename = FOLDER2SAVE + 'job.dat'
+COORDSABAQUS = np.loadtxt(filename, delimiter=',')
+fig, ax = plt.subplots()
+ax.scatter(COORSIGA[0, :], COORSIGA[1, :], s=0.2, label='IGA')
+ax.scatter(COORDSABAQUS[:, 1], COORDSABAQUS[:, 2], s=0.2, label='FEA')
+ax.legend(loc='upper left')
+ax.grid(False)
+fig.savefig(FOLDER2SAVE+'Abaqus')
+
 NBSTEPS = 101
 TIME_LIST = np.linspace(0, 1, NBSTEPS)
-MATARGS = {'elastic_modulus':1e5, 
+MATARGS = {'elastic_modulus':2e5, 
 			'elastic_limit':100, 
 			'poisson_ratio':0.3, 
-			'isoHardLaw': {'name':'linear', 'Eiso':1e4}, 
+			'isoHardLaw': {'name':'linear', 'Eiso':1e5}, 
 		}
 
 degList = np.arange(1, 4)
 cutList = np.arange(1, 7)
 stepList = np.arange(1, NBSTEPS, 4)
-RUNSIMU = False
+RUNSIMU = True
 
 def forceSurf_abaqus(P:list):
 	x = P[0, :]; nnz = np.size(P, axis=1)
@@ -59,12 +76,20 @@ def simulate_2d_abaqus(degree, cuts, quadArgs):
 	return problem, displacement, resLin, internalVars
 
 if RUNSIMU:
-	degree, cuts = 3, 5
+	degree, cuts = 2, 6
 	quadArgs = {'quadrule': 'wq', 'type': 2}
 	problem, displacement, _, internalVars = simulate_2d_abaqus(degree, cuts, quadArgs)
 	np.save(FOLDER2DATA + 'disppl2d', displacement)
 	with open(FOLDER2DATA + 'refpartpl2d.pkl', 'wb') as outp:
 		pickle.dump(problem.part, outp, pickle.HIGHEST_PROTOCOL)
+
+	filename = 'out_'
+	problem.part.postProcessingPrimal(name=filename+'last', 
+										folder=FOLDER2DATA,
+										sampleSize=201,
+										fields={'disp1': displacement[0, :, -1], 		
+												'disp2': displacement[1, :, -1], 
+												})
 
 	stress_qp = internalVars.get('stress', None)
 	plseq_qp = internalVars.get('plseq', None)
@@ -78,3 +103,9 @@ if RUNSIMU:
 												'straineq': plseq_qp[0, :, i], 
 												'plastic': plastic_qp[0, :, i]})
 	run(folder=FOLDER2DATA, filename=filename, nbFiles=len(stepList))
+
+vtk2png(FOLDER2DATA, filename='out_last', fieldname='disp1', title='Displacement X', position_y=0.1, n_colors=12, fmt='%.2e')
+vtk2png(FOLDER2DATA, filename='out_last', fieldname='disp2', title='Displacement Y', position_y=0.1, n_colors=12, fmt='%.2e')
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='stress', title='Von Mises stress', position_y=0.1, n_colors=12)
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=12, fmt='%.2e')
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)

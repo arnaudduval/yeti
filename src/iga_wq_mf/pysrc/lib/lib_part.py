@@ -217,6 +217,7 @@ class part():
 	def interpolateMeshgridField(self, u_ctrlpts=None, sampleSize=None, isAll=True):
 		
 		if sampleSize is None: sampleSize = np.max(self.nbqp)*np.ones(self.dim, dtype=int)
+		elif np.isscalar(sampleSize): sampleSize = np.copy(sampleSize)*np.ones(self.dim, dtype=int)
 
 		# Initialize all outputs
 		pts, Jpts, detJ, uinterp = None, None, None, None
