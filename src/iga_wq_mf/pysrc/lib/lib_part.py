@@ -260,6 +260,7 @@ class part():
 		print("File saved in %s" %folder)
 
 		if sampleSize is None: sampleSize = np.max(self.nbqp)*np.ones(self.dim, dtype=int)
+		elif np.isscalar(sampleSize): sampleSize = np.copy(sampleSize)*np.ones(self.dim, dtype=int)
 
 		# Only interpolate meshgrid
 		pts, _, detJ = self.interpolateMeshgridField(sampleSize=sampleSize)[:-1]

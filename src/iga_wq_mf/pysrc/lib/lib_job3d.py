@@ -492,10 +492,10 @@ class mechaproblem(problem):
 		back_n1 = np.zeros((nbChaboche, nvoigt, nbqp_total))
 		
 		# Output variables
-		Allstress  	 = np.zeros((nvoigt, nbqp_total, nsteps))
-		Allstrain 	 = np.zeros((nvoigtreal, nbqp_total, nsteps))
+		Allstress = np.zeros((nvoigt, nbqp_total, nsteps))
+		Allstrain = np.zeros((nvoigtreal, nbqp_total, nsteps))
 		Allplseq = np.zeros((1, nbqp_total, nsteps))
-		AllresLin 	 = []
+		AllresLin = []
 
 		for i in range(1, nsteps):
 			
