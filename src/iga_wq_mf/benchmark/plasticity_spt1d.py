@@ -7,12 +7,19 @@ from pysrc.lib.lib_material import mechamat
 from pysrc.lib.lib_boundary import boundaryCondition
 
 # Global variables
-NBSTEPS = 11
-YOUNG, LENGTH = 1e4, 1
+DEGREE, NBEL = 2, 21
+NBSTEPS = 21
+YOUNG, LENGTH = 1e6, 1
+
+# Define plasticity model
+MECHAMATERIAL = mechamat({'elastic_modulus':YOUNG, 
+			'elastic_limit':1.e1, 
+			'poisson_ratio':0.3,
+			'isoHardLaw': {'name':'linear', 'Eiso':1e3}})
 
 def forceVol_inc(args:dict):
 	position = args['position']; time = args.get('time', 1)
-	force = 2.5*np.ones(len(position))*time
+	force = 1e2*np.ones(len(position))*time
 	return force
 
 def forceVol_spt(args:dict):
@@ -26,18 +33,10 @@ def forceVol_spt(args:dict):
 	return np.ravel(f, order='F')
 
 # Define geometry
-degree, nbel = 2, 20
 quadArgs = {'quadArgs': {'quadrule': 'iga', 'type': 'leg'}}
-geometry = createUniformOpenCurve(degree, nbel, LENGTH)
+geometry = createUniformOpenCurve(DEGREE, NBEL, LENGTH)
 modelPhy = part1D(geometry, quadArgs)
 timespan = part1D(createUniformOpenCurve(2, NBSTEPS, 1.), kwargs={'quadArgs': {'quadrule': 'iga', 'type': 'leg'}})
-
-# Define plasticity model
-MECHAMATERIAL = mechamat({'elastic_modulus':YOUNG, 
-			'elastic_limit':1., 
-			'poisson_ratio':0.3,
-			'viscoparameter':1e-2,
-			'isoHardLaw': {'name':'linear', 'Eiso':1e2}})
 
 # Set boundary conditions
 boundary = boundaryCondition(np.array([modelPhy.nbctrlpts_total, timespan.nbctrlpts_total, 1]))
@@ -49,4 +48,6 @@ problem = stmechaproblem1D(mechanical_material=MECHAMATERIAL, part=modelPhy, tsp
 # Add external force
 Fext_list = np.ravel(problem.compute_volForce(forceVol_spt))
 displacement = np.zeros(np.shape(Fext_list))
-problem.solveViscoPlasticityProblem(displacement, Fext_list, init=1e-2)
+disp_cp = problem.solveViscoPlasticityProblem(displacement, Fext_list, init=1e-5)
+
+print(np.max(disp_cp))
