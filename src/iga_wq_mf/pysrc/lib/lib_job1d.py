@@ -778,7 +778,7 @@ class stheatproblem1D(stproblem1D):
 			
 		output = {'NewtonRes':AllresNewton, 'Solution':Allsol, 'Delta':Alldelta}
 		return output
-	
+
 class stmechaproblem1D(stproblem1D):
 
 	def __init__(self, mechanical_material:mechamat, part:part1D, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
@@ -793,164 +793,220 @@ class stmechaproblem1D(stproblem1D):
 		prop  = np.kron(np.ones(self.time.nbqp), self.part.detJ)*volfun(args)
 		force = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ prop
 		return force
-	
-	def __evalyielfunction(self, stress, plseq):
-		fyield = np.abs(stress) - self.mechamaterial._isoHardening._isohardfun(plseq)
-		return fyield
 
-	def compute_internalVariables(self, disp_cp, plseq_cp, plastic_cp, threshold=1e-8):
+	def compute_internalVariables(self, disp_cp, plastic_cp, plseq_cp, 
+								pseudo1_cp, pseudo2_cp, lagrange_cp, threshold=1e-8, factor=1):
 		# Compute internal variables
-		E = self.mechamaterial.elasticModulus
-		strain = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T @ disp_cp*np.kron(np.ones(self.time.nbqp), self.part.invJ)
+		E = self.mechamaterial.elasticModulus*np.ones(self.part.nbqp*self.time.nbqp)
+		strain = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T @ disp_cp
 		plastic = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ plastic_cp
 		plseq = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ plseq_cp
+		pseudo1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ pseudo1_cp
+		pseudo2 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ pseudo2_cp
+		lagrange = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ lagrange_cp
+
 		stress = E*(strain - plastic)
-		fyield = self.__evalyielfunction(stress, plseq)
+		fyield = np.abs(pseudo1) + pseudo2 - self.mechamaterial.elasticLimit
+		tmp = lagrange + factor*fyield
+		gamma, heaviside = macaulayfunc(tmp), np.heaviside(tmp, threshold*self.mechamaterial.elasticLimit)
+		K = self.mechamaterial._isoHardening._isohardfunders(plseq)
 
 		# Compute flux of internal variables
-		K = self.mechamaterial._isoHardening._isohardfunders(plseq)
-		eta = self.mechamaterial.viscoparameter
+		fluxplastic = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plastic_cp
+		fluxplseq = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plseq_cp
 
-		fluxstrain = sp.kron(self.time._densebasis[1], self.part._densebasis[1]).T @ disp_cp*np.kron(self.time.invJ, self.part.invJ)
-		fluxplastic = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plastic_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
-		fluxplseq = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plseq_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
-		gamma = 1e-5/eta*macaulayfunc(fyield)
-		Elocal = 1e-5*E/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
-		Klocal = 1e-5*K/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
-		args = {'stress': stress, 'strain': strain, 'fluxstrain': fluxstrain,
+		args = {'stress': stress, 'strain': strain,
 				'plastic': plastic, 'fluxplastic': fluxplastic,
 				'plseq': plseq, 'fluxplseq': fluxplseq,
-				'gamma': gamma, 'Elocal': Elocal, 'Klocal': Klocal,
-				'Emod': E, 'Kmod': K,
+				'gamma': gamma, 'heaviside': heaviside,
+				'pseudo1': pseudo1, 'pseudo2': pseudo2,
+				'Emod': E, 'Kmod': K, 'lagrange': lagrange,
+				'factor': factor
 				}
 		return args
 
-	# ==================================================
 	def compute_MechStaticResidual1(self, Fext, args={}):
-		fluxplastic = args.get('fluxplastic'); stress = args.get('stress')
-		E = args.get('Emod'); gamma = args.get('gamma')
-		res = (sp.kron(self.time._denseweights[2], self.part._denseweights[2]) @ stress 
-			+ sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ (E*(fluxplastic - gamma*np.sign(stress))*np.kron(self.time.detJ, np.ones(self.part.nbqp)))
-			- Fext
-			)
+		stress = args.get('stress')
+		res = (Fext - sp.kron(self.time._denseweights[2], self.part._denseweights[2]) @ stress)
 		return res
 	
+	def compute_MechStaticResidual2(self, args={}):
+		pseudo1 = args.get('pseudo1'); E = args.get('Emod'); strain = args.get('strain'); plastic = args.get('plastic')
+		tmp2 = -pseudo1 + E*(strain - plastic) 
+		res = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
+		return res
+	
+	def compute_MechStaticResidual3(self, args={}):
+		K = args.get('Kmod'); pseudo2 = args.get('pseudo2'); plseq = args.get('plseq')
+		tmp2 = -pseudo2 - K*plseq
+		res = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
+		return res
+	
+	def compute_MechStaticResidual4(self, args={}):
+		gamma = args.get('gamma'); pseudo1 = args.get('pseudo1'); fluxplastic = args.get('fluxplastic')
+		tmp2 = gamma*np.sign(pseudo1) - fluxplastic
+		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return res
+
+	def compute_MechStaticResidual5(self, args={}):
+		gamma = args.get('gamma'); fluxplseq = args.get('fluxplseq')
+		tmp2 = gamma - fluxplseq
+		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return res
+	
+	def compute_MechStaticResidual6(self, args={}):
+		gamma = args.get('gamma'); lagrange = args.get('lagrange'); factor=args.get('factor')
+		tmp2 = 1/factor*(gamma - lagrange)
+		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return res
+	
+	# ==================================================
 	def compute_TangentStiffness11(self, args={}):
 		E = args.get('Emod'); Elocal = args.get('Elocal')
-		prop = E*np.kron(np.ones(self.time.nbqp), self.part.invJ)
+		prop = -E
 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
 		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[-1]) @ tmp2
-
-		prop = -Elocal*np.kron(self.time.detJ, self.part.invJ)
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[-1]) @ tmp2
-	
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[3]) @ tmp2
 		return matrix.todense()
 	
 	def compute_TangentStiffness12(self, args={}):
-		E = args.get('Emod'); Elocal = args.get('Elocal')
-		prop = -E*np.ones(self.part.nbqp*self.time.nbqp)
+		E = args.get('Emod')
+		prop = E
 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
 		tmp2 = sp.diags(prop) @ tmp1
 		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[2]) @ tmp2
-
-		prop = E*np.ones(self.part.nbqp*self.time.nbqp)
-		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix += sp.kron(self.time._denseweights[1], self.part._denseweights[2]) @ tmp2
-		
-		prop = Elocal*np.kron(self.time.detJ, np.ones(self.part.nbqp))
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ tmp2
-		
-		return matrix.todense()
-	
-	def compute_TangentStiffness13(self, args={}):
-		K = args.get('Kmod'); Elocal = args.get('Elocal'); stress = args.get('stress')
-		prop = K*Elocal*np.sign(stress)*np.kron(self.time.detJ, np.ones(self.part.nbqp))
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ tmp2
-		return matrix.todense()
-	
-	# ==================================================	
-	def compute_MechStaticResidual2(self, args={}):
-		gamma = args.get('gamma'); stress = args.get('stress'); fluxplastic = args.get('fluxplastic'); E = args.get('Emod')
-		tmp2 = E*(gamma*np.sign(stress) - fluxplastic)*np.kron(self.time.detJ, self.part.detJ)
-		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
-		return res
+		return matrix.todense()	
+	# ==================================================
 	
 	def compute_TangentStiffness21(self, args={}):
-		Elocal = args.get('Elocal')
-		prop = Elocal*np.kron(self.time.detJ, np.ones(self.part.nbqp))
+		E = args.get('Emod')
+		prop = E
 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
 		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[1]) @ tmp2
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[1]) @ tmp2
 		return matrix.todense()
 	
 	def compute_TangentStiffness22(self, args={}):
-		E = args.get('Emod'); Elocal = args.get('Elocal')
-		prop = -E*np.kron(np.ones(self.time.nbqp), self.part.detJ)
-		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
-
-		prop = -Elocal*np.kron(self.time.detJ, self.part.detJ)
+		E = args.get('Emod')
+		prop = -E
 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
 		tmp2 = sp.diags(prop) @ tmp1
-		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
 		return matrix.todense()
 	
-	def compute_TangentStiffness23(self, args={}):
-		stress = args.get('stress'); K = args.get('Kmod'); Elocal = args.get('Elocal')
-		prop = -K*Elocal*np.sign(stress)*np.kron(self.time.detJ, self.part.detJ)
+	def compute_TangentStiffness24(self, args={}):
+		prop = -np.ones(self.time.nbqp*self.part.nbqp)
 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
 		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
 		return matrix.todense()
-	
 	# ==================================================	
-	def compute_MechStaticResidual3(self, args={}):
-		K = args.get('Kmod'); fluxplseq = args.get('fluxplseq'); gamma = args.get('gamma')
-		tmp2 = K*(gamma - fluxplseq)*np.kron(self.time.detJ, self.part.detJ)
-		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
-		return res
-	
-	def compute_TangentStiffness31(self, args={}):
-		stress = args.get('stress'); Klocal = args.get('Klocal')
-		prop = Klocal*np.sign(stress)*np.kron(self.time.detJ, np.ones(self.part.nbqp))
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[1]) @ tmp2
-		return matrix.todense()
-	
-	def compute_TangentStiffness32(self, args={}):
-		stress = args.get('stress'); Klocal = args.get('Klocal')
-		prop = -Klocal*np.sign(stress)*np.kron(self.time.detJ, self.part.detJ)
-
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
-		return matrix.todense()
 	
 	def compute_TangentStiffness33(self, args={}):
+		K = args.get('Kmod')
+		prop = -K
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
 
-		Klocal = args.get('Klocal'); K = args.get('Kmod')
-		prop = -K*np.kron(np.ones(self.time.nbqp), self.part.detJ)
+	def compute_TangentStiffness35(self, args={}):
+		prop = -np.ones(self.time.nbqp*self.part.nbqp)
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	# ==================================================	
+	
+	def compute_TangentStiffness42(self, args={}):
+		prop = -np.ones(self.time.nbqp*self.part.nbqp)
 		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
 		tmp2 = sp.diags(prop) @ tmp1
 		matrix = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
-
-		prop = -Klocal*K*np.kron(self.time.detJ, self.part.detJ)
-		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
-		tmp2 = sp.diags(prop) @ tmp1
-		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
 		return matrix.todense()
 	
-	def solveViscoPlasticityProblem(self, dispinout, Fext):
+	def compute_TangentStiffness44(self, args={}):
+		factor = args.get('factor'); H = args.get('heaviside')
+		prop = factor*H
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness45(self, args={}):
+		factor = args.get('factor'); H = args.get('heaviside'); pseudo1 = args.get('pseudo1')
+		prop = factor*H*np.sign(pseudo1)
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness46(self, args={}):
+		H = args.get('heaviside'); pseudo1 = args.get('pseudo1')
+		prop = H*np.sign(pseudo1)
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()	
+	# ==================================================	
+	
+	def compute_TangentStiffness53(self, args={}):
+		prop = -np.ones(self.time.nbqp*self.part.nbqp)
+		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness54(self, args={}):
+		H = args.get('heaviside'); pseudo1 = args.get('pseudo1'); factor = args.get('factor')
+		prop = H*np.sign(pseudo1)*factor
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()	
+	
+	def compute_TangentStiffness55(self, args={}):
+		H = args.get('heaviside'); factor = args.get('factor')
+		prop = H*factor
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness56(self, args={}):
+		H = args.get('heaviside')
+		prop = H
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	# ==================================================	
+	
+	def compute_TangentStiffness64(self, args={}):
+		H = args.get('heaviside'); pseudo1 = args.get('pseudo1')
+		prop = H*np.sign(pseudo1)
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness65(self, args={}):
+		H = args.get('heaviside')
+		prop = H
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def compute_TangentStiffness66(self, args={}):
+		H = args.get('heaviside'); factor = args.get('factor')
+		prop = 1/factor*(H - 1)
+		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+		tmp2 = sp.diags(prop) @ tmp1
+		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+		return matrix.todense()
+	
+	def solveViscoPlasticityProblem(self, dispinout, Fext, init=1e0):
 		assert self.mechamaterial._chabocheNBparameters <= 1, 'Try another method'
 		assert not np.any(self.mechamaterial._chabocheTable), 'Try another method'
 		assert self.mechamaterial._isoHardening._isoname == 'linear', 'Try another method'
@@ -963,20 +1019,30 @@ class stmechaproblem1D(stproblem1D):
 		
 		nbctrlpts_total = self.boundary._nbctrlpts_total
 		dof = self.boundary.thdof; dod = self.boundary.thdod
-		disp_cp, plastic_cp, plseq_cp = np.zeros(nbctrlpts_total), np.zeros(nbctrlpts_total), np.copy(dispinout)
+		disp_cp, plastic_cp, plseq_cp = np.copy(dispinout), np.zeros(nbctrlpts_total), np.zeros(nbctrlpts_total)
+		pseudo1_cp, pseudo2_cp, lagrange_cp = np.zeros(nbctrlpts_total), np.zeros(nbctrlpts_total), np.zeros(nbctrlpts_total)
 		
+		factor = np.copy(init)
 		for j in range(self._itersNL): # Newton-Raphson 
 			
 			# Compute internal variables
-			args = self.compute_internalVariables(disp_cp, plseq_cp, plastic_cp)
+			# factor *= 10
+			args = self.compute_internalVariables(disp_cp, plastic_cp, plseq_cp, 
+												pseudo1_cp, pseudo2_cp, lagrange_cp, factor=factor)
 
 			# Compute internal forces
 			res1 = self.compute_MechStaticResidual1(Fext, args); res1[dod] = 0.0
 			res2 = self.compute_MechStaticResidual2(args); res2[dod_intvar] = 0.0
 			res3 = self.compute_MechStaticResidual3(args); res3[dod_intvar] = 0.0
+			res4 = self.compute_MechStaticResidual4(args); res4[dod_intvar] = 0.0
+			res5 = self.compute_MechStaticResidual5(args); res5[dod_intvar] = 0.0
+			res6 = self.compute_MechStaticResidual6(args); res6[dod_intvar] = 0.0
 
 			# Compute residue
-			resNLj = np.sqrt(np.dot(res1, res1)+np.dot(res2, res2)+np.dot(res3, res3))
+			resNLj = np.sqrt(
+						np.dot(res1, res1)+np.dot(res2, res2)+np.dot(res3, res3)
+						+np.dot(res4, res4)+np.dot(res5, res5)+np.dot(res6, res6)
+					)
 			if j == 0: resNL0 = resNLj
 			print('NonLinear error: %.5e' %resNLj)
 			if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
@@ -984,28 +1050,297 @@ class stmechaproblem1D(stproblem1D):
 			# Solver for active control points
 			K11 = self.compute_TangentStiffness11(args=args)[np.ix_(dof, dof)]
 			K12 = self.compute_TangentStiffness12(args=args)[np.ix_(dof, dof_intvar)]
-			K13 = self.compute_TangentStiffness13(args=args)[np.ix_(dof, dof_intvar)]
+			#
 			K21 = self.compute_TangentStiffness21(args=args)[np.ix_(dof_intvar, dof)]
 			K22 = self.compute_TangentStiffness22(args=args)[np.ix_(dof_intvar, dof_intvar)]
-			K23 = self.compute_TangentStiffness23(args=args)[np.ix_(dof_intvar, dof_intvar)]
-			K31 = self.compute_TangentStiffness31(args=args)[np.ix_(dof_intvar, dof)]
-			K32 = self.compute_TangentStiffness32(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K24 = self.compute_TangentStiffness24(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			#
 			K33 = self.compute_TangentStiffness33(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K35 = self.compute_TangentStiffness35(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			#
+			K42 = self.compute_TangentStiffness42(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K44 = self.compute_TangentStiffness44(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K45 = self.compute_TangentStiffness45(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K46 = self.compute_TangentStiffness46(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			#
+			K53 = self.compute_TangentStiffness53(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K54 = self.compute_TangentStiffness54(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K55 = self.compute_TangentStiffness55(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K56 = self.compute_TangentStiffness56(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			#
+			K64 = self.compute_TangentStiffness64(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K65 = self.compute_TangentStiffness65(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			K66 = self.compute_TangentStiffness66(args=args)[np.ix_(dof_intvar, dof_intvar)]
+			
+			ZZ1 = np.zeros((len(dof), len(dof_intvar)))
+			ZZ2 = np.zeros((len(dof_intvar), len(dof)))
+			ZZ3 = np.zeros((len(dof_intvar), len(dof_intvar)))
 
-			K = -np.block([	[K11, K12, K13], 
-							[K21, K22, K23], 
-							[K31, K32, K33]])
-			F = np.hstack([res1[dof], res2[dof_intvar], res3[dof_intvar]])
-			# sol = sp.linalg.spsolve(sp.csr_matrix(K), F)
-			sol = sp.linalg.gmres(sp.csr_matrix(K), F)[0]
+			if j == 0:
+				K = -np.block([	[K11, K12, ZZ1, ZZ1, ZZ1, ZZ1], 
+								[K21, K22, ZZ3, 0*K24, ZZ3, ZZ3], 
+								[ZZ2, ZZ3, K33, ZZ3, 0*K35, ZZ3],
+								[ZZ2, 0*K42, ZZ3, K44, K45, K46],
+								[ZZ2, ZZ3, 0*K53, K54, K55, K56], 
+								[ZZ2, ZZ3, ZZ3, K64, K65, K66]])
+			else:
+				K = -np.block([	[K11, K12, ZZ1, ZZ1, ZZ1, ZZ1], 
+								[K21, K22, ZZ3, K24, ZZ3, ZZ3], 
+								[ZZ2, ZZ3, K33, ZZ3, K35, ZZ3],
+								[ZZ2, K42, ZZ3, K44, K45, K46],
+								[ZZ2, ZZ3, K53, K54, K55, K56], 
+								[ZZ2, ZZ3, ZZ3, K64, K65, K66]])
+
+			F = np.hstack([res1[dof], res2[dof_intvar], res3[dof_intvar],
+							res4[dof_intvar], res5[dof_intvar], res6[dof_intvar]])
+
+			# sol = sclin.lstsq(K, F)[0]
+			# sol = sp.linalg.lsqr(sp.csr_matrix(K), F)[0]
+			sol = np.linalg.pinv(K) @ F
 
 			deltaD1 = sol[:len(dof)]
 			deltaD2 = sol[len(dof):len(dof)+len(dof_intvar)]
-			deltaD3 = sol[-len(dof_intvar):]
+			deltaD3 = sol[len(dof)+len(dof_intvar):len(dof)+2*len(dof_intvar)]
+			deltaD4 = sol[len(dof)+2*len(dof_intvar):len(dof)+3*len(dof_intvar)]
+			deltaD5 = sol[len(dof)+3*len(dof_intvar):len(dof)+4*len(dof_intvar)]
+			deltaD6 = sol[-len(dof_intvar):]
 
 			# Update active control points
 			disp_cp[dof] += deltaD1
 			plastic_cp[dof_intvar] += deltaD2
 			plseq_cp[dof_intvar] += deltaD3
-
+			pseudo1_cp[dof_intvar] += deltaD4
+			pseudo2_cp[dof_intvar] += deltaD5
+			lagrange_cp[dof_intvar] += deltaD6
 		return disp_cp
+
+# class stmechaproblem1D(stproblem1D):
+
+# 	def __init__(self, mechanical_material:mechamat, part:part1D, tspan:part1D, boundary:boundaryCondition, solverArgs={}):
+# 		stproblem1D.__init__(self, part, tspan, boundary, solverArgs)
+# 		self.mechamaterial = mechanical_material
+# 		if self.mechamaterial.density is None: self.mechamaterial.density = lambda x: np.ones(self.part.nbqp_total)
+# 		return
+
+# 	def compute_volForce(self, volfun, args=None):
+# 		" Computes 'volumetric' source vector in 1D "
+# 		if args is None: args={'position':self.part.qpPhy, 'time':self.time.qpPhy}
+# 		prop  = np.kron(np.ones(self.time.nbqp), self.part.detJ)*volfun(args)
+# 		force = sp.kron(self.time._denseweights[2], self.part._denseweights[0]) @ prop
+# 		return force
+	
+# 	def __evalyielfunction(self, stress, plseq):
+# 		fyield = np.abs(stress) - self.mechamaterial._isoHardening._isohardfun(plseq)
+# 		return fyield
+
+# 	def compute_internalVariables(self, disp_cp, plseq_cp, plastic_cp, threshold=1e-8):
+# 		# Compute internal variables
+# 		E = self.mechamaterial.elasticModulus
+# 		strain = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T @ disp_cp*np.kron(np.ones(self.time.nbqp), self.part.invJ)
+# 		plastic = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ plastic_cp
+# 		plseq = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T @ plseq_cp
+# 		stress = E*(strain - plastic)
+# 		fyield = self.__evalyielfunction(stress, plseq)
+
+# 		# Compute flux of internal variables
+# 		K = self.mechamaterial._isoHardening._isohardfunders(plseq)
+# 		eta = self.mechamaterial.viscoparameter
+
+# 		fluxstrain = sp.kron(self.time._densebasis[1], self.part._densebasis[1]).T @ disp_cp*np.kron(self.time.invJ, self.part.invJ)
+# 		fluxplastic = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plastic_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
+# 		fluxplseq = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T @ plseq_cp * np.kron(self.time.invJ, np.ones(self.part.nbqp))
+# 		gamma = 1e-5/eta*macaulayfunc(fyield)
+# 		Elocal = 1e-5*E/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
+# 		Klocal = 1e-5*K/eta*np.heaviside(fyield, threshold*self.mechamaterial.elasticLimit)
+# 		args = {'stress': stress, 'strain': strain, 'fluxstrain': fluxstrain,
+# 				'plastic': plastic, 'fluxplastic': fluxplastic,
+# 				'plseq': plseq, 'fluxplseq': fluxplseq,
+# 				'gamma': gamma, 'Elocal': Elocal, 'Klocal': Klocal,
+# 				'Emod': E, 'Kmod': K,
+# 				}
+# 		return args
+
+# 	# ==================================================
+# 	def compute_MechStaticResidual1(self, Fext, args={}):
+# 		fluxplastic = args.get('fluxplastic'); stress = args.get('stress')
+# 		E = args.get('Emod'); gamma = args.get('gamma')
+# 		res = (sp.kron(self.time._denseweights[2], self.part._denseweights[2]) @ stress 
+# 			+ sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ (E*(fluxplastic - gamma*np.sign(stress))*np.kron(self.time.detJ, np.ones(self.part.nbqp)))
+# 			- Fext
+# 			)
+# 		return res
+	
+# 	def compute_TangentStiffness11(self, args={}):
+# 		E = args.get('Emod'); Elocal = args.get('Elocal')
+# 		prop = E*np.kron(np.ones(self.time.nbqp), self.part.invJ)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[-1]) @ tmp2
+
+# 		prop = -Elocal*np.kron(self.time.detJ, self.part.invJ)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[-1]) @ tmp2
+	
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness12(self, args={}):
+# 		E = args.get('Emod'); Elocal = args.get('Elocal')
+# 		prop = -E*np.ones(self.part.nbqp*self.time.nbqp)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[2], self.part._denseweights[2]) @ tmp2
+
+# 		prop = E*np.ones(self.part.nbqp*self.time.nbqp)
+# 		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix += sp.kron(self.time._denseweights[1], self.part._denseweights[2]) @ tmp2
+		
+# 		prop = Elocal*np.kron(self.time.detJ, np.ones(self.part.nbqp))
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ tmp2
+		
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness13(self, args={}):
+# 		K = args.get('Kmod'); Elocal = args.get('Elocal'); stress = args.get('stress')
+# 		prop = K*Elocal*np.sign(stress)*np.kron(self.time.detJ, np.ones(self.part.nbqp))
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[2]) @ tmp2
+# 		return matrix.todense()
+	
+# 	# ==================================================	
+# 	def compute_MechStaticResidual2(self, args={}):
+# 		gamma = args.get('gamma'); stress = args.get('stress'); fluxplastic = args.get('fluxplastic'); E = args.get('Emod')
+# 		tmp2 = E*(gamma*np.sign(stress) - fluxplastic)*np.kron(self.time.detJ, self.part.detJ)
+# 		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return res
+	
+# 	def compute_TangentStiffness21(self, args={}):
+# 		Elocal = args.get('Elocal')
+# 		prop = Elocal*np.kron(self.time.detJ, np.ones(self.part.nbqp))
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[1]) @ tmp2
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness22(self, args={}):
+# 		E = args.get('Emod'); Elocal = args.get('Elocal')
+# 		prop = -E*np.kron(np.ones(self.time.nbqp), self.part.detJ)
+# 		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
+
+# 		prop = -Elocal*np.kron(self.time.detJ, self.part.detJ)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness23(self, args={}):
+# 		stress = args.get('stress'); K = args.get('Kmod'); Elocal = args.get('Elocal')
+# 		prop = -K*Elocal*np.sign(stress)*np.kron(self.time.detJ, self.part.detJ)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return matrix.todense()
+	
+# 	# ==================================================	
+# 	def compute_MechStaticResidual3(self, args={}):
+# 		K = args.get('Kmod'); fluxplseq = args.get('fluxplseq'); gamma = args.get('gamma')
+# 		tmp2 = K*(gamma - fluxplseq)*np.kron(self.time.detJ, self.part.detJ)
+# 		res = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return res
+	
+# 	def compute_TangentStiffness31(self, args={}):
+# 		stress = args.get('stress'); Klocal = args.get('Klocal')
+# 		prop = Klocal*np.sign(stress)*np.kron(self.time.detJ, np.ones(self.part.nbqp))
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[1]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[1]) @ tmp2
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness32(self, args={}):
+# 		stress = args.get('stress'); Klocal = args.get('Klocal')
+# 		prop = -Klocal*np.sign(stress)*np.kron(self.time.detJ, self.part.detJ)
+
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return matrix.todense()
+	
+# 	def compute_TangentStiffness33(self, args={}):
+
+# 		Klocal = args.get('Klocal'); K = args.get('Kmod')
+# 		prop = -K*np.kron(np.ones(self.time.nbqp), self.part.detJ)
+# 		tmp1 = sp.kron(self.time._densebasis[1], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix = sp.kron(self.time._denseweights[1], self.part._denseweights[0]) @ tmp2
+
+# 		prop = -Klocal*K*np.kron(self.time.detJ, self.part.detJ)
+# 		tmp1 = sp.kron(self.time._densebasis[0], self.part._densebasis[0]).T
+# 		tmp2 = sp.diags(prop) @ tmp1
+# 		matrix += sp.kron(self.time._denseweights[0], self.part._denseweights[0]) @ tmp2
+# 		return matrix.todense()
+	
+# 	def solveViscoPlasticityProblem(self, dispinout, Fext):
+# 		assert self.mechamaterial._chabocheNBparameters <= 1, 'Try another method'
+# 		assert not np.any(self.mechamaterial._chabocheTable), 'Try another method'
+# 		assert self.mechamaterial._isoHardening._isoname == 'linear', 'Try another method'
+
+# 		boundary = deepcopy(self.boundary)
+# 		boundary.clear_Dirichlet()
+# 		table = np.zeros(shape=np.shape(self.boundary.thDirichletTable)); table[-1, 0] = 1
+# 		boundary.add_DirichletConstTemperature(table)
+# 		dof_intvar, dod_intvar = boundary.thdof, boundary.thdod
+		
+# 		nbctrlpts_total = self.boundary._nbctrlpts_total
+# 		dof = self.boundary.thdof; dod = self.boundary.thdod
+# 		disp_cp, plastic_cp, plseq_cp = np.zeros(nbctrlpts_total), np.zeros(nbctrlpts_total), np.copy(dispinout)
+		
+# 		for j in range(self._itersNL): # Newton-Raphson 
+			
+# 			# Compute internal variables
+# 			args = self.compute_internalVariables(disp_cp, plseq_cp, plastic_cp)
+
+# 			# Compute internal forces
+# 			res1 = self.compute_MechStaticResidual1(Fext, args); res1[dod] = 0.0
+# 			res2 = self.compute_MechStaticResidual2(args); res2[dod_intvar] = 0.0
+# 			res3 = self.compute_MechStaticResidual3(args); res3[dod_intvar] = 0.0
+
+# 			# Compute residue
+# 			resNLj = np.sqrt(np.dot(res1, res1)+np.dot(res2, res2)+np.dot(res3, res3))
+# 			if j == 0: resNL0 = resNLj
+# 			print('NonLinear error: %.5e' %resNLj)
+# 			if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
+
+# 			# Solver for active control points
+# 			K11 = self.compute_TangentStiffness11(args=args)[np.ix_(dof, dof)]
+# 			K12 = self.compute_TangentStiffness12(args=args)[np.ix_(dof, dof_intvar)]
+# 			K13 = self.compute_TangentStiffness13(args=args)[np.ix_(dof, dof_intvar)]
+# 			K21 = self.compute_TangentStiffness21(args=args)[np.ix_(dof_intvar, dof)]
+# 			K22 = self.compute_TangentStiffness22(args=args)[np.ix_(dof_intvar, dof_intvar)]
+# 			K23 = self.compute_TangentStiffness23(args=args)[np.ix_(dof_intvar, dof_intvar)]
+# 			K31 = self.compute_TangentStiffness31(args=args)[np.ix_(dof_intvar, dof)]
+# 			K32 = self.compute_TangentStiffness32(args=args)[np.ix_(dof_intvar, dof_intvar)]
+# 			K33 = self.compute_TangentStiffness33(args=args)[np.ix_(dof_intvar, dof_intvar)]
+
+# 			K = -np.block([	[K11, K12, K13], 
+# 							[K21, K22, K23], 
+# 							[K31, K32, K33]])
+# 			F = np.hstack([res1[dof], res2[dof_intvar], res3[dof_intvar]])
+# 			# sol = sp.linalg.spsolve(sp.csr_matrix(K), F)
+# 			sol = sp.linalg.gmres(sp.csr_matrix(K), F)[0]
+
+# 			deltaD1 = sol[:len(dof)]
+# 			deltaD2 = sol[len(dof):len(dof)+len(dof_intvar)]
+# 			deltaD3 = sol[-len(dof_intvar):]
+
+# 			# Update active control points
+# 			disp_cp[dof] += deltaD1
+# 			plastic_cp[dof_intvar] += deltaD2
+# 			plseq_cp[dof_intvar] += deltaD3
+
+# 		return disp_cp
