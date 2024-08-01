@@ -6,6 +6,7 @@
 
 from thesis.Incremental.__init__ import *
 from pysrc.lib.lib_material import computeDeviatoric4All, computeSymTensorNorm4All
+from pysrc.lib.lib_base import vtk2png
 
 # Set global variables
 degList = np.arange(1, 4)

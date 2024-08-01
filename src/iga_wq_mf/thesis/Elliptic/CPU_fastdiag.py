@@ -3,7 +3,7 @@ from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Set global variables
-TYPESIMU = 'meca'
+TYPESIMU = 'heat'
 RUNSIMU = False
 degList = np.arange(1, 6)
 cutList = np.arange(5, 9)
@@ -43,7 +43,7 @@ if RUNSIMU:
 
 			print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, timeElapsed))
 			timeMatrix[i+1, j+1] = timeElapsed
-			np.savetxt(filename+TYPESIMU+'.dat', timeMatrix)
+			# np.savetxt(filename+TYPESIMU+'.dat', timeMatrix)
 
 # Load data
 fig, ax = plt.subplots(figsize=(6, 4))

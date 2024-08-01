@@ -112,10 +112,10 @@ else:
 			
 			poly = frompoints2hull(enum_ax1, np.log10(points_ax1), color)
 			axs[0].add_patch(poly)
-			axs[0].scatter(enum_ax1, np.log10(points_ax1), s=1.5, c=color, alpha=0.2)
+			# axs[0].scatter(enum_ax1, np.log10(points_ax1), s=1.5, c=color, alpha=0.2, rasterized=True)
 			poly = frompoints2hull(enum_ax2, np.log10(points_ax2), color)
 			axs[1].add_patch(poly)
-			axs[1].scatter(enum_ax2, np.log10(points_ax2), s=1., c=color, alpha=0.2)
+			# axs[1].scatter(enum_ax2, np.log10(points_ax2), s=1., c=color, alpha=0.2, rasterized=True)
 
 			axs[0].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
 			axs[1].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)

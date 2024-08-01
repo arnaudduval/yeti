@@ -17,7 +17,6 @@ def sigmoid(x, c1=1, c2=0):
 def macaulayfunc(x):
 	return (x + np.abs(x))/2.0
 
-
 def cropImage(filename):
 	from PIL import Image
 	im = Image.open(filename).convert('RGB')
@@ -32,6 +31,46 @@ def cropImage(filename):
 	ROI = na[top:bottom, left:right]
 	Image.fromarray(ROI).save(filename)
 	return 
+
+def vtk2png(folder, filename=None, fieldname='temp', 
+			clim=None, cmap='viridis', title=None, fmt="%.1f",
+			n_labels=3, position_y=0.1, n_colors=101):		
+
+	assert filename is not None, "add filename" 
+	if title is None: title = deepcopy(fieldname)
+	fileVTK = folder + filename
+	reader = pv.get_reader(fileVTK + '.vts')
+	scalars = None
+	if fieldname in reader.point_array_names:
+		reader.disable_all_point_arrays()
+		reader.enable_point_array(fieldname)
+		scalars = deepcopy(fieldname)
+
+	grid = reader.read() 
+	filename = folder + filename + fieldname + '.png'
+	
+	sargs = dict(
+			title=title,
+			title_font_size=50,
+			label_font_size=40,
+			shadow=True,
+			n_labels=n_labels,
+			fmt=fmt,
+			position_x=0.2, 
+			position_y=position_y,
+	)
+	pv.start_xvfb()
+	plotter = pv.Plotter(off_screen=True)
+	plotter.add_mesh(grid, cmap=cmap, clim=clim, reset_camera=True, 
+					scalar_bar_args=sargs, scalars=scalars, n_colors=n_colors)
+	
+	plotter.camera_position = 'xy'
+	plotter.camera.zoom(0.9)
+	plotter.background_color = 'white'
+	plotter.window_size = [1600, 1600]
+	plotter.screenshot(filename)
+	cropImage(filename)
+	return
 
 def eraseRowsCSR(rows2er, indi_in, indj_in, data_in, isfortran=True):
 	" Returns new data after erasing rows in CSR format "

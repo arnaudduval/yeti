@@ -94,7 +94,7 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-FIGCASE = 7
+FIGCASE = 8
 EXTENSION = '.pdf'
 
 if FIGCASE == 0: # B-spline curve
@@ -483,12 +483,8 @@ elif FIGCASE == 7: # 2D Geometries
 		geoname  = 'TP'
 		filename = folder + 'VTK_' + geoname + '.png'
 		degree, cuts = 5, 5
-		geoArgs = {'name': geoname, 'degree': degree*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int),
-					'extra':{'XY':np.array([[0.0, -10], [1.5, -1], [1.5, 1], [0.0, 10]])}
-					}
-		# geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
-		# 			'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
+		geoArgs   = {'name': geoname, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)}
 		quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 		modelGeo = Geomdl(geoArgs)
@@ -534,7 +530,7 @@ elif FIGCASE == 8: # 3D Geometries
 
 	def case8(folder):
 		# Create model
-		name    = 'TR'
+		name    = 'CB'
 		filename = folder + 'VTK_' + name + '.png'
 		degree, cuts = 5, 5
 		geoArgs   = {'name': name, 'degree': degree*np.ones(3, dtype=int), 
@@ -544,14 +540,14 @@ elif FIGCASE == 8: # 3D Geometries
 		modelGeo = Geomdl(geoArgs)
 		modelIGA = modelGeo.getIGAParametrization()
 		modelPhy = part(modelIGA, quadArgs=quadArgs)
-		modelPhy.postProcessingPrimal(folder=folder)
+		modelPhy.postProcessingPrimal(folder=folder, addDetJ=True, name=name)
 
 		# Read data
-		fileVTK   = folder + 'IGAparametrization'
+		fileVTK   = folder + name
 		grid      = pv.read(fileVTK + '.vts')
 	
 		sargs = dict(
-				title = 'normalized det J',
+				title = 'determinant of transformation',
 				title_font_size=50,
 				label_font_size=40,
 				shadow=True,
@@ -567,8 +563,7 @@ elif FIGCASE == 8: # 3D Geometries
 			plotter.add_mesh(grid, cmap=boring_cmap, scalar_bar_args=sargs)
 			plotter.camera.zoom(0.6)
 		else: 
-			plotter.add_mesh(grid, cmap='viridis', scalar_bar_args=sargs)
-
+			plotter.add_mesh(grid, cmap='rainbow', scalar_bar_args=sargs)
 		if name == 'VB': 
 			plotter.camera_position  = 'yz'
 			plotter.camera.elevation = 45

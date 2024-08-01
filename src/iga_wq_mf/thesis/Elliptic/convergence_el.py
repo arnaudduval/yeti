@@ -8,6 +8,7 @@
 
 from thesis.Elliptic.__init__ import *
 import pickle
+from pysrc.lib.lib_base import vtk2png
 
 RUNSIMU = False
 degList = np.arange(1, 5)
@@ -43,6 +44,14 @@ if RUNSIMU:
 			np.savetxt(FOLDER2DATA+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
 
 else:	
+
+	problem, displacement, _ = simulate_el(4, 6, {'quadrule': 'wq', 'type': 2})
+	straintmp = problem.interpolate_strain(displacement)
+	strain = np.zeros((6, problem.part.nbqp_total))
+	strain[:2,:]=straintmp[:2,:]; strain[3,:]=straintmp[-1,:]
+	vonmises = problem.mechamaterial.evalElasticStress(strain)
+	problem.part.postProcessingDual(fields={'vms':vonmises}, folder=FOLDER2SAVE, name='ellipticel')
+	vtk2png(folder=FOLDER2SAVE, filename='ellipticel', fieldname='vms', cmap='coolwarm', title='von Mises stress')
 
 	fig, ax = plt.subplots(figsize=(6, 5))
 	figname = FOLDER2SAVE + 'ConvergenceH1_el'

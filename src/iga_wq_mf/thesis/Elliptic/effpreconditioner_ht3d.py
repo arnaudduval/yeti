@@ -4,8 +4,8 @@ from thesis.Elliptic.lib_simulation import decoder, simulate
 def conductivityProperty(args:dict):
 	P = args.get('position')
 	dimen = np.size(P, axis=0)
-	# Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
-	Kref  = np.array([[2, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 1]])
+	Kref  = np.array([[1, 0.5, 0.1],[0.5, 2, 0.25], [0.1, 0.25, 3]])
+	# Kref  = np.array([[2, 0.0, 0.0],[0.0, 1, 0.0], [0.0, 0.0, 1]])
 	Kprop = np.zeros((dimen, dimen, np.size(P, axis=1)))
 	for i in range(dimen): 
 		for j in range(dimen):
@@ -196,5 +196,5 @@ for cuts in cutList:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension='_TH.pdf', plotLegend=True)
+				simuOutput.plot_results(extension='_TH.pdf', plotLegend=False)
 				

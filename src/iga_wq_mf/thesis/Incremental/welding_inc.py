@@ -1,4 +1,5 @@
 from thesis.Incremental.__init__ import *
+from pysrc.lib.lib_base import vtk2png
 
 # Select folder
 folder = FOLDER2SAVE + '/welding/'
