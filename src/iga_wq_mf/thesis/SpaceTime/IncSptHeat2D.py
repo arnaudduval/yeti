@@ -32,8 +32,8 @@ def powerDensity_spt(args):
 # Set global variables
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
-RUNSIMU = True
-FIG_CASE = 2
+RUNSIMU = False
+FIG_CASE = 1
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -276,7 +276,7 @@ elif FIG_CASE == 2:
 			dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 			problem_spt_inc = simulate_spacetime(degree, cuts, powerDensity_spt, 
 												dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
-												quadArgs={'quadrule':'iga', 'type':'leg'},
+												quadArgs={'quadrule':'iga'},
 												degree_time=1, nbel_time=nbelinc, solveSystem=False)[0]
 			
 			dirichlet_table = np.ones((2, 2))
@@ -302,10 +302,10 @@ elif FIG_CASE == 2:
 				np.savetxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION, abserrorSpt)
 				np.savetxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION, relerrorSpt)
 
+	fig, ax = plt.subplots(figsize=(6, 5))
+
 	if PLOTRELATIVE: errorList1 = np.loadtxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION)
 	else: errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION)
-	
-	fig, ax = plt.subplots(figsize=(6, 5))
 	for i, deg in enumerate(degsptList):
 		nbctrlpts = nbelincList+deg
 		ax.loglog(nbctrlpts, errorList1[i, :], color=COLORLIST[i], marker=CONFIGLINE0['marker'], markerfacecolor='w',
@@ -319,9 +319,9 @@ elif FIG_CASE == 2:
 	else: errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION)
 	
 	nbctrlpts = nbelincList+1
-	ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w', color='k',
-					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], 
-					label='INC-IGA-GL')
+	ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE5['marker'], markerfacecolor='w', color='k',
+					markersize=CONFIGLINE5['markersize'], linestyle=CONFIGLINE5['linestyle'], 
+					label='INC-IGA-GL '+r'$\alpha=1$')
 	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
 	slope = round(slope, 1)
 	annotation.slope_marker((nbctrlpts[-5], errorList1[-5]), slope, 

@@ -567,7 +567,7 @@ contains
                 end do
             end do
         end do
-            
+
     end subroutine mf_gradtu_gradtv
 
     subroutine mf_tutv_gradtugradtv(mat, basisdata, nr_total, array_in, array_out)

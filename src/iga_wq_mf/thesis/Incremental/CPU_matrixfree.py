@@ -1,4 +1,4 @@
-from thesis.Elliptic.__init__ import *
+from thesis.Incremental.__init__ import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
 from pysrc.lib.lib_material import heatmat, mechamat
@@ -7,8 +7,8 @@ from pysrc.lib.lib_job3d import heatproblem, mechaproblem
 
 # Set global variables
 RUNSIMU = False
-degList = range(1, 10)
-cuts = 5
+degList = range(9, 10)
+cuts = 6
 quadArgs = {'quadrule':'wq', 'type':1}
 filename = FOLDER2SAVE + 'MF_time' 
 
@@ -17,12 +17,15 @@ if RUNSIMU:
 	timeMF_conductivity = np.zeros((len(degList), 2))
 	timeMF_conductivity[:, 0] = degList
 
-	timeMF_stiffness = np.zeros((len(degList), 2))
-	timeMF_stiffness[:, 0] = degList
+	timeMF_capacity = np.zeros((len(degList), 2))
+	timeMF_capacity[:, 0] = degList
+
+	timeMF_python = np.zeros((len(degList), 2))
+	timeMF_python[:, 0] = degList
 
 	for i, degList in enumerate(degList):
 		
-		geoArgs = {'name': 'RQA', 'degree': degList*np.ones(3, dtype=int), 
+		geoArgs = {'name': 'VB', 'degree': degList*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
 		}
 		blockPrint()			
@@ -32,20 +35,16 @@ if RUNSIMU:
 		dim = modelPhy.dim
 
 		heatmaterial = heatmat()
+		heatmaterial.addCapacity(inpt=1.0, isIsotropic=True)
 		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=dim)
-
-		mecamaterial = mechamat({'elastic_modulus':1e3, 'elastic_limit':1e10, 
-						'poisson_ratio':0.3, 'isoHardLaw': {'name':'none'}})
 
 		# Set Dirichlet boundaries	
 		boundary = boundaryCondition(modelPhy.nbctrlpts)
 		boundary.add_DirichletConstTemperature(table=np.ones((dim, 2), dtype=bool))
-		boundary.add_DirichletDisplacement(table=np.ones((dim, 2, dim), dtype=bool))
 		enablePrint()
 
 		# Solve elastic problem
 		hproblem = heatproblem(heatmaterial, modelPhy, boundary)
-		mproblem = mechaproblem(mecamaterial, modelPhy, boundary)
 
 		# ------------------
 		# Compute MF product
@@ -57,43 +56,55 @@ if RUNSIMU:
 		finish = time.process_time()
 		print('Time Conductivity:%.2e' %(finish-start))
 		timeMF_conductivity[i, 1] = finish - start
-
-		start = time.process_time()
-		mproblem.compute_mfStiffness(np.random.random((dim, boundary._nbctrlpts_total)))
-		finish = time.process_time()
-		print('Time Stiffness:%.2e' %(finish-start))
-		timeMF_stiffness[i, 1] = finish - start
-
 		# np.savetxt(FOLDER2SAVE+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
-		# np.savetxt(FOLDER2SAVE+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
 
-fig, ax = plt.subplots(figsize=(5.5, 5.5))
-plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
-sufixList = ['iga_leg', 'wq_1', 'wq_2']
-labels = ['Steady heat', 'Elasticity']
+		# start = time.process_time()
+		# hproblem.compute_mfCapacity(np.random.random(boundary._nbctrlpts_total))
+		# finish = time.process_time()
+		# print('Time Capacity:%.2e' %(finish-start))
+		# timeMF_capacity[i, 1] = finish - start
+		# np.savetxt(FOLDER2SAVE+'MF_capacity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_capacity)
+
+		# matrix = buildmatrix_ht(hproblem)
+		# start = time.process_time()
+		# v_out = matrix @ np.random.random(boundary._nbctrlpts_total)
+		# finish = time.process_time()
+		# print('Time Python:%.2e' %(finish-start))
+		# timeMF_python[i, 1] = finish - start
+		# np.savetxt(FOLDER2SAVE+'MF_python'+'.dat', timeMF_python)
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
+plotoptions = [CONFIGLINE1, CONFIGLINE2]
+sufixList = ['wq_1', 'wq_2']
+labels = ['MF-WQ 1 conductivity', 'MF-WQ 1 capacity', 'Built-in SpMDV']
 
 # Load data
-for sufix, plotops in zip(sufixList, plotoptions):
+for j, [sufix, plotops] in enumerate(zip(sufixList, plotoptions)):
 	file_K1 = np.loadtxt(FOLDER2SAVE+'MF_conductivity_'+sufix+'.dat') 
-	file_S1 = np.loadtxt(FOLDER2SAVE+'MF_stiffness_'+sufix+'.dat') 
+	file_C1 = np.loadtxt(FOLDER2SAVE+'MF_capacity_'+sufix+'.dat') 
 
-	degList = file_K1[:, 0]
-	timeElapsedList = [file_K1[:, 1], file_S1[:, 1]]
-	quadrule = sufix.split('_')[0]
+	degList = [file_K1[:, 0], file_C1[:, 0]]
+	timeElapsedList = [file_K1[:, 1], file_C1[:, 1]]
+	quadrule = sufix.split('_')[1]
 
-	for i, [timeElapsed, label] in enumerate(zip(timeElapsedList, labels)):
+	for i, [deg, timeElapsed, label] in enumerate(zip(degList, timeElapsedList, labels)):
 		color = COLORLIST[i]
-		if quadrule == 'iga':
-			ax.semilogy(degList, timeElapsed, label='MF-GL '+label, color=color, marker=plotops['marker'],
+		if quadrule == '1':
+			ax.semilogy(deg, timeElapsed, label = label, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-		else:
-			ax.semilogy(degList, timeElapsed, color=color, marker=plotops['marker'],
+		else: 
+			ax.semilogy(deg, timeElapsed, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='MF-WQ 1')
 ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
 				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
+
+file_P1 = np.loadtxt(FOLDER2SAVE+'MF_python'+'.dat') 
+deg = file_P1[:, 0]
+timeElapsed = file_P1[:, 1]
+color = COLORLIST[i+1]
+ax.semilogy(deg, timeElapsed, label = labels[-1], color=color, marker=CONFIGLINE4['marker'],
+			markerfacecolor='w', markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'])
 
 ax.minorticks_off()
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')

@@ -199,7 +199,7 @@ def simulate_el(degree, cuts, quadArgs=None, preconditioner='JMC'):
 		displacement, residue = solvesystem_el(problem, stiffnessmatrix, np.ravel(Fext))
 
 	else:
-		problem._thresLin = 1.e-12; problem._linPreCond = preconditioner
+		problem._thresLin = 1.e-12; problem._linPreCond = preconditioner; problem._itersLin = 500
 		displacement, residue = problem._solveLinearizedElasticityProblem(Fext=Fext)
 
 	return problem, displacement, residue

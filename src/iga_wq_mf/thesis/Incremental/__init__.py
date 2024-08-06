@@ -72,3 +72,32 @@ def simulate_2d(degree, cuts, quadArgs, precond='JMC'):
 	displacement = np.zeros(np.shape(FextList))
 	resLin, internalVars = problem.solveElastoPlasticityProblem(displacement, FextList)
 	return problem, displacement, resLin, internalVars
+
+def buildmatrix_ht(problem:heatproblem, prototype=True):
+	args = {'position':problem.part.qpPhy}
+
+	quadrules = problem.part._quadraturerules
+	matrix = sp.csr_matrix((problem.part.nbctrlpts_total, problem.part.nbctrlpts_total))
+	if prototype:
+		submatrices = []
+		for j in range(problem.part.dim):
+			submatrices.append(quadrules[0]._denseWeights[0] @ quadrules[0]._denseBasis[0].T)
+		if problem.part.dim == 2: matrix = sp.kron(submatrices[1], submatrices[0])
+		elif problem.part.dim == 3:	matrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
+	else:
+		prop = np.einsum('ilk,jmk,lmk,k->ijk', problem.part.invJ, problem.part.invJ,
+				problem.heatmaterial.conductivity(args), problem.part.detJ)
+	
+		for j in range(problem.part.dim):
+			beta = np.zeros(problem.part.dim, dtype=int); beta[j] = 1
+			if problem.part.dim == 2: tmp1 = sp.kron(quadrules[1]._denseBasis[beta[1]], quadrules[0]._denseBasis[beta[0]]).T
+			elif problem.part.dim == 3: tmp1 = sp.kron(quadrules[2]._denseBasis[beta[2]], sp.kron(quadrules[1]._denseBasis[beta[1]], quadrules[0]._denseBasis[beta[0]])).T
+			for i in range(problem.part.dim):
+				alpha = np.zeros(problem.part.dim, dtype=int); alpha[i] = 1
+				zeta = beta + 2*alpha
+				tmp2 = sp.diags(prop[i, j, :]) @ tmp1
+				if problem.part.dim == 2: tmp3 = sp.kron(quadrules[1]._denseWeights[zeta[1]], quadrules[0]._denseWeights[zeta[0]]) @ tmp2
+				elif problem.part.dim == 3: tmp3 = sp.kron(quadrules[2]._denseWeights[zeta[2]], sp.kron(quadrules[1]._denseWeights[zeta[1]], quadrules[0]._denseWeights[zeta[0]])) @ tmp2
+				matrix += tmp3
+	
+	return matrix 

@@ -3,7 +3,7 @@ from thesis.SpaceTime.input_data import *
 
 # Set global variables
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + '1d'
-RUNSIMU = False
+RUNSIMU = True
 FIG_CASE = 2
 EXTENSION = '.dat'
 
@@ -162,10 +162,10 @@ elif FIG_CASE == 1:
 
 elif FIG_CASE == 2:
 
-	degree, cuts = 9, 6
+	degree, cuts = 8, 7
 	quadArgs = {'quadrule':'iga', 'type':'leg'}
-	nbelincList = np.arange(5, 65, 5)
-	degsptList  = np.arange(1, 5)
+	nbelincList = np.arange(4, 65, 5)
+	degsptList  = np.arange(1, 4)
 	abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
 	abserrorInc2, relerrorInc2 = np.ones(len(nbelincList)), np.ones(len(nbelincList))
 	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(nbelincList))), np.ones((len(degsptList), len(nbelincList)))
@@ -173,19 +173,25 @@ elif FIG_CASE == 2:
 	if RUNSIMU:
 		for i, nbelsinc in enumerate(nbelincList):
 
-			blockPrint()
+			# blockPrint()
+			# Pseudo space time
+			dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+			problem_spt_inc = simulate_spacetime(degree, cuts, powerDensitySquare_spt, 
+												dirichlet_table=dirichlet_table, is1dim=IS1DIM, 
+												quadArgs={'quadrule':'iga'},
+												degree_time=1, nbel_time=nbelsinc, solveSystem=False)[0]
+
 			# Incremental
 			dirichlet_table = np.ones((2, 2))
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensitySquare_inc, 
 														dirichlet_table=dirichlet_table,
 														nbel_time=nbelsinc, 
 														quadArgs={'quadrule':'iga'}, 
-														is1dim=IS1DIM)
+														is1dim=IS1DIM, alpha=1.0)
 			
-			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
+			abserrorInc[i], relerrorInc[i] = problem_spt_inc.normOfError(np.ravel(temp_inc, order='F'), 
 														normArgs={'type':'L2',
-																'exactFunction':exactTemperatureSquare_inc,
-																'exactExtraArgs':{'time':time_inc[-1]}})
+																'exactFunction':exactTemperatureSquare_spt,})
 			
 			np.savetxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION, abserrorInc)
 			np.savetxt(FOLDER2DATA+'2relerrorstag_inc'+SUFIX+EXTENSION, relerrorInc)
@@ -208,17 +214,27 @@ elif FIG_CASE == 2:
 				np.savetxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION, abserrorSpt)
 				np.savetxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION, relerrorSpt)
 			
-			enablePrint()
+			# enablePrint()
 
 	fig, ax = plt.subplots(figsize=(8, 6))
 	errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION)
 	for i, deg in enumerate(degsptList):
-		ax.loglog(nbelincList+1, errorList1[i, :], color=COLORLIST[i], marker=CONFIGLINE0['marker'], markerfacecolor='w',
+		nbctrlpts = nbelincList+deg
+		ax.loglog(nbctrlpts, errorList1[i, :], color=COLORLIST[i], marker=CONFIGLINE0['marker'], markerfacecolor='w',
 					markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='SPT-IGA deg. '+str(int(deg)))
-		
+		slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[i, 3:]), 1)[0]
+		slope = round(slope, 1)
+		annotation.slope_marker((nbctrlpts[-5], errorList1[i, -5]), slope, 
+						poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+
+	nbctrlpts = nbelincList+1
 	errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION)
-	ax.loglog(nbelincList+1, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w', color='k',
+	ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w', color='k',
 					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA')
+	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
+	slope = round(slope, 1)
+	annotation.slope_marker((nbctrlpts[-5], errorList1[-5]), slope, 
+					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
 	ax.set_ylabel('Stagnation error')
 	ax.set_xlabel('Number of control points on time')

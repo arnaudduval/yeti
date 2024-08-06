@@ -67,6 +67,7 @@ CONFIGLINE0  = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 CONFIGLINE1 = {'marker': 'o', 'linestyle': '--', 'markersize': 6}
 CONFIGLINE2 = {'marker': 'x', 'linestyle': ':', 'markersize': 6}
 CONFIGLINE4 = {'marker': 'd', 'linestyle': '-.', 'markersize': 6}
+CONFIGLINE5 = {'marker': '+', 'linestyle': '-', 'markersize': 6}
 
 import pyvista as pv
 pv.rcParams['transparent_background'] = True

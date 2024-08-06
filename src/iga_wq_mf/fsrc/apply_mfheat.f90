@@ -355,7 +355,7 @@ contains
             indiT_w = basisdata%indiT(3, 1:nc_w+1); indjT_w = basisdata%indjT(3, 1:nnz_w)
             data_BT_w = basisdata%data_bwT(3, 1:nnz_w, 1:2)
         end if
-
+        
         array_out = 0.d0
         do j = 1, basisdata%dimen
             beta = 1; beta(j) = 2

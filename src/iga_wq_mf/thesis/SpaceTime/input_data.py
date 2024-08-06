@@ -10,7 +10,7 @@ from pysrc.lib.lib_job1d import heatproblem1D, stheatproblem1D
 from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
-IS1DIM = False
+IS1DIM = True
 ISLINEAR = False
 CUTS_TIME = 6
 
