@@ -29,15 +29,56 @@ def powerDensity_spt(args):
 	else: raise Warning('Not possible')
 	return func
 
+def simulate_incrementalHighOrder(degree, cuts, powerdensity, geoArgs=None, 
+						dirichlet_table=None, nbel_time=None, quadArgs=None):
+
+	# Create geometry
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
+	if nbel_time is None: nbel_time = 2**CUTS_TIME
+	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
+
+	if geoArgs is None: geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': np.array([cuts, 1, 1])}
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
+
+	time_inc = np.linspace(0, 1.0, nbel_time+1)
+
+	# Add material 
+	material = heatmat()
+	material.addConductivity(conductivityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False) 
+
+	# Block boundaries
+	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
+	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
+
+	# Transient model
+	problem_inc = heatproblem(material, modelPhy, boundary_inc)
+	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
+
+	# Add external force 
+	Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
+	for i, t in enumerate(time_inc):
+		Fext_list[:, i] = problem_inc.compute_volForce(powerdensity, 
+							args={'position':problem_inc.part.qpPhy, 'time':t})
+
+	# Solve
+	problem_inc._itersNL = 50; problem_inc._thresNL = 1e-8
+	problem_inc.solveFourierTransientProblemHighOrderImplicit(Tinout=Tinout, Fext_list=Fext_list, 
+											time_list=time_inc)
+	return problem_inc, time_inc, Tinout
+
 # Set global variables
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
-RUNSIMU = False
+RUNSIMU = True
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
 
-degree, cuts = 8, 6
+degree, cuts = 8, 4
 quadArgs = {'quadrule':'wq', 'type':2}
 nbelincList = np.array([2**cuts for cuts in range(1, 7)])
 
@@ -56,9 +97,12 @@ if RUNSIMU:
 												degree_time=1, nbel_time=nbelinc, solveSystem=False)[0]
 
 			dirichlet_table = np.ones((2, 2))
-			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, dirichlet_table=dirichlet_table,
-														geoArgs=geoArgs, nbel_time=nbelinc, quadArgs=quadArgs, alpha=alpha)
+			# problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, dirichlet_table=dirichlet_table,
+			# 											geoArgs=geoArgs, nbel_time=nbelinc, quadArgs=quadArgs, alpha=alpha)
 			
+			problem_inc, time_inc, temp_inc = simulate_incrementalHighOrder(degree, cuts, powerDensity_inc, geoArgs=None, 
+											dirichlet_table=dirichlet_table, nbel_time=nbelinc, quadArgs=quadArgs)
+
 			abserrorInc[i], relerrorInc[i] = problem_spt_inc.normOfError(np.ravel(temp_inc, order='F'), 
 														normArgs={'type':'L2',
 																'exactFunction':exactTemperature_spt})
