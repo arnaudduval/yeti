@@ -121,16 +121,17 @@ class heatproblem1D(problem1D):
 	def compute_mfCapacity(self, array_in, args=None, isLumped=False):
 		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.capacity(args)*self.heatmaterial.density(args)*self.part.detJ
-		matrix = self.part._denseweights[0] @ np.diag(prop) @ self.part._densebasis[0].T
-		if isLumped: matrix = np.diag(matrix.sum(axis=1))
-		array_out = matrix @ array_in
+		tmp1 = np.ones(shape=np.shape(array_in)) if isLumped else np.copy(array_in)
+		tmp2 = self.part._densebasis[0].T @ tmp1
+		tmp3 = self.part._denseweights[0] @ (prop*tmp2)
+		array_out = (tmp3*array_in) if isLumped else np.copy(tmp3)
 		return array_out
 	
 	def compute_mfConductivity(self, array_in, args=None):
 		if args is None: args = {'position': self.part.qpPhy}
 		prop = self.heatmaterial.conductivity(args)*self.part.invJ
-		matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T 
-		array_out = matrix @ array_in
+		tmp1 = self.part._densebasis[1].T @ array_in
+		array_out = self.part._denseweights[-1] @ (prop*tmp1)
 		return array_out
 
 	def interpolate_temperature(self, u_ctrlpts):
@@ -169,9 +170,6 @@ class heatproblem1D(problem1D):
 	def solveFourierTransientProblem(self, Tinout, Fext_list, time_list, alpha=0.5, isLumped=False, extraArgs=None):
 		" Solves transient heat problem in 1D. "
 
-		if extraArgs is None: extraArgs = {'stabilized': False, 'forces': None}
-		useStabilization = extraArgs.get('stabilized', False); forces = extraArgs.get('forces', None)
-		if useStabilization and forces is None: raise Warning('Do not forget to set volumetric force if stabilization is needed')
 		def computeVelocity(problem:heatproblem1D, Fext, args=None, isLumped=False):
 			if args is None: args = {'position': problem.part.qpPhy}
 			dof = problem.boundary.thdof

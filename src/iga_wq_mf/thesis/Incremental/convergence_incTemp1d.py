@@ -1,0 +1,230 @@
+from thesis.Incremental.__init__ import *
+from pysrc.lib.lib_job1d import stheatproblem1D
+from scipy.integrate import solve_ivp
+from pysrc.lib.lib_base import bdf
+from numpy import sin, cos, pi, tanh
+
+CST = 100
+CUTS_TIME = 6
+ISLINEAR = False
+
+def capacityProperty(args:dict):
+	temperature = args.get('temperature')
+	capacity = np.ones(shape=np.shape(temperature))
+	return capacity
+
+def conductivityProperty(args:dict):
+	temperature = args.get('temperature')
+	if ISLINEAR: 
+		conductivity = 2*np.ones(shape=np.shape(temperature))
+	else:
+		conductivity = 3.0 + 2.0*tanh(temperature/50)
+	return conductivity
+
+def exactTemperature_inc(args:dict):
+	t = args['time']
+	x = args['position']
+	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
+	return u
+
+def exactTemperature_spt(qpPhy):
+	x = qpPhy[0, :]; t = qpPhy[-1, :]
+	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
+	return u
+
+def powerDensity_inc(args:dict):
+	t = args['time']
+	x = args['position']
+
+	u = sin((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1) 
+	if ISLINEAR:
+		f = (
+			(CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+			- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
+			+ 8*CST*pi**2*u
+		)
+	else: 
+		f = ((CST*pi*cos((pi*t)/2)*sin(2*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/2 
+			- (9*CST*pi*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(2*pi*x))/8 
+			+ 4*CST*pi**2*u*(2*tanh((CST*u)/50) + 3) 
+			+ (4*CST**2*pi**2*cos(2*pi*x)**2*sin((pi*t)/2)**2*((3*cos((3*pi*t)/2))/4 + 1)**2*(tanh((CST*u)/50)**2 - 1))/25
+		)	
+	return f
+
+def simulate_incremental(degree, cuts, powerdensity, dirichlet_table=None, nbel_time=None, 
+						quadArgs=None, IVPmethod='alpha', alpha=0.5):
+
+	# Create geometry
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
+	if nbel_time is None: nbel_time = 2**CUTS_TIME
+	if dirichlet_table is None: dirichlet_table = np.zeros((2, 2)); dirichlet_table[0, :] = 1
+
+	geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
+	modelPhy = part1D(geometry, kwargs={'quadArgs':quadArgs})
+
+	time_inc = np.linspace(0, 1.0, nbel_time+1)
+
+	# Add material 
+	material = heatmat()
+	material.addConductivity(conductivityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False) 
+
+	# Block boundaries
+	boundary_inc = boundaryCondition(modelPhy.nbctrlpts)
+	boundary_inc.add_DirichletConstTemperature(table=dirichlet_table)
+
+	# Transient model
+	problem_inc = heatproblem1D(material, modelPhy, boundary_inc)
+	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_inc)))
+
+	if IVPmethod == 'alpha':
+		# Add external force 
+		Fext_list = np.zeros((problem_inc.part.nbctrlpts_total, len(time_inc)))
+		for i, t in enumerate(time_inc):
+			Fext_list[:, i] = problem_inc.compute_volForce(powerdensity, 
+								args={'position':problem_inc.part.qpPhy, 'time':t})
+
+		# Solve
+		problem_inc._itersNL = 50; problem_inc._thresNL = 1e-8
+		problem_inc.solveFourierTransientProblem(Tinout=Tinout, Fext_list=Fext_list, 
+												time_list=time_inc, alpha=alpha)
+	
+	else:
+		args = {'temperature':np.ones(problem_inc.part.nbqp), 'position':problem_inc.part.qpPhy}
+		dof = problem_inc.boundary.thdof
+		cprop = problem_inc.heatmaterial.capacity(args)*problem_inc.heatmaterial.density(args)*problem_inc.part.detJ
+		capacity = problem_inc.part._denseweights[0] @ np.diag(cprop) @ problem_inc.part._densebasis[0].T
+		invcapacity = np.linalg.pinv(capacity[np.ix_(dof, dof)])
+
+		def fun(t, y):
+			"y is of size ndof"
+			tmp = np.zeros(problem_inc.part.nbctrlpts_total); tmp[dof] = y
+			tmpinterp = problem_inc.interpolate_temperature(tmp)
+			args['time'] = t; args['temperature'] = tmpinterp
+			force = problem_inc.compute_volForce(powerdensity, args=args)[dof]
+			MFKu = problem_inc.compute_mfConductivity(tmp, args=args)[dof]
+			vel = invcapacity @ (force - MFKu)
+			return vel
+
+		t_span = (time_inc[0], time_inc[-1])
+		y0 = np.zeros(problem_inc.boundary._thndof)
+
+		if IVPmethod in ['BDF1', 'BDF2', 'BDF3', 'BDF4']:
+			y = np.transpose(bdf(fun, t_span, y0, nbel_time, norder=int(IVPmethod[-1]))[-1])
+			Tinout[dof, :] = np.copy(y)
+
+		else:
+			print("SCIPY METHODS: WE DO NOT CONTROL TIME STEP")
+			output = solve_ivp(fun, t_span, y0, 
+							method=IVPmethod, 
+							t_eval=time_inc, 
+							first_step=time_inc[1]-time_inc[0],
+							max_step=(time_inc[1]-time_inc[0]),
+							rtol=1e-8, atol=1e-10)
+			Tinout[dof, :] = np.copy(output['y'])
+
+	return problem_inc, time_inc, Tinout
+
+def simulate_spacetime(degree, cuts, dirichlet_table=None, 
+					degree_time=None, nbel_time=None, quadArgs=None):
+	
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
+	if nbel_time is None: nbel_time=2**CUTS_TIME
+	if degree_time is None: degree_time = 2
+	if dirichlet_table is None: 
+		dirichlet_table = np.zeros((3, 2))
+		dirichlet_table[0, :] = 1
+		dirichlet_table[-1, 0] = 1
+
+	geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
+	modelPhy = part1D(geometry, kwargs={'quadArgs':quadArgs})
+
+	time_spt = part1D(createUniformOpenCurve(degree_time, nbel_time, 1.0), 
+					{'quadArgs':quadArgs}) # To keep same number of control points
+
+	# Add material 
+	material = heatmat()
+	material.addConductivity(2.0, isIsotropic=True) 
+	material.addCapacity(1.0, isIsotropic=True)
+
+	# Block boundaries
+	sptnbctrlpts = np.array([modelPhy.nbctrlpts_total, time_spt.nbctrlpts_total, 1])
+	boundary_spt = boundaryCondition(sptnbctrlpts)
+	boundary_spt.add_DirichletConstTemperature(table=dirichlet_table)
+
+	# Transient model
+	problem_spt = stheatproblem1D(material, modelPhy, time_spt, boundary_spt)
+
+	return problem_spt
+
+# Set global variables
+SUFIX = 'lin_1d' if ISLINEAR else 'nonlin_1d'
+PLOTRELATIVE = True
+RUNSIMU = False
+EXTENSION = '.dat'
+
+degree, cuts = 8, 7
+quadArgs = {'quadrule':'wq', 'type':2}
+IVPmethodList = ['BDF1', 'BDF2', 'BDF3', 'alpha']
+nbelincList = np.array([2**cuts for cuts in range(2, 8)])
+
+if RUNSIMU:
+	for IVPmethod in IVPmethodList:
+		abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
+
+		for i, nbelinc in enumerate(nbelincList):
+
+			dirichlet_table = np.ones((2, 2))
+			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
+														dirichlet_table=dirichlet_table,
+														nbel_time=nbelinc, quadArgs=quadArgs,
+														IVPmethod=IVPmethod)
+			
+
+			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
+														normArgs={'type':'L2',
+														'exactFunction':exactTemperature_inc,
+														'exactExtraArgs':{'time':time_inc[-1]}})
+			
+		IVPmethodName = deepcopy(IVPmethod)
+		np.savetxt(FOLDER2DATA+'abserrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION, abserrorInc)
+		np.savetxt(FOLDER2DATA+'relerrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION, relerrorInc)
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
+
+for i, IVPmethod in enumerate(IVPmethodList):
+	label = 'IGA-GL '; IVPmethodName = deepcopy(IVPmethod)
+	if IVPmethod == 'alpha': 
+		label += r'$\alpha=$' + str(0.5)
+	else:
+		label += IVPmethod
+		
+	if PLOTRELATIVE: errorList1 = np.loadtxt(FOLDER2DATA+'relerrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION)
+	else: errorList1 = np.loadtxt(FOLDER2DATA+'abserrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION)
+
+	nbctrlpts = nbelincList+1
+	if i < 3:
+		ax.loglog(nbctrlpts, errorList1, marker='s', markerfacecolor='w', label=label)
+		slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
+		slope = round(slope, 1)
+		annotation.slope_marker((nbctrlpts[-1], errorList1[-1]), slope, 
+						poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+
+	elif i == 3:
+		ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w',
+				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], 
+				color='k', label=label)
+
+if PLOTRELATIVE: 
+	ax.set_ylabel('Relative '+r'$L^2$'+' error at last time-step')
+	ax.set_ylim(top=1e-1, bottom=1e-8)
+else: 
+	ax.set_ylabel(r'$L^2$'+' error at last time-step')
+	ax.set_ylim(top=1e0, bottom=1e-7)
+
+ax.set_xlabel('Number of time-steps\nat fixed fine mesh')
+ax.set_xlim(left=2, right=300)
+ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+# ax.legend(loc='lower left')
+fig.tight_layout()
+fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')

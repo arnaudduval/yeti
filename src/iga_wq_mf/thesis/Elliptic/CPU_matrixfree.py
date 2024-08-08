@@ -10,7 +10,6 @@ RUNSIMU = False
 degList = range(1, 10)
 cuts = 5
 quadArgs = {'quadrule':'wq', 'type':1}
-filename = FOLDER2SAVE + 'MF_time' 
 
 if RUNSIMU:
 
@@ -67,39 +66,28 @@ if RUNSIMU:
 		# np.savetxt(FOLDER2SAVE+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
 		# np.savetxt(FOLDER2SAVE+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
 
-fig, ax = plt.subplots(figsize=(5.5, 5.5))
-plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
+filenamelist = ['MF_conductivity_', 'MF_stiffness_']
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
-labels = ['Steady heat', 'Elasticity']
+labelList = ['MF-GL', 'MF-WQ 1', 'MF-WQ 2']
+plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
 
 # Load data
-for sufix, plotops in zip(sufixList, plotoptions):
-	file_K1 = np.loadtxt(FOLDER2SAVE+'MF_conductivity_'+sufix+'.dat') 
-	file_S1 = np.loadtxt(FOLDER2SAVE+'MF_stiffness_'+sufix+'.dat') 
+for filename in filenamelist:
+	fig, ax = plt.subplots(figsize=(6, 4))
 
-	degList = file_K1[:, 0]
-	timeElapsedList = [file_K1[:, 1], file_S1[:, 1]]
-	quadrule = sufix.split('_')[0]
+	for label, sufix, plotops in zip(labelList, sufixList, plotoptions):
+		file = np.loadtxt(FOLDER2SAVE+filename+sufix+'.dat') 
+		degList = file[:, 0]; timeElapsed = file[:, 1]
 
-	for i, [timeElapsed, label] in enumerate(zip(timeElapsedList, labels)):
-		color = COLORLIST[i]
-		if quadrule == 'iga':
-			ax.semilogy(degList, timeElapsed, label='MF-GL '+label, color=color, marker=plotops['marker'],
-						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-		else:
-			ax.semilogy(degList, timeElapsed, color=color, marker=plotops['marker'],
-						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+		ax.semilogy(degList, timeElapsed, label=label, marker=plotops['marker'],
+					markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='MF-WQ 1')
-ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
-
-ax.minorticks_off()
-ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
-ax.set_xlabel('Degree ' + r'$p$')
-ax.set_ylabel('CPU time (s)')
-ax.set_xlim([0, 10])
-ax.set_ylim([1e-2, 50])
-fig.tight_layout()
-fig.savefig(filename+'.pdf')
+	ax.minorticks_off()
+	ax.legend(ncol=3, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+	# ax.legend()
+	ax.set_xlabel('Degree ' + r'$p$')
+	ax.set_ylabel('CPU time (s)')
+	ax.set_xlim([0, 10])
+	ax.set_ylim([1e-1, 1e2])
+	fig.tight_layout()
+	fig.savefig(FOLDER2SAVE+filename+'.pdf')
