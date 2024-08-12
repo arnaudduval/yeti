@@ -1,15 +1,14 @@
 from thesis.Elliptic.__init__ import *
 from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
 from pysrc.lib.lib_quadrules import WeightedQuadrature
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Set global variables
-TYPESIMU = 'heat'
-RUNSIMU = False
+TYPESIMU = 'meca'
+RUNSIMU = True
 degList = np.arange(1, 6)
 cutList = np.arange(5, 9)
 NDIM = 3
-filename = FOLDER2SAVE + 'FD_time'
+filename = 'FD_time'
 
 if RUNSIMU:
 
@@ -44,7 +43,7 @@ if RUNSIMU:
 
 			print('For p = %s, nbel = %s, time: %.4f' %(degree, nbel, timeElapsed))
 			timeMatrix[i+1, j+1] = timeElapsed
-			np.savetxt(filename+TYPESIMU+'.dat', timeMatrix)
+			np.savetxt(FOLDER2DATA+filename+TYPESIMU+'.dat', timeMatrix)
 
 cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 for i, TYPESIMU in enumerate(['heat', 'meca']):
@@ -57,7 +56,7 @@ for i, TYPESIMU in enumerate(['heat', 'meca']):
 	dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
 	ax.cla()
 
-	file = np.loadtxt(filename+TYPESIMU+'.dat')
+	file = np.loadtxt(FOLDER2DATA+filename+TYPESIMU+'.dat')
 	degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
 	for i, degree in enumerate(degList): 
 		im = ax.loglog(nbelList**3, timeElapsed[:, i], marker='s')
@@ -85,4 +84,4 @@ for i, TYPESIMU in enumerate(['heat', 'meca']):
 	ax.set_ylabel('CPU time (s)')
 	ax.set_ylim([1e-3, 1e2])
 	fig.tight_layout()
-	fig.savefig(filename+TYPESIMU+'.pdf')
+	fig.savefig(FOLDER2SAVE+filename+TYPESIMU+'.pdf')

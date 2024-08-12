@@ -15,4 +15,5 @@
 __pycache__/
 results
 *.text
+*.txt
 *.pvd

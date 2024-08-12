@@ -182,7 +182,7 @@ for cuts in cutList:
 			elif name == 'tr' : funpow = powerDensity_thickRing 
 
 			inputs = {'degree': degree, 'nb_refinementByDirection': cuts, 'name': name, 'isGauss': False, 
-					'funforce': funpow, 'IterMethods': IterMethods, 'folder': FOLDER2SAVE}
+					'funforce': funpow, 'IterMethods': IterMethods, 'folder': FOLDER2DATA}
 			simulation = heatsimulate(inputs) 
 			
 			if RUNSIMU:
@@ -196,5 +196,5 @@ for cuts in cutList:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension='_TH.pdf', plotLegend=False)
+				simuOutput.plot_results(extension='_TH.pdf', plotLegend=False, folder=FOLDER2SAVE)
 				
