@@ -177,10 +177,11 @@ class decoder():
 
 		return residue
 	
-	def plot_results(self, extension='.pdf', threshold=1.e-12, plotLegend=True, folder=None):
+	def plot_results(self, filename=None, extension='.pdf', threshold=1.e-12, plotLegend=True, folder=None):
 
-		if folder is None: folder = self._filename.split('.')[0]
-		savename = folder + extension
+		if folder is None: folder='./'
+		assert filename is not None, 'Insert filename'
+		savename = folder + filename + extension
 		residue  = self._dataSimulation.get('resPCG')
 		method_list = self._dataSimulation.get('methods')
 

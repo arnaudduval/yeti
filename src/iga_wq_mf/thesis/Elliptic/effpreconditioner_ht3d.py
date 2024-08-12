@@ -196,5 +196,5 @@ for cuts in cutList:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(extension=name+'_TH.pdf', plotLegend=False, folder=FOLDER2SAVE)
+				simuOutput.plot_results(filename=name+'_TH', plotLegend=True, folder=FOLDER2SAVE)
 				
