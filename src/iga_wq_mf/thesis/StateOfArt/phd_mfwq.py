@@ -1,6 +1,6 @@
 from thesis.StateOfArt.__init__ import *
 
-FIGCASE = 1
+FIGCASE = 2
 
 if FIGCASE == 0:
 
@@ -47,7 +47,6 @@ elif FIGCASE == 1:
 		else:
 			ax.text(Tlist[int(len(degList)/2), pos]/2, Elist[-1, pos]/20, str(int(2**(pos+4)))+r'$^3$'+' el.')
 
-
 	cbar = plt.colorbar(im)
 	cbar.set_label('Degree')
 	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
@@ -61,3 +60,21 @@ elif FIGCASE == 1:
 	ax.set_xlabel('Computation time (s)')
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE + 'MatrixFree' +  '.pdf')
+
+elif FIGCASE == 2:
+	fig, ax = plt.subplots(figsize=(6,4))
+	
+	filenameList = ['sptFE', 'sptIGA2', 'sptIGA3']
+	labelList = ['FE radial return', 'ST-IGA '+r'$p_t=2$', 'ST-IGA '+r'$p_t=3$']
+	for filename, label in zip(filenameList, labelList):
+		table = np.loadtxt(FOLDER2FIND+filename+'.dat')
+		ax.loglog(table[:, 0], table[:, 1], label=label)
+		
+	ax.grid(False)
+	ax.set_ylim(top=1e2, bottom=1e-4)
+	ax.set_xlim(left=1e-3, right=1e-1)
+	ax.set_ylabel(r'$L^2$'+' error on stress')
+	ax.set_xlabel('Time increment (or mesh-size in time)')
+	ax.legend()
+	fig.tight_layout()
+	fig.savefig(FOLDER2SAVE + 'sptViscoPlasticity' +  '.pdf')

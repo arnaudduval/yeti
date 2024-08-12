@@ -49,7 +49,7 @@ strain = np.zeros((6, problem.part.nbqp_total))
 strain[:2,:]=straintmp[:2,:]; strain[3,:]=straintmp[-1,:]
 vonmises = problem.mechamaterial.evalElasticStress(strain)
 problem.part.postProcessingDual(fields={'vms':vonmises}, folder=FOLDER2SAVE, name='ellipticel')
-vtk2png(folder=FOLDER2SAVE, filename='ellipticel', fieldname='vms', cmap='coolwarm', title='von Mises stress')
+vtk2png(folder=FOLDER2SAVE, filename='ellipticel', fieldname='vms', cmap='coolwarm', title='Von Mises stress')
 
 fig, ax = plt.subplots(figsize=(6, 5))
 figname = FOLDER2SAVE + 'ConvergenceH1_el'
