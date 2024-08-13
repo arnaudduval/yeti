@@ -169,6 +169,7 @@ filenameT1 = FOLDER2DATA + '1incheatTim'+SUFIX
 
 degList = np.array([1, 2, 3, 4])
 cutList = np.arange(1, 8)
+cutstime = 5
 
 if RUNSIMU:
 
@@ -186,7 +187,7 @@ if RUNSIMU:
 			start = time.process_time()
 			dirichlet_table = np.ones((2, 2))
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, 
-												dirichlet_table=dirichlet_table, nbel_time=2**4)
+												dirichlet_table=dirichlet_table, nbel_time=2**cutstime)
 			finish = time.process_time()
 			T1timeList[i, j] = finish - start
 			
@@ -201,17 +202,17 @@ if RUNSIMU:
 		np.savetxt(filenameT1+EXTENSION, T1timeList)
 
 errorList1 = np.loadtxt(filenameR1+EXTENSION)
-fig, ax = plt.subplots(figsize=(8, 6))
+fig, ax = plt.subplots()
 for i, degree in enumerate(degList):
 	color = COLORLIST[i]
 	ax.loglog(2**cutList, errorList1[i, :], color=color, marker=CONFIGLINE4['marker'], markerfacecolor='w',
 				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='IGA-GL deg. '+str(degree))
 
 ax.set_ylabel('Relative ' + r'$L^2$' + ' error at last time-step')
-ax.set_xlabel('Number of elements \nat fixed number of time-steps')
+ax.set_xlabel('Number of elements')
 ax.set_xlim(left=1, right=200)
 ax.set_ylim(top=1e1, bottom=1e-6)
 ax.legend(loc='upper right')
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE + 'INCL1Convergence' + SUFIX +  '.pdf')
+fig.savefig(FOLDER2SAVE + 'INCL1Convergence' + str(cutstime)  + SUFIX +  '.pdf')
 plt.close(fig)

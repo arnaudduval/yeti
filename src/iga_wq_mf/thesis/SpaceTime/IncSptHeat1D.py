@@ -3,7 +3,7 @@ from thesis.SpaceTime.input_data import *
 
 # Set global variables
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + '1d'
-RUNSIMU = True
+RUNSIMU = False
 FIG_CASE = 2
 EXTENSION = '.dat'
 
@@ -41,7 +41,7 @@ if FIG_CASE == 0:
 	figname = FOLDER2SAVE + 'L2Convergence' + SUFIX + '.pdf'
 	filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_1_', '0L2abserror_wq_2_']
 
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots()
 	for filename, plotops in zip(filenames, plotoptions):
 		quadrule = filename.split('_')[1]
 		table = np.loadtxt(FOLDER2DATA + filename + SUFIX + EXTENSION)	
@@ -139,7 +139,7 @@ elif FIG_CASE == 1:
 
 	errorList1 = np.loadtxt(filenameA1+EXTENSION)
 	errorList2 = np.loadtxt(filenameA2+EXTENSION)
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots()
 	for i, degree in enumerate(degList):
 		color = COLORLIST[i]
 		ax.loglog(2**cutList, errorList2[i, :], color=color, marker=CONFIGLINE0['marker'], markerfacecolor='w',
@@ -216,7 +216,7 @@ elif FIG_CASE == 2:
 			
 			# enablePrint()
 
-	fig, ax = plt.subplots(figsize=(8, 6))
+	fig, ax = plt.subplots()
 	errorList1 = np.loadtxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION)
 	for i, deg in enumerate(degsptList):
 		nbctrlpts = nbelincList+deg
@@ -236,7 +236,7 @@ elif FIG_CASE == 2:
 	annotation.slope_marker((nbctrlpts[-5], errorList1[-5]), slope, 
 					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
-	ax.set_ylabel('Stagnation error')
+	ax.set_ylabel(r'$L^2$'+' error at last time-step')
 	ax.set_xlabel('Number of control points on time')
 	ax.set_xlim(left=4, right=100)
 	ax.set_ylim(top=1e1, bottom=1e-9)

@@ -190,7 +190,7 @@ if RUNSIMU:
 		np.savetxt(FOLDER2DATA+'abserrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION, abserrorInc)
 		np.savetxt(FOLDER2DATA+'relerrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION, relerrorInc)
 
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
+fig, ax = plt.subplots()
 
 for i, IVPmethod in enumerate(IVPmethodList):
 	label = 'IGA-GL '; IVPmethodName = deepcopy(IVPmethod)
@@ -205,15 +205,16 @@ for i, IVPmethod in enumerate(IVPmethodList):
 	nbctrlpts = nbelincList+1
 	if i < 3:
 		ax.loglog(nbctrlpts, errorList1, marker='s', markerfacecolor='w', label=label)
-		slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
-		slope = round(slope, 1)
-		annotation.slope_marker((nbctrlpts[-1], errorList1[-1]), slope, 
-						poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
 	elif i == 3:
 		ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w',
 				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], 
 				color='k', label=label)
+	
+	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
+	slope = round(slope, 1)
+	annotation.slope_marker((nbctrlpts[-1], errorList1[-1]), slope, 
+					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
 if PLOTRELATIVE: 
 	ax.set_ylabel('Relative '+r'$L^2$'+' error at last time-step')
@@ -222,7 +223,7 @@ else:
 	ax.set_ylabel(r'$L^2$'+' error at last time-step')
 	ax.set_ylim(top=1e0, bottom=1e-7)
 
-ax.set_xlabel('Number of time-steps\nat fixed fine mesh')
+ax.set_xlabel('Number of time-steps')
 ax.set_xlim(left=2, right=300)
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 # ax.legend(loc='lower left')

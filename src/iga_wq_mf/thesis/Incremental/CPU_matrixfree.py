@@ -7,10 +7,10 @@ from pysrc.lib.lib_job3d import heatproblem, mechaproblem
 
 # Set global variables
 RUNSIMU = False
-degList = range(9, 10)
+degList = range(1, 6)
 cuts = 6
-quadArgs = {'quadrule':'wq', 'type':1}
-filename = FOLDER2SAVE + 'MF_time' 
+quadArgs = {'quadrule':'iga', 'type':'leg'}
+filename = 'MF_time' 
 
 if RUNSIMU:
 
@@ -20,9 +20,9 @@ if RUNSIMU:
 	timeMF_capacity = np.zeros((len(degList), 2))
 	timeMF_capacity[:, 0] = degList
 
-	for i, degList in enumerate(degList):
+	for i, deg in enumerate(degList):
 		
-		geoArgs = {'name': 'VB', 'degree': degList*np.ones(3, dtype=int), 
+		geoArgs = {'name': 'VB', 'degree': deg*np.ones(3, dtype=int), 
 					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
 		}
 		blockPrint()			
@@ -53,46 +53,36 @@ if RUNSIMU:
 		finish = time.process_time()
 		print('Time Conductivity:%.2e' %(finish-start))
 		timeMF_conductivity[i, 1] = finish - start
-		# np.savetxt(FOLDER2SAVE+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
+		np.savetxt(FOLDER2DATA+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
 
-		# start = time.process_time()
-		# hproblem.compute_mfCapacity(np.random.random(boundary._nbctrlpts_total))
-		# finish = time.process_time()
-		# print('Time Capacity:%.2e' %(finish-start))
-		# timeMF_capacity[i, 1] = finish - start
-		# np.savetxt(FOLDER2SAVE+'MF_capacity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_capacity)
+		start = time.process_time()
+		hproblem.compute_mfCapacity(np.random.random(boundary._nbctrlpts_total))
+		finish = time.process_time()
+		print('Time Capacity:%.2e' %(finish-start))
+		timeMF_capacity[i, 1] = finish - start
+		np.savetxt(FOLDER2DATA+'MF_capacity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_capacity)
 
-# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
-# plotoptions = [CONFIGLINE1, CONFIGLINE2]
-# sufixList = ['iga_leg', 'wq_1', 'wq_2']
-# labels = ['MF-GL', 'MF-WQ 1 conductivity', 'MF-WQ 1 capacity']
+fig, ax = plt.subplots()
+plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
+sufixList = ['iga_leg', 'wq_1', 'wq_2']
+labels = ['MF-GL', 'MF-WQ 1', 'MF-WQ 2']
 
-# # Load data
-# for j, [sufix, plotops] in enumerate(zip(sufixList, plotoptions)):
-# 	file_K1 = np.loadtxt(FOLDER2SAVE+'MF_conductivity_'+sufix+'.dat') 
-# 	file_C1 = np.loadtxt(FOLDER2SAVE+'MF_capacity_'+sufix+'.dat') 
+# Load data
+for j, [sufix, plotops, label] in enumerate(zip(sufixList, plotoptions, labels)):
+	file_K1 = np.loadtxt(FOLDER2DATA+'MF_conductivity_'+sufix+'.dat') 
+	file_C1 = np.loadtxt(FOLDER2DATA+'MF_capacity_'+sufix+'.dat') 
 
-# 	degList = [file_K1[:, 0], file_C1[:, 0]]
-# 	timeElapsedList = [file_K1[:, 1], file_C1[:, 1]]
-# 	quadrule = sufix.split('_')[1]
+	degs = file_K1[:, 0]
+	timeElapsed = file_K1[:, 1] + file_C1[:, 1]
+	
+	ax.semilogy(degs, timeElapsed, marker=plotops['marker'], label=label,
+				markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-# 	for i, [deg, timeElapsed, label] in enumerate(zip(degList, timeElapsedList, labels)):
-# 		color = COLORLIST[i]
-# 		if quadrule == '1':
-# 			ax.semilogy(deg, timeElapsed, label = label, color=color, marker=plotops['marker'],
-# 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-# 		else: 
-# 			ax.semilogy(deg, timeElapsed, color=color, marker=plotops['marker'],
-# 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-
-# ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-# 				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
-
-# ax.minorticks_off()
-# ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
-# ax.set_xlabel('Degree ' + r'$p$')
-# ax.set_ylabel('CPU time (s)')
-# ax.set_xlim([0, 10])
-# ax.set_ylim([1e-2, 50])
-# fig.tight_layout()
-# fig.savefig(filename+'.pdf')
+ax.minorticks_off()
+ax.legend(ncol=3, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+ax.set_xlabel('Degree ' + r'$p$')
+ax.set_ylabel('CPU time (s)')
+ax.set_xlim([0, 10])
+ax.set_ylim([1e-1, 1e2])
+fig.tight_layout()
+fig.savefig(FOLDER2SAVE+filename+'.pdf')

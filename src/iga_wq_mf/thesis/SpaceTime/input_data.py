@@ -11,7 +11,7 @@ from numpy import pi, sin, cos, abs, exp, sign, tanh
 
 GEONAME = 'QA'
 IS1DIM = False
-ISLINEAR = True
+ISLINEAR = False
 CUTS_TIME = 6
 
 if GEONAME == 'SQ' or IS1DIM: ISISOTROPIC = True

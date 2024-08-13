@@ -81,12 +81,12 @@ if TODOSIMU:
 		print('Time Ders Conductivity:%.2e' %(finish-start))
 		timeMF_dersStiff[i, 1] = finish - start
 
-		np.savetxt(FOLDER2SAVE+'sptMF_Mass_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_Mass)
-		np.savetxt(FOLDER2SAVE+'sptMF_Stiff_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_Stiff)
-		np.savetxt(FOLDER2SAVE+'sptMF_MassDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersMass)
-		np.savetxt(FOLDER2SAVE+'sptMF_StiffDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersStiff)
+		np.savetxt(FOLDER2DATA+'sptMF_Mass_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_Mass)
+		np.savetxt(FOLDER2DATA+'sptMF_Stiff_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_Stiff)
+		np.savetxt(FOLDER2DATA+'sptMF_MassDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersMass)
+		np.savetxt(FOLDER2DATA+'sptMF_StiffDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersStiff)
 
-fig, ax = plt.subplots(figsize=(5, 4))
+fig, ax = plt.subplots()
 IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 WQ1Plot = {'marker': 'x', 'linestyle': '--', 'markersize': 6}
 WQ2Plot = {'marker': 'o', 'linestyle': ':', 'markersize': 6}
@@ -96,10 +96,10 @@ labels = [r'$\mathsf{A}v_{in}$', r'$\mathsf{B}v_{in}$']
 
 # Load data
 for sufix, plotops in zip(sufixList, plotoptions):
-	file_M1 = np.loadtxt(FOLDER2SAVE+'sptMF_Mass_'+sufix+'.dat') 
-	file_K1 = np.loadtxt(FOLDER2SAVE+'sptMF_Stiff_'+sufix+'.dat') 
-	file_M2 = np.loadtxt(FOLDER2SAVE+'sptMF_MassDers_'+sufix+'.dat') 
-	file_K2 = np.loadtxt(FOLDER2SAVE+'sptMF_StiffDers_'+sufix+'.dat') 
+	file_M1 = np.loadtxt(FOLDER2DATA+'sptMF_Mass_'+sufix+'.dat') 
+	file_K1 = np.loadtxt(FOLDER2DATA+'sptMF_Stiff_'+sufix+'.dat') 
+	file_M2 = np.loadtxt(FOLDER2DATA+'sptMF_MassDers_'+sufix+'.dat') 
+	file_K2 = np.loadtxt(FOLDER2DATA+'sptMF_StiffDers_'+sufix+'.dat') 
 
 	degList = file_M1[:, 0]
 	timeElapsedList = [file_M1[:, 1]+file_K1[:, 1], file_M2[:, 1]+file_K2[:, 1]]
@@ -120,10 +120,10 @@ ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
 				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
 
 ax.minorticks_off()
-ax.legend(ncol=2, loc='upper center')
+ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 ax.set_xlabel('Degree ' + r'$p$')
 ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])
-ax.set_ylim([1e-1, 1e4])
+ax.set_ylim([1e-1, 1e3])
 fig.tight_layout()
 fig.savefig(FOLDER2SAVE + 'sptMF_time' + '.pdf')

@@ -34,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 5
+FIG_CASE = 4
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -120,8 +120,8 @@ if FIG_CASE == 3:
 
 	position = 1
 	assert position in [1, 2], 'Must be one or 2'
-	if position==1: fig, ax = plt.subplots(figsize=(6, 4))
-	if position==2: fig, ax = plt.subplots(figsize=(5.5, 4))
+	if position==1: fig, ax = plt.subplots(figsize=(6.5, 5.5))
+	if position==2: fig, ax = plt.subplots()
 	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 
 	if PLOTRELATIVE:
@@ -215,10 +215,10 @@ elif FIG_CASE == 4:
 				np.savetxt(subfolderfolder+prefix+'L2relerror'+EXTENSION, L2relerror)
 				np.savetxt(subfolderfolder+prefix+'Threshold'+EXTENSION, np.array(threshold_list))
 
-	fig1, ax1 = plt.subplots(figsize=(6, 4))
-	fig2, ax2 = plt.subplots(figsize=(6, 4))
-	fig3, ax3 = plt.subplots(figsize=(6, 4))
-	fig4, ax4 = plt.subplots(figsize=(6, 4))
+	fig1, ax1 = plt.subplots()
+	fig2, ax2 = plt.subplots()
+	fig3, ax3 = plt.subplots()
+	fig4, ax4 = plt.subplots()
 	figs = [fig1, fig2, fig3, fig4]; axs  = [ax1, ax2, ax3, ax4]
 	linestyle_list = ['-', '--', '-', '--']
 	marker_list = ['o', 'o', 's', 's']
@@ -295,12 +295,13 @@ elif FIG_CASE == 5:
 	degList = np.array([1, 2, 3, 4, 5, 6])
 	cutList = np.arange(4, 7)
 
-	fig, axs = plt.subplots(1, 2, figsize=(8, 3.5))
+	fig1, ax1 = plt.subplots(figsize=(6.5, 5.5))
+	fig2, ax2 = plt.subplots()
 	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 	filenameA3 = FOLDER2DATA + '3sptheatRel'
 	filenameT3 = FOLDER2DATA + '3sptheatTim'
 
-	for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [axs[0], axs[1]]):
+	for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [ax1, ax2]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
 		Elist = np.loadtxt(filenameA3+sufix)
 		Tlist = np.loadtxt(filenameT3+sufix)
@@ -310,31 +311,20 @@ elif FIG_CASE == 5:
 				
 			ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
 					color='k', marker='', linestyle=plotvars['linestyle'])
-			ax.text(Tlist[-1, pos]*1.2, Elist[-1, pos]/5, str(int(2**(pos+4)))+r'$^3$')
+			ax.text(Tlist[-1, pos]*1.2, Elist[-1, pos]/5, str(int(2**(pos+4)))+r'$^3$'+' el.')
 
-	divider1 = make_axes_locatable(axs[0])
-	cax1 = divider1.append_axes("right", size="5%", pad=0.1)
-	divider2 = make_axes_locatable(axs[1])
-	cax2 = divider2.append_axes("right", size="5%", pad=0.1)
+		if quadtype == 'leg':
+			cbar = plt.colorbar(im, ax=ax)
+			cbar.set_label('Degree')
+			tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+			cbar.set_ticks(tick_locs)
+			cbar.set_ticklabels(degList)
 
-	cbar = plt.colorbar(im, cax=cax1)
-	fig.delaxes(fig.axes[2])
-
-	cbar = plt.colorbar(im, cax=cax2)
-	cbar.set_label('Degree')
-	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-	cbar.set_ticks(tick_locs)
-	cbar.set_ticklabels(degList)
-
-	axs[0].set_ylabel('Relative ' + r'$L^2$' + ' error')
-	axs[0].set_ylim(top=1e-1, bottom=1e-12)
-	axs[1].set_ylim(top=1e-1, bottom=1e-12)
-	axs[0].set_xlim(left=5e-1, right=5e4)
-	axs[1].set_xlim(left=5e-1, right=5e4)
-	axs[0].title.set_text('Gauss-Legendre')
-	axs[1].title.set_text('Weighted quadrature 2')
-
-	axs[0].set_xlabel('CPU time (s)')
-	axs[1].set_xlabel('CPU time (s)')
-	plt.tight_layout()
-	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' +  '.pdf')
+	for fig, ax, sufix in zip([fig1, fig2], [ax1, ax2], ['GL', 'WQ']):
+		ax.grid(False)
+		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
+		ax.set_ylim(top=1e-1, bottom=1e-12)
+		ax.set_xlim(left=5e-1, right=5e4)
+		ax.set_xlabel('CPU time (s)')
+		fig.tight_layout()
+		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.pdf')

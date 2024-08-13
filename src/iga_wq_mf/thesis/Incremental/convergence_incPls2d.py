@@ -16,10 +16,10 @@ RUNSIMU = False
 
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='stress', title='Von Mises stress', position_y=0.1, n_colors=21)
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=21, fmt='%.2e')
-vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
+# vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
 
 if RUNSIMU:
-	degree, cuts = 6, 8
+	degree, cuts = 4, 8
 	quadArgs = {'quadrule': 'wq', 'type': 2}
 	problem, displacement, _, internalVars = simulate_2d(degree, cuts, quadArgs)
 	np.save(FOLDER2DATA + 'disppl2d', displacement)
@@ -66,42 +66,39 @@ if RUNSIMU:
 		quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
 		np.save(FOLDER2DATA + 'Abserror_pls2d_L2_'+quadrule+str(quadtype), errorL2_list)
 		np.save(FOLDER2DATA + 'Abserror_pls2d_H1_'+quadrule+str(quadtype), errorH1_list)
-	
-else:
 
-	nbelList = 2**cutList
+nbelList = 2**cutList
+FOLDER2SAVE += '/pls2d/'
+if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
 
-	for k, step in enumerate(stepList):
+for k, step in enumerate(stepList):
+	for error_name in ['H1', 'L2']:
+		fig, ax = plt.subplots()
 
-		fig, axs = plt.subplots(ncols=2, figsize=(9, 6))
+		for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
+			error_list = np.load(FOLDER2DATA + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
 
-		for error_name, ax in zip(['H1', 'L2'], axs):
-
-			for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
-
-				error_list = np.load(FOLDER2DATA + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
-
-				for i, degree in enumerate(degList):
-					color = COLORLIST[i]
-					if quadrule == 'iga': 
-						ax.loglog(nbelList, error_list[k, i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
-							markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-						slope = round(np.polyfit(np.log(nbelList[2:]), np.log(error_list[k, i, 2:]), 1)[0], 1)
-						annotation.slope_marker((nbelList[-2],  error_list[k, i, -2]), slope, 
-										poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-					else: 
-						ax.loglog(nbelList[:], error_list[k, i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
+			for i, degree in enumerate(degList):
+				color = COLORLIST[i]
+				if quadrule == 'iga': 
+					ax.loglog(nbelList, error_list[k, i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+					slope = round(np.polyfit(np.log(nbelList[2:]), np.log(error_list[k, i, 2:]), 1)[0], 1)
+					annotation.slope_marker((nbelList[-2],  error_list[k, i, -2]), slope, 
+									poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+				else: 
+					ax.loglog(nbelList[:], error_list[k, i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
+					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 
-			if error_name == 'H1':
-				ax.set_ylabel(r'$H^1$' + ' error')
-				ax.set_ylim(bottom=1e-9, top=1e-1)
-			if error_name == 'L2':
-				ax.set_ylabel(r'$L^2$' + ' error')
-				ax.set_ylim(bottom=1e-10, top=1e-2)
-		
-			ax.set_xlabel('Number of elements')
-			ax.set_xlim(left=1, right=10**2)
+		if error_name == 'H1':
+			ax.set_ylabel(r'$H^1$' + ' error')
+			ax.set_ylim(bottom=1e-9, top=1e-1)
+		if error_name == 'L2':
+			ax.set_ylabel(r'$L^2$' + ' error')
+			ax.set_ylim(bottom=1e-10, top=1e-2)
+	
+		ax.set_xlabel('Number of elements')
+		ax.set_xlim(left=1, right=10**2)
 
 		ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
 				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='IGA-WQ 1')
@@ -110,5 +107,5 @@ else:
 
 		ax.legend()
 		fig.tight_layout()
-		fig.savefig(FOLDER2SAVE + 'ConvergencePls2d_' + str(k) +'.pdf')
+		fig.savefig(FOLDER2SAVE+'ConverPls2d_'+error_name+'_'+str(k)+'.pdf')
 		plt.close(fig)
