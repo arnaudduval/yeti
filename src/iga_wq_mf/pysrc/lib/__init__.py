@@ -45,7 +45,7 @@ COLORLIST = [
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}'] 
 mpl.rcParams.update({'figure.autolayout': True})
-mpl.rcParams['figure.figsize'] = (6.0, 4.0) 
+mpl.rcParams['figure.figsize'] = (5.5, 5.5) 
 mpl.rcParams['figure.dpi'] = 300 
 mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'

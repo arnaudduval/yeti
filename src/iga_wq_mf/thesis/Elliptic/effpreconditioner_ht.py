@@ -11,7 +11,7 @@
 from thesis.Elliptic.__init__ import *
 
 degree, cuts = 6, 6
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
+fig, ax = plt.subplots()
 colors = [COLORLIST[0], COLORLIST[1], COLORLIST[4], COLORLIST[3]]
 for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], colors)):
 	start = time.process_time()

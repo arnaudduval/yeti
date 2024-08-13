@@ -195,7 +195,7 @@ class decoder():
 		markers = ['o', 'v', 's', 'X', '+', 'p', '*']
 
 		# Set figure parameters
-		fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7, 4))
+		fig, ax = plt.subplots(figsize=(5.5, 4))
 		for i, pcgmethod in enumerate(new_method_list):
 			residue_method = np.asarray(residue[i])
 			residue_method = residue_method[residue_method>threshold]
@@ -203,7 +203,7 @@ class decoder():
 						label=pcgmethod, marker=markers[i])
 
 		ax.set_xlim(right=100, left=0)
-		ax.set_ylim(top=10.0, bottom=threshold)
+		ax.set_ylim(top=1.0, bottom=threshold)
 		ax.set_xlabel('Number of iterations (GMRES)')
 		ax.set_ylabel('Relative residue')
 

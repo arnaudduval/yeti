@@ -4,7 +4,7 @@ from pysrc.lib.lib_quadrules import WeightedQuadrature
 
 # Set global variables
 TYPESIMU = 'meca'
-RUNSIMU = True
+RUNSIMU = False
 degList = np.arange(1, 6)
 cutList = np.arange(5, 9)
 NDIM = 3
@@ -49,7 +49,7 @@ cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 for i, TYPESIMU in enumerate(['heat', 'meca']):
 
 	# Load data
-	fig, ax = plt.subplots(figsize=(6, 4))
+	fig, ax = plt.subplots(figsize=(5.5, 4))
 
 	# Make dummie mappable
 	c = np.arange(1,len(degList)+1, dtype=int)
@@ -61,7 +61,7 @@ for i, TYPESIMU in enumerate(['heat', 'meca']):
 	for i, degree in enumerate(degList): 
 		im = ax.loglog(nbelList**3, timeElapsed[:, i], marker='s')
 
-	slope = round(np.polyfit(np.log(nbelList**3), np.log(timeElapsed[:, 2]), 1)[0], 1)
+	slope = round(np.polyfit(np.log(nbelList[1:]**3), np.log(timeElapsed[1:, 2]), 1)[0], 1)
 	annotation.slope_marker((nbelList[-2]**3,  timeElapsed[-2, 2]), slope, 
 					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 	

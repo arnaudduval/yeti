@@ -51,7 +51,7 @@ vonmises = problem.mechamaterial.evalElasticStress(strain)
 problem.part.postProcessingDual(fields={'vms':vonmises}, folder=FOLDER2SAVE, name='ellipticel')
 vtk2png(folder=FOLDER2SAVE, filename='ellipticel', fieldname='vms', cmap='coolwarm', title='Von Mises stress')
 
-fig, ax = plt.subplots(figsize=(6, 5))
+fig, ax = plt.subplots()
 figname = FOLDER2SAVE + 'ConvergenceH1_el'
 for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}

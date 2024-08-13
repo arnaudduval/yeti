@@ -171,7 +171,7 @@ class heatsimulate(simulate):
 RUNSIMU = False
 degList = np.arange(4, 5)
 cutList = np.arange(5, 6)
-geonameList = ['cb', 'vb', 'tr']
+geonameList = ['vb', 'tr']
 IterMethods = ['WP', 'C', 'TDC', 'JMC']
 
 for cuts in cutList:
@@ -196,5 +196,5 @@ for cuts in cutList:
 
 			else :
 				simuOutput = decoder(simulation._filename)
-				simuOutput.plot_results(filename=name+'_TH', plotLegend=True, folder=FOLDER2SAVE)
+				simuOutput.plot_results(filename=name+'_TH', plotLegend=False, folder=FOLDER2SAVE)
 				

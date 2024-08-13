@@ -38,7 +38,7 @@ problem, temperature, _ = simulate_ht(4, 6, {'quadrule': 'wq', 'type': 2})
 problem.part.postProcessingPrimal(fields={'temp':temperature}, folder=FOLDER2SAVE, name='ellipticht')
 vtk2png(folder=FOLDER2SAVE, filename='ellipticht', fieldname='temp', cmap='coolwarm', title='Temperature')
 
-fig, ax = plt.subplots(figsize=(6, 5))
+fig, ax = plt.subplots()
 figname = FOLDER2SAVE + 'ConvergenceL2_ht'
 for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
