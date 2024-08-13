@@ -31,7 +31,7 @@ def simulate_1d(degree, nbel, quadArgs={}):
 	_, stress, plseq, _ = problem.solvePlasticityProblem(displacement, FextList)
 	return problem2return, displacement, stress, plseq
 
-RUNSIMU = True
+RUNSIMU = False
 degList = np.arange(1, 4)
 cutList = np.arange(1, 10)
 stepMax = np.max([201, NBSTEPS])
@@ -96,38 +96,35 @@ if RUNSIMU:
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE + 'ElastoPlasticity1D' + '.png')
 
-else: 
+FOLDER2SAVE += '/pls1d/'
+if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
+
+for k, step in enumerate(stepList):
+	for error_name in ['H1', 'L2']:
+		fig, ax = plt.subplots()
+
+		error_list = np.load(FOLDER2DATA + 'Abserror_pls1d_' + error_name + '.npy')
+		for i, degree in enumerate(degList):
+			color = COLORLIST[i]
+			ax.loglog(2**cutList, error_list[k, i, :], color=color, marker='s', markerfacecolor='w',
+						markersize=10, linestyle='-', label='IGA-GL deg. ' + str(degree))
+			
+			if degree < 4 and step < 55:
+				slope = round(np.polyfit(np.log(2**cutList[:-3]), np.log(error_list[k, i, :-3]), 1)[0], 1)
+				annotation.slope_marker((2**cutList[1],  error_list[k, i, 1]), slope, 
+								poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+
+		if error_name == 'H1':
+			ax.set_ylabel(r'$H^1$' + ' error')
+			ax.set_ylim(bottom=1e-12, top=1e-4)
+		if error_name == 'L2':
+			ax.set_ylabel(r'$L^2$' + ' error')
+			ax.set_ylim(bottom=1e-13, top=1e-5)
 	
-	
-	for k, step in enumerate(stepList):
-
-		fig, axs = plt.subplots(ncols=2, figsize=(9, 6))
-
-		for error_name, ax in zip(['H1', 'L2'], axs):
-
-			error_list = np.load(FOLDER2DATA + 'Abserror_pls1d_' + error_name + '.npy')
-
-			for i, degree in enumerate(degList):
-				color = COLORLIST[i]
-				ax.loglog(2**cutList, error_list[k, i, :], color=color, marker='s', markerfacecolor='w',
-							markersize=10, linestyle='-', label='IGA-GL deg. ' + str(degree))
-				
-				if degree < 4 and step < 55:
-					slope = round(np.polyfit(np.log(2**cutList[:-3]), np.log(error_list[k, i, :-3]), 1)[0], 1)
-					annotation.slope_marker((2**cutList[1],  error_list[k, i, 1]), slope, 
-									poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-
-			if error_name == 'H1':
-				ax.set_ylabel(r'$H^1$' + ' error')
-				ax.set_ylim(bottom=1e-12, top=1e-4)
-			if error_name == 'L2':
-				ax.set_ylabel(r'$L^2$' + ' error')
-				ax.set_ylim(bottom=1e-13, top=1e-5)
-		
-			ax.set_xlabel('Number of elements')
-			ax.set_xlim(left=1, right=10**3)
+		ax.set_xlabel('Number of elements')
+		ax.set_xlim(left=1, right=10**3)
 
 		ax.legend()
 		fig.tight_layout()
-		fig.savefig(FOLDER2SAVE + 'ConvergencePls1d_' + str(k) +'.pdf')
+		fig.savefig(FOLDER2SAVE + 'ConvPls1d_' + error_name + '_' + str(k) +'.pdf')
 		plt.close(fig)

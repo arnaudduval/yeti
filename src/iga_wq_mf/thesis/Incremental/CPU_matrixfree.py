@@ -20,9 +20,6 @@ if RUNSIMU:
 	timeMF_capacity = np.zeros((len(degList), 2))
 	timeMF_capacity[:, 0] = degList
 
-	timeMF_python = np.zeros((len(degList), 2))
-	timeMF_python[:, 0] = degList
-
 	for i, degList in enumerate(degList):
 		
 		geoArgs = {'name': 'VB', 'degree': degList*np.ones(3, dtype=int), 
@@ -65,52 +62,37 @@ if RUNSIMU:
 		# timeMF_capacity[i, 1] = finish - start
 		# np.savetxt(FOLDER2SAVE+'MF_capacity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_capacity)
 
-		# matrix = buildmatrix_ht(hproblem)
-		# start = time.process_time()
-		# v_out = matrix @ np.random.random(boundary._nbctrlpts_total)
-		# finish = time.process_time()
-		# print('Time Python:%.2e' %(finish-start))
-		# timeMF_python[i, 1] = finish - start
-		# np.savetxt(FOLDER2SAVE+'MF_python'+'.dat', timeMF_python)
+# fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
+# plotoptions = [CONFIGLINE1, CONFIGLINE2]
+# sufixList = ['iga_leg', 'wq_1', 'wq_2']
+# labels = ['MF-GL', 'MF-WQ 1 conductivity', 'MF-WQ 1 capacity']
 
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5.5, 5.5))
-plotoptions = [CONFIGLINE1, CONFIGLINE2]
-sufixList = ['wq_1', 'wq_2']
-labels = ['MF-WQ 1 conductivity', 'MF-WQ 1 capacity', 'Built-in SpMDV']
+# # Load data
+# for j, [sufix, plotops] in enumerate(zip(sufixList, plotoptions)):
+# 	file_K1 = np.loadtxt(FOLDER2SAVE+'MF_conductivity_'+sufix+'.dat') 
+# 	file_C1 = np.loadtxt(FOLDER2SAVE+'MF_capacity_'+sufix+'.dat') 
 
-# Load data
-for j, [sufix, plotops] in enumerate(zip(sufixList, plotoptions)):
-	file_K1 = np.loadtxt(FOLDER2SAVE+'MF_conductivity_'+sufix+'.dat') 
-	file_C1 = np.loadtxt(FOLDER2SAVE+'MF_capacity_'+sufix+'.dat') 
+# 	degList = [file_K1[:, 0], file_C1[:, 0]]
+# 	timeElapsedList = [file_K1[:, 1], file_C1[:, 1]]
+# 	quadrule = sufix.split('_')[1]
 
-	degList = [file_K1[:, 0], file_C1[:, 0]]
-	timeElapsedList = [file_K1[:, 1], file_C1[:, 1]]
-	quadrule = sufix.split('_')[1]
+# 	for i, [deg, timeElapsed, label] in enumerate(zip(degList, timeElapsedList, labels)):
+# 		color = COLORLIST[i]
+# 		if quadrule == '1':
+# 			ax.semilogy(deg, timeElapsed, label = label, color=color, marker=plotops['marker'],
+# 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+# 		else: 
+# 			ax.semilogy(deg, timeElapsed, color=color, marker=plotops['marker'],
+# 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-	for i, [deg, timeElapsed, label] in enumerate(zip(degList, timeElapsedList, labels)):
-		color = COLORLIST[i]
-		if quadrule == '1':
-			ax.semilogy(deg, timeElapsed, label = label, color=color, marker=plotops['marker'],
-						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
-		else: 
-			ax.semilogy(deg, timeElapsed, color=color, marker=plotops['marker'],
-						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
+# ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+# 				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
 
-ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
-
-file_P1 = np.loadtxt(FOLDER2SAVE+'MF_python'+'.dat') 
-deg = file_P1[:, 0]
-timeElapsed = file_P1[:, 1]
-color = COLORLIST[i+1]
-ax.semilogy(deg, timeElapsed, label = labels[-1], color=color, marker=CONFIGLINE4['marker'],
-			markerfacecolor='w', markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'])
-
-ax.minorticks_off()
-ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
-ax.set_xlabel('Degree ' + r'$p$')
-ax.set_ylabel('CPU time (s)')
-ax.set_xlim([0, 10])
-ax.set_ylim([1e-2, 50])
-fig.tight_layout()
-fig.savefig(filename+'.pdf')
+# ax.minorticks_off()
+# ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+# ax.set_xlabel('Degree ' + r'$p$')
+# ax.set_ylabel('CPU time (s)')
+# ax.set_xlim([0, 10])
+# ax.set_ylim([1e-2, 50])
+# fig.tight_layout()
+# fig.savefig(filename+'.pdf')

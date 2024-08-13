@@ -263,11 +263,42 @@ def simulate_ht(degree, cuts, quadArgs=None, preconditioner='JMC'):
 	Fext = problem.compute_volForce(powerDensity_quartCircle)
 
 	if preconditioner == 'ilu':
-		stiffnessmatrix = buildmatrix_ht(problem)
-		temperature, residue = solvesystem_ht(problem, stiffnessmatrix, Fext)
+		conductivitymatrix = buildmatrix_ht(problem)
+		temperature, residue = solvesystem_ht(problem, conductivitymatrix, Fext)
 	else:
 		problem._thresLin = 1.e-12; problem._linPreCond = preconditioner
 		temperature, residue = problem._solveLinearizedSteadyProblem(Fext=Fext, 
 									args={'position':problem.part.qpPhy})
 
 	return problem, temperature, residue
+
+def buildpseudomatrix_ht3d(problem:heatproblem):
+	args = {'position':problem.part.qpPhy}
+
+	quadrules = problem.part._quadraturerules
+	matrix = sp.csr_matrix((problem.part.nbctrlpts_total, problem.part.nbctrlpts_total))
+	submatrices = []
+	for j in range(problem.part.dim):
+		submatrices.append(quadrules[0]._denseWeights[0] @ quadrules[0]._denseBasis[0].T)
+	if problem.part.dim == 2: matrix = sp.kron(submatrices[1], submatrices[0])
+	elif problem.part.dim == 3:	matrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
+
+	return matrix 
+
+def buildpseudomatrix_el3d(problem:mechaproblem):
+	args = {'position':problem.part.qpPhy}
+
+	quadrules = problem.part._quadraturerules
+	blockmatrix = sp.csr_matrix((problem.part.nbctrlpts_total, problem.part.nbctrlpts_total))
+	submatrices = []
+	for j in range(problem.part.dim):
+		submatrices.append(quadrules[0]._denseWeights[0] @ quadrules[0]._denseBasis[0].T)
+	if problem.part.dim == 2: 
+		blockmatrix = sp.kron(submatrices[1], submatrices[0])
+		matrix = sp.bmat([[blockmatrix, blockmatrix], [blockmatrix, blockmatrix]]) 
+
+	elif problem.part.dim == 3:	
+		blockmatrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
+		matrix = sp.bmat([[blockmatrix, blockmatrix, blockmatrix], [blockmatrix, blockmatrix, blockmatrix], [blockmatrix, blockmatrix, blockmatrix]]) 
+
+	return matrix 

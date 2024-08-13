@@ -8,7 +8,7 @@ if FIGCASE == 0:
 	filenameDat = FOLDER2FIND + 'AssemblyWQ' + '.dat'
 	filenameFig = FOLDER2SAVE + 'WeightedQuadrature' + '.pdf' 
 
-	fig, ax = plt.subplots(figsize=(6, 4))
+	fig, ax = plt.subplots(figsize=(5.5, 4))
 
 	# Load data
 	tabLiterature = pd.read_table(filenameDat, sep='\t', names=['degree', 'wq', 'iga'])
@@ -30,7 +30,7 @@ elif FIGCASE == 1:
 	filenameDat_error = FOLDER2FIND + 'PoissonError' + '.dat'
 	filenameDat_time  = FOLDER2FIND + 'PoissonTime' + '.dat'
 
-	fig, ax = plt.subplots(figsize=(6,4))
+	fig, ax = plt.subplots(figsize=(5.5,4))
 	cmap = plt.get_cmap('coolwarm', 10)
 
 	Elist = np.loadtxt(filenameDat_error)
@@ -62,7 +62,7 @@ elif FIGCASE == 1:
 	fig.savefig(FOLDER2SAVE + 'MatrixFree' +  '.pdf')
 
 elif FIGCASE == 2:
-	fig, ax = plt.subplots(figsize=(6,4))
+	fig, ax = plt.subplots(figsize=(5.5,4))
 	
 	filenameList = ['sptFE', 'sptIGA2', 'sptIGA3']
 	labelList = ['FE radial return', 'ST-IGA '+r'$p_t=2$', 'ST-IGA '+r'$p_t=3$']
@@ -70,7 +70,6 @@ elif FIGCASE == 2:
 		table = np.loadtxt(FOLDER2FIND+filename+'.dat')
 		ax.loglog(table[:, 0], table[:, 1], label=label)
 		
-	ax.grid(False)
 	ax.set_ylim(top=1e2, bottom=1e-4)
 	ax.set_xlim(left=1e-3, right=1e-1)
 	ax.set_ylabel(r'$L^2$'+' error on stress')
