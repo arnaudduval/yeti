@@ -27,11 +27,6 @@ def exactTemperature_inc(args:dict):
 	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
-def exactTemperature_spt(qpPhy):
-	x = qpPhy[0, :]; t = qpPhy[-1, :]
-	u = CST*sin(2*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
-	return u
-
 def powerDensity_inc(args:dict):
 	t = args['time']
 	x = args['position']
@@ -124,38 +119,6 @@ def simulate_incremental(degree, cuts, powerdensity, dirichlet_table=None, nbel_
 			Tinout[dof, :] = np.copy(output['y'])
 
 	return problem_inc, time_inc, Tinout
-
-def simulate_spacetime(degree, cuts, dirichlet_table=None, 
-					degree_time=None, nbel_time=None, quadArgs=None):
-	
-	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
-	if nbel_time is None: nbel_time=2**CUTS_TIME
-	if degree_time is None: degree_time = 2
-	if dirichlet_table is None: 
-		dirichlet_table = np.zeros((3, 2))
-		dirichlet_table[0, :] = 1
-		dirichlet_table[-1, 0] = 1
-
-	geometry = createUniformOpenCurve(degree, int(2**cuts), 1.0)
-	modelPhy = part1D(geometry, kwargs={'quadArgs':quadArgs})
-
-	time_spt = part1D(createUniformOpenCurve(degree_time, nbel_time, 1.0), 
-					{'quadArgs':quadArgs}) # To keep same number of control points
-
-	# Add material 
-	material = heatmat()
-	material.addConductivity(2.0, isIsotropic=True) 
-	material.addCapacity(1.0, isIsotropic=True)
-
-	# Block boundaries
-	sptnbctrlpts = np.array([modelPhy.nbctrlpts_total, time_spt.nbctrlpts_total, 1])
-	boundary_spt = boundaryCondition(sptnbctrlpts)
-	boundary_spt.add_DirichletConstTemperature(table=dirichlet_table)
-
-	# Transient model
-	problem_spt = stheatproblem1D(material, modelPhy, time_spt, boundary_spt)
-
-	return problem_spt
 
 # Set global variables
 SUFIX = 'lin_1d' if ISLINEAR else 'nonlin_1d'

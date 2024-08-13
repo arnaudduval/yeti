@@ -6,7 +6,7 @@
 
 from .__init__ import *
 from scipy.special import erf
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, newton_krylov
 
 # ==========================
 # GENERAL FUNCTIONS
