@@ -60,6 +60,7 @@ for i, precond in enumerate(ITERMETHODS):
 
 for ax in axs:
 	ax.set_xlim(left=0, right=50)
+	ax.set_ylim(top=0, bottom=-8)
 	ax.set_xlabel('Number of iterations (GMRES)')
 	ax.set_ylabel('Log. of relative residue')
 

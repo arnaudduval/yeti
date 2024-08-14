@@ -14,10 +14,6 @@ cutList = np.arange(1, 7)
 stepList = np.arange(1, NBSTEPS, 4)
 RUNSIMU = False
 
-# vtk2png(FOLDER2DATA, filename='out_24', fieldname='stress', title='Von Mises stress', position_y=0.1, n_colors=21)
-# vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=21, fmt='%.2e')
-# vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
-
 if RUNSIMU:
 	degree, cuts = 4, 8
 	quadArgs = {'quadrule': 'wq', 'type': 2}
@@ -66,6 +62,10 @@ if RUNSIMU:
 		quadrule = quadArgs['quadrule']; quadtype = quadArgs['type']
 		np.save(FOLDER2DATA + 'Abserror_pls2d_L2_'+quadrule+str(quadtype), errorL2_list)
 		np.save(FOLDER2DATA + 'Abserror_pls2d_H1_'+quadrule+str(quadtype), errorH1_list)
+
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='stress', title='Von Mises stress', position_y=0.1, n_colors=21)
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=21, fmt='%.2e')
+vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
 
 nbelList = 2**cutList
 FOLDER2SAVE += '/pls2d/'

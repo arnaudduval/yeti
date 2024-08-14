@@ -39,7 +39,7 @@ if RUNSIMU:
 			np.savetxt(FOLDER2DATA+filename+'.dat', timeMatrix)
 
 # Make dummie mappable
-fig, ax = plt.subplots(figsize=(5.5, 4))
+fig, ax = plt.subplots()
 cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 c = np.arange(1,len(degList)+1, dtype=int)
 dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)

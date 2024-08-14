@@ -112,18 +112,15 @@ for geoname in geonameList:
 		
 		poly = frompoints2hull(enum_ax1, np.log10(points_ax1), color)
 		axs[0].add_patch(poly)
-		# axs[0].scatter(enum_ax1, np.log10(points_ax1), s=1.5, c=color, alpha=0.2, rasterized=True)
 		poly = frompoints2hull(enum_ax2, np.log10(points_ax2), color)
 		axs[1].add_patch(poly)
-		# axs[1].scatter(enum_ax2, np.log10(points_ax2), s=1., c=color, alpha=0.2, rasterized=True)
 
 		axs[0].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
 		axs[1].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
 
-	axs[0].set_title('First NR iterations')
-	axs[1].set_title('Last NR iterations')
 	for ax in axs:
 		ax.set_xlim(left=0, right=50)
+		ax.set_ylim(top=0, bottom=-8)
 		ax.set_xlabel('Number of iterations (GMRES)')
 		ax.set_ylabel('Log. of relative residue')
 

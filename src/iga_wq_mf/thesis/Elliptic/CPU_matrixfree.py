@@ -118,6 +118,6 @@ for filename in filenamelist:
 	ax.set_xlabel('Degree ' + r'$p$')
 	ax.set_ylabel('CPU time (s)')
 	ax.set_xlim([0, 10])
-	ax.set_ylim([1e-1, 1e2])
+	ax.set_ylim([1e-1, 1e3])
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE+filename+'.pdf')

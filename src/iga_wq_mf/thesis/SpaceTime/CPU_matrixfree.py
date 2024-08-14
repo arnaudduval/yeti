@@ -87,11 +87,8 @@ if TODOSIMU:
 		np.savetxt(FOLDER2DATA+'sptMF_StiffDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersStiff)
 
 fig, ax = plt.subplots()
-IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
-WQ1Plot = {'marker': 'x', 'linestyle': '--', 'markersize': 6}
-WQ2Plot = {'marker': 'o', 'linestyle': ':', 'markersize': 6}
-plotoptions = [IgaPlot, WQ2Plot]
-sufixList = ['iga_leg', 'wq_2']
+plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
+sufixList = ['iga_leg', 'wq_1', 'wq_2']
 labels = [r'$\mathsf{A}v_{in}$', r'$\mathsf{B}v_{in}$']
 
 # Load data
@@ -108,16 +105,16 @@ for sufix, plotops in zip(sufixList, plotoptions):
 	for i, [timeElapsed, label] in enumerate(zip(timeElapsedList, labels)):
 		color = COLORLIST[i]
 		if quadrule == 'iga':
-			ax.semilogy(degList, timeElapsed, label='IGA-GL '+label, color=color, marker=plotops['marker'],
+			ax.semilogy(degList, timeElapsed, label='MF-GL '+label, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 		else:
 			ax.semilogy(degList, timeElapsed, color=color, marker=plotops['marker'],
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
-ax.semilogy([], [], color='k', marker=WQ1Plot['marker'], markerfacecolor='w',
-				markersize=WQ1Plot['markersize'], linestyle=WQ1Plot['linestyle'], label='IGA-WQ 4')
-ax.semilogy([], [], color='k', marker=WQ2Plot['marker'], markerfacecolor='w',
-				markersize=WQ2Plot['markersize'], linestyle=WQ2Plot['linestyle'], label='IGA-WQ 2')
+ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='MF-WQ 1')
+ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
 
 ax.minorticks_off()
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')

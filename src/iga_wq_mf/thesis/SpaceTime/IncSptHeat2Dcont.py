@@ -267,7 +267,7 @@ elif FIG_CASE == 4:
 				fig.tight_layout()
 				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
 
-	fig, ax = plt.subplots(figsize=(6, 4))
+	fig, ax = plt.subplots()
 	for [i, isadaptive], prefix1 in zip(enumerate([True]), ['inexact']):
 		for [j, isfull], prefix2 in zip(enumerate([True, False]), ['newton', 'picard']):
 			l = j + i*2
