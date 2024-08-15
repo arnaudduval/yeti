@@ -12,7 +12,7 @@ def conductivityProperty(args:dict):
 			Kprop[i, j, :] = Kref[i, j] 
 	for i in range(3): 
 		for j in range(3):
-			Kprop[i, j, :] = Kref[i, j]*(1.0 + 2.0/(1.0 + np.exp(-5.0*(temperature-1.0))))
+			Kprop[i, j, :] = Kref[i, j]*(3.0 + 2.0*np.tanh(temperature/50))
 	return Kprop 
 
 def capacityProperty(args:dict):
@@ -22,7 +22,7 @@ def capacityProperty(args:dict):
 
 # Set global variables
 nbsteps = 26
-time_list = np.linspace(0, 0.25, nbsteps) 
+time_list = np.linspace(0., 1., nbsteps) 
 geonameList = ['cb', 'vb']
 ITERMETHODS = ['C', 'TDC', 'JMC']
 RUNSIMU = False
@@ -51,7 +51,7 @@ if RUNSIMU:
 			# Create model 
 			geoArgs = {'name': geoname, 'degree': DEGREE*np.ones(3, dtype=int), 
 						'nb_refinementByDirection': CUTS*np.ones(3, dtype=int)}
-			quadArgs  = {'quadrule': 'wq', 'type': 2}
+			quadArgs  = {'quadrule': 'wq', 'type': 1}
 
 			modelGeo = Geomdl(geoArgs)
 			modelIGA = modelGeo.getIGAParametrization()
@@ -65,10 +65,11 @@ if RUNSIMU:
 			# Block boundaries
 			boundary = boundaryCondition(modelPhy.nbctrlpts)
 			boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
-			boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=1.0)
+			boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=10.0)
 		
 			problem = heatproblem(material, modelPhy, boundary)
 			problem.addSolverConstraints(solverArgs={'preconditioner': precond})
+			problem._thresLin = 1e-12
 
 			# Create a Dirichlet condition
 			Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
@@ -84,7 +85,6 @@ if RUNSIMU:
 															time_list=time_list, 
 															alpha=1.0)
 			# enablePrint()
-		
 			np.savetxt(filename, AllresLin)
 
 for geoname in geonameList:
@@ -107,7 +107,7 @@ for geoname in geonameList:
 			indices = np.where(AllresLin[:, 0]==j)
 			newresidue = AllresLin[np.min(indices), 2:]; newresidue = newresidue[newresidue>0]
 			enum_ax1.extend(np.arange(len(newresidue))); points_ax1.extend(newresidue)
-			newresidue = AllresLin[np.max(indices), 2:]; newresidue = newresidue[newresidue>0]
+			newresidue = AllresLin[np.max(indices)-1, 2:]; newresidue = newresidue[newresidue>0]
 			enum_ax2.extend(np.arange(len(newresidue))); points_ax2.extend(newresidue)
 		
 		poly = frompoints2hull(enum_ax1, np.log10(points_ax1), color)
@@ -120,7 +120,7 @@ for geoname in geonameList:
 
 	for ax in axs:
 		ax.set_xlim(left=0, right=50)
-		ax.set_ylim(top=0, bottom=-8)
+		ax.set_ylim(top=0, bottom=-12)
 		ax.set_xlabel('Number of iterations (GMRES)')
 		ax.set_ylabel('Log. of relative residue')
 

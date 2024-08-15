@@ -213,10 +213,10 @@ elif FIG_CASE == 1:
 				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-GL')
 
 	if PLOTRELATIVE:
-		ax.set_ylabel('Relative ' + r'$L^2$' + ' error at last time-step')
+		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
 		ax.set_ylim(top=1e0, bottom=1e-6)
 	else:
-		ax.set_ylabel(r'$L^2$' + ' error at last time-step')
+		ax.set_ylabel(r'$L^2$' + ' error')
 		ax.set_ylim(top=1e1, bottom=1e-5)
 
 	ax.set_xlabel('Number of elements by spatial direction')
@@ -245,13 +245,13 @@ elif FIG_CASE == 1:
 					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'])
 	
 	ax.loglog([], [], color='k', marker=CONFIGLINE4['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-GL')
+				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-GL ' + r'$\theta=0.5$')
 	
 	if PLOTRELATIVE:
-		ax.set_ylabel('Relative ' + r'$L^2$' + ' error at last time-step')
+		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
 		ax.set_ylim(top=1e0, bottom=1e-6)
 	else:
-		ax.set_ylabel(r'$L^2$' + ' error at last time-step')
+		ax.set_ylabel(r'$L^2$' + ' error')
 		ax.set_ylim(top=1e1, bottom=1e-5)
 
 	ax.set_xlabel('Number of elements by spatial direction')
@@ -263,7 +263,7 @@ elif FIG_CASE == 2:
 
 	degree, cuts = 8, 6
 	quadArgs = {'quadrule':'wq', 'type':2}
-	nbelincList = np.arange(2, 42, 4)
+	nbelincList = np.array([2**cuts for cuts in range(2, 7)], dtype=int)
 	degsptList = np.arange(1, 4)
 	abserrorInc, relerrorInc = np.ones(len(nbelincList)), np.ones(len(nbelincList))
 	abserrorSpt, relerrorSpt = np.ones((len(degsptList), len(nbelincList))), np.ones((len(degsptList), len(nbelincList)))
@@ -283,14 +283,14 @@ elif FIG_CASE == 2:
 			problem_inc, time_inc, temp_inc = simulate_incremental(degree, cuts, powerDensity_inc, dirichlet_table=dirichlet_table,
 														geoArgs=geoArgs, nbel_time=nbelinc, quadArgs=quadArgs)
 			
-			# abserrorInc[i], relerrorInc[i] = problem_spt_inc.normOfError(np.ravel(temp_inc, order='F'), 
-			# 							normArgs={'type':'L2',
-			# 									'exactFunction':exactTemperature_spt})
-
-			abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
+			abserrorInc[i], relerrorInc[i] = problem_spt_inc.normOfError(np.ravel(temp_inc, order='F'), 
 										normArgs={'type':'L2',
-												'exactFunction':exactTemperature_inc, 
-												'exactExtraArgs':{'time':time_inc[-1]}})
+												'exactFunction':exactTemperature_spt})
+
+			# abserrorInc[i], relerrorInc[i] = problem_inc.normOfError(temp_inc[:, -1], 
+			# 							normArgs={'type':'L2',
+			# 									'exactFunction':exactTemperature_inc, 
+			# 									'exactExtraArgs':{'time':time_inc[-1]}})
 			
 			np.savetxt(FOLDER2DATA+'2abserrorstag_inc'+SUFIX+EXTENSION, abserrorInc)
 			np.savetxt(FOLDER2DATA+'2relerrorstag_inc'+SUFIX+EXTENSION, relerrorInc)
@@ -298,17 +298,17 @@ elif FIG_CASE == 2:
 			for j, degspt in enumerate(degsptList):
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
 				problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, dirichlet_table=dirichlet_table,
-													geoArgs=geoArgs, degree_time=degspt, nbel_time=nbelinc, quadArgs=quadArgs)
+													geoArgs=geoArgs, degree_time=degspt, nbel_time=nbelinc, quadArgs=quadArgs, isfull=True)
 					
-				# abserrorSpt[j, i], relerrorSpt[j, i] = problem_spt.normOfError(temp_spt, 
-				# 										normArgs={'type':'L2',
-				# 												'exactFunction':exactTemperature_spt,})
-
-				abserrorSpt[j, i], relerrorSpt[j, i] = problem_inc.normOfError(np.reshape(temp_spt, order='F', 
-														newshape=(problem_spt.part.nbctrlpts_total, time_spt.nbctrlpts_total))[:, -1], 
+				abserrorSpt[j, i], relerrorSpt[j, i] = problem_spt.normOfError(temp_spt, 
 														normArgs={'type':'L2',
-																'exactFunction':exactTemperature_inc,
-																'exactExtraArgs':{'time':time_inc[-1]}})
+																'exactFunction':exactTemperature_spt,})
+
+				# abserrorSpt[j, i], relerrorSpt[j, i] = problem_inc.normOfError(np.reshape(temp_spt, order='F', 
+				# 										newshape=(problem_spt.part.nbctrlpts_total, time_spt.nbctrlpts_total))[:, -1], 
+				# 										normArgs={'type':'L2',
+				# 												'exactFunction':exactTemperature_inc,
+				# 												'exactExtraArgs':{'time':time_inc[-1]}})
 
 				np.savetxt(FOLDER2DATA+'2abserrorstag_spt'+SUFIX+EXTENSION, abserrorSpt)
 				np.savetxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION, relerrorSpt)
@@ -323,7 +323,7 @@ elif FIG_CASE == 2:
 				markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL '+r'$p_t=$'+str(int(deg)))
 		slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[i, 3:]), 1)[0]
 		slope = round(slope, 1)
-		annotation.slope_marker((nbctrlpts[-1], errorList1[i, -1]), slope, 
+		annotation.slope_marker((nbctrlpts[-2], errorList1[i, -2]), slope, 
 						poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
 	if PLOTRELATIVE: errorList1 = np.loadtxt(FOLDER2DATA+'2relerrorstag_inc'+SUFIX+EXTENSION)
@@ -332,21 +332,21 @@ elif FIG_CASE == 2:
 	nbctrlpts = nbelincList+1
 	ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE5['marker'], markerfacecolor='w', color='k',
 					markersize=CONFIGLINE5['markersize'], linestyle=CONFIGLINE5['linestyle'], 
-					label='INC-IGA-GL '+r'$\alpha=0.5$')
-	# slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
-	# slope = round(slope, 1)
-	# annotation.slope_marker((nbctrlpts[-5], errorList1[-5]), slope, 
-	# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+					label='INC-IGA-GL '+r'$\theta=0.5$')
+	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
+	slope = round(slope, 1)
+	annotation.slope_marker((nbctrlpts[-2], errorList1[-2]), slope, 
+					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 	
 	if PLOTRELATIVE: 
-		ax.set_ylabel('Relative '+r'$L^2$' +' error at last time-step')
+		ax.set_ylabel('Relative '+r'$L^2$' +' error')
 		ax.set_ylim(top=1e0, bottom=1e-9)
 	else: 
-		ax.set_ylabel(r'$L^2$' +' error at last time-step')
+		ax.set_ylabel(r'$L^2$' +' error')
 		ax.set_ylim(top=1e1, bottom=1e-8)
 	
 	ax.set_xlabel('Number of control points in time \n(or number of steps)')
-	ax.set_xlim(left=2, right=80)
+	ax.set_xlim(left=2, right=100)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')

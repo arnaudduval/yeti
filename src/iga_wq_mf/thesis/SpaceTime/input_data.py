@@ -405,8 +405,8 @@ def simulate_spacetime(degree, cuts, powerdensity, dirichlet_table=None, geoArgs
 	material = heatmat()
 	material.addConductivity(conductivityProperty, isIsotropic=False) 
 	material.addCapacity(capacityProperty, isIsotropic=False)
-	if not ISISOTROPIC: material.addCapacityDers(capacityDersProperty, isIsotropic=False)
-	if not ISISOTROPIC: material.addConductivityDers(conductivityDersProperty, isIsotropic=False)
+	if isfull: material.addCapacityDers(capacityDersProperty, isIsotropic=False)
+	if isfull: material.addConductivityDers(conductivityDersProperty, isIsotropic=False)
 
 	# Block boundaries
 	if is1dim: sptnbctrlpts = np.array([modelPhy.nbctrlpts_total, time_spt.nbctrlpts_total, 1])

@@ -3,7 +3,7 @@ from scipy.spatial import ConvexHull
 from matplotlib.patches import Polygon
 
 # Set global variables
-ITERMETHODS = ['C', 'JMC', 'TDC']
+ITERMETHODS = ['C', 'TDC', 'JMC']
 RUNSIMU = False
 
 def frompoints2hull(a, b, color, factor=1.0):
@@ -60,7 +60,7 @@ for i, precond in enumerate(ITERMETHODS):
 
 for ax in axs:
 	ax.set_xlim(left=0, right=50)
-	ax.set_ylim(top=0, bottom=-8)
+	ax.set_ylim(top=0, bottom=-12)
 	ax.set_xlabel('Number of iterations (GMRES)')
 	ax.set_ylabel('Log. of relative residue')
 

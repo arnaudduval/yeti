@@ -1,5 +1,4 @@
 from thesis.Incremental.__init__ import *
-from pysrc.lib.lib_job1d import stheatproblem1D
 from scipy.integrate import solve_ivp
 from pysrc.lib.lib_base import bdf
 from numpy import sin, cos, pi, tanh
@@ -158,7 +157,7 @@ fig, ax = plt.subplots()
 for i, IVPmethod in enumerate(IVPmethodList):
 	label = 'IGA-GL '; IVPmethodName = deepcopy(IVPmethod)
 	if IVPmethod == 'alpha': 
-		label += r'$\alpha=$' + str(0.5)
+		label += r'$\theta=$' + str(0.5)
 	else:
 		label += IVPmethod
 		
@@ -181,7 +180,7 @@ for i, IVPmethod in enumerate(IVPmethodList):
 
 if PLOTRELATIVE: 
 	ax.set_ylabel('Relative '+r'$L^2$'+' error at last time-step')
-	ax.set_ylim(top=1e-1, bottom=1e-8)
+	ax.set_ylim(top=1e-1, bottom=1e-12)
 else: 
 	ax.set_ylabel(r'$L^2$'+' error at last time-step')
 	ax.set_ylim(top=1e0, bottom=1e-7)

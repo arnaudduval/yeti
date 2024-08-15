@@ -50,6 +50,7 @@ def forceSurf(P:list):
 def simulate_2d(degree, cuts, quadArgs, precond='JMC'):
 	geoArgs = {'name': 'SQ', 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
+				'extra':{'XY':np.array([[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]])}
 			}
 	blockPrint()
 	material = mechamat(MATARGS)
@@ -60,15 +61,16 @@ def simulate_2d(degree, cuts, quadArgs, precond='JMC'):
 	# Set Dirichlet boundaries
 	boundary = boundaryCondition(modelPhy.nbctrlpts)
 	table = np.zeros((2, 2, 2), dtype=int)
-	table[0, 0, 0] = 1; table[1, 0, 1] = 1
+	table[1, 0, 0] = 1; table[1, 0, 1] = 1
 	boundary.add_DirichletDisplacement(table=table)
 	enablePrint()
 
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary); problem._linPreCond = precond
+	problem._thresLin = 1e-12
 	Fref = problem.compute_surfForce(forceSurf, nbFacePosition=3)[0]
 	FextList = np.zeros((2, modelPhy.nbctrlpts_total, NBSTEPS))
-	for k in range(len(TIME_LIST)): FextList[:, :, k] = np.sin(TIME_LIST[k])*Fref
+	for k, t in enumerate(TIME_LIST): FextList[:, :, k] = t/TIME_LIST[-1]*Fref
 	displacement = np.zeros(np.shape(FextList))
 	resLin, internalVars = problem.solveElastoPlasticityProblem(displacement, FextList)
 	return problem, displacement, resLin, internalVars
