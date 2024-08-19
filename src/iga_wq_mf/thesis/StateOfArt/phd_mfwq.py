@@ -65,7 +65,7 @@ elif FIGCASE == 2:
 	fig, ax = plt.subplots(figsize=(5.5,4))
 	
 	filenameList = ['sptFE', 'sptIGA2', 'sptIGA3']
-	labelList = ['FE radial return', 'ST-IGA '+r'$p_t=2$', 'ST-IGA '+r'$p_t=3$']
+	labelList = ['FE radial return', 'ST-IGA deg. ' + str(2), 'ST-IGA deg. '+ str(3)]
 	for filename, label in zip(filenameList, labelList):
 		table = np.loadtxt(FOLDER2FIND+filename+'.dat')
 		ax.loglog(table[:, 0], table[:, 1], label=label)

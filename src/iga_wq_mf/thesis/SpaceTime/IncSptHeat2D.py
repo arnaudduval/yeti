@@ -33,7 +33,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 2
+FIG_CASE = 1
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -210,7 +210,7 @@ elif FIG_CASE == 1:
 					markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'])
 		
 	ax.loglog([], [], color='k', marker=CONFIGLINE4['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-GL')
+				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-GL '+ r'$\theta=0.5$')
 
 	if PLOTRELATIVE:
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')

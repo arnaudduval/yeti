@@ -495,7 +495,7 @@ class mechaproblem(problem):
 		Allstress = np.zeros((nvoigt, nbqp_total, nsteps))
 		Allstrain = np.zeros((nvoigtreal, nbqp_total, nsteps))
 		Allplseq = np.zeros((1, nbqp_total, nsteps))
-		AllresLin = []
+		AllresLin, AllresNL = [], []
 
 		for i in range(1, nsteps):
 			
@@ -511,6 +511,7 @@ class mechaproblem(problem):
 				dj_n1[k, dod] = dispinout[k, dod, i]
 			
 			Fext_n1 = np.copy(Fext_list[:, :, i])
+			iterresNL = []
 
 			print('Step: %d' %i)
 			for j in range(self._itersNL):
@@ -538,7 +539,7 @@ class mechaproblem(problem):
 				r_dj = Fext_n1 - Fint_dj
 				clean_dirichlet(r_dj, self.boundary.mchdod) 
 
-				resNLj = np.sqrt(block_dot_product(r_dj, r_dj))
+				resNLj = np.sqrt(block_dot_product(r_dj, r_dj)); iterresNL.append(resNLj)
 				if j == 0: resNL0 = resNLj
 				print('NonLinear error: %.5e' %resNLj)
 				if resNLj <= max([self._safeguard, self._thresNL*resNL0]): break
@@ -552,6 +553,7 @@ class mechaproblem(problem):
 				# Update active control points
 				dj_n1 += deltaD
 				AllresLin.append(resLinj)
+			AllresNL.append(iterresNL)
 
 			dispinout[:, :, i] = dj_n1
 			Allstress[:, :, i] = stress
@@ -560,7 +562,7 @@ class mechaproblem(problem):
 
 			plasticstrain_n0, plseq_n0, back_n0 = np.copy(plasticstrain_n1), np.copy(plseq_n1), np.copy(back_n1)
 
-		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'plseq':Allplseq}
+		return AllresLin, {'stress': Allstress, 'totalstrain': Allstrain, 'plseq':Allplseq, 'NonLinear':AllresNL}
 
 	def _solveLinearizedElastoDynamicProblem(self, Fext, tsfactor, mechArgs=None, args=None, isLumped=False):
 		if mechArgs is None:

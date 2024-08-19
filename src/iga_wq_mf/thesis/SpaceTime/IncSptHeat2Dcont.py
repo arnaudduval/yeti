@@ -34,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 4
+FIG_CASE = 5
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -50,7 +50,7 @@ if FIG_CASE == 3:
 	filenameT3 = FOLDER2DATA + '3sptheatTim'
 
 	degList = np.array([1, 2, 3, 4, 5, 6])
-	cutList = np.arange(4, 7)
+	cutList = np.arange(2, 4)
 
 	if RUNSIMU:
 		A2errorList = np.ones((len(degList), len(cutList)))
@@ -84,9 +84,9 @@ if FIG_CASE == 3:
 														normArgs={'type':'L2',
 																'exactFunction':exactTemperature_spt,})
 
-				np.savetxt(filenameA2+sufix, A2errorList)
-				np.savetxt(filenameR2+sufix, R2errorList)
-				np.savetxt(filenameT2+sufix, T2timeList)
+				# np.savetxt(filenameA2+sufix, A2errorList)
+				# np.savetxt(filenameR2+sufix, R2errorList)
+				# np.savetxt(filenameT2+sufix, T2timeList)
 
 		A3errorList = np.ones((len(degList), len(cutList)))
 		R3errorList = np.ones((len(degList), len(cutList)))
@@ -114,9 +114,9 @@ if FIG_CASE == 3:
 															normArgs={'type':'L2',
 																	'exactFunction':exactTemperature_spt, })
 
-					np.savetxt(filenameA3+sufix, A3errorList)
-					np.savetxt(filenameR3+sufix, R3errorList)
-					np.savetxt(filenameT3+sufix, T3timeList)
+					# np.savetxt(filenameA3+sufix, A3errorList)
+					# np.savetxt(filenameR3+sufix, R3errorList)
+					# np.savetxt(filenameT3+sufix, T3timeList)
 
 	position = 1
 	assert position in [1, 2], 'Must be one or 2'
@@ -293,15 +293,15 @@ elif FIG_CASE == 4:
 elif FIG_CASE == 5:
 	
 	degList = np.array([1, 2, 3, 4, 5, 6])
-	cutList = np.arange(4, 7)
+	cutList = np.arange(2, 7)
 
 	fig1, ax1 = plt.subplots(figsize=(6.5, 5.5))
-	fig2, ax2 = plt.subplots()
+	fig2, ax2 = plt.subplots(figsize=(7.5, 5.5))
 	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 	filenameA3 = FOLDER2DATA + '3sptheatRel'
 	filenameT3 = FOLDER2DATA + '3sptheatTim'
 
-	for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [ax1, ax2]):
+	for quadrule, quadtype, plotvars, ax in zip(['wq'], [2], [CONFIGLINE2], [ax2]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
 		Elist = np.loadtxt(filenameA3+sufix)
 		Tlist = np.loadtxt(filenameT3+sufix)
@@ -311,20 +311,48 @@ elif FIG_CASE == 5:
 				
 			ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
 					color='k', marker='', linestyle=plotvars['linestyle'])
-			ax.text(Tlist[-1, pos]*1.2, Elist[-1, pos]/5, str(int(2**(pos+4)))+r'$^3$'+' el.')
+			ax.text(Tlist[-1, pos]*0.5, Elist[-1, pos]/8, str(int(2**(pos+2)))+r'$^3$'+' el.')
 
-		if quadtype == 'leg':
-			cbar = plt.colorbar(im, ax=ax)
-			cbar.set_label('Degree')
-			tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-			cbar.set_ticks(tick_locs)
-			cbar.set_ticklabels(degList)
+		# if quadtype == 'leg':
+		cbar = plt.colorbar(im, ax=ax)
+		cbar.set_label('Degree')
+		tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+		cbar.set_ticks(tick_locs)
+		cbar.set_ticklabels(degList)
 
-	for fig, ax, sufix in zip([fig1, fig2], [ax1, ax2], ['GL', 'WQ']):
+	for fig, ax, sufix in zip([fig2], [ax2], ['WQ']):
 		ax.grid(False)
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
-		ax.set_ylim(top=1e-1, bottom=1e-12)
-		ax.set_xlim(left=5e-1, right=5e4)
+		ax.set_ylim(top=1e0, bottom=1e-12)
+		ax.set_xlim(left=1e-2, right=1e4)
 		ax.set_xlabel('CPU time (s)')
 		fig.tight_layout()
 		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.pdf')
+
+	# for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [ax1, ax2]):
+	# 	sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
+	# 	Elist = np.loadtxt(filenameA3+sufix)
+	# 	Tlist = np.loadtxt(filenameT3+sufix)
+	# 	for pos in range(np.size(Elist, axis=1)):
+	# 		im = ax.scatter(Tlist[:len(degList), pos], Elist[:len(degList), pos], c=degList,
+	# 						cmap=cmap, marker=plotvars['marker'], s=10*plotvars['markersize'])
+				
+	# 		ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
+	# 				color='k', marker='', linestyle=plotvars['linestyle'])
+	# 		ax.text(Tlist[-1, pos]*1.2, Elist[-1, pos]/5, str(int(2**(pos+4)))+r'$^3$'+' el.')
+
+	# 	# if quadtype == 'leg':
+	# 	cbar = plt.colorbar(im, ax=ax)
+	# 	cbar.set_label('Degree')
+	# 	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+	# 	cbar.set_ticks(tick_locs)
+	# 	cbar.set_ticklabels(degList)
+
+	# for fig, ax, sufix in zip([fig1, fig2], [ax1, ax2], ['GL', 'WQ']):
+	# 	ax.grid(False)
+	# 	ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
+	# 	ax.set_ylim(top=1e-1, bottom=1e-12)
+	# 	ax.set_xlim(left=1e-1, right=1e4)
+	# 	ax.set_xlabel('CPU time (s)')
+	# 	fig.tight_layout()
+	# 	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.pdf')

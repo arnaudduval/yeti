@@ -60,7 +60,7 @@ errorList1 = np.loadtxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION)
 for i, deg in enumerate(degsptList):
 	nbctrlpts = nbelincList+deg
 	ax.loglog(nbctrlpts, errorList1[i, :], color=COLORLIST[i], marker='s', markerfacecolor='w',
-				label='SPT-IGA deg. '+str(int(deg)))
+				label='ST-IGA deg. '+str(int(deg)))
 	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[i, 3:]), 1)[0]
 	slope = round(slope, 1)
 	if deg == 3:
