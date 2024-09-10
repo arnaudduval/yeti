@@ -80,7 +80,7 @@ add_library(base        parameters.f90
                         main/GaussLegendre.f90
                         main/UELMAT.f90
                         main/UELMAT_HO.f90
-                        main/stiffmatrix.f
+                        main/stiffmatrix.F90
                         main/stiffmatrix_HO.f90
                         main/UMASSMAT.f
                         main/evaluatenurbsfcts.f
