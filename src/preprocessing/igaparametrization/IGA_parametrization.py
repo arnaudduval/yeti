@@ -40,7 +40,8 @@ class IGAparametrization:
                  filename=None):
         """Initialise IGA parametrization class object.
 
-        :param str filename: short name (without exetension) of input files to read, defaults to ``None``
+        :param str filename: short name (without exetension) of input files to read,
+            defaults to ``None``
         :param list mechanicalSettings: list containing mechanical settings, defaults to ``None``
         :param list geometricSettings: list containing geometric settings, defaults to ``None``
 
@@ -193,7 +194,7 @@ class IGAparametrization:
         mechSet.append([self._PROPS, self._JPROPS])
         return mechSet
 
-    def get_mechanicalSettings_somePatch(self, listpatch, withBC=False,
+    def get_mechanicalSettings_somePatch(self, listpatch, with_bc=False,
                                          updatePROPS=False):
         """Get the mechanical settings for a given patch.
 
@@ -201,7 +202,7 @@ class IGAparametrization:
         ----------
         listpatch : list of ints
             List of indices corresponding to the patche(s) of interest.
-        withBC : boolean, optional
+        with_bc : boolean, optional
             Adds boundary conditions to the returned list if set to True. The
             default is False.
         updatePROPS : boolean, optional
@@ -223,7 +224,8 @@ class IGAparametrization:
         mechSet.append([self._COORDS[:, indCP], indCP.size])
         IEN = [tabCP[self._IEN[i] - 1] for i in listpatch]
         mechSet.append(IEN)
-        mechSet.append((self._MATERIAL_PROPERTIES[:, listpatch], self._N_MATERIAL_PROPERTIES[listpatch]))
+        mechSet.append((self._MATERIAL_PROPERTIES[:, listpatch],
+                        self._N_MATERIAL_PROPERTIES[listpatch]))
         PROPS = [self._PROPS[i].copy() for i in listpatch]
         if updatePROPS:
             for i in range(0, len(listpatch)):
@@ -254,7 +256,7 @@ class IGAparametrization:
                               ' (no corresponding lgrge).' % (i+1))
         mechSet.append([PROPS, self._JPROPS[listpatch]])
 
-        if withBC:
+        if with_bc:
             # dirichlet
             bc_target = []
             bc_target_nbelem = []
@@ -614,9 +616,8 @@ class IGAparametrization:
         if self._nb_bc > 0:
             return [self._bc_values, self._bc_target_flat,
                     self._bc_target_nbelem, self._nb_bc]
-        else:
-            i0 = np.zeros(1, dtype=np.intp)
-            return [np.zeros((2, 1), dtype=np.float64), i0, i0, 1]
+        i0 = np.zeros(1, dtype=np.intp)
+        return [np.zeros((2, 1), dtype=np.float64), i0, i0, 1]
 
     """
     ---------------------------------------------------------------------------
@@ -713,13 +714,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocVTU(self, FILENAME, sol, nb_ref=np.ones(3, dtype=int),
+    def get_inputs4postprocVTU(self, filename, sol, nb_ref=np.ones(3, dtype=int),
                                Flag=np.array([True, True, True])):
         """Get the necessary inputs for .vtu file generation.
 
         Parameters
         ----------
-        FILENAME : str
+        filename : str
             Name of the output .vtu file.
         sol : numpy array
             Displacement field to plot. The function `get_inputs4solution` can
@@ -738,7 +739,7 @@ class IGAparametrization:
             Necessary inputs for generating the .vtu file.
         """
         nb_ref = np.maximum(nb_ref, np.ones(3, dtype=int))
-        inputs = [FILENAME, Flag, nb_ref, sol,
+        inputs = [filename, Flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat,
@@ -771,9 +772,9 @@ class IGAparametrization:
             Necessary inputs for function postproc.postproc_curve_2D
         """
 
-        assert(i_face > 0)
-        assert(i_face < 5)
-        assert(i_patch > 0)
+        assert i_face > 0
+        assert i_face < 5
+        assert i_patch > 0
 
         if self._ELT_TYPE[i_patch-1] != 'U1':
             raise Exception('Element type ' +
@@ -952,7 +953,7 @@ class IGAparametrization:
             DESCRIPTION.
 
         """
-        if not (numpatch > 0 and numpatch < self._nb_patch + 1):
+        if numpatch < 1 or numpatch > self._nb_patch:
             print('Error: numpatch should be between 1'
                   'and {}'.format(self._nb_patch))
             return None
@@ -1146,13 +1147,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocCPLG(self, FILENAME, sol, nb_ref=5,
+    def get_inputs4postprocCPLG(self, filename, sol, nb_ref=5,
                                 Flag=np.array([True, False, False])):
         """
 
         Parameters
         ----------
-        FILENAME : TYPE
+        filename : TYPE
             DESCRIPTION.
         sol : TYPE
             DESCRIPTION.
@@ -1168,7 +1169,7 @@ class IGAparametrization:
 
     """
         nb_ref = np.maximum(nb_ref, 2)
-        inputs = [FILENAME, Flag, nb_ref, sol,
+        inputs = [filename, Flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat,
@@ -1178,13 +1179,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocBasisFcts(self, FILENAME, activepatch=None,
+    def get_inputs4postprocBasisFcts(self, filename, activepatch=None,
                                      dervorder=0, nb_pts=5):
         """
 
         Parameters
         ----------
-        FILENAME : TYPE
+        filename : TYPE
             DESCRIPTION.
         activepatch : TYPE, optional
             DESCRIPTION. The default is None.
@@ -1201,7 +1202,7 @@ class IGAparametrization:
         """
         if activepatch is None or np.size(activepatch) != self._nb_patch:
             activepatch = np.ones(self._nb_patch, dtype=np.intp)
-        inputs = [FILENAME, activepatch, dervorder, nb_pts,
+        inputs = [filename, activepatch, dervorder, nb_pts,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat,
@@ -1211,13 +1212,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postprocPtsCloud(self, FILENAME, activepatch=None,
+    def get_inputs4postprocPtsCloud(self, filename, activepatch=None,
                                     nb_pts=5):
         """
 
         Parameters
         ----------
-        FILENAME : TYPE
+        filename : TYPE
             DESCRIPTION.
         activepatch : TYPE, optional
             DESCRIPTION. The default is None.
@@ -1232,7 +1233,7 @@ class IGAparametrization:
         """
         if activepatch is None or np.size(activepatch) != self._nb_patch:
             activepatch = np.ones(self._nb_patch, dtype=np.intp)
-        inputs = [FILENAME, activepatch, np.maximum(2, nb_pts),
+        inputs = [filename, activepatch, np.maximum(2, nb_pts),
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat,
@@ -1242,16 +1243,16 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4controlMesh(self, FILENAME, num_patch, SOL=None):
+    def get_inputs4controlMesh(self, filename, num_patch, sol=None):
         """
 
         Parameters
         ----------
-        FILENAME : TYPE
+        filename : TYPE
             DESCRIPTION.
         num_patch : TYPE
             DESCRIPTION.
-        SOL : TYPE, optional
+        sol : TYPE, optional
             DESCRIPTION. The default is None.
 
         Returns
@@ -1265,12 +1266,12 @@ class IGAparametrization:
             np.ones(3))
         nb_cp_thisPatch = np.prod(nb_cp_dir_thisPatch)
         COORDS_thisPatch = self._COORDS[0:3, self._indCPbyPatch[num_patch] - 1]
-        if SOL is None:
-            inputs = [FILENAME, COORDS_thisPatch, nb_cp_dir_thisPatch,
+        if sol is None:
+            inputs = [filename, COORDS_thisPatch, nb_cp_dir_thisPatch,
                       nb_cp_thisPatch]
         else:
-            SOL_thisPatch = SOL[:, self._indCPbyPatch[num_patch] - 1]
-            inputs = [FILENAME, COORDS_thisPatch, SOL_thisPatch,
+            sol_thisPatch = sol[:, self._indCPbyPatch[num_patch] - 1]
+            inputs = [filename, COORDS_thisPatch, sol_thisPatch,
                       nb_cp_dir_thisPatch, nb_cp_thisPatch]
 
         return inputs
@@ -1303,14 +1304,14 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4gradCompliance(self, SOL, epsilon=1.e-4, COORDS=None,
+    def get_inputs4gradCompliance(self, sol, epsilon=1.e-4, COORDS=None,
                                   activeElem=None,
                                   activeDir=np.ones(3, np.intp)):
         """
 
         Parameters
         ----------
-        SOL : TYPE
+        sol : TYPE
             DESCRIPTION.
         epsilon : TYPE, optional
             DESCRIPTION. The default is 1.e-4.
@@ -1332,7 +1333,7 @@ class IGAparametrization:
         if np.size(activeElem) != self._nb_elem:
             activeElem = np.ones(self._nb_elem, dtype=np.intp)
         load_infos = self._get_load_info()
-        inputs = [SOL, epsilon, activeElem, activeDir, COORDS, self._IEN_flat,
+        inputs = [sol, epsilon, activeElem, activeDir, COORDS, self._IEN_flat,
                   self._elementsByPatch, self._Nkv, self._Ukv_flat, self._Nijk,
                   self._weight_flat, self._Jpqr, self._ELT_TYPE_flat,
                   self._PROPS_flat, self._JPROPS,
@@ -1383,12 +1384,12 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4gradCoupling(self, SOL, COORDS=None, activepatch=None):
+    def get_inputs4gradCoupling(self, sol, COORDS=None, activepatch=None):
         """
 
         Parameters
         ----------
-        SOL : TYPE
+        sol : TYPE
             DESCRIPTION.
         COORDS : TYPE, optional
             DESCRIPTION. The default is None.
@@ -1405,7 +1406,7 @@ class IGAparametrization:
             COORDS = self._COORDS
         if activepatch is None or np.size(activepatch) != self._nb_patch:
             activepatch = np.ones(self._nb_patch, dtype=np.intp)
-        inputs = [activepatch, SOL, COORDS, self._IEN_flat,
+        inputs = [activepatch, sol, COORDS, self._IEN_flat,
                   self._elementsByPatch, self._Nkv, self._Ukv_flat, self._Nijk,
                   self._weight_flat, self._Jpqr, self._ELT_TYPE_flat,
                   self._PROPS_flat, self._JPROPS, self._TENSOR_flat,
@@ -1414,14 +1415,14 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4gradDisplacement(self, SOL, ADJ, COORDS=None,
+    def get_inputs4gradDisplacement(self, sol, ADJ, COORDS=None,
                                     activeElem=None,
                                     activeDir=np.ones(3, np.intp)):
         """
 
         Parameters
         ----------
-        SOL : TYPE
+        sol : TYPE
             DESCRIPTION.
         ADJ : TYPE
             DESCRIPTION.
@@ -1444,7 +1445,7 @@ class IGAparametrization:
             activeElem = np.ones(self._nb_elem, dtype=np.intp)
         nadj = np.size(ADJ, 0)
         load_infos = self._get_load_info()
-        inputs = [SOL, ADJ, activeElem, activeDir, COORDS,
+        inputs = [sol, ADJ, activeElem, activeDir, COORDS,
                   self._IEN_flat, self._elementsByPatch, self._Nkv,
                   self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
                   self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
@@ -1455,13 +1456,13 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4gradTotalwork(self, SOL, ADJ, COORDS=None, activeElem=None,
+    def get_inputs4gradTotalwork(self, sol, ADJ, COORDS=None, activeElem=None,
                                  activeDir=np.ones(3, np.intp)):
         """
 
         Parameters
         ----------
-        SOL : TYPE
+        sol : TYPE
             DESCRIPTION.
         ADJ : TYPE
             DESCRIPTION.
@@ -1484,7 +1485,7 @@ class IGAparametrization:
             activeElem = np.ones(self._nb_elem, dtype=np.intp)
         nadj = np.size(ADJ, 0)
         load_infos = self._get_load_info()
-        inputs = [SOL, ADJ, activeElem, activeDir, COORDS,
+        inputs = [sol, ADJ, activeElem, activeDir, COORDS,
                   self._IEN_flat, self._elementsByPatch, self._Nkv,
                   self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
                   self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
@@ -1496,7 +1497,7 @@ class IGAparametrization:
 
         return inputs
 
-    def _get_inputs4gradTotalwork(self, SOL, ADJ, COORDS=None, activeElem=None,
+    def _get_inputs4gradTotalwork(self, sol, ADJ, COORDS=None, activeElem=None,
                                   activeDir=np.ones(3, np.intp),
                                   computeWint=True, computeWext=True):
         if np.shape(COORDS) != np.shape(self._COORDS):
@@ -1505,7 +1506,7 @@ class IGAparametrization:
             activeElem = np.ones(self._nb_elem, dtype=np.intp)
         nadj = np.size(ADJ, 0)
         load_infos = self._get_load_info()
-        inputs = [computeWint, computeWext, SOL, ADJ, activeElem, activeDir,
+        inputs = [computeWint, computeWext, sol, ADJ, activeElem, activeDir,
                   COORDS,
                   self._IEN_flat, self._elementsByPatch, self._Nkv,
                   self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
@@ -1717,12 +1718,12 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4proj_vtu(self, FILENAME, sol, svars, nb_ref=np.ones(3)):
+    def get_inputs4proj_vtu(self, filename, sol, svars, nb_ref=np.ones(3)):
         """Return the inputs for least squer projection in a VTU file.
 
         Parameters
         ----------
-        FILENAME : string
+        filename : string
             Name of the file to write without extension
         sol : numpy.array
             Displacement field solution
@@ -1739,7 +1740,7 @@ class IGAparametrization:
         """
 
         nb_ref = np.maximum(nb_ref, np.ones(3))
-        inputs = [FILENAME, nb_ref, sol, svars, self._COORDS, self._IEN_flat,
+        inputs = [filename, nb_ref, sol, svars, self._COORDS, self._IEN_flat,
                   self._elementsByPatch, self._Nkv, self._Ukv_flat, self._Nijk,
                   self._weight_flat, self._Jpqr, self._ELT_TYPE_flat,
                   self._TENSOR, self._PROPS_flat, self._JPROPS, self._nnode]
@@ -1834,13 +1835,13 @@ class IGAparametrization:
 
             # Number of elements/face - master
             if self._dim[c] == 2:       # 3D case : interface has dimension 2
-                if fm == 1 or fm == 2:
+                if fm in (1, 2):
                     nb_el_m = (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1) * \
                         (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
-                elif fm == 3 or fm == 4:
+                elif fm in (3, 4):
                     nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
                         (self._Nkv[2, pm] - 2 * self._Jpqr[2, pm] - 1)
-                elif fm == 5 or fm == 6:
+                elif fm in (5, 6):
                     nb_el_m = (self._Nkv[0, pm] - 2 * self._Jpqr[0, pm] - 1) * \
                         (self._Nkv[1, pm] - 2 * self._Jpqr[1, pm] - 1)
             elif self._dim[c] == 1:     # 2D case : interface has dimension 1
@@ -1851,19 +1852,19 @@ class IGAparametrization:
 
             # Number of elements/face - slave
             if self._dim[c] == 2:       # 3D case : interface has dimension 2
-                if fs == 1 or fs == 2:
+                if fs in (1, 2):
                     nb_el_s = (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1) * \
                         (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
-                elif fs == 3 or fs == 4:
+                elif fs in (3, 4):
                     nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
                         (self._Nkv[2, ps] - 2 * self._Jpqr[2, ps] - 1)
-                elif fs == 5 or fs == 6:
+                elif fs in (5, 6):
                     nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1) * \
                         (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1)
             elif self._dim[c] == 1:     # 2D case : interface has dimension 1
-                if fs == 1 or fs == 2:
+                if fs in (1, 2):
                     nb_el_s = (self._Nkv[1, ps] - 2 * self._Jpqr[1, ps] - 1)
-                elif fs == 3 or fs == 4:
+                elif fs in (3, 4):
                     nb_el_s = (self._Nkv[0, ps] - 2 * self._Jpqr[0, ps] - 1)
 
             # Number of elements/face - Lagrange
@@ -1882,7 +1883,8 @@ class IGAparametrization:
             #     (nb_el_m * self._nnode[pm] + nb_el_s * self._nnode[ps]) * \
             #     nb_el_l * self._nnode[lg] * self._mcrd
 
-            # TODO : verify if number of elements taken into account is the good one in the following line (use nb_el_l instead ???)
+            # TODO : verify if number of elements taken into account is the good
+            # one in the following line (use nb_el_l instead ???)
             nb_gps = (order**self._dim[c]) * nb_el_m
             nb_data += nb_gps * self._mcrd * self._nnode[lg] * \
                 (self._nnode[ps]+self._nnode[pm])
@@ -2024,13 +2026,14 @@ class IGAparametrization:
         if np.shape(COORDS) != np.shape(self._COORDS):
             COORDS = self._COORDS
         inputs = [nb_diag, NUMDof2Diag, activeElem,
-                  COORDS, self._IEN_flat, self._elementsByPatch, self._Nkv, self._Ukv_flat, self._Nijk,
-                  self._weight_flat, self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
-                  self._MATERIAL_PROPERTIES[:2,:], self._TENSOR_flat, load_infos[0], load_infos[1],
-                  load_infos[2], load_infos[3], bcs_infos[0], bcs_infos[1], bcs_infos[2],
-                  self._ind_dof_free, self._nb_dof_free, self._mcrd,  self._NBPINT, self._nnode,
-                  bcs_infos[-1], load_infos[4], self._nb_patch,self._nb_elem, self._nb_cp,
-                  self._nb_dof_tot]
+                  COORDS, self._IEN_flat, self._elementsByPatch, self._Nkv,
+                  self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
+                  self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
+                  self._MATERIAL_PROPERTIES[:2,:], self._TENSOR_flat, load_infos[0],
+                  load_infos[1], load_infos[2], load_infos[3], bcs_infos[0],
+                  bcs_infos[1], bcs_infos[2], self._ind_dof_free, self._nb_dof_free,
+                  self._mcrd,  self._NBPINT, self._nnode, bcs_infos[-1], load_infos[4],
+                  self._nb_patch,self._nb_elem, self._nb_cp, self._nb_dof_tot]
 
         return inputs
 
@@ -2079,18 +2082,18 @@ class IGAparametrization:
 
     def get_inputs4dlmmat(self):
         """SHORT DESCRIPTION."""
-        inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv, self._Ukv, self._Nijk,
-                  self._weight, self._Jpqr, self._ELT_TYPE, self._mcrd, self._NBPINT, self._nb_patch,
-                  self._nb_elem, self._nnode, self._nb_cp]
+        inputs = [self._COORDS, self._IEN, self._elementsByPatch, self._Nkv, self._Ukv,
+                  self._Nijk, self._weight, self._Jpqr, self._ELT_TYPE, self._mcrd, self._NBPINT,
+                  self._nb_patch, self._nb_elem, self._nnode, self._nb_cp]
 
         return inputs
 
-    def get_inputs4geomat(self, SOL, case=1):
+    def get_inputs4geomat(self, sol, case=1):
         """
 
         Parameters
         ----------
-        SOL : TYPE
+        sol : TYPE
             DESCRIPTION.
         case : TYPE, optional
             DESCRIPTION. The default is 1.
@@ -2102,18 +2105,18 @@ class IGAparametrization:
 
         """
         if case==1:
-            inputs = [self._COORDS, SOL, self._IEN, self._elementsByPatch, self._ind_dof_free, self._Nkv,
-                      self._Ukv, self._Nijk, self._weight, self._Jpqr, self._ELT_TYPE, self._PROPS,
-                      self._JPROPS, self._MATERIAL_PROPERTIES, self._TENSOR, self._nb_dof_free,
-                      self._NBPINT, self._mcrd, self._nb_patch, self._nb_elem, self._nnode, self._nb_cp,
-                      self._nb_dof_tot]
+            inputs = [self._COORDS, sol, self._IEN, self._elementsByPatch, self._ind_dof_free,
+                      self._Nkv, self._Ukv, self._Nijk, self._weight, self._Jpqr,
+                      self._ELT_TYPE, self._PROPS, self._JPROPS, self._MATERIAL_PROPERTIES,
+                      self._TENSOR, self._nb_dof_free, self._NBPINT, self._mcrd,
+                      self._nb_patch, self._nb_elem, self._nnode, self._nb_cp, self._nb_dof_tot]
         else:
-            inputs = [self._COORDS, SOL, self._IEN, self._elementsByPatch, self._ind_dof_free, self._Nkv,
-                      self._Ukv, self._Nijk, self._weight, self._Jpqr, self._ELT_TYPE, self._PROPS,
-                      self._JPROPS, self._MATERIAL_PROPERTIES, self._TENSOR, self._bc_target,
-                      self._bc_target_nbelem, self._bc_values,  self._nb_dof_free, self._NBPINT,
-                      self._nb_bc, self._mcrd, self._nb_patch, self._nb_elem, self._nnode, self._nb_cp,
-                      self._nb_dof_tot]
+            inputs = [self._COORDS, sol, self._IEN, self._elementsByPatch, self._ind_dof_free,
+                      self._Nkv, self._Ukv, self._Nijk, self._weight, self._Jpqr,
+                      self._ELT_TYPE, self._PROPS, self._JPROPS, self._MATERIAL_PROPERTIES,
+                      self._TENSOR, self._bc_target, self._bc_target_nbelem, self._bc_values,
+                      self._nb_dof_free, self._NBPINT, self._nb_bc, self._mcrd, self._nb_patch,
+                      self._nb_elem, self._nnode, self._nb_cp, self._nb_dof_tot]
 
         return inputs
 
@@ -2136,11 +2139,12 @@ class IGAparametrization:
             if NbPtInt**self._dim[i]<np.int(self._NBPINT[i]):
                 NbPtInt += 1
             nb_gauss_tot += NbPtInt**(self._dim[i]-j) * self._elementsByPatch[i]
-        inputs = [self._COORDS, self._IEN_flat, self._elementsByPatch, self._Nkv, self._Ukv_flat,
-                  self._Nijk,
-                  self._weight_flat, self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
-                  self._TENSOR_flat, KNumFace, self._NBPINT, nb_gauss_tot, self._mcrd, self._nnode,
-                  self._nb_patch, self._nb_elem, self._nb_cp]
+        inputs = [self._COORDS, self._IEN_flat, self._elementsByPatch, self._Nkv,
+                  self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
+                  self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
+                  self._TENSOR_flat, KNumFace, self._NBPINT, nb_gauss_tot,
+                  self._mcrd, self._nnode, self._nb_patch, self._nb_elem,
+                  self._nb_cp]
 
         return inputs
 
@@ -2321,8 +2325,6 @@ class IGAparametrization:
           nb_refinementByDirection, nb_degreeElevationByDirection,
           additional_knots)
 
-        return None
-
     def _initRefinementMatHistory(self):
         """Initialise `_refinementMatHistory` to track refinement steps."""
         vectweight = self._get_vectWeight()
@@ -2338,7 +2340,6 @@ class IGAparametrization:
                               shape=(row.size, self._nb_cp)).tocsr()
             self._refinementMatHistory.append(M.copy())
 
-        return None
 
     def _updateRefinementMatHistory(self, transformationMatrices):
         """Update `_refinementMatHistory` according to a refinement step.
@@ -2402,18 +2403,17 @@ class IGAparametrization:
                 paramname = key.translate({ord('<'): None, ord('>'): None})
                 exec("%s=%s" % (paramname, value))
             exec(self._shapeparametrization_def, locals())
-            coordsCoarse = eval('coords').T
-            coordsFine = self._updateNodalField(coordsCoarse)
-            self._COORDS[:, :] = coordsFine.T
+            coords_coarse = eval('coords').T
+            coords_fine = self._updateNodalField(coords_coarse)
+            self._COORDS[:, :] = coords_fine.T
 
     def writeCOORDS(self, filename):
         """Write the control points coordinates to file, ordered by patch."""
         for num_patch in range(0, self._nb_patch):
-            np.savetxt('{}_{}.txt'.format(filename, num_patch),
+            np.savetxt(f'{filename}_{num_patch}.txt',
                        self._COORDS[self._indCPbyPatch[num_patch] - 1],
                        delimiter=', ')
 
-        return None
 
     def writeCOORDS_tot(self, filename):
         """Write all control points coordinates."""
@@ -2421,19 +2421,16 @@ class IGAparametrization:
                    self._COORDS,
                    delimiter=', ')
 
-        return None
 
-    def generate_vtk4controlMeshVisu(self, FILENAME, num_patch, sol=None):
+    def generate_vtk4controlMeshVisu(self, filename, num_patch, sol=None):
         """Generate control mesh visualisation for a given patch number."""
-        inputs = self.get_inputs4controlMesh(FILENAME, num_patch, SOL=sol)
-        print('Generate {}.vtk ...'.format(FILENAME))
+        inputs = self.get_inputs4controlMesh(filename, num_patch, sol=sol)
+        print(f'Generate {filename}.vtk ...')
 
         if sol is None:
             generate_vtk(*inputs)
         else:
             generate_vtk_wsol(*inputs)
-
-        return None
 
     @property
     def coords(self):

@@ -110,7 +110,8 @@ def get_boundCPindice(Nkv, Jpqr, num_bound, num_patch=0, offset=0):
         return ind_face6.astype(int)
 
 
-def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0, offset=0, num_orientation=0) -> np.ndarray:
+def get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch=0,
+                             offset=0, num_orientation=0) -> np.ndarray:
     """Get indices from boundary face control points of a given patch.
 
     Returns local indices of control points controlling the boundary indexed at
@@ -586,7 +587,8 @@ def add_displacementBC(igaPara, listCP, direction, value):
 
     return None
 
-def find_orientation(test_cps:np.ndarray, Nkv:np.ndarray, Jpqr:np.ndarray, dim:np.ndarray, indCPbyPatch:list, num_bound:int, num_patch=0, offset=0):
+def find_orientation(test_cps:np.ndarray, Nkv:np.ndarray, Jpqr:np.ndarray, dim:np.ndarray,
+                     indCPbyPatch:list, num_bound:int, num_patch=0, offset=0):
     """Find the orientation that orders the control points located at the bound ``num_bound``
     of patch ``num_patch`` has given by ``test_cps``.
 
@@ -616,14 +618,16 @@ def find_orientation(test_cps:np.ndarray, Nkv:np.ndarray, Jpqr:np.ndarray, dim:n
     icps = get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch, offset)
     cps = indCPbyPatch[num_patch][icps]
     if not np.all(np.isin(cps, test_cps)):
-        raise ValueError("``test_cps`` are not defining the bound %i for the patch %i"%(num_bound, num_patch))
+        raise ValueError("``test_cps`` are not defining the bound \
+                         {num_bound} for the patch {num_patch}")
     if np.all(cps==test_cps):
         return 0
     argsort1 = np.argsort(test_cps)
     argsort2 = np.argsort(cps)
     icps_ordered = icps[argsort2][np.argsort(argsort1)]
     for num_orientation in np.arange(8)[1:]:
-        test_icps = get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch, offset, num_orientation=num_orientation)
+        test_icps = get_boundCPindice_wEdges(Nkv, Jpqr, dim, num_bound, num_patch,
+                                             offset, num_orientation=num_orientation)
         if np.all(test_icps==icps_ordered):
             return num_orientation
     raise ValueError("No appropriate orientation has been found.")
@@ -1200,12 +1204,12 @@ def bezier_decomposition_patch(igapara,numpatch=0,return_ien=False,
     cp_decomp  = cpc2[ien]
     jpqr_decomp= np.tile(jpqr,(offset.size,1))
     toreturn = [cp_decomp,jpqr_decomp]
-    if return_ien==True:
+    if return_ien:
         toreturn.append(ien)
     Mtot = M2*M1*M0
-    if return_mat==True:
+    if return_mat:
         toreturn.append(Mtot)
-    if return_invmat==True:
+    if return_invmat:
         invM = []
         for Mi in M:
             MiTMi = sp.csc_matrix(Mi.T*Mi)
@@ -1314,7 +1318,7 @@ def bezier_decomposition_elem(igapara,jelem):
     * degree
     '''
     if (jelem<0 or jelem>=igapara._nb_elem):
-        raise ValueError("jelem should be take an integer value in [0,%i["%igapara._nb_elem)
+        raise ValueError("jelem should be an integer value in [0,{igapara._nb_elem}[")
 
     testiel  = jelem-np.cumsum(np.block([0,igapara._elementsByPatch]))
     numpatch = np.where(testiel>=0)[0][0]
