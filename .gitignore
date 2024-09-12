@@ -30,3 +30,4 @@ benchs/coupling_U5/results/*_proj_*.txt
 
 examples/feti/CsideU4.txt
 
+.venv
