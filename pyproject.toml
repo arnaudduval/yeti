@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy<=1.26.4"]
+dependencies = ["numpy<=1.26.4", "scipy>=1.13"]
 
 [project.urls]
 Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
