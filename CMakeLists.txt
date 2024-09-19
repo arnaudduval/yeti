@@ -21,12 +21,12 @@
 cmake_minimum_required(VERSION 3.21.0)
 
 # Project definition, use languages Fortran and C
-project(yeti Fortran C)
+project(${SKBUILD_PROJECT_NAME} LANGUAGES Fortran C)
 
 # CMake Variable printer for debug
 include(CMakePrintHelpers)
 
-
+cmake_print_variables(SKBUILD_PROJECT_NAME)
 # Set version number
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
@@ -43,7 +43,7 @@ find_package(Python
              COMPONENTS Interpreter Development NumPy
              REQUIRED)
 
-find_package(F2PY REQUIRED)
+# find_package(F2PY REQUIRED)
 # F2PY headers
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -c

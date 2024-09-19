@@ -47,7 +47,7 @@ macro(CreateF2PYModule)
 
     add_custom_command(
         OUTPUT ${generated_module_file}
-        COMMAND ${F2PY_EXECUTABLE}
+        COMMAND "${Python_EXECUTABLE}" -m numpy.f2py
         -m ${MODULE_NAME} #--quiet
         -c --opt=-O2
         -I${CMAKE_Fortran_MODULE_DIRECTORY}
