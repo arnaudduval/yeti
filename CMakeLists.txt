@@ -20,13 +20,26 @@
 
 cmake_minimum_required(VERSION 3.21.0)
 
+# Test if using scikit-build or not
+if("${SKBUILD_PROJECT_NAME}" STREQUAL "")
+    message(STATUS "Building without scikit-build")
+    set(LEGACY TRUE)
+else()
+    message(STATUS "Building with scikit-build")
+    set(LEGACY FALSE)
+endif()
+
+
 # Project definition, use languages Fortran and C
 project(${SKBUILD_PROJECT_NAME} LANGUAGES Fortran C)
 
 # CMake Variable printer for debug
 include(CMakePrintHelpers)
 
+cmake_print_variables(LEGACY)
+
 # Set version number
+
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
 
@@ -60,8 +73,10 @@ SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/modules)
 # Define location of libraries
 SET(LIBRARY_OUTPUT_PATH            ${CMAKE_BINARY_DIR}/lib)
 # Define output path for Python modules
-SET(PYTHON_MODULES_OUTPUT_PATH     ${CMAKE_BINARY_DIR}/lib/python)
-file(MAKE_DIRECTORY ${PYTHON_MODULES_OUTPUT_PATH})
+if(LEGACY)
+    SET(PYTHON_MODULES_OUTPUT_PATH     ${CMAKE_BINARY_DIR}/lib/python)
+    file(MAKE_DIRECTORY ${PYTHON_MODULES_OUTPUT_PATH})
+endif()
 
 
 # Specific f2py argument for Intel compiler

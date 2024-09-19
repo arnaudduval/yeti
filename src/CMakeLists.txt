@@ -180,25 +180,26 @@ CreateF2PYModule(NAME tools
 # Define subdirectories
 subdirs(postprocessing optim fitting coupling iga_wq_mf)# solver) #preprocessing
 
-# solver and preprocessing directories contain pure python script that should be copied into build directory
-add_custom_target(copy_solver ALL)
-add_custom_target(copy_preprocessing ALL)
+if(LEGACY)
+    # solver and preprocessing directories contain pure python script that should be copied into build directory
+    add_custom_target(copy_solver ALL)
+    add_custom_target(copy_preprocessing ALL)
 
-file(GLOB_RECURSE
-    solver
-    LIST_DIRECTORIES true
-    ${CMAKE_CURRENT_SOURCE_DIR}/solver)
+    file(GLOB_RECURSE
+        solver
+        LIST_DIRECTORIES true
+        ${CMAKE_CURRENT_SOURCE_DIR}/solver)
 
-file(GLOB_RECURSE
-    preprocessing
-    LIST_DIRECTORIES true
-    ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing)
+    file(GLOB_RECURSE
+        preprocessing
+        LIST_DIRECTORIES true
+        ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing)
 
-add_custom_command(TARGET copy_solver PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/solver ${PYTHON_MODULES_OUTPUT_PATH}/solver
-                   DEPENDS solver)
+    add_custom_command(TARGET copy_solver PRE_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/solver ${PYTHON_MODULES_OUTPUT_PATH}/solver
+                    DEPENDS solver)
 
-add_custom_command(TARGET copy_preprocessing PRE_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing ${PYTHON_MODULES_OUTPUT_PATH}/preprocessing
-                   DEPENDS preprocessing)
-
+    add_custom_command(TARGET copy_preprocessing PRE_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing ${PYTHON_MODULES_OUTPUT_PATH}/preprocessing
+                    DEPENDS preprocessing)
+endif()
