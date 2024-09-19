@@ -1,5 +1,5 @@
 [project]
-name = "yeti"
+name = "yeti-iga"
 version = "0.0.1"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
