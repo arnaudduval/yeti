@@ -26,7 +26,6 @@ project(${SKBUILD_PROJECT_NAME} LANGUAGES Fortran C)
 # CMake Variable printer for debug
 include(CMakePrintHelpers)
 
-cmake_print_variables(SKBUILD_PROJECT_NAME)
 # Set version number
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
@@ -39,22 +38,16 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Project needs Python
 # set(Python3_FIND_VIRTUALENV FIRST)
-find_package(Python
+find_package(Python3
              COMPONENTS Interpreter Development NumPy
              REQUIRED)
 
-# find_package(F2PY REQUIRED)
 # F2PY headers
 execute_process(
-    COMMAND "${Python_EXECUTABLE}" -c
+    COMMAND "${Python3_EXECUTABLE}" -c
             "import numpy.f2py; print(numpy.f2py.get_include())"
     OUTPUT_VARIABLE F2PY_INCLUDE_DIR
     OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-
-cmake_print_variables(F2PY_INCLUDE_DIR)
-cmake_print_variables(Python_NumPy_INCLUDE_DIRS)
-
 
 
 find_package(Sphinx)
@@ -70,10 +63,6 @@ SET(LIBRARY_OUTPUT_PATH            ${CMAKE_BINARY_DIR}/lib)
 SET(PYTHON_MODULES_OUTPUT_PATH     ${CMAKE_BINARY_DIR}/lib/python)
 file(MAKE_DIRECTORY ${PYTHON_MODULES_OUTPUT_PATH})
 
-# Add Numpy and Python include directories to include search path
-include_directories(${NUMPY_INCLUDE_DIR}
-                    ${PYTHON_INCLUDE_DIR}
-)
 
 # Specific f2py argument for Intel compiler
 if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
