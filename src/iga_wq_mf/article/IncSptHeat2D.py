@@ -1,5 +1,6 @@
 from article.__init__ import *
 from article.input_data import *
+from pysrc.lib.lib_base import vtk2png
 
 def exactTemperature_inc(args):
 	func = None
@@ -33,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 1
+FIG_CASE = 0
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -81,10 +82,10 @@ if FIG_CASE == 0:
 			if quadrule == 'iga': 
 				ax.loglog(nbels, errList[i, :], label='ST-IGA-GL '+r'$p_s=p_t=$'+str(int(degree)), color=color, marker=plotops['marker'],
 							markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])		
-				slope = np.polyfit(np.log10(nbels[2:]),np.log10(errList[i, 2:]), 1)[0]
-				slope = round(slope, 1)
-				annotation.slope_marker((nbels[-2], errList[i, -2]), slope, 
-								poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+				# slope = np.polyfit(np.log10(nbels[2:]),np.log10(errList[i, 2:]), 1)[0]
+				# slope = round(slope, 1)
+				# annotation.slope_marker((nbels[-2], errList[i, -2]), slope, 
+				# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 			
 			else: 
 				ax.loglog(nbels, errList[i, :], color=color, marker=plotops['marker'], markerfacecolor='w',
@@ -100,7 +101,7 @@ if FIG_CASE == 0:
 	
 	if PLOTRELATIVE:
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
-		ax.set_ylim(top=1e0, bottom=1e-9)
+		ax.set_ylim(top=1e2, bottom=1e-8)
 	else:
 		ax.set_ylabel(r'$L^2$' + ' error')
 		ax.set_ylim(top=1e1, bottom=1e-8)
@@ -224,3 +225,21 @@ elif FIG_CASE == 1:
 			ax.legend()
 			fig.tight_layout()
 			fig.savefig(FOLDER2SAVE+'NLTolerance'+GEONAME+'_'+str(degree)+str(cuts)+'.pdf')
+
+elif FIG_CASE == 2:
+	degree, cuts = 6, 4
+	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+	problem_spt = simulate_spacetime(degree, cuts, None, geoArgs=geoArgs,
+									degree_time=degree, nbel_time=2**cuts, 
+									solveSystem=False)[0]
+	
+	problem_spt.part.postProcessingPrimal(fields={'temp':exactTemperature_inc, 
+													'conductivity':nonlinearfunc2,
+													'dersconductivity':nonlineardersfunc2,
+												}, 
+									folder=FOLDER2SAVE, name='spt_'+GEONAME, 
+									extraArgs={'time':1.0, 'temperature':exactTemperature_inc})
+	vtk2png(folder=FOLDER2SAVE, filename='spt_'+GEONAME, fieldname='temp', cmap='coolwarm', title='Temperature', position_y=0.1)
+	vtk2png(folder=FOLDER2SAVE, filename='spt_'+GEONAME, fieldname='conductivity', cmap='coolwarm', title='Conductivity', position_y=0.1)
+	vtk2png(folder=FOLDER2SAVE, filename='spt_'+GEONAME, fieldname='dersconductivity', cmap='coolwarm', title=' Ders conductivity', position_y=0.1, fmt="%.1e",)

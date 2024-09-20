@@ -276,15 +276,16 @@ class part():
 		# Create point data 
 		pointData = {}
 		for fieldname, fieldvalue in fields.items():
-			if fieldvalue is None or not isinstance(fieldvalue, np.ndarray): continue
+			if fieldvalue is None: continue
 			if isinstance(fieldvalue, np.ndarray):
 				fieldvalue = np.atleast_2d(fieldvalue)
 				fieldinterp = self.interpolateMeshgridField(u_ctrlpts=fieldvalue, sampleSize=sampleSize, isAll=False)[-1]
-			if callable(fieldvalue):
+			elif callable(fieldvalue):
 				if not 'position' in extraArgs.keys(): extraArgs['position'] = pts
 				fieldinterp = fieldvalue(extraArgs)
 				fieldinterp = np.atleast_2d(fieldinterp)
-
+			else: continue
+		
 			nr = np.size(fieldinterp, axis=0)
 			if nr>1:
 				for l in range(nr):

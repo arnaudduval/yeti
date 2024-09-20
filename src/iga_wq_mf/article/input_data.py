@@ -7,9 +7,9 @@ from pysrc.lib.lib_boundary import boundaryCondition
 from pysrc.lib.lib_material import heatmat
 from pysrc.lib.lib_job3d import heatproblem, stheatproblem
 from pysrc.lib.lib_job1d import heatproblem1D, stheatproblem1D
-from numpy import pi, sin, cos, abs, exp, sign, tanh
+from numpy import pi, sin, cos, abs, exp, sign, tanh, cosh
 
-GEONAME = 'QA'
+GEONAME = 'TP'
 IS1DIM = False
 ISLINEAR = False
 CUTS_TIME = 6
@@ -23,14 +23,32 @@ else: CST = 50
 def nonlinearfunc(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: Kprop1d = 2*np.ones(shape=np.shape(temperature))
-	else: Kprop1d = 3.0 + 2.0*tanh(temperature/50)
+	else: 
+		Kprop1d = 3.0 + 2.0*tanh(temperature/50) 
+		Kprop1d += cos(3*pi*temperature/10)
+		# if GEONAME=='TP': Kprop += cos(6*pi*temperature/50)
 	return np.atleast_2d(Kprop1d)
+
+def nonlinearfunc2(args:dict):
+	tempfunc = args.get('temperature', None)
+	position = args.get('position'); currenttime = args.get('time')
+	temperature = tempfunc({'position':position, 'time': currenttime})
+	return nonlinearfunc(args={'temperature': temperature})
 
 def nonlineardersfunc(args:dict):
 	temperature = args.get('temperature')
 	if ISLINEAR: Kprop = np.zeros(shape=np.shape(temperature))
-	else: Kprop = (2.0/50)/(np.cosh(temperature/50))**2
+	else: 
+		Kprop = (2.0/50)/(cosh(temperature/50))**2 
+		Kprop -= 3*pi/10*sin(3*pi*temperature/10)
+		# if GEONAME=='TP': Kprop -= 6*pi/50*sin(6*pi*temperature/50)
 	return Kprop
+
+def nonlineardersfunc2(args:dict):
+	tempfunc = args.get('temperature', None)
+	position = args.get('position'); currenttime = args.get('time')
+	temperature = tempfunc({'position':position, 'time': currenttime})
+	return nonlineardersfunc(args={'temperature': temperature})
 
 def createAsymmetricalKnotvector(level, xasym=0.1):
 
@@ -158,12 +176,12 @@ def exactTemperatureTrap_inc(args:dict):
 	if IS1DIM: raise Warning('Try higher dimension')
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
+	u = CST*sin(6*pi*y)*sin(6*pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(10*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def exactTemperatureTrap_spt(qpPhy):
 	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[-1, :]
-	u = CST*sin(pi*y)*sin(pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(5*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
+	u = CST*sin(6*pi*y)*sin(6*pi*(y+0.75*x-0.5)*(-y+0.75*x-0.5))*sin(10*pi*x)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t)) 
 	return u
 
 def powerDensityTrap_inc(args:dict):
@@ -190,29 +208,8 @@ def powerDensityTrap_inc(args:dict):
 			+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4
 		)
 	else: 
-		f = ((2*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3)*((9*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4)/8 
-					+ CST*sin(u1)*u2*u3*sin(pi*y)*(u6)**2*u4 
-					+ 25*CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
-					- 10*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u6)*u4) 
-			- (4*tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 6)*(2*CST*pi*cos(u1)*u2*u3*sin(pi*y)*u4 
-					- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)**2*u4 
-					- CST*pi**2*sin(u1)*u2*u3*sin(pi*y)*u4 
-					+ 2*CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u5)*u4) 
-			- 2*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50) - 3/2)*(5*CST*pi**2*sin(u1)*cos(5*pi*x)*cos(pi*y)*u2*u4 
-					- CST*sin(u1)*u2*u3*sin(pi*y)*(u5)*(u6)*u4 
-					+ 5*CST*pi*cos(u1)*cos(5*pi*x)*u2*sin(pi*y)*(u5)*u4 
-					+ CST*pi*cos(u1)*cos(pi*y)*u2*u3*(u6)*u4) 
-			+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
-					+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-			+ 2*(CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4)/50 
-					+ (CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)/10)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-			+ 4*(CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4 + CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
-					+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-					+ (CST*cos(u1)*u2*u3*sin(pi*y)*(u6)*u4 + 5*CST*pi*sin(u1)*cos(5*pi*x)*u2*sin(pi*y)*u4)*((CST*cos(u1)*u2*u3*sin(pi*y)*(u5)*u4)/50 
-							+ (CST*pi*sin(u1)*cos(pi*y)*u2*u3*u4)/50)*(tanh((CST*sin(u1)*u2*u3*sin(pi*y)*u4)/50)**2 - 1) 
-							- (CST*pi*sin(u1)*cos((pi*t)/2)*u3*sin(pi*y)*u4)/2 + (9*CST*pi*sin(u1)*u2*sin((3*pi*t)/2)*u3*sin(pi*y))/8
+		f = ((2*cos((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25) - 4*tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50) + 6)*(12*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1) - CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))**2*((3*cos((3*pi*t)/2))/4 + 1) - 36*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1) + 12*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1)) - (cos((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25) - 2*tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50) + 3)*((27*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/4 + CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)**2*((3*cos((3*pi*t)/2))/4 + 1) + 100*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1) - 20*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1)) + 2*(cos((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25)/2 - tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50) + 3/2)*(60*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*cos(6*pi*y)*sin((pi*t)/2)*((3*cos((3*pi*t)/2))/4 + 1) - CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1) + 10*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1) + 6*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1)) - (CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1) + 6*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))*((sin((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25)*((6*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/5 + (3*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1))/25))/2 - ((CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1))/50 + (CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/5)*(tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50)**2 - 1)) - (CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1) + 10*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))*(sin((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25)*((6*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/5 + (3*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1))/25) - 2*((CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1))/50 + (CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/5)*(tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50)**2 - 1)) - (CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1) + 6*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))*(2*sin((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25)*((18*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/25 + (3*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1))/25) - 4*((CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1))/50 + (3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/25)*(tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50)**2 - 1)) - (CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((9*pi*(y - (3*x)/4 + 1/2))/2 - (9*pi*((3*x)/4 + y - 1/2))/2)*((3*cos((3*pi*t)/2))/4 + 1) + 10*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(10*pi*x)*sin((pi*t)/2)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))*((sin((3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/25)*((18*CST*pi**2*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/25 + (3*CST*pi*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1))/25))/2 - ((CST*cos(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*(6*pi*(y - (3*x)/4 + 1/2) + 6*pi*((3*x)/4 + y - 1/2))*((3*cos((3*pi*t)/2))/4 + 1))/50 + (3*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos(6*pi*y)*sin((pi*t)/2)*sin(10*pi*x)*((3*cos((3*pi*t)/2))/4 + 1))/25)*(tanh((CST*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/50)**2 - 1)) - (CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*cos((pi*t)/2)*sin(10*pi*x)*sin(6*pi*y)*((3*cos((3*pi*t)/2))/4 + 1))/2 + (9*CST*pi*sin(6*pi*(y - (3*x)/4 + 1/2)*((3*x)/4 + y - 1/2))*sin((pi*t)/2)*sin((3*pi*t)/2)*sin(10*pi*x)*sin(6*pi*y))/8
 		)
-
 	return f
 
 def powerDensityTrap_spt(args:dict):
@@ -231,12 +228,12 @@ def exactTemperatureRing_inc(args:dict):
 	if IS1DIM: raise Warning('Try higher dimension')
 	x = args['position'][0, :]
 	y = args['position'][1, :]
-	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(pi*x*y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
+	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(4*pi*x*y)*tanh(x-y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
 	return u
 
 def exactTemperatureRing_spt(qpPhy):
 	x = qpPhy[0, :]; y=qpPhy[1, :]; t = qpPhy[-1, :]
-	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(pi*x*y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
+	u = -CST*tanh(x**2+y**2-1.0)*sin(pi*(x**2+y**2-0.25**2))*sin(4*pi*x*y)*tanh(x-y)*sin(pi/2*t)*(1+0.75*cos(3*pi/2*t))
 	return u
 
 def powerDensityRing_inc(args:dict):
@@ -270,52 +267,54 @@ def powerDensityRing_inc(args:dict):
 	)
 	else: 
 
-		f = ((2*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-					+ 8*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					- 8*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-					+ 4*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-					+ CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-					+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-			- 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3/2)*(CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-					- 2*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					- 2*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					+ 2*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-					+ 2*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-					- 8*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					+ 8*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-					- 5*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)) 
-			+ (4*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 6)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-							- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-							+ 8*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-							- 8*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
-							+ CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-							+ 4*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-							+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-							- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-			+ 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-							- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-							+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25 
-									- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-									+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) 
-			+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
-					- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
-							- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-							+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25) 
-			+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25
-					- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-					+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-							- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-							+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
-			+ 4*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
-					- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
-					+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
-							- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
-							+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25)
-			- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
-			+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8
+	# 	f = ((2*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 				+ 8*CST*x**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				- 8*CST*x**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				+ 4*CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 				+ CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 				+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+	# 		- 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 3/2)*(CST*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 				- 2*CST*x**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				- 2*CST*y**2*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				+ 2*CST*x**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 				+ 2*CST*y**2*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 				- 8*CST*x*y*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				+ 8*CST*x*y*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				- 5*CST*x*y*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3)) 
+	# 		+ (4*tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) - 6)*(2*CST*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						- 2*CST*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 						+ 8*CST*y**2*pi*sin(pi*x*y)*cos(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						- 8*CST*y**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						+ CST*x**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 						+ 4*CST*y**2*pi**2*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 						+ 4*CST*x*y*pi*cos(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						- 4*CST*x*y*pi**2*cos(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+	# 		+ 2*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 						- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25 
+	# 								- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+	# 								+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50) 
+	# 		+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(2*CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3) 
+	# 				- 2*CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				+ CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+	# 						- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+	# 						+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25) 
+	# 		+ (tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*((CST*x*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25
+	# 				- (CST*x*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+	# 				+ (CST*y*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 						- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 						+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3)) 
+	# 		+ 4*(tanh((CST*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50)**2 - 1)*(CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3) 
+	# 				- 2*CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3) 
+	# 				+ 2*CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))*((CST*x*pi*cos(pi*x*y)*sin(u1)*tanh(u2)*u4*(u3))/50 
+	# 						- (CST*y*sin(pi*x*y)*sin(u1)*u4*(tanh(u2)**2 - 1)*(u3))/25 
+	# 						+ (CST*y*pi*sin(pi*x*y)*cos(u1)*tanh(u2)*u4*(u3))/25)
+	# 		- (CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*cos((pi*t)/2)*(u3))/2 
+	# 		+ (9*CST*pi*sin(pi*x*y)*sin(u1)*tanh(u2)*u4*sin((3*pi*t)/2))/8
+	# )
+		f = (- (sin((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10)*((3*CST*pi*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/10 - (3*CST*x*pi**2*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 - (6*CST*y*pi**2*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 + (3*CST*x*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/5) - 2*(tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50)**2 - 1)*((CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/50 + (CST*x*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/25 - (CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25 - (2*CST*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25))*(CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 2*CST*x*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 2*CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) - 4*CST*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) + ((sin((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10)*((3*CST*pi*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/10 - (3*CST*x*pi**2*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 - (6*CST*y*pi**2*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 + (3*CST*x*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/5))/2 - (tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50)**2 - 1)*((CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/50 + (CST*x*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/25 - (CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25 - (2*CST*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25))*(CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*y*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) + 4*CST*x*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 2*CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) + ((sin((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10)*((3*CST*pi*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/10 + (6*CST*x*pi**2*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 + (3*CST*y*pi**2*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 - (3*CST*y*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/5))/2 - (tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50)**2 - 1)*((CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/50 - (CST*y*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/25 + (2*CST*x*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25 + (CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25))*(CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 2*CST*x*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 2*CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) - 4*CST*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) - (2*sin((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10)*((3*CST*pi*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/10 + (6*CST*x*pi**2*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 + (3*CST*y*pi**2*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/5 - (3*CST*y*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/5) - 4*(tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50)**2 - 1)*((CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1))/50 - (CST*y*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1))/25 + (2*CST*x*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25 + (CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/25))*(CST*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*y*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) + 4*CST*x*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 2*CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) - (2*cos((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10) - 4*tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50) + 6)*(2*CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 2*CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 4*CST*y*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 8*CST*y**2*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*y**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*x*pi*cos(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 4*CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 16*CST*x**2*pi**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 4*CST*y**2*pi**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 16*CST*x*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 16*CST*x*y*pi**2*cos(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) - 2*(cos((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10)/2 - tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50) + 3/2)*(2*CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 2*CST*x*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*y*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 4*CST*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 8*CST*x**2*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) + 8*CST*y**2*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*x**2*pi**2*cos(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*y**2*pi**2*cos(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 4*CST*x*pi*cos(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 4*CST*y*pi*cos(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 2*CST*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 20*CST*x*y*pi**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 8*CST*x*y*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*x*y*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1)) - (cos((3*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/10) - 2*tanh((CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/50) + 3)*(2*CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 2*CST*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 4*CST*x*sin(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) - 2*CST*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 8*CST*x**2*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 8*CST*x**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) + 4*CST*x*pi*sin(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 8*CST*y*pi*cos(4*x*y*pi)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)*(tanh(x - y)**2 - 1) + 4*CST*x**2*pi**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 16*CST*y**2*pi**2*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1) + 16*CST*x*y*pi*cos(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*sin((t*pi)/2)*(tanh(x**2 + y**2 - 1)**2 - 1)*((3*cos((3*t*pi)/2))/4 + 1) - 16*CST*x*y*pi**2*cos(4*x*y*pi)*cos(pi*(x**2 + y**2 - 1/16))*tanh(x - y)*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1)) + (9*CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*sin((t*pi)/2)*sin((3*t*pi)/2))/8 - (CST*pi*sin(4*x*y*pi)*tanh(x - y)*sin(pi*(x**2 + y**2 - 1/16))*tanh(x**2 + y**2 - 1)*cos((t*pi)/2)*((3*cos((3*t*pi)/2))/4 + 1))/2
 	)
 	
 	return f
@@ -415,13 +414,13 @@ def simulate_spacetime(degree, cuts, powerdensity, geoArgs=None,
 	if is1dim: problem_spt = stheatproblem1D(material, modelPhy, time_spt, boundary_spt)
 	else: problem_spt = stheatproblem(material, modelPhy, time_spt, boundary_spt)
 	
+	Tinout = np.zeros(np.prod(sptnbctrlpts))
+	if not solveSystem: return problem_spt, time_spt, Tinout
+
 	# Add external force
 	Fext = problem_spt.compute_volForce(powerdensity, 
 									{'position':problem_spt.part.qpPhy, 
 									'time':problem_spt.time.qpPhy})
-	
-	Tinout = np.zeros(np.prod(sptnbctrlpts))
-	if not solveSystem: return problem_spt, time_spt, Tinout
 
 	problem_spt._thresNL = 1e-8; problem_spt._itersNL = 50
 	output=problem_spt.solveFourierSTHeatProblem(Tinout=Tinout, Fext=Fext, isfull=isfull, isadaptive=isadaptive)

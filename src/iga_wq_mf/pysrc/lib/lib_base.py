@@ -65,7 +65,7 @@ def vtk2png(folder, filename=None, fieldname='temp',
 	plotter.add_mesh(grid, cmap=cmap, clim=clim, reset_camera=True, 
 					scalar_bar_args=sargs, scalars=scalars, n_colors=n_colors)
 	
-	plotter.camera_position = 'xy'
+	plotter.camera_position = 'yx'
 	plotter.camera.zoom(0.9)
 	plotter.background_color = 'white'
 	plotter.window_size = [1600, 1600]
