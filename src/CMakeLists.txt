@@ -80,7 +80,7 @@ add_library(base        parameters.f90
                         main/GaussLegendre.f90
                         main/UELMAT.f90
                         main/UELMAT_HO.f90
-                        main/stiffmatrix.F90
+                        main/stiffmatrix.f90
                         main/stiffmatrix_HO.f90
                         main/UMASSMAT.f
                         main/evaluatenurbsfcts.f
@@ -102,7 +102,33 @@ add_library(base        parameters.f90
                         main/embedded/UELMAT_embeddedvol.f90
                         )
 
-# Create Python modules massmtrx, DOF, reconstructionSOL, stiffmtrx_elemstorage
+add_library(nlg         main/UGEOMAT.f
+                        main/UELEXTVEC.f90
+                        main/UELINTVEC.f90
+                        main/UELTANMAT.f90
+                        main/stiffgeommatrix.f90
+                        main/geommatrix.f90
+                        main/geomvector.f90
+
+                        )
+target_link_libraries(nlg base)
+
+
+# Create Python modules massmtrx, DOF, reconstructionSOL, stiffmtrx_elemstorage, stiffmtrx_elemstorageNLG
+CreateF2PYModule(NAME tanmtrx_elemStorageNLG
+                 FILES  ${CMAKE_CURRENT_SOURCE_DIR}/main/tanmtrx_elemStorage.f90
+                 LINK_LIBRARIES base nlg
+                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
+CreateF2PYModule(NAME intvec_elemStorageNLG
+                 FILES  ${CMAKE_CURRENT_SOURCE_DIR}/main/intvec_elemStorage.f90
+                 LINK_LIBRARIES base nlg
+                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
+CreateF2PYModule(NAME extvec_elemStorageNLG
+                 FILES  ${CMAKE_CURRENT_SOURCE_DIR}/main/extvec_elemStorage.f90
+                 LINK_LIBRARIES base nlg
+                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 
 CreateF2PYModule(NAME massmtrx
                  FILES  ${CMAKE_CURRENT_SOURCE_DIR}/main/compute_CMASSMatrix.f
@@ -121,6 +147,7 @@ CreateF2PYModule(NAME stiffmtrx_elemstorage
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage.f90
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
 CreateF2PYModule(NAME utils
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90
                  LINK_LIBRARIES base

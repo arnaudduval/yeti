@@ -1611,6 +1611,59 @@ class IGAparametrization:
                   self._nb_dof_tot]
 
         return inputs
+    
+    def get_inputs4tanmtrx(self,Uk, COORDS=None, activeElem=None):
+        """Return parameters to compute the sparse stiffness matrix.
+
+        Data is structured to comply with the function input parameters. The
+        functions is `stiffmtrx_elemstorage.sys_linmat_lindef_static`
+
+        Parameters
+        ----------
+        COORDS : numpy array, optional
+            Control points coordinates. The default is None. Default
+            correponds to the coordinates of the current geometry.
+        activeElem : numpy array (dtype=intp), optional
+            Array indicating elements considered to build the stiffness matrix.
+            Value `1` stands for active elements. The default is None (all
+            elements are activated).
+
+        Returns
+        -------
+        inputs : list
+            All necessary inputs to build stiffness matrix.
+
+        """
+        if activeElem is None:
+            activeElem = np.ones(self._nb_elem, dtype=np.intp)
+            indpatch2rm = np.where(np.all(np.array([self._ELT_TYPE != 'U1',
+                                                    self._ELT_TYPE != 'U99',
+                                                    self._ELT_TYPE != 'U98',
+                                                    self._ELT_TYPE != 'U2',
+                                                    self._ELT_TYPE != 'U3',
+                                                    self._ELT_TYPE != 'U10',
+                                                    self._ELT_TYPE != 'U30']),
+                                          axis=0))[0]
+            e = np.cumsum(np.concatenate(([0], self._elementsByPatch)),
+                          dtype=np.intp)
+            for patch in indpatch2rm:
+                activeElem[e[patch]: e[patch+1]] = 0
+
+        ndofel = self._nnode*self._mcrd
+        ndofel_list = np.repeat(ndofel*(ndofel + 1) / 2, self._elementsByPatch)
+        nb_data = np.sum(activeElem*ndofel_list)
+
+        if np.shape(COORDS) != np.shape(self._COORDS):
+            COORDS = self._COORDS
+
+        inputs = [Uk,activeElem,COORDS, 
+                    self._Nkv, self._Ukv_flat,self._Nijk, self._weight_flat, self._Jpqr,self._elementsByPatch,
+                    self._NBPINT,self._IEN_flat,self._TENSOR_flat,self._ELT_TYPE_flat,
+                    self._MATERIAL_PROPERTIES[:2, :],self._N_MATERIAL_PROPERTIES[:],self._PROPS_flat,self._JPROPS,
+                    self._mcrd,self._nnode,
+                    nb_data,np.shape(self._MATERIAL_PROPERTIES[:2, :])[0],self._nb_patch,self._nb_cp,self._nb_elem,self._nb_dof_tot
+                  ]
+        return inputs
 
     def get_inputs4massmat(self, COORDS=None, activeElem=None):
         """

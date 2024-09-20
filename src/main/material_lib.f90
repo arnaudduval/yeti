@@ -82,9 +82,13 @@ subroutine material_lib(MATERIAL_PROPERTIES, TENSOR, MCRD, ddsdde)
         ddsdde(3, 1) = lambda
         ddsdde(2, 3) = lambda
         ddsdde(3, 2) = lambda
-        ddsdde(4, 4) = mu
-        ddsdde(5, 5) = mu
-        ddsdde(6, 6) = mu
+        ! ddsdde(4, 4) = mu
+        ! ddsdde(5, 5) = mu
+        ! ddsdde(6, 6) = mu
+
+        ddsdde(4, 4) = two * mu
+        ddsdde(5, 5) = two * mu
+        ddsdde(6, 6) = two * mu
 
     else if (TENSOR == 'THREED_bnd') then
         ddsdde(:,:) = zero
