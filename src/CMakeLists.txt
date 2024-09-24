@@ -27,24 +27,48 @@ macro(CreateF2PYModule)
         set(link_string ${link_string} -l${dep})
     endforeach()
 
-    add_custom_command(
-        OUTPUT ${generated_module_file}
-        COMMAND "${Python3_EXECUTABLE}" -m numpy.f2py
-        -m ${MODULE_NAME} #--quiet
-        -c --opt=-O2
-        -I${CMAKE_Fortran_MODULE_DIRECTORY}
-        -L${LIBRARY_OUTPUT_PATH}
-        ${link_string}
-        -llapack -lblas
-        ${FCOMPILER}
-        --f90flags='-fopenmp' -lgomp
-        ${MODULE_FILES}
-        DEPENDS ${MODULE_FILES}
-        DEPENDS ${MODULE_LINK_LIBRARIES}
-        COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMAND  ${CMAKE_COMMAND} -E copy ${generated_module_file} ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.so
-    )
+    if(LEGACY)
+        add_custom_command(
+            OUTPUT ${generated_module_file}
+            COMMAND "${Python3_EXECUTABLE}" -m numpy.f2py
+            -m ${MODULE_NAME} #--quiet
+            -c --opt=-O2
+            -I${CMAKE_Fortran_MODULE_DIRECTORY}
+            -L${LIBRARY_OUTPUT_PATH}
+            ${link_string}
+            -llapack -lblas
+            ${FCOMPILER}
+            --f90flags='-fopenmp' -lgomp
+            ${MODULE_FILES}
+            DEPENDS ${MODULE_FILES}
+            DEPENDS ${MODULE_LINK_LIBRARIES}
+            COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMAND  ${CMAKE_COMMAND} -E copy ${generated_module_file} ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.so
+        )
+    else()
+        # scikit-build : no copy of *.so file
+        add_custom_command(
+            OUTPUT ${generated_module_file}
+            COMMAND "${Python3_EXECUTABLE}" -m numpy.f2py
+            -m ${MODULE_NAME} #--quiet
+            -c --opt=-O2
+            -I${CMAKE_Fortran_MODULE_DIRECTORY}
+            -L${LIBRARY_OUTPUT_PATH}
+            ${link_string}
+            -llapack -lblas
+            ${FCOMPILER}
+            --f90flags='-fopenmp' -lgomp
+            ${MODULE_FILES}
+            DEPENDS ${MODULE_FILES}
+            DEPENDS ${MODULE_LINK_LIBRARIES}
+            COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            # COMMAND  ${CMAKE_COMMAND} -E copy ${generated_module_file} ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.so
+        )
+        install(FILES ${generated_module_file} DESTINATION ${MODULE_DESTINATION})
+
+    endif()
 
 endmacro()
 

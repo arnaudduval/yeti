@@ -262,14 +262,14 @@ set_tests_properties(
                      vtu_output_2patchs
                      vtu_output_8patchs
                      vtu_output_2patchs_coupling
-                     PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
+                     PROPERTIES ENVIRONMENT PYTHONPATH=${PYTHON_MODULES_OUTPUT_PATH}:$ENV{PYTHONPATH})
 
 # Properties for long tests
 if(RUN_LONG_TESTS)
     set_tests_properties(OPTplatevib_semi_AN
                          OPTplatevib_FD
                          OPT3-volumetricBeam
-                         PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH}
+                         PROPERTIES ENVIRONMENT PYTHONPATH=${PYTHON_MODULES_OUTPUT_PATH}:$ENV{PYTHONPATH}
                          )
 endif(RUN_LONG_TESTS)
 
