@@ -114,4 +114,4 @@ macro(CreateF2PYModule2)
     install(TARGETS ${MODULE_NAME} DESTINATION ${MODULE_DESTINATION})
 endmacro(CreateF2PYModule2)
 
-subdirs(yeti-iga)
+subdirs(yeti_iga)
