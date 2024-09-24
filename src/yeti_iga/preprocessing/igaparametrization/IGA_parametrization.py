@@ -24,8 +24,8 @@ Analysis.
 import numpy as np
 from scipy import sparse as sp
 
-from DOF import getinddof
-from postprocessing.postproc import generate_vtk, generate_vtk_wsol
+from ...DOF import getinddof
+from ...postprocessing.postproc import generate_vtk, generate_vtk_wsol
 from ..geometricmodel import NBfile
 from ..mechanicalmodel import MechanicalModel as INPfile
 from .IGA_refinementFcts import iga_refinement

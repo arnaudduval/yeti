@@ -16,17 +16,17 @@
 
 from .common import Parser
 
-from preprocessing.mechanicalmodel.mesh import Node, NodeParam, Beam, Tria, Quad, Penta, Hexa, UserElement, UserElementParam
-from preprocessing.mechanicalmodel.properties import ThinShell, Ply, CompositeLayup, CompositeThinShell, Solid,\
+from ..mesh import Node, NodeParam, Beam, Tria, Quad, Penta, Hexa, UserElement, UserElementParam
+from ..properties import ThinShell, Ply, CompositeLayup, CompositeThinShell, Solid,\
     userElementProps
-from preprocessing.mechanicalmodel.materials import Isotropic, Orthotropic, HighOrderElastic
-from preprocessing.mechanicalmodel.group import Group
-from preprocessing.mechanicalmodel.boundary_conditions import DisplacementBoundaryCondition,\
+from ..materials import Isotropic, Orthotropic, HighOrderElastic
+from ..group import Group
+from ..boundary_conditions import DisplacementBoundaryCondition,\
     VelocityBoundaryCondition,AccelerationBoundaryCondition
-from preprocessing.mechanicalmodel.loads import Load
+from ..loads import Load
 #from preprocessing.mechanicalmodel.loads import Force
-from preprocessing.mechanicalmodel.steps import InitialStep, GeneralStaticStep, RiksStaticStep, BuckleStep
-from preprocessing.mechanicalmodel.common import TransformationMatrix, Table, Container
+from ..steps import InitialStep, GeneralStaticStep, RiksStaticStep, BuckleStep
+from ..common import TransformationMatrix, Table, Container
 
 import numpy as np
 from math import *

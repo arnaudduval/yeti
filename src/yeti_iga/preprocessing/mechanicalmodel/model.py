@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
-from preprocessing.mechanicalmodel.read   import *
-from preprocessing.mechanicalmodel.write  import *
-from preprocessing.mechanicalmodel.common import Container
+from .read   import *
+from .write  import *
+from .common import Container
 import numpy as np
 
 class PART(object):

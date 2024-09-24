@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 # Python module
@@ -20,19 +20,19 @@ import scipy.linalg as sla
 
 # IGA module
 #from . import IGAparametrization
-from solver import pseudoLU,pseudoDense,pseudoLUstep
-from preprocessing.igaparametrization import IGAparametrization 
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix   import cplg_matrix,cplg_dirichlet,tabweakinfos
+from ...solver import pseudoLU,pseudoDense,pseudoLUstep
+from ...preprocessing.igaparametrization import IGAparametrization
+from ...stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from ...coupling.cplgmatrix   import cplg_matrix,cplg_dirichlet,tabweakinfos
 #from coupling.cplginfos    import tabweakinfos
 from . import IGA_manipulation as manip
 
 
 
 class IGAsubdomain:
-    
+
     def __init__(self,igapara,ID):
-        
+
         if not isinstance(igapara,IGAparametrization):
             raise ValueError('Invalid input > should be an IGAparametrization')
         self._modeleIGA = igapara  # IGA model
@@ -40,15 +40,15 @@ class IGAsubdomain:
         self._maplgrge  = np.array([],dtype=np.intp) # map global lagrange to sub-domain
         self.set_grpByType()
         self.set_dofInfos()
-        
-        
+
+
     def set_grpByType(self):
         self._list_patch = np.where(
             np.isin(self._modeleIGA._ELT_TYPE,np.array(['U1','U3','U30'])))[0] + 1
         self._list_curve = np.where(np.isin(self._modeleIGA._ELT_TYPE,np.array(['U00'])))[0] + 1
         self._list_lgrge = np.where(np.isin(self._modeleIGA._ELT_TYPE,np.array([ 'U4'])))[0] + 1
         return None
-        
+
     def set_dofInfos(self):
         ndof = self._modeleIGA._nb_dof_free
         idof = self._modeleIGA._ind_dof_free[:ndof]-1
@@ -61,7 +61,7 @@ class IGAsubdomain:
                  + np.tile(np.arange(0,mcrd),self._modeleIGA._indCPbyPatch[p].size)))
         self._idof_patch    = idof_internal.copy()
         self._idof_internal = np.intersect1d(idof_internal,idof)
-        
+
         idof_lgrge = np.array([],dtype=np.intp)
         idof_lgrge_list = []
         for p in self._list_lgrge-1:
@@ -69,12 +69,12 @@ class IGAsubdomain:
                    + np.tile(np.arange(0,mcrd),self._modeleIGA._indCPbyPatch[p].size)
             idof_lgrge = np.concatenate((idof_lgrge,temp))
             idof_lgrge_list.append(np.intersect1d(temp,idof))
-    
+
         self._idof_lgrge_tot = np.intersect1d(idof_lgrge,idof)
         self._idof_lgrge     = idof_lgrge_list
-        
+
         return None
-        
+
     def get_lgrge_ndof(self):
         ndof= np.array([i.size for i in self._idof_lgrge])
         tab = np.array([self._list_lgrge,ndof],dtype=np.intp)
@@ -84,7 +84,7 @@ class IGAsubdomain:
         tab = tabweakinfos( *self._modeleIGA.get_inputs4cplginfos(nb_pts=nb_pts) )
         ndof= self.get_lgrge_ndof()
         return np.append(tab,ndof[1][np.newaxis,:],axis=0)
-        
+
     def get_bcsInfos(self):
         idof_fixed = np.setdiff1d(self._idof_patch,self._idof_internal)
         return idof_fixed.size
@@ -92,7 +92,7 @@ class IGAsubdomain:
     def set_mapLgrge(self,interfaceInfos):
         test  = np.where(np.isin(interfaceInfos[:,(0,2)],self._ID))
         isort = np.argsort(interfaceInfos[:,(1,3)][test])
-        
+
         ndof  = np.intp(np.append(0,np.cumsum(interfaceInfos[:,-1])))
         num_interface = test[0]
         idof = []
@@ -100,11 +100,11 @@ class IGAsubdomain:
             idof.extend(np.arange(ndof[lg],ndof[lg+1]))
         self._maplgrge = np.array(idof)
         return None
-        
+
     def set_stiffnessMATRIX(self,strongDirichlet=True):
         data,row,col,Fb = build_stiffmatrix( *self._modeleIGA.get_inputs4system_elemStorage() )
         Kside = sp.coo_matrix((data,(row,col)),
-                              shape=(self._modeleIGA._nb_dof_tot,self._modeleIGA._nb_dof_tot), 
+                              shape=(self._modeleIGA._nb_dof_tot,self._modeleIGA._nb_dof_tot),
                               dtype='float64').tocsc()
         Ktot = Kside + Kside.transpose()
         if strongDirichlet:
@@ -114,11 +114,11 @@ class IGAsubdomain:
             self._K2solve = Ktot[self._idof_patch,:][:,self._idof_patch]
             self._f2solve =   Fb[self._idof_patch]
         return None
-        
+
     def _build_weakDirichletMATRIX(self):
         Cdata,Crow,Ccol,Ub = cplg_dirichlet( *self._modeleIGA.get_inputs4dirichletmatrix() )
-        Cside = sp.coo_matrix((Cdata,(Crow,Ccol)), 
-                               shape=(self._modeleIGA._nb_dof_bloq,self._modeleIGA._nb_dof_tot), 
+        Cside = sp.coo_matrix((Cdata,(Crow,Ccol)),
+                               shape=(self._modeleIGA._nb_dof_bloq,self._modeleIGA._nb_dof_tot),
                                dtype='float64').tocsr()
         mask = np.isin(self._modeleIGA._ind_dof_bloq[:self._modeleIGA._nb_dof_bloq]-1,
                        self._idof_patch)
@@ -128,7 +128,7 @@ class IGAsubdomain:
 
     def set_couplingMATRIX(self,strongDirichlet=True):
         Cdata,Crow,Ccol = cplg_matrix( *self._modeleIGA.get_inputs4cplgmatrix() )
-        Cside = sp.coo_matrix((Cdata,(Crow,Ccol)), 
+        Cside = sp.coo_matrix((Cdata,(Crow,Ccol)),
                               shape=(self._modeleIGA._nb_dof_tot,self._modeleIGA._nb_dof_tot),
                               dtype='float64').tocsc()
         if strongDirichlet:
@@ -143,7 +143,7 @@ class IGAsubdomain:
         else:
             self._itracedisp = np.unique( self._C2solve.tocsr().indices )
         return None
-        
+
     def set_factorizationMATRIX(self,tol=1.e-08):
         #self._LU = sp.linalg.splu(self._K2solve)
         #self._LU = pseudoLU(self._K2solve,tol=1.e-5)
@@ -153,31 +153,31 @@ class IGAsubdomain:
         else:
             self._LU = pseudoLUstep(self._K2solve,tol=tol)
         return None
-        
-        
+
+
     def set_pseudoinverseMATRIX(self,rho=1.):
         Rtot   = self.get_unconstrainedRigidBodyModes()[self._idof_patch,:]
-        
+
         Rgamma = sp.lil_matrix(Rtot.shape)
         Rgamma[self._itracedisp,:] = Rtot[self._itracedisp,:]
         Rgamma = Rgamma.tocsc()
         Bgamma = Rgamma.dot(Rgamma.T)
-        
-        self._LUstar = sp.linalg.splu(self._K2solve + rho*Bgamma)    
+
+        self._LUstar = sp.linalg.splu(self._K2solve + rho*Bgamma)
         return None
-        
+
     def set_pseudoinverseMATRIX_fixednodes(self,rho=None):
         vertex = []
         for patch in self._list_patch:
             indcp = manip.get_vertexCPindice(self._modeleIGA._Nkv,self._modeleIGA._Jpqr,
                                              self._modeleIGA._dim,num_patch=patch-1)
             vertex.extend(list(self._modeleIGA._indCPbyPatch[patch-1][indcp]-1))
-            
+
         print('vertex',vertex)
         mcrd = self._modeleIGA._mcrd
         dofvertex = np.repeat(vertex,mcrd) + np.tile(np.arange(0,mcrd),len(vertex))
         Rtot = self.get_unconstrainedRigidBodyModes()
-        
+
         RI = sp.lil_matrix((self._idof_patch.size,Rtot.shape[1]))
         RI[np.where(np.isin(self._idof_patch,dofvertex))[0],:] = Rtot[dofvertex,:]
         RI = RI.tocsc()
@@ -187,8 +187,8 @@ class IGAsubdomain:
         if rho is None:
             rho = self._K2solve.diagonal().max()
         self._LUstar = sp.linalg.splu(self._K2solve + rho*BI)
-        return None  
-        
+        return None
+
     def compute_condensedRHSvect(self):
         if   hasattr(self,'_LU'):
             lu = self._LU
@@ -198,7 +198,7 @@ class IGAsubdomain:
             return np.zeros(self._idof_lgrge_tot.size)
         ts = self._C2solve.dot(lu.solve(self._f2solve))
         return ts
-        
+
     def compute_rigidbodyRHSvect(self):
         es = self._rigidbodyR.T.dot(self._f2solve)
         return es
@@ -212,7 +212,7 @@ class IGAsubdomain:
             return np.zeros(self._idof_lgrge_tot.size)
         ub = self._C2solve * lu.solve(self._C2solve.T * lmbda)
         return ub
-        
+
     # For preconditionner
     def set_factorizationInternalMATRIX(self):
         ind = np.setdiff1d(np.arange(0,self._idof_internal.size),self._itracedisp)
@@ -221,7 +221,7 @@ class IGAsubdomain:
         self._Kib = self._K2solve[ind,:][:,self._itracedisp]
         self._Kbi = self._Kib.transpose()
         return None
-        
+
     def evaluateprimalshur(self,ub):
         if not hasattr(self,'_LUinternal'):
             self.set_factorizationInternalMATRIX()
@@ -234,7 +234,7 @@ class IGAsubdomain:
         else:
             print('input has wrong size')
         return lb
-    
+
     def evaluatedirichletprecond(self,rk):
         if not hasattr(self,'_factorR'):
             self.set_factorizationCPLGMATRIX()
@@ -248,13 +248,13 @@ class IGAsubdomain:
         y6 = sla.solve_triangular(self._factorR,y5,trans=1)
         zk = sla.solve_triangular(self._factorR,y6)
         return zk
-    
-        
+
+
     def set_invdiaKMATRIX(self):
         diaK = 1./self._K2solve.diagonal()
         self._invDiagK = sp.dia_matrix((diaK,[0]),self._K2solve.shape).tocsc()
         return None
-        
+
     def set_invcouplingMATRIX(self,scaled=False):
         if scaled is True:
             if not hasattr(self,'_invDiagK'):
@@ -262,11 +262,11 @@ class IGAsubdomain:
             self._invCCt   = sp.linalg.splu(
                 self._C2solve * self._invDiagK * self._C2solve.transpose())
         else:
-            
+
             #self._invCCt = sp.linalg.splu((self._C2solve * self._C2solve.transpose()).tocsc())
             self._invCCt = pseudoDense(self._C2solve * self._C2solve.transpose())
         return None
-        
+
     def evaluateprimalshur_winvC(self,ub,scaled=False):
         if not hasattr(self,'_LUinternal'):
             self.set_factorizationInternalMATRIX()
@@ -288,7 +288,7 @@ class IGAsubdomain:
         else:
             lb[:] = self._invCCt.solve(self._C2solve.dot(y4tot))
         return lb
-        
+
     def evaluatelumpedprimalshur(self,ub):
         if not hasattr(self,'_Kbb'):
             self._Kbb = self._K2solve[self._itracedisp,:][:,self._itracedisp]
@@ -304,7 +304,7 @@ class IGAsubdomain:
         P = self._C2solve[:,self._itracedisp]
         self._factorR = np.linalg.qr(P.transpose().toarray(),mode='r')
         return None
-        
+
     def get_unconstrainedRigidBodyModes(self):
         nb_cp  = self._modeleIGA._nb_cp
         mcrd   = self._modeleIGA._mcrd
@@ -314,21 +314,21 @@ class IGAsubdomain:
         if mcrd==3:
             Rrotx  = np.cross(np.array([1,0,0]),COORDS)
             Rroty  = np.cross(np.array([0,1,0]),COORDS)
-            
+
             #patch2interpol = np.where(self._modeleIGA._ELT_TYPE == 'U30')[0]
             #activePatch = np.zeros(self._modeleIGA._nb_patch,dtype=np.intp)
             #activePatch[patch2interpol] = 1
             #pts = getgrevabscphysicalcoords(
             #    *self._modeleIGA.get_inputs4grevphyscoords( activePatch=activePatch) )
-                        
-            
+
+
             Rrot   = np.reshape(np.concatenate((Rrotx,Rroty,Rrotz),axis=1),(nb_cp*3,3))
         else:
-            
+
             Rrot = np.vstack(Rrotz[:,:2].flatten())
         rigidbodyRtot = np.concatenate((Rtrl,Rrot),axis=1)
         return rigidbodyRtot
-        
+
     def build_rigidBodyModes(self):
         if hasattr(self,'_LU'):
             self._rigidbodyR = self._LU.R
@@ -338,7 +338,7 @@ class IGAsubdomain:
             self._rigidbodyR = sp.csc_matrix(
                 self.get_unconstrainedRigidBodyModes()[self._idof_patch])
         return None
-        
+
     def set_admissibleconstMATRIX(self):
         if not hasattr(self,'_rigidbodyR'):
             self.build_rigidBodyModes()
@@ -354,4 +354,4 @@ class IGAsubdomain:
             lu = self._LUstar
         disp = lu.solve(self._f2solve - self._C2solve.T * lmbda) + self._rigidbodyR.dot(alpha)
         return disp
-    
+

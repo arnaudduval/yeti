@@ -29,18 +29,18 @@ import numpy as np
 from scipy.sparse import csc_matrix, linalg as sla
 import scipy.sparse as sp
 
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from massmtrx import build_cmassmatrix
-from coupling.cplgmatrix import cplg_matrix
-from coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from ...stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from ...massmtrx import build_cmassmatrix
+from ...coupling.cplgmatrix import cplg_matrix
+from ...coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
+from ... import reconstructionSOL as rsol
+from  ...postprocessing import postproc as pp
 
-from optim import volume as vol
+from ...optim import volume as vol
 #from optim import gradvolume as gvol
-from optim.gradadjointwork import gradlinelastwork_an
-from optim import disp, stress, vibration, volume
-from optim.gradcoupling import gradcplg_an
+from ...optim.gradadjointwork import gradlinelastwork_an
+from ...optim import disp, stress, vibration, volume
+from ...optim.gradcoupling import gradcplg_an
 
 
 class OPTmodelling:

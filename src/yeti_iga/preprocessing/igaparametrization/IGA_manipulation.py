@@ -30,8 +30,8 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.linalg import blas
 
-from fitting.interpolate import buildgrevinterpolmat
-from fitting.evaluate import getgrevabscphysicalcoords
+from ...fitting.interpolate import buildgrevinterpolmat
+from ...fitting.evaluate import getgrevabscphysicalcoords
 from .bsplineDegreeElevation import decomposition,decomposition_sparse,localExtraction1Dunique
 
 
@@ -1328,7 +1328,7 @@ def bezier_decomposition_elem(igapara,jelem):
 
 
 class localExtractionPatch:
-    '''This class is made for the function `bezier_decomposition`. It provides 
+    '''This class is made for the function `bezier_decomposition`. It provides
     basis algorithms for the bezier decomposition of spline patches.
     '''
     def __init__(self, Ukv:list[np.ndarray], Jpqr:np.ndarray, dim:int) -> None:
@@ -1342,7 +1342,7 @@ class localExtractionPatch:
             uniqueCi, alltouniqueCi = localExtraction1Dunique(Ukv[idim], Jpqr[idim])
             uniqueC1D.append(uniqueCi)
             self._alltouniqueC1D.append(alltouniqueCi)
-        
+
         self._uniqueC = {}
         if dim == 1:
             for i0 in range(len(uniqueC1D[0])):
@@ -1366,13 +1366,13 @@ class localExtractionPatch:
                         C0 = uniqueC1D[0][i0]
                         key = '%i,%i,%i'%(i0,i1,i2)
                         self._uniqueC[key] = np.kron(C2C1,C0).T
-        
+
     def getC(self, Nijk:np.ndarray[int]):
         key = '%i' % self._alltouniqueC1D[0][Nijk[0]]
         for i in range(1,self._dim):
             key += ',%i' % self._alltouniqueC1D[i][Nijk[i]]
         return self._uniqueC[key]
-    
+
     def setSparseMats(self, ncp:int):
         self._uniqueCsparse = {}
         for key,value in self._uniqueC.items():
@@ -1406,19 +1406,19 @@ def bezier_decomposition(igapara, listelem:None|np.ndarray=None, return_mat=Fals
     Returns
     -------
     bezierDecomp : dict
-        Dictionary that provides the Bezier representation of the elements. 
-        Keys are the element indices. Values are a list of two arrays: 
+        Dictionary that provides the Bezier representation of the elements.
+        Keys are the element indices. Values are a list of two arrays:
         - First array gives the Bezier control point coordinates and weights,
         - Second array gives the element degrees per direction.
     bezierDecomp_mat : dict
-        Returned if `return_mat is True`. 
+        Returned if `return_mat is True`.
         Keys are the element indices. Values are a sparse matrices.
     '''
     if listelem is None:
         listelemsort = np.arange(igapara._nb_elem)
     else:
         listelemsort = np.sort(listelem)
-    
+
     CPspline = np.block([[igapara._COORDS],[igapara._vectWeight]])
     CPspline[:-1] *= CPspline[-1]
     CPspline = np.asfortranarray(CPspline.T)
@@ -1439,7 +1439,7 @@ def bezier_decomposition(igapara, listelem:None|np.ndarray=None, return_mat=Fals
 
         nijk = igapara._Nijk[:,iel]
         ien = igapara._IEN[ipatch][iel-elemoffset[ipatch]][::-1]-1
-        
+
 
         Cel = localExtractionByPatches[ipatch].getC(nijk)
         CPsplineEl = CPspline[ien,:]
