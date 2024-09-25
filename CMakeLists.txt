@@ -97,7 +97,7 @@ if(LEGACY)
     subdirs(benchs)
 
     # Copy pyproject.toml file to build/doc directory to handle package version
-    add_custom_target(doc_init DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doc/pyproject.toml)
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/doc)
-    subdirs(doc)
+    add_custom_target(doc_init DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/docs/pyproject.toml)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/docs)
+    subdirs(docs)
 endif()
