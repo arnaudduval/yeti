@@ -43,7 +43,7 @@ Global model informations
  - _mcrd : a scalar the number of coordinates of the model
 
 Control points informations
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
  - _COORDS : a 2D array containing the coordinates of the control points (shape : 3, number of control points)
  - _nb_cp : a scalar containing the total number of control points
@@ -90,6 +90,6 @@ Other informations
 Class members (TEST)
 ====================
 
-.. autoclass:: preprocessing.igaparametrization.IGAparametrization
+.. autoclass:: yeti_iga.preprocessing.igaparametrization.IGAparametrization
     :members:
     :private-members:

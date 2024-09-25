@@ -1,16 +1,25 @@
-import sphinx_rtd_theme
+import tomli
+import warnings
+
+
+# Set version from pyproject.toml file
+with open('../../pyproject.toml', 'rb') as f:
+    toml_data = tomli.load(f)
+    release = toml_data['project']['version']
 
 project = "yeti"
 
-copyright = '@SPHINX_TARGET_YEAR@, LaMCoS'
+copyright = '2024, LaMCoS'
 author = 'Arnaud Duval'
 
-version = '@SPHINX_TARGET_VERSION_MAJOR@.@SPHINX_TARGET_VERSION_MINOR@'
-release = '@SPHINX_TARGET_VERSION@'
+# version = '@SPHINX_TARGET_VERSION_MAJOR@.@SPHINX_TARGET_VERSION_MINOR@'
+# release = '@SPHINX_TARGET_VERSION@'
+version = release
 
 numfig = True
 
 extensions = [
+    'sphinx.ext.autosectionlabel',
     'sphinx_rtd_theme',
     'sphinxcontrib.bibtex',
     'sphinx.ext.mathjax',

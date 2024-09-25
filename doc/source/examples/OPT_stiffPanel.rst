@@ -31,6 +31,7 @@ The square plate can be defined from 4 control points:
 And the connectivity table, defining patch 2, of type U3 (shell) made of a single element:
 
 ..  code-block::
+
     *Element,type=U3,elset=RoofEls
     2,    4,3,2,1
 
@@ -109,15 +110,16 @@ Then, Lagrange patchs are defined to handle Lagrange multipliers for the couplin
 
 Those patchs are made of a single control point, located at arbitrary location.
 
-A summary of control points and patches indices is made in :numref:`fig-ctrls-patchs-stiffened-roof`.
+
 
 .. _fig-ctrls-patchs-stiffened-roof:
-
 .. figure:: ../_static/examples/OPT_stiffPanel/ctrls_patchs_stiffened_roof.svg
    :width: 800
    :align: center
 
    Control points and patch of the stiffened roof.
+
+A summary of control points and patches indices is made in :numref:`fig-ctrls-patchs-stiffened-roof`.
 
 Optimization of stiffeners position
 -----------------------------------
