@@ -13,7 +13,7 @@ pipeline {
                     deleteDir()
                     sh 'python3 -m venv .venv'
                     sh '. .venv/bin/activate && pip install numpy\\<=1.26.4 scipy matplotlib nlopt\\<=2.7.1'
-                    sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex'
+                    sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex tomli'
                 }
             }
         }
