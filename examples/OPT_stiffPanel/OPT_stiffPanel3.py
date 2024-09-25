@@ -9,13 +9,13 @@ import scipy.sparse as sp
 from scipy.sparse import linalg as sla
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
 #from stiffmtrx_embedded import sys_linmat_lindef_static as build_stiffmatrix_emb
 #import coupling.penlty_embeddedstruct_rot as cplg
 #import bandstorage as bs
-import postprocessing.postproc as pp
+import yeti_iga.postprocessing.postproc as pp
 #import entities2param as tt
-import reconstructionSOL as rsol
+import yeti_iga.reconstructionSOL as rsol
 
 # Selection of .INP and .NB file
 # ------------------------------

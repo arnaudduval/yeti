@@ -5,13 +5,13 @@ import sys
 import time
 
 #IGA module
-from solver import PCPGortho
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix import cplg_matrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
-from preprocessing.igaparametrization import IGAmanip    as manip
+from yeti_iga.solver import PCPGortho
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.coupling.cplgmatrix import cplg_matrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAmanip    as manip
 
 modeleIGA = IGAparametrization(filename='1C_4platesDD')
 
