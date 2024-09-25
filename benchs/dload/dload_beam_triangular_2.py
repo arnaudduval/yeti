@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -27,11 +27,11 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import IGAmanip as manip
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # Read data and create IGAparametrization object
 modeleIGA = IGAparametrization(filename='beam-triangle-2')
@@ -86,7 +86,7 @@ for idx in range(np.shape(modeleIGA._COORDS)[1]):
     if(np.all(modeleIGA._COORDS[:,idx] == pt_coords)):
         found = True
         break
-    
+
 if not found:
     sys.exit(-1)
 

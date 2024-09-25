@@ -11,8 +11,8 @@ import numpy as np
 import scipy.sparse as sp
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization
-from coupling.cplgmatrix import cplg_matrix, cplg_matrixu5
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.coupling.cplgmatrix import cplg_matrix, cplg_matrixu5
 
 modeleIGA_U4 = IGAparametrization(filename='twoplates_U4')
 modeleIGA_U5 = IGAparametrization(filename='twoplates_U5')

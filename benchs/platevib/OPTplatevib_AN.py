@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -28,11 +28,11 @@ import sys
 import time
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
 # Base path for .inp and .NB files
@@ -58,9 +58,9 @@ nb_var = botcps.size
 hM = 0.5
 hm = 0.05
 def thickness(coords0,igapara,var):
-    
+
     var = (hM-hm)*var + hm
-    
+
     igapara._COORDS[:,:]      = coords0[:,:]
     igapara._COORDS[2,botcps] =-0.5 * ( (hM-hm)*var + hm )
     igapara._COORDS[2,topcps] = 0.5 * ( (hM-hm)*var + hm )
@@ -78,7 +78,7 @@ nb_ref = np.array([2,2,0])
 # nb_degreeElevationByDirection -> degree elevation for each diretion
 # nb_refinementByDirection -> refinement in each direction
 optPB = OPTmodelling(modeleIGA, nb_var, thickness,
-                     nb_degreeElevationByDirection = nb_deg, 
+                     nb_degreeElevationByDirection = nb_deg,
                      nb_refinementByDirection      = nb_ref)
 
 
@@ -125,7 +125,7 @@ def gradVolIGA(xk):
 
 
 tab = []
-iopt= 0 
+iopt= 0
 
 # Define callback function to be run at each optimization iteration (iopt)
 def saveXk(xk):
@@ -133,11 +133,11 @@ def saveXk(xk):
     print(('\nIteration%i'%iopt))
     valsi,vecti = optPB.compute_vibrationMode(xk)
     tab.append([xk[0],valsi[0]])
-    
+
     # - Plot Thickness
     ticknessfield = np.zeros_like(optPB._coarseParametrization._COORDS)
     ticknessfield[2,:] = np.tile(  optPB._coarseParametrization._COORDS[2,topcps]
-                                   - optPB._coarseParametrization._COORDS[2,botcps], 
+                                   - optPB._coarseParametrization._COORDS[2,botcps],
                                    (2,1)).flatten('C')
     pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
         'vibOpt%0.2d'%iopt,ticknessfield,
@@ -145,15 +145,15 @@ def saveXk(xk):
     np.savetxt('results/cps%0.2d.txt'%iopt,optPB._coarseParametrization._COORDS.T,delimiter=',')
 
     # - Plot Analysis
-    
+
     SOL,u = rsol.reconstruction(
         **optPB._fineParametrization.get_inputs4solution(vecti))
     pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
         'vibAn%0.2d'%iopt,  SOL.transpose(),
         nb_ref=np.array([2,2,2]), Flag=np.array([True, False, False])))
-    
+
     iopt += 1
-    
+
     return None
 
 # Bounds for design variables : [0 ; 1]

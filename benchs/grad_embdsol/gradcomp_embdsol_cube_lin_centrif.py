@@ -29,8 +29,8 @@ Design variables drive the control points of both hull and embedded entity.
 
 import numpy as np
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
 if __name__ == "__main__":

@@ -28,10 +28,10 @@ No test is made on the content of output files.
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
 modeleIGA = IGAparametrization(filename='inputs/BentPipe_8patchs')

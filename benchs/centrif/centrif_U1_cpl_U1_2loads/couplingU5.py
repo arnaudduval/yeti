@@ -6,14 +6,14 @@ import numpy as np
 from numpy.lib.arraysetops import intersect1d
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
-from coupling.cplgmatrix import cplg_matrixu5_wdatabase as cplg_matrixU5_wdatabase
-from utils import gausspts
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
-from preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
+from yeti_iga.coupling.cplgmatrix import cplg_matrixu5_wdatabase as cplg_matrixU5_wdatabase
+from yeti_iga.utils import gausspts
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
 
 
 t0 = time.time()
@@ -211,14 +211,14 @@ for idx in range(np.shape(modeleIGA._COORDS)[1]):
     if np.all(modeleIGA._COORDS[:,idx] == pt_coords):
         found = True
         break
-        
+
 if not found:
     sys.exit(-1)
 
 print("yeti solution : ", SOL[idx,:])
 print("reference solution : ", ref_aba)
 print("error / component : ", np.abs((SOL[idx,:]-ref_aba)/ref_aba))
-    
+
 if np.abs((SOL[idx,:]-ref_aba)/ref_aba)[0] < 0.02:
     sys.exit(0)
 else:

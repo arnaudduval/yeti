@@ -9,19 +9,19 @@
 #
 # Yeti is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for 
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for
 # more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 # Python module
 import numpy as np
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization
-import postprocessing.postproc as pp
-from preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+import yeti_iga.postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
 
 FILENAME = 'testU5'
 

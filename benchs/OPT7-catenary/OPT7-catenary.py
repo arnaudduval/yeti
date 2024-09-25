@@ -3,27 +3,27 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
-This cas is described in the following publication : 
-Hirschler, T., Bouclier, R., Duval, A. et al. 
-A New Lighting on Analytical Discrete Sensitivities in the Context of IsoGeometric Shape Optimization. 
+This cas is described in the following publication :
+Hirschler, T., Bouclier, R., Duval, A. et al.
+A New Lighting on Analytical Discrete Sensitivities in the Context of IsoGeometric Shape Optimization.
 Arch Computat Methods Eng (2020). https://doi.org/10.1007/s11831-020-09458-6
 
-The shape of a Kirchhoff-Love shell catenary is optimized versus its maximal bending moment 
+The shape of a Kirchhoff-Love shell catenary is optimized versus its maximal bending moment
 Volume is kept constant
 Resuting shape is compared to reference numerical results
 
@@ -36,9 +36,9 @@ import sys
 import time
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
 
 # Selection of .INP and .NB file
@@ -59,7 +59,7 @@ def altitude(coords0,igapara,var):
     igapara._COORDS[:,:] = coords0[:,:]
     count = 1
     for v in var:
-        icps = manip.get_boundCPindice_wEdges(igapara._Nkv,igapara._Jpqr,igapara._dim, 1, 
+        icps = manip.get_boundCPindice_wEdges(igapara._Nkv,igapara._Jpqr,igapara._dim, 1,
                                               num_patch=0, offset=count)
         igapara._COORDS[2,igapara._indCPbyPatch[0][icps]-1] += v*10.
         count += 1
@@ -69,13 +69,13 @@ def altitude(coords0,igapara,var):
 # --
 # Build the optimization pb
 
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 nb_degAN = np.maximum(np.array([2,2,0])-nb_degDV,0)
 nb_refAN = np.maximum(np.array([5,1,0])-nb_refDV,0)
 
 optPB = OPTmodelling(modeleIGA, nb_var, altitude,
-                     nb_degreeElevationByDirection = nb_degAN, 
+                     nb_degreeElevationByDirection = nb_degAN,
                      nb_refinementByDirection      = nb_refAN)
 
 
@@ -101,13 +101,13 @@ def momentAggregate(xM,gradM):
         print('\n--')
         print('Iter %3i' % i)
         gradM[:] = optPB.compute_gradStressAggreg_AN(xM,pnorm=Pnorm)[:,3]/phi0
-        
+
         # postprocessing
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT7-coarse%0.2d'%i,np.zeros_like(optPB._coarseParametrization._COORDS),
             nb_ref=2*ref_plot,Flag=Output))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT7-coarse%0.2d'%i,0)
-        
+
         SOL,u = rsol.reconstruction(
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(

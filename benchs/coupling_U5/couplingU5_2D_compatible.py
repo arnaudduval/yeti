@@ -31,9 +31,9 @@ import numpy as np
 import scipy.sparse as sp
 
 # IGA module
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
 
 FILENAME = 'testU5_2D_compatible'
 

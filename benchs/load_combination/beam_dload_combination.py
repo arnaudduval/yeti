@@ -30,9 +30,9 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-import reconstructionSOL as rsol
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 
 # Read data and create IGAparametrization object
 modeleIGA = IGAparametrization(filename='inputs_beam/beam-dloadF2F4')

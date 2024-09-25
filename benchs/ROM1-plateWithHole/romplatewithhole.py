@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -24,10 +24,10 @@ Create a simple Reduced Order Model.
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # Read data and create IGAparametrization object
 modelIGA = IGAparametrization(filename='parametericPlateWithHole')
@@ -86,7 +86,7 @@ def buildsystem(designvar):
     designvar : float
         The value of the design variable, i.e. the radius of the hole.
         Should be between 0.05 and 0.95.
-    
+
     Returns
     -------
     matK : sparse matrix
@@ -112,13 +112,13 @@ def buildsystem(designvar):
 
 def refsolution(designvar):
     '''Perform the IGA for a given geometrical configuration.
-    
+
     Parameters
     ----------
     designvar : float
         The value of the design variable, i.e. the radius of the hole.
         Should be between 0.05 and 0.95.
-    
+
     Returns
     -------
     vecU : array of floats
@@ -176,13 +176,13 @@ indices = matK.indices.copy()
 indptr = matK.indptr.copy()
 def buildapproxsystem(designvar):
     '''Build the finite element operators as approximated by the ROM for a given geometrical configuration.
-    
+
     Parameters
     ----------
     designvar : float
         The value of the design variable, i.e. the radius of the hole.
         Should be between 0.05 and 0.95.
-    
+
     Returns
     -------
     matK : sparse matrix
@@ -192,14 +192,14 @@ def buildapproxsystem(designvar):
     '''
     if designvar<0.05 or designvar>0.95:
         raise ValueError('Input parameter should be a float in interval [0.05, 0.95].')
-    
+
     modelIGA._design_parameters[designvar_name] = designvar
     modelIGA.shapeupdate()
-    
+
     alphaK = np.array([c(designvar) for c in coefK])
     dataK = basisK.dot(alphaK)
     matK = sp.csc_matrix((dataK,indices,indptr))
-    
+
     alphaF = np.array([c(designvar) for c in coefF])
     vecF = basisF.dot(alphaF)
     return matK,vecF
@@ -243,13 +243,13 @@ print('  Done.')
 
 def romsolution(designvar):
     '''Get the solution using the Reduced Order Model.
-    
+
     Parameters
     ----------
     designvar : float
         The value of the design variable, i.e. the radius of the hole.
         Should be between 0.05 and 0.95.
-    
+
     Returns
     -------
     vecU : array of floats
@@ -257,13 +257,13 @@ def romsolution(designvar):
     '''
     if designvar<0.05 or designvar>0.95:
         raise ValueError('Input parameter should be a float in interval [0.05, 0.95].')
-    
+
     matK,vecF = buildapproxsystem(designvar)
-    
+
     matUKU = basisU.T.dot(matK.dot(basisU))
     vecUF = basisU.T.dot(vecF)
     alphaU = scipy_solve(matUKU,vecUF,assume_a='pos')
-    
+
     vecU = basisU.dot(alphaU)
     return vecU
 
@@ -276,12 +276,12 @@ i = 0
 nb_ref_visu = np.array([3, 3, 0])         # Refinement for visu: [xi, eta, zeta]
 output = np.array([True, True, False])  # Output type: [disp, stress, VM]
 for designvar_value in sample:
-    
+
     Uiga = refsolution(designvar_value)
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Uiga))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
         'igasolution%02d'%i,SOL.T, nb_ref=nb_ref_visu, Flag=output))
-    
+
     Urom = romsolution(designvar_value)
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Urom))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
@@ -289,7 +289,7 @@ for designvar_value in sample:
     SOL, u = rsol.reconstruction(**modelIGA.get_inputs4solution(Urom-Uiga))
     pp.generatevtu(*modelIGA.get_inputs4postprocVTU(
         'romerror%02d'%i,SOL.T, nb_ref=nb_ref_visu, Flag=np.array([True,False,False])))
-    
+
     errorROM.append(np.linalg.norm(Uiga - Urom)/np.linalg.norm(Uiga))
     i += 1
 

@@ -24,11 +24,11 @@ A test to validate volume gradient computation for embedded solid element.
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import OPTmodelling
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 
 def static_study():

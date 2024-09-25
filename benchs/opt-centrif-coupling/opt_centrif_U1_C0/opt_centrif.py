@@ -26,9 +26,9 @@ Results (design variables values) are compared with reference numerical results.
 import numpy as np
 
 # yeti modules
-from preprocessing.igaparametrization import IGAparametrization, OPTmodelling
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, OPTmodelling
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
 if __name__ == "__main__":
 

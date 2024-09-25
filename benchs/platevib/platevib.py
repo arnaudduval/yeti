@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -27,11 +27,11 @@ import scipy.sparse as sp
 import sys
 
 # IGA module
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from massmtrx import build_cmassmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.massmtrx import build_cmassmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # Base path for .inp and .NB files
 FILENAME = 'plateVolume'
@@ -56,7 +56,7 @@ modeleIGA.refine(nb_ref,nb_deg)
 
 # Build stiffness matrix
 data,row,col,Fb = build_stiffmatrix( *modeleIGA.get_inputs4system_elemStorage() )
-Kside = sp.coo_matrix((data,(row,col)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot), 
+Kside = sp.coo_matrix((data,(row,col)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot),
                       dtype='float64').tocsc()
 Ktot  = Kside + Kside.transpose()
 ndof = modeleIGA._nb_dof_free
@@ -66,7 +66,7 @@ del Kside,data,row,col,Ktot
 
 # Build mass matrix
 data,row,col = build_cmassmatrix( *modeleIGA.get_inputs4massmat() )
-Mside = sp.coo_matrix((data,(row,col)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot), 
+Mside = sp.coo_matrix((data,(row,col)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot),
                           dtype='float64').tocsc()
 Mtot  = Mside + Mside.transpose()
 M2solve = Mtot[idof,:][:,idof]

@@ -2,15 +2,15 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
@@ -21,11 +21,11 @@ import sys
 import time
 
 # yeti modules
-from preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 modeleIGA = IGAparametrization(filename='centrif_U1_cpl_U1_1load')
 
@@ -57,7 +57,7 @@ def shapemodif(coords0, igapara, var):
     for y in np.unique(modeleIGA._COORDS[1, icp]):
         # WARNING exact real value comparison is unsafe
         jcp = np.where(modeleIGA._COORDS[1, :] == y)[0]
-    
+
         igapara._COORDS[2, jcp[0]] = - (mindim + var[i]*(maxdim-mindim))/2.
         igapara._COORDS[2, jcp[1]] = - (mindim + var[i]*(maxdim-mindim))/2.
         igapara._COORDS[2, jcp[2]] =   (mindim + var[i]*(maxdim-mindim))/2.
@@ -76,9 +76,9 @@ nb_ref[:,1] = np.array([2, 2, 2])
 nb_ref[:, 2] = np.array([2, 2, 0])
 nb_deg[:, 2] = np.array([1, 1, 0])
 
-# Define optim problem 
+# Define optim problem
 optPB = OPTmodelling(modeleIGA, nb_var, shapemodif,
-                     nb_degreeElevationByDirection = nb_deg, 
+                     nb_degreeElevationByDirection = nb_deg,
                      nb_refinementByDirection      = nb_ref)
 
 # OPTIMISATION
@@ -117,9 +117,9 @@ def saveXk(xk):
     pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
             'OPT3-fine%0.2d'%iopt,  SOL.transpose(), nb_ref=3*np.array([1,1,1]),
             Flag=np.array([True, False, False])))
-    
+
     iopt += 1
-    
+
     return None
 
 # Bounds for design variables

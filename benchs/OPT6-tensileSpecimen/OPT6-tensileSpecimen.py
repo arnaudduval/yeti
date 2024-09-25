@@ -3,27 +3,27 @@
 
 # This file is part of Yeti.
 #
-# Yeti is free software: you can redistribute it and/or modify it under the terms 
-# of the GNU Lesser General Public License as published by the Free Software 
+# Yeti is free software: you can redistribute it and/or modify it under the terms
+# of the GNU Lesser General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
 #
-# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+# Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 # PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along 
+# You should have received a copy of the GNU Lesser General Public License along
 # with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
-This cas is described in the following publication : 
-Hirschler, T., Bouclier, R., Duval, A. et al. 
-A New Lighting on Analytical Discrete Sensitivities in the Context of IsoGeometric Shape Optimization. 
+This cas is described in the following publication :
+Hirschler, T., Bouclier, R., Duval, A. et al.
+A New Lighting on Analytical Discrete Sensitivities in the Context of IsoGeometric Shape Optimization.
 Arch Computat Methods Eng (2020). https://doi.org/10.1007/s11831-020-09458-6
 
-The shape of a 2D solid tensile specimen is optimized versus its maximal Von Mises stress 
+The shape of a 2D solid tensile specimen is optimized versus its maximal Von Mises stress
 Resuting shape is compared to reference numerical results
 
 """
@@ -35,9 +35,9 @@ import sys
 import time
 
 #IGA module
-from preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
 
 # Selection of .INP and .NB file
@@ -66,7 +66,7 @@ def heightMidPatch(coords0,igapara,var):
 # --
 # Build the optimization pb
 
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 nb_degAN = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_refAN = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
@@ -77,12 +77,12 @@ nb_degAN = np.maximum(nb_degAN-nb_degDV,0)
 nb_refAN = np.maximum(nb_refAN-nb_refDV,0)
 
 optPB = OPTmodelling(modeleIGA, nb_var, heightMidPatch,
-                     nb_degreeElevationByDirection = nb_degAN, 
+                     nb_degreeElevationByDirection = nb_degAN,
                      nb_refinementByDirection      = nb_refAN)
 
 
 # --
-# Initialization and Definition of the objective and constraints (using nlopt) 
+# Initialization and Definition of the objective and constraints (using nlopt)
 
 Pnorm = 40
 x0  = np.zeros(nb_var)
@@ -104,7 +104,7 @@ def vonmisesAggregate(xVM,gradVM):
         print('\n--')
         print('Iter %3i' % i)
         gradVM[:] = optPB.compute_gradVonMisesAggreg_AN(xVM,pnorm=Pnorm)/phi0
-        
+
         # postprocessing
         if phi<currentmin:
             iplt += 1
@@ -113,7 +113,7 @@ def vonmisesAggregate(xVM,gradVM):
                 'OPT6-coarse%0.2d'%iplt,np.zeros_like(optPB._coarseParametrization._COORDS)[:2],
                 nb_ref=2*ref_plot,Flag=Output))
             optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT6-coarse%0.2d'%iplt,0)
-            
+
             SOL,u = rsol.reconstruction(
                 **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
             pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(

@@ -481,7 +481,7 @@ class OPTmodelling:
         return dervWint,dervWext
 
     def _set_greville(self):
-        from fitting.interpolate import grevilleabscissae
+        from ...fitting.interpolate import grevilleabscissae
         pts = []
         for ipatch in np.arange(self._fineParametrization._nb_patch):
             u = self._fineParametrization._Ukv[ipatch]

@@ -32,8 +32,8 @@ import copy
 import numpy as np
 import scipy.sparse as sp
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
 
 if __name__ == '__main__':
     cases = []
