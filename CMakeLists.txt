@@ -87,10 +87,17 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
     set(FCOMPILER "--fcompiler=intelem")
 endif()
 
-subdirs(src doc)
+subdirs(src)
 
-enable_testing()
-# Copy benchs to build directory
-add_custom_target(benchs_init DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/benchs)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/benchs DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-subdirs(benchs)
+if(LEGACY)
+    enable_testing()
+    # Copy benchs to build directory
+    add_custom_target(benchs_init DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/benchs)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/benchs DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    subdirs(benchs)
+
+    # Copy pyproject.toml file to build/doc directory to handle package version
+    add_custom_target(doc_init DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doc/pyproject.toml)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/doc)
+    subdirs(doc)
+endif()
