@@ -15,8 +15,8 @@ examples/*/results/*.vtk
 examples/*/results/*.vtu
 examples/*/results/*.txt
 examples/*/results/*.png
-doc/doctrees
-doc/html
+docs/doctrees
+docs/html
 
 
 
