@@ -29,11 +29,11 @@ import sys
 import numpy as np
 
 # IGA module
-import reconstructionSOL as rsol
-from preprocessing.igaparametrization import IGAparametrization,    \
+import yeti_iga.reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization,    \
                                              IGAmanip as manip,     \
                                              OPTmodelling
-import postprocessing.postproc as pp
+import yeti_iga.postprocessing.postproc as pp
 
 if __name__ == "__main__":
     # Base path for .inp and .NB files
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         thickness
         """
         var = (H_MAX - H_MIN)*var + H_MIN
-        
+
         igapara.coords[:, :] = coords0[:, :]
         igapara.coords[2, botcps] = -0.5 * ((H_MAX - H_MIN)*var + H_MIN)
         igapara.coords[2, topcps] = 0.5 * ((H_MAX-H_MIN)*var + H_MIN)
