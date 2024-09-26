@@ -21,7 +21,7 @@ Test analytical gradients computation in the case of shape optimization of a 3D 
 versus 2 target eigenfrequencies
 """
 
-# Python module
+import os
 import numpy as np
 
 #IGA module
@@ -30,11 +30,9 @@ from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 N_TARGET_FREQUENCIES = 2
 
-# Base path for .inp and .NB files
-FILENAME = 'plateVolume'
-
 # Creation of the IGA object
-modeleIGA = IGAparametrization(filename=FILENAME)
+script_dir = os.path.dirname(os.path.realpath(__file__))
+modeleIGA = IGAparametrization(filename=f'{script_dir}/plateVolume')
 
 # Refine IGA object along 1st and 2nd directions
 nb_deg = np.array([1,1,0])

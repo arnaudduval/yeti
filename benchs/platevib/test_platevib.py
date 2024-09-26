@@ -21,7 +21,7 @@ Compute eigenfrequencies of a plate modeled with 3D solid elements
 Results a compared with numerical reference
 """
 
-# Python module
+import os
 import numpy as np
 import scipy.sparse as sp
 import sys
@@ -33,11 +33,9 @@ from yeti_iga.massmtrx import build_cmassmatrix
 import yeti_iga.reconstructionSOL as rsol
 import yeti_iga.postprocessing.postproc as pp
 
-# Base path for .inp and .NB files
-FILENAME = 'plateVolume'
-
-# Create IGA object
-modeleIGA = IGAparametrization(filename=FILENAME)
+# Creation of the IGA object
+script_dir = os.path.dirname(os.path.realpath(__file__))
+modeleIGA = IGAparametrization(filename=f'{script_dir}/plateVolume')
 
 # Refine modele
 nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)

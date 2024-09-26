@@ -32,7 +32,7 @@ Resutling hole shape is compared to a circle
 
 """
 
-# Python module
+import os
 import numpy as np
 
 # IGA module
@@ -40,7 +40,8 @@ from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 # Creation of the IGA object
-modeleIGA = IGAparametrization(filename='plateWithHole')
+script_dir = os.path.dirname(os.path.realpath(__file__))
+modeleIGA = IGAparametrization(filename=f'{script_dir}/plateWithHole')
 
 # Shape Parametrization
 NB_VAR = 6
