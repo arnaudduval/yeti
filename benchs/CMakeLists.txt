@@ -35,7 +35,7 @@ endif(RUN_LONG_TESTS)
 add_test(NAME test_grad_an_platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/test_grad_an_platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 
 # Optimize compliance with volume kept constant, full analytic gradients, 2D solid structure
-add_test(NAME OPT1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT1-plateWithHole/OPT1-plateWithHole.py WORKING_DIRECTORY ${BENCH_PATH}/OPT1-plateWithHole)
+add_test(NAME test_grad_plate_with_hole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/plateWithHole/test_grad_plate_with_hole.py WORKING_DIRECTORY ${BENCH_PATH}/plateWithHole)
 
 # Optimize compliance with volume kept constant, full analytic gradients, Kirchhoff-Love shell
 add_test(NAME OPT2-squareShellRoof COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT2-squareShellRoof/OPT2-squareShellRoof.py WORKING_DIRECTORY ${BENCH_PATH}/OPT2-squareShellRoof)
@@ -208,7 +208,7 @@ add_test(NAME vtu_output_2patchs_coupling
 set_tests_properties(
                      test_platevib
                      test_grad_an_platevib
-                     OPT1-plateWithHole
+                     test_grad_plate_with_hole
                      OPT2-squareShellRoof
                      OPT4-cantileverBeam
                      OPT5-squareShellRoofDisp
