@@ -20,7 +20,7 @@ set(BENCH_PATH ${CMAKE_BINARY_DIR}/benchs)
 set(RUN_LONG_TESTS OFF CACHE BOOL "Run long duration tests")
 
 # Compute eigenvalues, 3D solid
-add_test(NAME platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+add_test(NAME test_platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/test_platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 
 # Optimize with eigenvalues objective function
 # Finitie differences
@@ -32,7 +32,7 @@ if(RUN_LONG_TESTS)
     add_test(NAME OPTplatevib_semi_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_semi_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 endif(RUN_LONG_TESTS)
 # Full analytic
-add_test(NAME OPTplatevib_AN COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/OPTplatevib_AN.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
+add_test(NAME test_grad_an_platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/platevib/test_grad_an_platevib.py WORKING_DIRECTORY ${BENCH_PATH}/platevib)
 
 # Optimize compliance with volume kept constant, full analytic gradients, 2D solid structure
 add_test(NAME OPT1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT1-plateWithHole/OPT1-plateWithHole.py WORKING_DIRECTORY ${BENCH_PATH}/OPT1-plateWithHole)
@@ -206,8 +206,8 @@ add_test(NAME vtu_output_2patchs_coupling
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
 
 set_tests_properties(
-                     platevib
-                     OPTplatevib_AN
+                     test_platevib
+                     test_grad_an_platevib
                      OPT1-plateWithHole
                      OPT2-squareShellRoof
                      OPT4-cantileverBeam

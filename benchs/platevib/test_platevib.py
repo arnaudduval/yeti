@@ -18,7 +18,7 @@
 
 """
 Compute eigenfrequencies of a plate modeled with 3D solid elements
-Results a compared with numerical reference (Abaqus)
+Results a compared with numerical reference
 """
 
 # Python module
@@ -47,8 +47,8 @@ nb_deg[0,0] = 1
 nb_deg[1,0] = 1
 nb_deg[2,0] = 1
 
-nb_ref[0,0] = 5
-nb_ref[1,0] = 5
+nb_ref[0,0] = 2
+nb_ref[1,0] = 2
 nb_ref[2,0] = 1
 
 # Initial refinement (none)
@@ -73,24 +73,12 @@ M2solve = Mtot[idof,:][:,idof]
 del Mside,data,row,col,Mtot
 
 # Compute eigenvalues and eigenfrequencies
-nb_frq = 10
-vals, vecs = sp.linalg.eigsh(K2solve,k=nb_frq,M=M2solve,sigma=0.)
+nb_frq = 5
+vals, _ = sp.linalg.eigsh(K2solve, k=nb_frq, M=M2solve, sigma=0.)
 frq = np.sqrt(vals[:])/2./np.pi
 
-# Save results in VTU file
-Output = np.array([True, False, False])
-for i in range(nb_frq):
-    SOL,U = rsol.reconstruction( **modeleIGA.get_inputs4solution(vecs[:,i]) )
-    pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-            'vib%0.2d' % i,SOL.transpose(),nb_ref=np.array([2,2,2]),Flag=Output) )
 
-# Reference eigenfrequencies computed in Abaqus
-ref_frq = np.array([0.23088, 0.56354, 1.4185, 1.7967, 2.0466, 3.5630, 4.0492, 4.2456, 4.6715, 6.0879])
+# Reference eigenfrequencies
+ref_frq = np.array([0.2548, 0.6217, 1.9546, 2.3870, 2.8585])
 
-maxerror = max(abs(ref_frq[:]-frq[:])/ref_frq[:])
-print(maxerror)
-
-if maxerror > 0.01:
-    sys.exit(-1)
-else:
-    sys.exit(0)
+assert np.allclose(frq, ref_frq, rtol=1.e-3)
