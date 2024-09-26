@@ -1643,7 +1643,7 @@ class IGAparametrization:
 
         ndofel = self._nnode*self._mcrd
         ndofel_list = np.repeat(ndofel*(ndofel + 1) / 2, self._elementsByPatch)
-        nb_data = np.sum(activeElem*ndofel_list)
+        nb_data = int(np.sum(activeElem*ndofel_list))
 
         if np.shape(COORDS) != np.shape(self._COORDS):
             COORDS = self._COORDS
