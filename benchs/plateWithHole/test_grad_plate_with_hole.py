@@ -39,51 +39,59 @@ import numpy as np
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
-# Creation of the IGA object
-script_dir = os.path.dirname(os.path.realpath(__file__))
-modeleIGA = IGAparametrization(filename=f'{script_dir}/plateWithHole')
 
-# Shape Parametrization
-NB_VAR = 6
-
-
-def holeshape(coords0, igapara, var):
+def test_grad_plate_with_hole():
     """
-    Define plate hole shape by moving controls points as a function of design
-    variables.
+    Test computed gradients values
     """
-    move_x = np.arange(0, 3, dtype=np.intp)
-    move_y = np.arange(1, 4, dtype=np.intp)
 
-    igapara.coords[:, :] = coords0[:, :]
-    igapara.coords[0, move_x] += var[:move_x.size]
-    igapara.coords[1, move_y] += var[move_x.size:]
+    # Creation of the IGA object
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(filename=f'{script_dir}/plateWithHole')
+
+    # Shape Parametrization
+    nb_var = 6
+
+    def holeshape(coords0, igapara, var):
+        """
+        Define plate hole shape by moving controls points as a function of
+        design variables.
+        """
+        move_x = np.arange(0, 3, dtype=np.intp)
+        move_y = np.arange(1, 4, dtype=np.intp)
+
+        igapara.coords[:, :] = coords0[:, :]
+        igapara.coords[0, move_x] += var[:move_x.size]
+        igapara.coords[1, move_y] += var[move_x.size:]
+
+    # Build the optimization pb
+    nb_deg = np.array([1, 1, 0])
+    nb_ref = np.array([3, 4, 0])
+
+    optim_problem = OPTmodelling(iga_model, nb_var, holeshape,
+                                 nb_degreeElevationByDirection=nb_deg,
+                                 nb_refinementByDirection=nb_ref)
+
+    xk_test = np.array([0.19723271, -0.07043156, -0.06654755, 0.06654755,
+                        0.07043156, -0.19723271])
+
+    ref_volume = 15.500081105173459
+    ref_compliance = 0.00926406727182702
+    ref_gradvol = np.array([0.21908539,  0.31977025,  0.21193217, -0.21193217,
+                            -0.31977025, -0.21908539])
+    ref_gradcomp = np.array([-0.0004263, -0.00062404, -0.00042611, 0.00042611,
+                             0.00062404, 0.0004263])
+
+    assert np.allclose(optim_problem.compute_volume(xk_test),
+                       ref_volume, rtol=1.e-5)
+    assert np.allclose(optim_problem.compute_compliance_discrete(xk_test),
+                       ref_compliance, rtol=1.e-5)
+
+    assert np.allclose(optim_problem.compute_gradVolume_AN(xk_test),
+                       ref_gradvol, rtol=1.e-5)
+    assert np.allclose(optim_problem.compute_gradCompliance_AN(xk_test),
+                       ref_gradcomp, rtol=1.e-5)
 
 
-# Build the optimization pb
-nb_deg = np.array([1, 1, 0])
-nb_ref = np.array([3, 4, 0])
-
-optPB = OPTmodelling(modeleIGA, NB_VAR, holeshape,
-                     nb_degreeElevationByDirection=nb_deg,
-                     nb_refinementByDirection=nb_ref)
-
-
-xk_test = np.array([0.19723271, -0.07043156, -0.06654755, 0.06654755,
-                    0.07043156, -0.19723271])
-
-REF_VOLUME = 15.500081105173459
-REF_COMPLIANCE = 0.00926406727182702
-REF_GRADVOL = np.array([0.21908539,  0.31977025,  0.21193217, -0.21193217,
-                        -0.31977025, -0.21908539])
-REF_GRADCOMP = np.array([-0.0004263, -0.00062404, -0.00042611, 0.00042611,
-                         0.00062404, 0.0004263])
-
-assert np.allclose(optPB.compute_volume(xk_test), REF_VOLUME, rtol=1.e-5)
-assert np.allclose(optPB.compute_compliance_discrete(xk_test), REF_COMPLIANCE,
-                   rtol=1.e-5)
-
-assert np.allclose(optPB.compute_gradVolume_AN(xk_test), REF_GRADVOL,
-                   rtol=1.e-5)
-assert np.allclose(optPB.compute_gradCompliance_AN(xk_test), REF_GRADCOMP,
-                   rtol=1.e-5)
+if __name__ == '__main__':
+    test_grad_plate_with_hole()
