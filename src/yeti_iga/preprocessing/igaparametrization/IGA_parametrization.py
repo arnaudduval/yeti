@@ -2441,6 +2441,7 @@ class IGAparametrization:
 
     @coords.setter
     def coords(self, coords):
+        assert coords.shape == self._COORDS.shape
         self._COORDS = coords
 
     @property
@@ -2449,6 +2450,10 @@ class IGAparametrization:
         Total number of patchs in the model
         """
         return self._nb_patch
+
+    @nb_patch.setter
+    def nb_patch(self, nb_patch):
+        raise ValueError("Cannot set number of patchs.")
 
     @property
     def nb_dof_free(self):
@@ -2470,4 +2475,32 @@ class IGAparametrization:
         Total number of degrees of freedom
         """
         return self._nb_dof_tot
+
+    @property
+    def n_kv(self):
+        """
+        knot vectors size for all patchs
+        """
+        return self._Nkv
+
+    @property
+    def j_pqr(self):
+        """
+        Degrees for all patchs
+        """
+        return self._Jpqr
+
+    @property
+    def nb_cp(self):
+        """
+        TODO : document this property
+        """
+        return self._nb_cp
+
+    @property
+    def dim(self):
+        """
+        TODO: document this property
+        """
+        return self._dim
 

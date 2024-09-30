@@ -38,7 +38,7 @@ add_test(NAME test_grad_an_platevib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/
 add_test(NAME test_grad_plate_with_hole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/plateWithHole/test_grad_plate_with_hole.py WORKING_DIRECTORY ${BENCH_PATH}/plateWithHole)
 
 # Optimize compliance with volume kept constant, full analytic gradients, Kirchhoff-Love shell
-add_test(NAME OPT2-squareShellRoof COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT2-squareShellRoof/OPT2-squareShellRoof.py WORKING_DIRECTORY ${BENCH_PATH}/OPT2-squareShellRoof)
+add_test(NAME test_grad_square_shell_roof COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/squareShellRoof/test_grad_square_shell_roof.py WORKING_DIRECTORY ${BENCH_PATH}/squareShellRoof)
 
 # Optimize compliance with volume kept constant, full analytic gradients, 3D solid
 if(RUN_LONG_TESTS)
@@ -209,7 +209,7 @@ set_tests_properties(
                      test_platevib
                      test_grad_an_platevib
                      test_grad_plate_with_hole
-                     OPT2-squareShellRoof
+                     test_grad_square_shell_roof
                      OPT4-cantileverBeam
                      OPT5-squareShellRoofDisp
                      OPT6-tensileSpecimen
