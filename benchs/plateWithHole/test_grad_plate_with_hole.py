@@ -28,8 +28,6 @@ Arch Computat Methods Eng (2020). https://doi.org/10.1007/s11831-020-09458-6
 
 The shape of a 2D solid plate with a hole is optimized versus its compliance
 Volume is kept constant
-Resutling hole shape is compared to a circle
-
 """
 
 import os
