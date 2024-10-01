@@ -49,7 +49,7 @@ endif(RUN_LONG_TESTS)
 add_test(NAME test_grad_cantilever_beam COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/cantileverBeam/test_grad_cantilever_beam.py WORKING_DIRECTORY ${BENCH_PATH}/cantileverBeam)
 
 # Optimize max displacement with volume kept constant, full analytic gradients, Kirchhoff-love shell
-add_test(NAME OPT5-squareShellRoofDisp COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT5-squareShellRoofDisp/OPT5-squareShellRoofDisp.py WORKING_DIRECTORY ${BENCH_PATH}/OPT5-squareShellRoofDisp)
+add_test(NAME test_grad_square_shell_roof_disp COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/squareShellRoofDisp/test_grad_square_shell_roof_disp.py WORKING_DIRECTORY ${BENCH_PATH}/squareShellRoofDisp)
 
 # Optimize max Von Mises stress, full analytic gradients, 2D solid structure
 add_test(NAME OPT6-tensileSpecimen COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT6-tensileSpecimen/OPT6-tensileSpecimen.py WORKING_DIRECTORY ${BENCH_PATH}/OPT6-tensileSpecimen)
@@ -211,7 +211,7 @@ set_tests_properties(
                      test_grad_plate_with_hole
                      test_grad_square_shell_roof
                      test_grad_cantilever_beam
-                     OPT5-squareShellRoofDisp
+                     test_grad_square_shell_roof_disp
                      OPT6-tensileSpecimen
                      OPT7-catenary
                      OPT8-ElephantTrunk
