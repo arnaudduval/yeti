@@ -55,7 +55,7 @@ add_test(NAME test_grad_square_shell_roof_disp COMMAND ${Python3_EXECUTABLE} ${B
 add_test(NAME test_grad_tensile_specimen COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/tensileSpecimen/test_grad_tensile_specimen.py WORKING_DIRECTORY ${BENCH_PATH}/tensileSpecimen)
 
 # Optimize bending moment with volume kept constant, full analytic gradients, Kirchhoff-Love shell
-add_test(NAME OPT7-catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT7-catenary/OPT7-catenary.py WORKING_DIRECTORY ${BENCH_PATH}/OPT7-catenary)
+add_test(NAME test_grad_catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/catenary/test_grad_catenary.py WORKING_DIRECTORY ${BENCH_PATH}/catenary)
 
 # optimize eigenfrequencies with volume kept constant, full analytic gradients, 3D solid
 add_test(NAME OPT8-ElephantTrunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT8-ElephantTrunk/OPT8-ElephantTrunk.py WORKING_DIRECTORY ${BENCH_PATH}/OPT8-ElephantTrunk)
@@ -213,7 +213,7 @@ set_tests_properties(
                      test_grad_cantilever_beam
                      test_grad_square_shell_roof_disp
                      test_grad_tensile_specimen
-                     OPT7-catenary
+                     test_grad_catenary
                      OPT8-ElephantTrunk
                      dload-triangle-1
                      dload-triangle-2

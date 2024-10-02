@@ -2504,3 +2504,11 @@ class IGAparametrization:
         """
         return self._dim
 
+    @property
+    def ind_cp_by_patch(self):
+        """
+        TODO: document this property
+        """
+        return self._indCPbyPatch
+
+
