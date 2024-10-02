@@ -52,7 +52,7 @@ add_test(NAME test_grad_cantilever_beam COMMAND ${Python3_EXECUTABLE} ${BENCH_PA
 add_test(NAME test_grad_square_shell_roof_disp COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/squareShellRoofDisp/test_grad_square_shell_roof_disp.py WORKING_DIRECTORY ${BENCH_PATH}/squareShellRoofDisp)
 
 # Optimize max Von Mises stress, full analytic gradients, 2D solid structure
-add_test(NAME OPT6-tensileSpecimen COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT6-tensileSpecimen/OPT6-tensileSpecimen.py WORKING_DIRECTORY ${BENCH_PATH}/OPT6-tensileSpecimen)
+add_test(NAME test_grad_tensile_specimen COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/tensileSpecimen/test_grad_tensile_specimen.py WORKING_DIRECTORY ${BENCH_PATH}/tensileSpecimen)
 
 # Optimize bending moment with volume kept constant, full analytic gradients, Kirchhoff-Love shell
 add_test(NAME OPT7-catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT7-catenary/OPT7-catenary.py WORKING_DIRECTORY ${BENCH_PATH}/OPT7-catenary)
@@ -212,7 +212,7 @@ set_tests_properties(
                      test_grad_square_shell_roof
                      test_grad_cantilever_beam
                      test_grad_square_shell_roof_disp
-                     OPT6-tensileSpecimen
+                     test_grad_tensile_specimen
                      OPT7-catenary
                      OPT8-ElephantTrunk
                      dload-triangle-1
