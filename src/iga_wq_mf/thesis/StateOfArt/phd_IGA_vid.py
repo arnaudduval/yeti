@@ -3,10 +3,11 @@ from pysrc.lib.lib_base import (createUniformKnotvector_Rmultiplicity, evalDersB
 from pysrc.lib.lib_quadrules import *
 from pysrc.lib.lib_geomdl import Geomdl
 from pysrc.lib.lib_part import part
+import imageio
 
 # Select folder
 full_path = os.path.realpath(__file__)
-folder = os.path.dirname(full_path) + '/results/bsplines/'
+folder = os.path.dirname(full_path) + '/results/videos/'
 
 def plot2DGeo(model:part, sampleSize=101):
 	"Plots a 2D geometry "
@@ -38,7 +39,7 @@ def plot2DGeo(model:part, sampleSize=101):
 		return
 
 	ctrlpts = model.ctrlpts
-	evalpts = model.interpolateMeshgridField()[0]
+	evalpts = model.interpolateMeshgridField(sampleSize=sampleSize)[0]
 
 	# Get basis using fortran
 	basis, indices = [], []
@@ -79,8 +80,8 @@ def plot2DGeo(model:part, sampleSize=101):
 
 
 # Set global variables
-CASE      = 2
-extension = '.pdf'
+CASE      = 0
+extension = '.png'
 
 if CASE == 0: # B-spline curve
 
@@ -110,19 +111,21 @@ if CASE == 0: # B-spline curve
 		ax.legend(loc='upper right')
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
-		return
+		return filename
 
+	images = []
 	for i, yoffset in enumerate(np.linspace(-2.5, 0., 16)):
-		case0(folder, str(i)+extension, yoffset=yoffset)
+		filename = case0(folder, str(i)+extension, yoffset=yoffset)
+		images.append(imageio.imread(filename))
+	images += images[-2::-1] 
+	imageio.mimsave(folder + 'bspline1D.gif', images)
 	
-elif CASE == 1: # Univariate functions
-
 	def case1(folder, extension): 
 		# Set filename
-		filename = folder + 'BSplinebasis' + extension
+		filename = folder + 'BSplinebasis1D' + extension
 
 		# B-spline properties 
-		degree, nbel = 3, 3
+		degree = 3
 		knotvector = np.array([0., 0., 0., 0., 0.25, 0.75, 0.75, 1., 1., 1., 1.])
 
 		quadRule   = QuadratureRules(degree, knotvector)
@@ -146,7 +149,7 @@ elif CASE == 1: # Univariate functions
 	
 	case1(folder, extension)
 
-elif CASE == 2: # Bivariate functions
+elif CASE == 1: # Bivariate functions
 	
 	def case2(folder, extension):
 		# Set filename
@@ -207,8 +210,6 @@ elif CASE == 2: # Bivariate functions
 	
 	case2(folder, extension)
 
-elif CASE == 3:
-
 	# Set filename
 	filename = folder + 'BSplinesurface'
 
@@ -219,8 +220,16 @@ elif CASE == 3:
 	modelPhy = part(modelIGA, quadArgs={'quadrule':'iga'})
 	XoriginalPos = modelPhy.ctrlpts[1, 8]
 	YoriginalPos = modelPhy.ctrlpts[0, 8]
+
+	images = []
 	for i, offset in enumerate(np.linspace(-0.25, 0.1, 16)):
 		modelPhy.ctrlpts[0, 8] = XoriginalPos + offset
 		modelPhy.ctrlpts[1, 8] = YoriginalPos + offset
 		fig = plot2DGeo(modelPhy)
-		fig.savefig(filename+str(i)+extension, dpi=300) 
+		newfilename = filename+str(i)+extension
+		fig.savefig(newfilename, dpi=300) 
+		images.append(imageio.imread(newfilename))
+
+	images += images[-2::-1] 
+	imageio.mimsave(folder + 'bspline2D.gif', images)
+	

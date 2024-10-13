@@ -94,8 +94,8 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-FIGCASE = 8
-EXTENSION = '.pdf'
+FIGCASE = 0
+EXTENSION = '.png'
 
 if FIGCASE == 0: # B-spline curve
 
