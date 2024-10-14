@@ -33,11 +33,19 @@ def cropImage(filename):
 	Image.fromarray(ROI).save(filename)
 	return 
 
-def vtk2png(folder, filename=None, fieldname='temp', 
+def vtk2png(folder=None, filename=None, fieldname='temp', 
 			clim=None, cmap='viridis', title=None, fmt="%.1f",
 			n_labels=3, position_y=0.1, n_colors=101):		
 
 	assert filename is not None, "add filename" 
+
+	if folder == None: 
+		full_path = os.path.realpath(__file__)
+		dirname = os.path.dirname
+		folder = dirname(dirname(full_path)) + '/results/'
+	if not os.path.isdir(folder): os.mkdir(folder)
+	print("File saved in %s" %folder)
+
 	if title is None: title = deepcopy(fieldname)
 	fileVTK = folder + filename
 	reader = pv.get_reader(fileVTK + '.vts')
