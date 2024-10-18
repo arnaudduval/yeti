@@ -58,7 +58,7 @@ add_test(NAME test_grad_tensile_specimen COMMAND ${Python3_EXECUTABLE} ${BENCH_P
 add_test(NAME test_grad_catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/catenary/test_grad_catenary.py WORKING_DIRECTORY ${BENCH_PATH}/catenary)
 
 # optimize eigenfrequencies with volume kept constant, full analytic gradients, 3D solid
-add_test(NAME OPT8-ElephantTrunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/OPT8-ElephantTrunk/OPT8-ElephantTrunk.py WORKING_DIRECTORY ${BENCH_PATH}/OPT8-ElephantTrunk)
+add_test(NAME test_grad_elephant_trunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ElephantTrunk/test_grad_elephant_trunk.py WORKING_DIRECTORY ${BENCH_PATH}/ElephantTrunk)
 
 # Static analysis with distributed pressure
 add_test(NAME dload-triangle-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_triangular_1.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
@@ -214,7 +214,7 @@ set_tests_properties(
                      test_grad_square_shell_roof_disp
                      test_grad_tensile_specimen
                      test_grad_catenary
-                     OPT8-ElephantTrunk
+                     test_grad_elephant_trunk
                      dload-triangle-1
                      dload-triangle-2
                      dload-uniform
