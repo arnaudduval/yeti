@@ -28,156 +28,79 @@ Arch Computat Methods Eng (2020). https://doi.org/10.1007/s11831-020-09458-6
 
 The shape of a solid 3D elephant trunk is optimized versus its eigenfrequencies
 Volume is kept constant
-Resuting shape is compared to reference numerical results
-
 """
 
-
-# Python module
+import os
 import numpy as np
-import sys
-import time
-import nlopt
 
 # IGA module
-from yeti_iga.preprocessing.igaparametrization import IGAparametrization, IGAmanip as manip
-import yeti_iga.postprocessing.postproc as pp
-import yeti_iga.reconstructionSOL as rsol
-
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, \
+                                                      IGAmanip as manip
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
-# Selection of .INP and .NB file
-# ------------------------------
-modeleIGA = IGAparametrization(filename='elephantTrunk')
+def test_grad_elephant_trunk():
+    """
+    Test computed gradients
+    """
+    # Creation of the IGA object
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(filename=f'{script_dir}/elephantTrunk')
 
-nb_degDV = np.array([0, 0, 1])
-nb_refDV = np.array([0, 0, 2])
+    nb_deg_design = np.array([0, 0, 1])
+    nb_ref_design = np.array([0, 0, 2])
 
-modeleIGA.refine(nb_refDV, nb_degDV)
+    iga_model.refine(nb_ref_design, nb_deg_design)
+    nb_var = int((iga_model.n_kv[2, 0] - iga_model.j_pqr[2, 0] - 1)*2)
 
-# --
-# Shape Parametrization
+    def dilatation(coords0, igapara, var):
+        igapara.coords[:, :] = coords0[:, :]
+        for i in np.arange(0, var.size/2, dtype=np.intp):
+            icps = np.intp(manip.get_directionCP(igapara, 5, 0, i) - 1)
+            igapara.coords[0, icps] *= var[i]
+            igapara.coords[1, icps] *= var[int(i+var.size/2)]
 
-nb_var = int((modeleIGA._Nkv[2, 0] - modeleIGA._Jpqr[2, 0] - 1)*2)
+    nb_deg_analysis = np.maximum(np.array([0, 0, 1]) - nb_deg_design, 0)
+    nb_ref_analysis = np.maximum(np.array([2, 2, 4]) - nb_ref_design, 0)
 
+    optim_problem = OPTmodelling(iga_model, nb_var, dilatation,
+                                 nb_degreeElevationByDirection=nb_deg_analysis,
+                                 nb_refinementByDirection=nb_ref_analysis)
 
-def dilatation(coords0, igapara, var):
-    igapara._COORDS[:, : ] = coords0[:, :]
-    for i in np.arange(0, var.size/2, dtype=np.intp):
-        icps = np.intp(manip.get_directionCP(igapara, 5, 0, i) - 1)
-        igapara._COORDS[0, icps] *= var[i]
-        igapara._COORDS[1, icps] *= var[int(i+var.size/2)]
-    return None
+    nb_freq = 5
+    xk_test = np.array([1.62707153, 1.54842318, 1.2854958, 0.77428138,
+                        0.25, 0.25, 1.80428529, 1.85106827, 1.35227388,
+                        0.62181301, 0.25, 0.25])
+    ref_volume = 39.27003
+    ref_grad_vol = np.array([4.70730, 8.75269, 10.18088, 5.55013, 1.98951,
+                             0.703168, 4.1428859, 7.69870, 9.63348, 6.07530,
+                             2.23462, 0.72312])
+    ref_eigen = np.array([53.94943, 57.40211, 170.11873, 186.88762, 622.07787])
+    ref_grad_eigen = np.array(
+        [[19.67357, 5.17106, 17.16848, 42.10873, 45.12770],
+         [27.29204, 7.29723, 11.52960, 22.96115, -4.84958],
+         [23.97798, 6.24620, -23.81477, -3.10598, -4.52177],
+         [3.55793, -7.50407, 27.63472, 247.38143595, -19.55357],
+         [-20.87234, -38.03131, 17.62084, 242.09844, 36.04903],
+         [-32.5637, -51.4918, -169.18556, -187.67891, -255.1387],
+         [5.93584, 13.87351, 45.06018, 13.30093, 92.47524],
+         [7.62753, 18.37585, 28.37321, 5.64129, 5.94001],
+         [2.91972, 27.01660, -11.94378, -20.10759, 185.69639],
+         [-18.79006, 33.89090, 207.90137, 67.95655, 353.49149],
+         [-35.45262, -12.62862, 240.17743, 20.99953, 707.75118],
+         [-34.59689, -49.42659, -139.29835, -225.96793, -75.76490]])
 
-
-# --
-# Build the optinization pb
-
-nb_degAN = np.maximum(np.array([0, 0, 1]) - nb_degDV, 0)
-nb_refAN = np.maximum(np.array([2, 2, 4]) - nb_refDV, 0)
-
-optPB = OPTmodelling(modeleIGA, nb_var, dilatation,
-                     nb_degreeElevationByDirection=nb_degAN,
-                     nb_refinementByDirection=nb_refAN)
-
-# --
-# Initialization and Definition of the objective and constraints (using nlopt)
-
-Pnorm = 20
-nb_frqAggreg = 2
-nb_frqPlot = 5
-x0 = np.block([np.ones(int(nb_var/2))*1.25, np.ones(int(nb_var/2))])
-vals0, vect0 = optPB.compute_vibrationMode(x0, nb_frqPlot)
-m0 = np.sum((1./vals0[:nb_frqAggreg])**Pnorm)**(1./Pnorm)
-
-i = 0
-freqHistory = np.array([vals0])
-ref_plot = np.array([2, 2, 2])
-Output = np.array([True, False, False])
-
-
-def MAC(vectA, vectB):
-    mat = np.dot(vectA[:, :].T, vectB[:, :])**2.
-    mat /= np.tile(np.diag(vectA[:, :].T.dot(vectA[:, :])),
-                   (vectA.shape[1], 1)).T
-    mat /= np.tile(np.diag(vectB[:, :].T.dot(vectB[:, :])), (vectB.shape[1], 1))
-    return mat
-
-
-def vibration(xV, gradV):
-    global i, m0, freqHistory, vect0
-    valsi, vecti = optPB.compute_vibrationMode(xV, nb_frqPlot)
-    test_switch = np.argmax(MAC(vecti, vect0), axis=1)
-    valsi[:] = valsi[test_switch[:]]
-    vecti[:, :] = vecti[:, test_switch[:]]
-    mi = np.sum((1./valsi[:nb_frqAggreg])**Pnorm)**(1./Pnorm)
-    if gradV.size > 0:
-        i += 1
-        print('\n--')
-        print('Iter %3i' % i)
-
-        gradFq = optPB.compute_gradVibration_AN(xV, nb_frq=nb_frqPlot)
-        gradV[:] = 0.
-        for n in np.arange(nb_frqAggreg):
-            gradV[:] -= gradFq[:, test_switch[n]]*(1./valsi[n])**(Pnorm+1)
-        gradV[:] *= np.sum((1./valsi[:nb_frqAggreg])**Pnorm)**(1./Pnorm-1)
-        gradV /= m0
-
-        pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
-            'OPT8-coarse%0.2d' % i, optPB._coarseParametrization._COORDS,
-            nb_ref=2*ref_plot, Flag=Output))
-        optPB._coarseParametrization.generate_vtk4controlMeshVisu(
-            'OPT8-coarse%0.2d' % i, 0)
-
-        for n in np.arange(nb_frqPlot):
-            ampl = np.sign(vect0[:, n].dot(vecti[:, n]))
-            SOL, u = rsol.reconstruction(
-                **optPB._fineParametrization.get_inputs4solution(
-                    ampl*vecti[:, n]))
-            pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(
-                'OPT8-fine-m%0.1d-%0.2d' % (n, i),  SOL.transpose(),
-                nb_ref=ref_plot, Flag=Output))
-        freqHistory = np.block([[freqHistory], [valsi]])
-    return mi/m0
+    assert np.allclose(optim_problem.compute_volume(xk_test),
+                       ref_volume, rtol=1.e-5)
+    assert np.allclose(optim_problem.compute_gradVolume_AN(xk_test),
+                       ref_grad_vol, rtol=1.e-5)
+    assert np.allclose(
+        optim_problem.compute_vibrationMode(xk_test, nb_freq)[0],
+        ref_eigen, rtol=1.e-5)
+    assert np.allclose(
+        optim_problem.compute_gradVibration_AN(xk_test, nb_frq=nb_freq),
+        ref_grad_eigen, rtol=1.e-5)
 
 
-V0 = optPB.compute_volume(x0)
-
-
-def vol(xV, gradV):
-    if gradV.size > 0:
-        gradV[:] = optPB.compute_gradVolume_AN(xV)/V0
-    return optPB.compute_volume(xV)/V0 - 1.
-
-
-minimize = nlopt.opt(nlopt.LD_SLSQP, nb_var)
-
-minimize.set_min_objective(vibration)
-minimize.add_equality_constraint(vol, 1e-5)
-
-minimize.set_ftol_rel(1.0e-06)
-minimize.set_xtol_rel(1.0e-06)
-minimize.set_maxeval(200)
-
-minimize.set_lower_bounds(0.25*np.ones(nb_var))
-minimize.set_upper_bounds(3.00*np.ones(nb_var))
-
-
-# --
-# Run optimization
-x = minimize.optimize(x0)
-
-# Verify results
-# Numerical reference result
-x_ref = np.array([1.83742868, 1.65492556, 1.31414974, 0.66352119, 0.25, 0.25,
-                  1.83109299, 1.6576408,  1.31434919, 0.66363835, 0.25, 0.25])
-
-error = np.sqrt(sum((x-x_ref)**2.))
-
-print(error)
-
-if error > 1.e-5:
-    sys.exit(-1)
-else:
-    sys.exit(0)
+if __name__ == '__main__':
+    test_grad_elephant_trunk()
