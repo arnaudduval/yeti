@@ -63,9 +63,9 @@ add_test(NAME test_grad_elephant_trunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PAT
 # Static analysis with distributed pressure
 add_test(NAME test_dload_beam_triangular_1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_triangular_1.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME test_dload_beam_triangular_2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_triangular_2.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
-add_test(NAME dload-uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
-add_test(NAME dload-uniform-field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
-add_test(NAME dload_unused_distrib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_unused_distrib.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME test_dload_beam_uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME test_dload_beam_uniform_field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME test_dload_beam_unused_distrib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_unused_distrib.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 
 # Combination of different loads with extra parameters, given in different orders
 add_test(NAME load_combination COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/beam_dload_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
@@ -217,9 +217,9 @@ set_tests_properties(
                      test_grad_elephant_trunk
                      test_dload_beam_triangular_1
                      test_dload_beam_triangular_2
-                     dload-uniform
-                     dload-uniform-field
-                     dload_unused_distrib
+                     test_dload_beam_uniform
+                     test_dload_beam_uniform_field
+                     test_dload_beam_unused_distrib
                      load_combination
                      load_combination_order
                      load_combination_order_embedded
