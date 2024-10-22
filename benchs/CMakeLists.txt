@@ -61,8 +61,8 @@ add_test(NAME test_grad_catenary COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/cat
 add_test(NAME test_grad_elephant_trunk COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ElephantTrunk/test_grad_elephant_trunk.py WORKING_DIRECTORY ${BENCH_PATH}/ElephantTrunk)
 
 # Static analysis with distributed pressure
-add_test(NAME dload-triangle-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_triangular_1.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
-add_test(NAME dload-triangle-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_triangular_2.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME test_dload_beam_triangular_1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_triangular_1.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
+add_test(NAME test_dload_beam_triangular_2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_triangular_2.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME dload-uniform COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME dload-uniform-field COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_dist_field.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 add_test(NAME dload_unused_distrib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/dload_beam_unused_distrib.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
@@ -215,8 +215,8 @@ set_tests_properties(
                      test_grad_tensile_specimen
                      test_grad_catenary
                      test_grad_elephant_trunk
-                     dload-triangle-1
-                     dload-triangle-2
+                     test_dload_beam_triangular_1
+                     test_dload_beam_triangular_2
                      dload-uniform
                      dload-uniform-field
                      dload_unused_distrib
