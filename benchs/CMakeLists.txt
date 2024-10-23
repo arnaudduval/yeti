@@ -68,9 +68,9 @@ add_test(NAME test_dload_beam_uniform_field COMMAND ${Python3_EXECUTABLE} ${BENC
 add_test(NAME test_dload_beam_unused_distrib COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/dload/test_dload_beam_unused_distrib.py WORKING_DIRECTORY ${BENCH_PATH}/dload)
 
 # Combination of different loads with extra parameters, given in different orders
-add_test(NAME load_combination COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/beam_dload_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
-add_test(NAME load_combination_order COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/beam_dload_triangle_centrif.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
-add_test(NAME load_combination_order_embedded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/embeddedbeam_load_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
+add_test(NAME test_load_combination COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/test_beam_dload_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
+add_test(NAME test_load_combination_order COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/test_beam_dload_triangle_centrif.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
+add_test(NAME test_load_combination_order_embedded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/test_embeddedbeam_load_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
 
 # Static shell analysis where a single element is loaded with pressure
 add_test(NAME shell_1_element_load-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_1elt.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
@@ -220,9 +220,9 @@ set_tests_properties(
                      test_dload_beam_uniform
                      test_dload_beam_uniform_field
                      test_dload_beam_unused_distrib
-                     load_combination
-                     load_combination_order
-                     load_combination_order_embedded
+                     test_load_combination
+                     test_load_combination_order
+                     test_load_combination_order_embedded
                      shell_1_element_load-1
                      shell_1_element_load-2
                      leastsquare-projection-1patch

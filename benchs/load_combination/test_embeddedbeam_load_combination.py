@@ -25,17 +25,26 @@ Loading: 2 distributed load (artifical) on faces 1 and 4
 Test to verify if load sum is correct in force vector
 """
 
-import sys
+import os
+
 import random
 import copy
 
 import numpy as np
 import scipy.sparse as sp
 
+# pylint: disable=no-name-in-module
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
-from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
+    as build_stiffmatrix
 
-if __name__ == '__main__':
+
+def test_embeddedbeam_load_combination():
+    """
+    Compare returned linear systems
+    """
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
     cases = []
 
     # Cases with single loading
@@ -44,7 +53,7 @@ if __name__ == '__main__':
     cases.append({'filename': 'embeddedbeam-dloadF4',
                   'description': 'a single distributed load on face 4'})
     cases.append({'filename': 'embeddedbeam-centrif',
-                  'description': 'centrifigal force only'})
+                  'description': 'centrifugal force only'})
 
     # Cases with 2 loadings
     cases.append({'filename': 'embeddedbeam-dloadF2F4',
@@ -86,15 +95,7 @@ if __name__ == '__main__':
 
     # Model refinement parameters (2 patches and 3D for all)
     nb_deg = np.zeros((3, 2), dtype=np.intp)
-    nb_ref = np.zeros((3, 2), dtype=np.intp)
-
-    # Hull
-    nb_deg[:, 0] = np.array([0, 0, 0], dtype=int)
-    nb_ref[:, 0] = np.array([2, 1, 1], dtype=int)
-
-    # Embedded entity
-    nb_deg[:, 1] = np.array([0, 0, 0], dtype=int)
-    nb_ref[:, 1] = np.array([1, 1, 2], dtype=int)
+    nb_ref = np.array([[2, 1, 1], [1, 1, 2]], dtype=int).T
 
     # Force vectors
     f_vects = {}
@@ -131,8 +132,8 @@ if __name__ == '__main__':
                         [46, 0], [48, 1], [49, 0], [49, 1], [50, 1], [52, 0]])
 
     for case in cases:
-        iga_model = IGAparametrization(filename='inputs_embeddedbeam/' +
-                                       case['filename'])
+        iga_model = IGAparametrization(
+            filename=f'{script_dir}/inputs_embeddedbeam/{case["filename"]}')
 
         # Move control points
         random.seed(3)
@@ -156,89 +157,67 @@ if __name__ == '__main__':
 
     # Tests on force vectors
     # 1 - ensure that F2F4 is the sum of F2 and F4
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2F4'] -
-                           f_vects['embeddedbeam-dloadF2'] -
-                           f_vects['embeddedbeam-dloadF4'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2F4'],
+                       f_vects['embeddedbeam-dloadF2'] +
+                       f_vects['embeddedbeam-dloadF4'],
+                       rtol=1.e-12)
 
     # 2 - ensure that F4F2 equal to F2F4
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2F4'] -
-                           f_vects['embeddedbeam-dloadF4F2'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2F4'],
+                       f_vects['embeddedbeam-dloadF4F2'],
+                       rtol=1.e-12)
 
     # 3 - ensure that F2 centrif is the sum of F2 and centrif
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-centrif'] -
-                           f_vects['embeddedbeam-dloadF2'] -
-                           f_vects['embeddedbeam-centrif'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-centrif'],
+                       f_vects['embeddedbeam-dloadF2'] +
+                       f_vects['embeddedbeam-centrif'],
+                       rtol=1.e-12)
 
     # 4 - ensure that centrif F2 equal F2 centrif
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-centrif'] -
-                           f_vects['embeddedbeam-centrif-dloadF2'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-centrif'],
+                       f_vects['embeddedbeam-centrif-dloadF2'],
+                       rtol=1.e-12)
 
     # 5 - ensure that F4 centrif is the sum of F4 and centrif
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-dloadF4'] -
-                           f_vects['embeddedbeam-centrif'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF4-centrif'],
+                       f_vects['embeddedbeam-dloadF4'] +
+                       f_vects['embeddedbeam-centrif'],
+                       rtol=1.e-12)
 
     # 6 - ensure that centrif F4 equal F4 centrif
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-centrif-dloadF4'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF4-centrif'],
+                       f_vects['embeddedbeam-centrif-dloadF4'],
+                       rtol=1.e-12)
 
     # 7 - ensure that F2 F4 centrif, is the sum of F2, F4 and centrif
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-dloadF2'] -
-                           f_vects['embeddedbeam-dloadF4'] -
-                           f_vects['embeddedbeam-centrif'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-dloadF2'] +
+                       f_vects['embeddedbeam-dloadF4'] +
+                       f_vects['embeddedbeam-centrif'],
+                       rtol=1.e-12)
 
     # 8 - ensure the sum works whatever the order of declaration
     # of the 3 loadings
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-dloadF4-dloadF2-centrif'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-dloadF4-dloadF2-centrif'],
+                       rtol=1.e-12)
 
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-dloadF2-centrif-dloadF4'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-dloadF2-centrif-dloadF4'],
+                       rtol=1.e-12)
 
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-centrif-dloadF2-dloadF4'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-centrif-dloadF2-dloadF4'],
+                       rtol=1.e-12)
 
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-centrif-dloadF4-dloadF2'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-centrif-dloadF4-dloadF2'],
+                       rtol=1.e-12)
 
-    error = np.linalg.norm(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'] -
-                           f_vects['embeddedbeam-dloadF4-centrif-dloadF2'])
-    print(error)
-    if error > 1.e-12:
-        sys.exit(-1)
+    assert np.allclose(f_vects['embeddedbeam-dloadF2-dloadF4-centrif'],
+                       f_vects['embeddedbeam-dloadF4-centrif-dloadF2'],
+                       rtol=1.e-12)
 
-    sys.exit(0)
+
+if __name__ == '__main__':
+    test_embeddedbeam_load_combination()
