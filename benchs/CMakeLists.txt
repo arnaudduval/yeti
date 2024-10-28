@@ -73,8 +73,8 @@ add_test(NAME test_load_combination_order COMMAND ${Python3_EXECUTABLE} ${BENCH_
 add_test(NAME test_load_combination_order_embedded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/load_combination/test_embeddedbeam_load_combination.py WORKING_DIRECTORY ${BENCH_PATH}/load_combination)
 
 # Static shell analysis where a single element is loaded with pressure
-add_test(NAME shell_1_element_load-1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_1elt.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
-add_test(NAME shell_1_element_load-2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/linear_analysis_9elts.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
+add_test(NAME test_shell_1_element_load_1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/test_shell_load_1elt.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
+add_test(NAME test_shell_1_element_load_2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/test_shell_load_9elts.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
 
 # Static analyis of a 2D palne stress plate with a round hole and least square projection postprocessing
 add_test(NAME leastsquare-projection-1patch COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/1_patch/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/1_patch)
@@ -223,8 +223,8 @@ set_tests_properties(
                      test_load_combination
                      test_load_combination_order
                      test_load_combination_order_embedded
-                     shell_1_element_load-1
-                     shell_1_element_load-2
+                     test_shell_1_element_load_1
+                     test_shell_1_element_load_2
                      leastsquare-projection-1patch
                      leastsquare-projection-2patches
                      leastsquare-projection-2patchescplg
