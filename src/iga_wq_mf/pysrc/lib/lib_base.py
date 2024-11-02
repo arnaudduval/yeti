@@ -300,7 +300,7 @@ def evalDersBasisCSRFortran(degree, knotvector, knots):
 
 def legendreTable(order):
 	" Computes Gauss-Legendre weights and positions in isoparametric space for a given degree "
-	assert order <= 10, 'Only degrees below 10'
+	assert order <= 11, 'Only degrees below 10'
 	pos, wgt = basisweights.gauss_quadrature_table(order)
 	return pos, wgt
 

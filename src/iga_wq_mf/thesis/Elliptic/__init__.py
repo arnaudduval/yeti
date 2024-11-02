@@ -18,6 +18,7 @@ TRACTION, RINT, REXT = 1.0, 1.0, 2.0
 YOUNG, POISSON = 1e3, 0.3
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'name':'none'}}
+EXTENSION = '.png'
 
 def forceSurf_infPlate(P:list):
 	x = P[0, :]; y = P[1, :]; nnz = np.size(P, axis=1)
@@ -272,32 +273,36 @@ def simulate_ht(degree, cuts, quadArgs=None, preconditioner='JMC'):
 
 	return problem, temperature, residue
 
-def buildpseudomatrix_ht3d(problem:heatproblem):
-	args = {'position':problem.part.qpPhy}
+def buildpseudomatrix_ht3d(quadraturerules=None, nbctrlpts_total=None):
+	assert quadraturerules is not None, "It is not possible"
+	assert nbctrlpts_total is not None, "It is not possible"
 
-	quadrules = problem.part._quadraturerules
-	matrix = sp.csr_matrix((problem.part.nbctrlpts_total, problem.part.nbctrlpts_total))
+	quadrules = deepcopy(quadraturerules)
+	dimen = len(quadrules)
+	matrix = sp.csr_matrix((nbctrlpts_total, nbctrlpts_total))
 	submatrices = []
-	for j in range(problem.part.dim):
+	for j in range(dimen):
 		submatrices.append(quadrules[0]._denseWeights[0] @ quadrules[0]._denseBasis[0].T)
-	if problem.part.dim == 2: matrix = sp.kron(submatrices[1], submatrices[0])
-	elif problem.part.dim == 3:	matrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
+	if dimen == 2: matrix = sp.kron(submatrices[1], submatrices[0])
+	elif dimen == 3:	matrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
 
 	return matrix 
 
-def buildpseudomatrix_el3d(problem:mechaproblem):
-	args = {'position':problem.part.qpPhy}
+def buildpseudomatrix_el3d(quadraturerules=None, nbctrlpts_total=None):
+	assert quadraturerules is not None, "It is not possible"
+	assert nbctrlpts_total is not None, "It is not possible"
 
-	quadrules = problem.part._quadraturerules
-	blockmatrix = sp.csr_matrix((problem.part.nbctrlpts_total, problem.part.nbctrlpts_total))
+	quadrules = deepcopy(quadraturerules)
+	dimen = len(quadrules)
+	blockmatrix = sp.csr_matrix((nbctrlpts_total, nbctrlpts_total))
 	submatrices = []
-	for j in range(problem.part.dim):
+	for j in range(dimen):
 		submatrices.append(quadrules[0]._denseWeights[0] @ quadrules[0]._denseBasis[0].T)
-	if problem.part.dim == 2: 
+	if dimen == 2: 
 		blockmatrix = sp.kron(submatrices[1], submatrices[0])
 		matrix = sp.bmat([[blockmatrix, blockmatrix], [blockmatrix, blockmatrix]]) 
 
-	elif problem.part.dim == 3:	
+	elif dimen == 3:	
 		blockmatrix = sp.kron(submatrices[2], sp.kron(submatrices[1], submatrices[0]))
 		matrix = sp.bmat([[blockmatrix, blockmatrix, blockmatrix], [blockmatrix, blockmatrix, blockmatrix], [blockmatrix, blockmatrix, blockmatrix]]) 
 

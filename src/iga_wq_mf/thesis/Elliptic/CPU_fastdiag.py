@@ -45,43 +45,90 @@ if RUNSIMU:
 			timeMatrix[i+1, j+1] = timeElapsed
 			np.savetxt(FOLDER2DATA+filename+TYPESIMU+'.dat', timeMatrix)
 
+# cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
+# for i, TYPESIMU in enumerate(['heat', 'meca']):
+
+# 	# Load data
+# 	fig, ax = plt.subplots(figsize=(5.5, 4))
+
+# 	# Make dummie mappable
+# 	c = np.arange(1,len(degList)+1, dtype=int)
+# 	dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
+# 	ax.cla()
+
+# 	file = np.loadtxt(FOLDER2DATA+filename+TYPESIMU+'.dat')
+# 	degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
+# 	for _, degree in enumerate(degList): 
+# 		im = ax.loglog(nbelList**3, timeElapsed[:, _], marker='s')
+
+# 	slope = round(np.polyfit(np.log(nbelList[1:]**3), np.log(timeElapsed[1:, 2]), 1)[0], 1)
+# 	annotation.slope_marker((nbelList[-2]**3,  timeElapsed[-2, 2]), slope, 
+# 					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+	
+# 	cbar = plt.colorbar(dummie_cax)
+# 	cbar.set_label('Degree')
+# 	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+# 	cbar.set_ticks(tick_locs)
+# 	cbar.set_ticklabels(np.array(degList, dtype=int))
+
+# 	ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
+# 	ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+
+# 	if NDIM == 2: ...
+# 	if NDIM == 3: 
+# 		ax.set_xticks([1e4, 32**3, 64**3, 128**3, 256**3, 1e8])
+# 		ax.set_xticklabels([r'$10^3$', r'$32^3$', r'$64^3$', r'$128^3$', r'$256^3$', r'$10^8$'])
+
+# 	ax.minorticks_off()
+# 	ax.set_xlabel('Total number of elements')
+# 	ax.set_ylabel('CPU time (s)')
+# 	ax.set_ylim([1e-3, 1e2])
+# 	fig.tight_layout()
+# 	fig.savefig(FOLDER2SAVE+filename+TYPESIMU+'.pdf')
+
+
 cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
-for i, TYPESIMU in enumerate(['heat', 'meca']):
+plotoptions = [CONFIGLINE4, CONFIGLINE0]
 
-	# Load data
-	fig, ax = plt.subplots(figsize=(5.5, 4))
+# Load data
+fig, ax = plt.subplots()
 
-	# Make dummie mappable
-	c = np.arange(1,len(degList)+1, dtype=int)
-	dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
-	ax.cla()
+# Make dummie mappable
+c = np.arange(1,len(degList)+1, dtype=int)
+dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
+ax.cla()
 
+for TYPESIMU, plotop, label in zip(['heat', 'meca'], plotoptions, ['Heat transfer', 'Elasticity']):
 	file = np.loadtxt(FOLDER2DATA+filename+TYPESIMU+'.dat')
 	degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
-	for i, degree in enumerate(degList): 
-		im = ax.loglog(nbelList**3, timeElapsed[:, i], marker='s')
+	for _, degree in enumerate(degList): 
+		color=COLORLIST[_]
+		im = ax.loglog(nbelList**3, timeElapsed[:, _], marker=plotop['marker'], linestyle=plotop['linestyle'], color=color)
+		im = ax.loglog(nbelList**3, timeElapsed[:, _], marker=plotop['marker'], linestyle=plotop['linestyle'], color=color)
+	ax.loglog([], [], marker=plotop['marker'], color='k', linestyle=plotop['linestyle'], label=label)
 
 	slope = round(np.polyfit(np.log(nbelList[1:]**3), np.log(timeElapsed[1:, 2]), 1)[0], 1)
 	annotation.slope_marker((nbelList[-2]**3,  timeElapsed[-2, 2]), slope, 
 					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-	
-	cbar = plt.colorbar(dummie_cax)
-	cbar.set_label('Degree')
-	tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-	cbar.set_ticks(tick_locs)
-	cbar.set_ticklabels(np.array(degList, dtype=int))
 
-	ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-	ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+cbar = plt.colorbar(dummie_cax)
+cbar.set_label('Degree')
+tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+cbar.set_ticks(tick_locs)
+cbar.set_ticklabels(np.array(degList, dtype=int))
 
-	if NDIM == 2: ...
-	if NDIM == 3: 
-		ax.set_xticks([1e4, 32**3, 64**3, 128**3, 256**3, 1e8])
-		ax.set_xticklabels([r'$10^3$', r'$32^3$', r'$64^3$', r'$128^3$', r'$256^3$', r'$10^8$'])
+ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
+ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 
-	ax.minorticks_off()
-	ax.set_xlabel('Total number of elements')
-	ax.set_ylabel('CPU time (s)')
-	ax.set_ylim([1e-3, 1e2])
-	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE+filename+TYPESIMU+'.pdf')
+if NDIM == 2: ...
+if NDIM == 3: 
+	ax.set_xticks([1e4, 32**3, 64**3, 128**3, 256**3, 1e8])
+	ax.set_xticklabels([r'$10^3$', r'$32^3$', r'$64^3$', r'$128^3$', r'$256^3$', r'$10^8$'])
+
+ax.minorticks_off()
+ax.set_xlabel('Total number of elements')
+ax.set_ylabel('CPU time (s)')
+ax.set_ylim([1e-3, 1e2])
+ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+fig.tight_layout()
+fig.savefig(FOLDER2SAVE+filename+'.png')

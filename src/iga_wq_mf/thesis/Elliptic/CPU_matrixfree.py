@@ -1,15 +1,12 @@
 from thesis.Elliptic.__init__ import *
-from pysrc.lib.lib_geomdl import Geomdl
-from pysrc.lib.lib_part import part
-from pysrc.lib.lib_material import heatmat, mechamat
-from pysrc.lib.lib_boundary import boundaryCondition
-from pysrc.lib.lib_job3d import heatproblem, mechaproblem
+from pysrc.lib.lib_base import createUniformKnotvector_Rmultiplicity
+from pysrc.lib.lib_quadrules import WeightedQuadrature, GaussQuadrature
 
 # Set global variables
 RUNSIMU = False
 degList = range(1, 10)
-cuts = 6
-quadArgs = {'quadrule':'wq', 'type':1}
+NDIM = 3
+nbel = 64
 
 if RUNSIMU:
 
@@ -19,79 +16,106 @@ if RUNSIMU:
 	timeMF_stiffness = np.zeros((len(degList), 2))
 	timeMF_stiffness[:, 0] = degList
 
+	timeMF_capacity = np.zeros((len(degList), 2))
+	timeMF_capacity[:, 0] = degList
+
 	timeMF_conductivityPy = np.zeros((len(degList), 2))
 	timeMF_conductivityPy[:, 0] = degList
 
 	timeMF_stiffnessPy = np.zeros((len(degList), 2))
 	timeMF_stiffnessPy[:, 0] = degList
 
-	for i, deg in enumerate(degList):
+	timeMF_capacityPy = np.zeros((len(degList), 2))
+	timeMF_capacityPy[:, 0] = degList
+
+	for quadrule, quadtype in zip(['iga', 'wq', 'wq'], ['leg', 1, 2]):
 		
-		geoArgs = {'name': 'RQA', 'degree': deg*np.ones(3, dtype=int), 
-					'nb_refinementByDirection': cuts*np.ones(3, dtype=int)
-		}
-		blockPrint()			
-		modelGeo = Geomdl(geoArgs)
-		modelIGA = modelGeo.getIGAParametrization()
-		modelPhy = part(modelIGA, quadArgs=quadArgs)
-		dim = modelPhy.dim
+		quadArgs = {'quadrule':quadrule, 'type':quadtype}
 
-		heatmaterial = heatmat()
-		heatmaterial.addConductivity(inpt=1.0, isIsotropic=True, shape=dim)
+		for i, deg in enumerate(degList):
+			
+			knotvector = createUniformKnotvector_Rmultiplicity(deg, nbel)
+			if quadArgs['quadrule'] == 'wq':
+				quadraturerule = WeightedQuadrature(deg, knotvector, quadArgs=quadArgs)
+			if quadArgs['quadrule'] == 'iga':
+				quadraturerule = GaussQuadrature(deg, knotvector, quadArgs=quadArgs)
+			info = quadraturerule.getQuadratureRulesInfo()
+			quadpts, indices, dersbasis, dersweights = info; nbqp = len(quadpts)
+			nb_ctrlpts = quadraturerule.nbctrlpts
 
-		mecamaterial = mechamat({'elastic_modulus':1e3, 'elastic_limit':1e10, 
-						'poisson_ratio':0.3, 'isoHardLaw': {'name':'none'}})
+			inpts = [*[nbqp for i in range(NDIM)], *[indices[j] for i in range(NDIM) for j in range(2)], 
+					*[dersbasis for i in range(NDIM)], *[dersweights for i in range(NDIM)]]
 
-		# Set Dirichlet boundaries	
-		boundary = boundaryCondition(modelPhy.nbctrlpts)
-		boundary.add_DirichletConstTemperature(table=np.ones((dim, 2), dtype=bool))
-		boundary.add_DirichletDisplacement(table=np.ones((dim, 2, dim), dtype=bool))
-		enablePrint()
+			nbctrlpts_total = np.product(np.array([nb_ctrlpts for i in range(NDIM)]))
+			nbqp_total = np.product(np.array([nbqp for i in range(NDIM)]))
+			invJ, detJ = np.ones((NDIM, NDIM, nbqp_total)), np.ones(nbqp_total)
 
-		# Solve elastic problem
-		hproblem = heatproblem(heatmaterial, modelPhy, boundary)
-		mproblem = mechaproblem(mecamaterial, modelPhy, boundary)
+			# ------------------
+			# Compute MF product
+			# ------------------
+			enablePrint()
+			print('******')
 
-		# ------------------
-		# Compute MF product
-		# ------------------
-		enablePrint()
-		print('******')
+			if quadrule != 'iga' or deg < 9:
+				prop = np.ones(nbqp_total)
+				inpts_solver = [*inpts, False, invJ, detJ, prop, np.random.random(nbctrlpts_total)]
+				start = time.process_time()
+				if NDIM == 2: array_out = heatsolver.mf_capacity_2d(*inpts_solver)
+				if NDIM == 3: array_out = heatsolver.mf_capacity_3d(*inpts_solver)
+				finish = time.process_time()
+				print('Time Capacity:%.2e' %(finish-start))
+				timeMF_capacity[i, 1] = finish - start
 
-		start = time.process_time()
-		hproblem.compute_mfConductivity(np.random.random(boundary._nbctrlpts_total))
-		finish = time.process_time()
-		print('Time Conductivity:%.2e' %(finish-start))
-		timeMF_conductivity[i, 1] = finish - start
+				np.savetxt(FOLDER2DATA+'MF_capacity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_capacity)
 
-		start = time.process_time()
-		mproblem.compute_mfStiffness(np.random.random((dim, boundary._nbctrlpts_total)))
-		finish = time.process_time()
-		print('Time Stiffness:%.2e' %(finish-start))
-		timeMF_stiffness[i, 1] = finish - start
+			if quadrule != 'iga' or deg < 6: 
 
-		np.savetxt(FOLDER2SAVE+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
-		np.savetxt(FOLDER2SAVE+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
+				prop = np.ones((NDIM, NDIM, nbqp_total))
+				inpts_solver = [*inpts, invJ, detJ, prop, np.random.random(nbctrlpts_total)]
+				start = time.process_time()
+				if NDIM == 2: array_out = heatsolver.mf_conductivity_2d(*inpts_solver)
+				if NDIM == 3: array_out = heatsolver.mf_conductivity_3d(*inpts_solver)
+				finish = time.process_time()
+				print('Time Conductivity:%.2e' %(finish-start))
+				timeMF_conductivity[i, 1] = finish - start
+				del prop
 
-		if deg > 6: continue
-		matrix = buildpseudomatrix_ht3d(hproblem)
-		start = time.process_time()
-		matrix @ np.random.random(boundary._nbctrlpts_total)
-		finish = time.process_time()
-		print('Time Conductivity Python:%.2e' %(finish-start))
-		timeMF_conductivityPy[i, 1] = finish - start
-		del matrix
+				np.savetxt(FOLDER2DATA+'MF_conductivity_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_conductivity)
 
-		matrix = buildpseudomatrix_el3d(mproblem)
-		start = time.process_time()
-		matrix @ np.random.random((dim*boundary._nbctrlpts_total))
-		finish = time.process_time()
-		print('Time Stiffness Python:%.2e' %(finish-start))
-		timeMF_stiffnessPy[i, 1] = finish - start
-		del matrix
+				prop = np.ones((2, nbqp_total))
+				inpts_solver = [*inpts, invJ, detJ, prop, np.random.random((NDIM, nbctrlpts_total))]
+				start = time.process_time()
+				if NDIM == 2: array_out = plasticitysolver.mf_stiffness_2d(*inpts_solver)
+				if NDIM == 3: array_out = plasticitysolver.mf_stiffness_3d(*inpts_solver)
+				finish = time.process_time()
+				print('Time Stiffness:%.2e' %(finish-start))
+				timeMF_stiffness[i, 1] = finish - start
+				del prop
 
-		np.savetxt(FOLDER2DATA+'MF_conductivity_Py'+'.dat', timeMF_conductivityPy)
-		np.savetxt(FOLDER2DATA+'MF_stiffness_Py'+'.dat', timeMF_stiffnessPy)
+				np.savetxt(FOLDER2DATA+'MF_stiffness_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_stiffness)
+
+			if quadArgs['type'] != 1: continue
+
+			if deg > 7: continue
+			matrix = buildpseudomatrix_ht3d(quadraturerules=[quadraturerule for i in range(NDIM)], nbctrlpts_total=nbctrlpts_total)
+			start = time.process_time()
+			matrix @ np.random.random(nbctrlpts_total)
+			finish = time.process_time()
+			print('Time Conductivity Python:%.2e' %(finish-start))
+			timeMF_conductivityPy[i, 1] = finish - start
+			del matrix
+			np.savetxt(FOLDER2DATA+'MF_conductivity_Py'+'.dat', timeMF_conductivityPy)
+
+			if deg > 4: continue
+			matrix = buildpseudomatrix_el3d(quadraturerules=[quadraturerule for i in range(NDIM)], nbctrlpts_total=nbctrlpts_total)
+			start = time.process_time()
+			matrix @ np.random.random((NDIM*nbctrlpts_total))
+			finish = time.process_time()
+			print('Time Stiffness Python:%.2e' %(finish-start))
+			timeMF_stiffnessPy[i, 1] = finish - start
+			del matrix
+
+			np.savetxt(FOLDER2DATA+'MF_stiffness_Py'+'.dat', timeMF_stiffnessPy)
 
 filenamelist = ['MF_conductivity_', 'MF_stiffness_']
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
@@ -120,4 +144,4 @@ for filename in filenamelist:
 	ax.set_xlim([0, 10])
 	ax.set_ylim([1e-1, 1e3])
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE+filename+'.pdf')
+	fig.savefig(FOLDER2SAVE+filename+'.png')

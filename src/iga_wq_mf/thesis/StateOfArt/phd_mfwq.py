@@ -1,14 +1,14 @@
 from thesis.StateOfArt.__init__ import *
 
-FIGCASE = 2
+FIGCASE = 0
 
 if FIGCASE == 0:
 
 	# Set filename
 	filenameDat = FOLDER2FIND + 'AssemblyWQ' + '.dat'
-	filenameFig = FOLDER2SAVE + 'WeightedQuadrature' + '.pdf' 
+	filenameFig = FOLDER2SAVE + 'WeightedQuadrature' + EXTENSION
 
-	fig, ax = plt.subplots(figsize=(5.5, 4))
+	fig, ax = plt.subplots()
 
 	# Load data
 	tabLiterature = pd.read_table(filenameDat, sep='\t', names=['degree', 'wq', 'iga'])
@@ -59,7 +59,7 @@ elif FIGCASE == 1:
 	ax.set_ylabel('Relative '+r'$H^1$'+' error')
 	ax.set_xlabel('Computation time (s)')
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE + 'MatrixFree' +  '.pdf')
+	fig.savefig(FOLDER2SAVE + 'MatrixFree' +  EXTENSION)
 
 elif FIGCASE == 2:
 	fig, ax = plt.subplots(figsize=(5.5,4))
@@ -76,4 +76,4 @@ elif FIGCASE == 2:
 	ax.set_xlabel('Time increment (or mesh-size in time)')
 	ax.legend()
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE + 'sptViscoPlasticity' +  '.pdf')
+	fig.savefig(FOLDER2SAVE + 'sptViscoPlasticity' +  EXTENSION)
