@@ -35,7 +35,7 @@ def cropImage(filename):
 
 def vtk2png(folder=None, filename=None, fieldname='temp', 
 			clim=None, cmap='viridis', title=None, fmt="%.1f",
-			n_labels=3, position_y=0.1, n_colors=101):		
+			n_labels=3, position_y=0.1, n_colors=101, camera_position='yx'):		
 
 	assert filename is not None, "add filename" 
 
@@ -73,7 +73,7 @@ def vtk2png(folder=None, filename=None, fieldname='temp',
 	plotter.add_mesh(grid, cmap=cmap, clim=clim, reset_camera=True, 
 					scalar_bar_args=sargs, scalars=scalars, n_colors=n_colors)
 	
-	plotter.camera_position = 'yx'
+	plotter.camera_position = camera_position
 	plotter.camera.zoom(0.9)
 	plotter.background_color = 'white'
 	plotter.window_size = [1600, 1600]

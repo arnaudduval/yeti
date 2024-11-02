@@ -1,7 +1,10 @@
 from thesis.Incremental.__init__ import *
 from scipy.spatial import ConvexHull
 from matplotlib.patches import Polygon
-from pysrc.lib.lib_base import sigmoid
+from pysrc.lib.lib_base import sigmoid, vtk2png
+
+folder = FOLDER2SAVE + '/animation_heat/'
+if not os.path.isdir(folder): os.mkdir(folder)
 
 def conductivityProperty(args:dict):
 	temperature = args.get('temperature')
@@ -21,11 +24,11 @@ def capacityProperty(args:dict):
 	return Cprop
 
 # Set global variables
-nbsteps = 26
-time_list = np.linspace(0., 1., nbsteps) 
+NBSTEPS = 65
+TIMELIST = np.linspace(0., 1., NBSTEPS) 
 geonameList = ['cb', 'vb']
 ITERMETHODS = ['C', 'TDC', 'JMC']
-RUNSIMU = False
+RUNSIMU = True
 
 def frompoints2hull(a, b, color, factor=1.0):
 	points = np.vstack((a, b)).T
@@ -37,10 +40,58 @@ def frompoints2hull(a, b, color, factor=1.0):
 			edgecolor=color, linewidth=2, alpha=0.5)
 	return poly
 
+def simulation_heattransfer(geoname='cb', preconditioner='TDC'):
+	# Create model 
+	geoArgs = {'name': geoname, 'degree': DEGREE*np.ones(3, dtype=int), 
+				'nb_refinementByDirection': CUTS*np.ones(3, dtype=int)}
+	quadArgs  = {'quadrule': 'wq', 'type': 1}
+
+	modelGeo = Geomdl(geoArgs)
+	modelIGA = modelGeo.getIGAParametrization()
+	modelPhy = part(modelIGA, quadArgs=quadArgs)
+
+	# Add material 
+	material = heatmat()
+	material.addConductivity(conductivityProperty, isIsotropic=False) 
+	material.addCapacity(capacityProperty, isIsotropic=False) 
+
+	# Block boundaries
+	boundary = boundaryCondition(modelPhy.nbctrlpts)
+	boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
+	boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=10.0)
+
+	problem = heatproblem(material, modelPhy, boundary)
+	problem.addSolverConstraints(solverArgs={'preconditioner': preconditioner})
+	problem._thresLin = 1e-12
+
+	# Create a Dirichlet condition
+	Tinout = np.zeros((modelPhy.nbctrlpts_total, len(TIMELIST)))
+	for i in range(1, len(TIMELIST)): Tinout[boundary.thdod, i] = TIMELIST[i]/TIMELIST[-1]*boundary.thDirichletBound[boundary.thdod]
+
+	# Add external force 
+	Fend = np.zeros((problem.part.nbctrlpts_total, 1))
+	Fext = np.kron(Fend, sigmoid(TIMELIST))
+
+	# Solve
+	AllresLin = problem.solveFourierTransientProblem(Tinout=Tinout, 
+													Fext_list=Fext, 
+													time_list=TIMELIST, 
+													alpha=1.0)
+	return problem, Tinout, AllresLin
+
 if RUNSIMU:
 
-	DEGREE, CUTS = 4, 4
+	DEGREE, CUTS = 3, 4
 	quadArgs = {'quadrule': 'wq', 'type': 1}
+
+	problem, Tinout, _ = simulation_heattransfer()
+	for k, i in enumerate(range(0, np.size(Tinout, axis=1), 4)):
+		problem.part.postProcessingPrimal(fields={'temp':np.atleast_2d(Tinout[:, i])}, 
+										name='out_'+str(k), folder=folder)
+		
+	run(folder=folder, filename='out_', nbFiles=k)
+
+	for i in range(17): vtk2png(folder, filename='out_'+str(i), title='Temperature', clim=[0, 10], n_colors=21, camera_position='xz')
 
 	for precond in ITERMETHODS:
 		for geoname in geonameList:
@@ -48,42 +99,7 @@ if RUNSIMU:
 			filename = FOLDER2DATA + 'ResidualHt_' + geoname + '_' + precond + '.dat'  
 			
 			# blockPrint()
-			# Create model 
-			geoArgs = {'name': geoname, 'degree': DEGREE*np.ones(3, dtype=int), 
-						'nb_refinementByDirection': CUTS*np.ones(3, dtype=int)}
-			quadArgs  = {'quadrule': 'wq', 'type': 1}
-
-			modelGeo = Geomdl(geoArgs)
-			modelIGA = modelGeo.getIGAParametrization()
-			modelPhy = part(modelIGA, quadArgs=quadArgs)
-
-			# Add material 
-			material = heatmat()
-			material.addConductivity(conductivityProperty, isIsotropic=False) 
-			material.addCapacity(capacityProperty, isIsotropic=False) 
-
-			# Block boundaries
-			boundary = boundaryCondition(modelPhy.nbctrlpts)
-			boundary.add_DirichletConstTemperature(table=np.array([[1, 0], [0, 0], [0, 0]]))
-			boundary.add_DirichletConstTemperature(table=np.array([[0, 1], [0, 0], [0, 0]]), temperature=10.0)
-		
-			problem = heatproblem(material, modelPhy, boundary)
-			problem.addSolverConstraints(solverArgs={'preconditioner': precond})
-			problem._thresLin = 1e-12
-
-			# Create a Dirichlet condition
-			Tinout = np.zeros((modelPhy.nbctrlpts_total, len(time_list)))
-			for i in range(1, len(time_list)): Tinout[boundary.thdod, i] = boundary.thDirichletBound[boundary.thdod]
-
-			# Add external force 
-			Fend = np.zeros((problem.part.nbctrlpts_total, 1))
-			Fext = np.kron(Fend, sigmoid(time_list))
-
-			# Solve
-			AllresLin = problem.solveFourierTransientProblem(Tinout=Tinout, 
-															Fext_list=Fext, 
-															time_list=time_list, 
-															alpha=1.0)
+			AllresLin = simulation_heattransfer(geoname, precond)[-1]
 			# enablePrint()
 			np.savetxt(filename, AllresLin)
 
