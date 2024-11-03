@@ -1,6 +1,6 @@
 from thesis.StateOfArt.__init__ import *
 
-FIGCASE = 0
+FIGCASE = 2
 
 if FIGCASE == 0:
 
@@ -12,8 +12,8 @@ if FIGCASE == 0:
 
 	# Load data
 	tabLiterature = pd.read_table(filenameDat, sep='\t', names=['degree', 'wq', 'iga'])
-	ax.semilogy(tabLiterature.degree, tabLiterature.iga, 's-', label='Gauss quadrature')
-	ax.semilogy(tabLiterature.degree, tabLiterature.wq, 'o--', label='Weighted quadrature')
+	ax.semilogy(tabLiterature.degree, tabLiterature.iga, 's-', label='Element-loop w. \nGauss quadrature')
+	ax.semilogy(tabLiterature.degree, tabLiterature.wq, 'o--', label='Row-loop w. \nWeighted quadrature')
 
 	ax.legend()
 	ax.set_xlim([2, 10])
@@ -62,18 +62,20 @@ elif FIGCASE == 1:
 	fig.savefig(FOLDER2SAVE + 'MatrixFree' +  EXTENSION)
 
 elif FIGCASE == 2:
-	fig, ax = plt.subplots(figsize=(5.5,4))
+	# fig, ax = plt.subplots(figsize=(5.5,4))
+	fig, ax = plt.subplots()
 	
 	filenameList = ['sptFE', 'sptIGA2', 'sptIGA3']
 	labelList = ['FE radial return', 'ST-IGA deg. ' + str(2), 'ST-IGA deg. '+ str(3)]
 	for filename, label in zip(filenameList, labelList):
 		table = np.loadtxt(FOLDER2FIND+filename+'.dat')
-		ax.loglog(table[:, 0], table[:, 1], label=label)
+		ax.loglog(1/table[:, 0], table[:, 1], label=label)
 		
 	ax.set_ylim(top=1e2, bottom=1e-4)
-	ax.set_xlim(left=1e-3, right=1e-1)
+	ax.set_xlim(left=1e1, right=1e3)
 	ax.set_ylabel(r'$L^2$'+' error on stress')
-	ax.set_xlabel('Time increment (or mesh-size in time)')
+	# ax.set_xlabel('Time increment (or mesh-size in time)')
+	ax.set_xlabel('Number of control points in time\n(or time steps)')
 	ax.legend()
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE + 'sptViscoPlasticity' +  EXTENSION)

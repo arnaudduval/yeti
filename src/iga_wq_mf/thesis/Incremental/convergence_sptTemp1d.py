@@ -60,7 +60,7 @@ errorList1 = np.loadtxt(FOLDER2DATA+'2relerrorstag_spt'+SUFIX+EXTENSION)
 for i, deg in enumerate(degsptList):
 	nbctrlpts = nbelincList+deg
 	ax.loglog(nbctrlpts, errorList1[i, :], color=COLORLIST[i], marker='s', markerfacecolor='w',
-				label='ST-IGA deg. '+str(int(deg)))
+				label='ST deg. '+str(int(deg)))
 	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[i, 3:]), 1)[0]
 	slope = round(slope, 1)
 	if deg == 3:
@@ -73,7 +73,7 @@ for i, deg in enumerate(degsptList):
 nbctrlpts = nbelincList+1
 errorList1 = np.loadtxt(FOLDER2DATA+'2relerrorstag_inc'+SUFIX+EXTENSION)
 ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE4['marker'], markerfacecolor='w', color='k',
-				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA '+r'$\theta=0.5$')
+				markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='Crank-Nicolson')
 slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
 slope = round(slope, 1)
 annotation.slope_marker((nbctrlpts[-2], errorList1[-2]), slope, 
@@ -83,6 +83,7 @@ ax.set_ylabel('Relative ' + r'$L^2$'+' error at last time-step')
 ax.set_xlabel('Number of control points on time \n(or time-steps)')
 ax.set_xlim(left=2, right=300)
 ax.set_ylim(top=1e-1, bottom=1e-8)
-ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+# ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+ax.legend()
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')
+fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.png')

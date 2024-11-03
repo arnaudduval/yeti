@@ -7,6 +7,7 @@
 from thesis.Incremental.__init__ import *
 from pysrc.lib.lib_material import computeDeviatoric4All, computeSymTensorNorm4All
 from pysrc.lib.lib_base import vtk2png
+import imageio
 
 # Set global variables
 degList = np.arange(1, 4)
@@ -67,6 +68,24 @@ if RUNSIMU:
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=11, fmt='%.2e')
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
 
+# images = []
+# for i in range(25): 
+# 	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='stress', title='Von Mises stress', clim=[0, 15], n_colors=21, camera_position='xy')
+# 	filename = FOLDER2DATA + 'out_' + str(i) + 'stress.png'
+# 	images.append(imageio.imread(filename))
+# images.append(imageio.imread(filename))
+# images += images[-2::-1] 
+# imageio.mimsave(FOLDER2DATA + 'stress.gif', images, duration=1)
+
+# images = []
+# for i in range(25): 
+# 	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='plastic', title='Plastic zone', n_colors=2, n_labels=2, camera_position='xy')
+# 	filename = FOLDER2DATA + 'out_' + str(i) + 'plastic.png'
+# 	images.append(imageio.imread(filename))
+# images.append(imageio.imread(filename))
+# images += images[-2::-1] 
+# imageio.mimsave(FOLDER2DATA + 'plastic.gif', images, duration=1)
+
 nbelList = 2**cutList
 FOLDER2SAVE += '/pls2d/'
 if not os.path.isdir(FOLDER2SAVE): os.mkdir(FOLDER2SAVE)
@@ -92,10 +111,10 @@ for k, step in enumerate(stepList):
 
 		if error_name == 'H1':
 			ax.set_ylabel(r'$H^1$' + ' error')
-			ax.set_ylim(bottom=1e-7, top=1e-1)
+			ax.set_ylim(bottom=1e-8, top=1e-1)
 		if error_name == 'L2':
 			ax.set_ylabel(r'$L^2$' + ' error')
-			ax.set_ylim(bottom=1e-8, top=1e-2)
+			ax.set_ylim(bottom=1e-9, top=1e-2)
 	
 		ax.set_xlabel('Number of elements')
 		ax.set_xlim(left=1, right=10**2)
@@ -107,5 +126,5 @@ for k, step in enumerate(stepList):
 
 		ax.legend()
 		fig.tight_layout()
-		fig.savefig(FOLDER2SAVE+'ConverPls2d_'+error_name+'_'+str(k)+'.pdf')
+		fig.savefig(FOLDER2SAVE+'ConverPls2d_'+error_name+'_'+str(k)+'.png')
 		plt.close(fig)

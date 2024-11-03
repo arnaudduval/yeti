@@ -28,7 +28,7 @@ NBSTEPS = 65
 TIMELIST = np.linspace(0., 1., NBSTEPS) 
 geonameList = ['cb', 'vb']
 ITERMETHODS = ['C', 'TDC', 'JMC']
-RUNSIMU = True
+RUNSIMU = False
 
 def frompoints2hull(a, b, color, factor=1.0):
 	points = np.vstack((a, b)).T
@@ -103,47 +103,86 @@ if RUNSIMU:
 			# enablePrint()
 			np.savetxt(filename, AllresLin)
 
+# for geoname in geonameList:
+# 	fig1, ax1 = plt.subplots()
+# 	fig2, ax2 = plt.subplots()
+# 	axs = [ax1, ax2]
+# 	for i, precond in enumerate(ITERMETHODS):
+# 		filename = FOLDER2DATA + 'ResidualHt_' + geoname + '_' + precond + '.dat'  
+# 		AllresLin = np.loadtxt(filename)
+# 		color = COLORLIST[i+1]
+
+# 		if precond == "C": labelmethod = 'Classic FD'
+# 		elif precond == "JMC": labelmethod = 'This work'
+# 		elif precond == "TDC": labelmethod = 'Literature'
+
+# 		stepsMax = int(np.max(AllresLin[:, 0]))
+# 		enum_ax1, enum_ax2 = [], []
+# 		points_ax1, points_ax2 = [], []
+# 		for j in range(1, stepsMax):
+# 			indices = np.where(AllresLin[:, 0]==j)
+# 			newresidue = AllresLin[np.min(indices), 2:]; newresidue = newresidue[newresidue>0]
+# 			enum_ax1.extend(np.arange(len(newresidue))); points_ax1.extend(newresidue)
+# 			newresidue = AllresLin[np.max(indices)-1, 2:]; newresidue = newresidue[newresidue>0]
+# 			enum_ax2.extend(np.arange(len(newresidue))); points_ax2.extend(newresidue)
+		
+# 		poly = frompoints2hull(enum_ax1, np.log10(points_ax1), color)
+# 		axs[0].add_patch(poly)
+# 		poly = frompoints2hull(enum_ax2, np.log10(points_ax2), color)
+# 		axs[1].add_patch(poly)
+
+# 		axs[0].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
+# 		axs[1].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
+
+# 	for ax in axs:
+# 		ax.set_xlim(left=0, right=50)
+# 		ax.set_ylim(top=0, bottom=-12)
+# 		ax.set_xlabel('Number of iterations (GMRES)')
+# 		ax.set_ylabel('Log. of relative residue')
+
+# 	axs[0].legend()
+
+# 	for fig, sufix in zip([fig1, fig2], ['first', 'last']):
+# 		filename = FOLDER2SAVE + 'HtPrecond_' + sufix + '_' + geoname  + '.pdf'
+# 		fig.tight_layout()
+# 		fig.savefig(filename)
+# 		plt.close(fig=fig)
+
 for geoname in geonameList:
-	fig1, ax1 = plt.subplots()
-	fig2, ax2 = plt.subplots()
-	axs = [ax1, ax2]
+	fig, ax = plt.subplots()
 	for i, precond in enumerate(ITERMETHODS):
 		filename = FOLDER2DATA + 'ResidualHt_' + geoname + '_' + precond + '.dat'  
 		AllresLin = np.loadtxt(filename)
 		color = COLORLIST[i+1]
 
-		if precond == "C": labelmethod = 'Classic FD'
-		elif precond == "JMC": labelmethod = 'This work'
-		elif precond == "TDC": labelmethod = 'Literature'
+		if precond == "C": labelmethod = 'Standard Fast Diag.'
+		elif precond == "JMC": labelmethod = 'My contribution'
+		elif precond == "TDC": labelmethod = 'Proposition in literature'
 
 		stepsMax = int(np.max(AllresLin[:, 0]))
-		enum_ax1, enum_ax2 = [], []
-		points_ax1, points_ax2 = [], []
+		enum_ax = []
+		points_ax = []
 		for j in range(1, stepsMax):
 			indices = np.where(AllresLin[:, 0]==j)
 			newresidue = AllresLin[np.min(indices), 2:]; newresidue = newresidue[newresidue>0]
-			enum_ax1.extend(np.arange(len(newresidue))); points_ax1.extend(newresidue)
+			enum_ax.extend(np.arange(len(newresidue))); points_ax.extend(newresidue)
 			newresidue = AllresLin[np.max(indices)-1, 2:]; newresidue = newresidue[newresidue>0]
-			enum_ax2.extend(np.arange(len(newresidue))); points_ax2.extend(newresidue)
+			enum_ax.extend(np.arange(len(newresidue))); points_ax.extend(newresidue)
 		
-		poly = frompoints2hull(enum_ax1, np.log10(points_ax1), color)
-		axs[0].add_patch(poly)
-		poly = frompoints2hull(enum_ax2, np.log10(points_ax2), color)
-		axs[1].add_patch(poly)
+		poly = frompoints2hull(enum_ax, np.log10(points_ax), color)
+		ax.add_patch(poly)
 
-		axs[0].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
-		axs[1].plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
+		ax.plot([], [], marker='s', color=color, label=labelmethod, linewidth=0.5)
 
-	for ax in axs:
-		ax.set_xlim(left=0, right=50)
-		ax.set_ylim(top=0, bottom=-12)
-		ax.set_xlabel('Number of iterations (GMRES)')
-		ax.set_ylabel('Log. of relative residue')
 
-	axs[0].legend()
+	ax.set_xlim(left=0, right=50)
+	ax.set_ylim(top=0, bottom=-12)
+	ax.set_xlabel('Number of iterations (GMRES)')
+	ax.set_ylabel('Log. of relative residue')
+	# ax.legend()
+	ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 
-	for fig, sufix in zip([fig1, fig2], ['first', 'last']):
-		filename = FOLDER2SAVE + 'HtPrecond_' + sufix + '_' + geoname  + '.pdf'
-		fig.tight_layout()
-		fig.savefig(filename)
-		plt.close(fig=fig)
+	filename = FOLDER2SAVE + 'HtPrecond_' + 'All' + '_' + geoname  + '.png'
+	fig.tight_layout()
+	fig.savefig(filename)
+	plt.close(fig=fig)

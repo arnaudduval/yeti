@@ -155,9 +155,10 @@ if RUNSIMU:
 fig, ax = plt.subplots()
 
 for i, IVPmethod in enumerate(IVPmethodList):
-	label = 'IGA-GL '; IVPmethodName = deepcopy(IVPmethod)
+	label = ''; IVPmethodName = deepcopy(IVPmethod)
 	if IVPmethod == 'alpha': 
-		label += r'$\theta=$' + str(0.5)
+		# label += r'$\theta=$' + str(0.5)
+		label += 'Crank-Nicolson'
 	else:
 		label += IVPmethod
 		
@@ -180,7 +181,7 @@ for i, IVPmethod in enumerate(IVPmethodList):
 
 if PLOTRELATIVE: 
 	ax.set_ylabel('Relative '+r'$L^2$'+' error at last time-step')
-	ax.set_ylim(top=1e-1, bottom=1e-12)
+	ax.set_ylim(top=1e-1, bottom=1e-8)
 else: 
 	ax.set_ylabel(r'$L^2$'+' error at last time-step')
 	ax.set_ylim(top=1e0, bottom=1e-7)
@@ -190,4 +191,4 @@ ax.set_xlim(left=2, right=300)
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 # ax.legend(loc='lower left')
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')
+fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.png')
