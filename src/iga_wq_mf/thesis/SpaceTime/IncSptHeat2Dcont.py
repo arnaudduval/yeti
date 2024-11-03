@@ -34,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 5
+FIG_CASE = 4
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -265,7 +265,7 @@ elif FIG_CASE == 4:
 				ax.set_ylabel(ylabel)
 				if caseplot==3: ax.legend()
 				fig.tight_layout()
-				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
+				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.png')
 
 	fig, ax = plt.subplots()
 	for [i, isadaptive], prefix1 in zip(enumerate([True]), ['inexact']):
@@ -288,7 +288,7 @@ elif FIG_CASE == 4:
 			ax.set_ylabel(ylabel)
 			ax.legend()
 			fig.tight_layout()
-			fig.savefig(FOLDER2SAVE+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
+			fig.savefig(FOLDER2SAVE+'NLTolerance'+'_'+str(degree)+str(cuts)+'.png')
 
 elif FIG_CASE == 5:
 	

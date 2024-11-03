@@ -89,7 +89,7 @@ if TODOSIMU:
 fig, ax = plt.subplots()
 plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
-labels = [r'$\mathsf{A}v_{in}$', r'$\mathsf{B}v_{in}$']
+labels = ['Picard', 'Newton']
 
 # Load data
 for sufix, plotops in zip(sufixList, plotoptions):
@@ -99,7 +99,7 @@ for sufix, plotops in zip(sufixList, plotoptions):
 	file_K2 = np.loadtxt(FOLDER2DATA+'sptMF_StiffDers_'+sufix+'.dat') 
 
 	degList = file_M1[:, 0]
-	timeElapsedList = [file_M1[:, 1]+file_K1[:, 1], file_M2[:, 1]+file_K2[:, 1]]
+	timeElapsedList = [file_M1[:, 1]+file_K1[:, 1], file_M1[:, 1]+file_K1[:, 1]+file_M2[:, 1]+file_K2[:, 1]]
 	quadrule = sufix.split('_')[0]
 
 	for i, [timeElapsed, label] in enumerate(zip(timeElapsedList, labels)):
@@ -117,10 +117,10 @@ ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w'
 				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
 
 ax.minorticks_off()
-ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+ax.legend(ncol=2)
 ax.set_xlabel('Degree ' + r'$p$')
 ax.set_ylabel('CPU time (s)')
 ax.set_xlim([0, 10])
 ax.set_ylim([1e-1, 1e3])
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE + 'sptMF_time' + '.pdf')
+fig.savefig(FOLDER2SAVE + 'sptMF_time' + '.png')
