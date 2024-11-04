@@ -15,7 +15,10 @@ fig, ax = plt.subplots()
 colors = [COLORLIST[0], COLORLIST[1], COLORLIST[4], COLORLIST[3]]
 for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], colors)):
 	start = time.process_time()
-	problem, _, residue = simulate_ht(degree, cuts, preconditioner=preconditioner)
+	problem, _, residue = simulate_ht(degree, cuts, 
+									preconditioner=preconditioner,
+									linsolver='GMRES',	
+									)
 	stop = time.process_time()
 	print('time:%.2e, residue:%.2e'%(stop-start,residue[-1]))
 
@@ -28,6 +31,7 @@ for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], color
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 ax.set_ylabel('Relative residue')
 ax.set_xlabel('Number of iterations (GMRES)')
+# ax.set_xlabel('Number of iterations (CG)')
 ax.set_ylim([1e-12, 1e1])
 ax.set_xlim([0, 100])
 fig.savefig(FOLDER2SAVE+'preconditioner_ht'+'.png')

@@ -711,6 +711,7 @@ contains
             r = r - alpha*Aptilde
             x = x + alpha*ptilde
             if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
+            residual(k+1) = norm2(r)/normb
 
             call applyfastdiag(solv, nr_total, r, p)
             call clear_dirichlet(solv, nr_total, p)

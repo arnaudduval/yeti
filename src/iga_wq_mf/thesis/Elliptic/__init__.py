@@ -172,13 +172,13 @@ def solvesystem_el(problem:mechaproblem, A, b):
 	output = solv.GMRES(Afun, b, Pfun=Pfun, cleanfun=cleanfun, dod=problem.boundary.mchdod)
 	return output['sol'], output['res']
 
-def simulate_el(degree, cuts, quadArgs=None, preconditioner='JMC'):
+def simulate_el(degree, cuts, quadArgs=None, preconditioner='JMC', linsolver='GMRES'):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 				'extra':{'Rin':RINT, 'Rex':REXT}
 				}
 	blockPrint()
-	if quadArgs is None: quadArgs = {'quadrule':'wq', 'type':1}
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
 	material = mechamat(MATARGS)
 	modelGeo = Geomdl(geoArgs)
 	modelIGA = modelGeo.getIGAParametrization()
@@ -194,6 +194,7 @@ def simulate_el(degree, cuts, quadArgs=None, preconditioner='JMC'):
 	# Solve elastic problem
 	problem = mechaproblem(material, modelPhy, boundary)
 	Fext = problem.compute_surfForce(forceSurf_infPlate, nbFacePosition=1)[0]
+	problem._linSolv = linsolver
 
 	if preconditioner == 'ilu':
 		stiffnessmatrix = buildmatrix_el(problem)
@@ -241,13 +242,13 @@ def solvesystem_ht(problem:heatproblem, A, b):
 	output = solv.GMRES(Afun, b, Pfun=Pfun, cleanfun=cleanfun, dod=problem.boundary.thdod)
 	return output['sol'], output['res']
 
-def simulate_ht(degree, cuts, quadArgs=None, preconditioner='JMC'):
+def simulate_ht(degree, cuts, quadArgs=None, preconditioner='JMC', linsolver='GMRES'):
 	geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
 				'nb_refinementByDirection': cuts*np.ones(3, dtype=int), 
 				'extra':{'Rin':1.0, 'Rex':2.0}
 	}
 	blockPrint()
-	if quadArgs is None: quadArgs = {'quadrule':'wq', 'type':1}
+	if quadArgs is None: quadArgs = {'quadrule':'iga', 'type':'leg'}
 	material = heatmat()
 	material.addConductivity(conductivityProperty, isIsotropic=False)				
 	modelGeo = Geomdl(geoArgs)
@@ -262,6 +263,7 @@ def simulate_ht(degree, cuts, quadArgs=None, preconditioner='JMC'):
 	# Solve elastic problem
 	problem = heatproblem(material, modelPhy, boundary)
 	Fext = problem.compute_volForce(powerDensity_quartCircle)
+	problem._linSolv = linsolver
 
 	if preconditioner == 'ilu':
 		conductivitymatrix = buildmatrix_ht(problem)
