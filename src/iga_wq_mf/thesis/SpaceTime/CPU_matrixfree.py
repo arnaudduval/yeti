@@ -89,7 +89,7 @@ if TODOSIMU:
 fig, ax = plt.subplots()
 plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
-labels = ['Picard', 'Newton']
+labels = ['Newton', 'Picard']
 
 # Load data
 for sufix, plotops in zip(sufixList, plotoptions):
@@ -99,7 +99,7 @@ for sufix, plotops in zip(sufixList, plotoptions):
 	file_K2 = np.loadtxt(FOLDER2DATA+'sptMF_StiffDers_'+sufix+'.dat') 
 
 	degList = file_M1[:, 0]
-	timeElapsedList = [file_M1[:, 1]+file_K1[:, 1], file_M1[:, 1]+file_K1[:, 1]+file_M2[:, 1]+file_K2[:, 1]]
+	timeElapsedList = [file_M1[:, 1]+file_K1[:, 1]+file_M2[:, 1]+file_K2[:, 1], file_M1[:, 1]+file_K1[:, 1]]
 	quadrule = sufix.split('_')[0]
 
 	for i, [timeElapsed, label] in enumerate(zip(timeElapsedList, labels)):

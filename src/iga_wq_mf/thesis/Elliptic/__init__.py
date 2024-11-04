@@ -14,8 +14,8 @@ if not os.path.isdir(FOLDER2DATA): os.mkdir(FOLDER2DATA)
 
 # Set global variables
 GEONAME = 'QA'
-TRACTION, RINT, REXT = 1.0, 1.0, 2.0
-YOUNG, POISSON = 1e3, 0.3
+TRACTION, RINT, REXT = 1.0, 1.0, 1.5
+YOUNG, POISSON = 1e3, 0.25
 MATARGS = {'elastic_modulus':YOUNG, 'elastic_limit':1e10, 'poisson_ratio':POISSON,
 		'isoHardLaw': {'name':'none'}}
 EXTENSION = '.png'

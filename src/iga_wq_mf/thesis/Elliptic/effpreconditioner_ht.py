@@ -21,8 +21,8 @@ for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], color
 
 	if preconditioner == 'WP': labelfig = 'w.o. preconditioner'
 	elif preconditioner == 'ilu': labelfig = 'Incomplete LU'
-	elif preconditioner == 'C' : labelfig = 'Classic FD'
-	elif preconditioner == 'JMC' : labelfig = 'This work'
+	elif preconditioner == 'C' : labelfig = 'Standard Fast Diag.'
+	elif preconditioner == 'JMC' : labelfig = 'My contribution'
 	ax.semilogy(residue, marker=MARKERLIST[j], label=labelfig, color=color)
 
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
@@ -30,7 +30,7 @@ ax.set_ylabel('Relative residue')
 ax.set_xlabel('Number of iterations (GMRES)')
 ax.set_ylim([1e-12, 1e1])
 ax.set_xlim([0, 100])
-fig.savefig(FOLDER2SAVE+'preconditioner_ht'+'.pdf')
+fig.savefig(FOLDER2SAVE+'preconditioner_ht'+'.png')
 
 # for degree in range(4, 7):
 # 	for cuts in range(6, 10):
