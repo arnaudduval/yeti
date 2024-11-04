@@ -362,6 +362,8 @@ subroutine solver_linearsteady_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else if (linsolver.eq.'GMRES') then
             call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'CG') then
+            call CG(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else
             stop 'Unknown method'
         end if
@@ -458,6 +460,8 @@ subroutine solver_linearsteady_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, nc_
             call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else if (linsolver.eq.'GMRES') then
             call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'CG') then
+            call CG(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else
             stop 'Unknown method'
         end if
@@ -559,6 +563,8 @@ subroutine solver_lineartransient_heat_2d(nr_total, nc_total, nr_u, nc_u, nr_v, 
             call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else if (linsolver.eq.'GMRES') then
             call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'CG') then
+            call CG(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else
             stop 'Unknown method'
         end if
@@ -661,6 +667,8 @@ subroutine solver_lineartransient_heat_3d(nr_total, nc_total, nr_u, nc_u, nr_v, 
             call PBiCGSTAB(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else if (linsolver.eq.'GMRES') then
             call PGMRES(solv, mat, nr_total, nbRestarts, iterations, threshold, Fext, x, residual)
+        else if (linsolver.eq.'CG') then
+            call CG(solv, mat, nr_total, iterations, threshold, Fext, x, residual)
         else
             stop 'Unknown method'
         end if

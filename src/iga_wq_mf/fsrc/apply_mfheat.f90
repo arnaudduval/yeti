@@ -672,6 +672,56 @@ contains
         call set2zero(solv%redsyst, size_inout, array_inout)
     end subroutine clear_dirichlet
 
+    subroutine CG(solv, mat, nr_total, iterations, threshold, b, x, residual)
+
+        implicit none
+        ! Input / output data
+        ! -------------------
+        type(cgsolver) :: solv
+        type(thermomat) :: mat
+        integer, intent(in) :: nr_total, iterations
+        double precision, intent(in) :: threshold, b
+        dimension :: b(nr_total)
+        
+        double precision, intent(out) :: x, residual
+        dimension :: x(nr_total), residual(iterations+1)
+
+        ! Local data
+        ! -----------
+        double precision :: rsold, rsnew, alpha, beta, normb
+        double precision :: r, ptilde, p, Aptilde
+        dimension :: r(nr_total), ptilde(nr_total), &
+                    p(nr_total), Aptilde(nr_total)
+        integer :: k
+
+        x = 0.d0; r = b; residual = 0.d0
+        call clear_dirichlet(solv, nr_total, r)
+        normb = norm2(r)
+        if (normb.le.1.d-14) return
+        residual(1) = 1.d0
+        call applyfastdiag(solv, nr_total, r, p)
+        call clear_dirichlet(solv, nr_total, p)
+        ptilde = p
+        rsold = dot_product(r, p)
+
+        do k = 1, iterations
+            call matrixfree_matvec(solv, mat, nr_total, ptilde, Aptilde)
+            call clear_dirichlet(solv, nr_total, Aptilde)
+            alpha = rsold/dot_product(Aptilde, ptilde)
+            r = r - alpha*Aptilde
+            x = x + alpha*ptilde
+            if (norm2(r).le.max(threshold*normb, 1.d-14)) exit
+
+            call applyfastdiag(solv, nr_total, r, p)
+            call clear_dirichlet(solv, nr_total, p)
+            rsnew = dot_product(r, p)
+            beta = rsnew/rsold
+            ptilde = p + beta*ptilde
+            rsold = rsnew
+        end do
+
+    end subroutine CG
+
     subroutine PBiCGSTAB(solv, mat, nr_total, iterations, threshold, b, x, residual)
 
         implicit none

@@ -423,22 +423,22 @@ class solver():
 		normb = np.sqrt(dotfun(r, r))
 		resLin = [1.0]
 		if normb <= self._thresLin: return
-		z = Pfun(r); cleanfun(z, dod)
-		p = np.copy(z)
-		rsold = dotfun(r, z)
+		p = Pfun(r); cleanfun(p, dod)
+		ptilde = np.copy(p)
+		rsold = dotfun(r, p)
 
 		for i in range(self._itersLin):
-			Ap = Afun(p); cleanfun(Ap, dod)
-			alpha = rsold/dotfun(p, Ap)
-			x += alpha*p
-			r -= alpha*Ap
+			Aptilde = Afun(ptilde); cleanfun(Aptilde, dod)
+			alpha = rsold/dotfun(ptilde, Aptilde)
+			x += alpha*ptilde
+			r -= alpha*Aptilde
 
 			resLin.append(np.sqrt(dotfun(r, r))/normb)
 			if (resLin[-1]<=self._thresLin): break
 
-			z = Pfun(r); cleanfun(z, dod)
-			rsnew = dotfun(r, z)
-			p = z + rsnew/rsold*p
+			p = Pfun(r); cleanfun(p, dod)
+			rsnew = dotfun(r, p)
+			ptilde = p + rsnew/rsold*ptilde
 			rsold = np.copy(rsnew)
 		output = {'sol':x, 'res':resLin}
 		return output
