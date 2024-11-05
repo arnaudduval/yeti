@@ -66,6 +66,7 @@ class part():
 		self.name       = self.__read_name(modelIGA)
 		self.dim        = self.__read_dimension(modelIGA)
 		self.degree     = self.__read_degree(modelIGA)
+		self.NURBSwgt   = self.__read_NURBS_weights(modelIGA)
 		self.ctrlpts    = self.__read_controlPoints(modelIGA)
 		self.nbctrlpts  = np.ones(3, dtype=int)
 		self.knotvector, self.size_kv = self.__read_knotvector(modelIGA)
@@ -113,7 +114,14 @@ class part():
 	def __read_controlPoints(self, modelIGA:IGAparametrization): 
 		" Reads control points from model "
 		ctrlpts = modelIGA._COORDS[:self.dim, :]
+		for i in range(self.dim):
+			ctrlpts[i, :] *= self.NURBSwgt
 		return ctrlpts
+	
+	def __read_NURBS_weights(self, modelIGA:IGAparametrization):
+		try: NURBS_weights = modelIGA._vectWeight
+		except: NURBS_weights = np.ones(shape=np.shape(modelIGA._COORDS[:self.dim, :]))
+		return NURBS_weights
 	
 	def __setQuadratureRules(self, quadArgs:dict):
 
@@ -150,15 +158,33 @@ class part():
 
 		print('Evaluating jacobien and physical position')
 		start = time.process_time()
+		inpts = [*self.nbqp[:self.dim], *self.indices, *self.basis, np.atleast_2d(self.NURBSwgt)]
+
+		if self.dim == 2:
+			self.NURBScorrection = geophy.interpolate_meshgrid_2d(*inpts)[0, :]
+			dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
+
+		elif self.dim == 3: 
+			self.NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
+			dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+
 		inpts = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
-			self.Jqp = geophy.eval_jacobien_2d(*inpts)
-			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
 			self.qpPhy = geophy.interpolate_meshgrid_2d(*inpts)
+			pseudojac = geophy.eval_jacobien_2d(*inpts)
 		if self.dim == 3:
-			self.Jqp = geophy.eval_jacobien_3d(*inpts)
-			self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
 			self.qpPhy = geophy.interpolate_meshgrid_3d(*inpts)
+			pseudojac = geophy.eval_jacobien_3d(*inpts)
+		for i in range(self.dim):
+			self.qpPhy[i, :] /= self.NURBScorrection
+			
+		self.Jqp = np.zeros((self.dim, self.dim, len(self.NURBScorrection)))
+		for i in range(self.dim):
+			for j in range(self.dim):
+				self.Jqp[i, j, :] = (pseudojac[i, j, :] - self.qpPhy[i, :]*dersNURBScorrection[j, :])/self.NURBScorrection
+		
+		self.detJ, self.invJ = geophy.eval_inverse_det(self.Jqp)
+		
 		stop = time.process_time()
 		print('\t Time jacobien: %.5f s' %(stop-start))
 		return	
@@ -231,20 +257,45 @@ class part():
 
 		# Get position and determinant 
 		if isAll:
+			inpts = [*sampleSize[:self.dim], *indices, *basis, np.atleast_2d(self.NURBSwgt)]
+			if self.dim == 2:
+				NURBScorrection = geophy.interpolate_meshgrid_2d(*inpts)[0, :]
+				dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
+			elif self.dim == 3: 
+				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
+				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+
 			inpts = [*sampleSize[:self.dim], *indices, *basis, self.ctrlpts]
 			if self.dim == 2:
-				Jpts   = geophy.eval_jacobien_2d(*inpts)
-				detJ  = geophy.eval_inverse_det(Jpts)[0]
 				pts = geophy.interpolate_meshgrid_2d(*inpts)
-			elif self.dim == 3: 
-				Jpts   = geophy.eval_jacobien_3d(*inpts)
-				detJ  = geophy.eval_inverse_det(Jpts)[0]
+				pseudojac = geophy.eval_jacobien_2d(*inpts)
+			if self.dim == 3:
 				pts = geophy.interpolate_meshgrid_3d(*inpts)
+				pseudojac = geophy.eval_jacobien_3d(*inpts)
+			for i in range(self.dim):
+				pts[i, :] /= NURBScorrection
+				
+			Jpts = np.zeros((self.dim, self.dim, len(NURBScorrection)))
+			for i in range(self.dim):
+				for j in range(self.dim):
+					Jpts[i, j, :] = (pseudojac[i, j, :] - pts[i, :]*dersNURBScorrection[j, :])/NURBScorrection
+			
+			detJ = geophy.eval_inverse_det(Jpts)[0]
 
 		if u_ctrlpts is not None: 
+			inpts = [*sampleSize[:self.dim], *indices, *basis, np.atleast_2d(self.NURBSwgt)]
+			if self.dim == 2:
+				NURBScorrection = geophy.interpolate_meshgrid_2d(*inpts)[0, :]
+				dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
+			elif self.dim == 3: 
+				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
+				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+
 			inpts = [*sampleSize[:self.dim], *indices, *basis, np.atleast_2d(u_ctrlpts)]
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
 			elif self.dim == 3: uinterp = geophy.interpolate_meshgrid_3d(*inpts)
+			for i in range(np.size(uinterp, axis=0)):
+				uinterp[i, :] /= NURBScorrection
 
 		return pts, Jpts, detJ, uinterp
 
