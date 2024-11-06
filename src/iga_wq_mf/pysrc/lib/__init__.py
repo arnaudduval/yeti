@@ -16,6 +16,7 @@ from geomdl import (
 	helpers,
 	fitting, 
 	BSpline, 
+	NURBS,
 	operations,
 )
 

@@ -14,7 +14,7 @@ FOLDER = os.path.dirname(os.path.realpath(__file__)) + '/'
 
 def exactfunction(P:list):
 	x = P[0, :]; y = P[1, :]
-	F = np.sin(np.pi*x)*np.sin(np.pi*y)*(x+4)*(y-4)*(y-x-1)
+	F = np.sin(np.pi*x)*np.sin(np.pi*y)*np.sin(np.pi*(x+4)*(y-4))*(x**2+y**2-1)
 	return F
 
 def normOfError(l2problem:problem, u_ctrlpts, normArgs:dict):
@@ -123,7 +123,7 @@ def simulate_l2problem(degree, cuts, quadArgs, plot=False):
 
 degList = np.arange(0, 5)
 cutList = np.arange(0, 8)
-RUNSIMU = False
+RUNSIMU = True
 
 if RUNSIMU:
 
@@ -139,38 +139,36 @@ if RUNSIMU:
 			np.savetxt(FOLDER+'AbsError_l2_'+quadrule+'_'+str(quadtype)+'.dat', AbserrorList)
 			np.savetxt(FOLDER+'RelError_l2_'+quadrule+'_'+str(quadtype)+'.dat', RelerrorList)
 
-
 simulate_l2problem(6, 6, {'quadrule':'iga', 'type':'leg'}, plot=True)
 vtk2png(folder=FOLDER, filename='l2problem', fieldname='approxfield', cmap='coolwarm', title='Exact function', position_y=0.1)
 
+fig, ax = plt.subplots()
+figname = FOLDER + 'ConvergenceL2_projection'
+for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 3], [CONFIGLINE0, CONFIGLINE2]):
+	quadArgs = {'quadrule': quadrule, 'type': quadtype}
+	errorList = np.loadtxt(FOLDER+'RelError_l2_'+quadrule+'_'+str(quadtype)+'.dat')
 
-# fig, ax = plt.subplots()
-# figname = FOLDER + 'ConvergenceL2_projection'
-# for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 3], [CONFIGLINE0, CONFIGLINE2]):
-# 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
-# 	errorList = np.loadtxt(FOLDER+'RelError_l2_'+quadrule+'_'+str(quadtype)+'.dat')
+	for i, degree in enumerate(degList):
+		color = COLORLIST[i+1]
+		nbelList = 2*2**cutList
 
-# 	for i, degree in enumerate(degList):
-# 		color = COLORLIST[i+1]
-# 		nbelList = 2*2**cutList
+		if quadrule == 'iga': 
+			ax.loglog(nbelList, errorList[i, :], label='IGA-GL deg. '+str(degree+2), color=color, marker=plotpars['marker'], 
+					markerfacecolor='w', markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+			# slope = round(np.polyfit(np.log(nbelList), np.log(errorList[i, :]), 1)[0], 1)
+			# annotation.slope_marker((nbelList[-2],  errorList[i, -2]), slope, 
+			# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+		else: 
+			ax.loglog(nbelList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
+				markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 
-# 		if quadrule == 'iga': 
-# 			ax.loglog(nbelList, errorList[i, :], label='IGA-GL deg. '+str(degree+2), color=color, marker=plotpars['marker'], 
-# 					markerfacecolor='w', markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
-# 			# slope = round(np.polyfit(np.log(nbelList), np.log(errorList[i, :]), 1)[0], 1)
-# 			# annotation.slope_marker((nbelList[-2],  errorList[i, -2]), slope, 
-# 			# 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
-# 		else: 
-# 			ax.loglog(nbelList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
-# 				markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
+ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
+		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='IGA-WQ 2')
 
-# ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-# 		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='IGA-WQ 2')
-
-# ax.set_ylabel('Relative '+r'$L^2$'+' error')
-# ax.set_xlabel('Number of elements by dimension')
-# ax.set_ylim(top=1e2, bottom=1e-14)
-# ax.set_xlim(left=1, right=400)
-# ax.legend(loc='lower left')
-# fig.tight_layout()
-# fig.savefig(figname+'.png')
+ax.set_ylabel('Relative '+r'$L^2$'+' error')
+ax.set_xlabel('Number of elements by dimension')
+ax.set_ylim(top=1e2, bottom=1e-14)
+ax.set_xlim(left=1, right=400)
+ax.legend(loc='lower left')
+fig.tight_layout()
+fig.savefig(figname+'.png')
