@@ -51,6 +51,9 @@ mpl.rcParams['figure.dpi'] = 300
 mpl.rcParams['axes.unicode_minus'] = True
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
+# plt.rcParams['font.sans-serif'] = "CMU Sans Serif"
+# plt.rcParams['font.family'] = "sans-serif"
+# plt.rcParams['mathtext.fontset'] = 'cm' 
 mpl.rcParams["axes.grid"] = True
 mpl.rcParams['axes.prop_cycle'] = cycler('color', COLORLIST)
 

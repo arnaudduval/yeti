@@ -165,8 +165,8 @@ class part():
 			dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
 
 		elif self.dim == 3: 
-			self.NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
-			dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+			self.NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)[0, :]
+			dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)[0, :, :]
 
 		inpts = [*self.nbqp[:self.dim], *self.indices, *self.basis, self.ctrlpts]
 		if self.dim == 2:
@@ -262,8 +262,8 @@ class part():
 				NURBScorrection = geophy.interpolate_meshgrid_2d(*inpts)[0, :]
 				dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
 			elif self.dim == 3: 
-				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
-				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)[0, :]
+				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)[0, :, :]
 
 			inpts = [*sampleSize[:self.dim], *indices, *basis, self.ctrlpts]
 			if self.dim == 2:
@@ -288,8 +288,8 @@ class part():
 				NURBScorrection = geophy.interpolate_meshgrid_2d(*inpts)[0, :]
 				dersNURBScorrection = geophy.eval_jacobien_2d(*inpts)[0, :, :]
 			elif self.dim == 3: 
-				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)
-				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)
+				NURBScorrection = geophy.interpolate_meshgrid_3d(*inpts)[0, :]
+				dersNURBScorrection = geophy.eval_jacobien_3d(*inpts)[0, :, :]
 
 			inpts = [*sampleSize[:self.dim], *indices, *basis, np.atleast_2d(u_ctrlpts)]
 			if self.dim == 2:   uinterp = geophy.interpolate_meshgrid_2d(*inpts)    
