@@ -80,7 +80,7 @@ def plot2DGeo(model:part, sampleSize=101):
 
 
 # Set global variables
-CASE      = 0
+CASE      = 2
 extension = '.png'
 
 if CASE == 0: # B-spline curve
@@ -232,4 +232,101 @@ elif CASE == 1: # Bivariate functions
 
 	images += images[-2::-1] 
 	imageio.mimsave(folder + 'bspline2D.gif', images)
+
+elif CASE ==2: # Element-wise
+	def case3(folder, extension, el=1): 
+		from matplotlib.colors import ListedColormap
+
+		# Set filename
+		filename = folder + 'BSknin1_' + str(el)
+
+		degree = 2
+		nbel, multiplicity = 4, 1
+		knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)		
+
+		quadRule = GaussQuadrature(degree, knotvector, quadArgs={})
+		quadRule.getQuadratureRulesInfo()
+		basis, knots = quadRule.getSampleBasis(sampleSize=201)
+		B0 = basis[0].toarray(); B1 = basis[1].toarray()
+
+		fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(4, 6))
+		axs[0].axis('off')
+		axs[1].axis('off')
+
+		axs[0].plot(quadRule._uniqueKV, np.zeros(len(quadRule._uniqueKV)), color='k', marker='s', linestyle='', label='Knots')
+		for i in range(np.shape(B0)[0]): 
+			axs[0].plot(knots, B0[i, :], linewidth=1, color='k')
+
+		ukv = np.unique(knotvector)
+		elleft, elright = ukv[el], ukv[el+1]
+		indices = np.where((knots>=elleft)&(knots<=elright))[0]
+		for i in range(np.shape(B0)[0]): 
+			axs[0].plot(knots[indices], B0[i, indices], linewidth=2, color='tab:blue')
+			axs[0].fill_between(x=knots[indices], y1=B0[i, indices], color="tab:blue", alpha=0.2)
+
+		# Matrix
+		cmap = ListedColormap(["white", "tab:gray", "tab:blue"])
+		A = quadRule._denseWeights[0] @  quadRule._denseBasis[0].T; A = A.todense()
+		A = np.where(A!=0, 1, 0)
+		B = B0[:, indices] @ B0[:, indices].T
+		B = np.where(B!=0, 1, 0)
+		axs[1].imshow(A+B, cmap=cmap, interpolation=None)
+
+		# Add gridlines for imshow
+		filename += extension
+		fig.tight_layout()
+		fig.savefig(filename, dpi=300)
+		return filename
 	
+	def case4(folder, extension, ctrlpts=1): 
+		from matplotlib.colors import ListedColormap
+
+		# Set filename
+		filename = folder + 'BSknin2_' + str(ctrlpts)
+
+		degree = 2
+		nbel, multiplicity = 4, 1
+		knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)		
+
+		quadRule = GaussQuadrature(degree, knotvector, quadArgs={})
+		quadRule.getQuadratureRulesInfo()
+		basis, knots = quadRule.getSampleBasis(sampleSize=201)
+		B0 = basis[0].toarray(); B1 = basis[1].toarray()
+
+		fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(4, 6))
+		axs[0].axis('off')
+		axs[1].axis('off')
+
+		axs[0].plot(quadRule._uniqueKV, np.zeros(len(quadRule._uniqueKV)), color='k', marker='s', linestyle='', label='Knots')
+		for i in range(np.shape(B0)[0]): 
+			axs[0].plot(knots, B0[i, :], linewidth=1, color='k')
+		axs[0].plot(knots, B0[ctrlpts, :], linewidth=2, color='tab:blue')
+		axs[0].fill_between(x=knots, y1=B0[ctrlpts, :], color="tab:blue", alpha=0.2)
+
+		# Matrix
+		cmap = ListedColormap(["white", "tab:gray", "tab:blue"])
+		A = quadRule._denseWeights[0] @  quadRule._denseBasis[0].T; A = A.todense()
+		A = np.where(A!=0, 1, 0)
+		B = np.zeros(shape=np.shape(A))
+		B[ctrlpts, :] = A[ctrlpts, :] 
+		axs[1].imshow(A+B, cmap=cmap, interpolation=None)
+
+		# Add gridlines for imshow
+		filename += extension
+		fig.tight_layout()
+		fig.savefig(filename, dpi=300)
+		return filename
+	
+	images = []
+	for i in range(4):
+		name = case3(folder, extension, el=i)
+		images.append(imageio.imread(name))
+	images += images[-1::-1] 
+	imageio.mimsave(folder + 'elbyel.gif', images, duration=0.6)
+
+	images = []
+	for i in range(6):
+		name = case4(folder, extension, ctrlpts=i)
+		images.append(imageio.imread(name))
+	images += images[-1::-1] 
+	imageio.mimsave(folder + 'rowbyrow.gif', images, duration=0.4)

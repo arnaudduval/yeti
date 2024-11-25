@@ -88,28 +88,32 @@ if RUNSIMU:
 
 
 cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
-plotoptions = [CONFIGLINE4, CONFIGLINE0]
+plotoptions = [CONFIGLINE0, CONFIGLINE4]
 
 # Load data
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5.5,4.5))
+x = np.array([2**i for i in cutList])**3
+y = 4e-8*x**(1+1/(NDIM+1))
 
 # Make dummie mappable
 c = np.arange(1,len(degList)+1, dtype=int)
 dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
 ax.cla()
 
-for TYPESIMU, plotop, label in zip(['heat', 'meca'], plotoptions, ['Heat transfer', 'Elasticity']):
+for TYPESIMU, plotop, label in zip(['meca'], plotoptions, ['Elasticity']):
 	file = np.loadtxt(FOLDER2DATA+filename+TYPESIMU+'.dat')
 	degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
 	for _, degree in enumerate(degList): 
 		color=COLORLIST[_]
 		im = ax.loglog(nbelList**3, timeElapsed[:, _], marker=plotop['marker'], linestyle=plotop['linestyle'], color=color)
 		im = ax.loglog(nbelList**3, timeElapsed[:, _], marker=plotop['marker'], linestyle=plotop['linestyle'], color=color)
-	ax.loglog([], [], marker=plotop['marker'], color='k', linestyle=plotop['linestyle'], label=label)
+	# ax.loglog([], [], marker=plotop['marker'], color='k', linestyle=plotop['linestyle'], label=label)
 
 	slope = round(np.polyfit(np.log(nbelList[1:]**3), np.log(timeElapsed[1:, 2]), 1)[0], 1)
 	annotation.slope_marker((nbelList[-2]**3,  timeElapsed[-2, 2]), slope, 
 					poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
+
+ax.loglog(x, y, c='tab:gray', label='$O(N^{1.25})$')
 
 cbar = plt.colorbar(dummie_cax)
 cbar.set_label('Degree')
@@ -127,8 +131,9 @@ if NDIM == 3:
 
 ax.minorticks_off()
 ax.set_xlabel('Total number of elements')
-ax.set_ylabel('CPU time (s)')
-ax.set_ylim([1e-3, 1e2])
-ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
+ax.set_ylabel('Time (s) of applying $\mathsf{P}^{-1}$')
+ax.set_ylim([1e-2, 1e2])
+ax.legend()
+# ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')
 fig.tight_layout()
 fig.savefig(FOLDER2SAVE+filename+'.png')

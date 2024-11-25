@@ -94,12 +94,12 @@ def plotVerticalLine(x, y, ax=None, color='k'):
 	return
 
 # Set global variables
-FIGCASE = 0
+FIGCASE = 6
 EXTENSION = '.png'
 
 if FIGCASE == 0: # B-spline curve
 
-	def case0(folder, extension, refinement=0):
+	def case0(folder, extension, refinement=2):
 
 		# Set filename
 		filename = folder + 'BsplineCurve' + str(refinement) + extension
@@ -132,13 +132,15 @@ if FIGCASE == 0: # B-spline curve
 		knotsPhy = basisKnots[0].T @ np.array(crv.ctrlpts)
 		evalpts = np.asarray(crv.evalpts); ctrlpts = np.asarray(crv.ctrlpts)
 		
-		fig, ax = plt.subplots()
+		fig, ax = plt.subplots(figsize=(5,3))
 		ax.plot(evalpts[:, 0], evalpts[:, 1], label='B-Spline curve')
 		ax.plot(ctrlpts[:, 0], ctrlpts[:, 1], 'o--', markersize=10, label='Control points net')
 		ax.plot(knotsPhy[:, 0], knotsPhy[:, 1], color='k', marker='s', linestyle='', label='Knots')
 		ax.set_xlim([-1.5, 2.5]); ax.set_ylim([-1., 2.5])
 		ax.set_xlabel(r'$x_1$'); ax.set_ylabel(r'$x_2$') 
-		ax.legend()
+		# ax.legend()
+		ax.axis('off')
+
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
 
@@ -151,22 +153,22 @@ elif FIGCASE == 1: # Univariate functions
 	def case1(folder, extension, addDers=False): 
 
 		# Set filename
-		filename = folder + 'BSknin'
+		filename = folder + 'BSkninw'
 
 		# B-spline properties 
 		# degree = 3
 		# knotvector = np.array([0., 0., 0., 0., 0.25, 0.75, 0.75, 1., 1., 1., 1.])
 		# knotvector = np.array([0., 0., 0., 0., 0.125, 0.25, 0.5, 0.75, 0.75, 0.875, 1., 1., 1., 1.])
 
-		degree = 4
-		nbel, multiplicity = 4, 1
+		degree = 2
+		nbel, multiplicity = 3, 2
 		knotvector = createUniformKnotvector_Rmultiplicity(degree, nbel, multiplicity=multiplicity)		
 		# knotvector = np.array([0., 0., 0., 0., 0., 0.25, 0.25, 0.75, 0.75, 0.75, 1., 1., 1., 1., 1.])
 		# knotvector = np.array([0., 0., 0., 0., 0., 0.125, 0.25, 0.5, 0.75, 0.75, 0.875, 1., 1., 1., 1., 1.])
 		# knotvector = np.array([0., 0., 0., 0., 0., 0.125, 0.125, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 0.75, 0.875, 0.875, 1., 1., 1., 1., 1.])
 
 		quadRule   = QuadratureRules(degree, knotvector)
-		basis, knots = quadRule.getSampleBasis(sampleSize=201)
+		basis, knots = quadRule.getSampleBasis(sampleSize=301)
 		B0 = basis[0].toarray(); B1 = basis[1].toarray()
 
 		if addDers:
@@ -185,16 +187,17 @@ elif FIGCASE == 1: # Univariate functions
 		else:
 			fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
 			for i in range(np.shape(B0)[0]): 
-				ax.plot(knots, B0[i, :], linewidth=1, color='k')
-			ax.plot([], [], linewidth=1, color='k', label='B-Spline basis')
+				ax.plot(knots, B0[i, :])
+			# ax.plot([], [], linewidth=1, color='k', label='B-Spline basis')
 			ax.plot(quadRule._uniqueKV, np.zeros(len(quadRule._uniqueKV)), color='k', marker='s', linestyle='', label='Knots')
 
 			ax.set_xlabel(r'$\xi$')
 			ax.set_xticks(np.linspace(0, 1, 5))
 			ax.set_yticks([0, 0.5, 1])
 			ax.set_ylabel(r'$\hat{b}_{A,\,p}(\xi)$')
-			ax.legend()
+			# ax.legend()
 
+		ax.axis('off')
 		filename += extension
 		fig.tight_layout()
 		fig.savefig(filename, dpi=300)
@@ -422,11 +425,11 @@ elif FIGCASE == 5: # B-spline surface
 
 elif FIGCASE == 6: # Weights W00 and W11
 
-	def case6(folder, extension, isDers=0):
+	def case6(folder, extension, isDers=1):
 
 		if isDers not in [0, 1]: raise Warning('Not possible')
 		if isDers == 0: ylim1 = [0, 1];  ylim2 = [0, 0.25]
-		else:           ylim1 = [-3, 3]; ylim2 = [-0.6, 0.6]
+		else:           ylim1 = [-6, 6]; ylim2 = [-0.6, 0.6]
 
 		# Set filename
 		filename = folder + 'WeightsW' + str(isDers) + extension
@@ -435,9 +438,9 @@ elif FIGCASE == 6: # Weights W00 and W11
 		basisInd = 2
 		degree, nbel = 2, 3
 		knotvector   = createUniformKnotvector_Rmultiplicity(degree, nbel)
-		quadRule     = WeightedQuadrature(degree, knotvector, {'type': 1, 'extra':{'r': 3, 's': 2}})
+		quadRule     = WeightedQuadrature(degree, knotvector, {'type': 2})
 		quadRule.getQuadratureRulesInfo()
-		basis, knots = quadRule.getSampleBasis()
+		basis, knots = quadRule.getSampleBasis(sampleSize=301)
 		basisval = basis[isDers].toarray()
 
 		# Get weights
@@ -445,16 +448,9 @@ elif FIGCASE == 6: # Weights W00 and W11
 		weights = quadRule._denseWeights[-isDers]
 		weightsval = weights.toarray()[basisInd, :]
 
-		if isDers == 0:
-			basisRef = basisval
-		else:
-			kvref = createUniformKnotvector_Rmultiplicity(degree-1, nbel)
-			basisRef = evalDersBasisDensePy(degree-1, kvref, knots)[0]
-			basisRef = basisRef.todense()
-
 		fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(8,4))
-		for i in range(np.shape(basisRef)[0]): 
-			ax1.plot(knots, np.ravel(basisRef[i, :]), linewidth=2)
+		for i in range(np.shape(basisval)[0]): 
+			ax1.plot(knots, np.ravel(basisval[i, :]), linewidth=2)
 
 		# Fill basis chosen
 		ax1.fill_between(x=knots, y1=basisval[basisInd, :], color="g", alpha=0.2)

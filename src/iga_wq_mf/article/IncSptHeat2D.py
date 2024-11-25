@@ -66,7 +66,7 @@ if FIG_CASE == 0:
 					np.savetxt(filenameR1, relerrorTable)
 
 	plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
-	figname = FOLDER2SAVE+'L2Convergence'+SUFIX+'.pdf'
+	figname = FOLDER2SAVE+'L2Convergence'+SUFIX+'.png'
 	if PLOTRELATIVE: filenames = ['0L2relerror_iga_leg_', '0L2relerror_wq_1_', '0L2relerror_wq_2_']
 	else: filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_1_', '0L2abserror_wq_2_']
 
@@ -75,7 +75,7 @@ if FIG_CASE == 0:
 		quadrule = filename.split('_')[1]
 		table = np.loadtxt(FOLDER2DATA+filename+SUFIX+EXTENSION)	
 		nbels = 2**(table[0, 1:])
-		degList = table[1:, 0]
+		degList = table[1:-1, 0]
 		errList  = table[1:, 1:]
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]

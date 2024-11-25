@@ -34,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 4
+FIG_CASE = 5
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -50,7 +50,7 @@ if FIG_CASE == 3:
 	filenameT3 = FOLDER2DATA + '3sptheatTim'
 
 	degList = np.array([1, 2, 3, 4, 5, 6])
-	cutList = np.arange(2, 4)
+	cutList = np.arange(4, 7)
 
 	if RUNSIMU:
 		A2errorList = np.ones((len(degList), len(cutList)))
@@ -84,15 +84,15 @@ if FIG_CASE == 3:
 														normArgs={'type':'L2',
 																'exactFunction':exactTemperature_spt,})
 
-				# np.savetxt(filenameA2+sufix, A2errorList)
-				# np.savetxt(filenameR2+sufix, R2errorList)
-				# np.savetxt(filenameT2+sufix, T2timeList)
+				np.savetxt(filenameA2+sufix, A2errorList)
+				np.savetxt(filenameR2+sufix, R2errorList)
+				np.savetxt(filenameT2+sufix, T2timeList)
 
 		A3errorList = np.ones((len(degList), len(cutList)))
 		R3errorList = np.ones((len(degList), len(cutList)))
 		T3timeList = np.ones((len(degList), len(cutList)))
 		
-		for quadrule, quadtype in zip(['wq', 'wq', 'iga'], [2, 1, 'leg']):
+		for quadrule, quadtype in zip(['wq'], [2]):
 			quadArgs = {'quadrule': quadrule, 'type': quadtype}
 			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
 			for j, cuts in enumerate(cutList):
@@ -114,11 +114,11 @@ if FIG_CASE == 3:
 															normArgs={'type':'L2',
 																	'exactFunction':exactTemperature_spt, })
 
-					# np.savetxt(filenameA3+sufix, A3errorList)
-					# np.savetxt(filenameR3+sufix, R3errorList)
-					# np.savetxt(filenameT3+sufix, T3timeList)
+					np.savetxt(filenameA3+sufix, A3errorList)
+					np.savetxt(filenameR3+sufix, R3errorList)
+					np.savetxt(filenameT3+sufix, T3timeList)
 
-	position = 1
+	position = 2
 	assert position in [1, 2], 'Must be one or 2'
 	if position==1: fig, ax = plt.subplots(figsize=(6.5, 5.5))
 	if position==2: fig, ax = plt.subplots()
@@ -128,11 +128,12 @@ if FIG_CASE == 3:
 		filenameA2 = FOLDER2DATA + '3incheatRel'
 		filenameA3 = FOLDER2DATA + '3sptheatRel'
 
+	offset = -1
 	Elist = np.loadtxt(filenameA2+'_wq_2_'+SUFIX+EXTENSION)
 	Tlist = np.loadtxt(filenameT2+'_wq_2_'+SUFIX+EXTENSION)
-	im = ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
+	im = ax.scatter(Tlist[:len(degList), position+offset], Elist[:len(degList), position+offset], c=degList,
 			cmap=cmap, marker=CONFIGLINE4['marker'], s=10*CONFIGLINE4['markersize'])
-	ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
+	ax.loglog(Tlist[:len(degList), position+offset], Elist[:len(degList), position+offset], 
 			color='k', marker='', linestyle=CONFIGLINE4['linestyle'])
 	
 	if position==1:
@@ -142,23 +143,24 @@ if FIG_CASE == 3:
 		cbar.set_ticklabels(degList)
 
 	for quadrule, quadtype, plotvars in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2]):
+		offset = 0 if quadtype == 'leg' else -1
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
 		Elist = np.loadtxt(filenameA3+sufix)
 		Tlist = np.loadtxt(filenameT3+sufix)
-		ax.scatter(Tlist[:len(degList), position], Elist[:len(degList), position], c=degList,
+		ax.scatter(Tlist[:len(degList), position+offset], Elist[:len(degList), position+offset], c=degList,
 						cmap=cmap, marker=plotvars['marker'], s=10*plotvars['markersize'])
 			
-		ax.loglog(Tlist[:len(degList), position], Elist[:len(degList), position], 
+		ax.loglog(Tlist[:len(degList), position+offset], Elist[:len(degList), position+offset], 
 				color='k', marker='', linestyle=plotvars['linestyle'])
 
 	ax.loglog([], [], color='k', marker=CONFIGLINE4['marker'], alpha=0.5,
-			markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-WQ')
+			markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='Crank-Nicolson')
 	
 	ax.loglog([], [], color='k', marker=CONFIGLINE0['marker'], alpha=0.5,
-		markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL')
+		markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-Gauss quad.')
 		
 	ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], alpha=0.5,
-		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-IGA-WQ 2')
+		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-Weighted quad.')
 
 	if PLOTRELATIVE: 
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
@@ -172,7 +174,7 @@ if FIG_CASE == 3:
 	if position==1: ax.set_xlim(left=1e0, right=1e3)
 	if position==2: ax.set_xlim(left=1e1, right=1e4)
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError0' + str(position) +  '.pdf')
+	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError0' + str(position) +  '.png')
 
 elif FIG_CASE == 4:
 
@@ -189,11 +191,16 @@ elif FIG_CASE == 4:
 				prefix = prefix1 + '_' + prefix2 + '_'
 
 				dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+				start = time.process_time()
+				blockPrint()
 				problem_spt, _, _, output = simulate_spacetime(degree, cuts, powerDensity_spt, 
 												dirichlet_table=dirichlet_table,
 												degree_time=degree, nbel_time=2**cuts, geoArgs=geoArgs,
 												isadaptive=isadaptive, isfull=isfull,
 												getOthers=True)
+				stop = time.process_time()
+				enablePrint()
+				print("Method %s %s %.3f" % (prefix1, prefix2, stop-start))
 				
 				sol_list  = output['Solution']; resKrylov_list = output['KrylovRes']
 				resNewton_list = output['NewtonRes']; threshold_list = output['Threshold']
@@ -240,23 +247,23 @@ elif FIG_CASE == 4:
 				if caseplot == 1:
 					yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
 					xlim = 10*np.ceil(np.max(nbInnerLoops)/10)
-					ylabel = 'Relative '+r'$L^2(\Pi)$' + ' norm of error'
-					xlabel = 'Number of inner iterations'
+					ylabel = 'Relative '+r'$L^2$' + ' norm of error'
+					xlabel = 'Number of matrix-vector products'
 				elif caseplot == 2:
 					yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
 					xlim = 10*np.ceil(np.max(nbInnerLoops)/10)
-					ylabel = 'Relative norm of outer residue'
-					xlabel = 'Number of inner iterations'
+					ylabel = 'Relative norm of nonlinear residue'
+					xlabel = 'Number of matrix-vector products'
 				elif caseplot == 3:
 					yy = newtonRes; xx = np.arange(0, len(newtonRes))
 					xlim = 8
-					ylabel = 'Relative norm of outer residue'
-					xlabel = 'Number of outer iterations'
+					ylabel = 'Relative norm of nonlinear residue'
+					xlabel = 'Number of nonlinear iterations'
 				elif caseplot == 4:
 					yy = L2relerror; xx = np.arange(0, len(L2relerror))
 					xlim = 8
-					ylabel = 'Relative '+r'$L^2(\Pi)$' + ' norm of error'
-					xlabel = 'Number of outer iterations'
+					ylabel = 'Relative '+r'$L^2$' + ' norm of error'
+					xlabel = 'Number of nonlinear iterations'
 
 				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
 				ax.set_xlim(right=xlim, left=0)
@@ -292,14 +299,49 @@ elif FIG_CASE == 4:
 
 elif FIG_CASE == 5:
 	
-	degList = np.array([1, 2, 3, 4, 5, 6])
+	degList = np.array([1, 2, 3, 4, 5, 6, 7, 8])
 	cutList = np.arange(2, 7)
 
-	fig1, ax1 = plt.subplots(figsize=(6.5, 5.5))
-	fig2, ax2 = plt.subplots(figsize=(7.5, 5.5))
-	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
-	filenameA3 = FOLDER2DATA + '3sptheatRel'
-	filenameT3 = FOLDER2DATA + '3sptheatTim'
+	filenameA3 = FOLDER2DATA + '5sptheatAbs'
+	filenameR3 = FOLDER2DATA + '5sptheatRel'
+	filenameT3 = FOLDER2DATA + '5sptheatTim'
+
+	if RUNSIMU:
+
+		quadArgs = {'quadrule': 'wq', 'type': 2}
+		A3errorList = np.ones((len(degList), len(cutList)))
+		R3errorList = np.ones((len(degList), len(cutList)))
+		T3timeList = np.ones((len(degList), len(cutList)))
+		
+		for quadrule, quadtype in zip(['wq'], [2]):
+			quadArgs = {'quadrule': quadrule, 'type': quadtype}
+			sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
+			for j, cuts in enumerate(cutList):
+				for i, degree in enumerate(degList):
+					geoArgs = {'name': GEONAME, 'degree': degree*np.ones(3, dtype=int), 
+					'nb_refinementByDirection': np.array([cuts, cuts, 1])}
+
+					start = time.process_time()
+					dirichlet_table = np.ones((3, 2)); dirichlet_table[-1, 1] = 0
+					problem_spt, time_spt, temp_spt = simulate_spacetime(degree, cuts, powerDensity_spt, 
+														dirichlet_table=dirichlet_table, geoArgs=geoArgs, 
+														degree_time=degree, nbel_time=2**cuts, quadArgs=quadArgs,
+														isadaptive=False)
+						
+					end = time.process_time()
+					T3timeList[i, j] = end - start
+
+					A3errorList[i, j], R3errorList[i, j] = problem_spt.normOfError(temp_spt, 
+															normArgs={'type':'L2',
+																	'exactFunction':exactTemperature_spt, })
+
+					# np.savetxt(filenameA3+sufix, A3errorList)
+					# np.savetxt(filenameR3+sufix, R3errorList)
+					# np.savetxt(filenameT3+sufix, T3timeList)
+
+	fig2, ax2 = plt.subplots(figsize=(5.5, 4))
+	cmap = plt.get_cmap('coolwarm', 8)
+	IgaPlot = {'marker': 's', 'linestyle': '-', 'markersize': 10}
 
 	for quadrule, quadtype, plotvars, ax in zip(['wq'], [2], [CONFIGLINE2], [ax2]):
 		sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION
@@ -307,11 +349,11 @@ elif FIG_CASE == 5:
 		Tlist = np.loadtxt(filenameT3+sufix)
 		for pos in range(np.size(Elist, axis=1)):
 			im = ax.scatter(Tlist[:len(degList), pos], Elist[:len(degList), pos], c=degList,
-							cmap=cmap, marker=plotvars['marker'], s=10*plotvars['markersize'])
+							cmap=cmap, marker=IgaPlot['marker'], s=10*IgaPlot['markersize'])
 				
 			ax.loglog(Tlist[:len(degList), pos], Elist[:len(degList), pos], 
-					color='k', marker='', linestyle=plotvars['linestyle'])
-			ax.text(Tlist[-1, pos]*0.5, Elist[-1, pos]/8, str(int(2**(pos+2)))+r'$^3$'+' el.')
+					color='k', marker='', linestyle=IgaPlot['linestyle'], alpha=0.5)
+			ax.text(Tlist[-1, pos]*0.5, Elist[-1, pos]/32, str(int(2**(pos+2)))+r'$^3$'+' el.')
 
 		# if quadtype == 'leg':
 		cbar = plt.colorbar(im, ax=ax)
@@ -323,11 +365,11 @@ elif FIG_CASE == 5:
 	for fig, ax, sufix in zip([fig2], [ax2], ['WQ']):
 		ax.grid(False)
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
-		ax.set_ylim(top=1e0, bottom=1e-12)
-		ax.set_xlim(left=1e-2, right=1e4)
+		ax.set_ylim(top=1e0, bottom=1e-15)
+		ax.set_xlim(left=1e-1, right=1e4)
 		ax.set_xlabel('CPU time (s)')
 		fig.tight_layout()
-		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.pdf')
+		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.png')
 
 	# for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [ax1, ax2]):
 	# 	sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION

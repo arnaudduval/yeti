@@ -68,23 +68,23 @@ if RUNSIMU:
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='straineq', title='Equivalent plastic strain', position_y=0.1, n_colors=11, fmt='%.2e')
 # vtk2png(FOLDER2DATA, filename='out_24', fieldname='plastic', title='Plastic zone', position_y=0.1, n_colors=2, n_labels=2)
 
-# images = []
-# for i in range(25): 
-# 	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='stress', title='Von Mises stress', clim=[0, 15], n_colors=21, camera_position='xy')
-# 	filename = FOLDER2DATA + 'out_' + str(i) + 'stress.png'
-# 	images.append(imageio.imread(filename))
-# images.append(imageio.imread(filename))
-# images += images[-2::-1] 
-# imageio.mimsave(FOLDER2DATA + 'stress.gif', images, duration=1)
+images = []
+for i in range(25): 
+	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='stress', title='Von Mises stress', clim=[0, 15], n_colors=21, camera_position='xy')
+	filename = FOLDER2DATA + 'out_' + str(i) + 'stress.png'
+	images.append(imageio.imread(filename))
+images.append(imageio.imread(filename))
+images += images[-1::-1] 
+imageio.mimsave(FOLDER2DATA + 'stress.gif', images, duration=0.4)
 
-# images = []
-# for i in range(25): 
-# 	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='plastic', title='Plastic zone', n_colors=2, n_labels=2, camera_position='xy')
-# 	filename = FOLDER2DATA + 'out_' + str(i) + 'plastic.png'
-# 	images.append(imageio.imread(filename))
-# images.append(imageio.imread(filename))
-# images += images[-2::-1] 
-# imageio.mimsave(FOLDER2DATA + 'plastic.gif', images, duration=1)
+images = []
+for i in range(25): 
+	vtk2png(FOLDER2DATA, filename='out_'+str(i), fieldname='plastic', title='Plastic zone', n_colors=2, n_labels=2, camera_position='xy')
+	filename = FOLDER2DATA + 'out_' + str(i) + 'plastic.png'
+	images.append(imageio.imread(filename))
+images.append(imageio.imread(filename))
+images += images[-1::-1] 
+imageio.mimsave(FOLDER2DATA + 'plastic.gif', images, duration=0.4)
 
 nbelList = 2**cutList
 FOLDER2SAVE += '/pls2d/'
@@ -94,13 +94,13 @@ for k, step in enumerate(stepList):
 	for error_name in ['H1', 'L2']:
 		fig, ax = plt.subplots()
 
-		for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
+		for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2]):
 			error_list = np.load(FOLDER2DATA + 'Abserror_pls2d_' + error_name + '_' + quadrule + str(quadtype) + '.npy')
 
 			for i, degree in enumerate(degList):
 				color = COLORLIST[i]
 				if quadrule == 'iga': 
-					ax.loglog(nbelList, error_list[k, i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+					ax.loglog(nbelList, error_list[k, i, :], label='Gauss quad. $p=$ '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 						markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 					slope = round(np.polyfit(np.log(nbelList[-3:]), np.log(error_list[k, i, -3:]), 1)[0], 1)
 					annotation.slope_marker((nbelList[-2],  error_list[k, i, -2]), slope, 
@@ -116,13 +116,13 @@ for k, step in enumerate(stepList):
 			ax.set_ylabel(r'$L^2$' + ' error')
 			ax.set_ylim(bottom=1e-9, top=1e-2)
 	
-		ax.set_xlabel('Number of elements')
+		ax.set_xlabel('Number of elements by direction')
 		ax.set_xlim(left=1, right=10**2)
 
-		ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='IGA-WQ 1')
+		# ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+		# 		markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='IGA-WQ 1')
 		ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='IGA-WQ 2')
+				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='Weighted quad.')
 
 		ax.legend()
 		fig.tight_layout()

@@ -53,7 +53,7 @@ vtk2png(folder=FOLDER2SAVE, filename='ellipticel', fieldname='vms', cmap='coolwa
 
 fig, ax = plt.subplots()
 figname = FOLDER2SAVE + 'ConvergenceH1_el'
-for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]):
+for quadrule, quadtype, plotpars in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2]):
 	quadArgs = {'quadrule': quadrule, 'type': quadtype}
 	errorList = np.loadtxt(FOLDER2DATA+'RelError_el_'+quadrule+'_'+str(quadtype)+'.dat')
 
@@ -62,7 +62,7 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CON
 		nbelList = 2**cutList
 
 		if quadrule == 'iga': 
-			ax.loglog(nbelList, errorList[i, :], label='IGA-GL deg. '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
+			ax.loglog(nbelList, errorList[i, :], label='Gauss quad. $p=$ '+str(degree), color=color, marker=plotpars['marker'], markerfacecolor='w',
 					markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 			slope = round(np.polyfit(np.log(nbelList), np.log(errorList[i, :]), 1)[0], 1)
 			annotation.slope_marker((nbelList[-2],  errorList[i, -2]), slope, 
@@ -72,10 +72,10 @@ for quadrule, quadtype, plotpars in zip(['iga', 'wq', 'wq'], ['leg', 1, 2], [CON
 			ax.loglog(2**cutList, errorList[i, :], color=color, marker=plotpars['marker'], markerfacecolor='w',
 				markersize=plotpars['markersize'], linestyle=plotpars['linestyle'])
 
-ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label="IGA-WQ 1")
+# ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+# 				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label="IGA-WQ 1")
 ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label="IGA-WQ 2")
+		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label="Weighted quad.")
 
 ax.set_ylabel('Relative '+r'$H^1$'+' error')
 ax.set_xlabel('Number of elements by dimension')

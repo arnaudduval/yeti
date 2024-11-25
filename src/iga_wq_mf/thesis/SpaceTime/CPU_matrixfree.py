@@ -8,10 +8,10 @@ from pysrc.lib.lib_job3d import stheatproblem
 
 # Set global variables
 TODOSIMU = False
-degList = range(1, 7)
+degList = range(1, 11)
 cuts = 4
-# quadArgs = {'quadrule':'wq', 'type':2}
-quadArgs = {'quadrule':'iga', 'type':'leg'}
+quadArgs = {'quadrule':'wq', 'type':2}
+# quadArgs = {'quadrule':'iga', 'type':'leg'}
 
 if TODOSIMU:
 
@@ -86,10 +86,13 @@ if TODOSIMU:
 		np.savetxt(FOLDER2DATA+'sptMF_MassDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersMass)
 		np.savetxt(FOLDER2DATA+'sptMF_StiffDers_'+quadArgs['quadrule']+'_'+str(quadArgs['type'])+'.dat', timeMF_dersStiff)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5.25,5))
 plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
 sufixList = ['iga_leg', 'wq_1', 'wq_2']
 labels = ['Newton', 'Picard']
+
+x = np.arange(1, 11)
+y1 = x**2
 
 # Load data
 for sufix, plotops in zip(sufixList, plotoptions):
@@ -118,9 +121,10 @@ ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w'
 
 ax.minorticks_off()
 ax.legend(ncol=2)
+# ax.legend()
 ax.set_xlabel('Degree ' + r'$p$')
-ax.set_ylabel('CPU time (s)')
-ax.set_xlim([0, 10])
+ax.set_ylabel('CPU time (s) of matrix-vector product')
+ax.set_xlim([1, 9])
 ax.set_ylim([1e-1, 1e3])
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE + 'sptMF_time' + '.png')
+fig.savefig(FOLDER2SAVE + 'sptMF_time' + '.pdf')

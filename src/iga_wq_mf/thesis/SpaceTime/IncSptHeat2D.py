@@ -33,7 +33,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 1
+FIG_CASE = 0
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -66,22 +66,22 @@ if FIG_CASE == 0:
 					np.savetxt(filenameA1, AbserrorTable)
 					np.savetxt(filenameR1, relerrorTable)
 
-	plotoptions = [CONFIGLINE0, CONFIGLINE1, CONFIGLINE2]
-	figname = FOLDER2SAVE+'L2Convergence'+SUFIX+'.pdf'
-	if PLOTRELATIVE: filenames = ['0L2relerror_iga_leg_', '0L2relerror_wq_1_', '0L2relerror_wq_2_']
-	else: filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_1_', '0L2abserror_wq_2_']
+	plotoptions = [CONFIGLINE0, CONFIGLINE2]
+	figname = FOLDER2SAVE+'L2Convergence'+SUFIX+'.png'
+	if PLOTRELATIVE: filenames = ['0L2relerror_iga_leg_', '0L2relerror_wq_2_']
+	else: filenames = ['0L2abserror_iga_leg_', '0L2abserror_wq_2_']
 
 	fig, ax = plt.subplots()
 	for filename, plotops in zip(filenames, plotoptions):
 		quadrule = filename.split('_')[1]
 		table = np.loadtxt(FOLDER2DATA+filename+SUFIX+EXTENSION)	
 		nbels = 2**(table[0, 1:])
-		degList = table[1:, 0]
+		degList = table[1:-1, 0]
 		errList  = table[1:, 1:]
 		for i, degree in enumerate(degList):
 			color = COLORLIST[i]
 			if quadrule == 'iga': 
-				ax.loglog(nbels, errList[i, :], label='ST-IGA-GL '+r'$p_s=p_t=$'+str(int(degree)), color=color, marker=plotops['marker'],
+				ax.loglog(nbels, errList[i, :], label='ST-Gauss quad. '+r'$p_s=p_t=$'+str(int(degree)), color=color, marker=plotops['marker'],
 							markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])		
 				slope = np.polyfit(np.log10(nbels[2:]),np.log10(errList[i, 2:]), 1)[0]
 				slope = round(slope, 1)
@@ -94,11 +94,11 @@ if FIG_CASE == 0:
 					
 			fig.savefig(figname)
 
-	ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-			markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='ST-IGA-WQ 1')
+	# ax.loglog([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
+	# 		markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='ST-IGA-WQ 1')
 
 	ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-					markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-IGA-WQ 2')
+					markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-Weighted quad.')
 	
 	if PLOTRELATIVE:
 		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
@@ -320,7 +320,7 @@ elif FIG_CASE == 2:
 	for i, deg in enumerate(degsptList):
 		nbctrlpts = nbelincList+deg
 		ax.loglog(nbctrlpts, errorList1[i, :], color=COLORLIST[i], marker=CONFIGLINE0['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL '+r'$p_t=$'+str(int(deg)))
+				markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='Space-time '+r'$p_t=$'+str(int(deg)))
 		slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[i, 3:]), 1)[0]
 		slope = round(slope, 1)
 		annotation.slope_marker((nbctrlpts[-2], errorList1[i, -2]), slope, 
@@ -332,7 +332,7 @@ elif FIG_CASE == 2:
 	nbctrlpts = nbelincList+1
 	ax.loglog(nbctrlpts, errorList1, marker=CONFIGLINE5['marker'], markerfacecolor='w', color='k',
 					markersize=CONFIGLINE5['markersize'], linestyle=CONFIGLINE5['linestyle'], 
-					label='INC-IGA-GL '+r'$\theta=0.5$')
+					label='Crank-Nicolson')
 	slope = np.polyfit(np.log10(nbctrlpts[3:]),np.log10(errorList1[3:]), 1)[0]
 	slope = round(slope, 1)
 	annotation.slope_marker((nbctrlpts[-2], errorList1[-2]), slope, 
@@ -345,8 +345,8 @@ elif FIG_CASE == 2:
 		ax.set_ylabel(r'$L^2$' +' error')
 		ax.set_ylim(top=1e1, bottom=1e-8)
 	
-	ax.set_xlabel('Number of control points in time \n(or number of steps)')
+	ax.set_xlabel('Number of control points in time \n(or number of time-steps)')
 	ax.set_xlim(left=2, right=100)
 	ax.legend(loc='lower left')
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.pdf')
+	fig.savefig(FOLDER2SAVE+'StagnationError'+SUFIX+'.png')

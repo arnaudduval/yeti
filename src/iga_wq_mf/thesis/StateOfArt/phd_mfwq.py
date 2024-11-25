@@ -1,6 +1,6 @@
 from thesis.StateOfArt.__init__ import *
 
-FIGCASE = 2
+FIGCASE = 3
 
 if FIGCASE == 0:
 
@@ -79,3 +79,19 @@ elif FIGCASE == 2:
 	ax.legend()
 	fig.tight_layout()
 	fig.savefig(FOLDER2SAVE + 'sptViscoPlasticity' +  EXTENSION)
+
+elif FIGCASE == 3:
+	fig, ax = plt.subplots(figsize=(4,4))
+	d = 4
+	xx = np.arange(1, 21)
+	y1 = xx**(d+1)
+	y2 = xx**(2*d)
+	ax.loglog(xx, y1, label='$O(n^{d+1})$')
+	ax.loglog(xx, y2, label='$O(n^{2d})$')
+	ax.set_ylabel('Asymptotic cost (FLOPs)')
+	ax.set_xlabel('Size of matrices ($n$)')
+	ax.set_ylim(top=1e12, bottom=1)
+	ax.set_xlim(left=1, right=20)
+	ax.legend()
+	fig.tight_layout()
+	fig.savefig(FOLDER2SAVE+'AsymptoticCost'+EXTENSION)

@@ -160,7 +160,7 @@ for i, IVPmethod in enumerate(IVPmethodList):
 		# label += r'$\theta=$' + str(0.5)
 		label += 'Crank-Nicolson'
 	else:
-		label += IVPmethod
+		label += 'BDF-' + IVPmethod[-1]
 		
 	if PLOTRELATIVE: errorList1 = np.loadtxt(FOLDER2DATA+'relerrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION)
 	else: errorList1 = np.loadtxt(FOLDER2DATA+'abserrorstag_inc_'+IVPmethodName+SUFIX+EXTENSION)

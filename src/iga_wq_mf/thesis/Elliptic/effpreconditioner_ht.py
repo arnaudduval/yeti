@@ -11,7 +11,7 @@
 from thesis.Elliptic.__init__ import *
 
 degree, cuts = 6, 6
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(5.5, 5.5))
 colors = [COLORLIST[0], COLORLIST[1], COLORLIST[4], COLORLIST[3]]
 for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], colors)):
 	start = time.process_time()
@@ -25,7 +25,7 @@ for j, [preconditioner, color] in enumerate(zip(['WP', 'C', 'ilu', 'JMC'], color
 	if preconditioner == 'WP': labelfig = 'w.o. preconditioner'
 	elif preconditioner == 'ilu': labelfig = 'Incomplete LU'
 	elif preconditioner == 'C' : labelfig = 'Standard Fast Diag.'
-	elif preconditioner == 'JMC' : labelfig = 'My contribution'
+	elif preconditioner == 'JMC' : labelfig = 'Our contribution'
 	ax.semilogy(residue, marker=MARKERLIST[j], label=labelfig, color=color)
 
 ax.legend(ncol=2, bbox_to_anchor=(0.5, 1.2), loc='upper center')

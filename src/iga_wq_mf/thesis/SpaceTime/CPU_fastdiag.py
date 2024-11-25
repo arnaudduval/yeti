@@ -39,28 +39,33 @@ if RUNSIMU:
 			np.savetxt(FOLDER2DATA+filename+'.dat', timeMatrix)
 
 # Make dummie mappable
-fig, ax = plt.subplots(figsize=(6.5, 5.5))
-cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
-c = np.arange(1,len(degList)+1, dtype=int)
-dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
-ax.cla()
+fig, ax = plt.subplots(figsize=(5.25,5))
+# cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
+# c = np.arange(1,len(degList)+1, dtype=int)
+# dummie_cax = ax.scatter(c, c, c=c, cmap=cmap)
+# ax.cla()
+
+x = (2**cutList)**4
+y = 3e-8*x**(1.20)
 
 # Load data
 file = np.loadtxt(FOLDER2DATA+filename+'.dat')
 degList = file[0, 1:]; nbelList = file[1:, 0]; timeElapsed = file[1:, 1:]
 
 for i, degree in enumerate(degList): 
-	ax.loglog(nbelList**4, timeElapsed[:, i], marker='s')
+	ax.loglog(nbelList**4, timeElapsed[:, i], label='$p_s=p_t=$ '+str(degree),
+		marker='s', color='k', alpha=(i+1)/len(degList))
 
+ax.loglog(x, y, '--', c='tab:gray', label='$O(N^{1+1/(d+1)})$')
 slope = round(np.polyfit(np.log(nbelList**4), np.log(timeElapsed[:, 2]), 1)[0], 1)
 annotation.slope_marker((nbelList[-2]**4,  timeElapsed[-2, 2]), slope, 
 				poly_kwargs={'facecolor': (0.73, 0.8, 1)}, ax=ax)
 
-cbar = plt.colorbar(dummie_cax)
-cbar.set_label('Degree '+r'$p_s=p_t$')
-tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
-cbar.set_ticks(tick_locs)
-cbar.set_ticklabels(np.array(degList, dtype=int))
+# cbar = plt.colorbar(dummie_cax)
+# cbar.set_label('Degree '+r'$p_s=p_t$')
+# tick_locs = 1+(np.arange(len(degList)) + 0.5)*(len(degList)-1)/len(degList)
+# cbar.set_ticks(tick_locs)
+# cbar.set_ticklabels(np.array(degList, dtype=int))
 
 ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
 ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
@@ -71,9 +76,10 @@ if NDIM == 4:
 	ax.set_xticklabels([r'$10^4$', r'$16^4$', r'$32^4$', r'$64^4$', r'$128^4$', r'$10^9$'])
 
 ax.minorticks_off()
+ax.legend()
 ax.set_xlabel('Total number of elements')
-ax.set_ylabel('CPU time (s)')
+ax.set_ylabel('CPU time (s) of applying $\mathsf{P}^{-1}$')
 ax.set_ylim([1e-2, 1e3])
 ax.set_xlim([1e4, 1e9])
 fig.tight_layout()
-fig.savefig(FOLDER2SAVE+filename+'.png')
+fig.savefig(FOLDER2SAVE+filename+'.pdf')
