@@ -34,7 +34,7 @@ def powerDensity_spt(args):
 SUFIX = ('lin' if ISLINEAR else 'nonlin') + GEONAME
 PLOTRELATIVE = True
 RUNSIMU = False
-FIG_CASE = 5
+FIG_CASE = 4
 EXTENSION = '.dat'
 
 if RUNSIMU: assert (not IS1DIM), 'Try 2D methods'
@@ -121,7 +121,7 @@ if FIG_CASE == 3:
 	position = 2
 	assert position in [1, 2], 'Must be one or 2'
 	if position==1: fig, ax = plt.subplots(figsize=(6.5, 5.5))
-	if position==2: fig, ax = plt.subplots()
+	if position==2: fig, ax = plt.subplots(figsize=(5.5,5.5))
 	cmap = mpl.colors.ListedColormap(COLORLIST[:len(degList)])
 
 	if PLOTRELATIVE:
@@ -154,19 +154,19 @@ if FIG_CASE == 3:
 				color='k', marker='', linestyle=plotvars['linestyle'])
 
 	ax.loglog([], [], color='k', marker=CONFIGLINE4['marker'], alpha=0.5,
-			markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='Crank-Nicolson')
+			markersize=CONFIGLINE4['markersize'], linestyle=CONFIGLINE4['linestyle'], label='INC-IGA-WQ-2')
 	
 	ax.loglog([], [], color='k', marker=CONFIGLINE0['marker'], alpha=0.5,
-		markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-Gauss quad.')
+		markersize=CONFIGLINE0['markersize'], linestyle=CONFIGLINE0['linestyle'], label='ST-IGA-GL')
 		
 	ax.loglog([], [], color='k', marker=CONFIGLINE2['marker'], alpha=0.5,
-		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-Weighted quad.')
+		markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='ST-IGA-WQ-2')
 
 	if PLOTRELATIVE: 
-		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
+		ax.set_ylabel('Relative ' + r'$L^2(\Pi)$' + ' error')
 		ax.set_ylim(top=1e-2, bottom=1e-12)
 	else:
-		ax.set_ylabel(r'$L^2$' + ' error')
+		ax.set_ylabel(r'$L^2(\Pi)$' + ' error')
 		ax.set_ylim(top=1e-1, bottom=1e-11)
 
 	ax.set_xlabel('CPU time (s)')
@@ -174,7 +174,7 @@ if FIG_CASE == 3:
 	if position==1: ax.set_xlim(left=1e0, right=1e3)
 	if position==2: ax.set_xlim(left=1e1, right=1e4)
 	fig.tight_layout()
-	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError0' + str(position) +  '.png')
+	fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError0' + str(position) +  '.pdf')
 
 elif FIG_CASE == 4:
 
@@ -222,10 +222,10 @@ elif FIG_CASE == 4:
 				np.savetxt(subfolderfolder+prefix+'L2relerror'+EXTENSION, L2relerror)
 				np.savetxt(subfolderfolder+prefix+'Threshold'+EXTENSION, np.array(threshold_list))
 
-	fig1, ax1 = plt.subplots()
-	fig2, ax2 = plt.subplots()
-	fig3, ax3 = plt.subplots()
-	fig4, ax4 = plt.subplots()
+	fig1, ax1 = plt.subplots(figsize=(5,5))
+	fig2, ax2 = plt.subplots(figsize=(5,5))
+	fig3, ax3 = plt.subplots(figsize=(5,5))
+	fig4, ax4 = plt.subplots(figsize=(5,5))
 	figs = [fig1, fig2, fig3, fig4]; axs  = [ax1, ax2, ax3, ax4]
 	linestyle_list = ['-', '--', '-', '--']
 	marker_list = ['o', 'o', 's', 's']
@@ -244,25 +244,26 @@ elif FIG_CASE == 4:
 			ylim2 = np.power(10, np.floor(np.log10(np.min(newtonRes))))
 			ylim = np.min([ylim1, ylim2])
 			for caseplot, fig, ax in zip(range(1, 5), figs, axs):
+				ylim = 1e-11
 				if caseplot == 1:
 					yy = L2relerror; xx = nbInnerLoops[:len(L2relerror)]
-					xlim = 10*np.ceil(np.max(nbInnerLoops)/10)
-					ylabel = 'Relative '+r'$L^2$' + ' norm of error'
+					xlim = 200; ylim=1e-5
+					ylabel = 'Relative '+r'$L^2(\Pi)$' + ' norm of error'
 					xlabel = 'Number of matrix-vector products'
 				elif caseplot == 2:
 					yy = newtonRes; xx = nbInnerLoops[:len(newtonRes)]
-					xlim = 10*np.ceil(np.max(nbInnerLoops)/10)
+					xlim = 200
 					ylabel = 'Relative norm of nonlinear residue'
 					xlabel = 'Number of matrix-vector products'
 				elif caseplot == 3:
 					yy = newtonRes; xx = np.arange(0, len(newtonRes))
-					xlim = 8
+					xlim = 10
 					ylabel = 'Relative norm of nonlinear residue'
 					xlabel = 'Number of nonlinear iterations'
 				elif caseplot == 4:
 					yy = L2relerror; xx = np.arange(0, len(L2relerror))
-					xlim = 8
-					ylabel = 'Relative '+r'$L^2$' + ' norm of error'
+					xlim = 10; ylim=1e-5
+					ylabel = 'Relative '+r'$L^2(\Pi)$' + ' norm of error'
 					xlabel = 'Number of nonlinear iterations'
 
 				ax.semilogy(xx, yy, label=legendname, marker=marker_list[l], linestyle=linestyle_list[l])
@@ -272,7 +273,7 @@ elif FIG_CASE == 4:
 				ax.set_ylabel(ylabel)
 				if caseplot==3: ax.legend()
 				fig.tight_layout()
-				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.png')
+				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
 
 	fig, ax = plt.subplots()
 	for [i, isadaptive], prefix1 in zip(enumerate([True]), ['inexact']):
@@ -295,7 +296,7 @@ elif FIG_CASE == 4:
 			ax.set_ylabel(ylabel)
 			ax.legend()
 			fig.tight_layout()
-			fig.savefig(FOLDER2SAVE+'NLTolerance'+'_'+str(degree)+str(cuts)+'.png')
+			fig.savefig(FOLDER2SAVE+'NLTolerance'+'_'+str(degree)+str(cuts)+'.pdf')
 
 elif FIG_CASE == 5:
 	
@@ -364,12 +365,12 @@ elif FIG_CASE == 5:
 
 	for fig, ax, sufix in zip([fig2], [ax2], ['WQ']):
 		ax.grid(False)
-		ax.set_ylabel('Relative ' + r'$L^2$' + ' error')
+		ax.set_ylabel('Relative ' + r'$L^2(\Pi)$' + ' error')
 		ax.set_ylim(top=1e0, bottom=1e-15)
-		ax.set_xlim(left=1e-1, right=1e4)
+		ax.set_xlim(left=1e-1, right=2e3)
 		ax.set_xlabel('CPU time (s)')
 		fig.tight_layout()
-		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.png')
+		fig.savefig(FOLDER2SAVE + 'SPTINC_CPUError' + sufix +  '.pdf')
 
 	# for quadrule, quadtype, plotvars, ax in zip(['iga', 'wq'], ['leg', 2], [CONFIGLINE0, CONFIGLINE2], [ax1, ax2]):
 	# 	sufix = '_' + quadrule + '_' + str(quadtype) + '_' + SUFIX + EXTENSION

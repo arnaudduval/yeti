@@ -115,9 +115,9 @@ for sufix, plotops in zip(sufixList, plotoptions):
 						markerfacecolor='w', markersize=plotops['markersize'], linestyle=plotops['linestyle'])
 
 ax.semilogy([], [], color='k', marker=CONFIGLINE1['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='MF-WQ 1')
+				markersize=CONFIGLINE1['markersize'], linestyle=CONFIGLINE1['linestyle'], label='MF-WQ-1')
 ax.semilogy([], [], color='k', marker=CONFIGLINE2['marker'], markerfacecolor='w',
-				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ 2')
+				markersize=CONFIGLINE2['markersize'], linestyle=CONFIGLINE2['linestyle'], label='MF-WQ-2')
 
 ax.minorticks_off()
 ax.legend(ncol=2)
