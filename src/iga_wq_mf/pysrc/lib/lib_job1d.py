@@ -10,6 +10,7 @@ from .lib_quadrules import GaussQuadrature
 from .lib_material import heatmat, mechamat
 from .lib_boundary import boundaryCondition
 from .lib_base import evalDersBasisCSRFortran, array2csr_matrix, macaulayfunc
+import scipy.linalg as splin
 
 class problem1D():
 	def __init__(self, part:part1D, boundary:boundaryCondition, solverArgs={}):
@@ -325,6 +326,30 @@ class mechaproblem1D(problem1D):
 		self.mechamaterial = mechanical_material		
 		if self.mechamaterial.density is None: self.mechamaterial.density = lambda x: np.ones(self.part.nbqp)
 		return
+	
+	def __save_Mass(self, args=None, isLumped=False):
+		dof = self.boundary.thdof
+		if args is None: args = {'position': self.part.qpPhy}
+		prop = self.mechamaterial.density(args)*self.part.detJ
+		matrix = self.part._denseweights[0] @ np.diag(prop) @ self.part._densebasis[0].T
+		if isLumped: matrix = np.diag(matrix.sum(axis=1)) #self.diagonalize_matrix(matrix) 
+		self.__inverseMass = np.linalg.pinv(matrix[np.ix_(dof, dof)])
+		return
+	
+	def compute_mfMass(self, array_in, args=None, isLumped=False):
+		if args is None: args = {'position': self.part.qpPhy}
+		prop = self.mechamaterial.density(args)*self.part.detJ
+		matrix = self.part._denseweights[0] @ np.diag(prop) @ self.part._densebasis[0].T
+		if isLumped: matrix = np.diag(matrix.sum(axis=1)) #self.diagonalize_matrix(matrix) 
+		array_out = matrix @ array_in
+		return array_out
+	
+	def compute_mfStiffness(self, array_in, args=None):
+		if args is None: args = {'position': self.part.qpPhy}
+		prop = self.mechamaterial.elasticModulus*self.part.invJ
+		matrix = self.part._denseweights[-1] @ np.diag(prop) @ self.part._densebasis[1].T 
+		array_out = matrix @ array_in
+		return array_out
 
 	def interpolate_strain(self, disp):
 		" Computes strain field from a given displacement field "
@@ -510,6 +535,74 @@ class mechaproblem1D(problem1D):
 			plasticstrain_n0, plseq_n0 = np.copy(plasticstrain_n1), np.copy(plseq_n1)
 		return Allstrain, Allstress, Allplseq, AllCep
 
+	def compute_EigenvalueProblem(self, args=None):
+		if args == None : args = {'position': self.part.qpPhy}
+		Kprop =  self.mechamaterial.elasticModulus*self.part.invJ
+		K = self.part._denseweights[-1] @ np.diag(Kprop) @ self.part._densebasis[1].T 
+		Mprop = self.mechamaterial.density(args)*self.part.detJ
+		M = self.part._denseweights[0] @ np.diag(Mprop) @ self.part._densebasis[0].T
+		D, V, _ = splin.lapack.dsygvd(a=K,	b=M)
+		return [np.abs(D), V]
+
+	def solveNewmarkresolution(self, Dinout, Vinout, Ainout, Fext_list, time_list, gamma = 0.5, isLumped=False):
+		" Solves linear explicit dynamic problem in 1D."
+
+		def computeDisplacement(Dn, Vn, An, dt):	
+			return Dn + dt*Vn + ((dt**2)/2)*An
+
+		def computeVelocity(Vn, An, An1, dt, gamma):	
+			return Vn + dt*((1 - gamma)*An  + gamma*An1)
+
+		def computeAcceleration(problem:mechaproblem1D, D_in, Fext, args=None):
+			if args is None: args = {'position': problem.part.qpPhy}
+			Fres = Fext - problem.compute_mfStiffness(D_in, args=args)
+			Acc = np.zeros(shape=np.shape(Fext))
+			Acc[dof] = problem.__inverseMass @ Fres[dof]
+			return Acc
+
+		nsteps = len(time_list)
+		dod = self.boundary.thdod; dof = self.boundary.thdof
+		self.__save_Mass(isLumped=isLumped)
+
+		# Compute initial acceleration considering static problem
+		assert nsteps > 2, 'At least 2 steps'
+		dt = time_list[1] - time_list[0]
+		Ainout[dod, 0] = 0 
+		Ainout[dof, 0] = computeAcceleration(self, np.copy(Fext_list[:, 0]), np.copy(Dinout[:,0]))[dof]
+
+		for i in range(1, np.shape(Dinout)[1]):
+			
+			# Get delta time
+			dt = time_list[i] - time_list[i-1]
+
+			# Get values of last step
+			d_n0 = np.copy(Dinout[:,i-1])
+			v_n0 = np.copy(Vinout[:,i-1])
+			a_n0 = np.copy(Ainout[:,i-1])
+
+			# Get values of new step
+			Fext_n1 = np.copy(Fext_list[:, i])
+
+			# Predict values of new step
+			dj_n1 = computeDisplacement(d_n0, v_n0, a_n0, dt)
+			Vj_n1 = np.zeros(self.part.nbctrlpts_total)
+			aj_n1 = np.zeros(self.part.nbctrlpts_total)
+
+			# Overwrite inactive control points
+			dj_n1[dod] = 0.0
+			Dinout[:, i]  = np.copy(dj_n1)
+
+			aj_n1[dod] = 0.0
+			aj_n1[dof] = computeAcceleration(self, dj_n1 , Fext_n1)[dof]
+			Ainout[:, i] = np.copy(aj_n1)
+
+			Vj_n1[dod] = 0.0
+			Vj_n1[dof] = computeVelocity(v_n0, a_n0, aj_n1, dt, gamma)[dof]
+			Vinout[:, i] = np.copy(Vj_n1)
+			
+		return
+
+# ==================
 class stproblem1D():
 
 	def __init__(self, part:part1D, tspan:part1D, boundary:boundaryCondition, solverArgs={}):

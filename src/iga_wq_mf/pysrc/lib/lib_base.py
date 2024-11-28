@@ -391,6 +391,41 @@ def lobattoTable(order):
 # OTHERS
 # =========================
 
+# MATRIX FREE
+class matrixfree:
+	def __init__(self, nclist):
+		self._tensordimen = 4
+		nclist = np.atleast_1d(nclist)
+		assert np.all(nclist>0), 'Positive integers only'
+		self._tensorshape = np.ones(self._tensordimen, dtype=int)
+		for i in range(np.min([self._tensordimen, len(nclist)])): 
+			self._tensorshape[i] = int(nclist[i])
+		self._tensorvalue = None
+		return
+
+	def __tensorMatrixProduct(self, matrix, mode, istranspose=False):
+		if not isinstance(matrix, np.ndarray): matrix = deepcopy(matrix.todense())
+		if istranspose:
+			if mode==0:   newtensor = np.einsum('mi,mjkl->ijkl', matrix, self._tensorvalue)
+			elif mode==1: newtensor = np.einsum('mj,imkl->ijkl', matrix, self._tensorvalue)
+			elif mode==2: newtensor = np.einsum('mk,ijml->ijkl', matrix, self._tensorvalue)
+			elif mode==3: newtensor = np.einsum('ml,ijkm->ijkl', matrix, self._tensorvalue)
+		else:
+			if mode==0:   newtensor = np.einsum('im,mjkl->ijkl', matrix, self._tensorvalue)
+			elif mode==1: newtensor = np.einsum('jm,imkl->ijkl', matrix, self._tensorvalue)
+			elif mode==2: newtensor = np.einsum('km,ijml->ijkl', matrix, self._tensorvalue)
+			elif mode==3: newtensor = np.einsum('lm,ijkm->ijkl', matrix, self._tensorvalue)
+		self._tensorvalue = np.copy(newtensor)
+		return
+
+	def sumfactorization(self, matrix_list, array_in, istranspose=False):
+		assert len(matrix_list) <= self._tensordimen, 'Dimension problem'
+		self._tensorvalue = np.reshape(array_in, newshape=tuple(self._tensorshape), order='F')
+		for i, matrix in enumerate(matrix_list):
+			self.__tensorMatrixProduct(matrix, mode=i, istranspose=istranspose)
+		return np.ravel(self._tensorvalue, order='F')
+	
+
 class solver():
 	
 	def __init__(self):
@@ -583,3 +618,155 @@ def bdf(f, tspan, y0, nsteps, norder=1):
 						y_guess, xtol=1e-10)
 
 	return t, y
+
+# class geophy:
+
+# 	def __init__(self):
+# 		return
+	
+# 	def eval_inverse_det(self, M):
+# 		"We assume M is a nxnxm matrix"
+# 		n, _, m = np.shape(M)
+# 		inv = np.zeros(shape=np.shape(M))
+# 		if n == 2:
+# 			det = M[0,0,:]*M[1,1,:] - M[0,1,:]*M[1,0,:]
+# 			inv[0,0,:] = M[1,1,:]; inv[1,1,:] = M[0,0,:]
+# 			inv[0,1,:] = -M[1,0,:]; inv[1,0,:] = -M[0,1,:]
+# 		elif n == 3:
+# 			det = (M[1,2,:]*M[2,3,:]*M[3,1,:]-M[1,3,:]*M[2,2,:]*M[3,1,:]+M[1,3,:]*M[2,1,:]*M[3,2,:]
+# 					-M[1,1,:]*M[2,3,:]*M[3,2,:]+M[1,1,:]*M[2,2,:]*M[3,3,:]-M[1,2,:]*M[2,1,:]*M[3,3,:])
+# 			inv[1,1,:]=(M[2,2,:]*M[3,3,:]-M[2,3,:]*M[3,2,:])
+# 			inv[1,2,:]=(M[1,3,:]*M[3,2,:]-M[1,2,:]*M[3,3,:])
+# 			inv[1,3,:]=(M[1,2,:]*M[2,3,:]-M[1,3,:]*M[2,2,:])
+# 			inv[2,1,:]=(M[2,3,:]*M[3,1,:]-M[2,1,:]*M[3,3,:])
+# 			inv[2,2,:]=(M[1,1,:]*M[3,3,:]-M[1,3,:]*M[3,1,:])
+# 			inv[2,3,:]=(M[1,3,:]*M[2,1,:]-M[1,1,:]*M[2,3,:])
+# 			inv[3,1,:]=(M[2,1,:]*M[3,2,:]-M[2,2,:]*M[3,1,:])
+# 			inv[3,2,:]=(M[1,2,:]*M[3,1,:]-M[1,1,:]*M[3,2,:])
+# 			inv[3,3,:]=(M[1,1,:]*M[2,2,:]-M[1,2,:]*M[2,1,:])
+# 		else: raise Warning('Not coded')
+# 		inv /= det
+# 		return det, inv
+	
+# 	def eval_jacobien(self, quadrules, u_ctrlpts):
+# 		nm, _ = np.shape(u_ctrlpts)
+# 		dimen = len(quadrules)
+# 		nr_list = np.array([quad.nbctrlpts for quad in quadrules], dtype=int)
+# 		nc_list = np.array([quad.nbqp for quad in quadrules], dtype=int)
+# 		jacobien = np.zeros((nm, dimen, np.prod(nc_list)))
+# 		for j in range(dimen):
+# 			for i in range(nm):
+# 				beta = np.zeros(dimen, dtype=int); beta[j] = 1
+# 				mf = matrixfree(nr_list)
+# 				jacobien[i, j, :] = mf.sumfactorization([quadrule._denseBasis[b] for quadrule, b in zip(quadrules, beta)], 
+# 											u_ctrlpts[i,:], istranspose=True)
+# 		return jacobien
+	
+# 	def interpolate_meshgrid(self, quadrules, u_ctrlpts):
+# 		nm, _ = np.shape(u_ctrlpts)
+# 		nr_list = np.array([quad.nbctrlpts for quad in quadrules], dtype=int)
+# 		nc_list = np.array([quad.nbqp for quad in quadrules], dtype=int)
+# 		u_interp = np.zeros((nm, np.prod(nc_list)))
+# 		for i in range(nm):
+# 			mf = matrixfree(nr_list)
+# 			u_interp[i, :] = mf.sumfactorization([quadrule._denseBasis[0] for quadrule in quadrules], 
+# 													u_ctrlpts[i,:], istranspose=True)
+
+# 		return u_interp
+	
+# 	def get_forcevol(self, quadrules, detJ, prop):
+# 		nm, _ = np.shape(prop)
+# 		nr_list = np.array([quad.nbctrlpts for quad in quadrules], dtype=int)
+# 		nc_list = np.array([quad.nbqp for quad in quadrules], dtype=int)
+# 		forces = np.zeros((nm, np.prod(nr_list)))
+# 		for i in range(nm):
+# 			tmp = prop[i, :]*detJ
+# 			mf = matrixfree(nc_list)
+# 			forces[i, :] = mf.sumfactorization([quadrule._denseWeights[0] for quadrule in quadrules], 
+# 													tmp, istranspose=False)
+# 		return forces
+	
+# 	def get_forcesurf(self, quadrules, JJ, prop):
+# 		dimen, _, nc_total = np.shape(JJ)
+# 		nm, _ = np.shape(prop)
+# 		nr_list = np.array([quad.nbctrlpts for quad in quadrules], dtype=int)
+# 		nc_list = np.array([quad.nbqp for quad in quadrules], dtype=int)
+# 		coefs = np.zeros((nm, nc_total))
+# 		array_out = np.zeros((nm, np.product(nr_list)))
+
+# 		if dimen == 2: 
+# 			for i in range(nc_total):
+# 				v1 = JJ[:, 0, i]
+# 				dsurf = np.sqrt(np.dot(v1, v1))
+# 				coefs[:, i] = prop[:, i]*dsurf
+# 			for i in range(nm):
+# 				array_out[i, :] = quadrules[0]._denseWeights[0] @ coefs[i, :]
+# 		elif dimen == 3:
+# 			for i in range(nc_total):
+# 				v1 = JJ[:, 0, i]
+# 				v2 = JJ[:, 1, i]
+# 				v3 = np.cross(v1, v2)
+# 				dsurf = np.sqrt(np.dot(v3, v3))
+# 				coefs[:, i] = prop[:, i]*dsurf
+# 			for i in range(nm):
+# 				mf = matrixfree(nc_list)
+# 				array_out[i, :] = mf.sumfactorization([quadrule._denseWeights[0] for quadrule in quadrules], 
+# 													coefs[i,:], istranspose=False)
+# 		return array_out
+
+# class fastdiagonalization():
+# 	def __init__(self, quadrules, table, dof):
+# 		self.nnz_all = []
+# 		self.eigenvec_all = []
+# 		self.eigenval_all = []
+# 		self.dof = dof
+# 		self.__eigendecomposition(quadrules, table)
+# 		return
+	
+# 	def __eigendecomposition(self, quadrules, table):
+# 		def eigvalcombination(v_list):
+# 			ndim = len(v_list)
+# 			nnz = [len(v) for v in v_list] 
+# 			if ndim == 2:
+# 				vout = np.kron(v_list[1], np.ones(nnz[0])) + np.kron(np.ones(nnz[1]), v_list[0])
+# 			if ndim == 3:
+# 				vout = (  np.kron(np.ones(nnz[2]), np.kron(np.ones(nnz[1]), v_list[0]))
+# 						+ np.kron(np.ones(nnz[2]), np.kron(v_list[1], np.ones(nnz[0])))
+# 						+ np.kron(v_list[2], np.kron(np.ones(nnz[1]), np.ones(nnz[0])))
+# 				)
+# 			return vout
+# 		mass_list  = [quadrule._denseWeights[0] @ quadrule._denseBasis[0].T for quadrule in quadrules]
+# 		stiff_list = [quadrule._denseWeights[-1] @ quadrule._denseBasis[-1].T for quadrule in quadrules]
+# 		ndim, _, ndof = np.shape(table)
+# 		for j in range(ndof):
+# 			eigvecs_byDir, eigvals_byDir, nnz_byDir = [], [], []
+# 			for i in range(ndim):
+# 				mass, stiff = deepcopy(mass_list[i]), deepcopy(stiff_list[i])					
+# 				if not isinstance(stiff, np.ndarray): stiff = stiff.todense()
+# 				if not isinstance(mass, np.ndarray): mass = mass.todense()
+# 				infindex, supindex = 0, np.shape(mass)[0]
+# 				if table[i,0,j]: infindex += 1
+# 				if table[i,1,j]: supindex -= 1
+# 				ind = np.arange(infindex, supindex, dtype=int)
+# 				eigvals, eigvecs, _ = splin.lapack.dsygvd(
+# 											a=stiff[np.ix_(ind, ind)],
+# 											b=mass[np.ix_(ind, ind)])
+# 				eigvecs_byDir.append(np.real(eigvecs))
+# 				eigvals_byDir.append(np.real(eigvals))
+# 				nnz_byDir.append(len(ind))
+# 			self.eigenvec_all.append(eigvecs_byDir)
+# 			self.eigenval_all.append(eigvalcombination(eigvals_byDir))
+# 			self.nnz_all.append(nnz_byDir)
+# 		return
+
+# 	def applyfastdiag(self, array_in):
+# 		ndof, _ = np.shape(array_in)
+# 		array_out = np.zeros(shape=np.shape(array_in))
+# 		for i in range(ndof):
+# 			mf = matrixfree(self.nnz_all[i])
+# 			tmp = array_in[i,self.dof[i]]
+# 			array = mf.sumfactorization(self.eigenvec_all[i], tmp, istranspose=True)
+# 			array /= self.eigenval_all[i]
+# 			tmp = mf.sumfactorization(self.eigenvec_all[i], array, istranspose=False) 
+# 			array_out[i,self.dof[i]] = tmp
+# 		return array_out
