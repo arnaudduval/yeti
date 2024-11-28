@@ -209,10 +209,10 @@ elif FIG_CASE == 1:
 				np.savetxt(subfolder+prefix+'L2relerror'+EXTENSION, L2relerror_list)
 				np.savetxt(subfolder+prefix+'Threshold'+EXTENSION, np.array(adapThres_list))
 
-	fig1, ax1 = plt.subplots(figsize=(5,5))
-	fig2, ax2 = plt.subplots(figsize=(5,5))
-	fig3, ax3 = plt.subplots(figsize=(5,5))
-	fig4, ax4 = plt.subplots(figsize=(5,5))
+	fig1, ax1 = plt.subplots(figsize=(5,4))
+	fig2, ax2 = plt.subplots(figsize=(5,4))
+	fig3, ax3 = plt.subplots(figsize=(5,4))
+	fig4, ax4 = plt.subplots(figsize=(5,4))
 	figs = [fig1, fig2, fig3, fig4]; axs  = [ax1, ax2, ax3, ax4]
 	linestyle_list = ['-', '--', '-', '--']
 	marker_list = ['o', 'o', 's', 's']
@@ -258,7 +258,7 @@ elif FIG_CASE == 1:
 				ax.set_ylim(top=1e1, bottom=ylim)
 				ax.set_xlabel(xlabel)
 				ax.set_ylabel(ylabel)
-				if caseplot==3: ax.legend()
+				if caseplot==3 or caseplot==4: ax.legend()
 						
 				fig.tight_layout()
 				fig.savefig(FOLDER2SAVE+'NLConvergence_iters'+GEONAME+'_'+str(degree)+str(cuts)+str(caseplot)+'.pdf')
