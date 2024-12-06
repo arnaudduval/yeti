@@ -94,7 +94,7 @@ def test_leastsquare_projection_1_patch():
     pp.generate_proj_vtu(*iga_model.get_inputs4proj_vtu('least_square',
                          sol.transpose(),
                          projected_svars.transpose(),
-                         nb_ref=3*np.array([1, 1, 0])))
+                         nb_ref=np.array([3, 3, 0])))
 
 
 if __name__ == '__main__':
