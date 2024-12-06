@@ -77,9 +77,9 @@ add_test(NAME test_shell_1_element_load_1 COMMAND ${Python3_EXECUTABLE} ${BENCH_
 add_test(NAME test_shell_1_element_load_2 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/shell_1_element_load/test_shell_load_9elts.py WORKING_DIRECTORY ${BENCH_PATH}/shell_1_element_load)
 
 # Static analyis of a 2D palne stress plate with a round hole and least square projection postprocessing
-add_test(NAME leastsquare-projection-1patch COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/1_patch/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/1_patch)
-add_test(NAME leastsquare-projection-2patches COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches)
-add_test(NAME leastsquare-projection-2patchescplg COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches_coupling/coupling_analysis_mono.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches_coupling)
+add_test(NAME test_leastsquare_projection_1patch COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/1_patch/test_leastsquare_projection_1_patch.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/1_patch)
+add_test(NAME test_leastsquare_projection_2patches COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches/test_leastsquare_projection_2_patches.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches)
+add_test(NAME test_leastsquare_projection_2patchescplg COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches_coupling/test_leastsquare_projection_2_patchescplg.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches_coupling)
 
 # Coupling static analysis and post processing of interface patches
 add_test(NAME coupling-postprocessing COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/postproc_interfaces/coupling_analysis_pp_interfaces.py WORKING_DIRECTORY ${BENCH_PATH}/postproc_interfaces)
@@ -225,9 +225,9 @@ set_tests_properties(
                      test_load_combination_order_embedded
                      test_shell_1_element_load_1
                      test_shell_1_element_load_2
-                     leastsquare-projection-1patch
-                     leastsquare-projection-2patches
-                     leastsquare-projection-2patchescplg
+                     test_leastsquare_projection_1patch
+                     test_leastsquare_projection_2patches
+                     test_leastsquare_projection_2patchescplg
                      coupling-postprocessing
                      embeddedsolid1-NLmap
                      embeddedsolid2-NLembded
