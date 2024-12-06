@@ -44,7 +44,6 @@ def test_leastsquare_projection_1_patch():
     """
     Compute solution and generate VTU file
     """
-    # TODO: improve write location of output files
 
     # Read data and create IGAparametrization object
     script_dir = os.path.dirname(os.path.realpath(__file__))
