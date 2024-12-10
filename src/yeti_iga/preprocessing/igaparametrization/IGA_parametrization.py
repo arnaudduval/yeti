@@ -2511,4 +2511,27 @@ class IGAparametrization:
         """
         return self._indCPbyPatch
 
+    @property
+    def ien(self):
+        """
+        TODO: document this property
+        """
+        return self._IEN
+
+    @property
+    def elt_type(self):
+        """
+        TODO: document this property
+        """
+        return self._ELT_TYPE
+
+    @property
+    def num_integration_points(self):
+        """
+        TODO: document this property
+        """
+        return self._NBPINT
+
+
+
 
