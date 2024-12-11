@@ -40,7 +40,7 @@ import yeti_iga.reconstructionSOL as rsol
 import yeti_iga.postprocessing.postproc as pp
 
 
-def test_leastsquare_projection_1_patch():
+def test_leastsquare_projection_1_patch(tmp_path):
     """
     Compute solution and generate VTU file
     """
@@ -74,7 +74,7 @@ def test_leastsquare_projection_1_patch():
     # leading to NaN values
     pp.generatevtu(*iga_model.get_inputs4postprocVTU(
         'linear_analysis', sol.transpose(), nb_ref=np.array([0, 0, 0]),
-        Flag=np.array([True, False, False])))
+        Flag=np.array([True, False, False]), output_path=tmp_path))
 
     # Postprocessing with least square projection
     # Compute gram matrix
@@ -94,8 +94,9 @@ def test_leastsquare_projection_1_patch():
     pp.generate_proj_vtu(*iga_model.get_inputs4proj_vtu('least_square',
                          sol.transpose(),
                          projected_svars.transpose(),
-                         nb_ref=np.array([3, 3, 0])))
+                         nb_ref=np.array([3, 3, 0]),
+                         output_path=tmp_path))
 
 
 if __name__ == '__main__':
-    test_leastsquare_projection_1_patch()
+    test_leastsquare_projection_1_patch('results')

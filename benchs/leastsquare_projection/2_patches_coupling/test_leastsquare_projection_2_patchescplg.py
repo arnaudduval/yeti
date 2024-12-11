@@ -85,7 +85,7 @@ def refine_model(iga_model, p, r):
     return iga_model
 
 
-def test_leastsquare_projection_2_patchescplg():
+def test_leastsquare_projection_2_patchescplg(tmp_path):
     """
     Compute solution and generate VTU file
     """
@@ -129,7 +129,8 @@ def test_leastsquare_projection_2_patchescplg():
     sol, _ = rsol.reconstruction(**iga_model.get_inputs4solution(x))
     pp.generatevtu(*iga_model.get_inputs4postprocVTU(
             'coupling_mono', sol.transpose(), nb_ref=np.array([3, 3, 3]),
-            Flag=np.array([True, False, False])))
+            Flag=np.array([True, False, False]),
+            output_path=tmp_path))
 
     # Least square projection post processing
     # Gram matrix
@@ -161,8 +162,9 @@ def test_leastsquare_projection_2_patchescplg():
         *iga_model.get_inputs4proj_vtu('coupling_mono_least_square',
                                        sol.transpose(),
                                        projected_svars.transpose(),
-                                       nb_ref=3*np.array([1, 1, 0])))
+                                       nb_ref=3*np.array([1, 1, 0]),
+                                       output_path=tmp_path))
 
 
 if __name__ == '__main__':
-    test_leastsquare_projection_2_patchescplg()
+    test_leastsquare_projection_2_patchescplg('results')
