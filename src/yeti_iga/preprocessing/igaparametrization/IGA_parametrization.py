@@ -715,7 +715,7 @@ class IGAparametrization:
         return inputs
 
     def get_inputs4postprocVTU(self, filename, sol, nb_ref=np.ones(3, dtype=int),
-                               Flag=np.array([True, True, True])):
+                               Flag=np.array([True, True, True]), output_path='results'):
         """Get the necessary inputs for .vtu file generation.
 
         Parameters
@@ -739,7 +739,7 @@ class IGAparametrization:
             Necessary inputs for generating the .vtu file.
         """
         nb_ref = np.maximum(nb_ref, np.ones(3, dtype=int))
-        inputs = [filename, Flag, nb_ref, sol,
+        inputs = [filename, output_path, Flag, nb_ref, sol,
                   self._COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat,
@@ -1718,20 +1718,22 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4proj_vtu(self, filename, sol, svars, nb_ref=np.ones(3)):
+    def get_inputs4proj_vtu(self, filename, sol, svars, nb_ref=np.ones(3), output_path='results'):
         """Return the inputs for least squer projection in a VTU file.
 
         Parameters
         ----------
-        filename : string
+        filename: string
             Name of the file to write without extension
-        sol : numpy.array
+        sol: numpy.array
             Displacement field solution
-        svars : numpy.array
+        svars: numpy.array
             variables originally defined at integration points and mean-square
             projected on CP
-        nb_ref : numpy.array
+        nb_ref: numpy.array
             Mesh refinement level in each direction. Default is [1, 1, 1]
+        outout_path: string
+            path to output directory, default is 'results'
 
         Returns
         -------
@@ -1740,7 +1742,7 @@ class IGAparametrization:
         """
 
         nb_ref = np.maximum(nb_ref, np.ones(3))
-        inputs = [filename, nb_ref, sol, svars, self._COORDS, self._IEN_flat,
+        inputs = [filename, output_path, nb_ref, sol, svars, self._COORDS, self._IEN_flat,
                   self._elementsByPatch, self._Nkv, self._Ukv_flat, self._Nijk,
                   self._weight_flat, self._Jpqr, self._ELT_TYPE_flat,
                   self._TENSOR, self._PROPS_flat, self._JPROPS, self._nnode]
