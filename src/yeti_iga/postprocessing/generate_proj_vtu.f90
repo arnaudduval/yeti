@@ -101,9 +101,9 @@ subroutine generate_proj_vtu(filename, output_path, nb_refinement, sol, rhs, coo
     nb_zeta = 2**(max(nb_refinement(3)-1, 0)) + 1
 
     !! Write on screen
-    write(*,*) 'Post processing ...'
-    write(*,*) ' Map data on FEM mesh ...'
-    write(*,*) ' Writing .vtu file ...'
+    ! write(*,*) 'Post processing ...'
+    ! write(*,*) ' Map data on FEM mesh ...'
+    ! write(*,*) ' Writing .vtu file ...'
 
     !! Compute output data
     jelem = 0
@@ -191,7 +191,7 @@ subroutine generate_proj_vtu(filename, output_path, nb_refinement, sol, rhs, coo
             close(91)
 
             !! Write on screen
-            write(*,*) ' --> File ' // output_path // '/' // filename // '_' // char_ipatch // '.vtu has been created.'
+            ! write(*,*) ' --> File ' // output_path // '/' // filename // '_' // char_ipatch // '.vtu has been created.'
 
         endif
         call finalizeNurbsPatch()

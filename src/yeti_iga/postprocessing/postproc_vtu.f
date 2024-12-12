@@ -96,9 +96,9 @@
       if (MCRD==2) nb_zeta= 1
 
       !! Printing
-      write(*, *)'Post processing ...'
-      write(*, *)' Map data on FEM mesh ...'
-      write(*, *)' Writing .vtu file ...'
+    !   write(*, *)'Post processing ...'
+    !   write(*, *)' Map data on FEM mesh ...'
+    !   write(*, *)' Writing .vtu file ...'
 
       !! File
       Open(90, file=output_path // '/'// FILENAME //'.vtu',
@@ -291,7 +291,7 @@ c     test embedded stiff
       write(90, *)'</VTKFile>'
       close(90)
 
-      write(*, *)' --> File ' // output_path // '/' // FILENAME //
-     1     '.vtu has been created.'
+    !   write(*, *)' --> File ' // output_path // '/' // FILENAME //
+    !  1     '.vtu has been created.'
 
       end subroutine generateVTU
