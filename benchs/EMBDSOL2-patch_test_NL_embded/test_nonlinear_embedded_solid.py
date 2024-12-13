@@ -21,7 +21,7 @@
 # -*- coding: utf-8 -*-
 
 """
-A linear cube embedded in a non linear hull
+A non linear cube embedded in a linear hull
 """
 
 import os
@@ -30,13 +30,12 @@ import numpy as np
 import scipy.sparse as sp
 
 # pylint: disable=no-name-in-module
-
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
     as build_stiffmatrix
 
 
-def test_embedded_solid_nonlinear_mapping():
+def test_non_linear_embedded_solid():
     """
     Compute solution and compare to a reference solution
     """
@@ -48,11 +47,15 @@ def test_embedded_solid_nonlinear_mapping():
     # Set arguments for model refinement
     nb_deg = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
     nb_ref = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
+    additional_knots = {"patches": np.array([]),
+                        "1": np.array([]),
+                        "2": np.array([]),
+                        "3": np.array([])}
 
     nb_ref[:, 1] = [1, 1, 1]    # Knot insertion, [xi, eta, zeta]
 
     # Refine model
-    iga_model.refine(nb_ref, nb_deg)
+    iga_model.refine(nb_ref, nb_deg, additional_knots)
 
     # Matrix assembly
     ndof = iga_model.nb_dof_free
@@ -70,8 +73,9 @@ def test_embedded_solid_nonlinear_mapping():
     x = sp.linalg.spsolve(stiff_tot[idof, :][:, idof], rhs[idof])
 
     ref_sol = np.loadtxt(f'{script_dir}/ref_sol.txt')
-    assert np.linalg.norm(x - ref_sol) / np.linalg.norm(ref_sol) < 5.e-2
+
+    assert np.allclose(x, ref_sol, rtol=1.e-6)
 
 
 if __name__ == '__main__':
-    test_embedded_solid_nonlinear_mapping()
+    test_non_linear_embedded_solid()

@@ -85,10 +85,10 @@ add_test(NAME test_leastsquare_projection_2patchescplg COMMAND ${Python3_EXECUTA
 add_test(NAME test_coupling_postprocessing COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/postproc_interfaces/test_coupling_postprocessing.py WORKING_DIRECTORY ${BENCH_PATH}/postproc_interfaces)
 
 # Embedded solid static analysis - geometrically nonlinear mapping
-add_test(NAME embeddedsolid1-NLmap COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map)
+add_test(NAME test_embedded_solid_nonlinear_mapping COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map/test_embedded_solid_nonlinear_mapping.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map)
 
 # Embedded solid static analysis - geometrically nonlinear embedded solid
-add_test(NAME embeddedsolid2-NLembded COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded)
+add_test(NAME test_nonlinear_embedded_solid COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded/test_nonlinear_embedded_solid.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded)
 
 # Couling between solid patches with projected Gauss points
 add_test(NAME coupling_U5_2D_compatible
@@ -229,8 +229,8 @@ set_tests_properties(
                      test_leastsquare_projection_2patches
                      test_leastsquare_projection_2patchescplg
                      test_coupling_postprocessing
-                     embeddedsolid1-NLmap
-                     embeddedsolid2-NLembded
+                     test_embedded_solid_nonlinear_mapping
+                     test_nonlinear_embedded_solid
                      coupling_U5_2D_compatible
                      coupling_U5
                      compare_U4_U5_2D
