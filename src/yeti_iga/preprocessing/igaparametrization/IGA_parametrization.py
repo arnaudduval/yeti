@@ -1750,7 +1750,7 @@ class IGAparametrization:
         return inputs
 
     def get_inputs4postproc_cplg_vtu(self, filename, lgrge_patch_number, sol,
-                                     nb_ref=np.ones(2)):
+                                     nb_ref=np.ones(2), output_path='results'):
         """
         Returns the inputs for the generation of VTU file for results
         at coupling interface
@@ -1773,7 +1773,7 @@ class IGAparametrization:
         """
 
         nb_ref = np.maximum(nb_ref, np.ones(2))
-        inputs = [filename, lgrge_patch_number, nb_ref, sol, self._COORDS,
+        inputs = [filename, output_path, lgrge_patch_number, nb_ref, sol, self._COORDS,
                   self._IEN_flat, self._elementsByPatch, self._Nkv,
                   self._Ukv_flat, self._Nijk, self._weight_flat, self._Jpqr,
                   self._ELT_TYPE_flat, self._TENSOR_flat, self._PROPS_flat,
