@@ -82,7 +82,7 @@ add_test(NAME test_leastsquare_projection_2patches COMMAND ${Python3_EXECUTABLE}
 add_test(NAME test_leastsquare_projection_2patchescplg COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/leastsquare_projection/2_patches_coupling/test_leastsquare_projection_2_patchescplg.py WORKING_DIRECTORY ${BENCH_PATH}/leastsquare_projection/2_patches_coupling)
 
 # Coupling static analysis and post processing of interface patches
-add_test(NAME coupling-postprocessing COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/postproc_interfaces/coupling_analysis_pp_interfaces.py WORKING_DIRECTORY ${BENCH_PATH}/postproc_interfaces)
+add_test(NAME test_coupling_postprocessing COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/postproc_interfaces/test_coupling_postprocessing.py WORKING_DIRECTORY ${BENCH_PATH}/postproc_interfaces)
 
 # Embedded solid static analysis - geometrically nonlinear mapping
 add_test(NAME embeddedsolid1-NLmap COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL1-patch_test_NL_map)
@@ -228,7 +228,7 @@ set_tests_properties(
                      test_leastsquare_projection_1patch
                      test_leastsquare_projection_2patches
                      test_leastsquare_projection_2patchescplg
-                     coupling-postprocessing
+                     test_coupling_postprocessing
                      embeddedsolid1-NLmap
                      embeddedsolid2-NLembded
                      coupling_U5_2D_compatible
