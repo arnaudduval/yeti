@@ -23,7 +23,8 @@
 c     Input arguments :
 c     ---------------
       Integer,         intent(in) :: dim,dimInterface,MCRD,NNODE,NNODE_l
-      Double precision,intent(in) :: Rl,detJ,XI,BI,COORDS
+      Double precision,intent(in) :: Rl,detJ,BI,COORDS
+      double precision, intent(inout) :: XI
       dimension Rl(NNODE_l),XI(3),BI(3,dimInterface),COORDS(MCRD,NNODE)
 
 c     Output variables :
@@ -59,6 +60,9 @@ c     ..................................................................
 c
 C     Computation :
 c     -----------
+
+c     Force XI values in interval [0, 1]
+      XI = max(0.0, min(1.0, XI))
 
       call evalnurbs(XI(:),R(:),dRdxi(:,:))
 
