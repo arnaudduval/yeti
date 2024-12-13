@@ -15,117 +15,119 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with Yeti. If not, see <https://www.gnu.org/licenses/>
 
-# Python module
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+3 coupled domain with U4 coupling
+Test VTU output the coupling conditions on the interfaces
+"""
+
+import os
+
 import numpy as np
 import scipy.sparse as sp
-import time
 
-# IGA module
+
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
-from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
+    as build_stiffmatrix
 from yeti_iga.coupling.cplgmatrix import cplg_matrix
 import yeti_iga.reconstructionSOL as rsol
 import yeti_iga.postprocessing.postproc as pp
-from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
-
-# Selection of .INP and .NB file
-# ------------------------------
-FILENAME = 'chamfer'
 
 
-# Creation of the IGA object
-# --------------------------
-modeleIGA = IGAparametrization(filename=FILENAME)
+def test_coupling_postprocessing(tmp_path):
+    """
+    Compute solution and generate VTU files
+    """
 
-ti = time.time()
+    # Read data and create IGAparametrization object
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(filename=f'{script_dir}/chamfer')
 
-# REFINEMENT for Analysis
-nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
-nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
+    # Model refinement
+    nb_deg = np.zeros((3, iga_model._nb_patch), dtype=np.intp)
+    nb_ref = np.zeros((3, iga_model._nb_patch), dtype=np.intp)
 
-# domain 1 : chamfer
-nb_deg[:, 0] = [0, 0, 0]
-nb_ref[:, 0] = [3, 4, 3]
-# domain 2 : tube
-nb_deg[:, 1] = [1, 0, 1]
-nb_ref[:, 1] = [2, 4, 3]
-# domain 3 : base
-nb_deg[:, 2] = [1, 0, 1]
-nb_ref[:, 2] = [4, 4, 3]
+    # domain 1 : chamfer
+    nb_deg[:, 0] = [0, 0, 0]
+    nb_ref[:, 0] = [2, 3, 2]
+    # domain 2 : tube
+    nb_deg[:, 1] = [1, 0, 1]
+    nb_ref[:, 1] = [1, 3, 2]
+    # domain 3 : base
+    nb_deg[:, 2] = [1, 0, 1]
+    nb_ref[:, 2] = [3, 3, 2]
 
-additional_knots = {"patches": np.array([1]),
-                    "1": np.array([]),
-                    "2": np.array([]),
-                    "3": np.array([0.25])
-                    }
+    additional_knots = {"patches": np.array([1]),
+                        "1": np.array([]),
+                        "2": np.array([]),
+                        "3": np.array([0.25])
+                        }
 
-# Interfaces
-nb_deg[:2, (2, 3, 5, 6, 7, 8)] = 0
-nb_ref[:2, (3, 4)] = ([2, 4], [2, 4])
-nb_ref[:2, (5, 6)] = ([2, 4], [2, 4])
-nb_ref[:2, (7, 8)] = ([2, 4], [2, 4])
+    # Interfaces
+    nb_deg[:2, (2, 3, 5, 6, 7, 8)] = 0
+    nb_ref[:2, (3, 4)] = ([1, 3], [1, 3])
+    nb_ref[:2, (5, 6)] = ([1, 3], [1, 3])
+    nb_ref[:2, (7, 8)] = ([1, 3], [1, 3])
 
-# Lgrge
-nb_deg[:2, (9, 10, 11)] = 1
-nb_ref[:2, 9] = [2, 4]
-nb_ref[:2, 10] = [2, 4]
-nb_ref[:2, 11] = [2, 4]
+    # Lagrange multiplier
+    nb_deg[:2, (9, 10, 11)] = 1
+    nb_ref[:2, 9] = [1, 3]
+    nb_ref[:2, 10] = [1, 3]
+    nb_ref[:2, 11] = [1, 3]
 
-modeleIGA.refine(nb_ref, nb_deg, additional_knots)
+    iga_model.refine(nb_ref, nb_deg, additional_knots)
 
-modeleIGA._NBPINT[np.where(modeleIGA._ELT_TYPE == 'U00')] = \
-    6**modeleIGA._dim.min()
+    # Specify number of intergration points
+    iga_model._NBPINT[np.where(iga_model._ELT_TYPE == 'U00')] = \
+        6**iga_model._dim.min()
 
-# --
-# STATIC STUDY
+    # Matrix Assembly
 
-# MATRIX Assembly
+    ndof = iga_model._nb_dof_free
+    idof = iga_model._ind_dof_free[:ndof]-1
 
-ndof = modeleIGA._nb_dof_free
-idof = modeleIGA._ind_dof_free[:ndof]-1
+    data, row, col, Fb = \
+        build_stiffmatrix(*iga_model.get_inputs4system_elemStorage())
+    Kside = sp.coo_matrix((data, (row, col)),
+                        shape=(iga_model._nb_dof_tot, iga_model._nb_dof_tot),
+                        dtype='float64').tocsc()
+    Ktot = Kside + Kside.transpose()
+    del Kside, data, row, col
 
-t1 = time.time()
-data, row, col, Fb = \
-    build_stiffmatrix(*modeleIGA.get_inputs4system_elemStorage())
-Kside = sp.coo_matrix((data, (row, col)),
-                      shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
-                      dtype='float64').tocsc()
-Ktot = Kside + Kside.transpose()
-del Kside, data, row, col
-print(('\n Time to build stiffness matrix : %.2f s' % (time.time() - t1)))
-
-t1 = time.time()
-Cdata, Crow, Ccol = cplg_matrix(*modeleIGA.get_inputs4cplgmatrix())
-Cside = sp.coo_matrix((Cdata, (Crow, Ccol)),
-                      shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
-                      dtype='float64').tocsc()
-Ctot = Cside + Cside.transpose()
-del Cdata, Crow, Ccol, Cside
-print(('\n Time to build coupling matrix  : %.2f s\n' % (time.time() - t1)))
+    Cdata, Crow, Ccol = cplg_matrix(*iga_model.get_inputs4cplgmatrix())
+    Cside = sp.coo_matrix((Cdata, (Crow, Ccol)),
+                        shape=(iga_model._nb_dof_tot, iga_model._nb_dof_tot),
+                        dtype='float64').tocsc()
+    Ctot = Cside + Cside.transpose()
+    del Cdata, Crow, Ccol, Cside
 
 
-# RESOLUTION Monolithique
-t2 = time.time()
-K2solve = Ktot[idof, :][:, idof]
-C2solve = Ctot[idof, :][:, idof] * K2solve.max()
-LU = sp.linalg.splu(K2solve + C2solve)
-x = LU.solve(Fb[idof])
-# x = np.zeros(idof.size)
-# x = sp.linalg.spsolve(K2solve + C2solve,Fb[idof])
-print(('\n Time for monolithique solving : %.2f s\n\n' % (time.time() - t2)))
+    # Monolithic resolution
+    K2solve = Ktot[idof, :][:, idof]
+    C2solve = Ctot[idof, :][:, idof] * K2solve.max()
+    x = sp.linalg.spsolve(K2solve + C2solve,Fb[idof])
 
-# Postprocessing
-SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
-pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
-    'coupling_mono', SOL.transpose(), nb_ref=np.array([3, 3, 3]),
-    Flag=np.array([True, False, False])))
+    # Global postprocessing
+    sol, u = rsol.reconstruction(**iga_model.get_inputs4solution(x))
+    pp.generatevtu(*iga_model.get_inputs4postprocVTU(
+        'coupling_mono', sol.transpose(), nb_ref=np.array([3, 3, 3]),
+        Flag=np.array([True, False, False]),
+        output_path=tmp_path))
 
-print(('Total time for Mono analysis : %.2f s' % (time.time() - ti)))
+    # Postprocessing at interfaces
+    pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
+        'interfaces_10', 10, sol.transpose(), nb_ref=np.array([3, 3]),
+        output_path=tmp_path))
+    pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
+        'interfaces_11', 11, sol.transpose(), nb_ref=np.array([3, 3]),
+        output_path=tmp_path))
+    pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
+        'interfaces_12', 12, sol.transpose(), nb_ref=np.array([3, 3]),
+        output_path=tmp_path))
 
-# Postproc at interfaces
-pp.generate_coupling_vtu(*modeleIGA.get_inputs4postproc_cplg_vtu(
-    'interfaces_10', 10, SOL.transpose(), nb_ref=np.array([3, 3])))
-pp.generate_coupling_vtu(*modeleIGA.get_inputs4postproc_cplg_vtu(
-    'interfaces_11', 11, SOL.transpose(), nb_ref=np.array([3, 3])))
-pp.generate_coupling_vtu(*modeleIGA.get_inputs4postproc_cplg_vtu(
-    'interfaces_12', 12, SOL.transpose(), nb_ref=np.array([3, 3])))
+
+if __name__ == '__main__':
+    test_coupling_postprocessing('results')
