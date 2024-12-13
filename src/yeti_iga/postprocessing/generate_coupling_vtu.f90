@@ -2,40 +2,42 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 !! Write VTU file with results at coupling interface
 !! ID of interface is given by input variable lgrge_patch_number which corresponds to the Lagrange U4 patch to process
 !! Results are compted on refined mesh (input variable nb_refinement) of slave U00 patch
 
-subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, sol, coords3D, ien, nb_elem_patch, &
+subroutine generate_coupling_vtu(filename, output_path,     &
+            &   lgrge_patch_number, nb_refinement, sol, coords3D, ien, nb_elem_patch, &
             &   nkv, ukv, nijk, weight, jpqr, elt_type, tensor, props, jprops, nnode,    &
             &   mcrd, nb_patch, nb_elem, nb_cp)
-    
+
     use parameters
     use nurbspatch
     use embeddedMapping
 
 
     implicit none
-    
+
     !! Input arguments
     !! ---------------
     integer, intent(in) :: nb_patch     !! number of patches
     integer, intent(in) :: nb_elem      !! number of element
     integer, intent(in) :: mcrd         !! number of coordinates
     integer, intent(in) :: nb_cp        !! number of control points
-    
+
     character(len=*) :: filename            !! name of VTU file to write
+    character(len=*) :: output_path         !! path to output directory
     integer, intent(in) :: lgrge_patch_number   !! Index of Lagrange interface to process
     integer, intent(in) :: nb_refinement    !! refinement level on parametric directions
     dimension nb_refinement(2)
@@ -43,7 +45,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
     dimension sol(mcrd, nb_cp)
     double precision, intent(in) :: coords3D    !! CP coordinates
     dimension coords3D(3, nb_cp)
-    
+
     integer, intent(in) :: ien
     dimension ien(:)
     integer, intent(in) :: nb_elem_patch
@@ -66,7 +68,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
     dimension jprops(:)
     integer, intent(in) :: nnode
     dimension nnode(nb_patch)
-    
+
     !! Local variables
     !! ---------------
     integer :: i_patch      !! loop variable for patch index
@@ -96,10 +98,10 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
     dimension R(maxval(nnode))
     dimension dRdxi(mcrd, maxval(nnode))
     double precision :: detJac
-    double precision, dimension(:,:,:), allocatable :: xibar    !! xibar parametric coordinates for each evaluation point    
-    double precision, dimension(:,:,:,:), allocatable :: xi       !! xi parametric coordinates for each evaluation point    
-    double precision, dimension(:,:,:,:), allocatable :: x        !! x physical coordinates for each evaluation point    
-    double precision, dimension(:,:,:,:), allocatable :: u        !! displacement field value for each evaluation point    
+    double precision, dimension(:,:,:), allocatable :: xibar    !! xibar parametric coordinates for each evaluation point
+    double precision, dimension(:,:,:,:), allocatable :: xi       !! xi parametric coordinates for each evaluation point
+    double precision, dimension(:,:,:,:), allocatable :: x        !! x physical coordinates for each evaluation point
+    double precision, dimension(:,:,:,:), allocatable :: u        !! displacement field value for each evaluation point
     integer :: i, j, j_elem, i_eta, i_xi
     integer :: sctr
     dimension sctr(maxval(nnode))
@@ -110,7 +112,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
 
     interfaces(:) = 0
     domains(:) = 0
-    write(*,*) 'Post processing interface patch #', lgrge_patch_number
+    ! write(*,*) 'Post processing interface patch #', lgrge_patch_number
     !! Loop on patches to find corresponding interface patches
     do i_patch = 1, nb_patch
         call ExtractNurbsPatchMechInfos(i_patch, ien, props, jprops,   &
@@ -125,11 +127,11 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
                 !! Current U00 patch corresponds to requested Lagrange patch
                 interfaces(is_master+1) = i_patch
                 domains(is_master+1) = i_domain
-                if (is_master .eq. 0) then
-                    write(*,*) '    Slave patch found'
-                elseif (is_master .eq. 1) then
-                    write(*,*) '    Master patch found'
-                endif
+                ! if (is_master .eq. 0) then
+                !     write(*,*) '    Slave patch found'
+                ! elseif (is_master .eq. 1) then
+                !     write(*,*) '    Master patch found'
+                ! endif
             endif
         endif
     enddo
@@ -171,7 +173,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
         enddo
     enddo
 
-    !! Get data from each side of interface    
+    !! Get data from each side of interface
     do i_side = 1, 2
        if (interfaces(i_side)>0) then
         call ExtractNurbsPatchMechInfos(interfaces(i_side), ien, props, jprops,   &
@@ -196,10 +198,10 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
                         coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, j_elem))
                     enddo
                     call ExtractNurbsElementInfos(j_elem)
-                
+
                     !! Evaluate basis function
                     call evalnurbs(xibar(:3, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
-                    
+
                     !! Get Xi
                     do j = 1, nnode_patch
                         xi(i_side,:mcrd, i_vertice, i_elem) = xi(i_side,:mcrd, i_vertice, i_elem)   &
@@ -247,15 +249,15 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
 
     !! Write data to files
     !! for parameter space
-    open(91, file='results/'//filename//'_param.vtu', form='formatted')
+    open(91, file=output_path // '/'//filename//'_param.vtu', form='formatted')
     !! for physical space
-    open(92, file='results/'//filename//'_phys.vtu', form='formatted')
+    open(92, file=output_path // '/'//filename//'_phys.vtu', form='formatted')
 
     do file = 91,92
         !! Header
         write(file,*) '<VTKFile type="UnstructuredGrid"  version="0.1"   >'
-        write(file,*) '<UnstructuredGrid>' 
-    
+        write(file,*) '<UnstructuredGrid>'
+
         !! Start piece
         write(file,*) '<Piece NumberOfPoints="  ', nb_node,     &
                 &   '"  NumberOfCells="  ',  &
@@ -322,10 +324,10 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
         !! displacement on master and slave
         do i_side = 1, 2
             if (i_side .eq. 1) then
-                write(file,*)'<DataArray  type="Float64"'//     &   
+                write(file,*)'<DataArray  type="Float64"'//     &
                     &   ' Name="disp_slave" NumberOfComponents="3" format="ascii">'
             elseif (i_side .eq. 2) then
-                write(file,*)'<DataArray  type="Float64"'//     &   
+                write(file,*)'<DataArray  type="Float64"'//     &
                 &   ' Name="disp_master" NumberOfComponents="3" format="ascii">'
             endif
             do i_elem = 1, nb_elem_patch(interfaces(1))
@@ -336,7 +338,7 @@ subroutine generate_coupling_vtu(filename, lgrge_patch_number, nb_refinement, so
             write(file,*) '</DataArray>'
         enddo
         !! Condition (disp master - disp slave)
-        write(file,*)'<DataArray  type="Float64"'//     &   
+        write(file,*)'<DataArray  type="Float64"'//     &
         &   ' Name="condition" NumberOfComponents="3" format="ascii">'
         do i_elem = 1, nb_elem_patch(interfaces(1))
             do i = 1, nb_vertice
@@ -362,26 +364,26 @@ end subroutine generate_coupling_vtu
 
 !! Discretize isoparametric element (coordinates in [-1 1]^2 or [-1 1]^3
 subroutine DiscretizeIsoparam(vertice, nb_xi, nb_eta, nb_zeta, mcrd)
-    
+
     use parameters
-    
+
     implicit none
-    
+
     !! Input parameters
     !! ----------------
     integer, intent(in) :: nb_xi, nb_eta, nb_zeta
     integer, intent(in) :: mcrd
-    
+
     !! Returns
     !! -------
     double precision, intent(out) :: vertice
     dimension vertice(3, nb_xi*nb_eta*nb_zeta)
-    
+
     !! Local variables
     !! ---------------
     integer :: n
     integer :: i_xi, i_eta, i_zeta
-    
+
     do i_zeta = 1, nb_zeta
         do i_eta = 1, nb_eta
             do i_xi = 1, nb_xi
