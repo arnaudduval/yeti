@@ -1806,7 +1806,8 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4cplgmatrixU5(self, COORDS=None, integrationOrder=0):
+    def get_inputs4cplgmatrixU5(self, COORDS=None, integrationOrder=0,
+                                output_path='results'):
         """
         Generate input arguments for ``coupling.cplgmatrix.cplg_matrixu5``.
 
@@ -1817,6 +1818,9 @@ class IGAparametrization:
         integrationOrder : int, optional
             Integration order for coupling equation (used only if greater than
             auto-evaluated one). The default is 0.
+        output_path : string
+            Path to directory where debug files (for projection) should be
+            written.
 
         Returns
         -------
@@ -1894,7 +1898,7 @@ class IGAparametrization:
         if np.shape(COORDS) != np.shape(self._COORDS):
             COORDS = self._COORDS
 
-        inputs = [nb_data, COORDS, self._IEN_flat, self._elementsByPatch,
+        inputs = [output_path, nb_data, COORDS, self._IEN_flat, self._elementsByPatch,
                   self._Nkv, self._Ukv_flat, self._Nijk, self._weight_flat,
                   self._Jpqr, self._ELT_TYPE_flat, self._PROPS_flat,
                   self._JPROPS, self._MATERIAL_PROPERTIES[:2, :],

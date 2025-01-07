@@ -91,8 +91,8 @@ add_test(NAME test_embedded_solid_nonlinear_mapping COMMAND ${Python3_EXECUTABLE
 add_test(NAME test_nonlinear_embedded_solid COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded/test_nonlinear_embedded_solid.py WORKING_DIRECTORY ${BENCH_PATH}/EMBDSOL2-patch_test_NL_embded)
 
 # Couling between solid patches with projected Gauss points
-add_test(NAME coupling_U5_2D_compatible
-COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5_2D_compatible.py
+add_test(NAME test_coupling_u5_2d_compatible
+COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/test_coupling_u5_2d_compatible.py
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 add_test(NAME coupling_U5
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
@@ -231,7 +231,7 @@ set_tests_properties(
                      test_coupling_postprocessing
                      test_embedded_solid_nonlinear_mapping
                      test_nonlinear_embedded_solid
-                     coupling_U5_2D_compatible
+                     test_coupling_u5_2d_compatible
                      coupling_U5
                      compare_U4_U5_2D
                      ROM1-plateWithHole

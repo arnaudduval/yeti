@@ -27,7 +27,7 @@
 
 !! WARNING only solid 3D case with coupling between two domains is handled (soon available in 2D !!!)
 
-subroutine cplg_matrixU5(nb_data, &
+subroutine cplg_matrixU5(output_path, nb_data, &
     &   COORDS3D,IEN,nb_elem_patch,Nkv,Ukv,Nijk,weight,Jpqr,ELT_TYPE,   &
     &   PROPS,JPROPS,MATERIAL_PROPERTIES,TENSOR,ind_dof_free,   &
     &   nb_dof_free,MCRD,NBINT,nb_patch,nb_elem,nnode,nb_cp,    &
@@ -43,6 +43,9 @@ subroutine cplg_matrixU5(nb_data, &
 
     !! Input arguments
     !! ---------------
+
+    !! Output path for debug files (projection)
+    character(len=*) :: output_path
 
     !! NURBS geometry
     integer, intent(in) :: nb_cp
@@ -169,11 +172,11 @@ subroutine cplg_matrixU5(nb_data, &
             IsSlaveEmbded = .false.
 
             !! Print info.
-            write(*,'(A)') '--------------------'
-            write(*,'(A, I2, A)') 'Patch ', iPatch, ' of type U5'
-            write(*,'(A, I1, A, I2)') '  > coupling of face no.', masterFace, ' of patch ', &
-                &   masterPatch
-            write(*,'(A, I1, A, I2)') '  > on face no.', slaveFace, ' of patch ', slavePatch
+            ! write(*,'(A)') '--------------------'
+            ! write(*,'(A, I2, A)') 'Patch ', iPatch, ' of type U5'
+            ! write(*,'(A, I1, A, I2)') '  > coupling of face no.', masterFace, ' of patch ', &
+            !     &   masterPatch
+            ! write(*,'(A, I1, A, I2)') '  > on face no.', slaveFace, ' of patch ', slavePatch
 
 
             !! Compute integration points position
@@ -251,7 +254,6 @@ subroutine cplg_matrixU5(nb_data, &
             call Gauss(nbPtInt, dim_patch, GaussPdsCoords, masterFace)
 
             ielface = 1
-            write(*,*) "MCRD = ", MCRD
             do ielem = 1, nb_elem_patch(masterPatch)
                 call extractNurbsElementInfos(ielem)
                 if(IsElemOnFace(masterFace, Nijk_patch(:,ielem), Jpqr_patch, Nkv_patch, dim_patch)) then
@@ -307,10 +309,10 @@ subroutine cplg_matrixU5(nb_data, &
 
             !!! CHECK PROJECTION --->
             !! Results
-            open(11, file='results/verif_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
+            open(11, file=output_path // '/verif_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
             write(11, *) '# Physical coordinates - master side'
             !! Warnings
-            open(12, file='results/warnings_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
+            open(12, file=output_path // '/warnings_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
             write(12, *) 'Patch ' // trim(char_iPatch)
             !!! <--- CHECK PROJECTION
 
