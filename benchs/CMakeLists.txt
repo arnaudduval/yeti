@@ -94,8 +94,8 @@ add_test(NAME test_nonlinear_embedded_solid COMMAND ${Python3_EXECUTABLE} ${BENC
 add_test(NAME test_coupling_u5_2d_compatible
 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/test_coupling_u5_2d_compatible.py
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
-add_test(NAME coupling_U5
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/couplingU5.py
+add_test(NAME test_coupling_u5
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/coupling_U5/test_coupling_u5.py
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 # Comparison between U5 and U4 method
 add_test(NAME compare_U4_U5_2D
@@ -232,7 +232,7 @@ set_tests_properties(
                      test_embedded_solid_nonlinear_mapping
                      test_nonlinear_embedded_solid
                      test_coupling_u5_2d_compatible
-                     coupling_U5
+                     test_coupling_u5
                      compare_U4_U5_2D
                      ROM1-plateWithHole
                      post_faces
