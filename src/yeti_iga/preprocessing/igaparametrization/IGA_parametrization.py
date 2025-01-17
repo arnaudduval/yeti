@@ -2538,6 +2538,13 @@ class IGAparametrization:
         """
         return self._NBPINT
 
+    @property
+    def design_parameters(self):
+        """
+        TODO Document this property
+        """
+        return self._design_parameters
+
 
 
 
