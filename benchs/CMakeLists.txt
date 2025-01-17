@@ -103,7 +103,7 @@ add_test(NAME test_compare_u4_u5_2d
          WORKING_DIRECTORY ${BENCH_PATH}/coupling_U5)
 
 # plate with hole with Abaqus parameters
-add_test(NAME ROM1-plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
+add_test(NAME test_ROM1_plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/test_romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
 
 # Postprocessing of an IGA model to plot faces numbers in a VTU file
 add_test(NAME post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_face/post_faces.py WORKING_DIRECTORY ${BENCH_PATH}/post_face)
@@ -234,7 +234,7 @@ set_tests_properties(
                      test_coupling_u5_2d_compatible
                      test_coupling_u5
                      test_compare_u4_u5_2d
-                     ROM1-plateWithHole
+                     test_ROM1_plateWithHole
                      post_faces
                      centrif_U1
                      centrif_U10
