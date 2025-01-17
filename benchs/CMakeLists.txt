@@ -106,7 +106,7 @@ add_test(NAME test_compare_u4_u5_2d
 add_test(NAME test_ROM1_plateWithHole COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/ROM1-plateWithHole/test_romplatewithhole.py WORKING_DIRECTORY ${BENCH_PATH}/ROM1-plateWithHole)
 
 # Postprocessing of an IGA model to plot faces numbers in a VTU file
-add_test(NAME post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_face/post_faces.py WORKING_DIRECTORY ${BENCH_PATH}/post_face)
+add_test(NAME test_post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_face/test_post_faces.py WORKING_DIRECTORY ${BENCH_PATH}/post_face)
 
 # Benchs for centrifugal body force
 add_test(NAME centrif_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1)
@@ -235,7 +235,7 @@ set_tests_properties(
                      test_coupling_u5
                      test_compare_u4_u5_2d
                      test_ROM1_plateWithHole
-                     post_faces
+                     test_post_faces
                      centrif_U1
                      centrif_U10
                      centrif_U1_C0

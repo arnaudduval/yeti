@@ -732,6 +732,8 @@ class IGAparametrization:
             Field ouput to save. Three are available: Nodal displacement,
             stresses, and Von Mises stresses.
             The default is np.array([True, True, True]).
+        output_path: string
+            Path to the directory where the output file should be written
 
         Returns
         -------
@@ -802,7 +804,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postproc_faces_vtu(self, filename, nb_ref=np.ones(3)):
+    def get_inputs4postproc_faces_vtu(self, filename, nb_ref=np.ones(3), output_path='results'):
         """
         Get the necessary inputs for function postproc.generate_faces_vtu
 
@@ -813,6 +815,9 @@ class IGAparametrization:
         nb_ref : numpy array, optional
             Mesh refinement for the visualisation. It takes the form:
             np.array([xi-dir., eta-dir., zeta-dir.]). The default is np.ones(3)
+        output_path: string
+            Path to the directory where the output file should be written.
+            The default is 'results'
 
         Returns
         -------
@@ -821,6 +826,7 @@ class IGAparametrization:
         """
         nb_ref = np.maximum(nb_ref, np.ones(3))
         inputs = { 'filename': filename,
+                   'output_path': output_path,
                    'nb_refinement': nb_ref,
                    'coords3d': self._COORDS,
                    'ien': self._IEN_flat,

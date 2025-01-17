@@ -2,22 +2,24 @@
 
 !! This file is part of Yeti.
 !!
-!! Yeti is free software: you can redistribute it and/or modify it under the terms 
-!! of the GNU Lesser General Public License as published by the Free Software 
+!! Yeti is free software: you can redistribute it and/or modify it under the terms
+!! of the GNU Lesser General Public License as published by the Free Software
 !! Foundation, either version 3 of the License, or (at your option) any later version.
 !!
-!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+!! Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+!! without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 !! PURPOSE. See the GNU Lesser General Public License for more details.
 !!
-!! You should have received a copy of the GNU Lesser General Public License along 
+!! You should have received a copy of the GNU Lesser General Public License along
 !! with Yeti. If not, see <https://www.gnu.org/licenses/>
 
 
 !! Generate a VTU face with info on faces indices for 3D geometries
 !! WARNING : works only for 3D geometries
 
-subroutine generate_faces_vtu(filename, nb_refinement, COORDS3D, IEN, nb_elem_patch, Nkv, Ukv, Nijk, weight, Jpqr, ELT_TYPE, &
+subroutine generate_faces_vtu(filename, output_path, nb_refinement, COORDS3D, &
+    &                         IEN, nb_elem_patch, Nkv, Ukv, Nijk, weight, &
+    &                         Jpqr, ELT_TYPE, &
     &                         TENSOR, PROPS, JPROPS, NNODE, &
     &                         nb_patch, nb_elem, nb_cp, MCRD)
 
@@ -29,6 +31,7 @@ subroutine generate_faces_vtu(filename, nb_refinement, COORDS3D, IEN, nb_elem_pa
 
     !! Input variables
     character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: output_path
     integer, intent(in) :: nb_refinement
     dimension nb_refinement(3)
     character(len=*), intent(in) :: ELT_TYPE, TENSOR
@@ -61,7 +64,7 @@ subroutine generate_faces_vtu(filename, nb_refinement, COORDS3D, IEN, nb_elem_pa
     logical :: IsElemOnFace
     integer :: NbElemOnFace
 
-    open(90, file='results/'// filename //'.vtu', form='formatted')
+    open(90, file=output_path // '/'// filename //'.vtu', form='formatted')
 
     !! write header
     write(90,*) '<VTKFile type="UnstructuredGrid" version="0.1">'
@@ -180,7 +183,7 @@ subroutine generate_faces_vtu(filename, nb_refinement, COORDS3D, IEN, nb_elem_pa
                     write(90,*) offset
                 enddo
                 write(90,*)'</DataArray>'
-                
+
                 !! Write cells types
                 write(90,*)'<DataArray  type="UInt8"  Name="types"  format="ascii"> '
                 offset = 0
