@@ -150,6 +150,20 @@ subroutine UELMAT_byCP(NDOFEL, MCRD, NNODE, JELEM, NBINT, COORDS,            &
                         end do
                     end do
                 end if
+            else if (JDLTYPE(i_load) == 102) then
+                if (ANY(indDLoad(kload + 1:kload + load_target_nbelem(i_load)) == JELEM)) then
+                    !! Volumic force
+                    vectR(:) = load_additionalInfos(load_addinfos_count:    &
+                        &                    load_addinfos_count + MCRD)
+                    !! Update load vector
+                    kk = 0
+                    do numCP = 1, NNODE
+                        do j = 1, MCRD
+                            kk = kk + 1
+                            RHS(kk) = RHS(kk) + ADLMAG(i_load) * vectR(j) * R(numCP) * dvol
+                        end do
+                    end do
+                endif
             end if
             kload = kload + load_target_nbelem(i_load)
             load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i_load)
