@@ -206,6 +206,10 @@ add_test(NAME volume_force_3D
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/volume_force_3D.py
          WORKING_DIRECTORY ${BENCH_PATH}/volume_force
 )
+add_test(NAME volume_force_2D
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/volume_force_2D.py
+         WORKING_DIRECTORY ${BENCH_PATH}/volume_force
+)
 
 # Benchs for sensibilities computation on embedded solid element
 #add_test(NAME grad_embdsol_unit_square COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/grad_embdsol_unit_square.py WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol)
@@ -268,6 +272,7 @@ set_tests_properties(
                      vtu_output_8patchs
                      vtu_output_2patchs_coupling
                      volume_force_3D
+                     volume_force_2D
                      PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/lib/python:$ENV{PYTHONPATH})
 
 # Properties for long tests
