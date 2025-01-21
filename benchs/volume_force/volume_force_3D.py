@@ -78,11 +78,11 @@ print(('\n Time for direct solving :    %.2f s\n\n' % (time.time() - t2)))
 # Solution reconstruction
 SOL, u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 
-pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
-        1,
-        'fvol',
-        SOL.transpose(),
-        ))
+# pp.generate_vtu_bezier(**modeleIGA.get_inputs4postproc_bezier(
+#         1,
+#         'fvol',
+#         SOL.transpose(),
+#         ))
 
 
 
