@@ -129,15 +129,13 @@ def test_coupling_postprocessing(tmp_path):
     pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
         'interfaces_10', 10, sol.T, nb_ref=np.array([3, 3]),
         output_path=tmp_path))
-
     pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
         'interfaces_11', 11, sol.T, nb_ref=np.array([3, 3]),
         output_path=tmp_path))
-    return
     pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
         'interfaces_12', 12, sol.T, nb_ref=np.array([3, 3]),
         output_path=tmp_path))
-
+    return
 
 if __name__ == '__main__':
     test_coupling_postprocessing('results')
