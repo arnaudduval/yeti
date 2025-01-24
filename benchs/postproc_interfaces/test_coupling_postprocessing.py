@@ -118,14 +118,14 @@ def test_coupling_postprocessing(tmp_path):
                           cplg_tot[idof, :][:, idof] * stiff_tot.max(),
                           rhs[idof])
 
-    return
-
     # Global postprocessing
     sol, _ = rsol.reconstruction(**iga_model.get_inputs4solution(x))
     pp.generatevtu(*iga_model.get_inputs4postprocVTU(
         'coupling_mono', sol.T, nb_ref=np.array([3, 3, 3]),
         Flag=np.array([True, False, False]),
         output_path=tmp_path))
+
+    return
 
     # Postprocessing at interfaces
     pp.generate_coupling_vtu(*iga_model.get_inputs4postproc_cplg_vtu(
