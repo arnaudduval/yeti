@@ -173,81 +173,81 @@ subroutine generate_coupling_vtu(filename, output_path,     &
         enddo
     enddo
 
+    !! Get data from each side of interface
+    do i_side = 1, 2
+       if (interfaces(i_side)>0) then
+        call ExtractNurbsPatchMechInfos(interfaces(i_side), ien, props, jprops,   &
+                &   nnode, nb_elem_patch, elt_type, tensor)
+        if (elt_type_patch .eq. 'U00') then
+            call extractNurbsPatchGeoInfos(interfaces(i_side), Nkv,Jpqr,Nijk,Ukv, &
+                    &        weight,nb_elem_patch)
+            i_domain = int(props_patch(2))
+            !!i_lgrge = int(props_patch(3))
+            is_master = int(props_patch(4))
+            !! On balaie sur la discretisation de l'esclave
+            do i_elem = 1, nb_elem_patch(interfaces(1))
+                do i_vertice=1, nb_vertice
+                    !! On recherche l'element auquel correspond xibar (= i_elem si esclave)
+                    if (i_side .eq. 1) then
+                        j_elem = i_elem
+                    else
+                        call updateElementNumber(xibar(:, i_vertice, i_elem))
+                        j_elem = current_elem
+                    endif
+                    do i = 1, nnode_patch
+                        coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, j_elem))
+                    enddo
+                    call ExtractNurbsElementInfos(j_elem)
+
+                    !! Evaluate basis function
+                    call evalnurbs(xibar(:3, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
+
+                    !! Get Xi
+                    do j = 1, nnode_patch
+                        xi(i_side,:mcrd, i_vertice, i_elem) = xi(i_side,:mcrd, i_vertice, i_elem)   &
+                                                        &   + R(j)*coords_elem(:,j)
+                    enddo
+                enddo
+            enddo
+
+            !! Domain to couple
+            call extractNurbsPatchGeoInfos(domains(i_side), nkv, jpqr, nijk, ukv,  &
+                    &   weight, nb_elem_patch)
+            call extractNurbsPatchMechInfos(domains(i_side), ien, props, jprops,   &
+                    &   nnode, nb_elem_patch, elt_type, tensor)
+            if (elt_type_patch .eq. 'U30') then
+                !! WARNING NOT TESTED !!!
+                i = int(props_patch(2))
+                call extractMappingInfos(i, nb_elem_patch, nkv, jpqr, nijk, ukv,    &
+                        weight, ien, props, jprops, nnode, elt_type, tensor)
+            endif
+
+            do i_elem = 1, nb_elem_patch(interfaces(1))
+                do i_vertice = 1, nb_vertice
+                    call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
+                    sctr(:nnode_patch) = ien_patch(:, current_elem)
+                    do i = 1, nnode_patch
+                        coords_elem(:,i) = coords3D(:mcrd, sctr(i))
+                        u_elem(:,i) = sol(:mcrd, sctr(i))
+                    enddo
+                    !! Evaluate basis function
+                    call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
+
+                    !! Get x and u
+                    do j=1, nnode_patch
+                        !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
+                        x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
+                                                &       R(j)*coords_elem(:,j)
+                        u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
+                                                &       R(j)*u_elem(:,j)
+                    enddo
+                enddo
+            enddo
+         endif
+      endif
+    enddo
+
 end subroutine generate_coupling_vtu
-
-!     !! Get data from each side of interface
-!     do i_side = 1, 2
-!        if (interfaces(i_side)>0) then
-!         call ExtractNurbsPatchMechInfos(interfaces(i_side), ien, props, jprops,   &
-!                 &   nnode, nb_elem_patch, elt_type, tensor)
-!         if (elt_type_patch .eq. 'U00') then
-!             call extractNurbsPatchGeoInfos(interfaces(i_side), Nkv,Jpqr,Nijk,Ukv, &
-!                     &        weight,nb_elem_patch)
-!             i_domain = int(props_patch(2))
-!             !!i_lgrge = int(props_patch(3))
-!             is_master = int(props_patch(4))
-!             !! On balaie sur la discretisation de l'esclave
-!             do i_elem = 1, nb_elem_patch(interfaces(1))
-!                 do i_vertice=1, nb_vertice
-!                     !! On recherche l'element auquel correspond xibar (= i_elem si esclave)
-!                     if (i_side .eq. 1) then
-!                         j_elem = i_elem
-!                     else
-!                         call updateElementNumber(xibar(:, i_vertice, i_elem))
-!                         j_elem = current_elem
-!                     endif
-!                     do i = 1, nnode_patch
-!                         coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, j_elem))
-!                     enddo
-!                     call ExtractNurbsElementInfos(j_elem)
-
-!                     !! Evaluate basis function
-!                     call evalnurbs(xibar(:3, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
-
-!                     !! Get Xi
-!                     do j = 1, nnode_patch
-!                         xi(i_side,:mcrd, i_vertice, i_elem) = xi(i_side,:mcrd, i_vertice, i_elem)   &
-!                                                         &   + R(j)*coords_elem(:,j)
-!                     enddo
-!                 enddo
-!             enddo
-
-!             !! Domain to couple
-!             call extractNurbsPatchGeoInfos(domains(i_side), nkv, jpqr, nijk, ukv,  &
-!                     &   weight, nb_elem_patch)
-!             call extractNurbsPatchMechInfos(domains(i_side), ien, props, jprops,   &
-!                     &   nnode, nb_elem_patch, elt_type, tensor)
-!             if (elt_type_patch .eq. 'U30') then
-!                 !! WARNING NOT TESTED !!!
-!                 i = int(props_patch(2))
-!                 call extractMappingInfos(i, nb_elem_patch, nkv, jpqr, nijk, ukv,    &
-!                         weight, ien, props, jprops, nnode, elt_type, tensor)
-!             endif
-
-!             do i_elem = 1, nb_elem_patch(interfaces(1))
-!                 do i_vertice = 1, nb_vertice
-!                     call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
-!                     sctr(:nnode_patch) = ien_patch(:, current_elem)
-!                     do i = 1, nnode_patch
-!                         coords_elem(:,i) = coords3D(:mcrd, sctr(i))
-!                         u_elem(:,i) = sol(:mcrd, sctr(i))
-!                     enddo
-!                     !! Evaluate basis function
-!                     call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
-
-!                     !! Get x and u
-!                     do j=1, nnode_patch
-!                         !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
-!                         x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
-!                                                 &       R(j)*coords_elem(:,j)
-!                         u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
-!                                                 &       R(j)*u_elem(:,j)
-!                     enddo
-!                 enddo
-!             enddo
-!          endif
-!       endif
-!     enddo
 
 !     !! Write data to files
 !     !! for parameter space
