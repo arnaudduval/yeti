@@ -109,32 +109,34 @@ subroutine generate_coupling_vtu(filename, output_path,     &
     integer :: comp         !! intermediate variable for connectivity computation
     integer :: offset       !! Offset counter when writing VTU file
 
+
+    interfaces(:) = 0
+    domains(:) = 0
+    ! write(*,*) 'Post processing interface patch #', lgrge_patch_number
+    !! Loop on patches to find corresponding interface patches
+    do i_patch = 1, nb_patch
+        call ExtractNurbsPatchMechInfos(i_patch, ien, props, jprops,   &
+                &   nnode, nb_elem_patch, elt_type, tensor)
+        if (elt_type_patch .eq. 'U00') then
+            call extractNurbsPatchGeoInfos(i_patch, Nkv,Jpqr,Nijk,Ukv, &
+                    &        weight,nb_elem_patch)
+            i_domain = int(props_patch(2))
+            i_lgrge = int(props_patch(3))
+            is_master = int(props_patch(4))
+            if (i_lgrge .eq. lgrge_patch_number) then
+                !! Current U00 patch corresponds to requested Lagrange patch
+                interfaces(is_master+1) = i_patch
+                domains(is_master+1) = i_domain
+                ! if (is_master .eq. 0) then
+                !     write(*,*) '    Slave patch found'
+                ! elseif (is_master .eq. 1) then
+                !     write(*,*) '    Master patch found'
+                ! endif
+            endif
+        endif
+    enddo
+
 end subroutine generate_coupling_vtu
-!     interfaces(:) = 0
-!     domains(:) = 0
-!     ! write(*,*) 'Post processing interface patch #', lgrge_patch_number
-!     !! Loop on patches to find corresponding interface patches
-!     do i_patch = 1, nb_patch
-!         call ExtractNurbsPatchMechInfos(i_patch, ien, props, jprops,   &
-!                 &   nnode, nb_elem_patch, elt_type, tensor)
-!         if (elt_type_patch .eq. 'U00') then
-!             call extractNurbsPatchGeoInfos(i_patch, Nkv,Jpqr,Nijk,Ukv, &
-!                     &        weight,nb_elem_patch)
-!             i_domain = int(props_patch(2))
-!             i_lgrge = int(props_patch(3))
-!             is_master = int(props_patch(4))
-!             if (i_lgrge .eq. lgrge_patch_number) then
-!                 !! Current U00 patch corresponds to requested Lagrange patch
-!                 interfaces(is_master+1) = i_patch
-!                 domains(is_master+1) = i_domain
-!                 ! if (is_master .eq. 0) then
-!                 !     write(*,*) '    Slave patch found'
-!                 ! elseif (is_master .eq. 1) then
-!                 !     write(*,*) '    Master patch found'
-!                 ! endif
-!             endif
-!         endif
-!     enddo
 
 !     !! Discretize interface (from slave side)
 !     call ExtractNurbsPatchMechInfos(interfaces(1), ien, props, jprops,   &
