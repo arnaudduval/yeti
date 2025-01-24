@@ -226,12 +226,12 @@ subroutine generate_coupling_vtu(filename, output_path,     &
                 do i_vertice = 1, nb_vertice
                     call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
                     sctr(:nnode_patch) = ien_patch(:, current_elem)
-                    do i = 1, nnode_patch
-                        coords_elem(:,i) = coords3D(:mcrd, sctr(i))
-                        u_elem(:,i) = sol(:mcrd, sctr(i))
-                    enddo
-                    !! Evaluate basis function
-                    call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
+            !         do i = 1, nnode_patch
+            !             coords_elem(:,i) = coords3D(:mcrd, sctr(i))
+            !             u_elem(:,i) = sol(:mcrd, sctr(i))
+            !         enddo
+            !         !! Evaluate basis function
+            !         call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
 
             !         !! Get x and u
             !         do j=1, nnode_patch
