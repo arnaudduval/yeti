@@ -222,8 +222,8 @@ subroutine generate_coupling_vtu(filename, output_path,     &
                         weight, ien, props, jprops, nnode, elt_type, tensor)
             endif
 
-            ! do i_elem = 1, nb_elem_patch(interfaces(1))
-            !     do i_vertice = 1, nb_vertice
+            do i_elem = 1, nb_elem_patch(interfaces(1))
+                do i_vertice = 1, nb_vertice
             !         call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
             !         sctr(:nnode_patch) = ien_patch(:, current_elem)
             !         do i = 1, nnode_patch
@@ -241,8 +241,8 @@ subroutine generate_coupling_vtu(filename, output_path,     &
             !             u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
             !                                     &       R(j)*u_elem(:,j)
             !         enddo
-            !     enddo
-            ! enddo
+                enddo
+            enddo
          endif
       endif
     enddo
