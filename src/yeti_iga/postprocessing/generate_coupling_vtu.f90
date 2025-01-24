@@ -136,44 +136,44 @@ subroutine generate_coupling_vtu(filename, output_path,     &
         endif
     enddo
 
+    !! Discretize interface (from slave side)
+    call ExtractNurbsPatchMechInfos(interfaces(1), ien, props, jprops,   &
+                &   nnode, nb_elem_patch, elt_type, tensor)
+    dim_interface = dim_patch
+    nb_xi = 2**(max(nb_refinement(1)-1, 0)) + 1
+    nb_eta = 2**(max(nb_refinement(1)-1, 0)) + 1
+
+    nb_elem_vtu = (nb_xi-1)*(nb_eta-1)
+    nb_vertice = nb_xi*nb_eta
+    allocate(vertice(3, nb_vertice))
+    vertice(:,:) = zero
+    call DiscretizeIsoparam(vertice, nb_xi, nb_eta, 1, dim_interface)
+    nb_node = nb_elem_patch(interfaces(1))*nb_vertice
+    allocate(xibar(dim_interface, nb_vertice, nb_elem_patch(interfaces(1))))
+    allocate(xi(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
+    allocate(x(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
+    allocate(u(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
+    xibar(:,:,:) = zero
+    xi(:,:,:,:) = zero
+    x(:,:,:,:) = zero
+    u(:,:,:,:) = zero
+
+    !! Compute xibar values
+    do i_elem = 1, nb_elem_patch(interfaces(1))
+        do i = 1, nnode_patch
+            coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, i_elem))
+        enddo
+        call ExtractNurbsElementInfos(i_elem)
+        do i=1, nb_vertice
+            !! Get Xibar
+            do j = 1, dim_interface
+                xibar(j, i, i_elem) = ((ukv_elem(2,j) - ukv_elem(1,j))*vertice(j,i)    &
+                                + (ukv_elem(2,j) + ukv_elem(1,j))) *0.5D0
+            enddo
+        enddo
+    enddo
+
 end subroutine generate_coupling_vtu
-
-!     !! Discretize interface (from slave side)
-!     call ExtractNurbsPatchMechInfos(interfaces(1), ien, props, jprops,   &
-!                 &   nnode, nb_elem_patch, elt_type, tensor)
-!     dim_interface = dim_patch
-!     nb_xi = 2**(max(nb_refinement(1)-1, 0)) + 1
-!     nb_eta = 2**(max(nb_refinement(1)-1, 0)) + 1
-
-!     nb_elem_vtu = (nb_xi-1)*(nb_eta-1)
-!     nb_vertice = nb_xi*nb_eta
-!     allocate(vertice(3, nb_vertice))
-!     vertice(:,:) = zero
-!     call DiscretizeIsoparam(vertice, nb_xi, nb_eta, 1, dim_interface)
-!     nb_node = nb_elem_patch(interfaces(1))*nb_vertice
-!     allocate(xibar(dim_interface, nb_vertice, nb_elem_patch(interfaces(1))))
-!     allocate(xi(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
-!     allocate(x(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
-!     allocate(u(2, 3, nb_vertice, nb_elem_patch(interfaces(1))))
-!     xibar(:,:,:) = zero
-!     xi(:,:,:,:) = zero
-!     x(:,:,:,:) = zero
-!     u(:,:,:,:) = zero
-
-!     !! Compute xibar values
-!     do i_elem = 1, nb_elem_patch(interfaces(1))
-!         do i = 1, nnode_patch
-!             coords_elem(:,i) = coords3D(:mcrd, ien_patch(i, i_elem))
-!         enddo
-!         call ExtractNurbsElementInfos(i_elem)
-!         do i=1, nb_vertice
-!             !! Get Xibar
-!             do j = 1, dim_interface
-!                 xibar(j, i, i_elem) = ((ukv_elem(2,j) - ukv_elem(1,j))*vertice(j,i)    &
-!                                 + (ukv_elem(2,j) + ukv_elem(1,j))) *0.5D0
-!             enddo
-!         enddo
-!     enddo
 
 !     !! Get data from each side of interface
 !     do i_side = 1, 2
