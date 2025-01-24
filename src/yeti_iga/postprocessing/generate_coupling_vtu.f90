@@ -233,136 +233,135 @@ subroutine generate_coupling_vtu(filename, output_path,     &
                     !! Evaluate basis function
                     call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
 
-            !         !! Get x and u
-            !         do j=1, nnode_patch
-            !             !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
-            !             x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
-            !                                     &       R(j)*coords_elem(:,j)
-            !             u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
-            !                                     &       R(j)*u_elem(:,j)
-            !         enddo
+                    !! Get x and u
+                    do j=1, nnode_patch
+                        !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
+                        x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
+                                                &       R(j)*coords_elem(:,j)
+                        u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
+                                                &       R(j)*u_elem(:,j)
+                    enddo
                 enddo
             enddo
          endif
       endif
     enddo
 
+
+    !! Write data to files
+    !! for parameter space
+    open(91, file=output_path // '/'//filename//'_param.vtu', form='formatted')
+    !! for physical space
+    open(92, file=output_path // '/'//filename//'_phys.vtu', form='formatted')
+
+    do file = 91,92
+        !! Header
+        write(file,*) '<VTKFile type="UnstructuredGrid"  version="0.1"   >'
+        write(file,*) '<UnstructuredGrid>'
+
+        !! Start piece
+        write(file,*) '<Piece NumberOfPoints="  ', nb_node,     &
+                &   '"  NumberOfCells="  ',  &
+                &   nb_elem_patch(interfaces(1))*nb_elem_vtu, '">'
+
+        !! Write data points
+        write(file, *) '<Points>'
+        if (file .eq. 91) then
+            write(file, *) '<DataArray  type="Float64"'//   &
+                    &   '  NumberOfComponents="3"  format="ascii" >'
+        elseif (file .eq. 92) then
+            write(file, *) '<DataArray  type="Float64"'//   &
+                    &   '  NumberOfComponents="3"  format="ascii" >'
+        endif
+        do i_elem = 1, nb_elem_patch(interfaces(1))
+            do i = 1, nb_vertice
+                if (file .eq. 91) then
+                    write(file,*) xibar(:2, i, i_elem), '0.0'
+                elseif (file .eq. 92) then
+                    write(file,*) x(1, :3, i, i_elem)
+                endif
+            enddo
+        enddo
+        write(file, *) '</DataArray>'
+        write(file, *) '</Points>'
+
+        !! Write cells connectivity
+        write(file, *) '<Cells>'
+        write(file, *) '<DataArray  type="Int32"  Name="connectivity"'//    &
+                    &   '  format="acsii">'
+        comp = 0
+        do i_elem = 1, nb_elem_patch(interfaces(1))
+            do i_eta = 1, nb_eta - 1
+                do i_xi = 1, nb_xi - 1
+                    comp = (i_elem - 1)*nb_vertice
+                    comp = comp + (i_eta-1)*nb_xi + i_xi - 1
+                    write(file, *) comp, comp+1, comp+nb_xi+1, comp+nb_xi
+                enddo
+            enddo
+        enddo
+        write(file, *) '</DataArray>'
+
+        !! Write cells offsets
+        write(file, *) '<DataArray  type="Int32"  Name="offsets"'// &
+                    &   '  format="ascii"> '
+        offset = 0
+        do i = 1, nb_elem_patch(interfaces(1))*nb_elem_vtu
+            offset = offset + 2**dim_interface
+            write(file, *) offset
+        enddo
+        write(file, *) '</DataArray>'
+
+        !! Write cells type
+        write(file, *) '<DataArray  type="UInt8"  Name="types"'//   &
+                &       '  format="ascii">'
+        do i = 1, nb_elem_patch(interfaces(1))*nb_elem_vtu
+            write(file, *) '9'
+        enddo
+        write(file, *) '</DataArray>'
+        write(file, *) '</Cells>'
+
+        !! Write interest variables
+        write(file, *) '<PointData>'
+        !! displacement on master and slave
+        do i_side = 1, 2
+            if (i_side .eq. 1) then
+                write(file,*)'<DataArray  type="Float64"'//     &
+                    &   ' Name="disp_slave" NumberOfComponents="3" format="ascii">'
+            elseif (i_side .eq. 2) then
+                write(file,*)'<DataArray  type="Float64"'//     &
+                &   ' Name="disp_master" NumberOfComponents="3" format="ascii">'
+            endif
+            do i_elem = 1, nb_elem_patch(interfaces(1))
+                do i = 1, nb_vertice
+                    write(file, *) u(i_side, :, i, i_elem)
+                enddo
+            enddo
+            write(file,*) '</DataArray>'
+        enddo
+        !! Condition (disp master - disp slave)
+        write(file,*)'<DataArray  type="Float64"'//     &
+        &   ' Name="condition" NumberOfComponents="3" format="ascii">'
+        do i_elem = 1, nb_elem_patch(interfaces(1))
+            do i = 1, nb_vertice
+                write(file, *) u(2, :, i, i_elem) - u(1, :, i, i_elem)
+            enddo
+        enddo
+        write(file,*) '</DataArray>'
+
+
+
+        write(file, *) '</PointData>'
+        !! End of file
+        write(file,*) '</Piece>'
+        write(file,*) '</UnstructuredGrid>'
+        write(file,*) '</VTKFile>'
+    enddo
+
+    close(91)
+    close(92)
+    deallocate(vertice)
+    deallocate(xibar, xi, x, u)
 end subroutine generate_coupling_vtu
-
-!     !! Write data to files
-!     !! for parameter space
-!     open(91, file=output_path // '/'//filename//'_param.vtu', form='formatted')
-!     !! for physical space
-!     open(92, file=output_path // '/'//filename//'_phys.vtu', form='formatted')
-
-!     do file = 91,92
-!         !! Header
-!         write(file,*) '<VTKFile type="UnstructuredGrid"  version="0.1"   >'
-!         write(file,*) '<UnstructuredGrid>'
-
-!         !! Start piece
-!         write(file,*) '<Piece NumberOfPoints="  ', nb_node,     &
-!                 &   '"  NumberOfCells="  ',  &
-!                 &   nb_elem_patch(interfaces(1))*nb_elem_vtu, '">'
-
-!         !! Write data points
-!         write(file, *) '<Points>'
-!         if (file .eq. 91) then
-!             write(file, *) '<DataArray  type="Float64"'//   &
-!                     &   '  NumberOfComponents="3"  format="ascii" >'
-!         elseif (file .eq. 92) then
-!             write(file, *) '<DataArray  type="Float64"'//   &
-!                     &   '  NumberOfComponents="3"  format="ascii" >'
-!         endif
-!         do i_elem = 1, nb_elem_patch(interfaces(1))
-!             do i = 1, nb_vertice
-!                 if (file .eq. 91) then
-!                     write(file,*) xibar(:2, i, i_elem), '0.0'
-!                 elseif (file .eq. 92) then
-!                     write(file,*) x(1, :3, i, i_elem)
-!                 endif
-!             enddo
-!         enddo
-!         write(file, *) '</DataArray>'
-!         write(file, *) '</Points>'
-
-!         !! Write cells connectivity
-!         write(file, *) '<Cells>'
-!         write(file, *) '<DataArray  type="Int32"  Name="connectivity"'//    &
-!                     &   '  format="acsii">'
-!         comp = 0
-!         do i_elem = 1, nb_elem_patch(interfaces(1))
-!             do i_eta = 1, nb_eta - 1
-!                 do i_xi = 1, nb_xi - 1
-!                     comp = (i_elem - 1)*nb_vertice
-!                     comp = comp + (i_eta-1)*nb_xi + i_xi - 1
-!                     write(file, *) comp, comp+1, comp+nb_xi+1, comp+nb_xi
-!                 enddo
-!             enddo
-!         enddo
-!         write(file, *) '</DataArray>'
-
-!         !! Write cells offsets
-!         write(file, *) '<DataArray  type="Int32"  Name="offsets"'// &
-!                     &   '  format="ascii"> '
-!         offset = 0
-!         do i = 1, nb_elem_patch(interfaces(1))*nb_elem_vtu
-!             offset = offset + 2**dim_interface
-!             write(file, *) offset
-!         enddo
-!         write(file, *) '</DataArray>'
-
-!         !! Write cells type
-!         write(file, *) '<DataArray  type="UInt8"  Name="types"'//   &
-!                 &       '  format="ascii">'
-!         do i = 1, nb_elem_patch(interfaces(1))*nb_elem_vtu
-!             write(file, *) '9'
-!         enddo
-!         write(file, *) '</DataArray>'
-!         write(file, *) '</Cells>'
-
-!         !! Write interest variables
-!         write(file, *) '<PointData>'
-!         !! displacement on master and slave
-!         do i_side = 1, 2
-!             if (i_side .eq. 1) then
-!                 write(file,*)'<DataArray  type="Float64"'//     &
-!                     &   ' Name="disp_slave" NumberOfComponents="3" format="ascii">'
-!             elseif (i_side .eq. 2) then
-!                 write(file,*)'<DataArray  type="Float64"'//     &
-!                 &   ' Name="disp_master" NumberOfComponents="3" format="ascii">'
-!             endif
-!             do i_elem = 1, nb_elem_patch(interfaces(1))
-!                 do i = 1, nb_vertice
-!                     write(file, *) u(i_side, :, i, i_elem)
-!                 enddo
-!             enddo
-!             write(file,*) '</DataArray>'
-!         enddo
-!         !! Condition (disp master - disp slave)
-!         write(file,*)'<DataArray  type="Float64"'//     &
-!         &   ' Name="condition" NumberOfComponents="3" format="ascii">'
-!         do i_elem = 1, nb_elem_patch(interfaces(1))
-!             do i = 1, nb_vertice
-!                 write(file, *) u(2, :, i, i_elem) - u(1, :, i, i_elem)
-!             enddo
-!         enddo
-!         write(file,*) '</DataArray>'
-
-
-
-!         write(file, *) '</PointData>'
-!         !! End of file
-!         write(file,*) '</Piece>'
-!         write(file,*) '</UnstructuredGrid>'
-!         write(file,*) '</VTKFile>'
-!     enddo
-
-!     close(91)
-!     close(92)
-!     deallocate(vertice)
-!     deallocate(xibar, xi, x, u)
-! end subroutine generate_coupling_vtu
 
 !! Discretize isoparametric element (coordinates in [-1 1]^2 or [-1 1]^3
 subroutine DiscretizeIsoparam(vertice, nb_xi, nb_eta, nb_zeta, mcrd)
