@@ -96,7 +96,7 @@ subroutine generate_coupling_vtu(filename, output_path,     &
     dimension u_elem(mcrd, maxval(nnode))
     double precision :: R, dRdxi !! shape function and derivative
     dimension R(maxval(nnode))
-    dimension dRdxi(mcrd, maxval(nnode))
+    dimension dRdxi(maxval(nnode), mcrd)
     double precision :: detJac
     double precision, dimension(:,:,:), allocatable :: xibar    !! xibar parametric coordinates for each evaluation point
     double precision, dimension(:,:,:,:), allocatable :: xi       !! xi parametric coordinates for each evaluation point
