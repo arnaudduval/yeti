@@ -222,27 +222,27 @@ subroutine generate_coupling_vtu(filename, output_path,     &
                         weight, ien, props, jprops, nnode, elt_type, tensor)
             endif
 
-            do i_elem = 1, nb_elem_patch(interfaces(1))
-                do i_vertice = 1, nb_vertice
-                    call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
-                    sctr(:nnode_patch) = ien_patch(:, current_elem)
-                    do i = 1, nnode_patch
-                        coords_elem(:,i) = coords3D(:mcrd, sctr(i))
-                        u_elem(:,i) = sol(:mcrd, sctr(i))
-                    enddo
-                    !! Evaluate basis function
-                    call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
+            ! do i_elem = 1, nb_elem_patch(interfaces(1))
+            !     do i_vertice = 1, nb_vertice
+            !         call updateElementNumber(xi(i_side,:, i_vertice, i_elem))
+            !         sctr(:nnode_patch) = ien_patch(:, current_elem)
+            !         do i = 1, nnode_patch
+            !             coords_elem(:,i) = coords3D(:mcrd, sctr(i))
+            !             u_elem(:,i) = sol(:mcrd, sctr(i))
+            !         enddo
+            !         !! Evaluate basis function
+            !         call evalnurbs(xi(i_side,:, i_vertice, i_elem), R(:nnode_patch), dRdxi(:nnode_patch,:))
 
-                    !! Get x and u
-                    do j=1, nnode_patch
-                        !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
-                        x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
-                                                &       R(j)*coords_elem(:,j)
-                        u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
-                                                &       R(j)*u_elem(:,j)
-                    enddo
-                enddo
-            enddo
+            !         !! Get x and u
+            !         do j=1, nnode_patch
+            !             !! TODO : pas vraiment necessaire de calculer x sur les deux faces vu qu'elles sont geometriquement identiques
+            !             x(i_side,:mcrd, i_vertice, i_elem) = x(i_side,:mcrd, i_vertice, i_elem) +     &
+            !                                     &       R(j)*coords_elem(:,j)
+            !             u(i_side,:mcrd, i_vertice, i_elem) = u(i_side,:mcrd, i_vertice, i_elem) +     &
+            !                                     &       R(j)*u_elem(:,j)
+            !         enddo
+            !     enddo
+            ! enddo
          endif
       endif
     enddo
