@@ -44,7 +44,7 @@ REF_ABAQUS_SOLUTION = [1.60785E-6, -1.94110E-8, 3.15129E-7]
 
 def test_centrif_u1_u1_1load():
     """
-    Build systme matrices, solve linear problem and compare result at a
+    Build system matrices, solve linear problem and compare result at a
     given point with reference solution
     """
     script_dir = os.path.dirname(os.path.realpath(__file__))
