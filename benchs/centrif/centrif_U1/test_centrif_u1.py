@@ -43,7 +43,7 @@ REF_ABAQUS_SOLUTION = [1.60785E-6, -1.94110E-8, 3.15129E-7]
 def test_centrif_u1():
     """
     Build systme matrices, solve linear problem and compare result at a
-    given point with referenc solution
+    given point with reference solution
     """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     iga_model = IGAparametrization(filename=f'{script_dir}/centrif_U1')
@@ -69,7 +69,7 @@ def test_centrif_u1():
         shape=(iga_model.nb_dof_tot, iga_model.nb_dof_tot),
         dtype='float64').tocsc()
 
-    # REsolUTION : direct solver
+    # Compute solution
     x = sp.linalg.spsolve(
         (stiff_side + stiff_side.transpose())[idof, :][:, idof],
         rhs[idof])
