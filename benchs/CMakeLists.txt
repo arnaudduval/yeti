@@ -110,7 +110,7 @@ add_test(NAME test_post_faces COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/post_f
 
 # Benchs for centrifugal body force
 add_test(NAME test_centrif_u1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1/test_centrif_u1.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1)
-add_test(NAME centrif_U10 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U10/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U10)
+add_test(NAME test_centrif_u10 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U10/test_centrif_u10.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U10)
 add_test(NAME centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_C0/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_C0)
 add_test(NAME centrif_U1_U1_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_U1_1load/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_U1_1load)
 add_test(NAME centrif_U1_U1_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_U1_2loads/linear_analysis.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_U1_2loads)
@@ -237,7 +237,7 @@ set_tests_properties(
                      test_ROM1_plateWithHole
                      test_post_faces
                      test_centrif_u1
-                     centrif_U10
+                     test_centrif_u10
                      centrif_U1_C0
                      centrif_U1_U1_1load
                      centrif_U1_U1_2loads
