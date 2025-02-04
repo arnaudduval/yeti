@@ -115,7 +115,7 @@ add_test(NAME test_centrif_u1_c0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/cen
 add_test(NAME test_centrif_u1_u1_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_U1_1load/test_centrif_u1_u1_1load.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_U1_1load)
 add_test(NAME test_centrif_u1_u1_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_U1_2loads/test_centrif_u1_u1_2loads.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_U1_2loads)
 add_test(NAME test_centrif_u1_cpl_u1_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_1load/test_centrif_u1_cpl_u1_1load.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_1load)
-add_test(NAME centrif_U1_cpl_U1_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads)
+add_test(NAME test_centrif_u1_cpl_u1_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads/test_centrif_u1_cpl_u1_2loads.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U1_2loads)
 add_test(NAME centrif_U1_cpl_U10_1load COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_1load/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_1load)
 add_test(NAME centrif_U1_cpl_U10_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads/couplingU5.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads)
 
@@ -242,7 +242,7 @@ set_tests_properties(
                      test_centrif_u1_u1_1load
                      test_centrif_u1_u1_2loads
                      test_centrif_u1_cpl_u1_1load
-                     centrif_U1_cpl_U1_2loads
+                     test_centrif_u1_cpl_u1_2loads
                      centrif_U1_cpl_U10_1load
                      centrif_U1_cpl_U10_2loads
                      opt_centrif_U1_C0
