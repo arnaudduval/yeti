@@ -27,16 +27,23 @@ Gradients of compliance and volume are computed with 3 methods:
 Results must be equal within a tolerance
 """
 
+import os
+
 import numpy as np
 
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
-if __name__ == "__main__":
 
-    modeleIGA = IGAparametrization(filename='unit_cube_U1')
+def test_grad_solid_unit_cube_centrif():
+    """
+    Compute gradients and compare values
+    """
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(
+        filename=f'{script_dir}/unit_cube_U1')
 
-    initcoords = modeleIGA.coords
+    initcoords = iga_model.coords
 
     # Build optim model
     def shapemodif(coords0, igapara, var):
@@ -54,47 +61,37 @@ if __name__ == "__main__":
                 i += 1
 
     # Refinement from optim model to analysis model
-    nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
+    nb_deg = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
+    nb_ref = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
 
-    nb_var = modeleIGA.coords.size
+    nb_var = iga_model.coords.size
 
-    optPB = OPTmodelling(modeleIGA, nb_var, shapemodif,
-                         nb_degreeElevationByDirection=nb_deg,
-                         nb_refinementByDirection=nb_ref)
+    optim_problem = OPTmodelling(iga_model, nb_var, shapemodif,
+                                 nb_degreeElevationByDirection=nb_deg,
+                                 nb_refinementByDirection=nb_ref)
 
     x0 = np.zeros((nb_var))
-    v0 = optPB.compute_volume(x0)
-    c0 = optPB.compute_compliance_discrete(x0)
+    v0 = optim_problem.compute_volume(x0)
+    c0 = optim_problem.compute_compliance_discrete(x0)
     print(f"Volume : {v0:2.5E}")
     print(f"Compliance : {c0:2.5E}")
 
-    gradV_AN = optPB.compute_gradVolume_AN(x0)
-    gradV_FD = optPB.compute_gradVolume_DF(x0)
+    grad_volume_analytic = optim_problem.compute_gradVolume_AN(x0)
+    grad_volume_finite_difference = optim_problem.compute_gradVolume_DF(x0)
 
-    gradC_FD = optPB.compute_gradCompliance_FD(x0)
-    gradC_AN = optPB.compute_gradCompliance_AN(x0)
-    gradC_SAN = optPB.compute_gradCompliance_semiAN(x0)
+    grad_comp_finite_diff = optim_problem.compute_gradCompliance_FD(x0)
+    grad_comp_analytic = optim_problem.compute_gradCompliance_AN(x0)
+    grad_comp_semi_analytic = optim_problem.compute_gradCompliance_semiAN(x0)
 
-    print("gradV FD : ", gradV_FD)
-    print("gradV AN : ", gradV_AN)
+    assert np.allclose(grad_volume_analytic, grad_volume_finite_difference,
+                       rtol=1.e-6)
+    assert np.allclose(grad_comp_analytic, grad_comp_finite_diff,
+                       rtol=1.e-5)
+    assert np.allclose(grad_comp_semi_analytic, grad_comp_finite_diff,
+                       rtol=1.e-5)
+    assert np.allclose(grad_comp_analytic, grad_comp_semi_analytic,
+                       rtol=1.e-5)
 
-    print("gradC FD : ", gradC_FD)
-    print("gradC AN : ", gradC_AN)
-    print("gradC SAN : ", gradC_SAN)
 
-    errorV = np.linalg.norm(gradV_AN - gradV_FD)/v0
-
-    errorC_AN_FD = np.linalg.norm(gradC_AN - gradC_FD)/c0
-    errorC_SAN_FD = np.linalg.norm(gradC_SAN - gradC_FD)/c0
-    errorC_AN_SAN = np.linalg.norm(gradC_AN - gradC_SAN)/c0
-
-    print(f"Error on grad V : {errorV:2.5E}")
-    print(f"Error on grad C (AN/FD) : {errorC_AN_FD:2.5E}")
-    print(f"Error on grad C (SAN/FD) : {errorC_SAN_FD:2.5E}")
-    print(f"Error on grad C (AN/SAN) : {errorC_AN_SAN:2.5E}")
-
-    assert errorV < 1.e6
-    assert errorC_AN_FD < 1.e5
-    assert errorC_SAN_FD < 1.e5
-    assert errorC_AN_SAN < 1.e5
+if __name__ == "__main__":
+    test_grad_solid_unit_cube_centrif()

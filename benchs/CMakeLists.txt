@@ -125,8 +125,8 @@ add_test(NAME test_grad_centrif_u1_cplg_u1 COMMAND ${Python3_EXECUTABLE} ${BENCH
 
 # Solid element sensibilities
 # 1 - centrifugal body force loading
-add_test(NAME grad_solid_unit_cube_centrif
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_solid/grad_solid_unit_cube_centrif.py
+add_test(NAME test_grad_solid_unit_cube_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_solid/test_grad_solid_unit_cube_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_solid
 )
 
@@ -247,7 +247,7 @@ set_tests_properties(
                      test_centrif_u1_cpl_u10_2loads
                      test_grad_centrif_coupling_u1_c0
                      test_grad_centrif_u1_cplg_u1
-                     grad_solid_unit_cube_centrif
+                     test_grad_solid_unit_cube_centrif
                      gradvol_embdsol_cube_nonli_hull
                      gradvol_embdsol_cube_nonli_embd
                      gradvol_embdsol_cube_nonli_hull_embd
