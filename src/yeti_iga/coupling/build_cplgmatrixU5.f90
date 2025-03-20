@@ -309,11 +309,11 @@ subroutine cplg_matrixU5(output_path, nb_data, &
 
             !!! CHECK PROJECTION --->
             !! Results
-            open(11, file=output_path // '/verif_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
-            write(11, *) '# Physical coordinates - master side'
+            ! open(11, file=output_path // '/verif_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
+            ! write(11, *) '# Physical coordinates - master side'
             !! Warnings
-            open(12, file=output_path // '/warnings_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
-            write(12, *) 'Patch ' // trim(char_iPatch)
+            ! open(12, file=output_path // '/warnings_proj_patch'// trim(char_iPatch) //'.txt', form='formatted')
+            ! write(12, *) 'Patch ' // trim(char_iPatch)
             !!! <--- CHECK PROJECTION
 
             !! Computation
@@ -388,7 +388,7 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                     enddo
                 endif
                 !!! CHECK PROJECTION --->
-                write(11, *) x_phys(:, igps)
+                ! write(11, *) x_phys(:, igps)
                 !!! <--- CHECK PROJECTION
             enddo
 
@@ -446,12 +446,12 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                         &   nb_cp, .true., xi_slave_4embded(:,igps), info)
                     !! Projection info. message
                     if (info .ne. 0) then
-                        write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
-                            &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
+                        ! write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
+                        !     &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
                     endif
                 enddo
                 !!! CHECK PROJECTION --->
-                write(11, *) '# Physical coordinates - slave side (hull)'
+                ! write(11, *) '# Physical coordinates - slave side (hull)'
                 N_slave(:, :) = zero
                 do igps = 1, nb_gps
                     !! Get active element number
@@ -468,17 +468,17 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                                 &   N_slave(icp_map, igps)*COORDS_elem_map(idim, icp_map)
                         enddo
                     enddo
-                    write(11, *) x_phys_slave_hull(:, igps)
+                    ! write(11, *) x_phys_slave_hull(:, igps)
                 enddo
-                write(11, *) '# Physical coordinates - slave side (embedded)'
+                ! write(11, *) '# Physical coordinates - slave side (embedded)'
                 !!! <--- CHECK PROJECTION
                 do igps = 1, nb_gps  ! Project points on embedded entity
                     call point_inversion_surface(xi_slave_4embded(:, igps), slaveFace, COORDS3D, &
                         &   nb_cp, .false., xi_slave(:,igps), info)
                     !! Projection info. message
                     if (info .ne. 0) then
-                        write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
-                            &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
+                        ! write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
+                        !     &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
                     endif
                     !! New search of current element because it may have changed at last
                     !!     projection iteration (rare)
@@ -510,13 +510,13 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                                 &   N_slave(icp_map, igps)*COORDS_elem_map(idim, icp_map)
                         enddo
                     enddo
-                    write(11, *) x_phys_slave(:, igps)
+                    ! write(11, *) x_phys_slave(:, igps)
                     !!! <--- CHECK PROJECTION
                 enddo
             !! Classical case: project points on surface
             else
                 !!! CHECK PROJECTION --->
-                write(11, *) '# Physical coordinates - slave side'
+                ! write(11, *) '# Physical coordinates - slave side'
                 !!! <--- CHECK PROJECTION
                 do igps = 1, nb_gps
                     if (dim_patch .eq. 3) then
@@ -531,8 +531,8 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                     endif
                     !! Projection info. message
                     if (info .ne. 0) then
-                        write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
-                            &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
+                        ! write(12,'(A, /, A, I5.1, /, A, I1)') "======== WARNING ========", &
+                        !     &   "Gauss point nb.", igps, "   >> projection exit with info = ", info
                     endif
                     !! New search of current element because it may have changed at last
                     !!     projection iteration (rare)
@@ -547,14 +547,14 @@ subroutine cplg_matrixU5(output_path, nb_data, &
                                 &   R_slave(icp,igps)*COORDS_elem(idim,icp)
                         enddo
                     enddo
-                    write(11, *) x_phys_slave(:, igps)
+                    ! write(11, *) x_phys_slave(:, igps)
                     !!! <--- CHECK PROJECTION
                 enddo
             endif
 
             !!! CHECK PROJECTION --->
-            close(11)
-            close(12)
+            ! close(11)
+            ! close(12)
             !!! <--- CHECK PROJECTION
 
 
