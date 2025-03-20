@@ -120,8 +120,8 @@ add_test(NAME test_centrif_u1_cpl_u10_1load COMMAND ${Python3_EXECUTABLE} ${BENC
 add_test(NAME test_centrif_u1_cpl_u10_2loads COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads/test_centrif_u1_cpl_u10_2loads.py WORKING_DIRECTORY ${BENCH_PATH}/centrif/centrif_U1_cpl_U10_2loads)
 
 # Benchs for compliance optimisation with centrifugal force
-add_test(NAME opt_centrif_U1_C0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0/opt_centrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0)
-add_test(NAME opt_centrif_U1_cplg_U1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1/OPTcentrif.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1)
+add_test(NAME test_grad_centrif_coupling_u1_c0 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0/test_grad_centrif_coupling_u1_c0.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_C0)
+add_test(NAME test_grad_centrif_u1_cplg_u1 COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1/test_grad_centrif_u1_cplg_u1.py WORKING_DIRECTORY ${BENCH_PATH}/opt-centrif-coupling/opt_centrif_U1_cplg_U1)
 
 # Solid element sensibilities
 # 1 - centrifugal body force loading
@@ -245,8 +245,8 @@ set_tests_properties(
                      test_centrif_u1_cpl_u1_2loads
                      test_centrif_u1_cpl_u10_1load
                      test_centrif_u1_cpl_u10_2loads
-                     opt_centrif_U1_C0
-                     opt_centrif_U1_cplg_U1
+                     test_grad_centrif_coupling_u1_c0
+                     test_grad_centrif_u1_cplg_u1
                      grad_solid_unit_cube_centrif
                      gradvol_embdsol_cube_nonli_hull
                      gradvol_embdsol_cube_nonli_embd
