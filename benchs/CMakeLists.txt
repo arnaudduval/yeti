@@ -132,16 +132,16 @@ add_test(NAME test_grad_solid_unit_cube_centrif
 
 # Embedded solid element sensibilities
 # 1 - volume gradient
-add_test(NAME gradvol_embdsol_cube_nonli_hull
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull.py
+add_test(NAME test_gradvol_embdsol_cube_nonli_hull
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradvol_embdsol_cube_nonli_hull.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
-add_test(NAME gradvol_embdsol_cube_nonli_embd
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_embd.py
+add_test(NAME test_gradvol_embdsol_cube_nonli_embd
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradvol_embdsol_cube_nonli_embd.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
-add_test(NAME gradvol_embdsol_cube_nonli_hull_embd
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradvol_embdsol_cube_nonli_hull_embd.py
+add_test(NAME test_gradvol_embdsol_cube_nonli_hull_embd
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradvol_embdsol_cube_nonli_hull_embd.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 
@@ -248,9 +248,9 @@ set_tests_properties(
                      test_grad_centrif_coupling_u1_c0
                      test_grad_centrif_u1_cplg_u1
                      test_grad_solid_unit_cube_centrif
-                     gradvol_embdsol_cube_nonli_hull
-                     gradvol_embdsol_cube_nonli_embd
-                     gradvol_embdsol_cube_nonli_hull_embd
+                     test_gradvol_embdsol_cube_nonli_hull
+                     test_gradvol_embdsol_cube_nonli_embd
+                     test_gradvol_embdsol_cube_nonli_hull_embd
                      gradcomp_embdsol_cube_lin_pressure
                      gradcomp_embdsol_cube_lin_centrif
                      gradcomp_embdsol_cube_nonli_hull_pressure

@@ -19,26 +19,29 @@
 
 """
 A test to validate volume gradient computation for embedded solid element.
+Structure is an embedded cube with non linear parametrization for hull.
+Gradient of volume is computed with 2 methods:
+ - finite differences
+ - analytical
 """
+
+import os
 
 import numpy as np
 
 from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
-if __name__ == "__main__":
 
-    modeleIGA = IGAparametrization(filename='embd_cube_nonli_hull_press')
+def test_gradvol_embdsol_cube_nonli_hull():
+    """
+    Compute gradients and compare values
+    """
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(
+        filename=f'{script_dir}/embd_cube_nonli_hull_press')
 
-    # Set arguments for model refinement
-    nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    additional_knots = {"patches": np.array([]),
-                        "1": np.array([]),
-                        "2": np.array([]),
-                        "3": np.array([])}
-
-    initcoords = modeleIGA.coords
+    initcoords = iga_model.coords
 
     # Build optim model
     def shapemodif(coords0, igapara, var):
@@ -56,22 +59,23 @@ if __name__ == "__main__":
                 i += 1
 
     # Refinement from optim model to analysis model
-    nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
+    nb_deg = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
+    nb_ref = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
 
-    nb_var = modeleIGA.coords.size
+    nb_var = iga_model.coords.size
 
-    optPB = OPTmodelling(modeleIGA, nb_var, shapemodif,
-                         nb_degreeElevationByDirection=nb_deg,
-                         nb_refinementByDirection=nb_ref)
+    optim_problem = OPTmodelling(iga_model, nb_var, shapemodif,
+                                 nb_degreeElevationByDirection=nb_deg,
+                                 nb_refinementByDirection=nb_ref)
 
     x0 = np.zeros((nb_var))
-    v0 = optPB.compute_volume(x0, listpatch=[0, 1])
-    gradV_DF = optPB.compute_gradVolume_DF(x0)
-    gradV_AN = optPB.compute_gradVolume_AN(x0)
+    v0 = optim_problem.compute_volume(x0, listpatch=[0, 1])
 
-    error = np.linalg.norm(gradV_DF - gradV_AN) / v0
-    print(f"Volume : {v0:.02E}")
-    print(f"Error : {error:.02E}")
+    error = np.linalg.norm(optim_problem.compute_gradVolume_DF(x0) -
+                           optim_problem.compute_gradVolume_AN(x0)) / v0
 
     assert error < 1.e-6
+
+
+if __name__ == "__main__":
+    test_gradvol_embdsol_cube_nonli_hull()
