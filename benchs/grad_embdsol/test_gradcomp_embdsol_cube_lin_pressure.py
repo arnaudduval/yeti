@@ -19,15 +19,16 @@
 
 """
 A test to validate compliance gradient computation for embedded solid element.
-A degree 2 cube with non linear mapping is embedded in a degree 2 cube with
-linear mapping
+A degree 1 cube is embedded in a degree 1 cube
 Loading is a constant pressure applied on face 6
-Control points located at minimal x value are locked in all directions
+symmetry boundary condition are applied on faces 1,3 and 5
 Analytical compliance gradient is compared with the one computed with finite
-differences.
+differences
 Design variables drive the control points of embedded entity except the loaded
 face.
 """
+
+import os
 
 import numpy as np
 
@@ -35,21 +36,15 @@ from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
-if __name__ == "__main__":
+def test_gradcomp_embdsol_cube_lin_pressure():
+    """
+    Compute gradients and compare values
+    """
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(
+        filename=f'{script_dir}/embd_cube_lin_press')
 
-    modeleIGA = IGAparametrization(filename='embd_cube_nonli_embd_press')
-
-    # Set arguments for model refinement
-    nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    additional_knots = {"patches": np.array([]),
-                        "1": np.array([]),
-                        "2": np.array([]),
-                        "3": np.array([])}
-
-    modeleIGA.refine(nb_ref, nb_deg, additional_knots)
-
-    initcoords = modeleIGA.coords
+    initcoords = iga_model.coords
 
     # Build optim model
     def shapemodif(coords0, igapara, var):
@@ -60,28 +55,29 @@ if __name__ == "__main__":
         dim = coords0.shape[0]
         i = 0
 
-        for i_cp in range(27, 45):
+        for i_cp in range(8, 12):
             for i_dim in range(dim):
                 igapara.coords[i_dim, i_cp] = initcoords[i_dim, i_cp] + var[i]
                 i += 1
 
     # Refinement from optim model to analysis model
-    nb_deg = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
-    nb_ref = np.zeros((3, modeleIGA.nb_patch), dtype=np.intp)
+    nb_deg = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
+    nb_ref = np.zeros((3, iga_model.nb_patch), dtype=np.intp)
 
-    NB_VAR = 18 * 3      # 18 control points x 3 directions
-    optPB = OPTmodelling(modeleIGA, NB_VAR, shapemodif,
-                         nb_degreeElevationByDirection=nb_deg,
-                         nb_refinementByDirection=nb_ref)
+    nb_var = 4 * 3      # 4 control points x 3 directions
+    optim_problem = OPTmodelling(iga_model, nb_var, shapemodif,
+                                 nb_degreeElevationByDirection=nb_deg,
+                                 nb_refinementByDirection=nb_ref)
 
-    x0 = np.zeros((NB_VAR))
+    x0 = np.zeros((nb_var))
 
-    c0 = optPB.compute_compliance_discrete(x0)
-    gradC_DF = optPB.compute_gradCompliance_FD(x0)
-    gradC_AN = optPB.compute_gradCompliance_AN(x0)
+    c0 = optim_problem.compute_compliance_discrete(x0)
 
-    error = np.linalg.norm(gradC_DF - gradC_AN) / c0
-    print(f"Compliance : {c0:.02E}")
-    print(f"Error : {error:.02E}")
+    error = np.linalg.norm(optim_problem.compute_gradCompliance_FD(x0) -
+                           optim_problem.compute_gradCompliance_AN(x0)) / c0
 
-    assert error < 1.e-5
+    assert error < 1.e-6
+
+
+if __name__ == "__main__":
+    test_gradcomp_embdsol_cube_lin_pressure()

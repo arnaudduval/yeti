@@ -147,43 +147,43 @@ add_test(NAME test_gradvol_embdsol_cube_nonli_hull_embd
 
 # 2 - compliance gradient
 # linear, pressure loading
-add_test(NAME gradcomp_embdsol_cube_lin_pressure
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_pressure.py
+add_test(NAME test_gradcomp_embdsol_cube_lin_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_lin_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # linear, centrifugal body force loading
-add_test(NAME gradcomp_embdsol_cube_lin_centrif
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_lin_centrif.py
+add_test(NAME test_gradcomp_embdsol_cube_lin_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_lin_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # linear mapping ot embedded entity, non linear hull, pressure loading
-add_test(NAME gradcomp_embdsol_cube_nonli_hull_pressure
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_pressure.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_hull_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_hull_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # linear mapping of embedded entity, non linear hull, centrifugal body force loading
-add_test(NAME gradcomp_embdsol_cube_nonli_hull_centrif
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_centrif.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_hull_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_hull_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # nonlinear embedded entity, linear mapping of hull, pressure loading
-add_test(NAME gradcomp_embdsol_cube_nonli_embd_pressure
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_embd_pressure.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_embd_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_embd_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # nonlinear embedded entity, linear mapping of hull, centrifugal body force loading
-add_test(NAME gradcomp_embdsol_cube_nonli_embd_centrif
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_embd_centrif.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_embd_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_embd_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # nonlinear embedded entity, non linear mapping of hull, pressure loading
-add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_pressure
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_embd_pressure.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_hull_embd_pressure
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_hull_embd_pressure.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 # nonlinear embedded entity, non linear mapping of hull, centrifugal body force loading
-add_test(NAME gradcomp_embdsol_cube_nonli_hull_embd_centrif
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/gradcomp_embdsol_cube_nonli_hull_embd_centrif.py
+add_test(NAME test_gradcomp_embdsol_cube_nonli_hull_embd_centrif
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/grad_embdsol/test_gradcomp_embdsol_cube_nonli_hull_embd_centrif.py
          WORKING_DIRECTORY ${BENCH_PATH}/grad_embdsol
 )
 
@@ -251,14 +251,14 @@ set_tests_properties(
                      test_gradvol_embdsol_cube_nonli_hull
                      test_gradvol_embdsol_cube_nonli_embd
                      test_gradvol_embdsol_cube_nonli_hull_embd
-                     gradcomp_embdsol_cube_lin_pressure
-                     gradcomp_embdsol_cube_lin_centrif
-                     gradcomp_embdsol_cube_nonli_hull_pressure
-                     gradcomp_embdsol_cube_nonli_hull_centrif
-                     gradcomp_embdsol_cube_nonli_embd_pressure
-                     gradcomp_embdsol_cube_nonli_embd_centrif
-                     gradcomp_embdsol_cube_nonli_hull_embd_pressure
-                     gradcomp_embdsol_cube_nonli_hull_embd_centrif
+                     test_gradcomp_embdsol_cube_lin_pressure
+                     test_gradcomp_embdsol_cube_lin_centrif
+                     test_gradcomp_embdsol_cube_nonli_hull_pressure
+                     test_gradcomp_embdsol_cube_nonli_hull_centrif
+                     test_gradcomp_embdsol_cube_nonli_embd_pressure
+                     test_gradcomp_embdsol_cube_nonli_embd_centrif
+                     test_gradcomp_embdsol_cube_nonli_hull_embd_pressure
+                     test_gradcomp_embdsol_cube_nonli_hull_embd_centrif
                      vtu_output_2patchs
                      vtu_output_8patchs
                      vtu_output_2patchs_coupling
