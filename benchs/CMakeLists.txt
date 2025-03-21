@@ -196,6 +196,8 @@ add_test(NAME test_vtu_output_8patchs
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_8patchs.py
          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
 )
+
+# TODO test not working due to a singular matrix
 # add_test(NAME test_vtu_output_2patchs_coupling
 #          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_2patchs_coupling.py
 #          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
