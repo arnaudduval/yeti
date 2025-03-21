@@ -18,7 +18,7 @@
 !! The inputs for the solution and geometry are given for a given patch that
 !! has already undergone Bezier extraction
 
-subroutine generate_VTU_bezier(filename, i_patch,       &
+subroutine generate_VTU_bezier(filename, output_path, i_patch,       &
         &   sol, coords, weights,    &
         &   ien, Jpqr,                            &
         &   nb_cp, mcrd, nnode, nb_elem, &
@@ -35,6 +35,7 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
 
     !! Output infos
     character(len=*), intent(in) :: filename    !! name of file to write (without extension)
+    character(len=*), intent(in) :: output_path !! path to output directory
     integer, intent(in) :: i_patch              !! index of patch (starts at 1)
 
     !! NURBS geometry (for given patch, after Bezier extraction)
@@ -57,12 +58,8 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     integer :: i, i_elem, i_cp, offset
     integer, allocatable :: conn_vtk(:)
 
-
-    !! Printing
-    write(*,*) 'Postprocessing VTU Bezier ...'
-
     !! File
-    open(90, file='results/'//filename//'.vtu', form='formatted')
+    open(90, file=output_path//'/'//filename//'.vtu', form='formatted')
 
     !! Write header
     write(90, *) '<VTKFile type="UnstructuredGrid" version="2.2"  >'
@@ -154,7 +151,6 @@ subroutine generate_VTU_bezier(filename, i_patch,       &
     write(90, *) '</VTKFile>'
 
     close(90)
-    write(*,*) 'Results written in '//filename//'.vtu'
     deallocate(conn_vtk)
 
 end subroutine generate_VTU_bezier

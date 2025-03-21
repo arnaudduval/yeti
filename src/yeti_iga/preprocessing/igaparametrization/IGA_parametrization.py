@@ -848,7 +848,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4postproc_bezier(self, i_patch, filename, sol):
+    def get_inputs4postproc_bezier(self, i_patch, filename, sol, output_path='results'):
         """
         Get the necessary inputs for VTU postprocessing using Bezier cells
         with function postprocessing.postproc.generate_vtu_bezier
@@ -894,6 +894,7 @@ class IGAparametrization:
 
         # New inputs with built-in Bezier extraction
         inputs = {'filename': filename,
+                  'output_path': output_path,
                   'i_patch': i_patch,
                   'sol': sol_patch_bezier,
                   'coords': coords[:3, :],
