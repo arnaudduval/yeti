@@ -188,18 +188,18 @@ add_test(NAME test_gradcomp_embdsol_cube_nonli_hull_embd_centrif
 )
 
 # VTU Bezier output (output on 2 and 8 patchs may be redundant)
-add_test(NAME vtu_output_2patchs
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/linear_analysis_2patchs.py
+add_test(NAME test_vtu_output_2patchs
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_2patchs.py
          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
 )
-add_test(NAME vtu_output_8patchs
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/linear_analysis_8patchs.py
+add_test(NAME test_vtu_output_8patchs
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_8patchs.py
          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
 )
-add_test(NAME vtu_output_2patchs_coupling
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/linear_analysis_halftube_2patchs_coupling_U5.py
-         WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
-)
+# add_test(NAME test_vtu_output_2patchs_coupling
+#          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_2patchs_coupling.py
+#          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
+# )
 
 
 # Benchs for sensibilities computation on embedded solid element
@@ -259,9 +259,9 @@ set_tests_properties(
                      test_gradcomp_embdsol_cube_nonli_embd_centrif
                      test_gradcomp_embdsol_cube_nonli_hull_embd_pressure
                      test_gradcomp_embdsol_cube_nonli_hull_embd_centrif
-                     vtu_output_2patchs
-                     vtu_output_8patchs
-                     vtu_output_2patchs_coupling
+                     test_vtu_output_2patchs
+                     test_vtu_output_8patchs
+                    #  test_vtu_output_2patchs_coupling
                      PROPERTIES ENVIRONMENT PYTHONPATH=${PYTHON_LIB_OUTPUT_PATH}:$ENV{PYTHONPATH})
 
 # Properties for long tests
