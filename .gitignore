@@ -33,3 +33,6 @@ benchs/coupling_U5/results/*_proj_*.txt
 examples/feti/CsideU4.txt
 
 .venv
+wheelhouse/yeti_iga-0.0.2-cp39-cp39-manylinux_2_28_x86_64.whl
+wheelhouse/yeti_iga-0.0.2-cp310-cp310-manylinux_2_28_x86_64.whl
+wheelhouse/yeti_iga-0.0.2-cp311-cp311-manylinux_2_28_x86_64.whl
