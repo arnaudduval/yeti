@@ -27,7 +27,7 @@ Abaqus.
 import os
 
 import numpy as np
-from numpy.lib.arraysetops import intersect1d
+from numpy import intersect1d
 import scipy.sparse as sp
 
 # pylint: disable=c-extension-no-member
