@@ -75,7 +75,7 @@ endmacro()
 
 # Fortran object library for use with scikit-build
 add_library(fortranobject OBJECT "${F2PY_INCLUDE_DIR}/fortranobject.c")
-target_link_libraries(fortranobject PUBLIC Python3::NumPy)
+target_link_libraries(fortranobject PUBLIC Python::NumPy)
 target_include_directories(fortranobject PUBLIC "${F2PY_INCLUDE_DIR}")
 set_property(TARGET fortranobject PROPERTY POSITION_INDEPENDENT_CODE ON)
 
