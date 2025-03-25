@@ -1,10 +1,11 @@
 [project]
 name = "yeti-iga"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
 ]
 description = "Yeti is an IGA code"
+readme =  "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE"}
 classifiers = [
