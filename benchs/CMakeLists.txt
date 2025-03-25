@@ -196,10 +196,6 @@ add_test(NAME test_vtu_output_8patchs
          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/test_vtu_output_8patchs.py
          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
 )
-# add_test(NAME vtu_output_2patchs_coupling
-#          COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/vtk_bezier_output/linear_analysis_halftube_2patchs_coupling_U5.py
-#          WORKING_DIRECTORY ${BENCH_PATH}/vtk_bezier_output
-# )
 
 # TODO test not working due to a singular matrix
 # add_test(NAME test_vtu_output_2patchs_coupling
@@ -208,12 +204,12 @@ add_test(NAME test_vtu_output_8patchs
 # )
 
 # Volume force
-add_test(NAME volume_force_3D
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/volume_force_3D.py
+add_test(NAME test_volume_force_3d
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/test_volume_force_3d.py
          WORKING_DIRECTORY ${BENCH_PATH}/volume_force
 )
-add_test(NAME volume_force_2D
-         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/volume_force_2D.py
+add_test(NAME test_volume_force_2d
+         COMMAND ${Python3_EXECUTABLE} ${BENCH_PATH}/volume_force/test_volume_force_2d.py
          WORKING_DIRECTORY ${BENCH_PATH}/volume_force
 )
 
@@ -277,6 +273,8 @@ set_tests_properties(
                      test_vtu_output_2patchs
                      test_vtu_output_8patchs
                     #  test_vtu_output_2patchs_coupling
+                     test_volume_force_3d
+                     test_volume_force_2d
                      PROPERTIES ENVIRONMENT PYTHONPATH=${PYTHON_LIB_OUTPUT_PATH}:$ENV{PYTHONPATH})
 
 # Properties for long tests
