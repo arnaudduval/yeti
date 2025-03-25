@@ -51,13 +51,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Project needs Python
 # set(Python3_FIND_VIRTUALENV FIRST)
-find_package(Python
+find_package(Python3
              COMPONENTS Interpreter NumPy # Development
              REQUIRED)
 
 # F2PY headers
 execute_process(
-    COMMAND "${Python_EXECUTABLE}" -c
+    COMMAND "${Python3_EXECUTABLE}" -c
             "import numpy.f2py; print(numpy.f2py.get_include())"
     OUTPUT_VARIABLE F2PY_INCLUDE_DIR
     OUTPUT_STRIP_TRAILING_WHITESPACE)
