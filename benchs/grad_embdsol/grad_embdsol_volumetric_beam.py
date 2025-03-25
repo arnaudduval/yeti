@@ -22,12 +22,12 @@ import numpy as np
 import scipy.sparse as sp
 import nlopt
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import OPTmodelling
-from preprocessing.igaparametrization import IGAmanip as manip
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 
 modeleIGA = IGAparametrization(filename='embd_volumetric_beam')
@@ -114,13 +114,13 @@ def comp(xC,gradC):
         print('\n--')
         print('Iter %3i' % i)
         gradC[:] = optPB.compute_gradCompliance_AN(xC)/c0
-        
+
         # postprocessing
         pp.generatevtu(*optPB._coarseParametrization.get_inputs4postprocVTU(
             'OPT-coarse%0.2d'%i,np.zeros_like(optPB._coarseParametrization._COORDS),
             nb_ref=2*ref_plot,Flag=np.array([False]*3)))
         optPB._coarseParametrization.generate_vtk4controlMeshVisu('OPT-coarse%0.2d'%i,0)
-        
+
         SOL,u = rsol.reconstruction(
             **optPB._fineParametrization.get_inputs4solution(optPB._save_sol_fine))
         pp.generatevtu(*optPB._fineParametrization.get_inputs4postprocVTU(

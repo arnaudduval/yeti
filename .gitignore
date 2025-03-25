@@ -15,6 +15,8 @@ examples/*/results/*.vtk
 examples/*/results/*.vtu
 examples/*/results/*.txt
 examples/*/results/*.png
+docs/doctrees
+docs/html
 
 docs/doctrees
 docs/html
@@ -34,3 +36,4 @@ benchs/coupling_U5/results/*_proj_*.txt
 examples/feti/CsideU4.txt
 
 .venv
+wheelhouse

@@ -1,0 +1,86 @@
+** Copyright 2020 Thibaut Hirschler
+** Copyright 2020 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms 
+** of the GNU Lesser General Public License as published by the Free Software 
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along 
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*HEADING
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=4, TYPE=U1, COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2
+*Node,nset=AllNode
+    1,  0.00,  0.00,  0.00
+    2, 10.00,  0.00,  0.00
+    3,  0.00, 10.00,  0.00
+    4, 10.00, 10.00,  0.00
+    5, 20.00,  0.00,  0.00
+    6, 20.00,  5.00,  0.00
+    7, 30.00,  0.00,  0.00
+    8, 30.00,  5.00,  0.00
+*Element,type=U1,elset=AllEls
+1,    4, 3, 2, 1
+2,    6, 4, 5, 2
+3,    8, 6, 7, 5
+*ELSET,ELSET=EltPAtch1,generate
+1,1, 1
+*ELSET,ELSET=EltPAtch2,generate
+2,2, 1
+*ELSET,ELSET=EltPAtch3,generate
+3,3, 1
+*ELSET,ELSET=Elt2load
+1
+*NSET,NSET=CPtoBlockX
+7,8
+*NSET,NSET=CPtoBlockY_patch1
+1,2
+*NSET,NSET=CPtoBlockY_patch2
+2,5
+*NSET,NSET=CPtoBlockY_patch3
+5,7
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
+1
+*UEL PROPERTY, ELSET=EltPAtch2, MATERIAL=MAT
+2
+*UEL PROPERTY, ELSET=EltPAtch3, MATERIAL=MAT
+3
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly 
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+200.e3, 0.30
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPtoBlockX,        1, 1, 0.
+I1.CPtoBlockY_patch1, 2, 2, 0.
+I1.CPtoBlockY_patch2, 2, 2, 0.
+I1.CPtoBlockY_patch3, 2, 2, 0.
+**
+** DLOAD
+*Dload
+I1.Elt2load, U11, -10.0
+** 
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

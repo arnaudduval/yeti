@@ -1,11 +1,12 @@
 [project]
-name = "yeti"
-version = "0.0.1"
+name = "yeti-iga"
+version = "0.0.3"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
 ]
 description = "Yeti is an IGA code"
-requires-python = ">=3.10"
+readme =  "README.md"
+requires-python = ">=3.9"
 license = { file = "LICENSE"}
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -27,10 +28,18 @@ Issues = "https://lamcosplm.insa-lyon.fr/plugins/tracker/?tracker=626"
 requires = ["scikit-build-core", "numpy"]
 build-backend = "scikit_build_core.build"
 
+
 [tool.scikit-build]
 cmake.version = ">=3.17.2"
 cmake.verbose = true
 logging.level =  "INFO"
+
+[tool.cibuildwheel]
+skip = "cp36-* cp37-* cp38-* cp312-* *musllinux*"
+archs = ["x86_64"]
+build = "cp39-* cp310-* cp311-*"
+manylinux-x86_64-image = "manylinux_2_28" # "manylinux2014"
+before-build = "yum install -y blas-devel lapack-devel"
 
 [tool.ruff]
 src = ["src"]
