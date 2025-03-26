@@ -1,6 +1,6 @@
 [project]
 name = "yeti-iga"
-version = "0.0.3"
+# version = "0.0.3"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
 ]
@@ -25,9 +25,12 @@ Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
 Issues = "https://lamcosplm.insa-lyon.fr/plugins/tracker/?tracker=626"
 
 [build-system]
-requires = ["scikit-build-core", "numpy", "meson", "ninja"]
+requires = ["scikit-build-core", "numpy", "meson", "ninja", "setuptools" , "setuptools_scm"]
 build-backend = "scikit_build_core.build"
 
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-timestamp"
 
 [tool.scikit-build]
 cmake.version = ">=3.17.2"
@@ -35,9 +38,11 @@ cmake.verbose = true
 logging.level =  "INFO"
 
 [tool.cibuildwheel]
+# build = "cp311-*"
+# skip = "cp36-* cp37-* cp38-* cp39-* cp310-*  cp312-* *musllinux*"
+build = "cp39-* cp310-* cp311-* cp312-*"
 skip = "cp36-* cp37-* cp38-*   *musllinux*"
 archs = ["x86_64"]    #, "aarch64"]           # installer qemu-user-static pour l'arm64
-build = "cp39-* cp310-* cp311-* cp312-*"
 manylinux-x86_64-image = "manylinux_2_28" # "manylinux2014"
 before-build = "yum install -y blas-devel lapack-devel"
 test-command = "pytest {project}/benchs"
