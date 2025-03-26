@@ -14,20 +14,7 @@ pipeline {
                     sh 'python3 -m venv .venv'
                     sh '. .venv/bin/activate && pip install numpy\\<=1.26.4 scipy'
                     sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex tomli'
-                    sh '. .venv/bin/activate && pip install cibuildwheel'
-                }
-            }
-        }
-        stage('build wheel') {
-            agent {
-                docker {
-                    image 'quay.io/pypa/manylinux_2_28_x86_64'
-                    args '--privileged'
-                }
-            }
-            steps {
-                dir('.') {
-                    sh '. build/.venv/bin/activate && cibuildwheel --platform linux --output-dir wheelhouse'
+                    sh '. .venv/bin/activate && pip install pipx pytest'
                 }
             }
         }
@@ -52,6 +39,28 @@ pipeline {
                 }
             }
         }
+        stage('build pipx') {
+            step {
+                dir('.') {
+                    sh '. .venv/bin/activate && pipx run build'
+                }
+            }
+        }
+        stage('install pipx') {
+            step {
+                dir('.') {
+                    sh '. .venv/bin/activate && pip install .'
+                }
+            }
+        }
+        stage('test pipx') {
+            step {
+                dir('.') {
+                    sh '. .venv/bin/activate && pytest'
+                }
+            }
+        }
+
         stage('doc') {
             steps {
                 dir('build') {
