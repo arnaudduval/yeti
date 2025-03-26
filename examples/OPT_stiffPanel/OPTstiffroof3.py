@@ -7,12 +7,12 @@ import numpy as np
 import nlopt
 
 # IGA module
-from preprocessing.igaparametrization import IGAparametrization, \
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, \
     IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
 # Selection of .INP and .NB file

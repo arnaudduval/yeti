@@ -1,0 +1,105 @@
+** Copyright 2022 Thibaut Hirschler
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms 
+** of the GNU Lesser General Public License as published by the Free Software 
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along 
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*HEADING
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=6, TYPE=U1,  COORDINATES=2, INTEGRATION=9, TENSOR=PSTRESS
+1,2
+*PARAMETER
+DESIGNVAR = 0.5
+r = 0.5*DESIGNVAR
+a = r/sqrt(2)
+amin = 0.5-a
+amax = 0.5+a
+bmin = 0.5-2*a
+bmax = 0.5+2*a
+*DESIGN PARAMETER
+<DESIGNVAR>
+*Node,nset=AllNode
+ 1, <amin>, <amin>, 0.
+ 2, <bmin>,  0.5  , 0.
+ 3, <amin>, <amax>, 0.
+ 4,  0.   ,  0.   , 0.
+ 5,  0.   ,  0.5  , 0.
+ 6,  0.   ,  1.   , 0.
+ 7, <amax>, <amax>, 0.
+ 8, <bmax>,   0.5 , 0.
+ 9, <amax>, <amin>, 0.
+10,  1.   ,  1.   , 0.
+11,  1.   ,  0.5  , 0.
+12,  1.   ,  0.   , 0.
+13,  0.5  , <bmin>, 0.
+14,  0.5  ,  0.   , 0.
+15,  0.5  , <bmax>, 0.
+16,  0.5  ,  1.   , 0.
+*Element,type=U1, elset=AllEls
+1,    6, 5, 4, 3, 2, 1
+2,   12,11,10, 9, 8, 7 
+3,    4,14,12, 1,13, 9
+4,   10,16, 6, 7,15, 3
+*ELSET,ELSET=EltPAtch1,generate
+1,1, 1
+*ELSET,ELSET=EltPAtch2,generate
+2,2, 1
+*ELSET,ELSET=EltPAtch3,generate
+3,3, 1
+*ELSET,ELSET=EltPAtch4,generate
+4,4, 1
+*NSET,NSET=CPpatch1
+4,5,6
+*NSET,NSET=CPpatch2
+10,11,12
+*NSET,NSET=CPpatch3
+12,14,4
+*NSET,NSET=CPpatch4
+6,16,10
+**
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
+1
+*UEL PROPERTY, ELSET=EltPAtch2, MATERIAL=MAT
+2
+*UEL PROPERTY, ELSET=EltPAtch3, MATERIAL=MAT
+3
+*UEL PROPERTY, ELSET=EltPAtch4, MATERIAL=MAT
+4
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly 
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+210.0e+3, 0.30
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPpatch1,  1, 1, 0.
+I1.CPpatch3,  2, 2, 0.
+** DLOAD
+*Dload
+I1.EltPAtch2, U40,  1000.00
+I1.EltPAtch4, U40,  1000.00
+** 
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

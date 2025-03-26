@@ -7,13 +7,13 @@ import scipy.sparse as sp
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
-from preprocessing.igaparametrization import IGAmanip as manip
-from coupling.cplgmatrix import cplg_matrix
-from preprocessing.igaparametrization import OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.coupling.cplgmatrix import cplg_matrix
+from yeti_iga.preprocessing.igaparametrization import OPTmodelling
 
 
 

@@ -5,13 +5,13 @@ import sys
 import time
 
 #IGA module
-from solver import PCPGortho
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import IGAmanip as manip
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix import cplg_matrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.solver import PCPGortho
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.coupling.cplgmatrix import cplg_matrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 modeleIGA = IGAparametrization(filename='twoplatesDD')
 
@@ -168,7 +168,7 @@ if True:
     pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
         'coupling_pcpg',SOL.transpose(),nb_ref=np.array([3,3,1]),
         Flag=np.array([True,True,True])))
-    
+
 
     n_sample = 1000
 
@@ -188,7 +188,7 @@ if True:
 
     print(np.shape(u_sample_P1))
 
-        
+
     dudx_t1 = np.zeros((2, n_sample))
     for i_sample in range(n_sample):
         dudx_t1[0, i_sample] = dudx_sample_P1[0, 0, i_sample] * tan_sample_P1[0, i_sample] + dudx_sample_P1[0, 1, i_sample] * tan_sample_P1[1, i_sample]
@@ -197,18 +197,18 @@ if True:
     dudx_t2 = np.zeros((2, n_sample))
     for i_sample in range(n_sample):
         for i in range(2):
-            dudx_t2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ tan_sample_P2[:, i_sample]) 
+            dudx_t2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ tan_sample_P2[:, i_sample])
 
     dudx_n1 = np.zeros((2, n_sample))
     for i_sample in range(n_sample):
         for i in range(2):
-            dudx_n1[i, i_sample] = (dudx_sample_P1[i, :, i_sample] @ norm_sample_P1[:, i_sample]) 
+            dudx_n1[i, i_sample] = (dudx_sample_P1[i, :, i_sample] @ norm_sample_P1[:, i_sample])
 
     dudx_n2 = np.zeros((2, n_sample))
     for i_sample in range(n_sample):
         for i in range(2):
-            dudx_n2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ norm_sample_P2[:, i_sample]) 
-                                     
+            dudx_n2[i, i_sample] = (dudx_sample_P2[i, :, i_sample] @ norm_sample_P2[:, i_sample])
+
 
     import matplotlib.pyplot as plt
 
@@ -244,13 +244,13 @@ if True:
     np.save('/home/agagnaire/yeti/temp/u_sample_P2', u_sample_P2)
     np.save('/home/agagnaire/yeti/temp/dudx_sample_P1', dudx_sample_P1)
     np.save('/home/agagnaire/yeti/temp/dudx_sample_P2', dudx_sample_P2)
-    
+
 
     print(np.max(delta))
     print(np.max(dudx_sample_P2[0,1]))
-    
+
     print(np.max(delta/dudx_sample_P1))
-    
+
     # plt.plot(range(n_sample), delta[0, :], label='comp 1')
     # plt.plot(range(n_sample), delta[1, :], label='comp 2')
     # plt.autoscale()
@@ -263,7 +263,7 @@ if True:
     plt.ylim(-1.5e-6,1.5e-6)
     plt.legend()
     plt.title('dUx/dx')
-    
+
     plt.subplot(222)
     plt.plot(range(n_sample), dudx_sample_P1[0,1], label='dUx/dy sous domaine 1') # dUx/dy
     plt.plot(range(n_sample), dudx_sample_P2[0,1], label='dUx/dy sous domaine 2')
@@ -314,7 +314,7 @@ if True:
     plt.legend()
     plt.title('dUy/dEta')
     plt.show()
-    
+
 
 
     plt.subplot(221)
@@ -323,7 +323,7 @@ if True:
     plt.autoscale()
     plt.legend()
     plt.title('dUx/dx*nx + dUx/dy*ny')
-    
+
 
 
     plt.subplot(222)
@@ -358,24 +358,24 @@ if True:
 
 
     plt.subplot(221)
-    plt.plot(range(n_sample), delta_n[0,:]/np.max((np.abs(dudx_n1[0,:]),np.abs(dudx_n2[0,:])))) 
+    plt.plot(range(n_sample), delta_n[0,:]/np.max((np.abs(dudx_n1[0,:]),np.abs(dudx_n2[0,:]))))
     plt.autoscale()
     plt.title('delta norm x')
-    
+
 
     plt.subplot(222)
-    plt.plot(range(n_sample), delta_n[1,:]/np.max((np.abs(dudx_n1[1,:]),np.abs(dudx_n2[1,:])))) 
+    plt.plot(range(n_sample), delta_n[1,:]/np.max((np.abs(dudx_n1[1,:]),np.abs(dudx_n2[1,:]))))
     plt.autoscale()
     plt.title('delta norm y')
 
     plt.subplot(223)
-    plt.plot(range(n_sample), delta_t[0,:]/np.max((np.abs(dudx_t1[0,:]),np.abs(dudx_t2[0,:])))) 
+    plt.plot(range(n_sample), delta_t[0,:]/np.max((np.abs(dudx_t1[0,:]),np.abs(dudx_t2[0,:]))))
     plt.autoscale()
     plt.title('delta tan x')
-    
+
 
     plt.subplot(224)
-    plt.plot(range(n_sample), delta_t[1,:]/np.max((np.abs(dudx_t1[1,:]),np.abs(dudx_t2[1,:])))) 
+    plt.plot(range(n_sample), delta_t[1,:]/np.max((np.abs(dudx_t1[1,:]),np.abs(dudx_t2[1,:]))))
     plt.autoscale()
     plt.title('delta tan y')
     plt.show()

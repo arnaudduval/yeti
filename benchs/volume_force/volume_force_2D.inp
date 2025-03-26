@@ -1,0 +1,64 @@
+** Copyright 2020 Arnaud Duval
+
+** This file is part of Yeti.
+**
+** Yeti is free software: you can redistribute it and/or modify it under the terms
+** of the GNU Lesser General Public License as published by the Free Software
+** Foundation, either version 3 of the License, or (at your option) any later version.
+**
+** Yeti is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+** without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+** PURPOSE. See the GNU Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License along
+** with Yeti. If not, see <https://www.gnu.org/licenses/>
+
+*HEADING
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=4, TYPE=U1, COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2,3
+*Node,nset=AllNode
+1, 0.0, -0.75
+2, 6.0,  -0.75
+3, 0.0, 0.75
+4, 6.0, 0.75
+*Element, type=U1,elset=AllEls
+1,    4,3,2,1
+*ELSET,ELSET=EltPAtch1,generate
+1,1, 1
+*NSET,NSET=CPonX0
+1,3
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=Mat
+1
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=Mat
+*Density
+7.8E-9
+*Elastic
+210000.0, 0.30
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPonX0,  1, 2, 0.00
+**
+** DLOAD
+*Dload
+I1.EltPAtch1, U102, 1500., 1.,1.333333333333
+**I1.EltPAtch1, U60, 100000.0
+**I1.EltPAtch1, U41, 1.0
+**I1.EltPAtch1, U101, 1500., 0.,0.,0.,0.,0.,1.
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

@@ -29,11 +29,11 @@ import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
-from preprocessing.igaparametrization import IGAparametrization
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-from coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+from yeti_iga.coupling.cplgmatrix import cplg_matrixu5 as cplg_matrixU5
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # modeleIGA = IGAparametrization(filename='BentPipeQuarter')
 modeleIGA = IGAparametrization(filename='inputs/HalfTube_2patchs_coupling_U5')

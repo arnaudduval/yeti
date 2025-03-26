@@ -30,10 +30,10 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 # yeti modules
-from preprocessing.igaparametrization import IGAparametrization, OPTmodelling
-from preprocessing.igaparametrization import IGAmanip as manip
-import postprocessing.postproc as pp
-import reconstructionSOL as rsol
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization, OPTmodelling
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+import yeti_iga.postprocessing.postproc as pp
+import yeti_iga.reconstructionSOL as rsol
 
 if __name__ == "__main__":
 
