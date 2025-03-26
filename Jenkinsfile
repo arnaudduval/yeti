@@ -42,21 +42,21 @@ pipeline {
         stage('build pipx') {
             steps {
                 dir('.') {
-                    sh '. .venv/bin/activate && pipx run build'
+                    sh '. build/.venv/bin/activate && pipx run build'
                 }
             }
         }
         stage('install pipx') {
             steps {
                 dir('.') {
-                    sh '. .venv/bin/activate && pip install .'
+                    sh '. build/.venv/bin/activate && pip install .'
                 }
             }
         }
         stage('test pipx') {
             steps {
                 dir('.') {
-                    sh '. .venv/bin/activate && pytest'
+                    sh '. build/.venv/bin/activate && pytest'
                 }
             }
         }
