@@ -15,6 +15,8 @@ pipeline {
                     sh '. .venv/bin/activate && pip install numpy\\<=1.26.4 scipy'
                     sh '. .venv/bin/activate && pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex tomli'
                     sh '. .venv/bin/activate && pip install cibuildwheel'
+                    sh 'lsb_release -a'
+                    sh 'docker version'
                 }
             }
         }
