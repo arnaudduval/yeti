@@ -1389,8 +1389,10 @@ class localExtractionPatch:
             key += ',%i' % self._alltouniqueC1D[i][Nijk[i]]
         return self._uniqueCsparse[key]
 
-# WARNING Operator | need Python 3.10+
-def bezier_decomposition(igapara, listelem:None|np.ndarray=None, return_mat=False):
+# WARNING Operator | needs Python 3.10+
+# def bezier_decomposition(igapara, listelem:None|np.ndarray=None, return_mat=False):
+from typing import Optional
+def bezier_decomposition(igapara, listelem: Optional[np.ndarray] = None, return_mat=False):
     '''Bezier decomposition of elements of a IGA parameterization.
 
     Parameters
