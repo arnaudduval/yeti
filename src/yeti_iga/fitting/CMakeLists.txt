@@ -17,7 +17,6 @@
 
 CreateF2PYModule(NAME interpolate
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/interpolationMatrix.f
-                       ${CMAKE_CURRENT_SOURCE_DIR}/grevilleAbscissae.f
                        ${CMAKE_CURRENT_SOURCE_DIR}/grevillePhysicalCoords.f
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/fitting)
