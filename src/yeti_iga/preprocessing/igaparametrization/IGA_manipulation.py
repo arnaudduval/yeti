@@ -30,8 +30,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.linalg import blas
 
-from ...fitting.interpolate import buildgrevinterpolmat
-from ...fitting.evaluate import getgrevabscphysicalcoords
+from ...fitting.interpolate import buildgrevinterpolmat, getgrevabscphysicalcoords
 from .bsplineDegreeElevation import decomposition,decomposition_sparse,localExtraction1Dunique
 
 

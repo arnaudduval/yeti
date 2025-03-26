@@ -18,18 +18,21 @@
 CreateF2PYModule(NAME interpolate
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/interpolationMatrix.f
                        ${CMAKE_CURRENT_SOURCE_DIR}/grevilleAbscissae.f
+                       ${CMAKE_CURRENT_SOURCE_DIR}/grevillePhysicalCoords.f
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/fitting)
 
-CreateF2PYModule(NAME evaluate
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/grevillePhysicalCoords.f
-                       ${CMAKE_CURRENT_SOURCE_DIR}/grevilleAbscissae.f
-                 LINK_LIBRARIES base
-                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/fitting)
+# CreateF2PYModule(NAME evaluate
+#                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/grevillePhysicalCoords.f
+#                        ${CMAKE_CURRENT_SOURCE_DIR}/grevilleAbscissae.f
+#                  LINK_LIBRARIES base
+#                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/fitting)
 
 add_custom_target(copy_fitting ALL)
 
 add_custom_command(TARGET copy_fitting PRE_BUILD
                    COMMAND  ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${PYTHON_MODULES_OUTPUT_PATH}/fitting/__init__.py
                    DEPENDS interpolate
-                   DEPENDS evaluate)
+                   DEPENDS base
+                #    DEPENDS evaluate
+                )
