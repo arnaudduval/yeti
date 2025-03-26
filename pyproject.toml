@@ -25,7 +25,7 @@ Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
 Issues = "https://lamcosplm.insa-lyon.fr/plugins/tracker/?tracker=626"
 
 [build-system]
-requires = ["scikit-build-core", "numpy", "meson", "ninja", "setuptools" , "setuptools_scm"]
+requires = ["scikit-build-core", "numpy", "meson", "ninja"]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
