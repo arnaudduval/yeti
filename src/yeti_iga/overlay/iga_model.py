@@ -49,6 +49,8 @@ class IgaModel:
         # ERROR : props and jprops applies on elements, not patch
         self.iga_param._PROPS = []
         self.iga_param._JPROPS = np.array([], dtype=int)
+        # Pas nécessaire : il existe un autoset
+        # self.iga_param._indCPbyPatch = np.array([], dtype=object)
 
         # Boundary conditions
         self.iga_param._nb_bc = 0
@@ -64,8 +66,12 @@ class IgaModel:
         self.iga_param._load_target_nbelem = np.array([], dtype=int)
 
 
-        self.iga_param._additionalLoadInfos = np.array([], dtype=float)
+        self.iga_param._additionalLoadInfos = []
         self.iga_param._nb_additionalLoadInfos = np.array([], dtype=int)
+
+        # Nodal distributions
+        self.iga_param._nodal_distributions = {}
+        self.iga_param._nodal_distributions_init = {}
 
 
 
@@ -124,6 +130,13 @@ class IgaModel:
         self.iga_param._dim = np.append(self.iga_param._dim, len(patch.knot_vectors))
 
         self.iga_param._IEN.append(patch.connectivity[:, self.local_global_cp[-1]]+1)
+        # TODO Possible de faire plus simple sans ajouter de None.
+        # On veut en sortie un array de array,
+        # ex : '_indCPbyPatch': array([array([1, 2, 3, 4, 5, 6, 7, 8])], dtype=object)
+        # self.iga_param._indCPbyPatch = np.append(
+        #     self.iga_param._indCPbyPatch, None)
+        # self.iga_param._indCPbyPatch[-1] = self.local_global_cp[-1]+1
+        # ==> Fait par une routine déja existante dans IGA_parametrization
 
         # Set global elements numbering
         if len(self.patchs) == 1:
@@ -170,6 +183,10 @@ class IgaModel:
         )
 
         self.iga_param._flatten_data()
+        self.iga_param._indCPbyPatch = self.iga_param._autoset_indCPbyPatch()
+        self.iga_param._compute_vectWeight()
+        self.iga_param._update_dof_info()
+        self.iga_param._initRefinementMatHistory()
 
     def add_boundary_condition(self, ipatch, bc):
         """
@@ -229,5 +246,54 @@ class IgaModel:
         # TODO faire quelque chose avec
         # _additionalLoadInfos
         # _nb_additionalLoadInfos
+        # ==> A tester avec un cas de chargement centrifuge
+        self.iga_param._additionalLoadInfos.append(np.array([], dtype=float))
+        self.iga_param._nb_additionalLoadInfos = np.append(
+            self.iga_param._nb_additionalLoadInfos, 0
+        )
 
         self.iga_param._flatten_data()
+
+    def refine_patch(self, ipatch,
+                     nb_degree_elevation=np.zeros(3),
+                     nb_refinements=np.zeros(3),
+                     additional_knots=None):
+        """
+        Refine a patch of the model with k-refinement:
+         - degree elevation
+         - subdivision
+         - knot insertion
+
+        Parameters
+        ----------
+        ipatch: int
+            Index of patch to refine
+        nb_degree_elevation : numpy.array(shape=(3,), dtype=numpy.intp)
+            Number of degree elevation for each parametric direction
+            default = numpy.zeros(3)
+        nb_refinement : numpy.array(shape=(3,), dtype=numpy.intp)
+            Number of knot vector subdivision for each parametric direction
+            default = numpy.zeros(3)
+        additional_knots : list of np.array(dtype=float)
+            knots to insert for each parametric direction
+            default = None
+        """
+
+        if ipatch >= len(self.patchs):
+            raise ValueError(f'id_patch must be <= {len(self.patchs) - 1}')
+
+        nb_deg = np.zeros((3, self.iga_param.nb_patch),dtype=np.intp)
+        nb_ref = np.zeros((3, self.iga_param.nb_patch),dtype=np.intp)
+        nb_deg[:, ipatch] = nb_degree_elevation
+        nb_ref[:, ipatch] = nb_refinements
+
+        if additional_knots is not None:
+            additional_knots_legacy = {"patches": np.array([ipatch]),
+                                    "1": additional_knots[0],
+                                    "2": additional_knots[1],
+                                    "3": additional_knots[2]
+                                    }
+            self.iga_param.refine(nb_ref, nb_deg, additional_knots=additional_knots_legacy)
+        else:
+            self.iga_param.refine(nb_ref, nb_deg)
+

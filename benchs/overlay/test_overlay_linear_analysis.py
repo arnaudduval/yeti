@@ -59,8 +59,17 @@ dload = DistributedLoad(el_index=np.array([0]),
 model.add_distributed_load(0, dload)
 
 
+model.refine_patch(ipatch=0,
+                   nb_refinements=np.array([2, 2, 3]),
+                   nb_degree_elevation=np.array([1, 1, 1]),
+                   additional_knots=[np.array([0.1, 0.2]),
+                                     np.array([0.23, 0.24]),
+                                     np.array([0.85, 0.95])])
+
+
 
 
 
 
 print(vars(model.iga_param))
+print(f'{model.iga_param._indCPbyPatch = }')
