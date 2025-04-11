@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import scipy.sparse as sp
 
 from ..preprocessing.igaparametrization.IGA_parametrization import IGAparametrization
+from ..stiffmtrx_elemstorage import sys_linmat_lindef_static
 
 from .material import ElasticMaterial
 
@@ -214,6 +216,7 @@ class IgaModel:
         )
 
         self.iga_param._flatten_data()
+        self.iga_param._update_dof_info()
 
 
     def add_distributed_load(self, ipatch, dload):
@@ -297,3 +300,33 @@ class IgaModel:
         else:
             self.iga_param.refine(nb_ref, nb_deg)
 
+
+    def build_stiffness_matrix(self):
+        """
+        Build stiffness matrix and right hand member
+
+        Retuns
+        ------
+        stiff : scipy.sparse.csc_matrix
+            Assembled stifness matrix
+        rhs : numpy.array
+            Rught hans side vector
+        """
+
+        params = self.iga_param.get_inputs4system_elemStorage()
+
+        data, row, col, rhs = sys_linmat_lindef_static(*params)
+
+        stiff_side = sp.coo_matrix((data, (row, col)),
+                               shape=(self.iga_param.nb_dof_tot,
+                                      self.iga_param.nb_dof_tot),
+                               dtype='float64').tocsc()
+        return stiff_side + stiff_side.transpose(), rhs
+
+    @property
+    def idof_free(self):
+        """
+        Return indices of free degrees of freedom
+        """
+
+        return self.iga_param.ind_dof_free[:self.iga_param.nb_dof_free]-1
