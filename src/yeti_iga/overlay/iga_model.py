@@ -1,11 +1,15 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 import numpy as np
 import scipy.sparse as sp
 
 from ..preprocessing.igaparametrization.IGA_parametrization import IGAparametrization
 from ..stiffmtrx_elemstorage import sys_linmat_lindef_static
+from .. import reconstructionSOL as rsol
+from ..postprocessing import postproc as pp
 
 from .material import ElasticMaterial
 
@@ -223,7 +227,7 @@ class IgaModel:
         """
         Add a distributed load
 
-        Paramatees
+        Paramaters
         ----------
         ipatch: int
             Patch index on which distributed load is applied
@@ -263,9 +267,10 @@ class IgaModel:
                      additional_knots=None):
         """
         Refine a patch of the model with k-refinement:
-         - degree elevation
-         - subdivision
-         - knot insertion
+         1 - degree elevation
+         2 - knot insertion
+         3 - subdivision
+
 
         Parameters
         ----------
@@ -330,3 +335,60 @@ class IgaModel:
         """
 
         return self.iga_param.ind_dof_free[:self.iga_param.nb_dof_free]-1
+
+    def write_solution_vtu(self, x, filename,
+                           per_patch=False,
+                           refinement=np.array([3, 3, 3]),
+                           # TRAITER data_flag
+                           data_flag=np.array([True, False, False])):
+        """
+        Write the solution of an IGA analysis to a VTU file
+        TODO: handle degree and number of refinements for vtu FE output
+        TODO: handle flags for output of stress and strains
+        TODO: make BSpline output when possible
+
+        Parameters
+        ----------
+        x : numpy.array(dtype=float)
+            Array containing the result of an IGA analysis
+        filename : string
+            File name
+        per_patch : bool (default=False)
+            If set to true, a separate file is generated for each patch.
+            Non-embedded patchs are generated using Bezier extraction feature
+            of VTK format. Produced files will have a _pxxx suffix.
+        refinement : numpy.array(shape=(3,), dtype=int) (default=[3, 3, 3])
+            Refinement applied when files are egenerated using a classical FE
+            data structure
+        data_flag : numpy.array(shape=(3,), dtype=bool)
+        (default=[True, False, False])
+            Boolean array indicating generated fields : [0] : displacement,
+            [1] : stress, [2] : strain
+
+        """
+
+        if per_patch:
+            raise NotImplementedError(
+                "Per patch feature not yet implemented"
+                )
+
+        if len(os.path.splitext(os.path.basename(filename))[1]) == 0:
+            raise ValueError(
+                "File name has no extension"
+            )
+
+        if os.path.splitext(os.path.basename(filename))[-1].lower() != '.vtu':
+            raise ValueError(
+                "File name must have .vtu extension"
+            )
+
+        sol, _ = rsol.reconstruction(**self.iga_param.get_inputs4solution(x))
+
+        output_path = os.path.dirname(os.path.realpath(filename))
+
+        filename = os.path.splitext(os.path.basename(filename))[0]
+
+        pp.generatevtu(*self.iga_param.get_inputs4postprocVTU(
+            filename, sol.T, nb_ref=refinement,
+            Flag=data_flag,
+            output_path=output_path))
