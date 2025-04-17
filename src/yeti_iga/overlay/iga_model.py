@@ -16,6 +16,12 @@ from .material import ElasticMaterial
 
 class IgaModel:
     def __init__(self, model_type):
+        """
+        Parameters
+        ----------
+        model_type : string
+            Model type : '2D solid', '3D solid' or '3D shell'
+        """
         if model_type not in ['2D solid', '3D solid', '3D shell']:
             raise ValueError(f'{model_type} is not a valid model type')
         self.model_type = model_type
@@ -381,6 +387,14 @@ class IgaModel:
         """
 
         return self.iga_param.ind_dof_free[:self.iga_param.nb_dof_free]-1
+
+    @property
+    def nb_patch(self):
+        """
+        Return the number of patchs of the model
+        """
+
+        return len(self.patchs)
 
     @property
     def cp_indices(self):
