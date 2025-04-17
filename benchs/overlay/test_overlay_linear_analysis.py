@@ -141,8 +141,6 @@ def test_linear_analysis_single_patch_3d_shell(tmp_path):
                        nb_subdivision=np.array([2, 2])
                        )
 
-    stiff, rhs = model.build_stiffness_matrix()
-
     # Get indices of control points located at corners
     corner_cps = model.get_corners_cp_indices()
     # Deduce indices of control points NOT located at corers
