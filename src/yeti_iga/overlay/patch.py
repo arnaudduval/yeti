@@ -1,8 +1,10 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 class Patch:
-    def __init__(self, element_type, degrees, knot_vectors, control_points, weights, connectivity, spans, material):
+    def __init__(self, element_type, degrees, knot_vectors, control_points, weights, connectivity, spans, material, properties=np.array([], dtype=float)):
         """
         Parameters
         ----------
@@ -22,7 +24,13 @@ class Patch:
             spans values for each element, numbering starts at 0
         material : Material
             material properties
+        properties : numpy.array(dtype=float)
+            extra patch properties (thickness, hull index, ...)
         """
+
+        if element_type == 'U3' and properties.size == 0:
+            raise ValueError('Shell patch should have at least 1 property defining its thuckness')
+
 
         self.element_type = element_type
         self.degrees = degrees
@@ -33,5 +41,5 @@ class Patch:
         self.connectivity = connectivity
         self.spans = spans
         self.material = material
+        self.properties = properties
 
-        return

@@ -10,6 +10,7 @@ from ..preprocessing.igaparametrization.IGA_parametrization import IGAparametriz
 from ..stiffmtrx_elemstorage import sys_linmat_lindef_static
 from .. import reconstructionSOL as rsol
 from ..postprocessing import postproc as pp
+from ..preprocessing.igaparametrization import IGAmanip as manip
 
 from .material import ElasticMaterial
 
@@ -20,15 +21,18 @@ class IgaModel:
         self.model_type = model_type
 
         self.patchs = []
-        self.local_global_cp = []
-        self.local_global_el = []
+        self.local_global_cp = []       # Maps local CP numbering to global one
+        self.local_global_el = []       # Maps local element numbering to global one
         self.boundary_conditions = []
+
+        self._refined_flag = False           # Flag set to true hen a refinement has been made
+                                        # To prevent new patch or BC addition
 
         self.iga_param = IGAparametrization()
 
         # Global
-        if model_type == '3D solid':
-            # TODO add an assertaion for de dimension of coordinates array
+        if model_type == '3D solid' or model_type == '3D shell':
+            # TODO add an assertaion for the dimension of coordinates array
             self.iga_param._mcrd = 3
         self.iga_param._nb_patch = 0
         self.iga_param._nb_elem = 0
@@ -52,11 +56,9 @@ class IgaModel:
         self.iga_param._N_MATERIAL_PROPERTIES = np.array([], dtype=int)
         self.iga_param._elementsByPatch = np.array([], dtype=int)
         self.iga_param._nnode = np.array([], dtype=int)
-        # ERROR : props and jprops applies on elements, not patch
+        # TODO ERROR : props and jprops applies on elements, not patch
         self.iga_param._PROPS = []
         self.iga_param._JPROPS = np.array([], dtype=int)
-        # Pas nécessaire : il existe un autoset
-        # self.iga_param._indCPbyPatch = np.array([], dtype=object)
 
         # Boundary conditions
         self.iga_param._nb_bc = 0
@@ -94,6 +96,9 @@ class IgaModel:
             patch to add
         """
 
+        if self._refined_flag:
+            raise Exception("Can not add a new patch if model has already been refined")
+
         self.patchs.append(patch)
 
         self.iga_param._nb_patch += 1
@@ -105,15 +110,38 @@ class IgaModel:
         )
         if patch.element_type == 'U1':
             self.iga_param._TENSOR = np.append(
-                self.iga_param._TENSOR, 'THREED',
+                self.iga_param._TENSOR, 'THREED'
             )
+        elif patch.element_type == 'U3':
+            self.iga_param._TENSOR = np.append(
+                self.iga_param._TENSOR, 'PSTRESS'
+            )
+
+        self.iga_param._dim = np.append(self.iga_param._dim, len(patch.knot_vectors))
 
         self.iga_param._NBPINT = np.append(
             self.iga_param._NBPINT, np.prod(patch.degrees + 1)
         )
-        self.iga_param._Jpqr = np.append(
-            self.iga_param._Jpqr, np.array([patch.degrees]).T, axis=1
-        )
+        if self.iga_param._dim == 3:
+            self.iga_param._Jpqr = np.append(
+                self.iga_param._Jpqr, np.array([patch.degrees]).T, axis=1
+                )
+            # TODO Verify if a [] is needed, like in the 2 dim case
+            self.iga_param._Nijk = np.append(
+                self.iga_param._Nijk, (patch.spans+1).T, axis=1
+                )
+        elif self.iga_param._dim == 2:
+            self.iga_param._Jpqr = np.append(
+                self.iga_param._Jpqr, np.array([np.append(patch.degrees, 0)]).T, axis=1
+                )
+            self.iga_param._Nijk = np.append(
+                self.iga_param._Nijk, np.array([np.append(patch.spans+1, 0)]).T, axis=1
+                )
+        else:
+            raise ValueError("Patch dimension must be 2 or 3")
+
+
+
         self.iga_param._Ukv.append(patch.knot_vectors)
         self.iga_param._COORDS = np.append(
             self.iga_param._COORDS, patch.control_points.T, axis=1
@@ -132,8 +160,6 @@ class IgaModel:
         self.iga_param._Nkv = np.append(
             self.iga_param._Nkv, np.array([Nkv]).T, axis=1
         )
-
-        self.iga_param._dim = np.append(self.iga_param._dim, len(patch.knot_vectors))
 
         self.iga_param._IEN.append(patch.connectivity[:, self.local_global_cp[-1]]+1)
         # TODO Possible de faire plus simple sans ajouter de None.
@@ -158,9 +184,7 @@ class IgaModel:
         self.iga_param._nnode = np.append(
             self.iga_param._nnode, patch.connectivity.shape[1]
         )
-        self.iga_param._Nijk = np.append(
-            self.iga_param._Nijk, (patch.spans+1).T, axis=1
-        )
+
         # Reorder weights to assign them per element
         for elt in patch.connectivity:
             self.iga_param._weight.append(patch.weights[elt])
@@ -183,10 +207,16 @@ class IgaModel:
 
         # Patch properties : first property is the index of patch, starting at 1
         self.iga_param._PROPS.append(np.array([float(len(self.patchs))], dtype=object))
-        # WARNING: JPROPS is not a list of arrays ???
+        # Add other properties
+        self.iga_param._PROPS[-1 ] = np.append(self.iga_param._PROPS[-1 ],
+                                               patch.properties)
+
+        #TODO gerer les autre proprietes (épaisseur pour les coques)
+        # JPROPS semble être la taille de PROPS
+
         self.iga_param._JPROPS = np.append(
-            self.iga_param._JPROPS, len(self.patchs)
-        )
+            self.iga_param._JPROPS, patch.properties.size + 1
+            )
 
         self.iga_param._flatten_data()
         self.iga_param._indCPbyPatch = self.iga_param._autoset_indCPbyPatch()
@@ -206,18 +236,25 @@ class IgaModel:
             Boundary condition to add
         """
 
+        if self._refined_flag:
+            raise Exception("Can not add a new boundary condition if model has already been refined")
+
         self.boundary_conditions.append((ipatch, bc))
 
-        self.iga_param._nb_bc += 1
 
-        self.iga_param._bc_target.append(self.local_global_cp[ipatch][bc.cp_index]+1)
-        # Warning : not clear if is a number of CP or not ???
-        self.iga_param._bc_target_nbelem = np.append(
-            self.iga_param._bc_target_nbelem, bc.cp_index.size
-        )
-        self.iga_param._bc_values = np.append(
-            self.iga_param._bc_values, np.array([[bc.dof+1],[bc.value]]), axis=1
-        )
+
+        for dof in bc.dof:
+            self.iga_param._nb_bc += 1
+            self.iga_param._bc_target.append(self.local_global_cp[ipatch][bc.cp_index]+1)
+
+            # Warning : not clear if is a number of CP or not ???
+            # See /src/yeti_iga/preprocessing/mechanicalmodel/model.py
+            self.iga_param._bc_target_nbelem = np.append(
+                self.iga_param._bc_target_nbelem, bc.cp_index.size
+                )
+            self.iga_param._bc_values = np.append(
+                self.iga_param._bc_values, np.array([[dof+1],[bc.value]]), axis=1
+                )
 
         self.iga_param._flatten_data()
         self.iga_param._update_dof_info()
@@ -234,6 +271,9 @@ class IgaModel:
         dload : DistributedLoad
             Distributed load to add
         """
+
+        if self._refined_flag:
+            raise Exception("Can not add a new load if model has already been refined")
 
         self.iga_param._nb_load += 1
 
@@ -263,7 +303,7 @@ class IgaModel:
 
     def refine_patch(self, ipatch,
                      nb_degree_elevation=np.zeros(3),
-                     nb_refinements=np.zeros(3),
+                     nb_subdivision=np.zeros(3),
                      additional_knots=None):
         """
         Refine a patch of the model with k-refinement:
@@ -279,7 +319,7 @@ class IgaModel:
         nb_degree_elevation : numpy.array(shape=(3,), dtype=numpy.intp)
             Number of degree elevation for each parametric direction
             default = numpy.zeros(3)
-        nb_refinement : numpy.array(shape=(3,), dtype=numpy.intp)
+        nb_subdivision : numpy.array(shape=(3,), dtype=numpy.intp)
             Number of knot vector subdivision for each parametric direction
             default = numpy.zeros(3)
         additional_knots : list of np.array(dtype=float)
@@ -292,8 +332,11 @@ class IgaModel:
 
         nb_deg = np.zeros((3, self.iga_param.nb_patch),dtype=np.intp)
         nb_ref = np.zeros((3, self.iga_param.nb_patch),dtype=np.intp)
-        nb_deg[:, ipatch] = nb_degree_elevation
-        nb_ref[:, ipatch] = nb_refinements
+
+        dim = self.iga_param._dim[ipatch]
+
+        nb_deg[:dim, ipatch] = nb_degree_elevation[:dim]
+        nb_ref[:dim, ipatch] = nb_subdivision[:dim]
 
         if additional_knots is not None:
             additional_knots_legacy = {"patches": np.array([ipatch]),
@@ -304,6 +347,9 @@ class IgaModel:
             self.iga_param.refine(nb_ref, nb_deg, additional_knots=additional_knots_legacy)
         else:
             self.iga_param.refine(nb_ref, nb_deg)
+
+        self._refined_flag = True
+
 
 
     def build_stiffness_matrix(self):
@@ -336,15 +382,60 @@ class IgaModel:
 
         return self.iga_param.ind_dof_free[:self.iga_param.nb_dof_free]-1
 
+    @property
+    def cp_indices(self):
+        """
+        Returns an array containing all control points indices of the model
+
+        Returns:
+        --------
+        cp_indices : numpy.array(dtype=int)
+            All control points indices
+        """
+        return np.arange(self.iga_param.nb_cp)
+
+    @property
+    def cp_coordinates(self):
+        """
+        Returns all control points coordinates of the model
+
+        Returns
+        ------
+        cp_coordinates : numpy.array(shape=(., 3), dtype=float)
+            Coordinates of control points
+        """
+
+        return self.iga_param._COORDS.T
+
+    @cp_coordinates.setter
+    def cp_coordinates(self, coords):
+        """
+        Set the control points coordinates of the model
+
+        Parameters
+        ----------
+        coords : numpy.array(shape=(., 3), dtype=float)
+            new coordinates
+        """
+
+        if coords.T.shape != self.iga_param._COORDS:
+            raise ValueError("coords parameters must have {self.iga_param._COORDS.T.shape} shape")
+
+
+        self.iga_param._COORDS = coords.T
+
+
+
+
+
+
+
     def write_solution_vtu(self, x, filename,
                            per_patch=False,
                            refinement=np.array([3, 3, 3]),
-                           # TRAITER data_flag
                            data_flag=np.array([True, False, False])):
         """
         Write the solution of an IGA analysis to a VTU file
-        TODO: handle degree and number of refinements for vtu FE output
-        TODO: handle flags for output of stress and strains
         TODO: make BSpline output when possible
 
         Parameters
@@ -392,3 +483,25 @@ class IgaModel:
             filename, sol.T, nb_ref=refinement,
             Flag=data_flag,
             output_path=output_path))
+
+    def get_corners_cp_indices(self, ipatch=0):
+        """
+        Return global indices of control points corresponding to a given patch
+        corners
+
+        Parameters
+        ----------
+        ipatch : int (default = 0)
+            index of patch
+
+        Returns
+        -------
+        indices : numpy.array
+            indices of corners control points
+        """
+
+        indices = manip.get_vertexCPindice(self.iga_param._Nkv,
+                                           self.iga_param._Jpqr,
+                                           self.iga_param._dim,
+                                           num_patch=ipatch)
+        return indices
