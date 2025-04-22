@@ -92,7 +92,8 @@ def test_optim_shell():
     # Design variables : free CPs can move along z axis
     nb_var = free_cps.size
 
-    def altitude(coords_0, iga_param, x):
+
+    def altitude(coords_0, iga_model, x):
         # TODO use directly an IgaModel object
         """
         Shape modification function
@@ -102,16 +103,14 @@ def test_optim_shell():
         ----------
         coords0 : np.array
             Initial CP coordinates
-        iga_param : IgaParametrization
-            Legacy IgaParametrization object
-            TODO Use IgaModel instead
+        iga_model : IgaModel
+            IGA model on which shape update applies
         x : np.array(dtype=float)
             Design variables
         """
 
-        iga_param.coords[:, :] = coords_0[:, :]
-        # TODO if using IgaModel object, coords are translated
-        iga_param.coords[2, free_cps] = coords_0[2, free_cps] + 5.*x[:]
+        model.cp_coordinates[:, :] = coords_0[:, :]
+        model.cp_coordinates[free_cps, 2] = coords_0[free_cps, 2] + 5.*x[:]
 
 
 

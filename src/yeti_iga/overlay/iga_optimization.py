@@ -31,9 +31,17 @@ class IgaOptimization:
         refinement : Refinement
             Refinement from design model to analysis model
         """
-        self._opt_pb = OPTmodelling(iga_model.iga_param,
+
+        self.update_function = update_function
+        self.iga_model = iga_model
+
+        def legacy_update_function(coords_0, iga_param, x):
+            self.iga_model.iga_param = iga_param
+            self.update_function(coords_0.T, self.iga_model.iga_param, x)
+
+        self._opt_pb = OPTmodelling(self.iga_model.iga_param,
                                     nb_var,
-                                    update_function,
+                                    legacy_update_function,
                                     nb_degreeElevationByDirection=refinement.degrees_legacy,
                                     nb_refinementByDirection=refinement.subdivision_legacy
                                     )
@@ -54,7 +62,7 @@ class IgaOptimization:
         """
         return self._opt_pb.compute_compliance_discrete(x)
 
-    def volume(self, x):
+    def volume(self, x, listpatch=None):
         """
         Compute volume for a given set of design variables
 
@@ -62,15 +70,26 @@ class IgaOptimization:
         ----------
         x : np.array(dtype=float)
             Array containing the design variables
-
+        listpatch : numpy.array(dtype=int)
+            An array of 0 ro 1 indocating which patch must be taken into account for volume computation
+            Default = None
         Returns
         -------
         volume : float
             Volume of the model
         """
+
+        if listpatch:
+            if listpatch.size != self.iga_model.nb_patch:
+                raise ValueError("Length of listpatch parameter must be equal to {self.iga_model.nb_patch}")
+
+            if not np.all(np.isin(listpatch, [0, 1])):
+                raise ValueError("listpatch parameters must exclusively contain 0 or 1 values.")
+
+
         # TODO : add mask for patchs taken into account
 
-        return self._opt_pb.compute_volume(x)
+        return self._opt_pb.compute_volume(x, listpatch)
 
     def grad_volume_analytic(self, x):
         """
