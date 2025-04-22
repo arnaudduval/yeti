@@ -105,30 +105,13 @@ def test_linear_analysis_single_patch_3d_shell(tmp_path):
 
     model.add_patch(patch)
 
-    bc1 = BoundaryCondition(cp_index=np.array([0]),
-                            dof=np.array([0, 1, 2]),
-                            value=0.
-                            )
+    for icp in range(4):
+        bc = BoundaryCondition(cp_index=np.array([icp]),
+                               dof=np.array([0, 1, 2]),
+                               value=0.
+                               )
+        model.add_boundary_condition(0, bc)
 
-    bc2 = BoundaryCondition(cp_index=np.array([1]),
-                            dof=np.array([0, 1, 2]),
-                            value=0.
-                            )
-
-    bc3 = BoundaryCondition(cp_index=np.array([2]),
-                            dof=np.array([0, 1, 2]),
-                            value=0.
-                            )
-
-    bc4 = BoundaryCondition(cp_index=np.array([3]),
-                            dof=np.array([0, 1, 2]),
-                            value=0.
-                            )
-
-    model.add_boundary_condition(0, bc1)
-    model.add_boundary_condition(0, bc2)
-    model.add_boundary_condition(0, bc3)
-    model.add_boundary_condition(0, bc4)
 
     dload = DistributedLoad(el_index=np.array([0]),
                             dl_type=66,
@@ -143,7 +126,7 @@ def test_linear_analysis_single_patch_3d_shell(tmp_path):
 
     # Get indices of control points located at corners
     corner_cps = model.get_corners_cp_indices()
-    # Deduce indices of control points NOT located at corers
+    # Deduce indices of control points NOT located at corners
     free_cps = np.setxor1d(model.cp_indices, corner_cps)
     # Elevate those control points along z axis
     model.cp_coordinates[free_cps, 2] += 0.5
@@ -159,10 +142,11 @@ def test_linear_analysis_single_patch_3d_shell(tmp_path):
         rhs[model.idof_free]
         )
 
+    model.write_control_mesh_vtu(f'{tmp_path}/control_net.vtu')
     model.write_solution_vtu(x,
                              f"{tmp_path}/result.vtu")
 
 
 if __name__ == '__main__':
-    test_linear_analysis_single_patch_3d_solid('.')
+    # test_linear_analysis_single_patch_3d_solid('.')
     test_linear_analysis_single_patch_3d_shell('.')

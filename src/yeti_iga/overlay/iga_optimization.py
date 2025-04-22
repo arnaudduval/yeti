@@ -73,6 +73,7 @@ class IgaOptimization:
         listpatch : numpy.array(dtype=int)
             An array of 0 ro 1 indocating which patch must be taken into account for volume computation
             Default = None
+
         Returns
         -------
         volume : float
@@ -86,12 +87,9 @@ class IgaOptimization:
             if not np.all(np.isin(listpatch, [0, 1])):
                 raise ValueError("listpatch parameters must exclusively contain 0 or 1 values.")
 
+        return self._opt_pb.compute_volume(x, listpatch=listpatch)
 
-        # TODO : add mask for patchs taken into account
-
-        return self._opt_pb.compute_volume(x, listpatch)
-
-    def grad_volume_analytic(self, x):
+    def grad_volume_analytic(self, x, listpatch=None):
         """
         Compute gradient of the volume with respect to a set of deign variables
         using analytic method
@@ -100,17 +98,25 @@ class IgaOptimization:
         ----------
         x : numpy.array(dtype=float)
             Array containing the design variables
+        listpatch : numpy.array(dtype=int)
+            An array of 0 ro 1 indocating which patch must be taken into account for volume computation
+            Default = None
 
         Returns
         -------
         grad_volume : numpy.array(dtype=float)
             gradient of the volume
         """
-        # TODO : add mask for patchs taken into account
+        if listpatch:
+            if listpatch.size != self.iga_model.nb_patch:
+                raise ValueError("Length of listpatch parameter must be equal to {self.iga_model.nb_patch}")
 
-        return self._opt_pb.compute_gradVolume_AN(x)
+            if not np.all(np.isin(listpatch, [0, 1])):
+                raise ValueError("listpatch parameters must exclusively contain 0 or 1 values.")
 
-    def grad_volume_finite_differences(self, x):
+        return self._opt_pb.compute_gradVolume_AN(x, listpatch)
+
+    def grad_volume_finite_differences(self, x, eps=1.e-6, centered=False, listpatch=None):
         """
         Compute gradient of the volume with respect to a set of design variables
         using finite differences
@@ -119,16 +125,23 @@ class IgaOptimization:
         ----------
         x : numpy.array(dtype=float)
             Array containing the design variables
+        eps : float
+            epsilon value for finite difference computation
+            Default = 1.e-6
+        centered : bool
+            Boolean indicating if centered finite differences must be used
+            Default = False
+        listpatch : numpy.array(dtype=int)
+            An array of 0 ro 1 indicating which patch must be taken into account for volume computation
+            Default = None
 
         Returns
         -------
         grad_volume : numpy.array(dtype=float)
             gradient of the volume
         """
-        # TODO : add mask for patchs taken into account
-        # TODO add specific parameters for finite differences
 
-        return self._opt_pb.compute_gradVolume_DF(x)
+        return self._opt_pb.compute_gradVolume_DF(x, eps=eps, centerFD=centered, listpatch=listpatch)
 
     def grad_compliance_analytic(self, x):
         """
@@ -148,7 +161,7 @@ class IgaOptimization:
 
         return self._opt_pb.compute_gradCompliance_AN(x)
 
-    def grad_compliance_finite_differences(self, x):
+    def grad_compliance_finite_differences(self, x, eps=1.e-6, centered=False):
         """
         Compute gradient of the compliance with respect to a set of design
         variables using finite differences
@@ -157,15 +170,20 @@ class IgaOptimization:
         ----------
         x : numpy.array(dtype=float)
             Array containing the design variables
+                eps : float
+            epsilon value for finite difference computation
+            Default = 1.e-6
+        centered : bool
+            Boolean indicating if centered finite differences must be used
+            Default = False
 
         Returns
         -------
         grad_compliance : numpy.array(dtype=float)
             Gradient of the compliance
         """
-        # TODO add specific parameters for finite differences
 
-        return self._opt_pb.compute_gradCompliance_FD(x)
+        return self._opt_pb.compute_gradCompliance_FD(x, eps=eps, centerFD=centered)
 
     def write_analysis_solution_vtu(self, x, filename,
                                     per_patch=False,

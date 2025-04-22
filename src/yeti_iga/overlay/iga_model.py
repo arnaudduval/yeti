@@ -38,7 +38,6 @@ class IgaModel:
 
         # Global
         if model_type == '3D solid' or model_type == '3D shell':
-            # TODO add an assertaion for the dimension of coordinates array
             self.iga_param._mcrd = 3
         self.iga_param._nb_patch = 0
         self.iga_param._nb_elem = 0
@@ -96,6 +95,11 @@ class IgaModel:
         ----------
         patch : Patch
             patch to add
+
+        Return
+        ------
+        index : int
+            index of added patch
         """
 
         if self._refined_flag:
@@ -213,9 +217,6 @@ class IgaModel:
         self.iga_param._PROPS[-1 ] = np.append(self.iga_param._PROPS[-1 ],
                                                patch.properties)
 
-        #TODO gerer les autre proprietes (épaisseur pour les coques)
-        # JPROPS semble être la taille de PROPS
-
         self.iga_param._JPROPS = np.append(
             self.iga_param._JPROPS, patch.properties.size + 1
             )
@@ -225,6 +226,8 @@ class IgaModel:
         self.iga_param._compute_vectWeight()
         self.iga_param._update_dof_info()
         self.iga_param._initRefinementMatHistory()
+
+        return self.nb_patch - 1
 
     def add_boundary_condition(self, ipatch, bc):
         """
@@ -292,10 +295,7 @@ class IgaModel:
             self.iga_param._load_target_nbelem, dload.el_index.size
         )
 
-        # TODO faire quelque chose avec
-        # _additionalLoadInfos
-        # _nb_additionalLoadInfos
-        # ==> A tester avec un cas de chargement centrifuge
+        # TODO  Test with a centrifugal force case
         self.iga_param._additionalLoadInfos.append(np.array([], dtype=float))
         self.iga_param._nb_additionalLoadInfos = np.append(
             self.iga_param._nb_additionalLoadInfos, 0
@@ -493,6 +493,37 @@ class IgaModel:
             filename, sol.T, nb_ref=refinement,
             Flag=data_flag,
             output_path=output_path))
+
+    def write_control_mesh_vtu(self, filename, ipatch=0):
+        """
+        Write control mesh of the model in a VTU file
+        A separate file is generated for each patch
+
+        Parameters
+        ----------
+        filename : string
+            File name
+        ipatch : int
+            Index of patch to write, default=0
+        """
+
+        if len(os.path.splitext(os.path.basename(filename))[1]) == 0:
+            raise ValueError(
+                "File name has no extension"
+            )
+
+        if os.path.splitext(os.path.basename(filename))[-1].lower() != '.vtu':
+            raise ValueError(
+                "File name must have .vtu extension"
+            )
+
+        filename = os.path.splitext(os.path.basename(filename))[0]
+        # TODO handle output_path
+        output_path = os.path.dirname(os.path.realpath(filename))
+
+
+        self.iga_param.generate_vtk4controlMeshVisu(filename, ipatch)
+
 
     def get_corners_cp_indices(self, ipatch=0):
         """
