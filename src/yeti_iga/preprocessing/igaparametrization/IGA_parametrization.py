@@ -1250,7 +1250,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4controlMesh(self, filename, num_patch, sol=None):
+    def get_inputs4controlMesh(self, filename, num_patch, output_path='results', sol=None):
         """
 
         Parameters
@@ -1274,11 +1274,11 @@ class IGAparametrization:
         nb_cp_thisPatch = np.prod(nb_cp_dir_thisPatch)
         COORDS_thisPatch = self._COORDS[0:3, self._indCPbyPatch[num_patch] - 1]
         if sol is None:
-            inputs = [filename, COORDS_thisPatch, nb_cp_dir_thisPatch,
+            inputs = [filename, output_path, COORDS_thisPatch, nb_cp_dir_thisPatch,
                       nb_cp_thisPatch]
         else:
             sol_thisPatch = sol[:, self._indCPbyPatch[num_patch] - 1]
-            inputs = [filename, COORDS_thisPatch, sol_thisPatch,
+            inputs = [filename, output_path, COORDS_thisPatch, sol_thisPatch,
                       nb_cp_dir_thisPatch, nb_cp_thisPatch]
 
         return inputs
@@ -2435,9 +2435,9 @@ class IGAparametrization:
                    delimiter=', ')
 
 
-    def generate_vtk4controlMeshVisu(self, filename, num_patch, sol=None):
+    def generate_vtk4controlMeshVisu(self, filename, num_patch, sol=None, output_path='results'):
         """Generate control mesh visualisation for a given patch number."""
-        inputs = self.get_inputs4controlMesh(filename, num_patch, sol=sol)
+        inputs = self.get_inputs4controlMesh(filename, num_patch, output_path=output_path, sol=sol)
         print(f'Generate {filename}.vtk ...')
 
         if sol is None:
