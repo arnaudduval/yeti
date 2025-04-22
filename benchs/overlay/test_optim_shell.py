@@ -3,6 +3,8 @@
 
 """
 Test optimization of a shell structure
+Optimization can be run with scipy or nlopt
+With scipy, the result is not what is expected
 """
 
 import numpy as np
@@ -14,19 +16,33 @@ from yeti_iga import IgaModel, Patch, ElasticMaterial, \
     Refinement
 
 class OptimSaver:
-    def __init__(self, optim):
+    def __init__(self, optim, file_suffix=''):
+        """
+        Parameters
+        ----------
+        optim : IgaOptimization
+            IgaOptimization objetc on which this saver apply
+        file_suffix : string
+            Suffix added to result file name
+        """
         self.iopt = 0
         self.optim = optim
+        self.file_suffix = '_' + file_suffix
 
     def save_x_k(self, x):
         """
         Save analysis results for a model modified by a set of design variables x
         This function is called at each iteration of optimization
+
+        Parameters
+        ----------
+        x : numpy.array(dtype=float)
+            Value of design variables
         """
         tmp_path = '.'
         print(f'Iteration {self.iopt}')
         self.optim.write_analysis_solution_vtu(x,
-                                          f"{tmp_path}/result_{self.iopt:02}.vtu")
+                                          f"{tmp_path}/result{self.file_suffix}_{self.iopt:02}.vtu")
         self.iopt += 1
 
 
@@ -106,13 +122,15 @@ def test_optim_shell():
 
     optim = IgaOptimization(model, nb_var, altitude, refinement)
     # Handle results saving
-    saver = OptimSaver(optim)
+    solver = 'scipy'
+    solver = 'nlopt'
+    saver = OptimSaver(optim, solver)
 
     # Compute reference compliance and volume
     compliance_0 = optim.compliance(np.zeros(nb_var))
     volume_0 = 1.1 * optim.volume(np.zeros(nb_var))
 
-    solver = 'scipy'
+
 
     if solver == 'nlopt':
         def rel_compliance(x, grad):
