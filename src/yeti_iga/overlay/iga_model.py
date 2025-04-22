@@ -88,10 +88,6 @@ class IgaModel:
         self.iga_param._nodal_distributions_init = {}
 
 
-
-
-        return
-
     def add_patch(self, patch):
         """
         Add a patch to model
