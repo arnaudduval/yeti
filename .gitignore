@@ -9,6 +9,8 @@ src/*.mod
 .vscode/cmake-kits.json
 benchs/*/results/*.vtu
 benchs/*/results/*.vtk
+benchs/*/*.vtu
+benchs/*/*.vtk
 .coverage
 benchs/*/test.py
 examples/*/results/*.vtk
@@ -35,6 +37,7 @@ benchs/coupling_U5/results/*_proj_*.txt
 
 examples/feti/CsideU4.txt
 
-.venv
+.venv*
 wheelhouse
 temp
+
