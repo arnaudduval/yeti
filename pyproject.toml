@@ -30,7 +30,7 @@ build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
 cmake.version = ">=3.17.2"
-cmake.verbose = true
+build.verbose = true
 logging.level =  "INFO"
 
 [tool.cibuildwheel]
