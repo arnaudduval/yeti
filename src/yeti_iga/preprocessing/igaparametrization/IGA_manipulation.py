@@ -353,7 +353,7 @@ def find_boundNumber(listCP,num_patch,Nkv,Jpqr,indCPbyPatch):
     Sortie :
      * retourne le numero de la frontiere concerne
     '''
-    indices = np.where(np.in1d(indCPbyPatch[num_patch], listCP))[0]
+    indices = np.where(np.isin(indCPbyPatch[num_patch], listCP))[0]
     bound = None
     if np.array_equal(indices, get_boundCPindice(Nkv, Jpqr, 3, num_patch)):
         bound = 3
@@ -384,7 +384,7 @@ def find_allBounds(listCP, Nkv, Jpqr, dim, indCPbyPatch, num_patch=0):
     Sortie :
      * retourne les numeros des frontieres concernees
     '''
-    indices = np.where(np.in1d(indCPbyPatch[num_patch], listCP))[0]
+    indices = np.where(np.isin(indCPbyPatch[num_patch], listCP))[0]
     bound = []
 
     # face
@@ -392,7 +392,7 @@ def find_allBounds(listCP, Nkv, Jpqr, dim, indCPbyPatch, num_patch=0):
     nodeIncluded = np.array([], dtype=np.intp)
     if dim[num_patch] == 3:
         for face in np.arange(0, 6) + 1:
-            if np.all(np.in1d(get_boundCPindice(Nkv, Jpqr, face,
+            if np.all(np.isin(get_boundCPindice(Nkv, Jpqr, face,
                                                 num_patch=num_patch), indices)
                       ):
                 bound.append(face)
@@ -427,7 +427,7 @@ def find_allBounds(listCP, Nkv, Jpqr, dim, indCPbyPatch, num_patch=0):
                     nodeIncluded = np.append(nodeIncluded,
                                              np.array([5, 6, 7, 8]))
     elif dim[num_patch] == 2:
-        if np.all(np.in1d(get_boundCPindice(Nkv, Jpqr, 6, num_patch=num_patch),
+        if np.all(np.isin(get_boundCPindice(Nkv, Jpqr, 6, num_patch=num_patch),
                           indices)):
             bound.append(6)
             edgeIncluded = np.append(edgeIncluded, np.array([1, 2, 3, 4]))
@@ -443,7 +443,7 @@ def find_allBounds(listCP, Nkv, Jpqr, dim, indCPbyPatch, num_patch=0):
         idx = np.array([1], dtype=np.intp)
     vertex2rm = np.array([], dtype=np.intp)
     for e in idx:
-        if np.all(np.in1d(edges[e - 1], indices)):
+        if np.all(np.isin(edges[e - 1], indices)):
             bound.append(e + 100)
             vertex2rm = np.append(vertex2rm,
                                   np.array([edges[e - 1][0], edges[e - 1][-1]])
@@ -452,7 +452,7 @@ def find_allBounds(listCP, Nkv, Jpqr, dim, indCPbyPatch, num_patch=0):
     # vertex
     vertex = get_vertexCPindice(Nkv, Jpqr, dim, num_patch=num_patch)
     nodeIncluded = np.append(nodeIncluded,
-                             np.where(np.in1d(vertex, vertex2rm))[0] + 1)
+                             np.where(np.isin(vertex, vertex2rm))[0] + 1)
 
     idx = np.setxor1d(np.arange(1, 2**dim[num_patch] + 1), nodeIncluded)
     for v in idx:

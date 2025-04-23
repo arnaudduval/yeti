@@ -633,12 +633,12 @@ def updateBoundaryConditions(
     while not find_bc_target_fine:
       i=0
       while i < nb_patch:
-        if np.all(np.in1d(bc, indCPbyPatch_init[i])):
+        if np.all(np.isin(bc, indCPbyPatch_init[i])):
           break
         i += 1
 
       # test bc target is the entire patch
-      if np.all(np.in1d(indCPbyPatch_init[i], bc)):
+      if np.all(np.isin(indCPbyPatch_init[i], bc)):
         bc_target_fine.append(indCPbyPatch_fine[i])
         find_bc_target_fine = True
         break
@@ -657,7 +657,7 @@ def updateBoundaryConditions(
       edges_fine = get_edgeCPindice(Nkv_fine, Jpqr_fine, dim, i)
       num_edge = 0
       for edge in edges:
-        if np.all(np.in1d(indCPbyPatch_init[i][edge],bc)):
+        if np.all(np.isin(indCPbyPatch_init[i][edge],bc)):
           find_bc_target_fine = True
           bc_target_fine_thisbc.append(indCPbyPatch_fine[i][edges_fine[num_edge]])
         num_edge += 1
@@ -669,8 +669,8 @@ def updateBoundaryConditions(
       # test bc target is vertex
       vertex      = get_vertexCPindice(Nkv_init,Jpqr_init,dim,num_patch=i)
       vertex_fine = get_vertexCPindice(Nkv_fine,Jpqr_fine,dim,num_patch=i)
-      if np.all(np.in1d(bc, indCPbyPatch_init[i][vertex])):
-        idx = np.where(np.in1d(indCPbyPatch_init[i][vertex], bc))[0]
+      if np.all(np.isin(bc, indCPbyPatch_init[i][vertex])):
+        idx = np.where(np.isin(indCPbyPatch_init[i][vertex], bc))[0]
         bc_target_fine.append(indCPbyPatch_fine[i][vertex_fine][idx])
         find_bc_target_fine = True
         break
@@ -732,7 +732,7 @@ def updateLoads(nb_load_init, JDLType_init, load_target_nbelem_init, indDLoad_in
     num_patch  = 0
     count = 0
     while num_patch < nb_patch and count<list_patch.size:
-      test = np.in1d(cps,indCPbyPatch_init[num_patch])
+      test = np.isin(cps,indCPbyPatch_init[num_patch])
       if np.any(test):
         list_patch[test] = num_patch
         count += 1
