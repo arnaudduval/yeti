@@ -37,7 +37,7 @@ class IgaOptimization:
 
         def legacy_update_function(coords_0, iga_param, x):
             self.iga_model.iga_param = iga_param
-            self.update_function(coords_0.T, self.iga_model.iga_param, x)
+            self.update_function(coords_0.T, self.iga_model, x)
 
         self._opt_pb = OPTmodelling(self.iga_model.iga_param,
                                     nb_var,
@@ -185,7 +185,8 @@ class IgaOptimization:
 
         return self._opt_pb.compute_gradCompliance_FD(x, eps=eps, centerFD=centered)
 
-    def write_analysis_solution_vtu(self, x, filename,
+    def write_analysis_solution_vtu(self, filename,
+                                    x=None,
                                     per_patch=False,
                                     refinement=np.array([3, 3, 3]),
                                     data_flag=np.array([True, False, False])):
@@ -195,10 +196,11 @@ class IgaOptimization:
 
         Parameters
         ----------
-        x : numpy.array(dtype=float)
-            Array containing the design variables
         filename : string
             Path to the file to write
+        x : numpy.array(dtype=float)
+            Array containing the design variables
+            default=None
         per_patch : bool (default=False)
             If set to true, a separate file is generated for each patch.
             Non-embedded patchs are generated using Bezier extraction feature
@@ -238,4 +240,38 @@ class IgaOptimization:
             output_path=output_path))
 
 
+    def write_design_model_control_mesh(self, filename,
+                                        ipatch=0,
+                                        x=None):
+        """
+        Write control mesh of the design model for a set of design
+        variables x
+
+        Parameters
+        ----------
+        filename : string
+            Path to the file to write
+        ipatch : int
+            Index of patch top write, default=0
+        x : numpy.array(dtype=float)
+            Array containing the design variables
+            default=None
+        """
+
+        if len(os.path.splitext(os.path.basename(filename))[1]) == 0:
+            raise ValueError(
+                "File name has no extension"
+            )
+
+        if os.path.splitext(os.path.basename(filename))[-1].lower() != '.vtk':
+            raise ValueError(
+                "File name must have .vtk extension"
+            )
+
+        output_path = os.path.dirname(os.path.realpath(filename))
+        filename = os.path.splitext(os.path.basename(filename))[0]
+
+
+        self._opt_pb.coarse_parametrization.generate_vtk4controlMeshVisu(
+            filename, ipatch, output_path=output_path)
 

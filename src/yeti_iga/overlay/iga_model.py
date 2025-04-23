@@ -494,7 +494,7 @@ class IgaModel:
             Flag=data_flag,
             output_path=output_path))
 
-    def write_control_mesh_vtu(self, filename, ipatch=0):
+    def write_control_mesh_vtk(self, filename, ipatch=0):
         """
         Write control mesh of the model in a VTU file
         A separate file is generated for each patch
@@ -512,17 +512,16 @@ class IgaModel:
                 "File name has no extension"
             )
 
-        if os.path.splitext(os.path.basename(filename))[-1].lower() != '.vtu':
+        if os.path.splitext(os.path.basename(filename))[-1].lower() != '.vtk':
             raise ValueError(
-                "File name must have .vtu extension"
+                "File name must have .vtk extension"
             )
 
-        filename = os.path.splitext(os.path.basename(filename))[0]
-        # TODO handle output_path
         output_path = os.path.dirname(os.path.realpath(filename))
+        filename = os.path.splitext(os.path.basename(filename))[0]
 
 
-        self.iga_param.generate_vtk4controlMeshVisu(filename, ipatch)
+        self.iga_param.generate_vtk4controlMeshVisu(filename, ipatch, output_path=output_path)
 
 
     def get_corners_cp_indices(self, ipatch=0):
