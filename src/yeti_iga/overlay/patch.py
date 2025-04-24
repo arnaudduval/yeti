@@ -1,10 +1,19 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Module handling a NURBS or BSpline patch
+"""
+
 import numpy as np
 
 class Patch:
-    def __init__(self, element_type, degrees, knot_vectors, control_points, weights, connectivity, spans, material, properties=np.array([], dtype=float)):
+    """
+    Object handling a patch
+    """
+    def __init__(self, element_type, degrees, knot_vectors, control_points,
+                 weights, connectivity, spans, material,
+                 properties=np.array([], dtype=float)):
         """
         Parameters
         ----------
@@ -42,4 +51,3 @@ class Patch:
         self.spans = spans
         self.material = material
         self.properties = properties
-

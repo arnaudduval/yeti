@@ -1,7 +1,15 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Module handling distributed load on an IGA model
+"""
+
 class DistributedLoad:
+    """
+    Object handling distributed load on an IGA model
+    A distributed load applies on a set of elements, has a type and a magnitude
+    """
     def __init__(self, el_index, dl_type, magnitude):
         """
         Parameters

@@ -1,6 +1,10 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Module handling refinement properties for an IGA model
+"""
+
 import numpy as np
 
 class Refinement:
@@ -64,5 +68,3 @@ class Refinement:
             subdivisions[:, i] = self.perpatch[i]['subdivision']
 
         return subdivisions
-
-

@@ -1,6 +1,10 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+A module handling an IGA model for structural analysis
+"""
+
 import os
 
 import numpy as np
@@ -31,13 +35,13 @@ class IgaModel:
         self.local_global_el = []       # Maps local element numbering to global one
         self.boundary_conditions = []
 
-        self._refined_flag = False           # Flag set to true hen a refinement has been made
-                                        # To prevent new patch or BC addition
+        self._refined_flag = False           # Flag set to true when a refinement has been made
+                                             # To prevent new patch or BC addition
 
         self.iga_param = IGAparametrization()
 
         # Global
-        if model_type == '3D solid' or model_type == '3D shell':
+        if model_type in('3D solid', '3D shell'):
             self.iga_param._mcrd = 3
         self.iga_param._nb_patch = 0
         self.iga_param._nb_elem = 0
@@ -242,7 +246,8 @@ class IgaModel:
         """
 
         if self._refined_flag:
-            raise Exception("Can not add a new boundary condition if model has already been refined")
+            raise Exception("Can not add a new boundary condition if model " \
+            "has already been refined")
 
         self.boundary_conditions.append((ipatch, bc))
 
@@ -573,6 +578,3 @@ class IgaModel:
                                           num_patch=ipatch)
 
         return indices
-
-
-

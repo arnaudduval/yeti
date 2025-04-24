@@ -9,9 +9,11 @@ import os
 
 import numpy as np
 
+# pylint: disable=no-name-in-module
 from ..preprocessing.igaparametrization import OPTmodelling
 from ..postprocessing import postproc as pp
 from .. import reconstructionSOL as rsol
+
 
 class IgaOptimization:
     """
@@ -73,7 +75,8 @@ class IgaOptimization:
         x : np.array(dtype=float)
             Array containing the design variables
         listpatch : numpy.array(dtype=int)
-            An array of 0 ro 1 indocating which patch must be taken into account for volume computation
+            An array of 0 ro 1 indocating which patch must be taken into
+            account for volume computation
             Default = None
 
         Returns
@@ -84,10 +87,12 @@ class IgaOptimization:
 
         if listpatch:
             if listpatch.size != self.iga_model.nb_patch:
-                raise ValueError("Length of listpatch parameter must be equal to {self.iga_model.nb_patch}")
+                raise ValueError("Length of listpatch parameter must be equal " \
+                "to {self.iga_model.nb_patch}")
 
             if not np.all(np.isin(listpatch, [0, 1])):
-                raise ValueError("listpatch parameters must exclusively contain 0 or 1 values.")
+                raise ValueError("listpatch parameters must exclusively " \
+                "contain 0 or 1 values.")
 
         return self._opt_pb.compute_volume(x, listpatch=listpatch)
 
@@ -102,7 +107,8 @@ class IgaOptimization:
         x : numpy.array(dtype=float)
             Array containing the design variables
         listpatch : numpy.array(dtype=int)
-            An array of 0 ro 1 indocating which patch must be taken into account for volume computation
+            An array of 0 ro 1 indicating which patch must be taken into
+            account for volume computation
             Default = None
 
         Returns
@@ -112,10 +118,12 @@ class IgaOptimization:
         """
         if listpatch:
             if listpatch.size != self.iga_model.nb_patch:
-                raise ValueError("Length of listpatch parameter must be equal to {self.iga_model.nb_patch}")
+                raise ValueError("Length of listpatch parameter must be equal " \
+                "to {self.iga_model.nb_patch}")
 
             if not np.all(np.isin(listpatch, [0, 1])):
-                raise ValueError("listpatch parameters must exclusively contain 0 or 1 values.")
+                raise ValueError("listpatch parameters must exclusively " \
+                "contain 0 or 1 values.")
 
         return self._opt_pb.compute_gradVolume_AN(x, listpatch)
 
@@ -136,7 +144,8 @@ class IgaOptimization:
             Boolean indicating if centered finite differences must be used
             Default = False
         listpatch : numpy.array(dtype=int)
-            An array of 0 ro 1 indicating which patch must be taken into account for volume computation
+            An array of 0 ro 1 indicating which patch must be taken into
+            account for volume computation
             Default = None
 
         Returns
@@ -145,7 +154,9 @@ class IgaOptimization:
             gradient of the volume
         """
 
-        return self._opt_pb.compute_gradVolume_DF(x, eps=eps, centerFD=centered, listpatch=listpatch)
+        return self._opt_pb.compute_gradVolume_DF(x, eps=eps,
+                                                  centerFD=centered,
+                                                  listpatch=listpatch)
 
 
     def compliance(self, x):
@@ -333,7 +344,9 @@ class IgaOptimization:
         output_path = os.path.dirname(os.path.realpath(filename))
         filename = os.path.splitext(os.path.basename(filename))[0]
 
-        sol, _ = rsol.reconstruction(**self._opt_pb.fine_parametrization.get_inputs4solution(self._opt_pb.save_sol_fine))
+        sol, _ = rsol.reconstruction(
+            **self._opt_pb.fine_parametrization.get_inputs4solution(
+                self._opt_pb.save_sol_fine))
         pp.generatevtu(*self._opt_pb.fine_parametrization.get_inputs4postprocVTU(
             filename,  sol.transpose(),
             nb_ref=refinement,
@@ -375,4 +388,3 @@ class IgaOptimization:
 
         self._opt_pb.coarse_parametrization.generate_vtk4controlMeshVisu(
             filename, ipatch, output_path=output_path)
-
