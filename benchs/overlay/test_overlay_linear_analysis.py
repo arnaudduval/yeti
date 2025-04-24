@@ -22,7 +22,7 @@ def test_linear_analysis_single_patch_3d_solid(tmp_path):
 
     model = IgaModel("3D solid")
 
-    material = ElasticMaterial(young_modulus=210000., poisson_ratio=0.3)
+    material = ElasticMaterial(young_modulus=210.e9, poisson_ratio=0.3)
 
     patch = Patch(element_type='U1',
                   degrees=np.array([1, 1, 1]),
@@ -30,13 +30,13 @@ def test_linear_analysis_single_patch_3d_solid(tmp_path):
                                 np.array([0., 0., 1., 1.]),
                                 np.array([0., 0., 1., 1.])],
                   control_points=np.array([[0., 0., 0.],
-                                           [0., 3., 0.],
-                                           [0., 0., 1.],
-                                           [0., 3., 1.],
-                                           [20., 0., 0.],
-                                           [20., 3., 0.],
-                                           [20., 0., 1.],
-                                           [20., 3., 1.]]),
+                                           [0., 0.1, 0.],
+                                           [0., 0., 0.03],
+                                           [0., 0.1, 0.03],
+                                           [10., 0., 0.],
+                                           [10., 0.1, 0.],
+                                           [10., 0., 0.03],
+                                           [10., 0.1, 0.03]]),
                   weights=np.array([1., 1., 1., 1., 1., 1., 1., 1.]),
                   connectivity=np.array([[7, 6, 5, 4, 3, 2, 1, 0]]),
                   spans=np.array([[1, 1, 1]]),
@@ -45,11 +45,11 @@ def test_linear_analysis_single_patch_3d_solid(tmp_path):
 
     model.add_patch(patch)
 
-    bc1 = BoundaryCondition(cp_index=np.array([0, 1, 2, 3]),
+    bc = BoundaryCondition(cp_index=np.array([0, 1, 2, 3]),
                             dof=np.array([0, 1, 2]),
                             value=0.
                             )
-    model.add_boundary_condition(0, bc1)
+    model.add_boundary_condition(0, bc)
 
     dload = DistributedLoad(el_index=np.array([0]),
                             dl_type=40,
@@ -70,8 +70,9 @@ def test_linear_analysis_single_patch_3d_solid(tmp_path):
         rhs[model.idof_free]
         )
 
+    model.write_control_mesh_vtk(f'{tmp_path}/control_net_solid.vtk')
     model.write_solution_vtu(x,
-                             f"{tmp_path}/result.vtu",
+                             f"{tmp_path}/result_solid.vtu",
                              data_flag=np.array([True, True, True]))
 
 
@@ -142,11 +143,11 @@ def test_linear_analysis_single_patch_3d_shell(tmp_path):
         rhs[model.idof_free]
         )
 
-    model.write_control_mesh_vtu(f'{tmp_path}/control_net.vtu')
+    model.write_control_mesh_vtk(f'{tmp_path}/control_net_roof.vtk')
     model.write_solution_vtu(x,
-                             f"{tmp_path}/result.vtu")
+                             f"{tmp_path}/result_roof.vtu")
 
 
 if __name__ == '__main__':
-    # test_linear_analysis_single_patch_3d_solid('.')
+    test_linear_analysis_single_patch_3d_solid('.')
     test_linear_analysis_single_patch_3d_shell('.')
