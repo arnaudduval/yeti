@@ -545,3 +545,34 @@ class IgaModel:
                                            self.iga_param._dim,
                                            num_patch=ipatch)
         return indices
+
+    def get_face_cp_indices(self, id_face, ipatch=0):
+        """
+        Return global indices of control points corresponding to a face of a
+        given patch
+
+        Parameters
+        ----------
+        id_face : int
+            identifier of face : 1, 2, 3, 4, 5 or 6
+        ipatch : int (default = 0)
+            index of patch
+
+        Returns
+        -------
+        indices : numpy.array(dtype=int)
+            indices of face control points
+        """
+
+        if id_face < 1 or id_face > 6:
+            raise ValueError('id_face parameter must be in [1 6]')
+
+        indices = manip.get_boundCPindice(self.iga_param.n_kv,
+                                          self.iga_param.j_pqr,
+                                          id_face,
+                                          num_patch=ipatch)
+
+        return indices
+
+
+
