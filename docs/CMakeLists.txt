@@ -19,6 +19,7 @@ if(Sphinx_FOUND)
         "${CMAKE_CURRENT_LIST_DIR}/source/theory/bibliography.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/api/preprocessing.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/api/iga_manipulation.rst"
+        "${CMAKE_CURRENT_LIST_DIR}/source/api/iga_modeling.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/examples/index.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/examples/OPT_stiffPanel.rst"
         "${CMAKE_CURRENT_LIST_DIR}/source/_static/nodes-numbering.png"

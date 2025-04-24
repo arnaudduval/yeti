@@ -274,7 +274,7 @@ class IgaModel:
         """
         Add a distributed load
 
-        Paramaters
+        Parameters
         ----------
         ipatch: int
             Patch index on which distributed load is applied
@@ -363,8 +363,8 @@ class IgaModel:
         """
         Build stiffness matrix and right hand member
 
-        Retuns
-        ------
+        Returns
+        -------
         stiff : scipy.sparse.csc_matrix
             Assembled stifness matrix
         rhs : numpy.array
@@ -402,8 +402,8 @@ class IgaModel:
         """
         Returns an array containing all control points indices of the model
 
-        Returns:
-        --------
+        Returns
+        -------
         cp_indices : numpy.array(dtype=int)
             All control points indices
         """

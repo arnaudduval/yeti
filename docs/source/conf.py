@@ -1,20 +1,16 @@
-import tomli
-import warnings
+project = "yeti-iga"
 
-
-# Set version from pyproject.toml file
-with open('../../pyproject.toml', 'rb') as f:
-    toml_data = tomli.load(f)
-    release = toml_data['project']['version']
-
-project = "yeti"
-
-copyright = '2024, LaMCoS'
+copyright = '2025, LaMCoS'
 author = 'Arnaud Duval'
 
-# version = '@SPHINX_TARGET_VERSION_MAJOR@.@SPHINX_TARGET_VERSION_MINOR@'
-# release = '@SPHINX_TARGET_VERSION@'
-version = release
+
+try:
+    from importlib.metadata import version as get_version
+except ImportError:
+    from importlib_metadata import version as get_version  # Python < 3.8
+
+release = get_version(project)
+version = ".".join(release.split(".")[:2])  # short version, ex: "1.2"
 
 numfig = True
 
@@ -35,8 +31,9 @@ html_static_path = ['_static']
 html_logo = '_static/logo-yeti_with_text.svg'
 html_theme_option = {
     'logo_only': True,
-    'display_version': False,
+    'version_selector': True,
 }
+
 
 bibtex_bibfiles = [
     'YETI.bib',
