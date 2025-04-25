@@ -20,6 +20,20 @@
 
 cmake_minimum_required(VERSION 3.21.0)
 
+# Test Platform
+if(WIN32)
+    message(STATUS "Windows platform detected")
+endif()
+
+if(UNIX AND NOT APPLE)
+    message(STATUS "Linux platform detected")
+endif()
+
+if(APPLE)
+    message(STATUS "macOS platform dtected")
+endif()
+
+
 # Test if using scikit-build or not
 if("${SKBUILD_PROJECT_NAME}" STREQUAL "")
     message(STATUS "Building without scikit-build")
