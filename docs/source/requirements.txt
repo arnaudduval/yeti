@@ -1,2 +1,3 @@
 yeti-iga
-
+sphinx-rtd-theme
+sphinxcontrib-bibtex
