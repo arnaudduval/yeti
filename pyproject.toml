@@ -1,6 +1,6 @@
 [project]
 name = "yeti-iga"
-version = "0.0.3"
+version = "0.1.0"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
 ]
@@ -18,7 +18,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy>=1.13"]
+dependencies = ["numpy>=2", "scipy>=1.13", "nlopt>=2"]
 
 [project.urls]
 Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
