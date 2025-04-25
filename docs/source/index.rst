@@ -36,6 +36,12 @@ It offers functionalities for static mechanical analysis and shape optimization.
 ..    usage/install_wsl.rst
 ..    usage/build_cmake.rst
 
+.. toctree::
+    :maxdepth: 1
+    :Caption: Appendix
+
+    ./changelog.rst
+
 
 
 
