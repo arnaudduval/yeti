@@ -1,105 +1,74 @@
-************
 Installation
-************
+============
 
-.. _yeti-installation:
+YETI is distributed via the pypi package repository. As it is based on Fortran code compiled with f2py and using the Fortran module feature, it has so far only been built for Linux platforms.
+Contributors with the knowledge to build YETI on MacOS or Windows platforms are welcome.
 
-Prerequisites
-*************
+Linux
+-----
 
-yeti is currently only available for Linux environment.
-For usage in a Microsoft Windows environment, *Windows Subsystem for Linux (WSL)* can be used.
-A quick tutorial for the installation of WSL can be found :ref:`here <install-wsl>`.
+You can simply install Yeti by invoking pip from the command line. YETI package is available for x86_64 platforms.
+::
 
-For a Ubuntu 20.04 distribution, the following packages are required :
- - python3
- - python3-venv
- - libpython3-dev
- - git
- - gfortran
- - gcc
- - libblas3
- - libblas-dev
- - liblapack3
- - liblapack-dev
- - cmake (minimum version 3.21 is required, a quick guide to build cmake 2.24 is available :ref:`here <buildcmake>`)
+    pip install yeti-iga
+
+Windows
+-------
+
+YETI is currently not available for Windows platforms. However, it can be installed using Windows Subsystem for Linux (WSL).
 
 
-Get sources
-***********
-With git :
+System Requirements
+~~~~~~~~~~~~~~~~~~~
 
-..  code-block:: bash
+- Windows 10 version 2004 and higher (Build 19041 and higher) or Windows 11
+- Administrator privileges on your Windows system
+- Internet connection
 
-    git clone https://lamcosplm.insa-lyon.fr/plugins/git/yeti/yeti.git
+Step-by-Step Installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create virtual python environment for yeti
-******************************************
+1. **Open PowerShell as Administrator**
 
-Virtual environnement will be created at the root of user home directory
+   Right-click on the Start menu and select **"Windows Terminal (Admin)"** or **"PowerShell (Admin)"**.
 
-.. code-block:: bash
+2. **Install WSL**
 
-    python3 -m venv ~/yeti-venv
+   Run the following command to install WSL and set up the default Linux distribution:
 
-To activate this environment:
+   .. code-block:: powershell
 
-.. code-block:: bash
+      wsl --install
 
-    source ~/yeti-venv/bin/activate
+   This command performs the following actions:
+   - Enables the required optional components
+   - Downloads and installs the latest Linux kernel
+   - Sets WSL 2 as the default
+   - Installs Ubuntu by default
 
-Install required python modules with pip:
+3. **Restart Your Computer**
 
-..  code-block:: bash
+   After installation, you may be prompted to restart your PC. Make sure to save your work and reboot.
 
-    pip install --upgrade pip
-    pip install numpy matplotlib scipy nlopt
+4. **Set Up Your Linux User Account**
+
+   On the first launch of the Linux distribution, you will be asked to create a user account and password.
+
+Verify Installation
+~~~~~~~~~~~~~~~~~~~
+
+To check that WSL is installed correctly and running:
+
+.. code-block:: powershell
+
+   wsl --status
+
+This will display information about the installed distributions and the WSL version in use.
 
 
-For use of umfpack with scipy sparse solver:
+References
+~~~~~~~~~~
 
-..  code-block:: bash
-
-    pip install wheel
-    sudo apt install libsuitesparse-dev swig
-    pip install scikit-umfpack
-
-
-Compile yeti
-************
-
-..  code-block:: bash
-
-    cd yeti
-
-Create a build directory:
-
-..  code-block:: bash
-
-    mkdir build
-    cd build
-
-If not already loaded, load virtual python environment:
-
-..  code-block:: bash
-
-    source ~/yeti-venv/bin/activate
-
-Configure with CMake:
-
-..  code-block:: bash
-
-    cmake ..
-
-Build yeti:
-
-..  code-block:: bash
-
-    make -j4
-
-yeti library will be located in :file:`build/lib/python`. You must add it to your ``PYTHONPATH`` environment variable:
-
-..  code-block:: bash
-
-    export PYTHONPATH=$PYTHONPATH:~/yeti/build/lib/python
+- Official WSL documentation: https://docs.microsoft.com/windows/wsl/
+- WSL GitHub repository: https://github.com/microsoft/WSL
 

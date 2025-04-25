@@ -3,13 +3,15 @@
 YETI documentation
 ==================
 
-YETI (YET another Iga code) is a python library for isogeometric analysis dedicated to shape optimization.
+YETI (YET another Iga code) YETI is a Python library dedicated to isogeometric analysis.
+It offers functionalities for static mechanical analysis and shape optimization.
 
 
 .. toctree::
    :maxdepth: 2
    :Caption: User manual
 
+   usage/installation.rst
    usage/using_yeti
    usage/coupling_modelling
    validation/benchs
