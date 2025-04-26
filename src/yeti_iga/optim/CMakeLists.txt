@@ -47,12 +47,14 @@ CreateF2PYModule(NAME vibration
 #                 LINK_LIBRARIES base
 #                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
 
-CreateF2PYModule(NAME gradcompliance
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradcompliance_semiAN.f
-                       ${CMAKE_CURRENT_SOURCE_DIR}/gradcompliance_fullAN.f
-                       ${CMAKE_CURRENT_SOURCE_DIR}/gradcoupling.f
-                 LINK_LIBRARIES optim base coupling
-                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
+
+## Not needed : grad compliance is computed from adjointwork
+#CreateF2PYModule(NAME gradcompliance
+#                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradcompliance_semiAN.f
+#                       ${CMAKE_CURRENT_SOURCE_DIR}/gradcompliance_fullAN.f
+#                       ${CMAKE_CURRENT_SOURCE_DIR}/gradcoupling.f
+#                 LINK_LIBRARIES optim base coupling
+#                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH}/optim)
 
 CreateF2PYModule(NAME gradcoupling
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/gradcoupling.f

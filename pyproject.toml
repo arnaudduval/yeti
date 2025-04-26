@@ -18,7 +18,9 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy>=1.13", "nlopt>=2"]
+# dependencies = ["numpy>=2", "scipy>=1.13", "nlopt>=2"]
+# Issue with nlopt dependency on Windows + MinGW
+dependencies = ["numpy>=2", "scipy>=1.13"]
 
 [project.urls]
 Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
@@ -32,15 +34,49 @@ build-backend = "scikit_build_core.build"
 cmake.version = ">=3.17.2"
 build.verbose = true
 logging.level =  "INFO"
+# Specific arguments for Windows build
+cmake.args = [
+  "-DCMAKE_LIBRARY_PATH=C:/msys64/mingw64/lib",
+  "-DCMAKE_INCLUDE_PATH=C:/msys64/mingw64/include",
+  "-DBLAS_LIBRARIES=C:/msys64/mingw64/lib/libblas.dll.a",
+  "-DCMAKE_C_COMPILER=gcc",
+  "-DCMAKE_CXX_COMPILER=g++",
+  "-DCMAKE_Fortran_COMPILER=gfortran"
+]
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-*"
 skip = "cp36-* cp37-* cp38-*   *musllinux*"
+
+# Pour Linux
+[tool.cibuildwheel.linux]
 archs = ["x86_64"]    #, "aarch64"]           # installer qemu-user-static pour l'arm64
 manylinux-x86_64-image = "manylinux_2_28" # "manylinux2014"
 before-build = "yum install -y blas-devel lapack-devel"
+
 test-command = "pytest {project}/benchs"
 test-requires = ["pytest"]
+
+# Pour Windows
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+
+#before-build = """
+#C:\\msys64\\usr\\bin\\bash -l -c "pacman -Syu --noconfirm && pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-make mingw-w64-x86_64-lapack mingw-w64-x86_64-blas && export F77=gfortran && export CC=gcc"
+#"""
+before-build = """
+C:\\msys64\\usr\\bin\\bash -l -c "
+  pacman -Syu --noconfirm &&
+  pacman -S --noconfirm cmake ninja mingw-w64-x86_64-gcc mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-make mingw-w64-x86_64-lapack mingw-w64-x86_64-blas
+"
+"""
+# NPY_DISTUTIL_APPEND_FLAGS is here to avoid distutils deleting the variables and try to use MSVC instead of MinGW
+environment = {CMAKE_GENERATOR="MinGW Makefiles", CC="gcc", CXX="g++", FC="gfortran", F77="gfortran", F90="gfortran", NPY_DISTUTILS_APPEND_FLAGS = "1", DISTUTILS_USE_SDK = "1", PATH = "${PATH};C:/msys64/mingw64/bin;C:/msys64/usr/bin" }
+
+# Pour Mac (for future)
+[tool.cibuildwheel.macos]
+archs = ["x86_64"]
+before-build = "brew install openblas lapack"
 
 [tool.ruff]
 src = ["src"]

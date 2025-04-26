@@ -15,7 +15,13 @@ macro(CreateF2PYModule)
 
     CMAKE_PARSE_ARGUMENTS(MODULE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(generated_module_file ${CMAKE_CURRENT_BINARY_DIR}/${MODULE_NAME}.${Python3_SOABI}.so)
+    if(platform STREQUAL "linux")
+        set(generated_module_file ${CMAKE_CURRENT_BINARY_DIR}/${MODULE_NAME}.${Python3_SOABI}.so)
+        set(copied_module_file  ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.so)
+    elseif(platform STREQUAL "windows")
+    set(generated_module_file ${CMAKE_CURRENT_BINARY_DIR}/${MODULE_NAME}.${Python3_SOABI}.pyd)
+    set(copied_module_file  ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.pyd)
+    endif()
 
     add_custom_target(${MODULE_NAME} ALL
         DEPENDS ${generated_module_file}
@@ -44,7 +50,7 @@ macro(CreateF2PYModule)
             DEPENDS ${MODULE_LINK_LIBRARIES}
             COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMAND  ${CMAKE_COMMAND} -E copy ${generated_module_file} ${MODULE_DESTINATION}/${MODULE_NAME}.${Python3_SOABI}.so
+            COMMAND  ${CMAKE_COMMAND} -E copy ${generated_module_file} ${copied_module_file}
         )
     else()
         # scikit-build : no copy of *.so file

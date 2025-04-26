@@ -23,14 +23,23 @@ cmake_minimum_required(VERSION 3.21.0)
 # Test Platform
 if(WIN32)
     message(STATUS "Windows platform detected")
+    set(platform "windows")
+    # Force use of make when using MinGW
+    if(MSVC)
+        set(CMAKE_GENERATOR "NMake Makefiles")
+    else()
+        set(CMAKE_GENERATOR "MinGW Makefiles")
+    endif()
 endif()
 
 if(UNIX AND NOT APPLE)
     message(STATUS "Linux platform detected")
+    set(platform "linux")
 endif()
 
 if(APPLE)
     message(STATUS "macOS platform dtected")
+    set(platform "macos")
 endif()
 
 
