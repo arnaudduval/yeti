@@ -467,7 +467,7 @@ class IgaModel:
             Refinement applied when files are egenerated using a classical FE
             data structure
         data_flag : numpy.array(shape=(3,), dtype=bool)
-        (default=[True, False, False])
+            (default=[True, False, False])
             Boolean array indicating generated fields : [0] : displacement,
             [1] : stress, [2] : strain
 

@@ -2438,7 +2438,7 @@ class IGAparametrization:
     def generate_vtk4controlMeshVisu(self, filename, num_patch, sol=None, output_path='results'):
         """Generate control mesh visualisation for a given patch number."""
         inputs = self.get_inputs4controlMesh(filename, num_patch, output_path=output_path, sol=sol)
-        print(f'Generate {filename}.vtk ...')
+        # print(f'Generate {filename}.vtk ...')
 
         if sol is None:
             generate_vtk(*inputs)
