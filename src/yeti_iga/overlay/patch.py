@@ -28,7 +28,9 @@ class Patch:
         weights : numpy.array
             control points weights
         connectivity : numpy.array
-            connectivity matrix, indexing starts at 0, numbering is local to patch
+            connectivity matrix, indexing starts at 0, numbering is local to patch.
+            first dimension is index of element, second dimension is connectivity
+            of element
         spans : numpy.array
             spans values for each element, numbering starts at 0
         material : Material

@@ -130,9 +130,9 @@ class IgaModel:
         self.iga_param._dim = np.append(self.iga_param._dim, len(patch.knot_vectors))
 
         self.iga_param._NBPINT = np.append(
-            self.iga_param._NBPINT, np.prod(patch.degrees + 1)
+            self.iga_param._NBPINT, np.prod(np.array(patch.degrees) + 1)
         )
-        if self.iga_param._dim == 3:
+        if self.iga_param._dim[-1] == 3:
             self.iga_param._Jpqr = np.append(
                 self.iga_param._Jpqr, np.array([patch.degrees]).T, axis=1
                 )
@@ -166,12 +166,26 @@ class IgaModel:
 
         Nkv = np.array([0, 0, 0], dtype=int)
         for i, kv in enumerate(patch.knot_vectors):
-            Nkv[i] = kv.size
+            Nkv[i] = len(kv)
         self.iga_param._Nkv = np.append(
             self.iga_param._Nkv, np.array([Nkv]).T, axis=1
         )
 
-        self.iga_param._IEN.append(patch.connectivity[:, self.local_global_cp[-1]]+1)
+        # print(f'{patch.connectivity = }')
+        # print(f'{self.iga_param._IEN = }')
+        # print(f'{self.local_global_cp = }')
+        # convert connectivity local/global
+        glob_connectivity = np.empty_like(patch.connectivity)
+        for ielem in range(patch.connectivity.shape[0]):
+            for icp in range(patch.connectivity.shape[1]):
+                glob_connectivity[ielem, icp] = self.local_global_cp[-1][patch.connectivity[ielem, icp]] + 1
+
+
+        # self.iga_param._IEN.append(patch.connectivity[:, self.local_global_cp[-1]]+1)
+        self.iga_param._IEN.append(glob_connectivity)
+
+
+
         # TODO Possible de faire plus simple sans ajouter de None.
         # On veut en sortie un array de array,
         # ex : '_indCPbyPatch': array([array([1, 2, 3, 4, 5, 6, 7, 8])], dtype=object)
