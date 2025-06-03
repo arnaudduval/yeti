@@ -36,6 +36,14 @@ def load_geomdl_json(filename):
             for ipatch in range(data['shape']['count']):
                 patchs.append(read_one_patch_json_geomdl(data['shape']['data'][ipatch],
                                                          patch_type))
+        elif data['shape']['type'] == 'surface':
+            patch_type = 'surface'
+            for ipatch in range(data['shape']['count']):
+                patchs.append(read_one_patch_json_geomdl(data['shape']['data'][ipatch],
+                                                         patch_type))
+        else:
+            raise Exception(f"Shape data type {data['shape']['type']} is not handled")
+
 
         return patchs
 
@@ -102,5 +110,44 @@ def read_one_patch_json_geomdl(patch_dict, patch_type):
                      spans=spans,
                      material=ElasticMaterial(1., 1.))
 
+    elif patch_type == 'surface':
+        dimension = patch_dict['dimension']
+        if dimension != 3:
+            raise Exception('2D solid geometry is not handled')
+        degrees = extract_keys(patch_dict, ['degree_u', 'degree_v'])
+        knotvectors = extract_keys(patch_dict, ['knotvector_u', 'knotvector_v'])
+        sizes_cp = extract_keys(patch_dict, ['size_u', 'size_v'])
 
+        cps = np.array(patch_dict['control_points']['points'])
 
+        connectivity = np.arange(np.prod(sizes_cp))
+        # TODO à vérifier
+        connectivity = connectivity.reshape(sizes_cp[1], sizes_cp[0], order="F")
+
+        nb_spans = np.subtract(sizes_cp, degrees)
+
+        yeti_connectivity = np.empty((np.prod(nb_spans), np.prod(np.array(degrees)+1)), dtype=int)
+        # spans = np.empty((np.prod(nb_spans), dimension))
+        # For a surface, dimension of parametric space is 2
+        spans = np.empty((np.prod(nb_spans), 2))
+
+        ispan = 0
+        for i in range(nb_spans[0]):
+            for j in range(nb_spans[1]):
+                    icp = 0
+                    for jj in reversed(range(degrees[1]+1)):
+                        for ii in reversed(range(degrees[0]+1)):
+                            yeti_connectivity[ispan, icp] = connectivity[j+jj, i+ii]
+                            icp += 1
+                    spans[ispan, :] = np.add(degrees, [i, j])
+                    ispan += 1
+
+        return Patch(element_type='U3',
+                     degrees=degrees,
+                     knot_vectors = knotvectors,
+                     control_points=cps,
+                     weights=np.ones(cps.shape[0]),
+                     connectivity=yeti_connectivity,
+                     spans=spans,
+                     material=ElasticMaterial(1., 1.),
+                     properties=np.array([1.]))

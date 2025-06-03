@@ -63,7 +63,7 @@ def test_optim_shell(tmp_path):
                                            [10., 10., 0.]]),
                   weights=np.array([1., 1., 1., 1.]),
                   connectivity=np.array([[3, 2, 1, 0]]),
-                  spans=np.array([1, 1]),
+                  spans=np.array([[1, 1]]),
                   material=material,
                   properties=np.array([0.1])
                   )

@@ -132,25 +132,27 @@ class IgaModel:
         self.iga_param._NBPINT = np.append(
             self.iga_param._NBPINT, np.prod(np.array(patch.degrees) + 1)
         )
-        if self.iga_param._dim[-1] == 3:
+        if len(patch.knot_vectors) == 3:
             self.iga_param._Jpqr = np.append(
                 self.iga_param._Jpqr, np.array([patch.degrees]).T, axis=1
                 )
             # TODO Verify if a [] is needed, like in the 2 dim case
+            # Non, c'est une erreur dasn le TP CSMA : à corriger
             self.iga_param._Nijk = np.append(
                 self.iga_param._Nijk, (patch.spans+1).T, axis=1
                 )
-        elif self.iga_param._dim == 2:
+        elif len(patch.knot_vectors) == 2:
             self.iga_param._Jpqr = np.append(
                 self.iga_param._Jpqr, np.array([np.append(patch.degrees, 0)]).T, axis=1
                 )
-            self.iga_param._Nijk = np.append(
-                self.iga_param._Nijk, np.array([np.append(patch.spans+1, 0)]).T, axis=1
-                )
+            # Add zeros for 3rd dimension since iga_param is hard-coded for dimension=3
+            zeros = np.zeros((patch.spans.shape[0], 1), dtype=np.intp)
+            padded = np.hstack((patch.spans+1, zeros))
+            self.iga_param._Nijk = np.hstack(
+                (self.iga_param._Nijk, padded.T)
+            )
         else:
             raise ValueError("Patch dimension must be 2 or 3")
-
-
 
         self.iga_param._Ukv.append(patch.knot_vectors)
         self.iga_param._COORDS = np.append(
@@ -171,9 +173,6 @@ class IgaModel:
             self.iga_param._Nkv, np.array([Nkv]).T, axis=1
         )
 
-        # print(f'{patch.connectivity = }')
-        # print(f'{self.iga_param._IEN = }')
-        # print(f'{self.local_global_cp = }')
         # convert connectivity local/global
         glob_connectivity = np.empty_like(patch.connectivity)
         for ielem in range(patch.connectivity.shape[0]):
@@ -323,8 +322,8 @@ class IgaModel:
         self.iga_param._flatten_data()
 
     def refine_patch(self, ipatch,
-                     nb_degree_elevation=np.zeros(3),
-                     nb_subdivision=np.zeros(3),
+                     nb_degree_elevation=np.zeros(3, dtype=np.intp),
+                     nb_subdivision=np.zeros(3, dtype=np.intp),
                      additional_knots=None):
         """
         Refine a patch of the model with k-refinement:

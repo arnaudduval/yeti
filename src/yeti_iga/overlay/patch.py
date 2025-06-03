@@ -40,7 +40,7 @@ class Patch:
         """
 
         if element_type == 'U3' and properties.size == 0:
-            raise ValueError('Shell patch should have at least 1 property defining its thuckness')
+            raise ValueError('Shell patch should have at least 1 property defining its thickness')
 
 
         self.element_type = element_type
