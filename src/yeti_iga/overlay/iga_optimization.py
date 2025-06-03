@@ -320,8 +320,7 @@ class IgaOptimization:
         refinement : numpy.array(shape=(3,), dtype=int) (default=[3, 3, 3])
             Refinement applied when files are egenerated using a classical FE
             data structure
-        data_flag : numpy.array(shape=(3,), dtype=bool)
-        (default=[True, False, False])
+        data_flag : numpy.array(shape=(3,), dtype=bool) (default=[True, False, False])
             Boolean array indicating generated fields : [0] : displacement,
             [1] : stress, [2] : strain
         """
