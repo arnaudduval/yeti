@@ -42,3 +42,8 @@ examples/feti/CsideU4.txt
 wheelhouse
 temp
 
+
+# Temporary files for example OPT_multistiffeners
+examples/OPT_multistiffeners/*.csv
+examples/OPT_multistiffeners/stiff_geom_2xhalf*.NB
+examples/OPT_multistiffeners/stiff_geom_2xhalf*.inp
